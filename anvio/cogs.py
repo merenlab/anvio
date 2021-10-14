@@ -197,7 +197,7 @@ class COGs:
 
         if not aa_sequences_file_path:
             aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
-            dbops.ContigsSuperclass(self.args).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
+            dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
                                                                                   report_aa_sequences=True,
                                                                                   simple_headers=True)
 
@@ -595,7 +595,6 @@ class COGsSetup:
         if self.reset:
             run.warning('This program will remove everything in the COG data directory, then download and reformat '
                         'everything from scratch.')
-            self.wait_for_the_user()
 
             # OK. reset the crap out of it.
             shutil.rmtree(self.COG_data_dir)
@@ -604,7 +603,6 @@ class COGsSetup:
         else:
             run.warning("This program will first check whether you have all the raw files, and then will attempt to "
                         "regenerate everything that is necessary from them.")
-            self.wait_for_the_user()
 
         if not os.path.exists(self.COG_data_dir_version) or open(self.COG_data_dir_version).read().strip() != COG_DATA_VERSION:
             raise ConfigError("The version of your COG data directory is different than what anvi'o hoping to see. "
@@ -640,9 +638,10 @@ class COGsSetup:
             raise ConfigError(f"Bad news :( While parsing a COG input file, anvi'o encountered an error (which said: [{e}]) "
                               f"while processing the line {line_counter} in your file. Where the fields in that file looked "
                               f"looked like this: {fields}. Sadly, this has been a long-standing and very annoying issue that "
-                              f"anvi'o developers were unable to reproduce. If you would like to help us find a solution, please "
-                              f"visit the issue located at https://github.com/merenlab/anvio/issues/1738. There you can copy-paste "
-                              f"this error message and attach the file in question that is located on your disk at '{input_file_path}'.")
+                              f"anvi'o developers were unable to reproduce. But we recently learned that the issue is likely due "
+                              f"to your internet speed (https://github.com/merenlab/anvio/issues/1738). Slower connections lead "
+                              f"to broken connections with the NCBI servers, and leave you with an unfinished file :/ The only "
+                              f"working solution so far is to try again with a faster internet connection.")
 
         progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
 
@@ -843,13 +842,3 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
-
-
-    def wait_for_the_user(self):
-        if self.just_do_it:
-            return
-
-        try:
-            input("Press ENTER to continue, or press CTRL + C to cancel...\n")
-        except:
-            sys.exit()

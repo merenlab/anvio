@@ -21,8 +21,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = ["Doğan Can Kilment", "Gökmen Göksel", "Gökmen Görgen"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren', 'ozcan', 'matthewlawrenceklein', 'isaacfink21', 'blankenberg']
 __resources__ = [("A beginners tutorial on anvi'o interactive interface", "http://merenlab.org/tutorials/interactive-interface/"),
                  ("How to add more data to a display for layers and items", "http://merenlab.org/2017/12/11/additional-data-tables/"),
                  ("An overview of interactive data types", "http://merenlab.org/2016/02/27/the-anvio-interactive-interface/"),
@@ -30,7 +29,7 @@ __resources__ = [("A beginners tutorial on anvi'o interactive interface", "http:
                  ("Working with SVG files from the interactive interface", "http://merenlab.org/2016/10/27/high-resolution-figures/"),
                  ("Running remote anvi'o interactive interfaces on your local computer", "http://merenlab.org/2018/03/07/working-with-remote-interative/")]
 __requires__ = ['profile-db', 'single-profile-db', 'contigs-db', 'genes-db', 'bin', 'view-data', 'dendrogram', 'phylogeny']
-__provides__ = ['collection', 'bin', 'interactive', 'svg']
+__provides__ = ['collection', 'bin', 'interactive', 'svg', 'contig-inspection']
 __description__ = "Start an anvi'o server for the interactive interface"
 
 
@@ -69,6 +68,7 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('ADDITIONAL STUFF', "Parameters to provide additional layers, views, or layer data.")
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupC.add_argument(*anvio.A('annotation-source-for-per-split-summary'), **anvio.K('annotation-source-for-per-split-summary'))
 
     groupD = parser.add_argument_group('GENE MODE', "Gene mode related parameters.")
     groupD.add_argument(*anvio.A('gene-mode'), **anvio.K('gene-mode'))

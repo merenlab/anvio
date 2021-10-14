@@ -173,7 +173,6 @@ class DBInfo(ABC):
         with self.load_db() as database:
             return database.get_meta_value('db_variant', return_none_if_not_in_table=True)
 
-
     @property
     def hash(self):
         with self.load_db() as database:
@@ -186,6 +185,12 @@ class DBInfo(ABC):
             return database.get_meta_value('version', return_none_if_not_in_table=True)
 
 
+    @property
+    def project_name(self):
+        with self.load_db() as database:
+            return database.get_meta_value('project_name', return_none_if_not_in_table=True)
+
+
     def load_db(self):
         return DB(self.path, None, ignore_version=True)
 
@@ -193,7 +198,6 @@ class DBInfo(ABC):
     def get_self_table(self):
         with DB(self.path, None, ignore_version=True) as database:
             return dict(database.get_table_as_list_of_tuples('self'))
-
 
 
 class ContigsDBInfo(DBInfo):
@@ -277,30 +281,31 @@ class FindAnvioDBs(object):
     The primary data structure in this class is `self.anvio_dbs` and is initiated
     upon creating an instance from it.
 
-    As of 2021, the primary sole client of htis class is `PopulateAnvioDBArgs` in the
+    As of 2021, the primary sole client of this class is `PopulateAnvioDBArgs` in the
     anvio.argsparse module to fill in missing databases into the args object.
 
     Parameters
     ==========
     search_path : str
         The beginning of the search. The search will be limited to this directory
-        and files and directoreies underneath it.
+        and files and directories underneath it.
 
     max_files_and_dirs_to_process : int, default 50000
         Stop processing if the number of files and directories processed exceeds
         this.
     """
 
-    def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, run=Run(), progress=Progress()):
+    def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, depth=3, run=Run(), progress=Progress()):
         self.run = run
         self.progress = progress
 
+        self.depth = int(depth)
         self.search_path = search_path
         self.max_files_and_dirs_to_process = max_files_and_dirs_to_process
 
         self.anvio_dbs = {}
 
-        for db_path, level in self.walk(depth=3):
+        for db_path, level in self.walk():
             db_info = DBInfo(db_path, dont_raise=True)
 
             if db_info is not None:
@@ -323,12 +328,12 @@ class FindAnvioDBs(object):
             yield os.path.join(path, filename)
 
 
-    def walk(self, depth=None):
+    def walk(self):
         self.progress.new('Searching files and directories')
 
         total_file_and_directory_names = 0
 
-        if depth and depth == 1:
+        if self.depth and self.depth == 1:
             filenames = list(self.listdir(self.search_path))
 
             total_file_and_directory_names += len(filenames)
@@ -348,7 +353,7 @@ class FindAnvioDBs(object):
                 self.progress.update(f"processing {total_file_and_directory_names} ...")
 
                 dirlevel = dirpath[top_pathlen:].count(os.path.sep)
-                if depth and dirlevel >= depth - 1:
+                if self.depth and dirlevel >= self.depth - 1:
                     dirnames[:] = []
                 else:
                     for filename in [f for f in filenames if f.endswith('.db')]:

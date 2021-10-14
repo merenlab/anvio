@@ -5,15 +5,15 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-from anvio.errors import ConfigError, FilesNPathsError
 import anvio.taxonomyops.scg as scgtaxonomyops
+
+from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Quentin Clayssen"
-__email__ = "quentin.clayssen@gmail.com"
+__authors__ = ['meren', 'qclayssen']
 __provides__ = ['scgs-taxonomy-db']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("The purpose of this program is to download necessary information from GTDB (https://gtdb.ecogenomic.org/), "

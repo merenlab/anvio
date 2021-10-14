@@ -67,7 +67,6 @@ class MultipleRuns:
         self.num_profile_dbs = None
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
-        self.normalization_multiplier = {}
 
         self.profile_dbs_info_dict = {}
 
@@ -425,31 +424,6 @@ class MultipleRuns:
         self.progress.end()
 
 
-    def set_normalization_multiplier(self):
-        # WARNING: here we set normalization values based on total number of reads mapped to each sample.
-        # this is not the best way to do it. a better way probably required all reads obtained from each
-        # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
-
-        smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
-
-        if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
-            self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/ "
-                             "Anvi'o will let this pass, assuming you have some grand plans with these data. But to "
-                             "make sure nothing explode during downstream analyses, it will set the flag "
-                             "`--skip-hierarchical-clustering` to True (so there will be no hierarchical clustering "
-                             "data available in your merged profile database).", header="HIERARCHICAL CLUSTERING WARNING")
-            self.skip_hierarchical_clustering = True
-
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-            self.normalization_multiplier[input_profile_db_path] = (smallest_non_zero_sample_size or 1) * 1.0 / (self.total_reads_mapped_per_sample[sample_id] or (smallest_non_zero_sample_size or 1))
-
-        PRETTY = lambda x: ', '.join(['%s: %.2f' % (self.profile_dbs_info_dict[s]['sample_id'], x[s]) for s in sorted(list(x.keys()))])
-        self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained. "
-                         "This information will only be used to calculate the normalized coverage table. Here are those values: %s" %\
-                                            PRETTY(self.normalization_multiplier))
-
-
     def merge(self):
         self.sanity_check()
         self.set_sample_id()
@@ -497,10 +471,6 @@ class MultipleRuns:
         sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
         total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
 
-        # we run this now because we change default flags in this function
-        # depending on the number of reads characterized within each single profile.
-        self.set_normalization_multiplier()
-
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
                        'sample_id': self.sample_id,
@@ -523,11 +493,6 @@ class MultipleRuns:
                        'contigs_db_hash': self.contigs_db_hash,
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
-
-        # get view data information for both contigs and splits:
-        self.atomic_data_fields, self.atomic_data_for_each_run = self.read_atomic_data_tables()
-
-        self.split_parents = self.get_split_parents()
 
         self.run.info('profiler_version', anvio.__profile__version__)
         self.run.info('output_dir', self.output_directory)
@@ -577,29 +542,10 @@ class MultipleRuns:
         self.run.quit()
 
 
-    def get_normalized_coverage_of_split(self, target, input_profile_db_path, split_name):
-        return self.atomic_data_for_each_run[target][input_profile_db_path][split_name]['mean_coverage_Q2Q3'] * self.normalization_multiplier[input_profile_db_path]
-
-
-    def get_max_normalized_ratio_of_split(self, target, split_name):
-        denominator = float(max(self.normalized_coverages[target][split_name].values()))
-
-        d = {}
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            d[input_profile_db_path] = (self.normalized_coverages[target][split_name][input_profile_db_path] / denominator) if denominator else 0
-
-        return d
-
-
-    def get_relative_abundance_of_split(self, target, sample_id, split_name):
-        denominator = float(sum(self.normalized_coverages[target][split_name].values()))
-        return self.normalized_coverages[target][split_name][sample_id] / denominator if denominator else 0
-
-
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
+        essential_fields = constants.essential_data_fields_for_anvio_profiles
 
         # initialize views.
         args = argparse.Namespace(profile_db = self.merged_profile_db_path)
@@ -654,55 +600,29 @@ class MultipleRuns:
 
 
     def gen_view_data_tables_from_atomic_data(self):
-        essential_fields = [f for f in self.atomic_data_fields if constants.IS_ESSENTIAL_FIELD(f)]
-        auxiliary_fields = [f for f in self.atomic_data_fields if constants.IS_AUXILIARY_FIELD(f)]
+        essential_fields = constants.essential_data_fields_for_anvio_profiles
 
-        # setting standard view table structure and types
-        view_table_structure = ['contig'] + self.sample_ids_found_in_input_dbs + auxiliary_fields
-        view_table_types = ['text'] + ['numeric'] * len(self.sample_ids_found_in_input_dbs) + ['text']
-
-        # generate a dictionary for normalized coverage of each contig across samples per target
-        self.normalized_coverages = {'contigs': {}, 'splits': {}}
-        for target in ['contigs', 'splits']:
-            for split_name in self.split_names:
-                self.normalized_coverages[target][split_name] = {}
-                for input_profile_db_path in self.profile_dbs_info_dict:
-                    self.normalized_coverages[target][split_name][input_profile_db_path] = self.get_normalized_coverage_of_split(target, input_profile_db_path, split_name)
-
-        # generate a dictionary for max normalized ratio of each contig across samples per target
-        self.max_normalized_ratios = {'contigs': {}, 'splits': {}}
-        for target in ['contigs', 'splits']:
-            for split_name in self.split_names:
-                self.max_normalized_ratios[target][split_name] = self.get_max_normalized_ratio_of_split(target, split_name)
-
-        self.progress.new('Generating view data tables')
+        self.progress.new('Views')
         for target in ['contigs', 'splits']:
             for essential_field in essential_fields:
-                self.progress.update('Processing %s for %s ...' % (essential_field, target))
+                table_name_to_read_from = '_'.join([essential_field, target])
+                for input_profile_db_path in self.profile_dbs_info_dict:
+                    sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
+                    self.progress.update(f"Reading '{essential_field}' of '{target}' in '{sample_id}'")
 
-                data_dict = {}
-                for split_name in self.split_names:
-                    data_dict[split_name] = {'__parent__': self.split_parents[split_name]}
+                    profile_db = db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
+                    view_data_for_sample = profile_db.get_all_rows_from_table(table_name_to_read_from)
+                    profile_db.disconnect()
 
-                    for input_profile_db_path in self.profile_dbs_info_dict:
-                        sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
-                        if essential_field == 'normalized_coverage':
-                            data_dict[split_name][sample_id] = self.normalized_coverages[target][split_name][input_profile_db_path]
-                        elif essential_field == 'max_normalized_ratio':
-                            data_dict[split_name][sample_id] = self.max_normalized_ratios[target][split_name][input_profile_db_path]
-                        elif essential_field == 'relative_abundance':
-                            data_dict[split_name][sample_id] = self.get_relative_abundance_of_split(target, input_profile_db_path, split_name)
-                        else:
-                            data_dict[split_name][sample_id] = self.atomic_data_for_each_run[target][input_profile_db_path][split_name][essential_field]
-
-                # time to store the data for this view in the profile database
-                table_name = '_'.join([essential_field, target])
-                TablesForViews(self.merged_profile_db_path).create_new_view(
-                                                data_dict=data_dict,
-                                                table_name=table_name,
-                                                table_structure=view_table_structure,
-                                                table_types=view_table_types,
-                                                view_name=essential_field if target == 'splits' else None)
+                    self.progress.update(f"Writing '{essential_field}' of '{target}' in '{sample_id}'")
+                    table_name = '_'.join([essential_field, target])
+                    TablesForViews(self.merged_profile_db_path,
+                                   progress=self.progress) \
+                                        .create_new_view(view_data=view_data_for_sample,
+                                                         table_name=table_name,
+                                                         append_mode=True,
+                                                         view_name=essential_field if target == 'splits' else None,
+                                                         skip_sanity_check=True)
 
         # if SNVs were not profiled, remove all entries from variability tables:
         if not self.SNVs_profiled:
@@ -722,37 +642,3 @@ class MultipleRuns:
             dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
                                                       input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)
-
-
-    def get_split_parents(self):
-        parents = {}
-        m = list(self.atomic_data_for_each_run['splits'].values())[0]
-        for split in m:
-            parents[split] = m[split]["__parent__"]
-        return parents
-
-
-    def read_atomic_data_tables(self):
-        """Reads atomic data for contigs and splits from the database into a dict"""
-
-        atomic_data_table_for_each_run = {}
-
-        for target in ['contigs', 'splits']:
-            self.progress.new("Fetching atomic %s tables" % target, progress_total_items=self.num_profile_dbs)
-
-            atomic_data_table_for_each_run[target] = {}
-            target_table = 'atomic_data_%s' % target
-
-            for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-                self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
-                self.progress.increment()
-
-                db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
-                atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
-
-            self.progress.end()
-
-        atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
-        db.disconnect()
-
-        return atomic_data_table_fields, atomic_data_table_for_each_run

@@ -18,11 +18,12 @@ __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Evan Kiefl"
-__email__ = "kiefl.evan@gmail.com"
+__authors__ = ['ekiefl']
 __provides__ = ["coverages-txt"]
 __requires__ = ["bam-file", "collection-txt",]
-__description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file")
+__description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file "
+                   "very rapidly. For other anvi'o programs that are designed to profile BAM files, "
+                   "see `anvi-profile` and `anvi-profile-blitz`")
 
 
 class ComputeCoverage(object):

@@ -921,6 +921,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
         # gene caller ids that are meant to be integers:
         try:
             items_in_db = set([int(i) for i in items_in_db])
+            items_in_data = set([int(i) for i in data_dict.keys()])
         except:
             pass
 
@@ -941,7 +942,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                               "in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
                                        items_in_data_but_not_in_db.pop(),
-                                       items_in_db.pop() if items_in_db else "No entries found in databse"))
+                                       items_in_db.pop() if items_in_db else "No entries found in database"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):

@@ -56,8 +56,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren']
 __requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-source', "hmm-hits"]
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
 __description__ = "Get sequences for HMM hits from many inputs"
@@ -77,7 +76,7 @@ def main(args):
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
-    if args.list_hmm_sources:
+    if args.list_hmm_sources or args.list_available_gene_names:
         if args.contigs_db:
             ContigsDatabase(args.contigs_db).list_available_hmm_sources()
         elif args.external_genomes or args.internal_genomes:
@@ -158,13 +157,17 @@ def main(args):
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
     CHK()
 
-    run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+
+    run.info('Sources', f"{', '.join(hmm_sources)}")
+    run.info('Hits', '%d HMM hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
 
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
     if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
         gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
     else:
         gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
+
+    run.info('Genes of interest', f"{', '.join(gene_names) if gene_names else None}")
 
     if len(gene_names):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
@@ -212,7 +215,17 @@ def main(args):
         hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
         CHK()
 
-        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple hits' % (len(hmm_sequences_dict)))
+        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple genes' % (len(hmm_sequences_dict)))
+
+    if args.unique_genes:
+        run.warning("You asked anvi'o for each gene that has multiple hits to report only the best hit, which means, if, "
+                    "say, there are multiple models in your HMM source that match to a single gene, only the one with the "
+                    "lowest e-value will be kept, and others will be removed from your final results.")
+
+        hmm_sequences_dict = s.filter_hmm_sequences_dict_to_keep_only_unique_gene_hits(hmm_sequences_dict)
+        CHK()
+
+        run.info('Filtered hits', '%d hits remain after removing weak hits for multiple models' % (len(hmm_sequences_dict)))
 
     if args.separator:
         separator = args.separator
@@ -297,6 +310,7 @@ if __name__ == '__main__':
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)

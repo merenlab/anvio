@@ -499,6 +499,12 @@ class InteracDomeSuper(Pfam):
         self.progress.reset()
         self.run.info_single(f"Match state contributors stored in {match_state_contributors_filepath}", mc='green')
 
+        self.progress.update("Binding frequencies")
+        binding_frequencies_filepath = self.output_prefix + '-binding_frequencies.txt'
+        self.avg_bind_freq.to_csv(binding_frequencies_filepath, sep='\t', index=False)
+        self.progress.reset()
+        self.run.info_single(f"Binding frequencies stored in {match_state_contributors_filepath}", mc='green')
+
         self.run.warning(f"You got here, which is great! That means any binding frequencies were stored in your contigs database. "
                          f"In addition, a couple of files were stored in your current directory (with the prefix '{self.output_prefix}') "
                          f"that you may want to keep around if you plan on doing very refined analyses.", header='THINGS HAPPENED', lc='green')
