@@ -80,6 +80,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
         self.general_params.extend(['external_hmm_list']) # user must input which Reference proteins will be used for workflow
+        self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
 
 
         # Parameters for each rule that are accessible in the config.json file

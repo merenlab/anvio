@@ -647,7 +647,8 @@ rule make_metagenomics_config_file:
         config = open(output.config)
         config_dict = json.load(config)
         config_dict['fasta_txt'] = 'fasta.txt'
-        config_dict['samples_txt'] = '../../samples.txt'
+        sample_txt_path = "../../" + M.samples_txt_file
+        config_dict['samples_txt'] = sample_txt_path
         config_dict['references_mode'] = True
         config_dict['anvi_run_hmms']['run'] = False
         config_dict["anvi_script_reformat_fasta"]['run'] = False
