@@ -16,17 +16,21 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren', 'ekiefl', 'ozcan']
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
 __provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
-__description__ = "Creates a single anvi'o profile database. \
-                   When it is run on a BAM file, depending on the user parameters, the program quantifies\
-                   coverage per nucleotide position (and averages them  per contig), calculates\
-                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
-                   such as insertion and deletions and stores these data into appropriate tables"
+__description__ = ("The flagship anvi'o proram to profile a BAM file. Running this program on a BAM file "
+                   "will quantify coverages per nucleotide position in read recruitment results and will "
+                   "average coverage and detection data per contig. It will also calculate single-nucleotide, "
+                   "single-codon, and single-amino acid variants, as well as structural variants, such as "
+                   "insertion and deletions, to eventually stores all data into a single anvi'o profile database. "
+                   "For very large projects, this program can demand a lot of time, memory, and storage "
+                   "resources. If all you want is to learn coverages of your nutleotides, genes, contigs, or your "
+                   "bins collections from BAM files very rapidly, and/or you do not need anvi'o single profile "
+                   "databases for your project, please see other anvi'o programs that profile BAM files, "
+                   "`anvi-script-get-coverage-from-bam` and `anvi-profile-blitz`")
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 

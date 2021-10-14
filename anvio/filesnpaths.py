@@ -5,9 +5,10 @@
 import os
 import json
 import time
+import pysam
 import shutil
-import tempfile
 import tarfile
+import tempfile
 
 import anvio
 import anvio.fastalib as u
@@ -151,9 +152,9 @@ def is_output_file_writable(file_path, ok_if_exists=True):
         raise FilesNPathsError(f"The path you have provided for your output file ('{os.path.abspath(file_path)}') "
                                f"already is used by a directory :/")
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
-        raise FilesNPathsError(f"You do not have permission to generate the output file '{file_path}'")
+        raise FilesNPathsError(f"It seems you are not autorhized to create an output file at '{file_path}' (lol).")
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
-        raise FilesNPathsError(f"You do not have permission to update the contents of the file '{file_path}' :/")
+        raise FilesNPathsError(f"You do not have write access to the file at '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
         raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
                                f"avoid overwriting stuff.")
@@ -272,6 +273,34 @@ def is_file_tar_file(file_path, dont_raise=False):
             return False
         else:
             raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
+
+
+def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
+    """Checks if a BAM file is a proper BAM file, AND if it is intexed"""
+
+    is_file_exists(file_path)
+
+    try:
+        bam_file = pysam.AlignmentFile(file_path, "rb")
+    except Exception as e:
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The BAM file you have there upsets samtools very much: '{e}'.")
+
+    if not ok_if_not_indexed:
+        try:
+            bam_file.mapped
+        except ValueError:
+            if dont_raise:
+                return False
+            else:
+                raise FilesNPathsError(f"The BAM file at '{file_path}' does not seem to be indexed (when a BAM file) "
+                                       f"is indexed, you usually find a file with the same name that ends with '.bam.bai' "
+                                       f"extention in the same directory). You can do it via `samtools`, or using the "
+                                       f"anvi'o program 'anvi-init-bam'.")
+
+    return True
 
 
 def is_program_exists(program):

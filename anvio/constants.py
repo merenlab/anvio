@@ -19,6 +19,20 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
+# these are the atomic data that are generated for each contig profiled
+# based on read recruitment results. anvio/contigops.py has the details:
+essential_data_fields_for_anvio_profiles = ['std_coverage',
+                                            'mean_coverage',
+                                            'mean_coverage_Q2Q3',
+                                            'detection',
+                                            'abundance',
+                                            'variability']
+
+# this is to distinguish fields that are often useless for clustering ops
+# and other purposes
+IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
+
 default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
 default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -64,12 +78,6 @@ default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'AC
 default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
 
 # The following block of constants are used in the tRNA-seq workflow.
-THREEPRIME_VARIANTS = ['CCA', 'CC', 'C',
-                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
-                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
-                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
-                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
-                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
 TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'acceptor_stem',
                       'fiveprime_acceptor_stem_sequence',
@@ -96,6 +104,7 @@ TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'discriminator',
                       'threeprime_terminus']
 TRNA_SEED_FEATURE_THRESHOLD_CHOICES = TRNA_FEATURE_NAMES[TRNA_FEATURE_NAMES.index('acceptor_stem'): TRNA_FEATURE_NAMES.index('anticodon_loop') + 1]
+TRNASEQ_CHECKPOINTS = ('profile', 'normalize', 'map_fragments', 'substitutions', 'indels')
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
@@ -190,8 +199,6 @@ for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clusteri
     for config in glob.glob(os.path.join(clustering_configs_dir, dir, '*')):
         clustering_configs[dir][os.path.basename(config)] = config
 
-IS_ESSENTIAL_FIELD = lambda f: (not f.startswith('__')) and (f not in ["contig", "GC_content", "length"])
-IS_AUXILIARY_FIELD = lambda f: f.startswith('__')
 allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
@@ -213,26 +220,26 @@ WC_PLUS_WOBBLE_BASE_PAIRS = {
     'G': ('C', 'T')
 }
 
-AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
-                                 'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
-                                 'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},
-                                 'Asp': {"C":4,  "H":7,  "N":1, "O":4, "S":0},
-                                 'Cys': {"C":3,  "H":7,  "N":1, "O":2, "S":1},
-                                 'Gln': {"C":5,  "H":10, "N":2, "O":3, "S":0},
-                                 'Glu': {"C":5,  "H":9,  "N":1, "O":4, "S":0},
-                                 'Gly': {"C":2,  "H":5,  "N":1, "O":2, "S":0},
-                                 'His': {"C":6,  "H":9,  "N":3, "O":2, "S":0},
-                                 'Ile': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Leu': {"C":6,  "H":13, "N":1, "O":2, "S":0},
-                                 'Lys': {"C":6,  "H":14, "N":2, "O":2, "S":0},
-                                 'Met': {"C":5,  "H":11, "N":1, "O":2, "S":1},
-                                 'Phe': {"C":9,  "H":11, "N":1, "O":2, "S":0},
-                                 'Pro': {"C":5,  "H":9,  "N":1, "O":2, "S":0},
-                                 'Ser': {"C":3,  "H":7,  "N":1, "O":3, "S":0},
-                                 'Thr': {"C":4,  "H":9,  "N":1, "O":3, "S":0},
-                                 'Trp': {"C":11, "H":12, "N":2, "O":2, "S":0},
-                                 'Tyr': {"C":9,  "H":11, "N":1, "O":3, "S":0},
-                                 'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
+AA_atomic_composition = {'Ala': Counter({"C":3,  "H":7,  "N":1, "O":2, "S":0}),
+                         'Arg': Counter({"C":6,  "H":14, "N":4, "O":2, "S":0}),
+                         'Asn': Counter({"C":4,  "H":8,  "N":2, "O":3, "S":0}),
+                         'Asp': Counter({"C":4,  "H":7,  "N":1, "O":4, "S":0}),
+                         'Cys': Counter({"C":3,  "H":7,  "N":1, "O":2, "S":1}),
+                         'Gln': Counter({"C":5,  "H":10, "N":2, "O":3, "S":0}),
+                         'Glu': Counter({"C":5,  "H":9,  "N":1, "O":4, "S":0}),
+                         'Gly': Counter({"C":2,  "H":5,  "N":1, "O":2, "S":0}),
+                         'His': Counter({"C":6,  "H":9,  "N":3, "O":2, "S":0}),
+                         'Ile': Counter({"C":6,  "H":13, "N":1, "O":2, "S":0}),
+                         'Leu': Counter({"C":6,  "H":13, "N":1, "O":2, "S":0}),
+                         'Lys': Counter({"C":6,  "H":14, "N":2, "O":2, "S":0}),
+                         'Met': Counter({"C":5,  "H":11, "N":1, "O":2, "S":1}),
+                         'Phe': Counter({"C":9,  "H":11, "N":1, "O":2, "S":0}),
+                         'Pro': Counter({"C":5,  "H":9,  "N":1, "O":2, "S":0}),
+                         'Ser': Counter({"C":3,  "H":7,  "N":1, "O":3, "S":0}),
+                         'Thr': Counter({"C":4,  "H":9,  "N":1, "O":3, "S":0}),
+                         'Trp': Counter({"C":11, "H":12, "N":2, "O":2, "S":0}),
+                         'Tyr': Counter({"C":9,  "H":11, "N":1, "O":3, "S":0}),
+                         'Val': Counter({"C":5,  "H":11, "N":1, "O":2, "S":0})}
 
 # taken from http://prowl.rockefeller.edu/aainfo/volume.htm
 # volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123.

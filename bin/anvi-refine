@@ -23,8 +23,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__authors__ = ['meren', 'blankenberg']
 __resources__ = [("Refining a bin", "http://merenlab.org/2015/05/11/anvi-refine/"),
                  ("Notes on genome refinement", "http://merenlab.org/2017/05/11/anvi-refine-by-veronika/"),
                  ("A case study: Inspecting the genomic link between Archaea and Eukaryota", "http://merenlab.org/2017/01/03/loki-the-link-archaea-eukaryota/"),
@@ -67,6 +66,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('load-full-state'), **anvio.K('load-full-state'))
     groupC.add_argument(*anvio.A('additional-view'), **anvio.K('additional-view'))
     groupC.add_argument(*anvio.A('additional-layers'), **anvio.K('additional-layers'))
+    groupC.add_argument(*anvio.A('annotation-source-for-per-split-summary'), **anvio.K('annotation-source-for-per-split-summary'))
 
     groupD = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
                                                            the interface.")

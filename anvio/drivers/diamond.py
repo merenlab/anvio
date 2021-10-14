@@ -73,7 +73,7 @@ class Diamond:
             self.makedb()
             force_blastp, force_view = True, True
 
-        if os.path.exists(self.search_output_path + '.daa') and not force_blastp:
+        if os.path.exists(self.tabular_output_path) and not force_blastp:
             self.run.warning("Notice: A DIAMOND search result is found in the output directory: skipping BLASTP!")
         else:
             self.blastp()
@@ -97,6 +97,7 @@ class Diamond:
 
 
     def makedb(self, output_file_path=None):
+        self.run.warning(None, header="DIAMOND MAKEDB", lc="green")
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
@@ -113,12 +114,13 @@ class Diamond:
 
         expected_output = (output_file_path or self.target_fasta) + '.dmnd'
 
-        self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Diamond search db', expected_output)
+        self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('Diamond search DB', expected_output)
 
 
     def blastp(self):
-        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+        self.run.warning(None, header="DIAMOND BLASTP", lc="green")
+        self.run.info("Mode", "Sensitive" if self.sensitive else "Fast")
 
         cmd_line = ['diamond',
                     'blastp',
@@ -143,19 +145,17 @@ class Diamond:
         self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
         self.progress.new('DIAMOND')
-        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
+        self.progress.update('Running blastp (using %d thread(s)) ...' % self.num_threads)
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        self.expected_output = self.search_output_path + '.daa'
-
-        self.run.info('Diamond blastp results', self.expected_output)
+        self.run.info('Search results', self.tabular_output_path)
 
 
     def blastp_stdout(self):
-
+        self.run.warning(None, header="DIAMOND BLASTP STDOUT", lc="green")
         cmd_line = ['diamond',
                     'blastp',
                     '-q', self.query_fasta,
@@ -174,7 +174,7 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
-        self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+        self.run.info('Command line', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
 
         shell_cmd_line=' '.join(str(x) for x in cmd_line)
@@ -189,7 +189,8 @@ class Diamond:
 
 
     def blastp_stdin(self, sequence):
-        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+        self.run.warning(None, header="DIAMOND BLASTP STDIN", lc="green")
+        self.run.info('Mode', 'Sensitive' if self.sensitive else 'Fast')
 
         cmd_line = ['diamond',
                     'blastp',
@@ -222,7 +223,8 @@ class Diamond:
 
 
     def blastp_stdin_multi(self, multisequence):
-        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+        self.run.warning(None, header="DIAMOND BLASTP STDIN MULTI", lc="green")
+        self.run.info('Mode', 'Sensitive' if self.sensitive else 'Fast')
 
         cmd_line = ['diamond',
                     'blastp',
@@ -241,7 +243,7 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
-        self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+        self.run.info('Command line', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
@@ -255,6 +257,7 @@ class Diamond:
 
 
     def makedb_stdin(self, sequence, output_file_path=None):
+        self.run.warning(None, header="DIAMOND MAKEDB STDIN", lc="green")
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
@@ -276,6 +279,7 @@ class Diamond:
 
 
     def view(self):
+        self.run.warning(None, header="DIAMOND VIEW", lc="green")
         self.progress.new('DIAMOND')
         self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
 
@@ -286,7 +290,7 @@ class Diamond:
                     '-p', self.num_threads,
                     '--outfmt', *self.outfmt.split()]
 
-        self.run.info('diamond view cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
+        self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
@@ -313,7 +317,7 @@ class Diamond:
 
         self.progress.end()
 
-        self.run.info('Diamond %stabular output file' % ('un-uniqued' if self.names_dict else ''), self.tabular_output_path)
+        self.run.info('Diamond %s tabular output file' % ('un-uniqued' if self.names_dict else ''), self.tabular_output_path)
 
 
     def view_as_dataframe(self, results_path):

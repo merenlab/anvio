@@ -101,7 +101,9 @@ class EggNOGMapper:
 
         self.available_parsers = {'2.0.0': self.__parser_3,
                                   '2.0.1': self.__parser_3,
-                                  '2.0.5': self.__parser_4}
+                                  '2.0.5': self.__parser_4,
+                                  '2.1.4': self.__parser_5,
+                                  '2.1.6': self.__parser_5}
 
         self.check_version()
 
@@ -268,7 +270,7 @@ class EggNOGMapper:
                 pass
 
         if F(11):
-            self.add_entry(gene_callers_id, 'EGGNOG_GENE_FUNCTION_NAME', fields[1], ', '.join(fields[5].split(',')), fields[2])
+            self.add_entry(gene_callers_id, 'EGGNOG_GENE_FUNCTION_NAME', fields[1], ', '.join(fields[11].split(',')), fields[2])
 
         if F(12):
             self.add_entry(gene_callers_id, 'EGGNOG_GO_TERMS', fields[1], ', '.join(fields[12].split(',')), fields[2])
@@ -296,6 +298,60 @@ class EggNOGMapper:
 
         if F(22):
             self.add_entry(gene_callers_id, 'EGGNOG_BiGG_REACTIONS', fields[1], ', '.join(fields[22].split(',')), fields[2])
+
+
+    def __parser_5(self, defline):
+        """parses this:
+
+           0             1                         2                       3                     4                                                                                             5                                6              7                                  8                                 9              10                                 11                    12                         13           14               15                16                               17         18      19               20
+           query         seed_ortholog             evalue                  score                 eggNOG_OGs                                                                                    max_annot_lvl                    COG_category   Description                        Preferred_name                    GOs            EC                                 KEGG_ko               KEGG_Pathway               KEGG_Module  KEGG_Reaction    KEGG_rclass       BRITE                            KEGG_TC    CAZy    BiGG_Reaction    PFAMs
+           g2183         858619.CVAR_2845          2.4e-178                632.1                 COG1021@1|root,COG1021@2|Bacteria,2I2IR@201174|Actinobacteria,22MBM@1653|Corynebacteriaceae   201174|Actinobacteria            Q	           23-dihydroxybenzoate-AMP ligase    entE                              -              2.7.7.58,6.3.2.14                  ko:K02363,ko:K12238   ko01053,ko01110,(...)      -            R07644           RC00162,RC03046   ko00000,ko00001,ko01000,ko01008  -          -	   -                AMP-binding,AMP-binding_C
+
+        """
+
+        fields = defline.strip('\n').split('\t')
+
+        if len(fields) != 21:
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the "
+                               "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 21))
+
+        gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
+
+        #
+        F = lambda x: fields[x] and fields[x] != '-'
+        A = lambda x, y: self.add_entry(gene_callers_id, y, fields[1], ', '.join(fields[x].split(',')), fields[2]) if (fields[x] and fields[x] != '-') else None
+
+        if (F(7) and not fields[7].startswith('Protein of unknown function')):
+            if F(8):
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[8], fields[7]), fields[2])
+            else:
+                A(7, 'EGGNOG_%s' % self.database.upper())
+
+        if F(4):
+            try:
+                # because there is crap like this where the delimiter (',') is used in text fields ....
+                #
+                #    "4QF6A@10239|Viruses,4QV1N@35237|dsDNA viruses, no RNA stage,4QRT3@28883|Caudovirales"
+                #
+                tax = ' / '.join([x.split('|')[1] for x in fields[4].split(',')])
+                self.add_entry(gene_callers_id, 'EGGNOG_BEST_TAX', fields[1], tax, fields[2])
+            except:
+                pass
+
+        A(8, 'EGGNOG_GENE_FUNCTION_NAME')
+        A(9, 'EGGNOG_GO_TERMS')
+        A(6, 'EGGNOG_COG_CATEGORY')
+        A(10, 'EGGNOG_EC_NUMBER')
+        A(11, 'EGGNOG_KEGG_KO')
+        A(12, 'EGGNOG_KEGG_PATHWAYS')
+        A(13, 'EGGNOG_KEGG_MODULE')
+        A(13, 'EGGNOG_KEGG_REACTION')
+        A(15, 'EGGNOG_KEGG_RCLASS')
+        A(16, 'EGGNOG_BRITE')
+        A(17, 'EGGNOG_KEGG_TC')
+        A(18, 'EGGNOG_CAZy')
+        A(19, 'EGGNOG_BiGG_REACTIONS')
+        A(20, 'EGGNOG_PFAMs')
 
 
     def store_annotations_in_db(self, drop_previous_annotations=False):

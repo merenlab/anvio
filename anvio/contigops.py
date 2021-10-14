@@ -16,7 +16,6 @@ from Bio import SeqIO
 from collections import OrderedDict
 
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -52,29 +51,25 @@ def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 
-def get_atomic_data_dicts(sample_id, contigs):
-    """Takes a list of contigops.Contig objects, and returns contigs and splits atomic data dictionaries"""
+def get_atomic_data(sample_id, contigs, atomic_data_field):
+    """Takes a list of contigops.Contig objects, and returns views for an atomic_data_field"""
 
-    atomic_data_contigs = {}
-    atomic_data_splits = {}
+    atomic_data_contigs = []
+    atomic_data_splits = []
 
     # this loop will get atomic_data information from Contig instanes and store them into the db
     # at once. this was broken down into about 10 functions, but this structure seems to be the most efficient
     # although it looks crappy:
     for contig in contigs:
-        contig_atomic_data = contig.get_atomic_data_dict()
+        contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
 
         for split in contig.splits:
-            atomic_data_contigs[split.name] = {'contig': contig.name}
-            for atomic_data_field in t.atomic_data_table_structure[1:]:
-                atomic_data_contigs[split.name][atomic_data_field] = contig_atomic_data[atomic_data_field]
+            atomic_data_contigs.append((split.name, sample_id, contig_atomic_data), )
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
-            split_atomic_data = split.get_atomic_data_dict()
-            atomic_data_splits[split.name] = {'contig': split.name}
-            for atomic_data_field in t.atomic_data_table_structure[1:]:
-                atomic_data_splits[split.name][atomic_data_field] = split_atomic_data[atomic_data_field]
+            split_atomic_data = split.get_atomic_data_dict(atomic_data_field)
+            atomic_data_splits.append((split.name, sample_id, split_atomic_data), )
 
     return atomic_data_splits, atomic_data_contigs
 
@@ -92,18 +87,15 @@ class Contig:
         self.skip_SNV_profiling = False
 
 
-    def get_atomic_data_dict(self):
+    def get_atomic_data_dict(self, atomic_data_field):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
-             'max_normalized_ratio': 1.0,
-             'relative_abundance': 1.0,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None,
-             '__parent__': None}
+             'variability': sum(s.auxiliary.variation_density for s in self.splits) if not self.skip_SNV_profiling else None}
 
-        return d
+        return d[atomic_data_field]
 
 
     def analyze_coverage(self, bam, min_percent_identity):
@@ -172,18 +164,15 @@ class Split:
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
-    def get_atomic_data_dict(self):
+    def get_atomic_data_dict(self, atomic_data_field):
         d = {'std_coverage': self.coverage.std,
              'mean_coverage': self.coverage.mean,
              'mean_coverage_Q2Q3': self.coverage.mean_Q2Q3,
-             'max_normalized_ratio': 1.0,
-             'relative_abundance': 1.0,
              'detection': self.coverage.detection,
              'abundance': self.abundance,
-             'variability': self.auxiliary.variation_density if self.auxiliary else None,
-             '__parent__': self.parent}
+             'variability': self.auxiliary.variation_density if self.auxiliary else None}
 
-        return d
+        return d[atomic_data_field]
 
 
 class Auxiliary:
@@ -674,6 +663,7 @@ class GenbankToAnvio:
         self.output_gene_calls_path = A('output_gene_calls')
         self.source = A('annotation_source') or 'NCBI_PGAP'
         self.version = A('annotation_version') or 'v4.6'
+        self.omit_aa_sequences_column = A('omit_aa_sequences_column') or False
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
@@ -720,17 +710,7 @@ class GenbankToAnvio:
                               "file names, or delete these files and come back: '%s'" % (', '.join(files_already_exist)))
 
 
-    def process(self):
-        self.sanity_check()
-
-        output_fasta = {}
-        output_gene_calls = {}
-        output_functions = {}
-        num_genbank_records_processed = 0
-        num_genes_found = 0
-        num_genes_reported = 0
-        num_genes_with_functions = 0
-
+    def get_genbank_file_object(self):
         try:
             if self.input_genbank_path.endswith('.gz'):
                 genbank_file_object = SeqIO.parse(io.TextIOWrapper(gzip.open(self.input_genbank_path, 'r')), "genbank")
@@ -740,7 +720,47 @@ class GenbankToAnvio:
             raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said "
                               "about it: '%s'." % e)
 
-        for genbank_record in genbank_file_object:
+        return genbank_file_object
+
+
+    def process(self):
+        self.sanity_check()
+
+        output_fasta = {}
+        output_gene_calls = {}
+        output_functions = {}
+        num_genbank_records_processed = 0
+        num_genes_found = 0
+        num_genes_reported = 0
+        num_genes_with_AA_sequences = 0
+        num_partial_genes = 0
+        num_genes_with_functions = 0
+
+        num_genes_excluded = 0
+        genes_excluded = set([])
+
+        # A very quick look at the genbank file to see if translated sequences are present in it
+        aa_sequences_present = False
+        for genbank_record in self.get_genbank_file_object():
+            genes = [gene for gene in genbank_record.features if gene.type =="CDS"]
+
+            # clearly, not every genebank record has to have genes.
+            # just like not every bank has to have money I guess.
+            # IRONIES OF LIFE BUT IN CODING SPACE BECAUSE BIOINFORMATICS.
+            if not len(genes):
+                continue
+
+            # do we have AA sequences in this?
+            aa_sequences_present = True if 'translation' in genes[0].qualifiers else False
+
+            if aa_sequences_present and self.omit_aa_sequences_column:
+                aa_sequences_present = False
+                self.run.info_single("Amino acid sequences seem to be present in this GFF file, but you wanted anvi'o "
+                                     "to not report them. FINE. They shall be ignored.", nl_after=1)
+                break
+
+        # The main loop to go through all records forreals.
+        for genbank_record in self.get_genbank_file_object():
             num_genbank_records_processed += 1
             output_fasta[genbank_record.name] = str(genbank_record.seq)
 
@@ -749,8 +769,13 @@ class GenbankToAnvio:
             for gene in genes:
                 num_genes_found += 1
                 location = str(gene.location)
-                # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
-                if any(exclusion_term in location for exclusion_term in self.location_terms_to_exclude):
+                # "join" in `location` means that the gene call spans multiple contigs
+                # so we exclude it here:
+                if 'join' in location:
+                    num_genes_excluded += 1
+                    if 'protein_id' in gene.qualifiers:
+                        genes_excluded.add(gene.qualifiers['protein_id'][0])
+
                     continue
 
                 if "note" in gene.qualifiers:
@@ -768,8 +793,16 @@ class GenbankToAnvio:
                 if "pseudo" in gene.qualifiers or "pseudogene" in gene.qualifiers:
                     continue
 
+                # The character "<" or ">" in `location `means the gene call runs off a contig, so it
+                # is best to mark it as impartial:
+                if ('<' in location or '>' in location):
+                    partial = 1
+                    num_partial_genes += 1
+                else:
+                    partial = 0
+
                 # cleaning up gene coordinates to more easily parse:
-                location = location.replace("[", "")
+                location = location.replace("[", "").replace('>', '').replace('<', '')
                 location = re.sub('](.*)', '', location)
                 location = location.split(":")
 
@@ -809,10 +842,19 @@ class GenbankToAnvio:
                                                            'start': start,
                                                            'stop': end,
                                                            'direction': direction,
-                                                           'partial': 0,
+                                                           'partial': partial,
                                                            'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
+
+                # let's keep the amino acid sequences if present
+                if aa_sequences_present:
+                    if 'translation' in gene.qualifiers and not partial:
+                        output_gene_calls[self.gene_callers_id]['aa_sequence'] = gene.qualifiers["translation"][0]
+                        num_genes_with_AA_sequences += 1
+                    else:
+                        output_gene_calls[self.gene_callers_id]['aa_sequence'] = ''
+
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
@@ -834,7 +876,39 @@ class GenbankToAnvio:
         self.run.info('Num GenBank entries processed', num_genbank_records_processed)
         self.run.info('Num gene records found', num_genes_found)
         self.run.info('Num genes reported', num_genes_reported, mc='green')
-        self.run.info('Num genes with functions', num_genes_with_functions, mc='green', nl_after=1)
+        self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
+        self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
+        self.run.info('Num partial genes', num_partial_genes, mc='cyan')
+        self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
+
+        if num_genes_excluded:
+            msg = (f"A total of {num_genes_excluded} in this file were excluded during the processing of "
+                   f"the GFF file because they were marked as 'spanning multiple contigs'.")
+                # dumping gene if "location" section contains any of these terms set above: "join" means
+                # the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+            if len(genes_excluded):
+                self.run.warning(msg + "Here are some protein IDs from the file that were associated with "
+                                 f"them: {', '.join(genes_excluded)}. But please note that such genes that "
+                                 f"span multiple contigs are often associated with multiple 'protein IDs' in "
+                                 f"the GFF description, and this list includes only the first protein ID if "
+                                 f"there are multiple. In addition, not every gene that spans across multiple "
+                                 f"contigs will have a protein ID, so you will not see them in this list :/ "
+                                 f"If you think anvi'o should try to include them in its report anyway, let us "
+                                 f"know.", header="WEIRD GENE CALLS EXCLUDED")
+            else:
+                self.run.warning(msg, header="WERID GENE CALLS EXCLUDED")
+
+        if aa_sequences_present and num_partial_genes > 1:
+            self.run.warning(f"Anvi'o found out that aminio acid seqeunces were present in the GFF file, so it "
+                             f"reported them in the external gene calls file. But the {num_partial_genes} that "
+                             f"were marked as partial in the GFF file, there will not be any amino acid sequences. "
+                             f"Alternatively, you could use the flag `--omit-aa-seqeunces-column` to instruct "
+                             f"this program to report an external gene calls file WITHOUT an amino acid sequences, "
+                             f"column. When it is missing, anvi'o would do its best to translate your gene calls "
+                             f"and may be able to find out what to do with your partial gene calls. But it usually "
+                             f"is a MUCH better idea to learn translated sequences from a GFF file since they may "
+                             f"include careful consideration of organism-specific genetic code.",
+                             header="JUSTICE FOR PARTIAL GENES: NOT FOUND")
 
         # time to write these down:
         utils.store_dict_as_FASTA_file(output_fasta,
@@ -843,14 +917,21 @@ class GenbankToAnvio:
         self.run.info('FASTA file path', self.output_fasta_path)
 
         if len(output_gene_calls):
+            header_for_external_gene_calls = ["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"]
+            header_for_functions = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
+
+            if aa_sequences_present:
+                header_for_external_gene_calls.append('aa_sequence')
+
             utils.store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
-                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"])
-            self.run.info('External gene calls file', self.output_gene_calls_path)
+                                                   headers=header_for_external_gene_calls)
 
             utils.store_dict_as_TAB_delimited_file(output_functions,
                                                    self.output_functions_path,
-                                                   headers=['gene_callers_id', 'source', 'accession', 'function', 'e_value'])
+                                                   headers=header_for_functions)
+
+            self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
         else:
             self.output_gene_calls_path = None

@@ -13,8 +13,7 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Özcan Esen"
-__email__ = "ozcanesen@gmail.com"
+__authors__ = ['ivagljiva', 'ozcan']
 __provides__ = ['pfams-data']
 __description__ = "Download and setup Pfam data from the EBI"
 

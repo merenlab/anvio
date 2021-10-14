@@ -52,11 +52,13 @@ class DB:
         self.run = run
         self.progress = progress
 
+        self.tables_to_exclude_from_db_call_reports = ['self', 'sqlite_master']
+
         # these anonymous functions report whether the ROWID will be added
         # to its rows read from the database or not. if the first column of a given
         # table does not contain unique variables, anvi'o prepends the ROWID of each
         # column to index 0, unless `skip_rowid_prepend` is True
-        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.requires_unique_entry_id[table_name]
+        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.is_table_requires_unique_entry_id(table_name)
         self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
         if new_database:
@@ -103,14 +105,13 @@ class DB:
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
                                       f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if not tables.is_known_table(table_name)]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
-                                  "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
+                                  "anvio/tables/__init__.py dictionary `table_requires_unique_entry_id` to explicitly define whether anvi'o "
                                   "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
-                                  "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
-                                  "dictionary." % (', '.join(bad_tables)))
+                                  "in this database do not satisfy that: %s." % (', '.join([f"'{t}'" for t in bad_tables])))
 
 
     def __enter__(self):
@@ -119,6 +120,15 @@ class DB:
 
     def __exit__(self, *args):
         self.disconnect()
+
+
+    def _display_db_calls(func):
+        def inner(self, *args, **kwargs):
+            if self.read_only:
+                raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
+            else:
+                return func(self, *args, **kwargs)
+        return inner
 
 
     def _not_if_read_only(func):
@@ -236,6 +246,22 @@ class DB:
         self._exec('''DETACH DATABASE "source_db"''')
 
 
+    def _fetchall(self, response, table_name):
+        """Wrapper for fetchall"""
+
+        DISPLAY_DB_CALLS = False if table_name in self.tables_to_exclude_from_db_call_reports else anvio.DISPLAY_DB_CALLS
+
+        if DISPLAY_DB_CALLS:
+            sql_exec_timer = terminal.Timer()
+
+        results = response.fetchall()
+
+        if DISPLAY_DB_CALLS:
+            self.run.info("fetchall", f"{sql_exec_timer.time_elapsed()}", mc='yellow', nl_after=1)
+
+        return results
+
+
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
         """Get the maximum OR minimum column value in a table
 
@@ -246,7 +272,8 @@ class DB:
         """
 
         response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
-        rows = response.fetchall()
+
+        rows = self._fetchall(response, table_name)
 
         val = rows[0][0]
 
@@ -265,7 +292,9 @@ class DB:
         """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
 
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
-        rows = response.fetchall()
+
+        rows = self._fetchall(response, 'self')
+
         if not rows and return_none_if_not_in_table:
             return None
         if not rows:
@@ -309,10 +338,31 @@ class DB:
           to the DB using this method, even with self.read_only = True
         """
 
+        # this is an ugly workaround to not display DB calls if they involve talbes
+        # such as `self` or `sqlite_master` (comlete list in self.tables_to_exclude_from_db_call_reports).
+        # Otherwise when the user sets the `--display-db-calls` flag, the output is heavily
+        # dominated by queries to `self`. Even though Meren is implementing this sadness,
+        # Iva agreed to it as well. Just saying:
+        if any(table_name for table_name in self.tables_to_exclude_from_db_call_reports if f' {table_name} ' in sql_query):
+            DISPLAY_DB_CALLS = False
+        else:
+            DISPLAY_DB_CALLS = anvio.DISPLAY_DB_CALLS
+
+        if DISPLAY_DB_CALLS:
+            self.progress.reset()
+            self.run.warning(None, header='EXECUTING SQL', lc='yellow', nl_before=1)
+
+            self.run.info_single(f"{os.path.abspath(self.db_path)}", cut_after=None, level=0, mc='yellow', nl_after=1)
+            self.run.info_single(f"{sql_query}", cut_after=None, level=0, mc='yellow', nl_after=1)
+            sql_exec_timer = terminal.Timer()
+
         if value:
             ret_val = self.cursor.execute(sql_query, value)
         else:
             ret_val = self.cursor.execute(sql_query)
+
+        if DISPLAY_DB_CALLS:
+            self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
         self.commit()
         return ret_val
@@ -330,13 +380,16 @@ class DB:
 
         chunk_counter = 0
         for chunk in get_list_in_chunks(values):
-            if anvio.DEBUG:
-                self.progress.reset()
-                self.run.info_single("Adding the chunk %d with %d entries of %d total is being added to the db with "
-                                     "the SQL command '%s'." \
-                                    % (chunk_counter, len(chunk), len(values), sql_query), nl_before=1)
+            if anvio.DISPLAY_DB_CALLS:
+                header = f"MULTI SQL // {chunk_counter} of {len(values)} with {len(chunk)} {len(chunk)} entries"
+                self.run.warning(None, header=header, progress=self.progress, lc='yellow')
+                self.run.info_single(f"{sql_query}", nl_after=1, cut_after=None, level=0, mc='yellow')
+                sql_exec_timer = terminal.Timer()
 
             self.cursor.executemany(sql_query, chunk)
+
+            if anvio.DISPLAY_DB_CALLS:
+                self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
             chunk_counter += 1
 
@@ -434,7 +487,10 @@ class DB:
         self.is_table_exists(table_name)
 
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
-        return response.fetchall()
+
+        results = self._fetchall(response, table_name)
+
+        return results
 
 
     def get_some_rows_from_table(self, table_name, where_clause):
@@ -443,7 +499,10 @@ class DB:
         where_clause = where_clause.replace('"', "'")
 
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
-        return response.fetchall()
+
+        results = self._fetchall(response, table_name)
+
+        return results
 
 
     def get_row_counts_from_table(self, table_name, where_clause=None):
@@ -455,7 +514,9 @@ class DB:
         else:
             response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
-        return response.fetchall()[0][0]
+        results = self._fetchall(response, table_name)
+
+        return results[0][0]
 
 
     @_not_if_read_only
@@ -468,26 +529,32 @@ class DB:
         self.commit()
 
 
-    def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
-        self.is_table_exists(table)
+    def get_single_column_from_table(self, table_name, column, unique=False, where_clause=None):
+        self.is_table_exists(table_name)
 
         if where_clause:
             where_clause = where_clause.replace('"', "'")
-            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table_name, where_clause))
         else:
-            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
-        return [t[0] for t in response.fetchall()]
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table_name))
+
+        results = self._fetchall(response, table_name)
+
+        return [t[0] for t in results]
 
 
-    def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
-        self.is_table_exists(table)
+    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None):
+        self.is_table_exists(table_name)
 
         if where_clause:
             where_clause = where_clause.replace('"', "'")
-            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name, where_clause))
         else:
-            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
-        return response.fetchall()
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name))
+
+        results = self._fetchall(response, table_name)
+
+        return results
 
 
     def get_frequencies_of_values_from_a_column(self, table_name, column_name):
@@ -495,27 +562,36 @@ class DB:
 
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
-        return response.fetchall()
+        results = self._fetchall(response, table_name)
+
+        return results
 
 
     def get_table_column_types(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
-        return [t[2] for t in response.fetchall()]
+
+        results = self._fetchall(response, table_name)
+
+        return [t[2] for t in results]
 
 
     def get_table_columns_and_types(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
-        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+        results = self._fetchall(response, table_name)
+
+        return dict([(t[1], t[2]) for t in results])
 
 
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
 
         response = self._exec('''SELECT * FROM %s''' % table_name)
+
         return [t[0] for t in response.description]
 
 
@@ -523,7 +599,53 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None, omit_parent_column=False):
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None, log_norm_numeric_values=False):
+        """A wrapper function to get view data.
+
+        Anvi'o keeps view data in long format while most tools in it work with view data
+        in NxM matrix format. The purpose of this function is to transform the table data
+        into the convenient data structure.
+
+        In some applications, the view data is required to have information about the parent
+        contig of each split. While anvi'o reports clean view data by default, if the user
+        provides a `splits_basic_info` dictionary, this function will add the `__parent__`
+        key to each item.
+        """
+
+        if split_names_of_interest:
+            split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
+            where_clause = f"""item IN ({split_names_formatted})"""
+            d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
+        else:
+            d = self.get_all_rows_from_table(view_table_name)
+
+        data = {}
+        layers = set([])
+
+        # this looks dumb, but actually much faster than better looking alternatives
+        for entry_id, item, layer, value in d:
+            data[item] = {}
+            layers.add(layer)
+
+        for entry_id, item, layer, value in d:
+            if log_norm_numeric_values:
+                data[item][layer] = math.log10(value + 1)
+            else:
+                data[item][layer] = value
+
+        # add `__parent__` layer if asked:
+        if splits_basic_info:
+            for split_name in data:
+                data[split_name]['__parent__'] = splits_basic_info[split_name]['parent']
+            header = sorted(list(layers)) + ['__parent__']
+        else:
+            header = sorted(list(layers))
+
+        # fly away, lil birb, flai awai.
+        return (data, header)
+
+
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
         """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
 
         If the user is interested in only some of the data, they can build a where clause
@@ -580,15 +702,16 @@ class DB:
             if progress:
                 progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
 
-            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data)
         else:
             if progress:
                 progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
 
-            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data, omit_parent_column=omit_parent_column)
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
 
 
-    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, error_if_no_data=True,
+                                log_norm_numeric_values=False, row_num_as_key=False):
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
@@ -598,11 +721,6 @@ class DB:
 
         if columns_of_interest and not isinstance(columns_of_interest, type([])):
             raise ConfigError("The parameter `columns_of_interest` must be of type <list>.")
-
-        if omit_parent_column:
-            if '__parent__' in table_structure:
-                columns_to_return.remove(table_structure.index('__parent__'))
-                table_structure.remove('__parent__')
 
         if columns_of_interest:
             for col in table_structure[1:]:
@@ -709,6 +827,7 @@ class DB:
         if keys_of_interest:
             keys_of_interest = set(keys_of_interest)
 
+        row_num = 0
         for row in rows:
             entry = {}
 
@@ -729,10 +848,21 @@ class DB:
                 else:
                     entry[table_structure[i]] = value
 
-            if string_the_key:
-                results_dict[str(row[0])] = entry
+            if row_num_as_key:
+                entry[table_structure[0]] = row[0]
+
+                if string_the_key:
+                    results_dict[str(row_num)] = entry
+                else:
+                    results_dict[row_num] = entry
+
             else:
-                results_dict[row[0]] = entry
+                if string_the_key:
+                    results_dict[str(row[0])] = entry
+                else:
+                    results_dict[row[0]] = entry
+
+            row_num += 1
 
         return results_dict
 
@@ -789,7 +919,7 @@ class DB:
         return results_df[columns_of_interest]
 
 
-    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False, omit_parent_column=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
         get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
@@ -811,8 +941,6 @@ class DB:
         row_num_as_key: bool
              added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
              first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
-        omit_parent_column: bool
-             removes __parent__ column from the data to be returned if __parent__ exists in table structure.
 
         Returns
         =======
@@ -828,9 +956,6 @@ class DB:
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
         else:
             table_structure = self.get_table_structure(table_name)
-
-        if omit_parent_column and '__parent__' in table_structure:
-            table_structure.remove('__parent__')
 
         columns_to_return = list(range(0, len(table_structure)))
 
@@ -868,4 +993,7 @@ class DB:
 
     def get_table_names(self):
         response = self._exec("""select name from sqlite_master where type='table'""")
-        return [r[0] for r in response.fetchall()]
+
+        results = self._fetchall(response, 'sqlite_master')
+
+        return [r[0] for r in results]

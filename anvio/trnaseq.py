@@ -1,12 +1,14 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Library for tRNA-seq dataset operations bin/anvi-trnaseq and bin/anvi-convert-trnaseq-database
-are the default clients using this module. anvi-trnaseq instantiates a TRNASeqDataset.
-anvi-convert-trnaseq-database instantiates a DatabaseConverter. The scripts call the objects'
-process() methods to start the analytic workflows.
+"""Library for tRNA-seq dataset operations
 
-Each sequence library in an experiment is processed separately as a TRNASeqDataset, storing an
-information-rich anvi'o tRNA-seq database. DatabaseConverter finds reference seed sequences from a
+`bin/anvi-trnaseq` and `bin/anvi-convert-trnaseq-database` are the default clients using this
+module. `anvi-trnaseq` instantiates a `TRNASeqDataset` object. `anvi-convert-trnaseq-database`
+instantiates a `DatabaseConverter` object. The clients call the objects' `process` methods to start
+the analytic workflows.
+
+Each sequence library in an experiment is processed separately as a `TRNASeqDataset`, storing an
+information-rich anvi'o tRNA-seq database. `DatabaseConverter` finds reference seed sequences from a
 set of tRNA-seq databases, storing seeds in an anvi'o contigs database and coverage patterns for
 each dataset in anvi'o profile and auxiliary databases. Contigs and profile databases interface with
 a range of other tools in the anvi'o platform.
@@ -18,10 +20,11 @@ Feature: Canonical feature or structural element of tRNA, e.g., anticodon stem
 
 Read: Synonymous with merged paired-end tRNA-seq read oriented 5'->3'
 
-Feature profile: 5'->3' features identified de novo from the 3' end in a merged tRNA-seq read
+Feature profile (profile): 5'->3' features identified de novo from the 3' end in a merged tRNA-seq
+    read
 
 Profiled sequence: Sequence with an assigned feature profile, which may or may not span the whole
-    length of the sequence, but which at minimum includes the T arm
+    length of the sequence from the 3' end, but which at minimum includes the T arm
 
 Full profile (tRNA profile): Profile that spans (nearly) the full length of the sequence, with a
     small number of unprofiled nucleotides allowed at the 5' end when that number is less than the
@@ -31,24 +34,25 @@ Truncated profile: Profile that does not span (nearly) the full length of the se
     sequence is a chimera of two 3' tRNA fragments and the profile covers the 3' fragment but not
     the unexpected 5' fragment)
 
-Modification-induced substitution: Detected as 3-4 different nucleotides at a tRNA position, the
-    effect of semi-random nucleotide addition during reverse transcription at the site of a modified
-    nucleotide
+Potential modification-induced substitution (sub): Detected as 3-4 different nucleotides at a tRNA
+    position, potentially the effect of semi-random nucleotide addition at the site of a modified
+    nucleotide during reverse transcription
 
-Modification-induced deletion: Detected as a missing nucleotide in the proximity of a detected
-    substitution site, the effect of reverse transcription skipping nucleotides around the site of a
-    modified nucleotide (deletions are rarer than substitutions and more common than insertions,
-    which are not sought)
+Potential modification-induced indel (indel): Detected by alignment of tRNA sequences with and
+    without potential modification-induced substitutions, indels result from reverse transcriptase
+    skipping or adding extra nucleotides due to interaction with a modification (substitutions are
+    generally more common than deletions, which in turn are more common than insertions)
 
-Unique sequence: Set of dereplicated merged tRNA-seq paired-end reads
+Unique sequence (U): Set of dereplicated merged paired-end tRNA-seq reads
 
-Nontemplated nucleotide: Artifact typically added to the 5' end of a read in reverse transcription
+Nontemplated nucleotide: Reverse transcription artifact typically added to the 5' end of a read
 
-Trimmed sequence: Set of unique sequences that are identical after trimming sequence extensions 5'
-    and 3' of the discriminator nucleotide, e.g., nontemplated 5' nucleotides and 3'-CCA acceptor
+Trimmed sequence (T): Set of unique sequences that are identical after trimming sequence extensions
+    5' of the acceptor stem and 3' of the discriminator nucleotide, e.g., nontemplated 5'
+    nucleotides and 3'-CCA acceptor
 
-Normalized sequence: The longest sequence of a set of trimmed sequences, with shorter sequences
-    being tRNA fragment subsequences
+Normalized sequence (N): The longest of a set of trimmed sequences, with shorter sequences being
+    tRNA fragment subsequences
 
 Nonspecific sequence: In contrast to a specific sequence, a trimmed sequence (or its component
     unique sequences and reads) that occurs in multiple normalized sequences (cannot be resolved to
@@ -58,27 +62,64 @@ Mapped fragment: Sequence without a feature profile that maps to a normalized se
     include extra nucleotides beyond the trimmed 5' end of the normalized sequence but not
     nucleotides in the trimmed 3' terminus of the normalized sequence
 
-Modified sequence: Set of normalized sequences differing by potential modification-induced mutations
+Modified sequence (M): Set of normalized sequences differing by potential modification-induced
+    substitutions and optionally indels
+
+
+ABBREVIATIONS
+=============
+M: Modified seq
+
+N: Normalized seq
+-----------------
+Nf: N with full profile
+Nc: N with truncated profile
+Nb: N with subs but not indels
+Nqf: Nf with full profile but no subs (only important as queries in finding indels)
+Nq: Nqf or Nc queried against Nb targets to find indels
+Ni: N with indels and optionally subs
+
+T: Trimmed seq
+--------------
+Tp: T with profile
+Tf: T with full profile
+Tc: T with truncated profile
+Tm: Mapped T
+Ti: T that is part of Ni (Ti does not necessarily contain indels, though Ni does)
+Tip: Ti derived from Tp
+Tim: Ti derived from Tm
+
+U: Unique seq
+-------------
+Un: U not found to have tRNA profile
+Up: U with profile
+Uc: U with truncated profile
+Uf: U with full profile
+Us: U with full profile transferred from another Uf
+Um: Mapped U
+Ui: U that is part of Ti and Ni (Ui does not necessarily contain indels, though Ni does)
+Uif: Ui derived from Uf
+Uim: Ui derived from Um
 """
 
 import gc
 import os
 import sys
+import math
 import time
-import shutil
 import random
-import hashlib
+import shutil
 import argparse
-import itertools
 import numpy as np
 import pandas as pd
 import pickle as pkl
 import multiprocessing as mp
 
 from hashlib import sha1
+from itertools import chain
 from functools import partial
-from itertools import combinations, product
-from collections import OrderedDict, deque, defaultdict
+from bisect import bisect_left
+from collections import defaultdict, deque, OrderedDict
 
 import anvio
 import anvio.dbops as dbops
@@ -94,14 +135,15 @@ import anvio.trnaidentifier as trnaidentifier
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.sequence import Dereplicator
+from anvio.drivers.vmatch import Vmatch
 from anvio.agglomeration import Agglomerator
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
-from anvio.sequence import Aligner, AlignedTarget, Cluster, Dereplicator, Kmerizer
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -111,7 +153,7 @@ __email__ = "samuelmiller10@gmail.com"
 
 pp = terminal.pretty_print
 
-THREEPRIME_VARIANTS = constants.THREEPRIME_VARIANTS
+MAXSIZE = sys.maxsize
 
 ALL_NTS = tuple(constants.nucleotides)
 UNAMBIG_NTS = ('A', 'C', 'G', 'T')
@@ -121,36 +163,45 @@ INT_NT_DICT = {i: nt for i, nt in enumerate(UNAMBIG_NTS, start=1)}
 # internally ungapped alignments: there is one bin (value 0) for end gaps in the alignment.
 NUM_NT_BINS = len(UNAMBIG_NTS) + 1
 
-ANTICODON_TO_AA = constants.anticodon_to_AA
+ANTICODON_AA_DICT = constants.anticodon_to_AA
+
+# The user can specify in `anvi-trnaseq` what defines a long (biological vs. non-templated) 5'
+# extension. The variable is set by `TRNASeqDataset.__init__`.
+MIN_LENGTH_LONG_5PRIME_EXTENSION = 4
+# The user can profile tRNA that does not end in any 3' terminus, such as CCA. Normally, such
+# sequences are not profiled but may be mapped.
+PROFILE_ABSENT_3PRIME_TERMINUS = False
 
 
 class UniqueSequence(object):
     """A dereplicated tRNA-seq read."""
+    # Instances of this class are called `seq_U`.
 
-    __slots__ = ('seq_string', 'represent_name', 'read_count')
+    __slots__ = ('string', 'name', 'read_count')
 
-    def __init__(self, seq_string, represent_name, read_count):
-        self.seq_string = seq_string
-        self.represent_name = represent_name
+    def __init__(self, string, name, read_count):
+        self.string = string
+        self.name = name
         self.read_count = read_count
 
 
 class UniqueProfileSequence(UniqueSequence):
     """A tRNA feature profile, either full or truncated, was assigned to the sequence."""
+    # Instances of this class are called `seq_Up`.
 
     __slots__ = (
-        'feature_start_indices',
-        'feature_stop_indices',
+        'feature_starts',
+        'feature_stops',
         'has_complete_feature_set',
-        'has_his_g',
-        'alpha_start_index',
-        'alpha_stop_index',
-        'beta_start_index',
-        'beta_stop_index',
+        'has_His_G',
+        'alpha_start',
+        'alpha_stop',
+        'beta_start',
+        'beta_stop',
         'anticodon_string',
         'anticodon_aa',
         'contains_anticodon',
-        'threeprime_terminus_length',
+        'length_3prime_terminus',
         'num_conserved',
         'num_unconserved',
         'num_paired',
@@ -158,145 +209,165 @@ class UniqueProfileSequence(UniqueSequence):
         'unconserved_info',
         'unpaired_info',
         'profiled_seq_length',
-        'trimmed_seq_represent_name'
+        'name_T'
     )
 
-    def __init__(self, seq_string, represent_name, read_count, profile):
-        super().__init__(seq_string, represent_name, read_count)
+    def __init__(self, string, name, read_count, profile):
+        super().__init__(string, name, read_count)
 
-        self.feature_start_indices = [feature.start_pos if hasattr(feature, 'start_pos') else feature.start_positions
-                                      for feature in profile.features]
-        self.feature_stop_indices = [feature.stop_pos if hasattr(feature, 'stop_pos') else feature.stop_positions
-                                     for feature in profile.features]
-        self.alpha_start_index = profile.alpha_start
-        self.alpha_stop_index = profile.alpha_stop
-        self.beta_start_index = profile.beta_start
-        self.beta_stop_index = profile.beta_stop
+        self.feature_starts = tuple([f.start_pos if hasattr(f, 'start_pos') else f.start_positions for f in profile.features])
+        self.feature_stops = tuple([f.stop_pos if hasattr(f, 'stop_pos') else f.stop_positions for f in profile.features])
+        self.alpha_start = profile.alpha_start
+        self.alpha_stop = profile.alpha_stop
+        self.beta_start = profile.beta_start
+        self.beta_stop = profile.beta_stop
         self.anticodon_string = anticodon = profile.anticodon_seq
         self.anticodon_aa = profile.anticodon_aa if profile.anticodon_aa else None
         self.contains_anticodon = True if anticodon else False
-        self.threeprime_terminus_length = len(profile.threeprime_terminus_seq)
+        self.length_3prime_terminus = len(profile.threeprime_terminus_seq)
         self.num_conserved = profile.num_conserved
         self.num_unconserved = profile.num_unconserved
         self.num_paired = profile.num_paired
         self.num_unpaired = profile.num_unpaired
-        self.unconserved_info = profile.unconserved_info
-        self.unpaired_info = profile.unpaired_info
+        self.unconserved_info = tuple(profile.unconserved_info) if profile.unconserved_info else tuple()
+        self.unpaired_info = tuple(profile.unpaired_info) if profile.unpaired_info else tuple()
         self.profiled_seq_length = len(profile.profiled_seq)
-        self.trimmed_seq_represent_name = None
+        self.name_T = None
 
 
 class UniqueFullProfileSequence(UniqueProfileSequence):
     """A full tRNA feature profile was assigned to the sequence."""
+    # Instances of this class are called `seq_Uf`.
 
     __slots__ = (
         'has_complete_feature_set',
-        'has_his_g',
-        'num_extrapolated_fiveprime_nts',
-        'extra_fiveprime_length'
+        'has_His_G',
+        'num_extrap_5prime_nts',
+        'xtra_5prime_length'
     )
 
-    def __init__(self, seq_string, represent_name, read_count, profile):
-        super().__init__(seq_string, represent_name, read_count, profile)
+    def __init__(self, string, name, read_count, profile):
+        super().__init__(string, name, read_count, profile)
 
         self.has_complete_feature_set = profile.has_complete_feature_set
-        self.has_his_g = True if profile.features[0].name == 'tRNA-His position 0' else False
-        self.num_extrapolated_fiveprime_nts = profile.num_in_extrapolated_fiveprime_feature
-        self.extra_fiveprime_length = 0 if profile.num_extra_fiveprime is None else profile.num_extra_fiveprime
+        self.has_His_G = True if profile.features[0].name == 'tRNA-His position 0' else False
+        self.num_extrap_5prime_nts = profile.num_in_extrapolated_fiveprime_feature
+        self.xtra_5prime_length = 0 if profile.num_extra_fiveprime is None else profile.num_extra_fiveprime
 
 
 class UniqueTruncatedProfileSequence(UniqueProfileSequence):
     """A truncated tRNA feature profile was assigned to the sequence."""
+    # Instances of this class are called `seq_Uc`.
 
     __slots__ = ('trunc_profile_index', )
 
-    def __init__(self, seq_string, represent_name, read_count, profile):
-        super().__init__(seq_string, represent_name, read_count, profile)
+    def __init__(self, string, name, read_count, profile):
+        super().__init__(string, name, read_count, profile)
 
         self.trunc_profile_index = profile.trunc_profile_index
 
 
 class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
-    """This object is generated as part of the determination of normalized tRNA sequences from
-    trimmed tRNA sequences. This type of sequence is produced in the special circumstance that the
-    profile of a shorter sequence is transferred to a longer sequence, because the longer sequence
-    was originally found to have a complete profile, but a shorter 3' subsequence also had a
-    complete profile; so, parsimoniously, the profile of the shorter sequence was transferred to the
-    longer, and the additional 5' nucleotides of the longer reclassified as extra nucleotides beyond
-    the 5' end of a mature tRNA sequence."""
+    """This object is generated as part of the determination of Nf from Tf. This type of seq is
+    produced in the special circumstance that the profile of a shorter Tf is transferred to a longer
+    Tf, because the longer Tf was originally found to have a complete profile, but a shorter 3'
+    subseq also had a complete profile; so, parsimoniously, the profile of the shorter Tf was
+    transferred to the longer, and the additional 5' nts of the longer Tf reclassified as extra nts
+    beyond the 5' end of a mature tRNA sequence."""
+    # Instances of this class are called `seq_Us`.
 
-    __slots__ = ('defunct_uniq_seq', )
+    __slots__ = ('defunct_Uf', )
 
-    def __init__(self, defunct_uniq_seq, replacement_info_dict):
-        UniqueSequence.__init__(self, defunct_uniq_seq.seq_string, defunct_uniq_seq.represent_name, defunct_uniq_seq.read_count)
+    def __init__(self, defunct_Uf, replacement_dict):
+        UniqueSequence.__init__(self, defunct_Uf.string, defunct_Uf.name, defunct_Uf.read_count)
 
-        uniq_seq_string = defunct_uniq_seq.seq_string
-        uniq_seq_length = len(uniq_seq_string)
-        trimmed_seq_stop_in_uniq_seq = uniq_seq_length - uniq_seq_string[::-1].index(replacement_info_dict['trimmed_seq_string'][::-1])
-        feature_start_indices = []
-        for feature_start_index_from_trimmed_threeprime in replacement_info_dict['feature_start_indices_from_trimmed_threeprime']:
-            if isinstance(feature_start_index_from_trimmed_threeprime, int):
-                feature_start_indices.append(trimmed_seq_stop_in_uniq_seq + feature_start_index_from_trimmed_threeprime)
+        string_U = defunct_Uf.string
+        length_U = len(string_U)
+        stop_T_in_U = length_U - string_U[::-1].index(replacement_dict['string_T'][::-1])
+
+        feature_starts = []
+        for feature_start_from_T_3prime in replacement_dict['feature_starts_from_T_3prime']:
+            if isinstance(feature_start_from_T_3prime, int):
+                feature_starts.append(stop_T_in_U + feature_start_from_T_3prime)
             else:
-                feature_start_indices.append(tuple([trimmed_seq_stop_in_uniq_seq + strand_start_index_from_trimmed_threeprime for strand_start_index_from_trimmed_threeprime in feature_start_index_from_trimmed_threeprime]))
-        self.feature_start_indices = feature_start_indices
-        feature_stop_indices = []
-        for feature_stop_index_from_trimmed_threeprime in replacement_info_dict['feature_stop_indices_from_trimmed_threeprime']:
-            if isinstance(feature_stop_index_from_trimmed_threeprime, int):
-                feature_stop_indices.append(trimmed_seq_stop_in_uniq_seq + feature_stop_index_from_trimmed_threeprime)
+                feature_starts.append(tuple([stop_T_in_U + strand_start_from_T_3prime for strand_start_from_T_3prime in feature_start_from_T_3prime]))
+        self.feature_starts = tuple(feature_starts)
+
+        feature_stops = []
+        for feature_stop_from_T_3prime in replacement_dict['feature_stops_from_T_3prime']:
+            if isinstance(feature_stop_from_T_3prime, int):
+                feature_stops.append(stop_T_in_U + feature_stop_from_T_3prime)
             else:
-                feature_stop_indices.append(tuple([trimmed_seq_stop_in_uniq_seq + strand_stop_index_from_trimmed_threeprime for strand_stop_index_from_trimmed_threeprime in feature_stop_index_from_trimmed_threeprime]))
-        self.feature_stop_indices = feature_stop_indices
+                feature_stops.append(tuple([stop_T_in_U + strand_stop_from_T_3prime for strand_stop_from_T_3prime in feature_stop_from_T_3prime]))
+        self.feature_stops = tuple(feature_stops)
+
         self.has_complete_feature_set = True
-        self.num_extrapolated_fiveprime_nts = 0
-        self.has_his_g = replacement_info_dict['has_his_g']
-        self.alpha_start_index = (None if replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] is None
-                                  else trimmed_seq_stop_in_uniq_seq + replacement_info_dict['alpha_start_index_from_trimmed_threeprime'])
-        self.alpha_stop_index = (None if replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] is None
-                                 else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'])
-        self.beta_start_index = (None if replacement_info_dict['beta_start_index_from_trimmed_threeprime'] is None
-                                 else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['beta_start_index_from_trimmed_threeprime'])
-        self.beta_stop_index = (None if replacement_info_dict['beta_stop_index_from_trimmed_threeprime'] is None
-                                else trimmed_seq_stop_in_uniq_seq - replacement_info_dict['beta_stop_index_from_trimmed_threeprime'])
-        self.anticodon_string = replacement_info_dict['anticodon_string']
-        self.anticodon_aa = replacement_info_dict['anticodon_aa']
-        self.contains_anticodon = replacement_info_dict['contains_anticodon']
-        self.threeprime_terminus_length = uniq_seq_length - trimmed_seq_stop_in_uniq_seq
-        self.num_conserved = replacement_info_dict['num_conserved']
-        self.num_unconserved = replacement_info_dict['num_unconserved']
-        self.num_paired = replacement_info_dict['num_paired']
-        self.num_unpaired = replacement_info_dict['num_unpaired']
+        self.num_extrap_5prime_nts = 0
+        self.has_His_G = replacement_dict['has_His_G']
+        self.alpha_start = None if replacement_dict['alpha_start_from_T_3prime'] is None else stop_T_in_U + replacement_dict['alpha_start_from_T_3prime']
+        self.alpha_stop = None if replacement_dict['alpha_stop_from_T_3prime'] is None else stop_T_in_U - replacement_dict['alpha_stop_from_T_3prime']
+        self.beta_start = None if replacement_dict['beta_start_from_T_3prime'] is None else stop_T_in_U - replacement_dict['beta_start_from_T_3prime']
+        self.beta_stop = None if replacement_dict['beta_stop_from_T_3prime'] is None else stop_T_in_U - replacement_dict['beta_stop_from_T_3prime']
+        self.anticodon_string = replacement_dict['anticodon_string']
+        self.anticodon_aa = replacement_dict['anticodon_aa']
+        self.contains_anticodon = replacement_dict['contains_anticodon']
+        self.length_3prime_terminus = length_U - stop_T_in_U
+        self.num_conserved = replacement_dict['num_conserved']
+        self.num_unconserved = replacement_dict['num_unconserved']
+        self.num_paired = replacement_dict['num_paired']
+        self.num_unpaired = replacement_dict['num_unpaired']
+
         unconserved_info = []
-        for unconserved_tuple in replacement_info_dict['unconserved_info_from_trimmed_threeprime']:
-            unconserved_info.append((trimmed_seq_stop_in_uniq_seq + unconserved_tuple[0],
+        for unconserved_tuple in replacement_dict['unconserved_info_from_T_3prime']:
+            unconserved_info.append((stop_T_in_U + unconserved_tuple[0],
                                      unconserved_tuple[1],
                                      unconserved_tuple[2]))
-        self.unconserved_info = unconserved_info
+        self.unconserved_info = tuple(unconserved_info)
+
         unpaired_info = []
-        for unpaired_tuple in replacement_info_dict['unpaired_info_from_trimmed_threeprime']:
-            unpaired_info.append((trimmed_seq_stop_in_uniq_seq + unpaired_tuple[0],
-                                  trimmed_seq_stop_in_uniq_seq + unpaired_tuple[1],
+        for unpaired_tuple in replacement_dict['unpaired_info_from_T_3prime']:
+            unpaired_info.append((stop_T_in_U + unpaired_tuple[0],
+                                  stop_T_in_U + unpaired_tuple[1],
                                   unpaired_tuple[2],
                                   unpaired_tuple[3]))
-        self.unpaired_info = unpaired_info
-        self.profiled_seq_length = replacement_info_dict['profiled_seq_without_terminus_length'] + self.threeprime_terminus_length
-        self.extra_fiveprime_length = uniq_seq_length - self.profiled_seq_length
-        self.trimmed_seq_represent_name = None
+        self.unpaired_info = tuple(unpaired_info)
+
+        self.profiled_seq_length = replacement_dict['profiled_seq_without_terminus_length'] + self.length_3prime_terminus
+        self.xtra_5prime_length = length_U - self.profiled_seq_length
+        self.name_T = None
 
         # Store the defunct profile information for posterity.
-        self.defunct_uniq_seq = defunct_uniq_seq
+        self.defunct_Uf = defunct_Uf
 
 
 class UniqueMappedSequence(UniqueSequence):
     """This object is generated in the identification of tRNA fragments by mapping."""
+    # Instances of this class are called `seq_Um`.
 
-    __slots__ = ('extra_fiveprime_length', 'trimmed_seq_represent_name')
+    __slots__ = ('xtra_5prime_length', 'name_T')
 
-    def __init__(self, seq_string, represent_name, read_count, extra_fiveprime_length=0):
-        super().__init__(seq_string, represent_name, read_count)
+    def __init__(self, string, name, read_count, xtra_5prime_length=0):
+        super().__init__(string, name, read_count)
 
-        self.extra_fiveprime_length = extra_fiveprime_length
-        self.trimmed_seq_represent_name = None
+        self.xtra_5prime_length = xtra_5prime_length
+        self.name_T = None
+
+
+class UniqueIndelSequence(UniqueSequence):
+    """This object is generated in the identification of tRNA sequences with indels. Nq are found to
+    have indels, which can contradict feature profiles and the lengths of 5' extensions and 3'
+    termini in existing U. No profile is assigned to this object."""
+    # Instances of this class are called `seq_Ui`.
+
+    __slots__ = ('orig_U', 'xtra_5prime_length', 'length_3prime_terminus', 'name_T')
+
+    def __init__(self, seq_U, length_3prime_terminus=0, xtra_5prime_length=0):
+        super().__init__(seq_U.string, seq_U.name, seq_U.read_count)
+
+        self.orig_U = seq_U
+        self.length_3prime_terminus = length_3prime_terminus
+        self.xtra_5prime_length = xtra_5prime_length
+        self.name_T = None
 
 
 class TrimmedSequence(object):
@@ -310,11 +381,11 @@ class TrimmedSequence(object):
     E. coli tRNA-Ala-GGC-1-1
      GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA
 
-    This collapses to the following trimmed sequence, removing the 3' terminus (the acceptor happens
-    to be genomic rather than post-transcriptionally added in this example, but it doesn't matter):
+    This collapses to the following T, removing the 3' terminus (the acceptor happens to be genomic
+    rather than post-transcriptionally added in this example, but it doesn't matter):
      GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
 
-    Examples of possible profiled reads that collapse to this sequence:
+    Examples of possible Up that collapse to T:
     AGGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA
      GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCAC
 
@@ -322,646 +393,642 @@ class TrimmedSequence(object):
     3' fragment of the same tRNA, ending in 3'-CC rather than canonical 3'-CCA
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACC
 
-    This collapses to the following trimmed sequence, removing 3'-CC:
+    This collapses to the following T, removing 3'-CC:
                                 TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
     """
+    # Instances of this class are called T.
 
-    # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
-    # set by `TRNASeqDataset`.
-    min_length_of_long_fiveprime_extension = 4
+    __slots__ = ('string', 'read_count', 'names_U', 'names_N')
 
-    __slots__ = ('seq_string', 'read_count', 'uniq_seqs', 'norm_seq_represent_names')
-
-    def __init__(self, seq_string, uniq_seqs):
-        self.seq_string = seq_string
-        self.uniq_seqs = uniq_seqs
-        for uniq_seq in uniq_seqs:
-            if uniq_seq.trimmed_seq_represent_name is not None:
-                raise ConfigError(f"The unique sequence with the representative name {uniq_seq.represent_name} "
-                                  f"was already assigned to a trimmed sequence with the representative name {uniq_seq.trimmed_seq_represent_name} "
+    def __init__(self, string, seqs_U):
+        self.string = string
+        self.names_U = tuple([seq_U.name for seq_U in seqs_U])
+        for seq_U in seqs_U:
+            if seq_U.name_T is not None:
+                raise ConfigError(f"The unique sequence with the name {seq_U.name} "
+                                  f"was already assigned to a trimmed sequence with the name {seq_U.name_T} "
                                   "and so cannot be assigned to a new trimmed sequence.")
-        self.read_count = sum([uniq_seq.read_count for uniq_seq in self.uniq_seqs])
-        self.norm_seq_represent_names = []
+        self.read_count = sum([seq_U.read_count for seq_U in seqs_U])
+        self.names_N = []
+
+
+def get_representative_unique_sequence(seqs_U):
+    """The representative U in Tf and Ti is chosen as follows:
+    1. Most abundant full-length tRNA without extra 5' nts, ignoring the 3' terminus nts, OR
+    2. Most abundant full-length tRNA with extra 5' nts, OR
+    3. Most abundant 3' tRNA fragment
+    Sort U such that the first is the most abundant+longest and the last is the least
+    abundant+shortest."""
+    seqs_U.sort(key=lambda seq_U: (-seq_U.xtra_5prime_length, -seq_U.read_count, seq_U.name))
+    if seqs_U[0].xtra_5prime_length > 0:
+        if seqs_U[-1].xtra_5prime_length == 0:
+            # If the first U has extra 5' nts and the last has none, then the last U and others
+            # without extra 5' nts must be a full-length tRNA (ignoring the 3' terminus). Therefore,
+            # select the most abundant of these full-length tRNAs with extra 5' nts as the
+            # representative seq.
+            represent_seq_U = sorted(seqs_U, key=lambda seq_U: (-seq_U.xtra_5prime_length, seq_U.read_count, seq_U.name))[-1]
+        else:
+            represent_seq_U = seqs_U[0]
+    else:
+        # In this case, ALL U are EITHER full-length tRNA OR a 3' tRNA fragment.
+        represent_seq_U = seqs_U[0]
+
+    return represent_seq_U
+
+
+def get_read_threeprime_terminus_count_dict(seqs_U):
+    """Count the number of reads with each 3' terminus in U."""
+    read_3prime_terminus_count_dict = defaultdict(int)
+    for seq_U in seqs_U:
+        if seq_U.length_3prime_terminus:
+            read_3prime_terminus_count_dict[seq_U.string[-seq_U.length_3prime_terminus: ]] += seq_U.read_count
+        else:
+            read_3prime_terminus_count_dict[''] += seq_U.read_count
+
+    return read_3prime_terminus_count_dict
+
+
+def get_extra_fiveprime_info(seqs_U):
+    """Get information on the extra 5' nucleotides in unique sequences."""
+    uniq_with_xtra_5prime_count = 0
+    read_with_xtra_5prime_count = 0
+    # Find the number of reads containing each unique 5' extension.
+    long_5prime_extension_dict = {}
+    for seq_U in seqs_U:
+        if seq_U.xtra_5prime_length:
+            uniq_with_xtra_5prime_count += 1
+            read_with_xtra_5prime_count += seq_U.read_count
+            if seq_U.xtra_5prime_length >= MIN_LENGTH_LONG_5PRIME_EXTENSION:
+                long_5prime_extension_dict[seq_U.string[: seq_U.xtra_5prime_length]] = seq_U.read_count
+
+    return uniq_with_xtra_5prime_count, read_with_xtra_5prime_count, long_5prime_extension_dict
 
 
 class TrimmedFullProfileSequence(TrimmedSequence):
     """This object is formed from sequences with a full tRNA feature profile."""
+    # Instances of this class are called `Tf` and can derive from `Uf` and optionally `Us` objects.
 
     __slots__ = (
-        'represent_uniq_seq',
-        'represent_name',
-        'feature_start_indices',
-        'feature_stop_indices',
+        'name',
+        'categories_U',
+        'feature_starts',
+        'feature_stops',
         'contains_anticodon',
-        'read_threeprime_terminus_count_dict',
+        'read_3prime_terminus_count_dict',
         'has_complete_feature_set',
-        'has_his_g',
-        'num_extrapolated_fiveprime_nts',
-        'uniq_with_extra_fiveprime_count',
-        'read_with_extra_fiveprime_count',
-        'long_fiveprime_extension_dict'
+        'has_His_G',
+        'num_extrap_5prime_nts',
+        'uniq_with_xtra_5prime_count',
+        'read_with_xtra_5prime_count',
+        'long_5prime_extension_dict'
     )
 
-    def __init__(self, seq_string, uniq_seqs):
-        super().__init__(seq_string, uniq_seqs)
-
-        # The representative unique sequence is chosen as follows:
-        # 1. Most abundant full-length tRNA without extra 5' bases, ignoring the 3' terminus sequence, OR
-        # 2. Most abundant full-length tRNA with extra 5' bases, OR
-        # 3. Most abundant 3' tRNA fragment
-        # Sort unique sequences such that the first sequence is the most abundant+longest and the
-        # last is the least abundant+shortest.
-        uniq_seqs.sort(key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.read_count, uniq_seq.represent_name))
-        if uniq_seqs[0].extra_fiveprime_length > 0:
-            if uniq_seqs[-1].extra_fiveprime_length == 0:
-                # If the first unique sequence has extra 5' nucleotides and the last has none, then
-                # the last sequence and others without extra 5' nucleotides must be a full-length
-                # tRNA (ignoring the 3' terminus). Therefore, select the most abundant of these
-                # full-length tRNAs with extra 5' nucleotides as the representative sequence.
-                self.represent_uniq_seq = represent_uniq_seq = sorted(uniq_seqs, key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, uniq_seq.read_count, uniq_seq.represent_name))[-1]
+    def __init__(self, string, seqs_U):
+        # U are sorted in place when finding the representative unique sequence. Call the parent
+        # class constructor after this to ensure recorded U names are in the correct order, with the
+        # representative name coming first.
+        represent_U = get_representative_unique_sequence(seqs_U)
+        super().__init__(string, seqs_U)
+        self.name = name = represent_U.name
+        categories_U = []
+        for seq_U in seqs_U:
+            if isinstance(seq_U, UniqueFullProfileSequence):
+                categories_U.append('Uf')
+            elif isinstance(seq_U, UniqueTransferredProfileSequence):
+                categories_U.append('Us')
             else:
-                self.represent_uniq_seq = represent_uniq_seq = uniq_seqs[0]
-        else:
-            # In this case, ALL unique sequences are EITHER full-length tRNA OR a 3' tRNA fragment.
-            self.represent_uniq_seq = represent_uniq_seq = uniq_seqs[0]
-        self.represent_name = represent_name = represent_uniq_seq.represent_name
-        for uniq_seq in uniq_seqs:
-            uniq_seq.trimmed_seq_represent_name = represent_name
+                raise Exception(f"A unique sequence with name `{seq_U.name}` of class `{type(seq_U)}` was encountered.")
+            seq_U.name_T = name
+        self.categories_U = tuple(categories_U)
 
-        # Assume that the feature profile indices of the representative unique sequence are the same
-        # as the other unique sequences. The 3' terminus is the last feature in the profile and not
-        # part of the trimmed sequence.
-        self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
-        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
-        self.contains_anticodon = represent_uniq_seq.contains_anticodon
-        self.has_complete_feature_set = represent_uniq_seq.has_complete_feature_set
-        self.has_his_g = represent_uniq_seq.has_his_g
-        self.num_extrapolated_fiveprime_nts = represent_uniq_seq.num_extrapolated_fiveprime_nts
+        # Assume that the feature profile indices of the representative U are the same as the other
+        # U. The 3' terminus is the last feature in the profile and not part of T.
+        self.feature_starts = represent_U.feature_starts[: -1] if represent_U.feature_starts else None
+        self.feature_stops = represent_U.feature_stops[: -1] if represent_U.feature_stops else None
+        self.contains_anticodon = represent_U.contains_anticodon
+        self.has_complete_feature_set = represent_U.has_complete_feature_set
+        self.has_His_G = represent_U.has_His_G
+        self.num_extrap_5prime_nts = represent_U.num_extrap_5prime_nts
 
-        read_threeprime_terminus_count_dict = defaultdict(int)
-        for uniq_seq in self.uniq_seqs:
-            if uniq_seq.threeprime_terminus_length:
-                read_threeprime_terminus_count_dict[uniq_seq.seq_string[-uniq_seq.threeprime_terminus_length: ]] += uniq_seq.read_count
-            else:
-                read_threeprime_terminus_count_dict[''] += uniq_seq.read_count
-        self.read_threeprime_terminus_count_dict = read_threeprime_terminus_count_dict
+        self.read_3prime_terminus_count_dict = get_read_threeprime_terminus_count_dict(seqs_U)
 
-        uniq_with_extra_fiveprime_count = 0
-        read_with_extra_fiveprime_count = 0
-        # Find the number of reads containing each unique 5' extension.
-        long_fiveprime_extension_dict = {}
-        for uniq_seq in self.uniq_seqs:
-            if uniq_seq.extra_fiveprime_length:
-                uniq_with_extra_fiveprime_count += 1
-                read_with_extra_fiveprime_count += uniq_seq.read_count
-                if uniq_seq.extra_fiveprime_length >= self.min_length_of_long_fiveprime_extension:
-                    long_fiveprime_extension_dict[uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length]] = uniq_seq.read_count
-        self.uniq_with_extra_fiveprime_count = uniq_with_extra_fiveprime_count
-        self.read_with_extra_fiveprime_count = read_with_extra_fiveprime_count
-        self.long_fiveprime_extension_dict = long_fiveprime_extension_dict
+        (self.uniq_with_xtra_5prime_count,
+         self.read_with_xtra_5prime_count,
+         self.long_5prime_extension_dict) = get_extra_fiveprime_info(seqs_U)
 
 
 class TrimmedTruncatedProfileSequence(TrimmedSequence):
     """This object is formed from sequences with a truncated tRNA feature profile."""
+    # Instances of this class are called `Tc` and derive from `Uc`. All instances are initially
+    # categorized as `nontrna`, which can later change to `trna`. The category encompasses all
+    # component `Uc`.
 
     __slots__ = (
-        'represent_uniq_seq',
-        'represent_name',
-        'feature_start_indices',
-        'feature_stop_indices',
+        'name',
+        'category',
+        'feature_starts',
+        'feature_stops',
         'contains_anticodon',
-        'read_threeprime_terminus_count_dict',
+        'read_3prime_terminus_count_dict',
         'trunc_profile_index'
     )
 
-    def __init__(self, seq_string, uniq_seqs):
-        super().__init__(seq_string, uniq_seqs)
+    def __init__(self, string, seqs_U):
+        # Make the most abundant U the representative sequence.
+        seqs_U.sort(key=lambda seq_U: (-seq_U.read_count, seq_U.name))
+        super().__init__(string, seqs_U)
+        represent_U = seqs_U[0]
+        self.name = name = represent_U.name
+        self.category = 'nontrna'
+        for seq_U in seqs_U:
+            seq_U.name_T = name
 
-        # Make the most abundant unique sequence the representative sequence.
-        uniq_seqs.sort(key=lambda uniq_seq: (-uniq_seq.read_count, uniq_seq.represent_name))
-        represent_uniq_seq = uniq_seqs[0]
-        self.represent_name = represent_name = represent_uniq_seq.represent_name
-        for uniq_seq in uniq_seqs:
-            uniq_seq.trimmed_seq_represent_name = represent_name
+        # Assume that the feature profile indices of the representative U are the same as the other
+        # U. The 3' terminus is the last feature in the profile and not part of T.
+        self.feature_starts = represent_U.feature_starts[: -1] if represent_U.feature_starts else None
+        self.feature_stops = represent_U.feature_stops[: -1] if represent_U.feature_stops else None
+        self.contains_anticodon = represent_U.contains_anticodon
 
-        # Assume that the feature profile indices of the representative unique sequence are the same
-        # as the other unique sequences. The 3' terminus is the last feature in the profile and not
-        # part of the trimmed sequence.
-        self.feature_start_indices = represent_uniq_seq.feature_start_indices[: -1] if represent_uniq_seq.feature_start_indices else None
-        self.feature_stop_indices = represent_uniq_seq.feature_stop_indices[: -1] if represent_uniq_seq.feature_stop_indices else None
-        self.contains_anticodon = represent_uniq_seq.contains_anticodon
+        self.read_3prime_terminus_count_dict = get_read_threeprime_terminus_count_dict(seqs_U)
 
-        read_threeprime_terminus_count_dict = defaultdict(int)
-        for uniq_seq in self.uniq_seqs:
-            if uniq_seq.threeprime_terminus_length:
-                read_threeprime_terminus_count_dict[uniq_seq.seq_string[-uniq_seq.threeprime_terminus_length: ]] += uniq_seq.read_count
-            else:
-                read_threeprime_terminus_count_dict[''] += uniq_seq.read_count
-        self.read_threeprime_terminus_count_dict = read_threeprime_terminus_count_dict
-
-        self.trunc_profile_index = represent_uniq_seq.trunc_profile_index
+        self.trunc_profile_index = represent_U.trunc_profile_index
 
 
 class TrimmedMappedSequence(TrimmedSequence):
-    """This object is formed from a single unique sequence (`UniqueMappedSequence`) in the process
-    of mapping unique unprofiled sequences to normalized sequences. It is not like the other trimmed
-    sequence objects. Its purpose is to be one of the trimmed sequence objects added to a normalized
-    sequence, however no 5' bases are trimmed from the unique sequence string in creating the
-    trimmed sequence string (and mapped sequences do not have extra 3' bases). The reason for this
-    is that the 5' extension may represent all but a small number of nucleotides in the sequence, so
-    it is best not to dereplicate mapped sequences identical in the non-5' section by lumping them
-    together as the same trimmed sequence."""
+    """This object is formed from a single Um in the process of mapping unique unprofiled seqs to N.
+    It is not like the other T objects. Its purpose is to be one of the T objects added to an N,
+    however, unliked Tp, no 5' nts are trimmed from the U string in creating the T string (and
+    mapped seqs do not have extra 3' nts). The reason for this is that the 5' extension may
+    represent all but a small number of nts in the seq, so it is best not to dereplicate mapped seqs
+    identical in the non-5' section by lumping them together as the same T."""
+    # Instances of this class are called `Tm` and derive from a single `Um`.
 
     __slots__ = (
-        'represent_name',
-        'uniq_with_extra_fiveprime_count',
-        'read_with_extra_fiveprime_count',
-        'long_fiveprime_extension_dict'
+        'name',
+        'uniq_with_xtra_5prime_count',
+        'read_with_xtra_5prime_count',
+        'long_5prime_extension_dict'
     )
 
-    def __init__(self, uniq_seq):
-        super().__init__(uniq_seq.seq_string, [uniq_seq])
+    def __init__(self, seq_U):
+        super().__init__(seq_U.string, [seq_U])
 
-        self.represent_name = uniq_seq.represent_name
-        uniq_seq.trimmed_seq_represent_name = self.represent_name
+        self.name = seq_U.name
+        seq_U.name_T = self.name
 
-        extra_fiveprime_length = uniq_seq.extra_fiveprime_length
-        self.uniq_with_extra_fiveprime_count = 1 if extra_fiveprime_length else 0
-        self.read_with_extra_fiveprime_count = uniq_seq.read_count if extra_fiveprime_length else 0
-        self.long_fiveprime_extension_dict = {}
-        if extra_fiveprime_length >= self.min_length_of_long_fiveprime_extension:
-            self.long_fiveprime_extension_dict[uniq_seq.seq_string[: extra_fiveprime_length]] = uniq_seq.read_count
+        xtra_5prime_length = seq_U.xtra_5prime_length
+        self.uniq_with_xtra_5prime_count = 1 if xtra_5prime_length else 0
+        self.read_with_xtra_5prime_count = seq_U.read_count if xtra_5prime_length else 0
+        self.long_5prime_extension_dict = {}
+        if xtra_5prime_length >= MIN_LENGTH_LONG_5PRIME_EXTENSION:
+            self.long_5prime_extension_dict[seq_U.string[: xtra_5prime_length]] = seq_U.read_count
+
+
+class TrimmedIndelSequence(TrimmedSequence):
+    """This object is formed in the identification of tRNA sequences with indels."""
+    # Instances of this class are called `Ti` and derive from `Ui`.
+
+    __slots__ = (
+        'name',
+        'read_3prime_terminus_count_dict',
+        'uniq_with_xtra_5prime_count',
+        'read_with_xtra_5prime_count',
+        'long_5prime_extension_dict'
+    )
+
+    def __init__(self, string, seqs_U):
+        represent_U = get_representative_unique_sequence(seqs_U)
+        super().__init__(string, seqs_U)
+        self.name = name = represent_U.name
+        for seq_U in seqs_U:
+            seq_U.name_T = name
+
+        self.read_3prime_terminus_count_dict = get_read_threeprime_terminus_count_dict(seqs_U)
+
+        (self.uniq_with_xtra_5prime_count,
+         self.read_with_xtra_5prime_count,
+         self.long_5prime_extension_dict) = get_extra_fiveprime_info(seqs_U)
 
 
 class NormalizedSequence(object):
     """A tRNA sequence that can contain shorter tRNA fragment subsequences.
 
-    Normalized sequences are derived from trimmed sequences. Trimmed profiled tRNA are first
-    prefix-dereplicated from the 3' end by the method, `TRNASeqDataset.dereplicate_threeprime`. The
-    longest sequence in a cluster of dereplicated sequences becomes the representative normalized
-    sequence. `TRNASeqDataset.map_fragments` subsequently maps unprofiled reads to the set of
-    normalized sequences. Mapped tRNA fragments are added as trimmed sequences, and the `init`
-    method is called to finalize attributes of each normalized sequence.
+    N are derived from T. Tp are first prefix-dereplicated from the 3' end by the method,
+    `TRNASeqDataset.dereplicate_threeprime`. The longest Tp in a cluster of dereplicated Tp becomes
+    the representative seq of N. `TRNASeqDataset.map_fragments` subsequently maps unprofiled reads
+    to the set of N. Mapped tRNA fragments are added as T, and the `init` method is called to
+    finalize attributes of each N.
 
     EXAMPLE:
-    Consider the full-length and fragmentary E. coli tRNA-Ala-GGC-1-1 used in TrimmedSeq examples.
+    Consider the full-length and fragmentary E. coli tRNA-Ala-GGC-1-1 used in T examples.
     GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
                                TTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCA
 
-    The sequences collapse into a single normalized sequence when dereplicated from the 3' end. The
-    normalized sequence is represented by the longer sequence, which should be the first in the list
-    of trimmed sequences added to the normalized sequence.
+    The seqs collapse into a single N when dereplicated from the 3' end. N is represented by the
+    longer seq, which should be the first in the list of T added to N.
     """
+    # Instances of this class are called `N`.
 
     __slots__ = (
-        'trimmed_seqs',
-        'represent_name',
-        'seq_string',
-        'start_positions',
-        'stop_positions',
-        'specific_read_count',
-        'nonspecific_read_count',
-        'specific_covs',
-        'nonspecific_covs',
-        'mean_specific_cov',
-        'mean_nonspecific_cov',
-        'mod_seqs'
+        'name',
+        'names_T',
+        'string',
+        'starts_T_in_N',
+        'stops_T_in_N',
+        'spec_read_count',
+        'nonspec_read_count',
+        'spec_covs',
+        'nonspec_covs',
+        'mean_spec_cov',
+        'mean_nonspec_cov',
+        'names_M'
     )
 
-    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False):
-        self.trimmed_seqs = trimmed_seqs
-        represent_trimmed_seq = trimmed_seqs[0]
-        self.represent_name = represent_name = represent_trimmed_seq.represent_name
-        for trimmed_seq in trimmed_seqs:
-            trimmed_seq.norm_seq_represent_names.append(represent_name)
-        self.seq_string = represent_trimmed_seq.seq_string
+    def __init__(self, seqs_T, starts_T_in_N=None, stops_T_in_N=None, skip_init=False):
+        represent_T = seqs_T[0]
+        self.name = name = represent_T.name
+        for seq_T in seqs_T:
+            seq_T.names_N.append(name)
+        self.names_T = [seq_T.name for seq_T in seqs_T]
+        self.string = represent_T.string
 
-        if start_positions and stop_positions:
-            self.start_positions = start_positions
-            self.stop_positions = stop_positions
-        elif (not start_positions) and (not stop_positions):
+        if starts_T_in_N and stops_T_in_N:
+            self.starts_T_in_N = starts_T_in_N
+            self.stops_T_in_N = stops_T_in_N
+        elif not starts_T_in_N and not stops_T_in_N:
             # This is what occurs in `anvi-trnaseq` for the instantiation of
             # `NormalizedFullProfileSequence` and `NormalizedTruncatedProfileSequence` objects. All
-            # trimmed sequences provided as input are aligned from the 3' end. Mapped tRNA sequences
-            # that can be aligned to other places in the normalized sequence are added later.
-            norm_seq_length = len(self.seq_string)
-            self.start_positions = [norm_seq_length - len(trimmed_seq.seq_string) for trimmed_seq in trimmed_seqs]
-            self.stop_positions = [norm_seq_length] * len(trimmed_seqs)
+            # Tp provided as input are aligned from the 3' end. Tm that can be aligned to other
+            # places in N are added later.
+            length_N = len(self.string)
+            self.starts_T_in_N = [length_N - len(seq_T.string) for seq_T in seqs_T]
+            self.stops_T_in_N = [length_N] * len(seqs_T)
         else:
-            self.start_positions = None
-            self.stop_positions = None
+            self.starts_T_in_N = None
+            self.stops_T_in_N = None
 
-        # It is useful to know which modified sequences, if any, contain this normalized sequence. A
-        # normalized sequence with deletions, unlike a normalized sequence without deletions, can
-        # theoretically be assigned to more than one modified sequence.
-        self.mod_seqs = []
+        # It is useful to know which M, if any, contain this N. Though Ni can theoretically be
+        # assigned to multiple M, this is not allowed for simplicity's sake.
+        self.names_M = []
 
         if skip_init:
-            self.specific_read_count = None
-            self.nonspecific_read_count = None
-            self.specific_covs = None
-            self.nonspecific_covs = None
-            self.mean_specific_cov = None
-            self.mean_nonspecific_cov = None
+            self.spec_read_count = None
+            self.nonspec_read_count = None
+            self.spec_covs = None
+            self.nonspec_covs = None
+            self.mean_spec_cov = None
+            self.mean_nonspec_cov = None
         else:
-            self.init()
+            self.init(seqs_T)
 
 
-    def init(self):
-        """Set attributes for a "finalized" set of input trimmed sequences, including those that
-        were added after object instantiation, such as mapped sequences."""
-        # Specific reads are those that are only contained in this normalized sequence.
-        specific_read_count = 0
-        nonspecific_read_count = 0
-        specific_covs = np.zeros(len(self.seq_string), dtype=int)
-        nonspecific_covs = np.zeros(len(self.seq_string), dtype=int)
+    def init(self, seqs_T):
+        """Set attributes for a "finalized" set of input T, potentially including those that were
+        added after object instantiation, such as Tm."""
+        self.names_T = tuple(self.names_T)
 
-        for trimmed_seq, start_pos, stop_pos in zip(self.trimmed_seqs, self.start_positions, self.stop_positions):
-            if len(trimmed_seq.norm_seq_represent_names) == 1:
-                specific_read_count += trimmed_seq.read_count
-                specific_covs[start_pos: stop_pos] += trimmed_seq.read_count
+        # Specific reads are those that are only contained in this N.
+        spec_read_count = 0
+        nonspec_read_count = 0
+        spec_covs = np.zeros(len(self.string), dtype=int)
+        nonspec_covs = np.zeros(len(self.string), dtype=int)
+
+        for seq_T, start_T_in_N, stop_T_in_N in zip(seqs_T, self.starts_T_in_N, self.stops_T_in_N):
+            if len(seq_T.names_N) == 1:
+                spec_read_count += seq_T.read_count
+                spec_covs[start_T_in_N: stop_T_in_N] += seq_T.read_count
             else:
-                nonspecific_read_count += trimmed_seq.read_count
-                nonspecific_covs[start_pos: stop_pos] += trimmed_seq.read_count
+                nonspec_read_count += seq_T.read_count
+                nonspec_covs[start_T_in_N: stop_T_in_N] += seq_T.read_count
 
-        self.specific_read_count = specific_read_count
-        self.nonspecific_read_count = nonspecific_read_count
-        self.specific_covs = specific_covs
-        self.nonspecific_covs = nonspecific_covs
-        self.mean_specific_cov = specific_covs.mean()
-        self.mean_nonspecific_cov = nonspecific_covs.mean()
+        self.spec_read_count = spec_read_count
+        self.nonspec_read_count = nonspec_read_count
+        self.spec_covs = spec_covs
+        self.nonspec_covs = nonspec_covs
+        self.mean_spec_cov = spec_covs.mean()
+        self.mean_nonspec_cov = nonspec_covs.mean()
 
 
 class NormalizedFullProfileSequence(NormalizedSequence):
-    """This object is formed from `TrimmedFullProfileSequence` objects and, optionally,
-    `TrimmedTruncatedProfileSequence` objects that are subsequences of the seed."""
+    """This object is instantiated with `TrimmedFullProfileSequence` objects in the workflow.
+    `TrimmedTruncatedProfileSequence` and `TrimmedMappedSequence` objects are potentially added
+    after instantiation."""
+    # Instances of this class are called `Nf`.
 
     __slots__ = (
-        'feature_start_indices',
-        'feature_stop_indices',
+        'categories_T',
+        'feature_starts',
+        'feature_stops',
+        'contains_anticodon',
         'has_complete_feature_set',
-        'has_his_g',
-        'specific_read_with_extra_fiveprime_count',
-        'nonspecific_read_with_extra_fiveprime_count',
-        'specific_mapped_read_count',
-        'nonspecific_mapped_read_count',
-        'specific_long_fiveprime_extension_dict',
-        'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_threeprime_terminus_count_dict',
-        'nonspecific_read_threeprime_terminus_count_dict'
+        'has_His_G',
+        'spec_read_xtra_5prime_count',
+        'nonspec_read_xtra_5prime_count',
+        'spec_map_seq_count',
+        'nonspec_map_seq_count',
+        'spec_map_read_count',
+        'nonspec_map_read_count',
+        'absent_3prime_terminus_seq_count',
+        'absent_3prime_terminus_read_count',
+        'spec_long_5prime_extension_dict',
+        'nonspec_long_5prime_extension_dict',
+        'spec_read_3prime_terminus_count_dict',
+        'nonspec_read_3prime_terminus_count_dict'
     )
 
-    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
-        super().__init__(trimmed_seqs, start_positions=None, stop_positions=None, skip_init=True)
+    def __init__(self, seqs_T, starts_T_in_N=None, stops_T_in_N=None):
+        super().__init__(seqs_T, starts_T_in_N=None, stops_T_in_N=None, skip_init=True)
 
-        represent_trimmed_seq = self.trimmed_seqs[0]
-        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
-        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
-        self.has_complete_feature_set = represent_trimmed_seq.has_complete_feature_set
-        self.has_his_g = represent_trimmed_seq.has_his_g
-
-        self.specific_read_with_extra_fiveprime_count = None
-        self.nonspecific_read_with_extra_fiveprime_count = None
-        self.specific_mapped_read_count = None
-        self.nonspecific_mapped_read_count = None
-        self.specific_long_fiveprime_extension_dict = None
-        self.nonspecific_long_fiveprime_extension_dict = None
-
-
-    def init(self):
-        """Set attributes for a "finalized" set of input trimmed sequences."""
-        super().init()
-
-        specific_mapped_read_count = 0
-        nonspecific_mapped_read_count = 0
-        specific_read_with_extra_fiveprime_count = 0
-        nonspecific_read_with_extra_fiveprime_count = 0
-        specific_long_fiveprime_extension_dict = defaultdict(int)
-        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_threeprime_terminus_count_dict = defaultdict(int)
-        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
-
-        for trimmed_seq in self.trimmed_seqs:
-            if len(trimmed_seq.norm_seq_represent_names) == 1:
-                if isinstance(trimmed_seq, TrimmedMappedSequence):
-                    specific_mapped_read_count += trimmed_seq.read_count
-                    specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-                    for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                        specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-                else:
-                    for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                        specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
-
-                    if not isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
-                        specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                            specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+        categories_T = []
+        for seq_T in seqs_T:
+            if isinstance(seq_T, TrimmedFullProfileSequence):
+                categories_T.append('Tf')
+            elif isinstance(seq_T, TrimmedTruncatedProfileSequence):
+                categories_T.append('Tc_trna')
             else:
-                if isinstance(trimmed_seq, TrimmedMappedSequence):
-                    nonspecific_mapped_read_count += trimmed_seq.read_count
-                    nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+                raise Exception(f"A trimmed seq ({seq_T.name}) of the unexpected class `{type(seq_T)}` was used to instantiate `Nf`.")
+        self.categories_T = categories_T
+
+        represent_T = seqs_T[0]
+        self.feature_starts = represent_T.feature_starts
+        self.feature_stops = represent_T.feature_stops
+        self.contains_anticodon = represent_T.contains_anticodon
+        self.has_complete_feature_set = represent_T.has_complete_feature_set
+        self.has_His_G = represent_T.has_His_G
+
+        self.spec_read_xtra_5prime_count = None
+        self.nonspec_read_xtra_5prime_count = None
+        self.spec_map_read_count = None
+        self.nonspec_map_read_count = None
+        self.spec_long_5prime_extension_dict = None
+        self.nonspec_long_5prime_extension_dict = None
+        self.spec_read_3prime_terminus_count_dict = None
+        self.nonspec_read_3prime_terminus_count_dict = None
+
+
+    def init(self, seqs_T):
+        """Set attributes for a "finalized" set of input trimmed sequences."""
+        super().init(seqs_T)
+        self.categories_T = tuple(self.categories_T)
+
+        spec_map_seq_count = 0
+        nonspec_map_seq_count = 0
+        spec_map_read_count = 0
+        nonspec_map_read_count = 0
+        absent_3prime_terminus_seq_count = 0
+        absent_3prime_terminus_read_count = 0
+        spec_read_xtra_5prime_count = 0
+        nonspec_read_xtra_5prime_count = 0
+        spec_long_5prime_extension_dict = defaultdict(int)
+        nonspec_long_5prime_extension_dict = defaultdict(int)
+        spec_read_3prime_terminus_count_dict = defaultdict(int)
+        nonspec_read_3prime_terminus_count_dict = defaultdict(int)
+
+        length_N = len(self.string)
+        for seq_T, start_T_in_N, stop_T_in_N in zip(seqs_T, self.starts_T_in_N, self.stops_T_in_N):
+            if len(seq_T.names_N) == 1:
+                if isinstance(seq_T, TrimmedMappedSequence):
+                    spec_map_seq_count += 1
+                    spec_map_read_count += seq_T.read_count
+                    if not PROFILE_ABSENT_3PRIME_TERMINUS:
+                        if start_T_in_N == 0 and stop_T_in_N == length_N:
+                            absent_3prime_terminus_seq_count += 1
+                            absent_3prime_terminus_read_count += seq_T.read_count
+                    spec_read_xtra_5prime_count += seq_T.read_with_xtra_5prime_count
+                    for string_5prime_extension, read_count in seq_T.long_5prime_extension_dict.items():
+                        spec_long_5prime_extension_dict[string_5prime_extension] += read_count
                 else:
-                    for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                        nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
+                    for string_3prime_terminus, read_count in seq_T.read_3prime_terminus_count_dict.items():
+                        spec_read_3prime_terminus_count_dict[string_3prime_terminus] += read_count
 
-                    # Nonspecific, unlike specific, profiled sequences can have 5' sequence
-                    # extensions, as profiled sequences with 5' extensions would span the length of
-                    # the normalized sequence and would thus be specific to it.
-                    if not isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
-                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                            nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
+                    if not isinstance(seq_T, TrimmedTruncatedProfileSequence):
+                        spec_read_xtra_5prime_count += seq_T.read_with_xtra_5prime_count
+                        for string_5prime_extension, read_count in seq_T.long_5prime_extension_dict.items():
+                            spec_long_5prime_extension_dict[string_5prime_extension] += read_count
+            else:
+                if isinstance(seq_T, TrimmedMappedSequence):
+                    nonspec_map_seq_count += 1
+                    nonspec_map_read_count += seq_T.read_count
+                    nonspec_read_xtra_5prime_count += seq_T.read_with_xtra_5prime_count
+                else:
+                    for string_3prime_terminus, read_count in seq_T.read_3prime_terminus_count_dict.items():
+                        nonspec_read_3prime_terminus_count_dict[string_3prime_terminus] += read_count
 
-        self.specific_mapped_read_count = specific_mapped_read_count
-        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
-        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
-        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
-        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
-        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
-        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
+                    if not isinstance(seq_T, TrimmedTruncatedProfileSequence):
+                        nonspec_read_xtra_5prime_count += seq_T.read_with_xtra_5prime_count
+                        for string_5prime_extension, read_count in seq_T.long_5prime_extension_dict.items():
+                            nonspec_long_5prime_extension_dict[string_5prime_extension] += read_count
+
+        self.spec_map_seq_count = spec_map_seq_count
+        self.nonspec_map_seq_count = nonspec_map_seq_count
+        self.spec_map_read_count = spec_map_read_count
+        self.nonspec_map_read_count = nonspec_map_read_count
+        self.absent_3prime_terminus_seq_count = absent_3prime_terminus_seq_count
+        self.absent_3prime_terminus_read_count = absent_3prime_terminus_read_count
+        self.spec_read_xtra_5prime_count = spec_read_xtra_5prime_count
+        self.nonspec_read_xtra_5prime_count = nonspec_read_xtra_5prime_count
+        self.spec_long_5prime_extension_dict = spec_long_5prime_extension_dict
+        self.nonspec_long_5prime_extension_dict = nonspec_long_5prime_extension_dict
+        self.spec_read_3prime_terminus_count_dict = spec_read_3prime_terminus_count_dict
+        self.nonspec_read_3prime_terminus_count_dict = nonspec_read_3prime_terminus_count_dict
 
 
 class NormalizedTruncatedProfileSequence(NormalizedSequence):
     """This object is formed exclusively from `TrimmedTruncatedProfileSequence` objects."""
+    # Instances of this class are called `Nc`.
 
     __slots__ = (
-        'feature_start_indices',
-        'feature_stop_indices',
+        'feature_starts',
+        'feature_stops',
+        'contains_anticodon',
         'trunc_profile_index',
-        'specific_read_threeprime_terminus_count_dict',
-        'nonspecific_read_threeprime_terminus_count_dict'
+        'spec_read_3prime_terminus_count_dict',
+        'nonspec_read_3prime_terminus_count_dict'
     )
 
-    def __init__(self, trimmed_seqs, start_positions=None, stop_positions=None):
-        super().__init__(trimmed_seqs, start_positions=None, stop_positions=None, skip_init=False)
+    def __init__(self, seqs_T, starts_T_in_N=None, stops_T_in_N=None):
+        super().__init__(seqs_T, starts_T_in_N=None, stops_T_in_N=None, skip_init=False)
 
-        represent_trimmed_seq = self.trimmed_seqs[0]
-        self.feature_start_indices = represent_trimmed_seq.feature_start_indices
-        self.feature_stop_indices = represent_trimmed_seq.feature_stop_indices
-        self.trunc_profile_index = represent_trimmed_seq.trunc_profile_index
+        represent_T = seqs_T[0]
+        self.feature_starts = represent_T.feature_starts
+        self.feature_stops = represent_T.feature_stops
+        self.contains_anticodon = represent_T.contains_anticodon
+        self.trunc_profile_index = represent_T.trunc_profile_index
 
-        specific_read_threeprime_terminus_count_dict = defaultdict(int)
-        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
-        for trimmed_seq in self.trimmed_seqs:
-            if len(trimmed_seq.norm_seq_represent_names) == 1:
-                for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                    specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
+        spec_read_3prime_terminus_count_dict = defaultdict(int)
+        nonspec_read_3prime_terminus_count_dict = defaultdict(int)
+        for seq_T in seqs_T:
+            if len(seq_T.names_N) == 1:
+                for string_3prime_terminus, read_count in seq_T.read_3prime_terminus_count_dict.items():
+                    spec_read_3prime_terminus_count_dict[string_3prime_terminus] += read_count
             else:
-                for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                    nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
-        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
-        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
+                for string_3prime_terminus, read_count in seq_T.read_3prime_terminus_count_dict.items():
+                    nonspec_read_3prime_terminus_count_dict[string_3prime_terminus] += read_count
+        self.spec_read_3prime_terminus_count_dict = spec_read_3prime_terminus_count_dict
+        self.nonspec_read_3prime_terminus_count_dict = nonspec_read_3prime_terminus_count_dict
 
 
-class NormalizedDeletionSequence(NormalizedSequence):
-    """This object is generated in the identification of tRNAs with deletions.
-    `NormalizedFullProfileSequence` and `NormalizedTruncatedProfileSequence` objects can be found to
-    contain deletions, invalidating their existing feature profile attributes. This object is
-    created in their stead. Note that the input defunct normalized sequence can contain
-    `TrimmedMappedSequence` objects in addition to `TrimmedFullProfileSequence` and
-    `TrimmedTruncatedProfileSequence` objects."""
+class NormalizedIndelSequence(NormalizedSequence):
+    """This object is formed exclusively from `TrimmedIndelSequence` objects."""
+    # Instances of this class are called `Ni`.
 
     __slots__ = (
-        'defunct_norm_seqs',
-        'mod_seq_del_configs',
-        'start_positions_in_mod_seqs',
-        'norm_seq_del_configs',
-        'mod_seqs_contain_anticodon',
-        'specific_del_covs_in_mod_seqs',
-        'nonspecific_del_covs_in_mod_seqs',
-        'specific_read_with_extra_fiveprime_count',
-        'nonspecific_read_with_extra_fiveprime_count',
-        'specific_mapped_read_count',
-        'nonspecific_mapped_read_count',
-        'specific_long_fiveprime_extension_dict',
-        'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_threeprime_terminus_count_dict',
-        'nonspecific_read_threeprime_terminus_count_dict'
+        'insert_starts_Ni',
+        'insert_starts_M',
+        'insert_lengths',
+        'del_starts_Ni',
+        'del_starts_M',
+        'del_lengths',
+        'contains_anticodon',
+        'spec_insert_covs',
+        'nonspec_insert_covs',
+        'spec_del_covs',
+        'nonspec_del_covs',
+        'spec_read_xtra_5prime_count',
+        'nonspec_read_xtra_5prime_count',
+        'spec_map_read_count',
+        'nonspec_map_read_count',
+        'spec_long_5prime_extension_dict',
+        'nonspec_long_5prime_extension_dict',
+        'spec_read_3prime_terminus_count_dict',
+        'nonspec_read_3prime_terminus_count_dict'
     )
 
-    # The user can specify what defines a long (biological vs. non-templated) 5' extension. This is
-    # set by `TRNASeqDataset`.
-    min_length_of_long_fiveprime_extension = 4
+    def __init__(self,
+                 string,
+                 seqs_T,
+                 starts_T_in_N,
+                 name_M,
+                 insert_starts_Ni,
+                 insert_starts_M,
+                 insert_lengths,
+                 del_starts_Ni,
+                 del_starts_M,
+                 del_lengths,
+                 contains_anticodon):
+        self.name = name = seqs_T[0].name
+        for seq_Ti in seqs_T:
+            seq_Ti.names_N.append(name)
+        self.names_T = [seq_T.name for seq_T in seqs_T]
+        self.string = string
+        self.starts_T_in_N = starts_T_in_N
+        self.names_M = [name_M]
+        self.insert_starts_Ni = insert_starts_Ni
+        self.insert_starts_M = insert_starts_M
+        self.insert_lengths = insert_lengths
+        self.del_starts_Ni = del_starts_Ni
+        self.del_starts_M = del_starts_M
+        self.del_lengths = del_lengths
+        self.contains_anticodon = contains_anticodon
 
-    def __init__(self, seq_string, defunct_norm_seq, mod_seq, del_config, start_pos_in_mod_seq, norm_seq_del_config, contains_anticodon):
-        self.seq_string = seq_string
-        self.trimmed_seqs = defunct_norm_seq.trimmed_seqs
-        self.defunct_norm_seqs = [defunct_norm_seq for _ in self.trimmed_seqs]
-        # Modified sequences are found before normalized sequences with deletions, and so can be
-        # recorded upon instantiation of this object. Currently, the workflow only recognizes
-        # normalized sequences with deletions that derive from a single modified sequence. If
-        # nonspecific assignment to modified sequences were allowed, then each modified sequence can
-        # have different deletion configurations, the normalized sequence can start at different
-        # places in the modified sequence, and, given the modified sequence, the normalized sequence
-        # may or may not contain the anticodon.
-        self.mod_seqs = [mod_seq]
-        self.mod_seq_del_configs = [del_config]
-        self.start_positions_in_mod_seqs = [start_pos_in_mod_seq]
-        self.norm_seq_del_configs = [norm_seq_del_config]
-        self.mod_seqs_contain_anticodon = [contains_anticodon]
 
-
-    def init(self):
-        """Set attributes for a "finalized" set of input trimmed sequences."""
-        # Here is an important note regarding the trimmed sequences comprising this normalized
-        # sequence. The feature profiles of sequences found to have deletions are invalidated, but
-        # trimmed (and unique) sequence profiles are not changed. A key reason for this, beside
-        # convenience, is that a trimmed sequence may be non-specific -- also assigned to another
-        # normalized sequence -- not necessarily with a deletion in the same place. Ideally,
-        # additional information on each trimmed sequence would be recorded as attributes of this
-        # normalized sequence. For example, each trimmed sequence may have a different number of
-        # extra 5' nucleotides in this normalized sequence. Likewise, the unique sequences and reads
-        # comprising the trimmed sequence would have a different number of extra 5' nucleotides.
-
-        # If there is a trimmed profiled sequence equivalent to the normalized sequence with
-        # deletions, adopt its representative name. Otherwise, use the representative name of the
-        # longest trimmed sequence.
-        norm_seq_length = len(self.seq_string)
-        max_trimmed_seq_length = 0
-        for trimmed_seq in self.trimmed_seqs:
-            if isinstance(trimmed_seq, TrimmedMappedSequence):
-                continue
-            trimmed_seq_length = len(trimmed_seq.seq_string)
-            if trimmed_seq_length == norm_seq_length:
-                represent_name = trimmed_seq.represent_name
-                break
-            if trimmed_seq_length > max_trimmed_seq_length:
-                max_trimmed_seq_length = trimmed_seq_length
-                represent_name = trimmed_seq.represent_name
-        self.represent_name = represent_name
-
-        derep_defunct_norm_seqs = []
-        for norm_seq in self.defunct_norm_seqs:
-            for other_norm_seq in derep_defunct_norm_seqs:
-                if norm_seq.represent_name == other_norm_seq.represent_name:
-                    break
+    def init(self, seqs_T, dict_Ui):
+        """Set attributes for a "finalized" set of input Ti."""
+        self.names_T = tuple(self.names_T)
+        self.starts_T_in_N = tuple(self.starts_T_in_N)
+        spec_read_count = 0
+        nonspec_read_count = 0
+        length_Ni = len(self.string)
+        spec_covs = np.zeros(length_Ni, dtype=int)
+        nonspec_covs = np.zeros(length_Ni, dtype=int)
+        insert_starts_Ni = self.insert_starts_Ni
+        insert_stops_Ni = [insert_start + insert_length for insert_start, insert_length in zip(insert_starts_Ni, self.insert_lengths)]
+        spec_insert_covs = np.zeros(len(insert_starts_Ni), dtype=int)
+        nonspec_insert_covs = np.zeros(len(insert_starts_Ni), dtype=int)
+        del_starts_Ni = self.del_starts_Ni
+        spec_del_covs = np.zeros(len(del_starts_Ni), dtype=int)
+        nonspec_del_covs = np.zeros(len(del_starts_Ni), dtype=int)
+        spec_read_xtra_5prime_count = 0
+        nonspec_read_xtra_5prime_count = 0
+        spec_map_read_count = 0
+        nonspec_map_read_count = 0
+        spec_long_5prime_extension_dict = defaultdict(int)
+        nonspec_long_5prime_extension_dict = defaultdict(int)
+        spec_read_3prime_terminus_count_dict = defaultdict(int)
+        nonspec_read_3prime_terminus_count_dict = defaultdict(int)
+        for seq_Ti, start_Ti_in_Ni in zip(seqs_T, self.starts_T_in_N):
+            read_count = seq_Ti.read_count
+            orig_U = dict_Ui[seq_Ti.names_U[0]].orig_U
+            if len(seq_Ti.names_N) == 1:
+                spec_read_count += read_count
+                if seq_Ti.read_with_xtra_5prime_count:
+                    spec_read_xtra_5prime_count += seq_Ti.read_with_xtra_5prime_count
+                if isinstance(orig_U, UniqueMappedSequence):
+                    spec_map_read_count += 1
+                covs = spec_covs
+                insert_covs = spec_insert_covs
+                del_covs = spec_del_covs
+                long_5prime_extension_dict = spec_long_5prime_extension_dict
+                read_3prime_terminus_count_dict = spec_read_3prime_terminus_count_dict
             else:
-                derep_defunct_norm_seqs.append(norm_seq)
+                nonspec_read_count += read_count
+                if seq_Ti.read_with_xtra_5prime_count:
+                    nonspec_read_xtra_5prime_count += seq_Ti.read_with_xtra_5prime_count
+                if isinstance(orig_U, UniqueMappedSequence):
+                    nonspec_map_read_count += 1
+                covs = nonspec_covs
+                insert_covs = nonspec_insert_covs
+                del_covs = nonspec_del_covs
+                long_5prime_extension_dict = nonspec_long_5prime_extension_dict
+                read_3prime_terminus_count_dict = nonspec_read_3prime_terminus_count_dict
 
-        # Affiliate each trimmed sequence with the present rather than the defunct normalized
-        # sequence(s). A trimmed sequence may be part of more than one defunct normalized sequence
-        # converted into the present normalized sequence with deletions.
-        derep_defunct_norm_seq_names = [norm_seq.represent_name for norm_seq in derep_defunct_norm_seqs]
-        trimmed_seq.norm_seq_represent_names = [name for name in trimmed_seq.norm_seq_represent_names if name not in derep_defunct_norm_seq_names] + [represent_name]
+            stop_Ti_in_Ni = start_Ti_in_Ni + len(seq_Ti.string)
+            covs[start_Ti_in_Ni: stop_Ti_in_Ni] += read_count
 
-        # Determine attributes of this object.
-        start_positions = []
-        stop_positions = []
-        specific_read_count = 0
-        nonspecific_read_count = 0
-        specific_covs = np.zeros(norm_seq_length, dtype=int)
-        nonspecific_covs = np.zeros(norm_seq_length, dtype=int)
-        norm_seq_del_configs = self.norm_seq_del_configs
-        specific_del_covs_in_mod_seqs = [np.zeros(len(norm_seq_del_config), dtype=int) for norm_seq_del_config in norm_seq_del_configs]
-        nonspecific_del_covs_in_mod_seqs = [np.zeros(len(norm_seq_del_config), dtype=int) for norm_seq_del_config in norm_seq_del_configs]
-        specific_read_with_extra_fiveprime_count = 0
-        nonspecific_read_with_extra_fiveprime_count = 0
-        specific_mapped_read_count = 0
-        nonspecific_mapped_read_count = 0
-        specific_long_fiveprime_extension_dict = defaultdict(int)
-        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_threeprime_terminus_count_dict = defaultdict(int)
-        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
-        for trimmed_seq, defunct_norm_seq in zip(self.trimmed_seqs, self.defunct_norm_seqs):
-            trimmed_seq_length = len(trimmed_seq.seq_string)
-            trimmed_seq_read_count = trimmed_seq.read_count
-            if isinstance(trimmed_seq, TrimmedMappedSequence):
-                # Find where the mapped sequence was located in the defunct normalized sequence.
-                trimmed_seq_name = trimmed_seq.represent_name
-                for trimmed_seq_index, other_trimmed_seq in enumerate(defunct_norm_seq.trimmed_seqs):
-                    if trimmed_seq_name == other_trimmed_seq.represent_name:
-                        defunct_start_pos = defunct_norm_seq.start_positions[trimmed_seq_index]
-                        defunct_stop_pos = defunct_norm_seq.stop_positions[trimmed_seq_index]
-                        break
-                # If the normalized sequence with deletions has extra 5' bases relative to the
-                # defunct normalized sequence, then start and stop positions of the trimmed
-                # sequences decrease.
-                pos_shift = len(defunct_norm_seq.seq_string) - norm_seq_length
-                if defunct_start_pos + pos_shift <= 0:
-                    start_pos = 0
-                else:
-                    start_pos = defunct_start_pos + pos_shift
-                start_positions.append(start_pos)
-                stop_pos = defunct_stop_pos + pos_shift
-                stop_positions.append(stop_pos)
+            insert_index = 0
+            for insert_start, insert_stop in zip(insert_starts_Ni, insert_stops_Ni):
+                if start_Ti_in_Ni <= insert_start and stop_Ti_in_Ni >= insert_stop:
+                    insert_covs[insert_index] += read_count
+                insert_index += 1
 
-                if len(trimmed_seq.norm_seq_represent_names) == 1:
-                    specific_read_count += trimmed_seq_read_count
-                    specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
-                    for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
-                        for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
-                            # A trimmed sequence covering the deletion must start at or before the
-                            # 5' nucleotide adjacent to the deletion and a stop position at or after
-                            # the 3' nucleotide adjacent to the deletion.
-                            if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
-                                specific_del_covs[del_index] += trimmed_seq_read_count
-                    specific_mapped_read_count += trimmed_seq_read_count
-                    if defunct_start_pos + pos_shift < 0:
-                        specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
-                        if -defunct_start_pos - pos_shift >= self.min_length_of_long_fiveprime_extension:
-                            specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                else:
-                    nonspecific_read_count += trimmed_seq_read_count
-                    nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
-                    for nonspecific_del_covs, norm_seq_del_config in zip(nonspecific_del_covs_in_mod_seqs, norm_seq_del_configs):
-                        for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
-                            if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
-                                nonspecific_del_covs[del_index] += trimmed_seq_read_count
-                    nonspecific_mapped_read_count += trimmed_seq_read_count
-                    if defunct_start_pos + pos_shift < 0:
-                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
-                        if -defunct_start_pos - pos_shift >= self.min_length_of_long_fiveprime_extension:
-                            nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                continue
+            for del_index, del_start in enumerate(del_starts_Ni):
+                if start_Ti_in_Ni <= del_start and stop_Ti_in_Ni > del_start + 1:
+                    del_covs[del_index] += read_count
 
-            # Profiled trimmed sequences are still anchored to the 3' end of the normalized
-            # sequence.
-            if trimmed_seq_length >= norm_seq_length:
-                start_pos = 0
-                start_positions.append(start_pos)
-            else:
-                start_pos = norm_seq_length - trimmed_seq_length
-                start_positions.append(start_pos)
-            stop_pos = norm_seq_length
-            stop_positions.append(stop_pos)
+            for string_5prime, extension_read_count in seq_Ti.long_5prime_extension_dict.items():
+                long_5prime_extension_dict[string_5prime] += extension_read_count
 
-            if len(trimmed_seq.norm_seq_represent_names) == 1:
-                specific_read_count += trimmed_seq_read_count
-                specific_covs[start_pos: stop_pos] += trimmed_seq_read_count
-                for specific_del_covs, norm_seq_del_config in zip(specific_del_covs_in_mod_seqs, norm_seq_del_configs):
-                    for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
-                        if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
-                            specific_del_covs[del_index] += trimmed_seq_read_count
-                if trimmed_seq_length > norm_seq_length:
-                    specific_read_with_extra_fiveprime_count += trimmed_seq_read_count
-                    if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
-                        specific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                for threeprime_terminus_seq_string, threeprime_terminus_read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                    specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += threeprime_terminus_read_count
-            else:
-                nonspecific_read_count += trimmed_seq_read_count
-                nonspecific_covs[start_pos: stop_pos] += trimmed_seq_read_count
-                for nonspecific_del_covs, norm_seq_del_config in zip(nonspecific_del_covs_in_mod_seqs, norm_seq_del_configs):
-                    for del_index, adjacent_fiveprime_pos in enumerate(norm_seq_del_config):
-                        if start_pos <= adjacent_fiveprime_pos and stop_pos >= adjacent_fiveprime_pos + 1:
-                            nonspecific_del_covs[del_index] += trimmed_seq_read_count
-                if trimmed_seq_length > norm_seq_length:
-                    nonspecific_read_with_extra_fiveprime_count += trimmed_seq_read_count
-                    if trimmed_seq_length - norm_seq_length >= self.min_length_of_long_fiveprime_extension:
-                        nonspecific_long_fiveprime_extension_dict[trimmed_seq.seq_string] = trimmed_seq_read_count
-                for threeprime_terminus_seq_string, threeprime_terminus_read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                    nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += threeprime_terminus_read_count
-
-        # Record the new start and stop positions of the trimmed sequences.
-        self.start_positions = start_positions
-        self.stop_positions = stop_positions
-        self.specific_read_count = specific_read_count
-        self.nonspecific_read_count = nonspecific_read_count
-        self.specific_covs = specific_covs
-        self.nonspecific_covs = nonspecific_covs
-        self.specific_del_covs_in_mod_seqs = specific_del_covs_in_mod_seqs
-        self.nonspecific_del_covs_in_mod_seqs = nonspecific_del_covs_in_mod_seqs
-        self.mean_specific_cov = specific_covs.mean()
-        self.mean_nonspecific_cov = nonspecific_covs.mean()
-        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
-        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
-        self.specific_mapped_read_count = specific_mapped_read_count
-        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
-        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
-        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
-        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
-
-        # Store a uniqued list of defunct normalized sequences.
-        self.defunct_norm_seqs = derep_defunct_norm_seqs
+            for string_3prime, terminus_read_count in seq_Ti.read_3prime_terminus_count_dict.items():
+                read_3prime_terminus_count_dict[string_3prime] += terminus_read_count
+        self.spec_read_count = spec_read_count
+        self.nonspec_read_count = nonspec_read_count
+        self.spec_covs = spec_covs
+        self.nonspec_covs = nonspec_covs
+        self.mean_spec_cov = spec_covs.mean()
+        self.mean_nonspec_cov = nonspec_covs.mean()
+        self.spec_insert_covs = spec_insert_covs
+        self.nonspec_insert_covs = nonspec_insert_covs
+        self.spec_del_covs = spec_del_covs
+        self.nonspec_del_covs = nonspec_del_covs
+        self.spec_read_xtra_5prime_count = spec_read_xtra_5prime_count
+        self.nonspec_read_xtra_5prime_count = nonspec_read_xtra_5prime_count
+        self.spec_map_read_count = spec_map_read_count
+        self.nonspec_map_read_count = nonspec_map_read_count
+        self.spec_long_5prime_extension_dict = spec_long_5prime_extension_dict
+        self.nonspec_long_5prime_extension_dict = nonspec_long_5prime_extension_dict
+        self.spec_read_3prime_terminus_count_dict = spec_read_3prime_terminus_count_dict
+        self.nonspec_read_3prime_terminus_count_dict = nonspec_read_3prime_terminus_count_dict
 
 
 class ModifiedSequence(object):
-    """A tRNA sequence with sites of predicted modification-induced substitutions and deletions,
-    formed from normalized sequences with distinct patterns of these mutations.
+    """This object represents a tRNA sequence with sites of predicted potential mod-induced subs
+    and, optionally, indels.
 
-    The `anvi-trnaseq` workflow aggregates similar normalized sequences and processes the resulting
-    clusters to produce clusters of normalized sequences distinguished by potential
-    modification-induced substitutions (3-4 different nucleotides at one or more aligned positions).
-    A modified sequence is initialized with a list of clustered normalized sequences, with the first
-    sequence in the list being the longest, or tied for longest, and substitution positions indexed
-    relative to this longest sequence. The workflow later finds sequences with modification-induced
-    deletions (which occur in the vicinity of substitutions) and adds them to the modified
-    sequences. After adding sequences with deletions, the workflow calls `init` to calculate
-    coverages and other information.
+    The `anvi-trnaseq` workflow aggregates similar Nf. The aggregations are decomposed into clusters
+    of Nf distinguished by potential mod-induced subs (3-4 different nts at ≥1 aligned positions). M
+    is instantiated with the list of Nf, with the first Nf being longest or tied for longest.
+    Corresponding lists of Nf sub positions in M are required. The workflow later finds Ni and adds
+    them to M. Lists of indel positions in M and indel lengths are needed. The `init` method of M is
+    called to calculate coverages and other information from nts, subs, and indels, if present.
 
-    The workflow currently requires that a normalized sequence with deletions must be assigned to
-    only one modified sequence. In other words, if the normalized sequence with deletions can be
-    found through the introduction of in silico deletions in multiple modified sequences, then the
-    sequence is disregarded.
+    The workflow requires that Ni be assigned to 1 M for simplicity's sake. If the same Ni can arise
+    from indels in multiple M, then Ni is disregarded.
 
-    EXAMPLE:
-    Consider E. coli tRNA-Ala-GGC-1-1, with detected modifications at positions 17 and 46. As seen
-    in the normalized sequence example, the first sequence is the normalized sequence with unmutated
-    nucleotides. The next set of sequences are other possible normalized sequences with
-    modification-induced substitutions. The last set of sequences are possible normalized sequences
-    with modification-induced deletions.
+    M EXAMPLE:
+    Consider E. coli tRNA-Ala-GGC-1-1, with detected mods at positions 17 and 46. As seen in the N
+    example, the first sequence is the N with unmutated nucleotides. The next set of N include
+    possible mod-induced subs. The next set of N are Ni with insertions, and the last set are Ni
+    with deletions.
 
                      |                              |
     GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGAG G TCAGCGGTTCGATCCCGCTTAGCTCCA
@@ -973,343 +1040,310 @@ class ModifiedSequence(object):
               CTCAGC G GGGAGAGCGCTTGCATGGCATGCAAGAG G TCAGCGGTTCGATCCCGCTTAGCTCCA
                                     CATGGCATGCAAGAG T TCAGCGGTTCGATCCCGCTTAGCTCCA
 
-    GGGGCTATAGCTCAGC A GGGAGAGCGCTTGCATGGCATGCAAGAG - TCAGCGGTTCGATCCCGCTTAGCTCCA
-    GGGGCTATAGCTCAGC A GGGAGAGCGCTTGCATGGCATGCAAGA- - TCAGCGGTTCGATCCCGCTTAGCTCCA
-    GGGGCTATAGCTCAGC A GGGAGAGCGCTTGCATGGCATGCAAGA- G TCAGCGGTTCGATCCCGCTTAGCTCCA
+    GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGAGAG TCAGCGGTTCGATCCCGCTTAGCTCCA
+    GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGAGGG TCAGCGGTTCGATCCCGCTTAGCTCCA
+    GGGGCTATAGCTCAGC A GGGAGAGCGCTTGCATGGCATGCAAGAGGAATCAGCGGTTCGATCCCGCTTAGCTCCA
+
+    GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGAG - TCAGCGGTTCGATCCCGCTTAGCTCCA
+    GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGA- - TCAGCGGTTCGATCCCGCTTAGCTCCA
+    GGGGCTATAGCTCAGC T GGGAGAGCGCTTGCATGGCATGCAAGA- G TCAGCGGTTCGATCCCGCTTAGCTCCA
     """
 
     __slots__ = (
-        'norm_seqs_without_dels',
+        'names_Nb',
         'sub_positions',
-        'represent_name',
-        'norm_seqs_with_dels',
-        'del_configs',
-        'specific_read_count',
-        'nonspecific_read_count',
-        'specific_mapped_read_count',
-        'nonspecific_mapped_read_count',
-        'specific_read_with_extra_fiveprime_count',
-        'nonspecific_read_with_extra_fiveprime_count',
-        'specific_long_fiveprime_extension_dict',
-        'nonspecific_long_fiveprime_extension_dict',
-        'specific_read_threeprime_terminus_count_dict',
-        'nonspecific_read_threeprime_terminus_count_dict',
-        'specific_covs',
-        'nonspecific_covs',
-        'mean_specific_cov',
-        'mean_nonspecific_cov',
-        'specific_sub_covs',
-        'nonspecific_sub_covs',
-        'specific_del_covs',
-        'nonspecific_del_covs',
-        'consensus_seq_string'
+        'name',
+        'length',
+        'names_Ni',
+        'starts_Ni_in_M',
+        'insert_starts',
+        'insert_strings',
+        'del_starts',
+        'del_lengths',
+        'spec_read_count',
+        'nonspec_read_count',
+        'spec_map_read_count',
+        'nonspec_map_read_count',
+        'spec_read_xtra_5prime_count',
+        'nonspec_read_xtra_5prime_count',
+        'spec_long_5prime_extension_dict',
+        'nonspec_long_5prime_extension_dict',
+        'spec_read_3prime_terminus_count_dict',
+        'nonspec_read_3prime_terminus_count_dict',
+        'spec_covs',
+        'nonspec_covs',
+        'mean_spec_cov',
+        'mean_nonspec_cov',
+        'spec_sub_covs',
+        'nonspec_sub_covs',
+        'spec_insert_covs',
+        'nonspec_insert_covs',
+        'spec_del_covs',
+        'nonspec_del_covs',
+        'consensus_string'
     )
 
-    def __init__(self, norm_seqs_without_dels, sub_positions):
-        self.norm_seqs_without_dels = norm_seqs_without_dels
+    def __init__(self, seqs_Nb, sub_positions):
+        self.names_Nb = [seq_Nb.name for seq_Nb in seqs_Nb]
         self.sub_positions = sub_positions
-        # A normalized sequence without modification-induced deletions can only be assigned to one
-        # modified sequence.
-        for norm_seq in norm_seqs_without_dels:
-            norm_seq.mod_seqs.append(self)
-        self.represent_name = norm_seqs_without_dels[0].represent_name
-
-        self.norm_seqs_with_dels = []
-        # The deletion configurations of normalized sequences with deletions are recorded in the
-        # modified sequence rather than the normalized sequences, because the positions of the
-        # deletions correspond to nucleotides in the modified sequence.
-        self.del_configs = []
-        self.specific_read_count = None
-        self.nonspecific_read_count = None
-        self.specific_mapped_read_count = None
-        self.nonspecific_mapped_read_count = None
-        self.specific_read_with_extra_fiveprime_count = None
-        self.nonspecific_read_with_extra_fiveprime_count = None
-        self.specific_long_fiveprime_extension_dict = None
-        self.nonspecific_long_fiveprime_extension_dict = None
-        self.specific_read_threeprime_terminus_count_dict = None
-        self.nonspecific_read_threeprime_terminus_count_dict = None
-        self.specific_covs = None
-        self.nonspecific_covs = None
-        self.mean_specific_cov = None
-        self.mean_nonspecific_cov = None
-        self.specific_sub_covs = None
-        self.nonspecific_sub_covs = None
-        # Currently, each normalized sequence with deletions can only be derived from a single
-        # modified sequence, so trimmed sequences specific to a normalized sequence with deletions
-        # must also be specific to the modified sequence. This allows specific deletion coverages to
-        # be determined. Nonspecific deletion coverages are not determined, because a nonspecific
-        # trimmed sequence may occur in multiple normalized sequences with deletions that are
-        # assigned to the same modified sequence.
-        self.specific_del_covs = None
-        self.nonspecific_del_covs = None
-        self.consensus_seq_string = None
+        self.name = name = self.names_Nb[0]
+        for seq_Nb in seqs_Nb:
+            seq_Nb.names_M.append(name)
+        self.length = len(seqs_Nb[0].string)
+        self.names_Ni = tuple()
+        self.starts_Ni_in_M = tuple()
+        self.insert_starts = None
+        self.insert_strings = None
+        self.del_starts = None
+        self.del_lengths = None
+        self.spec_read_count = None
+        self.nonspec_read_count = None
+        self.spec_map_read_count = None
+        self.nonspec_map_read_count = None
+        self.spec_read_xtra_5prime_count = None
+        self.nonspec_read_xtra_5prime_count = None
+        self.spec_long_5prime_extension_dict = None
+        self.nonspec_long_5prime_extension_dict = None
+        self.spec_read_3prime_terminus_count_dict = None
+        self.nonspec_read_3prime_terminus_count_dict = None
+        self.spec_covs = None
+        self.nonspec_covs = None
+        self.mean_spec_cov = None
+        self.mean_nonspec_cov = None
+        self.spec_sub_covs = None
+        self.nonspec_sub_covs = None
+        self.spec_insert_covs = None
+        self.nonspec_insert_covs = None
+        self.spec_del_covs = None
+        self.nonspec_del_covs = None
+        self.consensus_string = None
 
 
-    def init(self):
-        """Set attributes for a "finalized" set of input `NormalizedSeq` objects, some of which may
-        contain deletions."""
-        norm_seqs_without_dels = self.norm_seqs_without_dels
-        norm_seqs_with_dels = self.norm_seqs_with_dels
-        all_norm_seqs = norm_seqs_without_dels + norm_seqs_with_dels
-        del_configs = self.del_configs
-        specific_mapped_read_count = 0
-        nonspecific_mapped_read_count = 0
-        specific_read_count = 0
-        nonspecific_read_count = 0
-        specific_read_with_extra_fiveprime_count = 0
-        nonspecific_read_with_extra_fiveprime_count = 0
-        specific_long_fiveprime_extension_dict = defaultdict(int)
-        nonspecific_long_fiveprime_extension_dict = defaultdict(int)
-        specific_read_threeprime_terminus_count_dict = defaultdict(int)
-        nonspecific_read_threeprime_terminus_count_dict = defaultdict(int)
+    def init(self, seqs_Nb, seqs_Ni):
+        """Set attributes for a "finalized" set of input Ns and Ni objects."""
+        self.names_Nb = tuple(self.names_Nb)
 
-        mod_seq_len = len(norm_seqs_without_dels[0].seq_string)
-        norm_seq_specific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
-        norm_seq_nonspecific_covs = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
-        num_subs = len(self.sub_positions)
-        self.specific_sub_covs = specific_sub_covs = np.zeros((num_subs, len(UNAMBIG_NTS)), dtype=int)
-        self.nonspecific_sub_covs = nonspecific_sub_covs = np.zeros((num_subs, len(UNAMBIG_NTS)), dtype=int)
+        spec_read_count = 0
+        nonspec_read_count = 0
+        spec_map_read_count = 0
+        nonspec_map_read_count = 0
+        spec_read_xtra_5prime_count = 0
+        nonspec_read_xtra_5prime_count = 0
+        spec_long_5prime_extension_dict = defaultdict(int)
+        nonspec_long_5prime_extension_dict = defaultdict(int)
+        spec_read_3prime_terminus_count_dict = defaultdict(int)
+        nonspec_read_3prime_terminus_count_dict = defaultdict(int)
+        length_M = self.length
+        spec_covs_M = np.zeros(length_M, dtype=int)
+        nonspec_covs_M = np.zeros(length_M, dtype=int)
 
-        del_positions = sorted(set([i for del_config in del_configs for i in del_config]))
-        self.specific_del_covs = specific_del_covs = np.zeros(len(del_positions), dtype=int)
-        # Nonspecific deletion coverages are not currently calculated.
-        self.nonspecific_del_covs = nonspecific_del_covs = np.zeros(len(del_positions), dtype=int)
 
-        # Trimmed sequences may be shared among the normalized sequences comprising the modified
-        # sequence. Therefore, most of the processing involves the analysis of trimmed sequences.
-        processed_trimmed_seq_names = []
-        all_norm_seq_names = []
-        for norm_seq in all_norm_seqs:
-            all_norm_seq_names.append(norm_seq.represent_name)
-        all_norm_seq_names = [norm_seq.represent_name for norm_seq in all_norm_seqs]
+        # Find the read counts of different types of seqs composing M.
+        for seq_N in seqs_Nb + seqs_Ni:
+            spec_read_count += seq_N.spec_read_count
+            nonspec_read_count += seq_N.nonspec_read_count
+            spec_map_read_count += seq_N.spec_map_read_count
+            nonspec_map_read_count += seq_N.nonspec_map_read_count
+            spec_read_xtra_5prime_count += seq_N.spec_read_xtra_5prime_count
+            nonspec_read_xtra_5prime_count += seq_N.nonspec_read_xtra_5prime_count
+            for string_5prime, read_count in seq_N.spec_long_5prime_extension_dict.items():
+                spec_long_5prime_extension_dict[string_5prime] += read_count
+            for string_5prime, read_count in seq_N.nonspec_long_5prime_extension_dict.items():
+                nonspec_long_5prime_extension_dict[string_5prime] += read_count
+            for string_3prime, read_count in seq_N.spec_read_3prime_terminus_count_dict.items():
+                spec_read_3prime_terminus_count_dict[string_3prime] += read_count
+            for string_3prime, read_count in seq_N.nonspec_read_3prime_terminus_count_dict.items():
+                nonspec_read_3prime_terminus_count_dict[string_3prime] += read_count
 
-        # Process sequences without deletions.
-        for i, norm_seq in enumerate(norm_seqs_without_dels):
-            norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string)
 
-            for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-                if trimmed_seq.represent_name in processed_trimmed_seq_names:
+        # Find the covs of subs in Nb.
+        sub_positions = self.sub_positions
+        spec_sub_covs = np.zeros((len(sub_positions), len(UNAMBIG_NTS)), dtype=int)
+        nonspec_sub_covs = np.zeros((len(sub_positions), len(UNAMBIG_NTS)), dtype=int)
+
+        reverse_sub_positions = sub_positions[::-1]
+        for seq_Nb in seqs_Nb:
+            # N are aligned with the 3' end of M.
+            start_Nb_in_M = length_M - len(seq_Nb.string)
+            spec_covs_M[start_Nb_in_M: ] += seq_Nb.spec_covs
+            nonspec_covs_M[start_Nb_in_M: ] += seq_Nb.nonspec_covs
+
+            # Find the covs of subs in Nb. Loop through subs from the 3' end of Nb and M.
+            string_Nb = seq_Nb.string
+            spec_covs_Nb = seq_Nb.spec_covs
+            nonspec_covs_Nb = seq_Nb.nonspec_covs
+            for sub_index, sub_pos_M in enumerate(reverse_sub_positions, 1):
+                if sub_pos_M < start_Nb_in_M:
+                    # Remaining subs are 5' of Nb.
+                    break
+                sub_pos_Nb = sub_pos_M - start_Nb_in_M
+                nt_col = NT_INT_DICT[string_Nb[sub_pos_Nb]] - 1
+                spec_sub_covs[-sub_index, nt_col] += spec_covs_Nb[sub_pos_Nb]
+                nonspec_sub_covs[-sub_index, nt_col] += nonspec_covs_Nb[sub_pos_Nb]
+
+
+        # Find the covs of M positions, subs, and indels.
+        insert_covs_dict = {}
+        del_covs_dict = {}
+        for seq_Ni, start_Ni_in_M in zip(seqs_Ni, self.starts_Ni_in_M):
+            # Find insertion covs in Ni.
+            for insert_Ni_start, insert_M_start, insert_length, spec_insert_cov, nonspec_insert_cov in zip(seq_Ni.insert_starts_Ni,
+                                                                                                           seq_Ni.insert_starts_M,
+                                                                                                           seq_Ni.insert_lengths,
+                                                                                                           seq_Ni.spec_insert_covs,
+                                                                                                           seq_Ni.nonspec_insert_covs):
+                try:
+                    insert_covs = insert_covs_dict[(insert_M_start, seq_Ni.string[insert_Ni_start: insert_Ni_start + insert_length])]
+                    insert_covs[0] += spec_insert_cov
+                    insert_covs[1] += nonspec_insert_cov
+                except KeyError:
+                    insert_covs_dict[(insert_M_start, seq_Ni.string[insert_Ni_start: insert_Ni_start + insert_length])] = np.array((spec_insert_cov, nonspec_insert_cov))
+
+            # Find deletion covs in Ni.
+            for del_M_start, del_length, spec_del_cov, nonspec_del_cov in zip(seq_Ni.del_starts_M,
+                                                                              seq_Ni.del_lengths,
+                                                                              seq_Ni.spec_del_covs,
+                                                                              seq_Ni.nonspec_del_covs):
+                try:
+                    del_covs = del_covs_dict[(del_M_start, del_length)]
+                    del_covs[0] += spec_del_cov
+                    del_covs[1] += nonspec_del_cov
+                except KeyError:
+                    del_covs_dict[(del_M_start, del_length)] = np.array((spec_del_cov, nonspec_del_cov))
+
+            # Find nt and sub covs in Ni. Loop through each nt of Ni to account for the positions of
+            # indels, a more complex process than that used for Nb.
+            string_Ni = seq_Ni.string
+            spec_covs_Ni = seq_Ni.spec_covs
+            nonspec_covs_Ni = seq_Ni.nonspec_covs
+
+            # Make an iterator of the positions of inserted nts in Ni.
+            iter_Ni_insert_positions = iter(chain.from_iterable(
+                [range(insert_start, insert_start + insert_length)
+                 for insert_start, insert_length in zip(seq_Ni.insert_starts_Ni, seq_Ni.insert_lengths)]))
+            try:
+                next_Ni_insert_pos = next(iter_Ni_insert_positions)
+            except StopIteration:
+                next_Ni_insert_pos = -1
+
+            # Make iterators of the positions and lengths of deletions in Ni.
+            iter_Ni_del_positions = iter([del_Ni_start + 1 for del_Ni_start in seq_Ni.del_starts_Ni])
+            iter_Ni_del_lengths = iter(seq_Ni.del_lengths)
+            try:
+                next_Ni_del_pos = next(iter_Ni_del_positions)
+                next_Ni_del_length = next(iter_Ni_del_lengths)
+            except StopIteration:
+                next_Ni_del_pos = -1
+                next_Ni_del_length = -1
+
+            nt_pos_M = start_Ni_in_M
+            sub_index = bisect_left(sub_positions, start_Ni_in_M)
+            iter_M_sub_positions = iter(sub_positions[sub_index: ])
+            try:
+                next_M_sub_pos = next(iter_M_sub_positions)
+            except StopIteration:
+                next_M_sub_pos = MAXSIZE
+            for nt_pos_Ni, nt in enumerate(string_Ni):
+                if nt_pos_Ni == next_Ni_insert_pos:
+                    try:
+                        next_Ni_insert_pos = next(iter_Ni_insert_positions)
+                    except StopIteration:
+                        next_Ni_insert_pos = -1
+                    # Since insertions are not nts in M, do not increment the nt position in M.
                     continue
 
-                # Determine whether the reads constituting the trimmed sequence are specific to the
-                # modified sequence or are found in other normalized sequences outside the modified
-                # sequence.
-                if len(trimmed_seq.norm_seq_represent_names) == 1:
-                    is_trimmed_seq_specific_to_mod_seq = True
-                else:
-                    # The trimmed sequence is specific to this modified sequence if it is unique to a
-                    # set of normalized sequences that are all part of this modified sequence.
-                    for norm_seq_containing_trimmed_seq_name in trimmed_seq.norm_seq_represent_names:
-                        if norm_seq_containing_trimmed_seq_name not in all_norm_seq_names:
-                            is_trimmed_seq_specific_to_mod_seq = False
+                if nt_pos_Ni == next_Ni_del_pos:
+                    # Increment the nt position in M by the size of the del.
+                    nt_pos_M += next_Ni_del_length
+                    try:
+                        next_Ni_del_pos = next(iter_Ni_del_positions)
+                        next_Ni_del_length = next(iter_Ni_del_lengths)
+                    except StopIteration:
+                        next_Ni_del_pos = -1
+                        next_Ni_del_length = -1
+                    while nt_pos_M > next_M_sub_pos:
+                        # The del contained a sub. Find the position of the next sub after the del.
+                        try:
+                            next_M_sub_pos = next(iter_M_sub_positions)
+                            sub_index += 1
+                        except StopIteration:
                             break
-                    else:
-                        is_trimmed_seq_specific_to_mod_seq = True
+                    nt_pos_M += 1
+                    continue
 
-                trimmed_seq_start_in_mod_seq = norm_seq_start_in_mod_seq + trimmed_seq_start_in_norm_seq
-                trimmed_seq_stop_in_mod_seq = trimmed_seq_start_in_mod_seq + len(trimmed_seq.seq_string)
-                trimmed_seq_class_name = type(trimmed_seq).__name__
-                if is_trimmed_seq_specific_to_mod_seq:
-                    specific_read_count += trimmed_seq.read_count
-
-                    if trimmed_seq_class_name == 'TrimmedMappedSequence':
-                        specific_mapped_read_count += trimmed_seq.read_count
-                    else:
-                        for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                            specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
-
-                    if trimmed_seq_class_name != 'TrimmedTruncatedProfileSequence':
-                        specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-
-                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                            specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-
-                    norm_seq_specific_covs[i, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
+                # To make it to this point, the position is not an indel.
+                if nt_pos_M == next_M_sub_pos:
+                    spec_cov_Ni = spec_covs_Ni[nt_pos_Ni]
+                    nonspec_cov_Ni = nonspec_covs_Ni[nt_pos_Ni]
+                    spec_covs_M[nt_pos_M] += spec_cov_Ni
+                    nonspec_covs_M[nt_pos_M] += nonspec_cov_Ni
+                    nt_col = NT_INT_DICT[string_Ni[nt_pos_Ni]] - 1
+                    spec_sub_covs[sub_index, nt_col] += spec_cov_Ni
+                    nonspec_sub_covs[sub_index, nt_col] += nonspec_cov_Ni
+                    try:
+                        next_M_sub_pos = next(iter_M_sub_positions)
+                        sub_index += 1
+                    except StopIteration:
+                        next_M_sub_pos = -1
                 else:
-                    nonspecific_read_count += trimmed_seq.read_count
+                    spec_covs_M[nt_pos_M] += seq_Ni.spec_covs[nt_pos_Ni]
+                    nonspec_covs_M[nt_pos_M] += seq_Ni.nonspec_covs[nt_pos_Ni]
 
-                    if trimmed_seq_class_name == 'TrimmedMappedSequence':
-                        nonspecific_mapped_read_count += trimmed_seq.read_count
+                nt_pos_M += 1
 
-                        # Only mapped nonspecific sequences can have 5' extensions, as profiled
-                        # sequences with 5' extensions would span the length of the modified
-                        # sequence and would thus be specific to it.
-                        nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
+        # Record the positions, lengths, and coverages of insertions in M.
+        insert_starts = []
+        insert_strings = []
+        spec_insert_covs = []
+        nonspec_insert_covs = []
+        for insert_config, insert_covs in sorted(insert_covs_dict.items()):
+            insert_starts.append(insert_config[0])
+            insert_strings.append(insert_config[1])
+            spec_insert_covs.append(insert_covs[0])
+            nonspec_insert_covs.append(insert_covs[1])
 
-                        for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-                            nonspecific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-                    else:
-                        for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                            nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
+        # Record the positions, lengths, and coverages of deletions in M.
+        del_starts = []
+        del_lengths = []
+        spec_del_covs = []
+        nonspec_del_covs = []
+        for del_config, del_covs in sorted(del_covs_dict.items()):
+            del_starts.append(del_config[0])
+            del_lengths.append(del_config[1])
+            spec_del_covs.append(del_covs[0])
+            nonspec_del_covs.append(del_covs[1])
 
-                    norm_seq_nonspecific_covs[i, trimmed_seq_start_in_mod_seq: trimmed_seq_stop_in_mod_seq] += trimmed_seq.read_count
+        # Set a consensus seq using the nts with the highest specific cov at each sub position.
+        consensus_string = seqs_Nb[0].string
+        for sub_pos, sub_nt_covs in zip(sub_positions, spec_sub_covs):
+            nt_int = sub_nt_covs.argmax() + 1
+            consensus_string = consensus_string[: sub_pos] + INT_NT_DICT[nt_int] + consensus_string[sub_pos + 1: ]
 
-                processed_trimmed_seq_names.append(trimmed_seq.represent_name)
-
-        # Find deletion site coverages *assuming* that each normalized sequence with
-        # deletions is only derived from this modified sequence.
-        del_pos_index_dict = {del_pos: del_index for del_index, del_pos in enumerate(del_positions)}
-        for norm_seq in self.norm_seqs_with_dels:
-            for norm_seq_del_config, mod_seq_del_config, norm_seq_specific_del_covs in zip(norm_seq.norm_seq_del_configs, norm_seq.mod_seq_del_configs, norm_seq.specific_del_covs_in_mod_seqs):
-                # The normalized sequence with deletions is aligned with the modified sequence at
-                # the 3' end. If the normalized sequence is shorter than the modified sequence, then
-                # it may be missing some deletion positions toward the 5' end.
-                for mod_seq_del_pos, norm_seq_specific_del_cov in zip(mod_seq_del_config[-len(norm_seq_del_config): ], norm_seq_specific_del_covs):
-                    del_index = del_pos_index_dict[mod_seq_del_pos]
-                    specific_del_covs[del_index] += norm_seq_specific_del_cov
-
-        # The following commented code was a sketch of how normalized sequences with deletions
-        # derived from multiple mdoified sequences can be handled. Currently, normalized sequences
-        # with deletions do not contribute to modified sequence coverage. Again, trimmed sequences
-        # can be nonspecific to the normalized sequence. They can be found at the same time in
-        # normalized sequences both with and without deletions. If a trimmed sequence contains a
-        # deletion, its feature profile is invalidated, but an alternate profile is not assigned.
-
-        # Make an array of aligned nucleotides from all normalized sequences.
-        # norm_seq_array = np.zeros((len(all_norm_seqs), mod_seq_len), dtype=int)
-        # for i, norm_seq in enumerate(norm_seqs_without_dels):
-        #     norm_seq_array[i, mod_seq_len - len(norm_seq.seq_string): ] += [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
-
-        # nt_positions_covered_by_norm_seqs_with_dels = []
-        # i = len(norm_seqs_without_dels)
-        # for norm_seq, del_config in zip(norm_seqs_with_dels, del_configs):
-        #     aligned_seq = [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
-        #     # Insert a 0 (no nucleotide) at each deletion position in the alignment.
-        #     for del_pos in del_config:
-        #         aligned_seq.insert(del_pos, 0)
-        #     norm_seq_start_in_mod_seq = mod_seq_len - len(aligned_seq)
-        #     norm_seq_array[i, norm_seq_start_in_mod_seq: ] += aligned_seq
-
-        #     covered_nt_positions = []
-        #     for j, nt_int in enumerate(aligned_seq, norm_seq_start_in_mod_seq):
-        #         if nt_int != 0:
-        #             covered_nt_positions.append(j)
-        #     nt_positions_covered_by_norm_seqs_with_dels.append(covered_nt_positions)
-        #     i += 1
-
-        # # Process normalized sequences with deletions.
-        # i = len(norm_seqs_without_dels)
-        # for norm_seq, del_config, nt_positions_covered_by_norm_seq in zip(norm_seqs_with_dels, del_configs, nt_positions_covered_by_norm_seqs_with_dels):
-        #     norm_seq_start_in_mod_seq = mod_seq_len - len(norm_seq.seq_string) - len(del_config)
-
-        #     # Again, the `anvi-trnaseq` workflow currently requires that a normalized sequence with
-        #     # deletions be assigned exclusively to a single modified sequence, so the following
-        #     # variable must be 1.
-        #     num_mod_seqs_containing_norm_seq = len(norm_seq.mod_seqs)
-
-        #     for trimmed_seq, trimmed_seq_start_in_norm_seq, trimmed_seq_stop_in_norm_seq in zip(norm_seq.trimmed_seqs, norm_seq.start_positions, norm_seq.stop_positions):
-        #         if trimmed_seq.represent_name in processed_trimmed_seq_names:
-        #             continue
-
-        #         if num_mod_seqs_containing_norm_seq > 1:
-        #             is_trimmed_seq_specific_to_mod_seq = False
-        #         else:
-        #             for norm_seq_containing_trimmed_seq_name in trimmed_seq.norm_seq_represent_names:
-        #                 try:
-        #                     if len(all_norm_seqs[all_norm_seq_names.index(norm_seq_containing_trimmed_seq_name)].mod_seqs) > 1:
-        #                         # The trimmed sequence is part of another normalized sequence that
-        #                         # is part of multiple modified sequences.
-        #                         is_trimmed_seq_specific_to_mod_seq = False
-        #                         break
-        #                 except ValueError:
-        #                     # The trimmed sequence is part of another normalized sequence that is
-        #                     # not part of the modified sequence.
-        #                     is_trimmed_seq_specific_to_mod_seq = False
-        #                     break
-        #             else:
-        #                 is_trimmed_seq_specific_to_mod_seq = True
-
-        #         nt_positions_covered_by_trimmed_seq = nt_positions_covered_by_norm_seq[trimmed_seq_start_in_norm_seq: trimmed_seq_start_in_norm_seq + len(trimmed_seq.seq_string)]
-
-        #         trimmed_seq_read_count = trimmed_seq.read_count
-        #         trimmed_seq_class_name = type(trimmed_seq).__name__
-        #         if is_trimmed_seq_specific_to_mod_seq:
-        #             specific_read_count += trimmed_seq_read_count
-
-        #             if trimmed_seq_class_name == 'TrimmedMappedSequence':
-        #                 specific_mapped_read_count += trimmed_seq_read_count
-
-        #             try:
-        #                 specific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-        #             except:
-        #                 print(type(trimmed_seq))
-        #                 raise Exception
-
-        #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-        #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-
-        #             for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-        #                 specific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
-
-        #             norm_seq_specific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
-        #             for del_pos in del_config:
-        #                 specific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
-        #         else:
-        #             nonspecific_read_count += trimmed_seq_read_count
-
-        #             if isinstance(trimmed_seq, TrimmedMappedSequence):
-        #                 nonspecific_mapped_read_count += trimmed_seq_read_count
-
-        #             # Nonspecific profiled trimmed sequences from normalized sequences without
-        #             # deletions cannot be both nonspecific and have 5' extensions. On the other
-        #             # hand, the same full-length normalized sequence with deletions can sometimes
-        #             # arise from different modified sequences, regardless of the origin of the
-        #             # normalized sequence. Trimmed sequences from these nonspecific normalized
-        #             # sequences may have 5' extensions.
-        #             nonspecific_read_with_extra_fiveprime_count += trimmed_seq.read_with_extra_fiveprime_count
-
-        #             for fiveprime_extension_seq_string, read_count in trimmed_seq.long_fiveprime_extension_dict.items():
-        #                 specific_long_fiveprime_extension_dict[fiveprime_extension_seq_string] += read_count
-
-        #             for threeprime_terminus_seq_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-        #                 nonspecific_read_threeprime_terminus_count_dict[threeprime_terminus_seq_string] += read_count
-
-        #             norm_seq_nonspecific_covs[i, nt_positions_covered_by_trimmed_seq] += trimmed_seq_read_count
-        #             for del_pos in del_config:
-        #                 nonspecific_del_covs[del_positions.index(del_pos)] += trimmed_seq_read_count
-
-        #     processed_trimmed_seq_names.append(trimmed_seq.represent_name)
-        #     i += 1
-
-        self.specific_read_count = specific_read_count
-        self.nonspecific_read_count = nonspecific_read_count
-        self.specific_mapped_read_count = specific_mapped_read_count
-        self.nonspecific_mapped_read_count = nonspecific_mapped_read_count
-        self.specific_read_with_extra_fiveprime_count = specific_read_with_extra_fiveprime_count
-        self.nonspecific_read_with_extra_fiveprime_count = nonspecific_read_with_extra_fiveprime_count
-        self.specific_long_fiveprime_extension_dict = specific_long_fiveprime_extension_dict
-        self.nonspecific_long_fiveprime_extension_dict = nonspecific_long_fiveprime_extension_dict
-        self.specific_read_threeprime_terminus_count_dict = specific_read_threeprime_terminus_count_dict
-        self.nonspecific_read_threeprime_terminus_count_dict = nonspecific_read_threeprime_terminus_count_dict
-        self.specific_covs = norm_seq_specific_covs.sum(0)
-        self.nonspecific_covs = norm_seq_nonspecific_covs.sum(0)
-        self.mean_specific_cov = self.specific_covs.mean()
-        self.mean_nonspecific_cov = self.nonspecific_covs.mean()
-        self.specific_del_covs = self.specific_del_covs
-
-        # For each substitution position, record the coverage of A, C, G, and T. The following array
-        # of aligned sequences ignores normalized sequences with deletions.
-        norm_seq_array = np.zeros((len(norm_seqs_without_dels), mod_seq_len), dtype=int)
-        for norm_seq_index, norm_seq in enumerate(norm_seqs_without_dels):
-            norm_seq_array[norm_seq_index, mod_seq_len - len(norm_seq.seq_string): ] += [NT_INT_DICT[nt] for nt in norm_seq.seq_string]
-        for sub_num, sub_pos in enumerate(self.sub_positions):
-            aligned_nts = norm_seq_array[:, sub_pos]
-            nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
-            for nt_int, nt_count in enumerate(nt_counts, start=1):
-                if nt_count > 0:
-                    norm_seq_rows_with_nt = (aligned_nts == nt_int).nonzero()[0]
-                    specific_sub_covs[sub_num, nt_int - 1] = norm_seq_specific_covs[norm_seq_rows_with_nt, sub_pos].sum()
-                    nonspecific_sub_covs[sub_num, nt_int - 1] = norm_seq_nonspecific_covs[norm_seq_rows_with_nt, sub_pos].sum()
-
-        # Set a consensus sequence from the nucleotides with the highest specific coverage at each
-        # position.
-        consensus_seq_string = norm_seqs_without_dels[0].seq_string
-        for sub_pos, covs in zip(self.sub_positions, specific_sub_covs):
-            max_pos = covs.argmax()
-            nt_int = max_pos + 1
-            consensus_seq_string = consensus_seq_string[: sub_pos] + INT_NT_DICT[nt_int] + consensus_seq_string[sub_pos + 1: ]
-        self.consensus_seq_string = consensus_seq_string
+        self.insert_starts = tuple(insert_starts)
+        self.insert_strings = tuple(insert_strings)
+        self.del_starts = tuple(del_starts)
+        self.del_lengths = tuple(del_lengths)
+        self.spec_read_count = spec_read_count
+        self.nonspec_read_count = nonspec_read_count
+        self.spec_map_read_count = spec_map_read_count
+        self.nonspec_map_read_count = nonspec_map_read_count
+        self.spec_read_xtra_5prime_count = spec_read_xtra_5prime_count
+        self.nonspec_read_xtra_5prime_count = nonspec_read_xtra_5prime_count
+        self.spec_long_5prime_extension_dict = spec_long_5prime_extension_dict
+        self.nonspec_long_5prime_extension_dict = nonspec_long_5prime_extension_dict
+        self.spec_read_3prime_terminus_count_dict = spec_read_3prime_terminus_count_dict
+        self.nonspec_read_3prime_terminus_count_dict = nonspec_read_3prime_terminus_count_dict
+        self.spec_covs = tuple(spec_covs_M)
+        self.nonspec_covs = tuple(nonspec_covs_M)
+        self.mean_spec_cov = spec_covs_M.mean()
+        self.mean_nonspec_cov = nonspec_covs_M.mean()
+        self.spec_sub_covs = spec_sub_covs
+        self.nonspec_sub_covs = nonspec_sub_covs
+        self.spec_insert_covs = tuple(spec_insert_covs)
+        self.nonspec_insert_covs = tuple(nonspec_insert_covs)
+        self.spec_del_covs = tuple(spec_del_covs)
+        self.nonspec_del_covs = tuple(nonspec_del_covs)
+        self.consensus_string = consensus_string
 
 
 class TRNASeqDataset(object):
@@ -1320,13 +1354,13 @@ class TRNASeqDataset(object):
 
     # Column headers for supplementary tables written to text files
     UNIQ_NONTRNA_HEADER = [
-        "representative_name",
+        "name",
         "read_count",
         "truncated_profile_index",
         "sequence"
     ]
     TRIMMED_ENDS_HEADER = [
-        "representative_name",
+        "name",
         "unique_name",
         "fiveprime_sequence",
         "threeprime_sequence",
@@ -1343,6 +1377,9 @@ class TRNASeqDataset(object):
         self.input_fasta_path = A('trnaseq_fasta')
         self.sample_id = A('sample_name')
         self.out_dir = os.path.abspath(A('output_dir')) if A('output_dir') else None
+        self.checkpoint_dir = os.path.join(self.out_dir, "CHECKPOINT")
+        get_checkpoint_subdir = partial(os.path.join, self.checkpoint_dir)
+        self.checkpoint_subdir_dict = {checkpoint: get_checkpoint_subdir(checkpoint.upper()) for checkpoint in constants.TRNASEQ_CHECKPOINTS}
 
         # Argument group 1B: EXTRAS
         self.treatment = A('treatment')
@@ -1353,115 +1390,148 @@ class TRNASeqDataset(object):
         self.write_checkpoints = A('write_checkpoints')
         self.load_checkpoint = A('load_checkpoint')
         self.feature_param_path = os.path.abspath(A('feature_param_file')) if A('feature_param_file') else None
-        self.threeprime_termini_param = A('threeprime_termini')
-        self.min_length_of_long_fiveprime_extension = A('min_length_long_fiveprime')
-        TrimmedSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
-        NormalizedDeletionSequence.min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
+        self.param_3prime_termini = A('threeprime_termini')
+        global MIN_LENGTH_LONG_5PRIME_EXTENSION
+        MIN_LENGTH_LONG_5PRIME_EXTENSION = A('min_length_long_fiveprime')
         self.min_trna_frag_size = A('min_trna_fragment_size')
-        self.agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
-        self.skip_INDEL_profiling = A('skip_INDEL_profiling')
-        self.fiveprimemost_del_start = A('fiveprimemost_deletion_start')
-        self.threeprimemost_del_start = A('threeprimemost_deletion_start')
-        self.fiveprimemost_del_stop = A('fiveprimemost_deletion_stop')
-        self.threeprimemost_del_stop = A('threeprimemost_deletion_stop')
-        self.max_distinct_dels = A('max_distinct_deletions')
-        self.min_dist_between_dels = A('min_distance_between_deletions')
-        self.max_del_configs = A('max_deletion_configurations')
+        agglom_max_mismatch_freq = A('agglomeration_max_mismatch_freq')
+        self.agglom_max_mismatch_freq = round(agglom_max_mismatch_freq * 100) / 100
+        self.skip_indel_profiling = A('skip_INDEL_profiling')
+        max_indel_freq = A('max_indel_freq')
+        self.max_indel_freq = round(max_indel_freq * 100) / 100
+        self.left_indel_buffer = A('left_indel_buffer')
+        self.right_indel_buffer = A('right_indel_buffer')
 
         # Argument group 1D: PERFORMANCE
         self.num_threads = A('num_threads')
         self.skip_fasta_check = A('skip_fasta_check')
         self.profiling_chunk_size = A('profiling_chunk_size')
         self.alignment_target_chunk_size = A('alignment_target_chunk_size')
-        self.frag_mapping_query_chunk_length = A('fragment_mapping_query_chunk_length')
-
-        # Argument group 1E: PROGRESS
-        self.profiling_progress_interval = A('profiling_progress_interval')
-        self.alignment_progress_interval = A('alignment_progress_interval')
-        self.mod_progress_interval = A('modification_progress_interval')
 
         if not self.input_fasta_path:
-            raise ConfigError("Please specify the path to a FASTA file of tRNA-seq reads using --fasta-file or -f.")
+            raise ConfigError("Please specify the path to a FASTA file of tRNA-seq reads using `--fasta-file` or `-f`.")
         if not self.sample_id:
-            raise ConfigError("Please provide a sample name using --sample-name or -S.")
+            raise ConfigError("Please provide a sample name using `--sample-name` or `-S`.")
         if not self.out_dir:
-            raise ConfigError("Please provide an output directory using --output-dir or -o.")
+            raise ConfigError("Please provide an output directory using `--output-dir` or `-o`.")
 
         self.descrip = None
 
-        get_out_dir_path = partial(os.path.join, self.out_dir)
+        get_out_file_path = partial(os.path.join, self.out_dir)
 
-        self.trnaseq_db_path = get_out_dir_path(self.sample_id + "-TRNASEQ.db")
+        self.trnaseq_db_path = get_out_file_path(self.sample_id + "-TRNASEQ.db")
 
-        self.analysis_summary_path = get_out_dir_path(self.sample_id + "-ANALYSIS_SUMMARY.txt")
+        self.analysis_summary_path = get_out_file_path(self.sample_id + "-ANALYSIS_SUMMARY.txt")
 
         # Supplementary text file paths produced by DEBUG flag
-        self.uniq_nontrna_path = get_out_dir_path(self.sample_id + "-UNIQUED_NONTRNA.txt")
-        self.trimmed_ends_path = get_out_dir_path(self.sample_id + "-TRIMMED_ENDS.txt")
-        self.consol_seqs_with_inconsis_profiles_path = get_out_dir_path(self.sample_id + "-CONSOLIDATED_SEQS_WITH_INCONSISTENT_PROFILES.txt")
+        self.path_Un_supplement = get_out_file_path(self.sample_id + "-UNIQUED_NONTRNA.txt")
+        self.path_Tf_ends = get_out_file_path(self.sample_id + "-TRIMMED_ENDS.txt")
+        self.consol_seqs_with_inconsis_profiles_path = get_out_file_path(self.sample_id + "-CONSOLIDATED_SEQS_WITH_INCONSISTENT_PROFILES.txt")
+        self.count_consol_Tf = None
 
-        # Intermediate pickle file paths
-        self.intermed_file_path_dict = {
-            'profile': {
-                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-PROFILE_CHECKPOINT.pkl"),
-                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-PROFILE_CHECKPOINT.pkl")
-            },
-            'normalize': {
-                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-NORMALIZE_CHECKPOINT.pkl"),
-                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-NORMALIZE_CHECKPOINT.pkl")
-            },
-            'map_fragments': {
-                'uniq_trna_seq_dict': get_out_dir_path("UNIQUE_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'uniq_trunc_seq_dict': get_out_dir_path("UNIQUE_TRUNCATED_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'uniq_nontrna_seq_dict': get_out_dir_path("UNIQUE_NONTRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'trimmed_trna_seq_dict': get_out_dir_path("TRIMMED_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'trimmed_trunc_seq_dict': get_out_dir_path("TRIMMED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'norm_trna_seq_dict': get_out_dir_path("NORMALIZED_TRNA_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl"),
-                'norm_trunc_seq_dict': get_out_dir_path("NORMALIZED_TRUNC_SEQS-MAP_FRAGMENTS_CHECKPOINT.pkl")
-            }
+        # The identification of sequences as tRNA occurs through different means. By the time of the
+        # first "profile" checkpoint, only Uf are recognized as tRNA. Further processing before the
+        # second "normalize" checkpoint can show some Ut to be tRNA; mapping can reveal some Un to
+        # be tRNA by the third "mapping" checkpoint. The changing classification of sequences over
+        # the workflow means that the contents of the dictionaries and intermediate files storing U,
+        # T, and N also change. It is important to note that object names do not correspond to these
+        # classifications. For example, all Ut will be in `uniq_trunc_dict` before the "profile"
+        # checkpoint, but some Ut can move to `uniq_trna_dict` after being confirmed as tRNA by the
+        # "normalize" checkpoint. The underlying sequences encapsulated in Ut objects stay in these
+        # objects despite being recognized as tRNA.
+
+        # Not every dict of seq objects changes between checkpoints, yet all existing dicts are
+        # written at every checkpoint. The alternative would be to reduce the number of intermediate
+        # files stored at later checkpoints by relying on any unchanged intermediate files from
+        # earlier checkpoints.
+
+        self.intermed_file_path_dict = {}
+        get_intermed_file_path = partial(os.path.join, self.checkpoint_subdir_dict['profile'])
+        self.intermed_file_path_dict['profile'] = {
+            'dict_Uf': get_intermed_file_path("Uf.pkl"),
+            'dict_Uc_nontrna': get_intermed_file_path("Uc_nontRNA.pkl"),
+            'dict_Un': get_intermed_file_path("Un.pkl")
         }
-        self.intermed_file_label_dict = {
-            'uniq_trna_seq_dict': 'unique tRNA',
-            'uniq_trunc_seq_dict': 'unique seqs with a truncated feature profile',
-            'uniq_nontrna_seq_dict': 'unique non-tRNA',
-            'trimmed_trna_seq_dict': 'trimmed tRNA',
-            'trimmed_trunc_seq_dict': 'trimmed seqs with a truncated feature profile',
-            'norm_trna_seq_dict': 'normalized tRNA',
-            'norm_trunc_seq_dict': 'normalized seqs with a truncated feature profile'
+        get_intermed_file_path = partial(os.path.join, self.checkpoint_subdir_dict['normalize'])
+        self.intermed_file_path_dict['normalize'] = {
+            'dict_Uf': get_intermed_file_path("Uf.pkl"),
+            'dict_Us': get_intermed_file_path("Us.pkl"),
+            'dict_Uc_trna': get_intermed_file_path("Uc_tRNA.pkl"),
+            'dict_Uc_nontrna': get_intermed_file_path("Uc_nontRNA.pkl"),
+            'dict_Un': get_intermed_file_path("Un.pkl"),
+            'dict_Tf': get_intermed_file_path("Tf.pkl"),
+            'dict_Tc_trna': get_intermed_file_path("Tc_tRNA.pkl"),
+            'dict_Tc_nontrna': get_intermed_file_path("Tc_nontrna.pkl"),
+            'dict_Nf': get_intermed_file_path("Nf.pkl"),
+            'dict_Nc': get_intermed_file_path("Nc.pkl")
+        }
+        get_intermed_file_path = partial(os.path.join, self.checkpoint_subdir_dict['map_fragments'])
+        self.intermed_file_path_dict['map_fragments'] = {
+            'dict_Uf': get_intermed_file_path("Uf.pkl"),
+            'dict_Us': get_intermed_file_path("Us.pkl"),
+            'dict_Uc_trna': get_intermed_file_path("Uc_tRNA.pkl"),
+            'dict_Um': get_intermed_file_path("Um.pkl"),
+            'dict_Uc_nontrna': get_intermed_file_path("Uc_nontRNA.pkl"),
+            'dict_Un': get_intermed_file_path("Un.pkl"),
+            'dict_Tf': get_intermed_file_path("Tf.pkl"),
+            'dict_Tc_trna': get_intermed_file_path("Tc_tRNA.pkl"),
+            'dict_Tc_nontrna': get_intermed_file_path("Tc_nontrna.pkl"),
+            'dict_Tm': get_intermed_file_path("Tm.pkl"),
+            'dict_Nf': get_intermed_file_path("Nf.pkl"),
+            'dict_Nc': get_intermed_file_path("Nc.pkl")
+        }
+        get_intermed_file_path = partial(os.path.join, self.checkpoint_subdir_dict['substitutions'])
+        self.intermed_file_path_dict['substitutions'] = {
+            'dict_Uf': get_intermed_file_path("Uf.pkl"),
+            'dict_Us': get_intermed_file_path("Us.pkl"),
+            'dict_Uc_trna': get_intermed_file_path("Uc_tRNA.pkl"),
+            'dict_Um': get_intermed_file_path("Um.pkl"),
+            'dict_Uc_nontrna': get_intermed_file_path("Uc_nontRNA.pkl"),
+            'dict_Un': get_intermed_file_path("Un.pkl"),
+            'dict_Tf': get_intermed_file_path("Tf.pkl"),
+            'dict_Tc_trna': get_intermed_file_path("Tc_tRNA.pkl"),
+            'dict_Tc_nontrna': get_intermed_file_path("Tc_nontrna.pkl"),
+            'dict_Tm': get_intermed_file_path("Tm.pkl"),
+            'dict_Nf': get_intermed_file_path("Nf.pkl"),
+            'dict_Nc': get_intermed_file_path("Nc.pkl"),
+            'dict_M': get_intermed_file_path("M.pkl")
+        }
+        get_intermed_file_path = partial(os.path.join, self.checkpoint_subdir_dict['indels'])
+        self.intermed_file_path_dict['indels'] = {
+            'dict_Uf': get_intermed_file_path("Uf.pkl"),
+            'dict_Us': get_intermed_file_path("Us.pkl"),
+            'dict_Uc_trna': get_intermed_file_path("Uc_tRNA.pkl"),
+            'dict_Um': get_intermed_file_path("Um.pkl"),
+            'dict_Ui': get_intermed_file_path("Ui.pkl"),
+            'dict_Uc_nontrna': get_intermed_file_path("Uc_nontRNA.pkl"),
+            'dict_Un': get_intermed_file_path("Un.pkl"),
+            'dict_Tf': get_intermed_file_path("Tf.pkl"),
+            'dict_Tc_trna': get_intermed_file_path("Tc_tRNA.pkl"),
+            'dict_Tc_nontrna': get_intermed_file_path("Tc_nontrna.pkl"),
+            'dict_Tm': get_intermed_file_path("Tm.pkl"),
+            'dict_Ti': get_intermed_file_path("Ti.pkl"),
+            'dict_Nf': get_intermed_file_path("Nf.pkl"),
+            'dict_Nc': get_intermed_file_path("Nc.pkl"),
+            'dict_Ni': get_intermed_file_path("Ni.pkl"),
+            'dict_M': get_intermed_file_path("M.pkl")
         }
 
-        self.uniq_nontrna_seq_dict = {}
-        self.uniq_trunc_seq_dict = {}
-        self.uniq_trna_seq_dict = {}
-        self.trimmed_trna_seq_dict = {}
-        self.trimmed_trunc_seq_dict = {}
-        self.norm_trna_seq_dict = {}
-        self.norm_trunc_seq_dict = {}
-        self.mod_trna_seq_dict = {}
-        self.norm_del_seq_dict = {}
-        self.uniq_del_seq_dict = {}
-        self.trimmed_del_seq_dict = {}
-
-        self.possible_del_starts = None
-        self.possible_del_stops = None
-        # Ranges representing the locations of deletions in relation to substitution sites. For
-        # example, (range(-1, 0), range(-1, 1), range(0, 1)) allows three types of deletions to be
-        # introduced at a substitution position: a 1 nucleotide deletion of the adjacent 5'
-        # nucleotide a 2 nucleotide deletion of the adjacent 5' nucleotide and the nucleotide at the
-        # substitution position, and a 1 nucleotide deletion of the nucleotide at the substitution
-        # position.
-        self.del_ranges = None
-
-        # The same normalized sequence with deletions may arise from multiple modified sequences.
-        # For the sake of simplicity, only consider normalized sequences with deletions that can
-        # come from a single modified sequence.
-        self.allow_norm_seq_with_dels_from_multiple_mod_seqs = False
+        self.dict_Uf = {}
+        self.dict_Uc_trna = {}
+        self.dict_Uc_nontrna = {}
+        self.dict_Un = {}
+        self.dict_Us = {}
+        self.dict_Um = {}
+        self.dict_Ui = {}
+        self.dict_Tf = {}
+        self.dict_Tc_trna = {}
+        self.dict_Tc_nontrna = {}
+        self.dict_Tm = {}
+        self.dict_Ti = {}
+        self.dict_Nf = {}
+        self.dict_Nc = {}
+        self.dict_Ni = {}
+        self.dict_M = {}
 
 
     def process(self):
@@ -1469,8 +1539,12 @@ class TRNASeqDataset(object):
         total_time_start = time.time()
 
         self.sanity_check()
+        if '_' in self.param_3prime_termini:
+            global PROFILE_ABSENT_3PRIME_TERMINUS
+            PROFILE_ABSENT_3PRIME_TERMINUS = True
 
-        if not self.load_checkpoint:
+        load_checkpoint = self.load_checkpoint
+        if not load_checkpoint:
             # Do the steps before the "profile" checkpoint.
 
             self.create_trnaseq_database()
@@ -1483,72 +1557,131 @@ class TRNASeqDataset(object):
             # database.
             self.report_profiling_parameters()
             self.report_fragment_mapping_parameters()
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_indel_analysis_parameters()
 
             # Profile each (unique) read for tRNA features.
             self.profile_trna()
+            self.report_profile_stats()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('profile')
-        elif self.load_checkpoint == 'profile':
+        elif load_checkpoint == 'profile':
             self.load_checkpoint_files('profile')
             self.report_fragment_mapping_parameters()
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_indel_analysis_parameters()
 
 
-        if not self.load_checkpoint or self.load_checkpoint == 'profile':
+        if (load_checkpoint == 'profile'
+            or not load_checkpoint):
             # Do the steps between the "profile" and "normalize" checkpoints.
 
-            # Trim 5' and 3' ends of profiled tRNA.
+            # Trim 5' and 3' ends of Uf, forming Tf.
             self.trim_trna_ends()
-            # Trim 3' ends of sequences with truncated tRNA profile.
+            # Trim 3' ends of Uc, forming Tc.
             self.trim_truncated_profile_ends()
+            self.report_trim_stats()
 
-            # Consolidate 3' fragments of longer profiled tRNA sequences, forming normalized sequences.
-            self.threeprime_dereplicate_trna()
+            # Consolidate 3' fragments of longer Tf, forming Nf.
+            self.threeprime_dereplicate_profiled_trna()
 
-            # Recover tRNA sequences with truncated feature profiles by comparing to normalized
-            # sequences.
+            # Recover Tc as tRNA by comparing to Nf.
             self.threeprime_dereplicate_truncated_sequences()
+            self.report_3prime_derep_stats()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('normalize')
-        elif self.load_checkpoint == 'normalize':
+        elif load_checkpoint == 'normalize':
             self.load_checkpoint_files('normalize')
+            self.report_fragment_mapping_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_indel_analysis_parameters()
 
 
-        if not self.load_checkpoint == 'map_fragments':
+        if (load_checkpoint == 'normalize'
+            or load_checkpoint == 'profile'
+            or not load_checkpoint):
             # Do the steps between the "normalize" and "map_fragments" checkpoints.
 
-            if '' not in self.threeprime_termini:
+            if not PROFILE_ABSENT_3PRIME_TERMINUS:
                 # Recover 3' tRNA sequences lacking a 3' terminus.
                 self.threeprime_dereplicate_sequences_without_terminus()
 
             # Map fragments derived from the interior and 5' end of tRNA.
             self.map_fragments()
 
-            # "Finalize" normalized tRNA sequence objects now that all of the trimmed tRNA sequences
-            # found through various means have been added to them.
-            for norm_seq in self.norm_trna_seq_dict.values():
-                norm_seq.init()
+            # Finalize Nf now that all T found through various means have been added to them.
+            self.progress.new("Finalizing normalized tRNA sequences")
+            self.progress.update("...")
+            for seq_Nf in self.dict_Nf.values():
+                seq_Nf.init([getattr(self, 'dict_' + category_T)[name_T]
+                             for category_T, name_T in zip(seq_Nf.categories_T, seq_Nf.names_T)])
+            self.progress.end()
+            self.report_map_stats()
+            self.report_N_cov_stats()
 
             if self.write_checkpoints:
                 self.write_checkpoint_files('map_fragments')
-        else:
+        elif load_checkpoint == 'map_fragments':
             self.load_checkpoint_files('map_fragments')
-            self.report_modification_analysis_parameters()
+            self.report_substitution_analysis_parameters()
+            self.report_indel_analysis_parameters()
 
 
-        # Do the steps after the "map_fragments" checkpoint.
+        if (load_checkpoint == 'map_fragments'
+            or load_checkpoint == 'normalize'
+            or load_checkpoint == 'profile'
+            or not load_checkpoint):
+            # Do the steps between the "map_fragments" and "substitutions" checkpoints.
 
-        # Find modified nucleotides, grouping normalized sequences into modified sequences.
-        self.find_substitutions()
-        if not self.skip_INDEL_profiling:
-            self.find_deletions()
-        for mod_seq in self.mod_trna_seq_dict.values():
-            mod_seq.init()
+            # Find modified nucleotides, grouping normalized sequences into modified sequences.
+            self.find_substitutions()
 
-        self.report_statistics()
+            self.report_sub_stats()
+
+            if self.write_checkpoints:
+                self.write_checkpoint_files('substitutions')
+        elif load_checkpoint == 'substitutions':
+            self.load_checkpoint_files('substitutions')
+            self.report_indel_analysis_parameters()
+
+
+        if (load_checkpoint == 'substitutions'
+            or load_checkpoint == 'map_fragments'
+            or load_checkpoint == 'normalize'
+            or load_checkpoint == 'profile'
+            or not load_checkpoint):
+            # Do the steps between the "substitutions" and "indels" checkpoint.
+
+            if self.skip_indel_profiling:
+                trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+                set_meta_value = trnaseq_db.db.set_meta_value
+                set_meta_value('count_Nqf_with_indels', 0)
+                set_meta_value('count_Nc_with_indels', 0)
+                trnaseq_db.disconnect()
+            else:
+                self.find_indels()
+
+            # "Finalize" M now that all Nf and Ni have been added to them.
+            self.progress.new("Finalizing modified tRNA sequences")
+            self.progress.update("...")
+            dict_Nf = self.dict_Nf
+            dict_Ni = self.dict_Ni
+            for seq_M in self.dict_M.values():
+                seq_M.init([dict_Nf[name_Nb] for name_Nb in seq_M.names_Nb],
+                           [dict_Ni[name_Ni] for name_Ni in seq_M.names_Ni])
+            self.progress.end()
+
+            self.report_M_stats()
+
+            if self.write_checkpoints:
+                self.write_checkpoint_files('indels')
+        elif load_checkpoint == 'indels':
+            self.load_checkpoint_files('indels')
+
+
+        self.report_stats()
 
         self.write_feature_table()
         self.write_unconserved_table()
@@ -1559,8 +1692,8 @@ class TRNASeqDataset(object):
         self.write_modified_table()
 
         # Write supplementary text files.
-        self.write_unique_nontrna_supplement()
-        self.write_trimmed_supplement()
+        self.write_nontrna_supplement()
+        self.write_Tf_ends_supplement()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Total time elapsed (min)",
@@ -1592,12 +1725,10 @@ class TRNASeqDataset(object):
                               "`--num-threads` wants a value greater than 0. "
                               f"Last we checked, {self.num_threads} is not greater than 0.")
 
-        self.threeprime_termini = self.threeprime_termini_sanity_check()
-        trnaidentifier.TRNAFeatureParameterizer.set_threeprime_termini(self.threeprime_termini)
-
-        self.deletion_start_stop_sanity_check()
-
-        self.parameterize_deletions()
+        self.param_3prime_termini = self.threeprime_termini_sanity_check()
+        trnaidentifier.TRNAFeatureParameterizer.set_threeprime_termini(self.param_3prime_termini)
+        # The following variable is only used as part of a heuristic in `find_indels`.
+        self.max_length_3prime_terminus = max([len(t) for t in self.param_3prime_termini])
 
         self.run.info("Input FASTA file", self.input_fasta_path, nl_after=1)
 
@@ -1632,73 +1763,49 @@ class TRNASeqDataset(object):
 
     def load_checkpoint_sanity_check(self):
         """Needed intermediate files must exist to load from a checkpoint."""
+        checkpoint_dir = self.checkpoint_dir
+        load_checkpoint = self.load_checkpoint
+        intermed_file_path_dict = self.intermed_file_path_dict
+
+        checkpoint_subdir = os.path.join(checkpoint_dir, load_checkpoint.upper())
+        if not os.path.exists(checkpoint_subdir):
+            raise ConfigError("Intermediate files needed for running `anvi-trnaseq` with `--load-checkpoint` "
+                              f"should be located in {checkpoint_subdir}, but this directory path does not exist. "
+                              "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
+                              "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
+
         missing_intermed_files = []
-        for intermed_file_path in self.intermed_file_path_dict[self.load_checkpoint].values():
+        for intermed_file_path in intermed_file_path_dict[load_checkpoint].values():
             if not os.path.exists(intermed_file_path):
                 missing_intermed_files.append(intermed_file_path)
         if missing_intermed_files:
             raise ConfigError(f"Intermediate files needed for running `anvi-trnaseq` "
-                              f"with `--load-checkpoint {self.load_checkpoint}` are missing: {', '.join(missing_intermed_files)}. "
+                              f"with `--load-checkpoint {load_checkpoint}` are missing: {', '.join(missing_intermed_files)}. "
                               "You should probably run `anvi-trnaseq` from the beginning without `--load-checkpoint`. "
                               "To generate necessary intermediate files for future use of `--load-checkpoint`, use the flag `--write-checkpoints`.")
 
 
     def threeprime_termini_sanity_check(self):
         """Check validity of provided tRNA 3' termini, returning a list of terminus strings."""
-        valid_threeprime_termini = []
-        invalid_threeprime_termini = []
-        for threeprime_terminus in self.threeprime_termini_param.split(','):
-            if threeprime_terminus == '_':
-                valid_threeprime_termini.append('')
+        valid_3prime_termini = []
+        invalid_3prime_termini = []
+        for terminus_3prime in self.param_3prime_termini.split(','):
+            if terminus_3prime == '_':
+                valid_3prime_termini.append('')
                 continue
 
-            for nt in threeprime_terminus:
+            for nt in terminus_3prime:
                 if nt not in ALL_NTS:
-                    invalid_threeprime_termini.append(threeprime_terminus)
+                    invalid_3prime_termini.append(terminus_3prime)
                     break
-            valid_threeprime_termini.append(threeprime_terminus)
+            valid_3prime_termini.append(terminus_3prime)
 
-        if invalid_threeprime_termini:
+        if invalid_3prime_termini:
             raise ConfigError(f"3' termini can consist of A, C, G, T, and N (any nucleotide) "
                               "or the discriminator nucleotide with no extension, symbolized by a single underscore, \"_\". "
-                              f"The following invalid 3' sequence parameterizations were provided: {', '.join(invalid_threeprime_termini)}")
+                              f"The following invalid 3' sequence parameterizations were provided: {', '.join(invalid_3prime_termini)}")
 
-        return valid_threeprime_termini
-
-
-    def deletion_start_stop_sanity_check(self):
-        """Check the logic of allowed start and stop positions of in silico deletions relative to
-        sites of predicted modification-induced substitutions."""
-        if (self.fiveprimemost_del_start > self.threeprimemost_del_start
-            or self.fiveprimemost_del_start > self.fiveprimemost_del_stop
-            or self.threeprimemost_del_start > self.threeprimemost_del_stop
-            or self.fiveprimemost_del_stop > self.threeprimemost_del_stop):
-            raise ConfigError("The following relations of deletion start and stop boundaries must be maintained: "
-                              "1. 5'-most deletion start <= 3'-most deletion start, "
-                              "2. 5'-most deletion start <= 5'-most deletion stop, "
-                              "3. 3'-most deletion start <= 3'-most deletion stop, "
-                              "4. 5'-most deletion stop <= 3'-most deletion stop. "
-                              f"You provided a 5'-most deletion start of {self.fiveprimemost_del_start}, "
-                              f"a 3'-most deletion start of {self.threeprimemost_del_start}, "
-                              f"a 5'-most deletion stop of {self.fiveprimemost_del_stop}, and "
-                              f"a 3'-most deletion stop of {self.threeprimemost_del_stop}.")
-
-
-    def parameterize_deletions(self):
-        """Parameterize in silico deletions."""
-        # In silico deletions are allowed to start and stop at positions relative to sites of
-        # predicted modification-induced substitutions.
-        self.possible_del_starts = tuple(range(self.fiveprimemost_del_start, self.threeprimemost_del_start + 1))
-        self.possible_pythonic_del_stops = tuple(range(self.fiveprimemost_del_stop + 1, self.threeprimemost_del_stop + 2))
-        # In silico deletions can be different sizes, so, in combination with possible start and
-        # stop positions, find all of the different deletions allowed relative to predicted
-        # substitutions.
-        del_ranges = []
-        for del_start in self.possible_del_starts:
-            for del_stop in self.possible_pythonic_del_stops:
-                if del_start < del_stop:
-                    del_ranges.append(range(del_start, del_stop))
-        self.del_ranges = tuple(del_ranges)
+        return valid_3prime_termini
 
 
     def create_trnaseq_database(self):
@@ -1706,7 +1813,7 @@ class TRNASeqDataset(object):
         meta_values = {'sample_id': self.sample_id,
                        'treatment': self.treatment,
                        'description': self.descrip if self.descrip else '_No description is provided_',
-                       'INDELs_profiled': not self.skip_INDEL_profiling}
+                       'INDELs_profiled': not self.skip_indel_profiling}
         dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True).create(meta_values)
         self.run.info("New tRNA-seq db", self.trnaseq_db_path, nl_after=1)
 
@@ -1714,11 +1821,11 @@ class TRNASeqDataset(object):
     def report_profiling_parameters(self):
         """Add profiling parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        db = trnaseq_db.db
+        set_meta_value = trnaseq_db.db.set_meta_value
         parameterizer = trnaidentifier.TRNAFeatureParameterizer()
         for param_tuple in parameterizer.list_accessible_param_tuples():
-            db.set_meta_value(param_tuple[0], param_tuple[1])
-        db.set_meta_value('min_length_of_long_fiveprime_extension', self.min_length_of_long_fiveprime_extension)
+            set_meta_value(param_tuple[0], param_tuple[1])
+        set_meta_value('min_length_long_5prime_extension', MIN_LENGTH_LONG_5PRIME_EXTENSION)
         trnaseq_db.disconnect()
 
         get_summary_line = self.get_summary_line
@@ -1734,45 +1841,46 @@ class TRNASeqDataset(object):
                     f.write(get_summary_line(param_name.replace('Number allowed unpaired', "Allowed number of unpaired bps"), param_value))
                     continue
                 f.write(get_summary_line(param_name, param_value))
-            f.write(get_summary_line("Allowed 3' termini", ",".join(self.threeprime_termini)))
-            f.write(get_summary_line("Min length of \"long\" 5' extension", self.min_length_of_long_fiveprime_extension))
+            f.write(get_summary_line("Allowed 3' termini", ",".join(self.param_3prime_termini)))
+            f.write(get_summary_line("Min length of \"long\" 5' extension", MIN_LENGTH_LONG_5PRIME_EXTENSION))
 
 
     def report_fragment_mapping_parameters(self):
         """Add fragment mapping parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        trnaseq_db.db.set_meta_value('min_mapped_trna_fragment_size', self.min_trna_frag_size)
+        trnaseq_db.db.set_meta_value('min_map_trna_fragment_size', self.min_trna_frag_size)
         trnaseq_db.disconnect()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Min length of mapped tRNA fragment", self.min_trna_frag_size))
 
 
-    def report_modification_analysis_parameters(self):
-        """Add modification analysis parameters to the database."""
+    def report_substitution_analysis_parameters(self):
+        """Add modification-induced substitution analysis parameters to the database."""
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-        db = trnaseq_db.db
-        db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
-        db.set_meta_value('fiveprimemost_deletion_start', self.fiveprimemost_del_start)
-        db.set_meta_value('threeprimemost_deletion_start', self.threeprimemost_del_start)
-        db.set_meta_value('fiveprimemost_deletion_stop', self.fiveprimemost_del_stop)
-        db.set_meta_value('threeprimemost_deletion_stop', self.threeprimemost_del_stop)
-        db.set_meta_value('max_distinct_deletions', self.max_distinct_dels)
-        db.set_meta_value('min_distance_between_deletions', self.min_dist_between_dels)
-        db.set_meta_value('max_deletion_configurations', self.max_del_configs)
+        trnaseq_db.db.set_meta_value('agglomeration_max_mismatch_freq', self.agglom_max_mismatch_freq)
         trnaseq_db.disconnect()
 
         get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
             f.write(get_summary_line("Agglomeration max mismatch frequency", self.agglom_max_mismatch_freq))
-            f.write(get_summary_line("INDELs profiled", not self.skip_INDEL_profiling))
-            f.write(get_summary_line("5'-most del start", self.fiveprimemost_del_start))
-            f.write(get_summary_line("3'-most del start", self.threeprimemost_del_start))
-            f.write(get_summary_line("5'-most del start", self.threeprimemost_del_start))
-            f.write(get_summary_line("3'-most del stop", self.threeprimemost_del_start))
-            f.write(get_summary_line("Max distinct dels", self.max_distinct_dels))
-            f.write(get_summary_line("Min distance between dels", self.min_dist_between_dels))
-            f.write(get_summary_line("Max del configurations", self.max_del_configs))
+
+
+    def report_indel_analysis_parameters(self):
+        """Add modification-induced indel analysis parameters to the database."""
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        set_meta_value = trnaseq_db.db.set_meta_value
+        set_meta_value('max_indel_freq', self.max_indel_freq)
+        set_meta_value('left_indel_buffer', self.left_indel_buffer)
+        set_meta_value('right_indel_buffer', self.right_indel_buffer)
+        trnaseq_db.disconnect()
+
+        get_summary_line = self.get_summary_line
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(get_summary_line("INDELs profiled", not self.skip_indel_profiling))
+            f.write(get_summary_line("Max indel frequency", self.max_indel_freq))
+            f.write(get_summary_line("Left indel buffer", self.left_indel_buffer))
+            f.write(get_summary_line("Right indel buffer", self.right_indel_buffer))
 
 
     def get_summary_line(self, label, value, is_time_value=False, padding=68):
@@ -1784,21 +1892,20 @@ class TRNASeqDataset(object):
 
 
     def profile_trna(self):
-        """Profile tRNA features in reads. Add `UniqueSequence` objects representing profiled tRNA
-        sequences to `self.uniq_trna_seq_dict`. Add `UniqueSequence` objects representing sequences
-        with a truncated tRNA profile to `self.uniq_trunc_seq_dict`. Add leftover `UniqueSequence`
-        objects representing unprofiled tRNA sequences to `self.uniq_nontrna_seq_dict`."""
-        uniq_reads = self.unique_reads()
+        """Profile tRNA features in reads, finding Uf, Uc, and Un."""
+        uniq_read_infos = self.unique_reads()
 
         start_time = time.time()
 
-        self.progress.new("Profiling tRNA features in reads")
-        self.progress.update("...")
+        progress = self.progress
+        pid = "Profiling tRNA features in unique reads"
+        progress.new(pid)
+        progress.update("...")
 
-        # Count the number of reads and unique read sequences that have been added to the
-        # multiprocessing input queue.
+        # Count the number of reads and unique reads that have been added to the multiprocessing
+        # input queue.
         total_read_count = 0
-        total_uniq_count = len(uniq_reads)
+        total_uniq_count = len(uniq_read_infos)
 
         manager = mp.Manager()
         input_queue = manager.Queue()
@@ -1816,14 +1923,16 @@ class TRNASeqDataset(object):
         interval_start = 0
         profiling_chunk_size = self.profiling_chunk_size
         interval_stop = profiling_chunk_size if profiling_chunk_size < total_uniq_count else total_uniq_count
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
-        uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
-        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
-        profiling_progress_interval = self.profiling_progress_interval
-        pp_uniq_read_count = pp(len(uniq_reads))
+        dict_Uf = self.dict_Uf
+        dict_Uc_nontrna = self.dict_Uc_nontrna
+        dict_Un = self.dict_Un
+        pp_total_uniq_count = pp(len(uniq_read_infos))
         while fetched_profile_count < total_uniq_count:
+            progress.update_pid(pid)
+            progress.update(f"{pp(input_count + 1)}-{pp(interval_stop)}/{pp_total_uniq_count}")
+
             while input_count < interval_stop:
-                for uniq_read_info in uniq_reads[interval_start: interval_stop]:
+                for uniq_read_info in uniq_read_infos[interval_start: interval_stop]:
                     input_queue.put(uniq_read_info)
                     total_read_count += uniq_read_info[2]
                     input_count += 1
@@ -1834,16 +1943,12 @@ class TRNASeqDataset(object):
 
                 name = profile.name
                 if profile.is_predicted_trna:
-                    uniq_trna_seq_dict[name] = UniqueFullProfileSequence(profile.input_seq, name, read_count, profile)
+                    dict_Uf[name] = UniqueFullProfileSequence(profile.input_seq, name, read_count, profile)
                 else:
                     if profile.trunc_profile_index:
-                        uniq_trunc_seq_dict[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
+                        dict_Uc_nontrna[name] = UniqueTruncatedProfileSequence(profile.input_seq, name, read_count, profile)
                     else:
-                        uniq_nontrna_seq_dict[name] = UniqueSequence(profile.input_seq, name, read_count)
-
-                if fetched_profile_count % profiling_progress_interval == 0:
-                    # Periodically report the number of unique sequences that have been profiled.
-                    self.progress.update(f"{pp(fetched_profile_count)}/{pp_uniq_read_count} unique seqs have been profiled")
+                        dict_Un[name] = UniqueSequence(profile.input_seq, name, read_count)
 
             interval_start = interval_stop
             interval_stop += profiling_chunk_size if interval_stop + profiling_chunk_size < total_uniq_count else total_uniq_count - interval_stop
@@ -1853,9 +1958,9 @@ class TRNASeqDataset(object):
             p.join()
 
         # Profiled seqs were added to the output queue as they were processed, so sort by name.
-        self.uniq_trna_seq_dict = {name: seq for name, seq in sorted(uniq_trna_seq_dict.items())}
-        self.uniq_trunc_seq_dict = {name: seq for name, seq in sorted(uniq_trunc_seq_dict.items())}
-        self.uniq_nontrna_seq_dict = {name: seq for name, seq in sorted(uniq_nontrna_seq_dict.items())}
+        self.dict_Uf = {name: seq for name, seq in sorted(dict_Uf.items())}
+        self.dict_Uc_nontrna = {name: seq for name, seq in sorted(dict_Uc_nontrna.items())}
+        self.dict_Un = {name: seq for name, seq in sorted(dict_Un.items())}
 
         get_summary_line = self.get_summary_line
         with open(self.analysis_summary_path, 'a') as f:
@@ -1863,16 +1968,22 @@ class TRNASeqDataset(object):
             f.write(get_summary_line("Reads processed", total_read_count))
             f.write(get_summary_line("Unique seqs processed", total_uniq_count))
 
-        self.progress.end()
+        progress.end()
 
-        self.run.info("Reads processed", total_read_count)
-        self.run.info("Unique seqs processed", total_uniq_count, nl_after=1)
+        self.run.info("Reads processed", total_read_count, mc='green')
+        self.run.info("Unique seqs processed", total_uniq_count, mc='green')
+
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        set_meta_value = trnaseq_db.db.set_meta_value
+        set_meta_value('input_reads', total_read_count)
+        set_meta_value('input_U', total_uniq_count)
+        trnaseq_db.disconnect()
 
 
     def unique_reads(self):
         """Dereplicate input reads."""
-        self.progress.new("Finding replicate reads")
-        self.progress.update("Loading reads")
+        self.progress.new("Loading reads")
+        self.progress.update("...")
 
         fasta = fastalib.SequenceSource(self.input_fasta_path)
         names = []
@@ -1885,64 +1996,236 @@ class TRNASeqDataset(object):
         fasta.close()
         self.read_count = read_count
 
-        self.progress.update("Dereplicating")
-        uniq_reads = []
+        self.progress.end()
+
+
+        self.progress.new("Dereplicating reads")
+        self.progress.update("...")
+        uniq_read_infos = []
         for cluster in Dereplicator(names, seqs).full_length_dereplicate():
-            uniq_reads.append((cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names)))
+            uniq_read_infos.append((cluster.member_seqs[0], cluster.member_names[0], len(cluster.member_names)))
 
         self.progress.end()
-        return uniq_reads
+        return uniq_read_infos
+
+
+    def report_profile_stats(self):
+        """Report to terminal stats on Uf, Uc, and Un immediately after profiling."""
+        seq_count_Uf = len(self.dict_Uf)
+        read_count_Uf = 0
+        seq_anticodon_count_Uf = 0
+        read_anticodon_count_Uf = 0
+        seq_complete_count_Uf = 0
+        read_complete_count_Uf = 0
+        max_reads_Uf = 0
+        mean_read_3prime_length_Uf = 0
+        seq_short_5prime_count_Uf = 0
+        read_short_5prime_count_Uf = 0
+        seq_long_5prime_count_Uf = 0
+        read_long_5prime_count_Uf = 0
+        mean_read_5prime_length_Uf = 0
+        mean_seq_profiled_freq_Uf = 0
+        mean_read_profiled_freq_Uf = 0
+        mean_seq_unconserved_freq_Uf = 0
+        mean_read_unconserved_freq_Uf = 0
+        mean_seq_unpaired_freq_Uf = 0
+        mean_read_unpaired_freq_Uf = 0
+        mean_seq_extrap_freq_Uf = 0
+        mean_read_extrap_freq_Uf = 0
+        for seq_Uf in self.dict_Uf.values():
+            read_count = seq_Uf.read_count
+            read_count_Uf += read_count
+            if seq_Uf.anticodon_string:
+                seq_anticodon_count_Uf += 1
+                read_anticodon_count_Uf += read_count
+                if seq_Uf.has_complete_feature_set:
+                    seq_complete_count_Uf += 1
+                    read_complete_count_Uf += read_count
+            if read_count > max_reads_Uf:
+                max_reads_Uf = read_count
+
+            mean_read_3prime_length_Uf += read_count * seq_Uf.length_3prime_terminus
+            if seq_Uf.xtra_5prime_length:
+                if seq_Uf.xtra_5prime_length < MIN_LENGTH_LONG_5PRIME_EXTENSION:
+                    seq_short_5prime_count_Uf += 1
+                    read_short_5prime_count_Uf += read_count
+                else:
+                    seq_long_5prime_count_Uf += 1
+                    read_long_5prime_count_Uf += read_count
+                    mean_read_5prime_length_Uf += read_count * seq_Uf.xtra_5prime_length
+
+            profiled_freq = seq_Uf.profiled_seq_length / len(seq_Uf.string)
+            mean_seq_profiled_freq_Uf += profiled_freq
+            mean_read_profiled_freq_Uf += read_count * profiled_freq
+            unconserved_freq = seq_Uf.num_unconserved / seq_Uf.profiled_seq_length
+            mean_seq_unconserved_freq_Uf += unconserved_freq
+            mean_read_unconserved_freq_Uf += read_count * unconserved_freq
+            unpaired_freq = seq_Uf.num_unpaired / (seq_Uf.num_paired + seq_Uf.num_unpaired)
+            mean_seq_unpaired_freq_Uf += unpaired_freq
+            mean_read_unpaired_freq_Uf += read_count * unpaired_freq
+            mean_seq_extrap_freq_Uf += seq_Uf.num_extrap_5prime_nts
+            mean_read_extrap_freq_Uf += read_count * seq_Uf.num_extrap_5prime_nts
+        mean_reads_Uf = read_count_Uf / seq_count_Uf
+        mean_read_3prime_length_Uf /= read_count_Uf
+        mean_read_5prime_length_Uf /= read_long_5prime_count_Uf
+        mean_seq_profiled_freq_Uf /= seq_count_Uf
+        mean_read_profiled_freq_Uf /= read_count_Uf
+        mean_seq_unconserved_freq_Uf /= seq_count_Uf
+        mean_read_unconserved_freq_Uf /= read_count_Uf
+        mean_seq_unpaired_freq_Uf /= seq_count_Uf
+        mean_read_unpaired_freq_Uf /= read_count_Uf
+        mean_seq_extrap_freq_Uf /= seq_count_Uf
+        mean_read_extrap_freq_Uf /= read_count_Uf
+
+        seq_count_Uc = len(self.dict_Uc_nontrna)
+        read_count_Uc = 0
+        seq_anticodon_count_Uc = 0
+        read_anticodon_count_Uc = 0
+        max_reads_Uc = 0
+        mean_read_3prime_length_Uc = 0
+        mean_seq_profiled_freq_Uc = 0
+        mean_read_profiled_freq_Uc = 0
+        mean_seq_unconserved_freq_Uc = 0
+        mean_read_unconserved_freq_Uc = 0
+        mean_seq_unpaired_freq_Uc = 0
+        mean_read_unpaired_freq_Uc = 0
+        for seq_Uc in self.dict_Uc_nontrna.values():
+            read_count = seq_Uc.read_count
+            read_count_Uc += read_count
+            if seq_Uc.anticodon_string:
+                seq_anticodon_count_Uc += 1
+                read_anticodon_count_Uc += read_count
+            if read_count > max_reads_Uc:
+                max_reads_Uc = read_count
+
+            mean_read_3prime_length_Uc += read_count * seq_Uc.length_3prime_terminus
+
+            profiled_freq = seq_Uc.profiled_seq_length / len(seq_Uc.string)
+            mean_seq_profiled_freq_Uc += profiled_freq
+            mean_read_profiled_freq_Uc += read_count * profiled_freq
+            unconserved_freq = seq_Uc.num_unconserved / seq_Uc.profiled_seq_length
+            mean_seq_unconserved_freq_Uc += unconserved_freq
+            mean_read_unconserved_freq_Uc += read_count * unconserved_freq
+            unpaired_freq = seq_Uc.num_unpaired / (seq_Uc.num_paired + seq_Uc.num_unpaired)
+            mean_seq_unpaired_freq_Uc += unpaired_freq
+            mean_read_unpaired_freq_Uc += read_count * unpaired_freq
+        mean_reads_Uc = read_count_Uc / seq_count_Uc
+        mean_read_3prime_length_Uc /= read_count_Uc
+        mean_seq_profiled_freq_Uc /= seq_count_Uc
+        mean_read_profiled_freq_Uc /= read_count_Uc
+        mean_seq_unconserved_freq_Uc /= seq_count_Uc
+        mean_read_unconserved_freq_Uc /= read_count_Uc
+        mean_seq_unpaired_freq_Uc /= seq_count_Uc
+        mean_read_unpaired_freq_Uc /= read_count_Uc
+
+        seq_count_Un = len(self.dict_Un)
+        read_count_Un = 0
+        max_reads_Un = 0
+        for seq_Un in self.dict_Un.values():
+            read_count = seq_Un.read_count
+            read_count_Un += read_count
+            if read_count > max_reads_Un:
+                max_reads_Un = read_count
+        mean_reads_Un = read_count_Un / seq_count_Un
+
+        run = self.run
+        run.info_single("Results of profiling (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+
+        run.info_single("Unique seq counts")
+        run.info("tRNA profile", seq_count_Uf)
+        run.info("Truncated tRNA profile", seq_count_Uc)
+        run.info("No tRNA profile", seq_count_Un, nl_after=1)
+
+        run.info_single("Read counts")
+        run.info("tRNA profile", read_count_Uf)
+        run.info("Truncated tRNA profile", read_count_Uc)
+        run.info("No tRNA profile", read_count_Un, nl_after=1)
+
+        run.info_single("Unique seqs with tRNA profile")
+        run.info("Count with anticodon", seq_anticodon_count_Uf)
+        run.info("Count with complete feature set", seq_complete_count_Uf)
+        run.info("Mean reads per seq", round(mean_reads_Uf, 1))
+        run.info("Max reads per seq", max_reads_Uf)
+        run.info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", seq_short_5prime_count_Uf)
+        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", seq_long_5prime_count_Uf)
+        run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uf, 3))
+        run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uf, 4))
+        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uf, 4))
+        run.info("Mean extrapolated 5' nt freq", round(mean_seq_extrap_freq_Uf, 3), nl_after=1)
+
+        run.info_single("Unique seqs with truncated tRNA profile")
+        run.info("Count with anticodon", seq_anticodon_count_Uc)
+        run.info("Mean reads per seq", round(mean_reads_Uc, 1))
+        run.info("Max reads per seq", max_reads_Uc)
+        run.info("Mean profiled nt freq", round(mean_seq_profiled_freq_Uc, 3))
+        run.info("Mean freq of unconserved in profiled nts", round(mean_seq_unconserved_freq_Uc, 4))
+        run.info("Mean freq of unpaired in stem nts", round(mean_seq_unpaired_freq_Uc, 4), nl_after=1)
+
+        run.info_single("Unique seqs with no tRNA profile")
+        run.info("Mean reads per seq", round(mean_reads_Un, 1))
+        run.info("Max reads per seq", max_reads_Un, nl_after=1)
+
+        run.info_single("Reads with tRNA profile")
+        run.info("Count with anticodon", read_anticodon_count_Uf)
+        run.info("Count with complete feature set", read_complete_count_Uf)
+        run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uf, 1))
+        run.info(f"Count with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION - 1} extra 5' nts", read_short_5prime_count_Uf)
+        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", read_long_5prime_count_Uf)
+        run.info(f"Mean length ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} nt extension", round(mean_read_5prime_length_Uf, 1))
+        run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uf, 3))
+        run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uf, 4))
+        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uf, 4))
+        run.info("Mean extrapolated 5' nt freq", round(mean_read_extrap_freq_Uf, 3), nl_after=1)
+
+        run.info_single("Reads with truncated tRNA profile")
+        run.info("Spans anticodon", read_anticodon_count_Uc)
+        run.info("Mean length 3' terminus", round(mean_read_3prime_length_Uc, 1))
+        run.info("Mean profiled nt freq", round(mean_read_profiled_freq_Uc, 3))
+        run.info("Mean freq of unconserved in profiled nts", round(mean_read_unconserved_freq_Uc, 4))
+        run.info("Mean freq of unpaired in stem nts", round(mean_read_unpaired_freq_Uc, 4), nl_after=2)
 
 
     def trim_trna_ends(self):
-        """Trim any nucleotides 5' of the acceptor stem and 3' of the discriminator from profiled
-        tRNA. Add `TrimmedSequence` objects formed from input fully profiled `UniqueProfileSequence`
-        objects to `self.trimmed_trna_seq_dict`."""
+        """Trim any nts 5' of the acceptor stem and 3' of the discriminator from Uf, forming Tf."""
         start_time = time.time()
-        self.progress.new("Trimming the 3' and 5' ends of tRNA")
+        self.progress.new("Trimming the 3' and 5' ends of profiled tRNA")
         self.progress.update("...")
 
-        trimmed_seqs = self.get_trimmed_seqs([uniq_seq for uniq_seq in self.uniq_trna_seq_dict.values()], TrimmedFullProfileSequence)
-        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-        for trimmed_seq in sorted(trimmed_seqs, key=lambda trimmed_seq: trimmed_seq.represent_name):
-            trimmed_trna_seq_dict[trimmed_seq.represent_name] = trimmed_seq
+        seqs_Tf = self.get_trimmed_seqs([seq_Uf for seq_Uf in self.dict_Uf.values()], TrimmedFullProfileSequence)
+        dict_Tf = self.dict_Tf
+        for seq_Tf in sorted(seqs_Tf, key=lambda seq_Tf: seq_Tf.name):
+            dict_Tf[seq_Tf.name] = seq_Tf
 
         with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed trimming profiled seqs (min)", time.time() - start_time, is_time_value=True))
+            f.write(self.get_summary_line("Time elapsed trimming profiled tRNA (min)", time.time() - start_time, is_time_value=True))
 
         self.progress.end()
 
 
-    def get_trimmed_seqs(self, uniq_seqs, trimmed_seq_class):
-        """Find trimmed sequences with either a full or truncated profile
-        ('TrimmedFullProfileSequence` or `TrimmedTruncatedProfileSequence`, respectively) from
-        unique profiled sequences."""
-        names = [uniq_seq.represent_name for uniq_seq in uniq_seqs]
-        if trimmed_seq_class == TrimmedFullProfileSequence:
-            trimmed_seq_strings = [uniq_seq.seq_string[uniq_seq.extra_fiveprime_length: len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length]
-                                   for uniq_seq in uniq_seqs]
-        elif trimmed_seq_class == TrimmedTruncatedProfileSequence:
-            trimmed_seq_strings = [uniq_seq.seq_string[: len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length]
-                                   for uniq_seq in uniq_seqs]
+    def get_trimmed_seqs(self, seqs_U, class_T):
+        """Find Tf or Tc from Uf or Uc, respectively."""
+        names = [seq_U.name for seq_U in seqs_U]
+        if class_T == TrimmedFullProfileSequence:
+            strings_T = [seq_U.string[seq_U.xtra_5prime_length: len(seq_U.string) - seq_U.length_3prime_terminus] for seq_U in seqs_U]
+        elif class_T == TrimmedTruncatedProfileSequence:
+            strings_T = [seq_U.string[: len(seq_U.string) - seq_U.length_3prime_terminus] for seq_U in seqs_U]
 
-        clusters = Dereplicator(names, trimmed_seq_strings, extras=uniq_seqs).full_length_dereplicate()
+        clusters = Dereplicator(names, strings_T, extras=seqs_U).full_length_dereplicate()
 
-        trimmed_seqs = [trimmed_seq_class(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
-        return trimmed_seqs
+        seqs_T = [class_T(cluster.member_seqs[0], cluster.member_extras) for cluster in clusters]
+        return seqs_T
 
 
     def trim_truncated_profile_ends(self):
-        """Trim any nucleotides 3' of the discriminator from sequences with a truncated tRNA
-        profile. Add `TrimmedTruncatedProfileSequence` objects formed from input
-        `UniqueTruncatedProfileSequence` objects to `self.trimmed_trunc_seq_dict`."""
+        """Trim any nts 3' of the discriminator from Uc, forming Tc."""
         start_time = time.time()
         self.progress.new("Trimming the 3' ends of seqs with truncated tRNA profiles")
         self.progress.update("...")
 
-        trimmed_seqs = self.get_trimmed_seqs([uniq_seq for uniq_seq in self.uniq_trunc_seq_dict.values()], TrimmedTruncatedProfileSequence)
-        trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
-        for trimmed_seq in sorted(trimmed_seqs, key=lambda trimmed_seq: trimmed_seq.represent_name):
-            trimmed_trunc_seq_dict[trimmed_seq.represent_name] = trimmed_seq
+        seqs_Tc = self.get_trimmed_seqs([seq_Uc for seq_Uc in self.dict_Uc_nontrna.values()], TrimmedTruncatedProfileSequence)
+        dict_Tc_nontrna = self.dict_Tc_nontrna
+        for seq_Tc in sorted(seqs_Tc, key=lambda seq_Tc: seq_Tc.name):
+            dict_Tc_nontrna[seq_Tc.name] = seq_Tc
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed trimming seqs with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
@@ -1950,67 +2233,133 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def threeprime_dereplicate_trna(self):
-        """Dereplicate trimmed profiled tRNA sequences from the 3' end of longer trimmed sequences.
+    def report_trim_stats(self):
+        """Report to terminal stats to the terminal on Tf and Tc immediately after trimming steps."""
+        count_Tf = len(self.dict_Tf)
+        anticodon_count_Tf = 0
+        complete_count_Tf = 0
+        mean_uniq_seqs_Tf = len(self.dict_Uf) / count_Tf
+        single_count_Tf = 0
+        mean_reads_Tf = 0
+        max_reads_Tf = 0
+        long_5prime_count_Tf = 0
+        for seq_Tf in self.dict_Tf.values():
+            if seq_Tf.contains_anticodon:
+                anticodon_count_Tf += 1
+                if seq_Tf.has_complete_feature_set:
+                    complete_count_Tf += 1
+            if len(seq_Tf.names_U) == 1:
+                single_count_Tf += 1
+            read_count = seq_Tf.read_count
+            mean_reads_Tf += read_count
+            if read_count > max_reads_Tf:
+                max_reads_Tf = read_count
+            if seq_Tf.long_5prime_extension_dict:
+                long_5prime_count_Tf += 1
+        mean_reads_Tf /= count_Tf
+
+        count_Tc = len(self.dict_Tc_nontrna)
+        anticodon_count_Tc = 0
+        mean_uniq_seqs_Tc = len(self.dict_Uc_nontrna) / count_Tc
+        single_uniq_seq_count_Tc = 0
+        mean_reads_Tc = 0
+        max_reads_Tc = 0
+        for seq_Tc in self.dict_Tc_nontrna.values():
+            if seq_Tc.contains_anticodon:
+                anticodon_count_Tc += 1
+            if len(seq_Tc.names_U) == 1:
+                single_uniq_seq_count_Tc += 1
+            read_count = seq_Tc.read_count
+            mean_reads_Tc += read_count
+            if read_count > max_reads_Tc:
+                max_reads_Tc = read_count
+        mean_reads_Tc /= count_Tc
+
+        run = self.run
+        run.info_single("Results of trimming (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+
+        run.info_single("Trimmed seq counts")
+        run.info("tRNA profile", count_Tf)
+        run.info("Truncated tRNA profile", count_Tc, nl_after=1)
+
+        run.info_single("Trimmed seqs with tRNA profile")
+        run.info("Count with anticodon", anticodon_count_Tf)
+        run.info("Count with complete feature set", complete_count_Tf)
+        run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tf, 1))
+        run.info("Count with single unique seq", single_count_Tf)
+        run.info("Mean reads per seq", round(mean_reads_Tf, 1))
+        run.info("Max reads per seq", max_reads_Tf)
+        run.info(f"Count with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", long_5prime_count_Tf, nl_after=1)
+
+        run.info_single("Trimmed seqs with truncated tRNA profile")
+        run.info("Count with anticodon", anticodon_count_Tc)
+        run.info("Mean unique seqs per seq", round(mean_uniq_seqs_Tc, 1))
+        run.info("Count with single unique seq", single_uniq_seq_count_Tc)
+        run.info("Mean reads per seq", round(mean_reads_Tc, 1))
+        run.info("Max reads per seq", max_reads_Tc, nl_after=2)
+
+
+    def threeprime_dereplicate_profiled_trna(self):
+        """Dereplicate Tf from the 3' end of longer Tf.
 
         EXAMPLE:
-        Normalized tRNA (trimmed tRNA 1): TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
-        Trimmed tRNA 2                  :                       AATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
-        Trimmed tRNA 3                  :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
+        Nf (Tf 1): TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
+        Tf 2     :                       AATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
+        Tf 3     :                                     GCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
         """
         start_time = time.time()
-        self.progress.new("Dereplicating trimmed tRNA seqs from the 3' end")
+        pid = "Dereplicating trimmed tRNA seqs from the 3' end"
+        self.progress.new(pid)
         self.progress.update("...")
 
-        # Prefix dereplicate trimmed sequences from the 3' end.
+        # Prefix dereplicate Tf from the 3' end.
         names = []
-        reversed_seq_strings = []
-        trimmed_seqs = []
-        for name, trimmed_seq in self.trimmed_trna_seq_dict.items():
+        reverse_strings = []
+        seqs_Tf = []
+        for name, seq_Tf in self.dict_Tf.items():
             names.append(name)
-            reversed_seq_strings.append(trimmed_seq.seq_string[::-1])
-            trimmed_seqs.append(trimmed_seq)
-        clusters = Dereplicator(names, reversed_seq_strings, extras=trimmed_seqs).prefix_dereplicate()
+            reverse_strings.append(seq_Tf.string[::-1])
+            seqs_Tf.append(seq_Tf)
+        clusters = Dereplicator(names, reverse_strings, extras=seqs_Tf).prefix_dereplicate()
 
-        # Profiling may have found multiple sequences that would here be 3'-dereplicated as having
-        # complete, but different, feature profiles. Consider the shortest "completely profiled"
-        # trimmed sequence in the cluster to be the correct profile. Reclassify discrepant 5'
-        # nucleotides from the unique sequences in the longer trimmed sequences as extra 5'
-        # nucleotides. Transfer the profile information from the representative unique sequence of
-        # the shortest trimmed sequence to the unique sequences of the longer trimmed sequences.
-        # Produce a new trimmed sequence from all of these unique sequences, updating
-        # `self.trimmed_trna_seq_dict` and `self.uniq_trna_seq_dict`.
+        # Profiling may have found multiple Tf that would here be 3'-dereplicated as having
+        # complete, but different, feature profiles. Consider the shortest "completely profiled" Tf
+        # in the cluster to have the correct profile. Reclassify discrepant 5' nts from Uf in longer
+        # Tf as extra 5' nts. Transfer the profile information from the representative Uf of the
+        # shortest Tf to Uf of longer Tf, replacing these longer Uf with Us objects. Produce a new
+        # Tf object from these Uf and Us.
 
-        # Similarly, the longest sequence in the cluster may have an erroneous "incomplete profile."
-        # If there is a shorter sequence in the cluster with a complete profile, then any longer
-        # sequences with an incomplete profile can be reevaluated in the same manner.
+        # Similarly, the longest Tf in the cluster may have an erroneous "incomplete profile." If
+        # there is a shorter Tf in the cluster with a complete profile, then any longer Tf with an
+        # incomplete profile can be reevaluated in the same manner.
 
-        # This step, which likely affects a tiny number of trimmed sequences, helps reduce the
-        # number of extra, wrong nucleotides at the 5' end of downstream seed sequences. In debug
-        # mode, consolidated trimmed sequences are written to a file.
+        # This step, which likely affects a tiny number of Tf, helps reduce the number of extra,
+        # wrong nts at the 5' end of downstream seed sequences. In debug mode, consolidated Tf are
+        # written to a file.
 
         # Nota bene: A complete profile may be extrapolated at the 5' end of the 5' strand of the
-        # acceptor stem. By default, only one nucleotide may be extrapolated in the stem when all
-        # other nucleotides form base pairs. So it is hard to see how an extrapolated complete
-        # profile is more likely to be inaccurate than the removed profiles of longer sequences in
-        # the cluster.
+        # acceptor stem. By default, only 1 nt may be extrapolated in the stem when all other nts
+        # form base pairs. So it is hard to see how an extrapolated complete profile is more likely
+        # to be inaccurate than the removed profiles of longer sequences in the cluster.
 
         # Do not check for feature-by-feature agreement among clustered profiles here, as 3' tRNA
         # fragments occasionally have some incorrect feature positions due to a paucity of sequence
         # information available in fragment profiling. It is conceivable that the seed sequence of
-        # the cluster is assigned a wrong complete or incomplete profile, but all of the shorter
+        # the cluster is assigned a wrong complete or incomplete profile while all of the shorter
         # sequences in the cluster are assigned correct incomplete profiles -- presumably a rare
         # inaccuracy that goes unchecked.
+        self.progress.update_pid(pid)
         self.progress.update("Inspecting normalized seq clusters")
 
-        norm_trna_seq_dict = self.norm_trna_seq_dict
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
+        dict_Nf = self.dict_Nf
+        dict_Uf = self.dict_Uf
 
         # It is possible that trimmed sequences from multiple clusters can consolidate.
-        consol_trimmed_seq_dict = {}
+        self.count_consol_Tf = 0
+        dict_consol_Tf = {}
 
         # This dict is for an edge case explained below.
-        his_trimmed_seq_dict = {}
+        dict_Tf_His = {}
 
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file = open(self.consol_seqs_with_inconsis_profiles_path, 'w')
@@ -2018,102 +2367,100 @@ class TRNASeqDataset(object):
             inconsis_profile_cluster_count = 0
 
         for cluster in clusters:
-            # Skip initialization of `NormalizedSequence` objects, as additional `TrimmedSequence`
-            # members are later added to the objects after dereplicating sequences with truncated
-            # tRNA profiles and mapping unprofiled tRNA fragments.
-            trimmed_seqs = cluster.member_extras
-            if len(trimmed_seqs) == 1:
-                norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs)
+            # Skip initialization of Nf objects, as additional Tf members are later added to the
+            # objects after dereplicating Tc and mapping Tm.
+            seqs_Tf = cluster.member_extras
+            if len(seqs_Tf) == 1:
+                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
                 continue
 
-            # Check that there are no shorter sequences in the cluster with a "complete profile".
+            # Check that there are no shorter Tf in the cluster with a "complete profile".
             complete_profile_indices = []
-            for trimmed_seq_index, trimmed_seq in enumerate(trimmed_seqs):
-                if trimmed_seq.has_complete_feature_set:
-                    complete_profile_indices.append(trimmed_seq_index)
+            for index_Tf, seq_Tf in enumerate(seqs_Tf):
+                if seq_Tf.has_complete_feature_set:
+                    complete_profile_indices.append(index_Tf)
 
             if not complete_profile_indices:
-                norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs)
+                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
                 continue
 
             if complete_profile_indices == [0]:
-                norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs)
+                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
                 continue
 
-            # Reaching this point means that there are multiple sequences with "complete
-            # profiles" in the cluster.
+            # Reaching this point means that there are multiple Tf with "complete profiles" in the
+            # cluster.
 
-            # If the two shortest sequences with complete feature profiles differ by the
+            # If the two shortest Tf with complete feature profiles differ by the
             # post-transcriptionally added 5'-G of tRNA-His, then they should both be maintained as
-            # separate trimmed sequences.
-            if trimmed_seqs[complete_profile_indices[-2]].has_his_g:
-                if trimmed_seqs[complete_profile_indices[-1]].seq_string == trimmed_seqs[complete_profile_indices[-2]].seq_string[1: ]:
+            # separate Tf.
+            if seqs_Tf[complete_profile_indices[-2]].has_His_G:
+                if seqs_Tf[complete_profile_indices[-1]].string == seqs_Tf[complete_profile_indices[-2]].string[1: ]:
 
                     if len(complete_profile_indices) == 2:
                         assert complete_profile_indices[-2] == 0
-                        his_trimmed_seq_dict[trimmed_seqs[1].represent_name] = trimmed_seqs
+                        dict_Tf_His[seqs_Tf[1].name] = seqs_Tf
                         continue
 
-                    # Perhaps more than two trimmed sequences in the cluster have "complete"
-                    # profiles, though this has not been checked. In this case, consolidate the
-                    # sequences, retaining the profile of the shortest.
+                    # Perhaps more than two Tf in the cluster have "complete" profiles, though this
+                    # has not been checked. In this case, consolidate the Tf, retaining the profile
+                    # of the shortest.
 
             if anvio.DEBUG:
-                # Report the consolidated sequences with different complete feature profiles.
+                # Report consolidated Tf with different complete feature profiles.
                 inconsis_profile_cluster_count += 1
-                for trimmed_seq in trimmed_seqs[: complete_profile_indices[-1] + 1]:
+                for seq_Tf in seqs_Tf[: complete_profile_indices[-1] + 1]:
                     consol_seqs_with_inconsis_profiles_file.write(str(inconsis_profile_cluster_count) + "\t")
                     consol_seqs_with_inconsis_profiles_file.write("0\t")
-                    consol_seqs_with_inconsis_profiles_file.write(trimmed_seq.seq_string + "\n")
-                    for uniq_seq in trimmed_seq.uniq_seqs:
+                    consol_seqs_with_inconsis_profiles_file.write(seq_Tf.string + "\n")
+                    for name_Uf in seq_Tf.names_U:
                         consol_seqs_with_inconsis_profiles_file.write(str(inconsis_profile_cluster_count) + "\t")
                         consol_seqs_with_inconsis_profiles_file.write("1\t")
-                        consol_seqs_with_inconsis_profiles_file.write(uniq_seq.seq_string + "\n")
+                        consol_seqs_with_inconsis_profiles_file.write(dict_Uf[name_Uf].string + "\n")
 
-            short_trimmed_seq = trimmed_seqs[complete_profile_indices[-1]]
-            if short_trimmed_seq.represent_name in consol_trimmed_seq_dict:
-                # Trimmed sequences from multiple clusters consolidate with the same shorter trimmed
-                # sequence with a complete profile.
+            short_seq_Tf = seqs_Tf[complete_profile_indices[-1]]
+            if short_seq_Tf.name in dict_consol_Tf:
+                # Tf from multiple clusters consolidate with the same shorter Tf with a complete
+                # profile.
 
-                # Some of the longer trimmed sequences with rejected "complete" profiles occur in
-                # multiple clusters. Clearly, the longest seed sequence, which is also being
-                # consolidated, must differ between the clusters. Trimmed sequences in the clusters
-                # shorter than that with the chosen complete profile must be the same in each
-                # cluster.
-                long_trimmed_seqs = consol_trimmed_seq_dict[short_trimmed_seq.represent_name]['long_trimmed_seqs']
-                encountered_long_trimmed_seq_names = [trimmed_seq.represent_name for trimmed_seq in long_trimmed_seqs]
-                for long_trimmed_seq in trimmed_seqs[: complete_profile_indices[-1]]:
-                    if long_trimmed_seq.represent_name not in encountered_long_trimmed_seq_names:
-                        long_trimmed_seqs.append(long_trimmed_seq)
+                # Some of the longer Tf with rejected "complete" profiles occur in multiple
+                # clusters. Clearly, the longest seed Tf, which is also being consolidated, must
+                # differ between the clusters. Tf in the clusters that are shorter than the Tf with
+                # the selected complete profile must be the same in each cluster.
+                long_seqs_Tf = dict_consol_Tf[short_seq_Tf.name]['long_seqs_Tf']
+                encountered_long_Tf_names = [seq_Tf.name for seq_Tf in long_seqs_Tf]
+                for long_seq_Tf in seqs_Tf[: complete_profile_indices[-1]]:
+                    if long_seq_Tf.name not in encountered_long_Tf_names:
+                        long_seqs_Tf.append(long_seq_Tf)
             else:
-                # This is the first time the shortest sequence with a complete profile has been
-                # found in a cluster.
-                consol_trimmed_seq_dict[short_trimmed_seq.represent_name] = {'short_trimmed_seq': short_trimmed_seq,
-                                                                             'long_trimmed_seqs': trimmed_seqs[: complete_profile_indices[-1]],
-                                                                             'norm_seq_members': trimmed_seqs[complete_profile_indices[-1] + 1: ]}
+                # This is the first time the shortest Tf with a complete profile has been processed
+                # from a cluster.
+                dict_consol_Tf[short_seq_Tf.name] = {'short_seq_Tf': short_seq_Tf,
+                                                     'long_seqs_Tf': seqs_Tf[: complete_profile_indices[-1]],
+                                                     'Nf_members': seqs_Tf[complete_profile_indices[-1] + 1: ]}
         if anvio.DEBUG:
             consol_seqs_with_inconsis_profiles_file.close()
 
-        # Consider the following edge case. One cluster had two trimmed sequences with complete
-        # profiles, T1 and T2, so the sequences were consolidated, forming normalized sequence, N1.
-        # T1:      GGTGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
-        # T2 == N1:   GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
-        # Another cluster had two trimmed sequences, T3 and the same T2, only differing by a
-        # supposed tRNA-His 5'-G.
-        # T3:        GGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
-        # T2:         GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
-        # Rather than creating another normalized sequence, N2, with the sequence of T3,
-        # consolidate the trimmed sequences from the two clusters. This avoids producing two
-        # normalized sequences, one of which is the 3' subsequence of the other.
-        for name, trimmed_seqs in his_trimmed_seq_dict.items():
-            if name in consol_trimmed_seq_dict:
-                consol_trimmed_seq_dict[name]['long_trimmed_seqs'].append(trimmed_seqs[0])
+        # Consider the following edge case. One cluster had two Tf with complete profiles, Tf1 and
+        # Tf2, so the two were consolidated, forming Nf1.
+        # Tf1:        GGTGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Tf2 == Nf1:    GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Another cluster had two Tf, Tf3 and the same Tf2, only differing by a supposed tRNA-His
+        # 5'-G.
+        # Tf3:          GGGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Tf2:           GGGAGAATTCCCGAGTGGCCAAGGGGGGCAGACTGTGTATCTGTTGCGTTTCGCTTCGATGGTTCGAATCCATCTTCTCCCA
+        # Rather than creating another Nf, Nf2, seeded by Tf3, consolidate Tf from the two clusters.
+        # This avoids producing two Nf, one of which is a 3' subsequence of the other.
+        for name, seqs_Tf in dict_Tf_His.items():
+            if name in dict_consol_Tf:
+                dict_consol_Tf[name]['long_seqs_Tf'].append(seqs_Tf[0])
             else:
-                norm_trna_seq_dict[trimmed_seqs[0].represent_name] = NormalizedFullProfileSequence(trimmed_seqs)
+                dict_Nf[seqs_Tf[0].name] = NormalizedFullProfileSequence(seqs_Tf)
 
-        for consol_trimmed_seq_subdict in consol_trimmed_seq_dict.values():
-            consol_trimmed_seq = self.consolidate_trimmed_sequences(consol_trimmed_seq_subdict['short_trimmed_seq'], consol_trimmed_seq_subdict['long_trimmed_seqs'])
-            norm_trna_seq_dict[consol_trimmed_seq.represent_name] = NormalizedFullProfileSequence([consol_trimmed_seq] + consol_trimmed_seq_subdict['norm_seq_members'])
+        for subdict_consol_Tf in dict_consol_Tf.values():
+            self.count_consol_Tf += 1
+            consol_seq_Tf = self.consolidate_trimmed_sequences(subdict_consol_Tf['short_seq_Tf'], subdict_consol_Tf['long_seqs_Tf'])
+            dict_Nf[consol_seq_Tf.name] = NormalizedFullProfileSequence([consol_seq_Tf] + subdict_consol_Tf['Nf_members'])
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed 3'-dereplicating trimmed profiled seqs", time.time() - start_time, is_time_value=True))
@@ -2121,161 +2468,149 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
-    def consolidate_trimmed_sequences(self, short_trimmed_seq, long_trimmed_seqs):
-        """Consolidate longer trimmed sequences with a shorter trimmed sequence by pooling all of
-        their unique sequences, changing the profile information of these sequences, and generating
-        a new trimmed sequence. Update `self.trimmed_trna_seq_dict` and `self.uniq_trna_seq_dict` in
-        the process."""
-        short_trimmed_seq_string = short_trimmed_seq.seq_string
-        short_uniq_seq = short_trimmed_seq.uniq_seqs[0]
+    def consolidate_trimmed_sequences(self, short_seq_Tf, long_seqs_Tf):
+        """Consolidate longer Tf with a shorter Tf by pooling all of their Uf -- changing their
+        profile information -- and generating a new Tf object."""
+        short_seq_Tf_string = short_seq_Tf.string
+        dict_Uf = self.dict_Uf
+        short_seq_Uf = dict_Uf[short_seq_Tf.names_U[0]]
 
-        # To transfer profile information from the representative unique sequence to other unique
-        # sequences, determine where features are relative to the 3' end of the short trimmed
-        # sequence, which is found in the other unique sequences.
-        replacement_info_dict = {'trimmed_seq_string': short_trimmed_seq.seq_string}
-        feature_index_adjustment = -short_uniq_seq.extra_fiveprime_length - len(short_trimmed_seq_string)
-        feature_start_indices_from_trimmed_threeprime = []
-        for feature_start_index in short_uniq_seq.feature_start_indices:
+        # To transfer profile information from the representative short Uf to longer Uf, determine
+        # where features are relative to the 3' end of the short Uf, which is found in the other Uf.
+        replacement_info_dict = {'string_T': short_seq_Tf.string}
+        feature_index_adjustment = -short_seq_Uf.xtra_5prime_length - len(short_seq_Tf_string)
+        feature_starts_from_T_3prime = []
+        for feature_start_index in short_seq_Uf.feature_start_indices:
             if isinstance(feature_start_index, int):
-                feature_start_indices_from_trimmed_threeprime.append(feature_start_index + feature_index_adjustment)
+                feature_starts_from_T_3prime.append(feature_start_index + feature_index_adjustment)
             else:
-                feature_start_indices_from_trimmed_threeprime.append(tuple([strand_start_index + feature_index_adjustment for strand_start_index in feature_start_index]))
-        replacement_info_dict['feature_start_indices_from_trimmed_threeprime'] = feature_start_indices_from_trimmed_threeprime
-        feature_stop_indices_from_trimmed_threeprime = []
-        for feature_stop_index in short_uniq_seq.feature_stop_indices:
+                feature_starts_from_T_3prime.append(tuple([strand_start_index + feature_index_adjustment for strand_start_index in feature_start_index]))
+        replacement_info_dict['feature_starts_from_T_3prime'] = feature_starts_from_T_3prime
+        feature_stops_from_T_3prime = []
+        for feature_stop_index in short_seq_Uf.feature_stop_indices:
             if isinstance(feature_stop_index, int):
-                feature_stop_indices_from_trimmed_threeprime.append(feature_stop_index + feature_index_adjustment)
+                feature_stops_from_T_3prime.append(feature_stop_index + feature_index_adjustment)
             else:
-                feature_stop_indices_from_trimmed_threeprime.append(tuple([strand_stop_index + feature_index_adjustment for strand_stop_index in feature_stop_index]))
-        replacement_info_dict['feature_stop_indices_from_trimmed_threeprime'] = feature_stop_indices_from_trimmed_threeprime
-        replacement_info_dict['has_his_g'] = short_uniq_seq.has_his_g
-        replacement_info_dict['alpha_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_start_index is None else short_uniq_seq.alpha_start_index + feature_index_adjustment
-        replacement_info_dict['alpha_stop_index_from_trimmed_threeprime'] = None if short_uniq_seq.alpha_stop_index is None else short_uniq_seq.alpha_stop_index + feature_index_adjustment
-        replacement_info_dict['beta_start_index_from_trimmed_threeprime'] = None if short_uniq_seq.beta_start_index is None else short_uniq_seq.beta_start_index + feature_index_adjustment
-        replacement_info_dict['beta_stop_index_from_trimmed_threeprime'] = None if short_uniq_seq.beta_stop_index is None else short_uniq_seq.beta_stop_index + feature_index_adjustment
-        replacement_info_dict['anticodon_string'] = short_uniq_seq.anticodon_string
-        replacement_info_dict['anticodon_aa'] = short_uniq_seq.anticodon_aa
-        replacement_info_dict['contains_anticodon'] = short_uniq_seq.contains_anticodon
-        replacement_info_dict['num_conserved'] = short_uniq_seq.num_conserved
-        replacement_info_dict['num_unconserved'] = short_uniq_seq.num_unconserved
-        replacement_info_dict['num_paired'] = short_uniq_seq.num_paired
-        replacement_info_dict['num_unpaired'] = short_uniq_seq.num_unpaired
-        unconserved_info_from_trimmed_threeprime = []
-        for unconserved_tuple in short_uniq_seq.unconserved_info:
-            unconserved_info_from_trimmed_threeprime.append((unconserved_tuple[0] + feature_index_adjustment,
-                                                             unconserved_tuple[1],
-                                                             unconserved_tuple[2]))
-        replacement_info_dict['unconserved_info_from_trimmed_threeprime'] = unconserved_info_from_trimmed_threeprime
-        unpaired_info_from_trimmed_threeprime = []
-        for unpaired_tuple in short_uniq_seq.unpaired_info:
-            unpaired_info_from_trimmed_threeprime.append((unpaired_tuple[0] + feature_index_adjustment,
-                                                          unpaired_tuple[1] + feature_index_adjustment,
-                                                          unpaired_tuple[2],
-                                                          unpaired_tuple[3]))
-        replacement_info_dict['unpaired_info_from_trimmed_threeprime'] = unpaired_info_from_trimmed_threeprime
-        replacement_info_dict['profiled_seq_without_terminus_length'] = short_uniq_seq.profiled_seq_length - short_uniq_seq.threeprime_terminus_length
+                feature_stops_from_T_3prime.append(tuple([strand_stop_index + feature_index_adjustment for strand_stop_index in feature_stop_index]))
+        replacement_info_dict['feature_stops_from_T_3prime'] = feature_stops_from_T_3prime
+        replacement_info_dict['has_His_G'] = short_seq_Uf.has_His_G
+        replacement_info_dict['alpha_start_from_T_3prime'] = None if short_seq_Uf.alpha_start is None else short_seq_Uf.alpha_start + feature_index_adjustment
+        replacement_info_dict['alpha_stop_from_T_3prime'] = None if short_seq_Uf.alpha_stop is None else short_seq_Uf.alpha_stop + feature_index_adjustment
+        replacement_info_dict['beta_start_from_T_3prime'] = None if short_seq_Uf.beta_start is None else short_seq_Uf.beta_start + feature_index_adjustment
+        replacement_info_dict['beta_stop_from_T_3prime'] = None if short_seq_Uf.beta_stop is None else short_seq_Uf.beta_stop + feature_index_adjustment
+        replacement_info_dict['anticodon_string'] = short_seq_Uf.anticodon_string
+        replacement_info_dict['anticodon_aa'] = short_seq_Uf.anticodon_aa
+        replacement_info_dict['contains_anticodon'] = short_seq_Uf.contains_anticodon
+        replacement_info_dict['num_conserved'] = short_seq_Uf.num_conserved
+        replacement_info_dict['num_unconserved'] = short_seq_Uf.num_unconserved
+        replacement_info_dict['num_paired'] = short_seq_Uf.num_paired
+        replacement_info_dict['num_unpaired'] = short_seq_Uf.num_unpaired
+        unconserved_info_from_T_3prime = []
+        for unconserved_tuple in short_seq_Uf.unconserved_info:
+            unconserved_info_from_T_3prime.append((unconserved_tuple[0] + feature_index_adjustment,
+                                                   unconserved_tuple[1],
+                                                   unconserved_tuple[2]))
+        replacement_info_dict['unconserved_info_from_T_3prime'] = unconserved_info_from_T_3prime
+        unpaired_info_from_T_3prime = []
+        for unpaired_tuple in short_seq_Uf.unpaired_info:
+            unpaired_info_from_T_3prime.append((unpaired_tuple[0] + feature_index_adjustment,
+                                                unpaired_tuple[1] + feature_index_adjustment,
+                                                unpaired_tuple[2],
+                                                unpaired_tuple[3]))
+        replacement_info_dict['unpaired_info_from_T_3prime'] = unpaired_info_from_T_3prime
+        replacement_info_dict['profiled_seq_without_terminus_length'] = short_seq_Uf.profiled_seq_length - short_seq_Uf.length_3prime_terminus
 
-        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
-        trimmed_trna_seq_dict.pop(short_trimmed_seq.represent_name)
-        uniq_seqs = short_trimmed_seq.uniq_seqs
-        for uniq_seq in uniq_seqs:
-            uniq_seq.trimmed_seq_represent_name = None
-        for long_trimmed_seq in long_trimmed_seqs:
-            trimmed_trna_seq_dict.pop(long_trimmed_seq.represent_name)
+        dict_Tf = self.dict_Tf
+        dict_Tf.pop(short_seq_Tf.name)
+        seqs_U = [dict_Uf[name_Uf] for name_Uf in short_seq_Tf.names_U]
+        for seq_Uf in seqs_U:
+            seq_Uf.name_T = None
+        dict_Us = self.dict_Us
+        for long_seq_Tf in long_seqs_Tf:
+            dict_Tf.pop(long_seq_Tf.name)
 
-            for uniq_seq in long_trimmed_seq.uniq_seqs:
-                uniq_seq.trimmed_seq_represent_name = None
-                uniq_trna_seq_dict.pop(uniq_seq.represent_name)
-                new_uniq_seq = UniqueTransferredProfileSequence(uniq_seq, replacement_info_dict)
-                uniq_seqs.append(new_uniq_seq)
-                uniq_trna_seq_dict[new_uniq_seq.represent_name] = new_uniq_seq
+            for seq_Uf in [dict_Uf[name_Uf] for name_Uf in long_seq_Tf.names_U]:
+                seq_Uf.name_T = None
+                dict_Uf.pop(seq_Uf.name)
+                seq_Us = UniqueTransferredProfileSequence(seq_Uf, replacement_info_dict)
+                seqs_U.append(seq_Us)
+                dict_Us[seq_Us.name] = seq_Us
 
-        consol_trimmed_seqs = self.get_trimmed_seqs(uniq_seqs, TrimmedFullProfileSequence)
+        consol_seqs_Tf = self.get_trimmed_seqs(seqs_U, TrimmedFullProfileSequence)
 
-        if len(consol_trimmed_seqs) > 1:
-            raise ConfigError(f"Consolidation should have produced only 1 trimmed profiled tRNA sequence, not {len(consol_trimmed_seqs)}.")
+        if len(consol_seqs_Tf) > 1:
+            raise ConfigError(f"Consolidation should have produced only 1 trimmed profiled tRNA sequence, not {len(consol_seqs_Tf)}.")
 
-        consol_trimmed_seq = consol_trimmed_seqs[0]
-        trimmed_trna_seq_dict[consol_trimmed_seq.represent_name] = consol_trimmed_seq
+        consol_seq_Tf = consol_seqs_Tf[0]
+        dict_Tf[consol_seq_Tf.name] = consol_seq_Tf
 
-        return consol_trimmed_seq
+        return consol_seq_Tf
 
 
     def threeprime_dereplicate_truncated_sequences(self):
-        """Recover sequences with truncated tRNA profiles that are found to be 3' subsequences of
-        profiled tRNA and thus legitimate 3' tRNA fragments. These trimmed sequences are folded into
-        the normalized tRNA sequences of `self.norm_trna_seq_dict`. Unrecovered trimmed sequences
-        are themselves 3'-dereplicated, forming another pool of normalized sequences in
-        `self.norm_trunc_seq_dict`."""
+        """Recover Tc that are found to be 3' subseqs of Nf and thus legitimate 3' tRNA fragments.
+        These Tc are folded into Nf, while unrecovered Tc are themselves 3'-dereplicated, forming
+        another pool of Nc."""
         start_time = time.time()
         self.progress.new("Dereplicating trimmed seqs with a truncated feature profile")
         self.progress.update("...")
 
-        # Prefix dereplicate both trimmed sequences with truncated profiles and normalized sequences
-        # with full profiles from the 3' end.
-        trimmed_trunc_seq_names = []
-        trimmed_trunc_reversed_seq_strings = []
-        trimmed_trunc_seqs = []
-        for name, trimmed_seq in self.trimmed_trunc_seq_dict.items():
-            trimmed_trunc_seq_names.append(name)
-            trimmed_trunc_reversed_seq_strings.append(trimmed_seq.seq_string[::-1])
-            trimmed_trunc_seqs.append(trimmed_seq)
-        norm_seq_names = []
-        norm_reversed_seq_strings = []
-        norm_seqs = []
-        for name, norm_seq in self.norm_trna_seq_dict.items():
-            norm_seq_names.append(name)
-            norm_reversed_seq_strings.append(norm_seq.seq_string[::-1])
-            norm_seqs.append(norm_seq)
-        clusters = Dereplicator(trimmed_trunc_seq_names + norm_seq_names,
-                                trimmed_trunc_reversed_seq_strings + norm_reversed_seq_strings,
-                                extras=trimmed_trunc_seqs + norm_seqs).prefix_dereplicate()
+        # Prefix dereplicate both Tc and Nf from the 3' end.
+        names_Tc = []
+        reverse_Tc_strings = []
+        seqs_Tc = []
+        for name, seq_Tc in self.dict_Tc_nontrna.items():
+            names_Tc.append(name)
+            reverse_Tc_strings.append(seq_Tc.string[::-1])
+            seqs_Tc.append(seq_Tc)
+        names_Nf = []
+        reverse_Nf_strings = []
+        seqs_Nf = []
+        for name, seq_Nf in self.dict_Nf.items():
+            names_Nf.append(name)
+            reverse_Nf_strings.append(seq_Nf.string[::-1])
+            seqs_Nf.append(seq_Nf)
+        clusters = Dereplicator(names_Tc + names_Nf,
+                                reverse_Tc_strings + reverse_Nf_strings,
+                                extras=seqs_Tc + seqs_Nf).prefix_dereplicate()
 
-        # Associate each truncated sequence with any normalized tRNA sequences that contain it as a
-        # 3' subsequence. Since the trimmed truncated sequence can be a 3' subsequence of multiple
-        # normalized sequences, do not reconstruct a feature profile for the truncated sequence.
-        # (Similarly, trimmed sequences with full profiles need not have the same profile as the
-        # seed trimmed sequence of a normalized sequence.) The unique sequences in the trimmed
-        # sequence are therefore not included in the features table of the tRNA-seq database.
+        # Associate each Tc with any Nf that contain it as a 3' subseq. Since a Tc can be a 3'
+        # subseq of multiple Nf, do not reconstruct a feature profile for the Tc. (Similarly, the
+        # seed Tf in an Nf need not have the same profile as other Tf in the Nf.) Uc in the Tc are
+        # therefore not included in the features table of the tRNA-seq database.
 
-        # Clusters cannot contain more than one normalized tRNA sequence, as these have already been
-        # 3'-dereplicated (by definition). Normalized sequences can seed clusters and also be
-        # members of clusters seeded by a truncated sequence. In the latter case, truncated
-        # sequences in the cluster that are shorter than the normalized sequence (3' subsequences)
-        # are incorporated as members of the normalized sequence.
+        # Clusters cannot contain > 1 Nf, as these have already been 3'-dereplicated (by
+        # definition). Nf can seed clusters and also be members of clusters seeded by a Tc. In the
+        # latter case, only Tc that are shorter than the Nf in the cluster (3' subseqs of the Nf)
+        # are incorporated as members of the Nf.
 
-        # There are three types of cluster: 1. clusters consisting of a single normalized sequence
-        # (ignore), 2. clusters containing a normalized sequence as seed or member with shorter
-        # truncated sequence members, and 3. clusters seeded by truncated sequences. If a truncated
-        # sequence is found in group 2 (part of one or more longer normalized sequences) then ignore
-        # it in group 3 (do not include it in normalized truncated sequences formed from group 3
-        # clusters). The alternatives do not make sense -- including the truncated sequence in
-        # normalized sequences with truncated but not full profiles, or withholding it from both,
-        # perhaps as a new category of sequence.
+        # There are three types of cluster: 1. clusters consisting of a single Nf (ignore), 2.
+        # clusters containing an Nf as seed or member with shorter Tc members, and 3. clusters
+        # seeded by Tc. If a Tc is found in group 2 (part of one or more longer Nf) then ignore it
+        # in group 3 (do not include it in Nc formed from group 3 clusters). The alternatives do not
+        # make sense -- including the Tc in Nc but not Nf; or withholding the Tc from both Nc and
+        # Nf, perhaps as a new category of sequence.
 
-        # This dict relates trimmed truncated sequences to normalized sequences containing them.
-        trunc_seq_norm_seq_dict = defaultdict(list)
-        # This dict relates trimmed truncated sequences to other trimmed truncated sequences found
-        # to be subsequences of the former.
-        trunc_seq_trunc_seq_dict = {}
+        # This dict relates Tc to Nf containing them.
+        dict_Tc_Nf = defaultdict(list)
+        # This dict relates Tc to other Tc found to be subseqs of the former.
+        dict_Tc_Tc = {}
         for cluster in clusters:
             if len(cluster.member_names) == 1:
                 if isinstance(cluster.member_extras[0], NormalizedSequence):
                     continue
 
-            norm_trna_seq = None
-            trimmed_trunc_seq_seed = cluster.member_extras[0] if isinstance(cluster.member_extras[0], TrimmedTruncatedProfileSequence) else None
-            if trimmed_trunc_seq_seed:
-                trunc_seed_seq_members = []
-                trunc_seq_trunc_seq_dict[trimmed_trunc_seq_seed.represent_name] = (trimmed_trunc_seq_seed, trunc_seed_seq_members)
+            seq_Nf = None
+            seed_seq_Tc = cluster.member_extras[0] if isinstance(cluster.member_extras[0], TrimmedTruncatedProfileSequence) else None
+            if seed_seq_Tc:
+                members_seed_seq_Tc = []
+                dict_Tc_Tc[seed_seq_Tc.name] = (seed_seq_Tc, members_seed_seq_Tc)
             for seq in cluster.member_extras:
-                # Members of each cluster are pre-sorted in descending order of sequence length.
-                # There cannot be a normalized tRNA and trimmed truncated profile sequence of the
-                # same length.
-                if norm_trna_seq:
+                # Members of each cluster are pre-sorted in descending order of seq length. There
+                # cannot be an Nf and Tc of the same length.
+                if seq_Nf:
                     if isinstance(seq, TrimmedTruncatedProfileSequence):
-                        trunc_seq_norm_seq_dict[seq.represent_name].append(norm_trna_seq)
+                        dict_Tc_Nf[seq.name].append(seq_Nf)
                         continue
                     else:
                         raise ConfigError("It appears that a cluster in the 3' dereplication "
@@ -2283,50 +2618,57 @@ class TRNASeqDataset(object):
                                           "contains >1 normalized sequence, when it should only contain 0 or 1.")
 
                 if isinstance(seq, NormalizedSequence):
-                    norm_trna_seq = seq
+                    seq_Nf = seq
                     continue
 
-                # The cluster is seeded by a truncated sequence.
-                trunc_seed_seq_members.append(seq)
+                # The cluster is seeded by a Tc.
+                members_seed_seq_Tc.append(seq)
 
-        # Add truncated sequences to matching normalized tRNA sequences.
-        trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
-        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-        uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
-        # The count of recovered truncated sequences containing an anticodon is recorded to
-        # facilitate measurement of isoacceptor abundances. A truncated profile may stop 3' of the
-        # anticodon, but the anticodon may still be in the sequence. The presence of the anticodon
-        # is therefore inferred from the longest trimmed tRNA sequence in the matching normalized
-        # sequence.
-        norm_trna_seq_anticodon_dict = {} # This saves time finding the position of the anticodon relative to the 3' terminus in normalized sequences
-        for trimmed_trunc_seq_name, norm_trna_seqs in trunc_seq_norm_seq_dict.items():
-            trimmed_trunc_seq = trimmed_trunc_seq_dict.pop(trimmed_trunc_seq_name)
-            # The sequence with a truncated tRNA profile has been confirmed as tRNA, so transfer the
-            # object between dictionaries.
-            trimmed_trna_seq_dict[trimmed_trunc_seq.represent_name] = trimmed_trunc_seq
-            trimmed_trunc_seq_length = len(trimmed_trunc_seq.seq_string)
+        # Add Tc to matching Nf.
+        dict_Tc_nontrna = self.dict_Tc_nontrna
+        dict_Tc_trna = self.dict_Tc_trna
+        dict_Uc_nontrna = self.dict_Uc_nontrna
+        dict_Uc_trna = self.dict_Uc_trna
+        # It is important to determine whether Tc contain an anticodon to enable the later
+        # measurement of isoacceptor abundances. A truncated profile may stop 3' of the anticodon,
+        # but the anticodon may still be in the sequence. The presence of the anticodon in Tc is
+        # therefore inferred from the longest Tf in the matching Nf.
+        dict_Nf_anticodon = {} # This dict saves time finding the position of the anticodon relative to the 3' terminus of Nf
+        RELATIVE_ANTICODON_LOOP_INDEX = self.RELATIVE_ANTICODON_LOOP_INDEX
+        dict_Tf = self.dict_Tf
+        dict_Uf = self.dict_Uf
+        for name_Tc, seqs_Nf in dict_Tc_Nf.items():
+            seq_Tc = dict_Tc_nontrna.pop(name_Tc)
+            # Tc has been confirmed as tRNA, so transfer the object between dicts.
+            seq_Tc.category = 'trna'
+            dict_Tc_trna[seq_Tc.name] = seq_Tc
+            length_Tc = len(seq_Tc.string)
 
-            for uniq_trunc_seq in trimmed_trunc_seq.uniq_seqs:
-                # The sequence with a truncated tRNA profile has been confirmed as tRNA.
-                uniq_trna_seq_dict[uniq_trunc_seq.represent_name] = uniq_trunc_seq_dict.pop(uniq_trunc_seq.represent_name)
+            seqs_Uc = []
+            for name_Uc in seq_Tc.names_U:
+                # Uc has been confirmed as tRNA.
+                seq_Uc = dict_Uc_nontrna.pop(name_Uc)
+                dict_Uc_trna[name_Uc] = seq_Uc
+                seqs_Uc.append(seq_Uc)
 
-            for norm_seq in norm_trna_seqs:
-                norm_seq.trimmed_seqs.append(trimmed_trunc_seq)
-                norm_seq_length = len(norm_seq.seq_string)
-                norm_seq.start_positions.append(norm_seq_length - trimmed_trunc_seq_length)
-                norm_seq.stop_positions.append(norm_seq_length)
-                trimmed_trunc_seq.norm_seq_represent_names.append(norm_seq.represent_name)
+            for seq_Nf in seqs_Nf:
+                seq_Nf.names_T.append(seq_Tc.name)
+                seq_Nf.categories_T.append('Tc_trna')
+                length_Nf = len(seq_Nf.string)
+                seq_Nf.starts_T_in_N.append(length_Nf - length_Tc)
+                seq_Nf.stops_T_in_N.append(length_Nf)
+                seq_Tc.names_N.append(seq_Nf.name)
 
-                if not trimmed_trunc_seq.contains_anticodon:
-                    # Determine from the first normalized sequence in which the truncated sequence is
-                    # found whether the truncated sequence contains the anticodon.
+                if not seq_Tc.contains_anticodon:
+                    # Determine from the first Nf in which Tc is found whether Tc contains the
+                    # anticodon.
+                    seq_Tf = dict_Tf[seq_Nf.names_T[0]]
                     try:
-                        # The position of the anticodon in the normalized sequence has already been found.
-                        anticodon_start_relative_to_threeprime_terminus = norm_trna_seq_anticodon_dict[norm_seq.represent_name]
+                        # The position of the anticodon in Nf has already been found.
+                        anticodon_start_relative_to_3prime_terminus = dict_Nf_anticodon[seq_Nf.name]
                     except KeyError:
                         try:
-                            anticodon_loop_start = norm_seq.trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+                            anticodon_loop_start = seq_Tf.feature_start_indices[RELATIVE_ANTICODON_LOOP_INDEX]
                         except IndexError:
                             # The anticodon loop was not reached in the profile.
                             anticodon_loop_start = -1
@@ -2334,36 +2676,31 @@ class TRNASeqDataset(object):
                             # The anticodon loop was profiled.
                             anticodon_start = anticodon_loop_start + 2
                             # The position of the anticodon relative to the 3' terminus is a negative number.
-                            anticodon_start_relative_to_threeprime_terminus = anticodon_start - norm_seq.trimmed_seqs[0].uniq_seqs[0].feature_start_indices[-1]
+                            anticodon_start_relative_to_3prime_terminus = anticodon_start - dict_Uf[seq_Tf.names_U[0]].feature_start_indices[-1]
                         else:
                             # The anticodon loop was not profiled, indicated by a positive number.
-                            anticodon_start_relative_to_threeprime_terminus = 1
-                        norm_trna_seq_anticodon_dict[norm_seq.represent_name] = anticodon_start_relative_to_threeprime_terminus
-                    if anticodon_start_relative_to_threeprime_terminus == 1:
+                            anticodon_start_relative_to_3prime_terminus = 1
+                        dict_Nf_anticodon[seq_Nf.name] = anticodon_start_relative_to_3prime_terminus
+                    if anticodon_start_relative_to_3prime_terminus == 1:
                         continue
-                    if trimmed_trunc_seq_length + anticodon_start_relative_to_threeprime_terminus >= 0:
-                        trimmed_trunc_seq.contains_anticodon = True
-                        for uniq_seq in trimmed_trunc_seq.uniq_seqs:
-                            uniq_seq.contains_anticodon = True
+                    if length_Tc + anticodon_start_relative_to_3prime_terminus >= 0:
+                        seq_Tc.contains_anticodon = True
+                        for seq_Uc in seqs_Uc:
+                            seq_Uc.contains_anticodon = True
 
-        # Trimmed truncated sequences that don't match normalized tRNA sequences are grouped into
-        # normalized truncated sequences.
-        for trimmed_trunc_seq_seed_represent_name, entry in trunc_seq_trunc_seq_dict.items():
-            trimmed_trunc_seq_seed, trimmed_trunc_seq_members = entry
+        # Tc that don't match Nf are grouped into Nc.
+        dict_Nc = self.dict_Nc
+        for seed_Tc_name, entry in dict_Tc_Tc.items():
+            seed_seq_Tc, member_seqs_Tc = entry
 
-            # REMOVE
-            if trimmed_trunc_seq_seed_represent_name in trunc_seq_norm_seq_dict:
-                raise ConfigError("How is a trimmed truncated seed a part of a normalized tRNA sequence?")
-
-            # If a trimmed truncated sequence is a 3' subsequence of a normalized tRNA sequence,
-            # then it and all shorter sequences should be excluded from the new normalized truncated
-            # sequence.
-            for i, trimmed_trunc_seq in enumerate(trimmed_trunc_seq_members):
-                if trimmed_trunc_seq.represent_name in trunc_seq_norm_seq_dict:
-                    trimmed_trunc_seq_members = trimmed_trunc_seq_members[: i]
+            # If a Tc is a 3' subseq of an Nf, then it and all shorter Tc should be excluded from
+            # the new Nc.
+            for index_Tc, seq_Tc in enumerate(member_seqs_Tc):
+                if seq_Tc.name in dict_Tc_Nf:
+                    member_seqs_Tc = member_seqs_Tc[: index_Tc]
                     break
 
-            self.norm_trunc_seq_dict[trimmed_trunc_seq_seed_represent_name] = NormalizedTruncatedProfileSequence(trimmed_trunc_seq_members)
+            dict_Nc[seed_Tc_name] = NormalizedTruncatedProfileSequence(member_seqs_Tc)
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed recovering tRNA with truncated feature profile (min)", time.time() - start_time, is_time_value=True))
@@ -2371,514 +2708,818 @@ class TRNASeqDataset(object):
         self.progress.end()
 
 
+    def report_3prime_derep_stats(self):
+        """Report to terminal stats regarding 3'-dereplication immediately after these steps."""
+        count_Nf = len(self.dict_Nf)
+        anticodon_count_Nf = 0
+        complete_count_Nf = 0
+        mean_spec_T_Nf = 0
+        mean_nonspec_T_Nf = 0
+        mean_spec_U_Nf = 0
+        mean_nonspec_U_Nf = 0
+        spec_reads_Nf = 0
+        nonspec_reads_Nf = 0
+        max_spec_reads_Nf = 0
+        max_nonspec_reads_Nf = 0
+        max_total_reads_Nf = 0
+        dict_Uc_trna = self.dict_Uc_trna
+        for seq_Nf in self.dict_Nf.values():
+            if seq_Nf.contains_anticodon:
+                anticodon_count_Nf += 1
+                if seq_Nf.has_complete_feature_set:
+                    complete_count_Nf += 1
+            spec_reads = 0
+            nonspec_reads = 0
+            for category_T, name_T in zip(seq_Nf.categories_T, seq_Nf.names_T):
+                seq_T = getattr(self, 'dict_' + category_T)[name_T]
+                if category_T == 'Tf':
+                    read_counts = []
+                    for name_U, category_U in zip(seq_T.names_U, seq_T.categories_U):
+                        read_counts.append(getattr(self, 'dict_' + category_U)[name_U].read_count)
+                elif category_T == 'Tc_trna':
+                    read_counts = [dict_Uc_trna[name_U].read_count for name_U in seq_T.names_U]
+                else:
+                    raise Exception(f"The trimmed seq ({seq_T.name}) in the normalized seq ({seq_Nf.name}) has the unexpected class, `{type(seq_T)}`.")
+                if len(seq_T.names_N) == 1:
+                    mean_spec_T_Nf += 1
+                    for read_count in read_counts:
+                        mean_spec_U_Nf += 1
+                        spec_reads += read_count
+                        spec_reads_Nf += read_count
+                else:
+                    mean_nonspec_T_Nf += 1
+                    for read_count in read_counts:
+                        mean_nonspec_U_Nf += 1
+                        nonspec_reads += read_count
+                        nonspec_reads_Nf += read_count
+            if spec_reads > max_spec_reads_Nf:
+                max_spec_reads_Nf = spec_reads
+            if nonspec_reads > max_nonspec_reads_Nf:
+                max_nonspec_reads_Nf = nonspec_reads
+            if spec_reads + nonspec_reads > max_total_reads_Nf:
+                max_total_reads_Nf = spec_reads + nonspec_reads
+        mean_spec_T_Nf /= count_Nf
+        mean_nonspec_T_Nf /= count_Nf
+        mean_spec_U_Nf /= count_Nf
+        mean_nonspec_U_Nf /= count_Nf
+        spec_reads_Nf /= count_Nf
+        nonspec_reads_Nf /= count_Nf
+        count_Tc_trna_Nf = len(self.dict_Tc_trna)
+        count_Uc_trna_Nf = len(self.dict_Uc_trna)
+        read_count_Uc_trna_Nf = 0
+        for seq_Uc_trna in self.dict_Uc_trna.values():
+            read_count_Uc_trna_Nf += seq_Uc_trna.read_count
+        mean_Tc_trna_Nf = count_Tc_trna_Nf / count_Nf
+        mean_Uc_trna_Nf = count_Uc_trna_Nf / count_Nf
+        mean_Uc_reads_Nf = read_count_Uc_trna_Nf / count_Nf
+
+        count_Nc = len(self.dict_Nc)
+        anticodon_count_Nc = 0
+        mean_spec_T_Nc = 0
+        mean_nonspec_T_Nc = 0
+        mean_spec_U_Nc = 0
+        mean_nonspec_U_Nc = 0
+        mean_spec_reads_Nc = 0
+        mean_nonspec_reads_Nc = 0
+        dict_Tc_nontrna = self.dict_Tc_nontrna
+        dict_Uc_nontrna = self.dict_Uc_nontrna
+        for seq_Nc in self.dict_Nc.values():
+            if seq_Nc.contains_anticodon:
+                anticodon_count_Nc += 1
+            for name_T in seq_Nc.names_T:
+                seq_T = dict_Tc_nontrna[name_T]
+                if len(seq_T.names_N) == 1:
+                    mean_spec_T_Nc += 1
+                    for name_U in seq_T.names_U:
+                        mean_spec_U_Nc += 1
+                        mean_spec_reads_Nc += dict_Uc_nontrna[name_U].read_count
+                else:
+                    mean_nonspec_T_Nc += 1
+                    for name_U in seq_T.names_U:
+                        mean_nonspec_U_Nc += 1
+                        mean_nonspec_reads_Nc += dict_Uc_nontrna[name_U].read_count
+        mean_spec_T_Nc /= count_Nc
+        mean_nonspec_T_Nc /= count_Nc
+        mean_spec_U_Nc /= count_Nc
+        mean_nonspec_U_Nc /= count_Nc
+        mean_spec_reads_Nc /= count_Nc
+        mean_nonspec_reads_Nc /= count_Nc
+
+        run = self.run
+        run.info_single("Results of 3' dereplication (subject to change -- see summary output file for final results)", nl_after=1)
+
+        run.info_single("Normalized seq counts")
+        run.info("tRNA profile", count_Nf)
+        run.info("Truncated tRNA profile", count_Nc, nl_after=1)
+
+        run.info_single("Normalized seqs with tRNA profile")
+        run.info("Containing anticodon", anticodon_count_Nf)
+        run.info("Containing complete feature set", complete_count_Nf)
+        run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nf, 1))
+        run.info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nf, 1))
+        run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nf, 1))
+        run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nf, 1))
+        run.info("Mean specific reads per seq", round(spec_reads_Nf, 1))
+        run.info("Mean nonspecific reads per seq", round(nonspec_reads_Nf, 1))
+        run.info("Max specific reads per seq", max_spec_reads_Nf)
+        run.info("Max nonspecific reads per seq", max_nonspec_reads_Nf)
+        run.info("Max total reads per seq", max_total_reads_Nf)
+        run.info("Recovered trimmed seqs with truncated profile", count_Tc_trna_Nf)
+        run.info("Recovered unique seqs with truncated profile", count_Uc_trna_Nf)
+        run.info("Recovered reads with truncated profile", read_count_Uc_trna_Nf)
+        run.info("Mean recovered trunc trimmed seqs per seq", round(mean_Tc_trna_Nf, 2))
+        run.info("Mean recovered trunc unique seqs per seq", round(mean_Uc_trna_Nf, 2))
+        run.info("Mean recovered trunc reads per seq", round(mean_Uc_reads_Nf, 2))
+        run.info("Consolidated trimmed tRNA seqs", self.count_consol_Tf, nl_after=1)
+
+        run.info_single("Normalized seqs with truncated tRNA profile")
+        run.info("Containing anticodon", anticodon_count_Nc)
+        run.info("Mean specific trimmed seqs per seq", round(mean_spec_T_Nc, 1))
+        run.info("Mean nonspecific trimmed seqs per seq", round(mean_nonspec_T_Nc, 1))
+        run.info("Mean specific unique seqs per seq", round(mean_spec_U_Nc, 1))
+        run.info("Mean nonspecific unique seqs per seq", round(mean_nonspec_U_Nc, 1))
+        run.info("Mean specific reads per seq", round(mean_spec_reads_Nc, 1))
+        run.info("Mean nonspecific reads per seq", round(mean_nonspec_reads_Nc, 1), nl_after=2)
+
+
     def write_checkpoint_files(self, checkpoint_name):
         self.progress.new(f"Writing intermediate files for the \"{checkpoint_name}\" checkpoint")
-        self.progress.update("...")
 
-        overwrote_dict = {}
+        if not os.path.exists(self.checkpoint_dir):
+            os.mkdir(self.checkpoint_dir)
+
+        checkpoint_subdir_path = self.checkpoint_subdir_dict[checkpoint_name]
+        if not os.path.exists(checkpoint_subdir_path):
+            os.mkdir(checkpoint_subdir_path)
+
         for intermed_file_key, intermed_file_path in self.intermed_file_path_dict[checkpoint_name].items():
-            if os.path.exists(intermed_file_path):
-                overwrote_dict[self.intermed_file_label_dict[intermed_file_key]] = intermed_file_path
-            else:
-                overwrote_dict[self.intermed_file_label_dict[intermed_file_key]] = None
-            with open(intermed_file_path, 'wb') as f:
-                # The key, e.g., "uniq_trna_seqs", corresponds to the attribute to be saved to file.
-                pkl.dump(getattr(self, intermed_file_key), f, protocol=pkl.HIGHEST_PROTOCOL)
+            self.progress.update(f"{os.path.basename(intermed_file_path)}")
+            # The key, e.g., "dict_Uf", corresponds to the attribute to be saved to file.
+            with open(intermed_file_path, 'wb') as intermed_file:
+                pkl.dump(getattr(self, intermed_file_key), intermed_file, protocol=pkl.HIGHEST_PROTOCOL)
 
         self.progress.end()
-
-        for intermed_file_label, intermed_file_path in overwrote_dict.items():
-            # Example: "Overwrote profile checkpoint intermediate file of unique tRNA"
-            if intermed_file_path:
-                self.run.info("Overwrote \"%s\" checkpoint intermediate file of %s" % (checkpoint_name, intermed_file_label), intermed_file_path)
-            else:
-                self.run.info_single("Wrote \"%s\" checkpoint intermediate file of %s" % (checkpoint_name, intermed_file_label), mc='green', cut_after=200)
-        print()
+        self.run.info_single(f"Wrote \"{checkpoint_name}\" checkpoint intermediate files to {checkpoint_subdir_path}", cut_after=200)
 
 
     def load_checkpoint_files(self, checkpoint_name):
-        self.progress.new(f"Loading intermediate files at the checkpoint, \"{checkpoint_name}\"")
-        self.progress.update("...")
-
-        with open(self.analysis_summary_path, 'a') as f:
-            f.write(f"\nAnalysis restarted from the checkpoint, \"{checkpoint_name}\"\n")
+        progress = self.progress
+        progress.new(f"Loading intermediate files at the \"{checkpoint_name}\" checkpoint")
 
         for intermed_file_key, intermed_file_path in self.intermed_file_path_dict[checkpoint_name].items():
+            progress.update(f"{os.path.basename(intermed_file_path)}")
             with open(intermed_file_path, 'rb') as f:
                 setattr(self, intermed_file_key, pkl.load(f))
 
-        self.progress.end()
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(f"\nAnalysis restarted from the \"{checkpoint_name}\" checkpoint\n")
+
+        progress.end()
+        self.run.info_single(f"Loaded \"{checkpoint_name}\" checkpoint intermediate files from {self.checkpoint_subdir_dict[checkpoint_name]}")
 
 
     def threeprime_dereplicate_sequences_without_terminus(self):
-        """Find tRNA sequences missing a 3' terminus. Sequences required a 3' terminus to have been
-        profiled as tRNA. Unique non-tRNA sequences are searched against normalized tRNA sequences.
-        Non-tRNA is recovered as tRNA when it is a 3' subsequence of normalized tRNA or is longer
-        than normalized tRNA sequences with a complete feature profile and thus is shown to have a
-        5' extension. Recovered sequences each generate a `TrimmedMappedSequence` object."""
-        start_time = time.time()
+        """Find tRNA sequences missing a 3' terminus. By default, U required a 3' terminus to have
+        been profiled as tRNA. Un are searched against Nf. Un is recovered as tRNA when it is a 3'
+        subseq of Nf or is longer than Nf with a complete profile and thus is shown to have a 5'
+        extension. Recovered Un each generate a Um object."""
         self.progress.new("Dereplicating tRNA seqs ending in discriminator nt")
         self.progress.update("...")
 
-        # 3'-dereplicate normalized tRNA sequences and unique non-tRNA sequences.
+        # 3'-dereplicate Nf and Un.
         names = []
-        reversed_seq_strings = []
+        reverse_strings = []
         extras = []
-        # The normalized sequences are added first to the dereplicator so that they appear first in
-        # the clusters. This allows unique non-tRNA sequences that are identical to the normalized
-        # sequence (due to prior trimming of the 3' terminus from the normalized sequence) to always
-        # be recovered.
-        for norm_seq_represent_name, norm_seq in self.norm_trna_seq_dict.items():
-            names.append(norm_seq_represent_name)
-            reversed_seq_strings.append(norm_seq.seq_string[::-1])
-            extras.append(norm_seq)
-        for uniq_nontrna_seq_represent_name, uniq_nontrna_seq in self.uniq_nontrna_seq_dict.items():
-            if len(uniq_nontrna_seq.seq_string) >= self.min_trna_frag_size:
-                names.append(uniq_nontrna_seq_represent_name)
-                reversed_seq_strings.append(uniq_nontrna_seq.seq_string[::-1])
-                extras.append(uniq_nontrna_seq)
-        clusters = Dereplicator(names, reversed_seq_strings, extras=extras).prefix_dereplicate()
+        # Nf are added first to the dereplicator so that they appear first in the clusters. This
+        # allows Un that are identical to the Nf (due to prior trimming of the 3' terminus from the
+        # Nf) to always be recovered.
+        for name_Nf, seq_Nf in self.dict_Nf.items():
+            names.append(name_Nf)
+            reverse_strings.append(seq_Nf.string[::-1])
+            extras.append(seq_Nf)
+        for name_Un, seq_Un in self.dict_Un.items():
+            if len(seq_Un.string) >= self.min_trna_frag_size:
+                names.append(name_Un)
+                reverse_strings.append(seq_Un.string[::-1])
+                extras.append(seq_Un)
+        clusters = Dereplicator(names, reverse_strings, extras=extras).prefix_dereplicate()
 
-        # Search clusters for normalized tRNA sequences and qualifying unique non-tRNA sequences.
-        # Some unique sequences may be 3' subsequences of more than one normalized sequence. Unique
-        # sequences cannot be longer than more than one normalized sequence, as normalized sequences
-        # have already been dereplicated. The same normalized sequence can be found in multiple
-        # clusters as subsequences of different longer unique sequences.
-        uniq_seq_norm_seqs_dict = defaultdict(list)
-        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
-        trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
+        # Search clusters for Nf and qualifying Un. Some Un may be 3' subseqs of > 1 Nf. Un cannot
+        # be longer than > 1 Nf, as Nf have already been dereplicated. The same Nf can be found in
+        # multiple clusters as subseqs of different longer Un.
+        dict_Un_Nf = defaultdict(list)
+        dict_Un = self.dict_Un
+        dict_Um = self.dict_Um
+        dict_Tm = self.dict_Tm
         for cluster in clusters:
             if len(cluster.member_seqs) == 1:
                 continue
 
-            # Check that there is a normalized tRNA sequence in the cluster -- there cannot be more
-            # than one.
-            cluster_norm_seq_index = None
-            norm_seq = None
-            norm_seq_length = None
-            norm_seq_has_complete_feature_set = None
+            # Check that there is an Nf in the cluster -- there cannot be more than one.
+            cluster_Nf_index = None
+            seq_Nf = None
+            length_Nf = None
+            complete_feature_set_in_Nf = None
             for member_index, seq in enumerate(cluster.member_extras):
                 if isinstance(seq, NormalizedFullProfileSequence):
-                    cluster_norm_seq_index = member_index
-                    norm_seq = seq
-                    norm_seq_length = len(norm_seq.seq_string)
+                    cluster_Nf_index = member_index
+                    seq_Nf = seq
+                    length_Nf = len(seq_Nf.string)
                     if member_index > 0:
-                        norm_seq_has_complete_feature_set = norm_seq.has_complete_feature_set
+                        complete_feature_set_in_Nf = seq_Nf.has_complete_feature_set
                     break
             else:
                 continue
 
-            # To reach this point, a normalized tRNA sequence must have been found in the cluster.
-            # Now process any longer unique sequences.
-            for uniq_nontrna_seq in cluster.member_extras[: cluster_norm_seq_index]:
-                # If the normalized sequence has a complete feature profile (is a full-length tRNA),
-                # then the overhanging 5' bases in the recovered unique sequence can be trimmed as
-                # "extra" 5' bases. Otherwise, it is possible the overhanging bases are part of an
-                # artifact joined to the 5' end of a tRNA fragment, so conservatively ignore the
-                # unique sequence.
-                if not norm_seq_has_complete_feature_set:
+            # To reach this point, an Nf must have been found in the cluster. Now process any longer
+            # Un.
+            for seq_Un in cluster.member_extras[: cluster_Nf_index]:
+                # If the Nf has a complete feature profile (is a full-length tRNA), then the
+                # overhanging 5' bases in the recovered Un can be trimmed as "extra" 5' bases.
+                # Otherwise, it is possible the overhanging bases are part of an artifact joined to
+                # the 5' end of a tRNA fragment, so conservatively ignore the Un.
+                if not complete_feature_set_in_Nf:
                     break
 
-                uniq_seq_represent_name = uniq_nontrna_seq.represent_name
+                name_Un = seq_Un.name
                 try:
-                    uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
+                    dict_Un.pop(name_Un)
                 except KeyError:
-                    # The unique sequence has already been recovered in another cluster, necessarily
-                    # as a supersequence of the same normalized sequence.
+                    # The Un has already been recovered in another cluster, necessarily as a
+                    # supersequence of the same Nf.
                     continue
 
-                uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
-                                                     uniq_seq_represent_name,
-                                                     uniq_nontrna_seq.read_count,
-                                                     extra_fiveprime_length=len(uniq_nontrna_seq.seq_string) - norm_seq_length)
-                uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
+                seq_Um = UniqueMappedSequence(seq_Un.string, name_Un, seq_Un.read_count, xtra_5prime_length=len(seq_Un.string) - length_Nf)
+                dict_Um[name_Un] = seq_Um
 
-                trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
-                norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                norm_seq.start_positions.append(0)
-                norm_seq.stop_positions.append(norm_seq_length)
-                trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_seq
+                seq_Tm = TrimmedMappedSequence(seq_Um)
+                seq_Nf.names_T.append(name_Un)
+                seq_Nf.categories_T.append('Tm')
+                seq_Tm.names_N.append(seq_Nf.name)
+                seq_Nf.starts_T_in_N.append(0)
+                seq_Nf.stops_T_in_N.append(length_Nf)
+                dict_Tm[name_Un] = seq_Tm
 
-            # Find all unique sequences in the cluster equal to in length or shorter than the
-            # normalized tRNA sequence.
-            for uniq_nontrna_seq in cluster.member_extras[cluster_norm_seq_index + 1: ]:
-                uniq_seq_norm_seqs_dict[uniq_nontrna_seq.represent_name].append(norm_seq)
+            # Find all Un in the cluster ≤ Nf length.
+            for seq_Un in cluster.member_extras[cluster_Nf_index + 1: ]:
+                dict_Un_Nf[seq_Un.name].append(seq_Nf)
 
-        for uniq_seq_represent_name, norm_seqs in uniq_seq_norm_seqs_dict.items():
-            uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
+        for name_Un, seqs_Nf in dict_Un_Nf.items():
+            seq_Un = dict_Un.pop(name_Un)
 
-            uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
-                                                 uniq_seq_represent_name,
-                                                 uniq_nontrna_seq.read_count)
-            uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
+            seq_Um = UniqueMappedSequence(seq_Un.string, name_Un, seq_Un.read_count)
+            dict_Um[name_Un] = seq_Um
 
-            trimmed_seq = TrimmedMappedSequence(uniq_trna_seq)
-            uniq_seq_length = len(uniq_trna_seq.seq_string)
-            # The same normalized sequence can be found in multiple clusters, so it can be
-            # represented multiple times in `norm_seqs`.
-            for norm_seq in set(norm_seqs):
-                norm_seq.trimmed_seqs.append(trimmed_seq)
-                trimmed_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                norm_seq_length = len(norm_seq.seq_string)
-                norm_seq.start_positions.append(norm_seq_length - uniq_seq_length)
-                norm_seq.stop_positions.append(norm_seq_length)
-            trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_seq
+            seq_Tm = TrimmedMappedSequence(seq_Um)
+            length_Um = len(seq_Um.string)
+            # The same Nf can be found in multiple clusters, so it can be represented multiple times
+            # in `seqs_Nf`.
+            for seq_Nf in set(seqs_Nf):
+                seq_Nf.names_T.append(name_Un)
+                seq_Nf.categories_T.append('Tm')
+                seq_Tm.names_N.append(seq_Nf.name)
+                length_Nf = len(seq_Nf.string)
+                seq_Nf.starts_T_in_N.append(length_Nf - length_Um)
+                seq_Nf.stops_T_in_N.append(length_Nf)
+            dict_Tm[name_Un] = seq_Tm
 
         self.progress.end()
 
 
     def map_fragments(self):
         """Map unprofiled tRNA fragments to longer profiled tRNA sequences. Fragments only missing a
-        3' terminus were already found by mapping with
-        `threeprime_dereplicate_sequences_without_terminus` using an efficient shortcut or by profiling
-        if '' was an accepted 3' terminus.
+        3' terminus were already found with `threeprime_dereplicate_sequences_without_terminus` or
+        by profiling if '' was an accepted 3' terminus.
 
         EXAMPLE:
-        Normalized tRNA:                 (GT)TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
-        Mapped tRNA 1 (extra 5' bases) :   T TCCGTGATAGTTTAATGGTCAGAATGG
-        Mapped tRNA 2 (interior)       :            TAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGG
+        Nf:                   (GT)TCCGTGATAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGGTTCAATTCCCCGTCGCGGAG
+        Um1 (extra 5' bases) :  T TCCGTGATAGTTTAATGGTCAGAATGG
+        Um2 (interior)       :           TAGTTTAATGGTCAGAATGGGCGCTTGTCGCGTGCCAGATCGGGG
         """
         start_time = time.time()
 
-        self.progress.new("Mapping unprofiled reads to profiled tRNA")
-        uniq_nontrna_seq_dict = self.uniq_nontrna_seq_dict
+        progress = self.progress
+        pid = "Set up search of unprofiled reads to profiled tRNA"
+        progress.new(pid)
 
         self.progress.update("Getting queries from unprofiled reads")
-        query_length_intervals = []
-        max_query_length = max(map(len, [uniq_seq.seq_string for uniq_seq in uniq_nontrna_seq_dict.values()]))
-        # Chunk the non-tRNA queries by length to speed up the search.
-        # By default, avoid sequences shorter than 25 nucleotides, the default minimum length of a
-        # profiled 3' fragment of tRNA.
-        frag_mapping_query_chunk_length = self.frag_mapping_query_chunk_length
+        temp_dir_path = filesnpaths.get_temp_directory_path()
+        query_fasta_path = os.path.join(temp_dir_path, 'query.fa')
+
+        dict_Un = self.dict_Un
         min_trna_frag_size = self.min_trna_frag_size
-        interval_start_length = min_trna_frag_size
-        interval_stop_length = interval_start_length + frag_mapping_query_chunk_length
-        if interval_stop_length + self.frag_mapping_query_chunk_length > max_query_length:
-            interval_stop_length = max_query_length + 1
-        query_length_intervals.append((interval_start_length, interval_stop_length))
-        query_names = []
-        query_seqs = []
-        query_name_chunks = [query_names]
-        query_seq_chunks = [query_seqs]
-        for uniq_seq in sorted([uniq_seq for uniq_seq in uniq_nontrna_seq_dict.values()
-                                if len(uniq_seq.seq_string) >= min_trna_frag_size],
-                               key=lambda uniq_seq: len(uniq_seq.seq_string)):
-            if len(uniq_seq.seq_string) < interval_stop_length:
-                query_names.append(uniq_seq.represent_name)
-                query_seqs.append(uniq_seq.seq_string)
-            else:
-                interval_start_length = interval_stop_length
-                interval_stop_length = interval_stop_length + frag_mapping_query_chunk_length
-                if interval_stop_length + frag_mapping_query_chunk_length > max_query_length:
-                    interval_stop_length = max_query_length + 1
-                query_length_intervals.append((interval_start_length, interval_stop_length))
-                query_names = [uniq_seq.represent_name]
-                query_seqs = [uniq_seq.seq_string]
-                query_name_chunks.append(query_names)
-                query_seq_chunks.append(query_seqs)
-
-        self.progress.update("Getting targets from profiled tRNAs")
-        # Non-tRNA sequences are mapped to normalized tRNA sequences with extra 5' bases added when
-        # present in underlying unique tRNA sequences. Multiple targets for each normalized sequence
-        # are therefore produced for different 5' sequence extensions.
-        target_names = []
-        target_seqs = []
-        for norm_seq in self.norm_trna_seq_dict.values():
-            norm_seq_string = norm_seq.seq_string
-            # The longest trimmed sequence (the first in the list) is by design the only one of the
-            # profiled trimmed sequences forming the normalized sequence that may have extra 5'
-            # bases.
-            longest_trimmed_seq = norm_seq.trimmed_seqs[0]
-            if longest_trimmed_seq.uniq_with_extra_fiveprime_count > 0:
-                fiveprime_seq_string_set = set()
-                for uniq_seq in longest_trimmed_seq.uniq_seqs:
-                    if uniq_seq.extra_fiveprime_length > 0:
-                        fiveprime_seq_string_set.add(uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length])
-
-                # Avoid creating superfluous target sequences that are subsequences of other target
-                # sequences due to a 5' extension of a normalized sequence being a subsequence of a
-                # longer 5' extension of the same normalized sequence.
-                fiveprime_seq_strings = sorted(fiveprime_seq_string_set, key=lambda s: -len(s))
-                fiveprime_seq_string_additions = [fiveprime_seq_strings[0]]
-                for fiveprime_seq_string in fiveprime_seq_strings[1: ]:
-                    fiveprime_seq_string_length = len(fiveprime_seq_string)
-                    for fiveprime_seq_string_addition in fiveprime_seq_string_additions:
-                        if fiveprime_seq_string == fiveprime_seq_string_addition[-fiveprime_seq_string_length: ]:
-                            break
-                    else:
-                        fiveprime_seq_string_additions.append(fiveprime_seq_string)
-
-                for fiveprime_index, fiveprime_seq_string in enumerate(fiveprime_seq_strings):
-                    # Use an index to distinguish otherwise equivalent targets with different 5'
-                    # extensions of the same length.
-                    target_names.append((norm_seq.represent_name, len(fiveprime_seq_string), fiveprime_index))
-                    target_seqs.append(fiveprime_seq_string + norm_seq_string)
-            else:
-                target_names.append((norm_seq.represent_name, 0, 0)) # No extra 5' bases
-                target_seqs.append(norm_seq_string)
-
-        self.progress.end()
+        query_count = 0
+        with open(query_fasta_path, 'w') as query_fasta:
+            for seq_Un in [seq_Un for seq_Un in dict_Un.values() if len(seq_Un.string) >= min_trna_frag_size]:
+                # Include Un length in the defline for the purposes of parsing vmatch output.
+                query_fasta.write(f">{seq_Un.name}-{len(seq_Un.string)}\n{seq_Un.string}\n")
+                query_count += 1
 
 
-        interval_index = 0
-        uniq_trna_seq_dict = self.uniq_trna_seq_dict
-        norm_trna_seq_dict = self.norm_trna_seq_dict
-        for query_names, query_seqs in zip(query_name_chunks, query_seq_chunks):
-            self.progress.new(f"Mapping {pp(len(query_names))} unprofiled {query_length_intervals[interval_index][0]}-{query_length_intervals[interval_index][1] - 1} nt reads to profiled tRNA")
+        progress.update_pid(pid)
+        progress.update("Getting targets from profiled tRNAs")
+        # Un are mapped to Nf with extra 5' bases added when present in underlying U. Multiple
+        # targets for each Nf are therefore produced for different 5' extensions.
+        target_fasta_path = os.path.join(temp_dir_path, 'target.fa')
+        dict_Tf = self.dict_Tf
+        dict_Uf = self.dict_Uf
+        with open(target_fasta_path, 'w') as target_fasta:
+            for seq_Nf in self.dict_Nf.values():
+                string_Nf = seq_Nf.string
+                # The longest Tf (the first in the list) is by design the only one of the Tf forming
+                # Nf that may have extra 5' bases.
+                longest_Tf = dict_Tf[seq_Nf.names_T[0]]
+                if longest_Tf.uniq_with_xtra_5prime_count > 0:
+                    set_5prime_string = set()
+                    for name_Uf in longest_Tf.names_U:
+                        seq_Uf = dict_Uf[name_Uf]
+                        if seq_Uf.xtra_5prime_length > 0:
+                            set_5prime_string.add(seq_Uf.string[: seq_Uf.xtra_5prime_length])
 
-            aligned_query_dict, aligned_target_dict = Aligner(
-                query_names,
-                query_seqs,
-                target_names,
-                target_seqs,
-                num_threads=self.num_threads,
-                progress=self.progress
-            ).align(max_mismatch_freq=0,
-                    target_chunk_size=self.alignment_target_chunk_size,
-                    query_progress_interval=self.alignment_progress_interval)
-            del aligned_target_dict # aligned_target_dict is not used for anything and can be big
-            gc.collect()
+                    # Avoid creating superfluous target seqs that are subseqs of other target seqs
+                    # due to a 5' extension of an Nf being a subseq of a longer 5' extension of the
+                    # same Nf.
+                    strings_5prime = sorted(set_5prime_string, key=lambda string_5prime: -len(string_5prime))
+                    string_5prime_additions = [strings_5prime[0]]
+                    for string_5prime in strings_5prime[1: ]:
+                        length_5prime = len(string_5prime)
+                        for string_5prime_addition in string_5prime_additions:
+                            if string_5prime == string_5prime_addition[-length_5prime: ]:
+                                break
+                        else:
+                            string_5prime_additions.append(string_5prime)
 
-            self.progress.update("Processing alignments")
+                    for index_5prime, string_5prime in enumerate(strings_5prime):
+                        # Use an index to distinguish otherwise equivalent targets with different 5'
+                        # extensions of the same length.
+                        target_fasta.write(f">{seq_Nf.name}-{len(string_5prime)}-{index_5prime}\n{string_5prime}{string_Nf}\n")
+                else:
+                    target_fasta.write(f">{seq_Nf.name}-0-0\n{string_Nf}\n") # no extra 5' bases
+        progress.end()
 
-            # Process each unique sequence query, each of which can match more than one normalized
-            # sequence.
-            trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-            for uniq_seq_represent_name, aligned_query in aligned_query_dict.items():
-                if len(aligned_query.alignments) == 0:
+
+        # Use a 10x bigger query chunk size than the Vmatch default, as the rather conservative
+        # default is tailored to searches with mismatches/indels. It takes longer to process each
+        # chunk in these searches, and these searches may generate more alignments per chunk.
+        query_chunk_size_default = 10 * Vmatch.QUERY_CHUNK_SIZE_DEFAULT
+        match_df = Vmatch(argparse.Namespace(match_mode='exact_query_substring',
+                                             fasta_db_file=target_fasta_path,
+                                             fasta_query_file=query_fasta_path,
+                                             num_threads=self.num_threads,
+                                             query_chunk_size=query_count // self.num_threads + 1 if query_count < query_chunk_size_default else query_chunk_size_default // self.num_threads,
+                                             temp_dir=temp_dir_path)).search_queries()
+
+        pid = "Filtering matches"
+        progress.new(pid)
+        progress.update("...")
+
+        self.restructure_fragment_match_table(match_df)
+
+        # Process each Un match. Each Un can match more than one Nf.
+        match_gb = match_df.groupby('query_name')
+        del match_df
+        gc.collect()
+
+        fragment_filter_progress_interval = 25000
+        total_matched_queries = len(match_gb)
+        pp_total_matched_queries = pp(total_matched_queries)
+        num_filtered_queries = -1
+        dict_Um = self.dict_Um
+        dict_Tm = self.dict_Tm
+        dict_Nf = self.dict_Nf
+        for name_Un, query_match_df in match_gb:
+            num_filtered_queries += 1
+            if num_filtered_queries % fragment_filter_progress_interval == 0:
+                pp_progress_interval_end = pp(total_matched_queries if num_filtered_queries + fragment_filter_progress_interval > total_matched_queries else num_filtered_queries + fragment_filter_progress_interval)
+                progress.update_pid(pid)
+                progress.update(f"Queries {pp(num_filtered_queries + 1)}-{pp_progress_interval_end}/{pp_total_matched_queries}")
+
+            # Each Un with a validated match will yield a Um and Tm.
+            seq_Um = None
+            seq_Tm = None
+
+            for name_Nf, length_target_5prime, query_start, length_Un in zip(query_match_df['target_name'],
+                                                                             query_match_df['length_5prime'],
+                                                                             query_match_df['query_start_in_target'],
+                                                                             query_match_df['query_length']):
+                query_stop = query_start + length_Un
+                stop_Tm_in_Nf = query_stop - length_target_5prime
+
+                if stop_Tm_in_Nf <= 0:
+                    # Ignore queries that align entirely to extra 5' bases. Un mapping exclusively
+                    # to the 5' extension that are long enough to fulfill the minimum length
+                    # requirement may be mapping to an artifactual chimeric sequence.
                     continue
 
-                # Each unique sequence will yield a `UniqueMappedSequence` and a
-                # `TrimmedMappedSequence`.
-                uniq_trna_seq = None
-                trimmed_trna_seq = None
+                seq_Nf = dict_Nf[name_Nf]
 
-                for alignment in aligned_query.alignments:
-                    ref_alignment_start = alignment.target_start
-                    ref_alignment_stop = alignment.target_start + alignment.alignment_length
+                if not seq_Um:
+                    # Enter this block the first time the Un query validly matches an Nf.
+                    seq_Un = dict_Un.pop(name_Un)
 
-                    norm_seq_represent_name, ref_fiveprime_length, fiveprime_index = alignment.aligned_target.name
-
-                    norm_seq_stop_pos = ref_alignment_stop - ref_fiveprime_length
-                    if norm_seq_stop_pos <= 0:
-                        # Ignore queries that align entirely to extra 5' bases. Sequences mapping
-                        # exclusively to the 5' extension that are long enough to fulfill the
-                        # minimum length requirement may be mapping to an artifactual chimeric
-                        # sequence.
-                        continue
-
-                    norm_seq = norm_trna_seq_dict[norm_seq_represent_name]
-
-                    if not uniq_trna_seq:
-                        # Enter this block the first time the unique sequence query validly matches
-                        # a normalized sequence.
-                        uniq_nontrna_seq = uniq_nontrna_seq_dict.pop(uniq_seq_represent_name)
-
-                        # Assume that 5' extensions are the same for the query regardless of the reference.
-                        # This could be false in the cases of
-                        # 1. tRNA profiling erroneously identifying the end of the acceptor stem
-                        # or 2. the query mapping to different places at the end of the acceptor stem in different tRNAs.
-                        if ref_fiveprime_length - ref_alignment_start > 0:
-                            extra_fiveprime_length = ref_fiveprime_length - ref_alignment_start
-                            norm_seq_start_pos = 0
-                        else:
-                            extra_fiveprime_length = 0
-                            norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
-
-                        uniq_trna_seq = UniqueMappedSequence(uniq_nontrna_seq.seq_string,
-                                                             uniq_seq_represent_name,
-                                                             uniq_nontrna_seq.read_count,
-                                                             extra_fiveprime_length=extra_fiveprime_length)
-                        uniq_trna_seq_dict[uniq_seq_represent_name] = uniq_trna_seq
-
-                        trimmed_trna_seq = TrimmedMappedSequence(uniq_trna_seq)
-                        norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                        trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                        norm_seq.start_positions.append(norm_seq_start_pos)
-                        norm_seq.stop_positions.append(norm_seq_stop_pos)
-                        trimmed_trna_seq_dict[uniq_seq_represent_name] = trimmed_trna_seq
+                    # Assume that 5' extensions are the same for the query regardless of the reference.
+                    # This could be false when
+                    # 1. tRNA profiling erroneously identified the end of the acceptor stem
+                    # or 2. the query mapped to different places at the end of the acceptor stem in different tRNAs.
+                    if length_target_5prime - query_start > 0:
+                        length_query_5prime = length_target_5prime - query_start
+                        start_Tm_in_Nf = 0
                     else:
-                        for prev_trimmed_seq in norm_seq.trimmed_seqs[::-1]:
-                            # Ensure that the trimmed sequence maps to the normalized sequence only
-                            # once. Multiple targets can be created from the same normalized
-                            # sequence for different 5' extensions. Trimmed mapped sequences are
-                            # added after trimmed profiled sequences to the normalized sequence's
-                            # list of trimmed sequences.
-                            if trimmed_trna_seq.represent_name == prev_trimmed_seq.represent_name:
-                                break
+                        length_query_5prime = 0
+                        start_Tm_in_Nf = query_start - length_target_5prime
 
-                            if not isinstance(prev_trimmed_seq, TrimmedMappedSequence):
-                                norm_seq.trimmed_seqs.append(trimmed_trna_seq)
-                                trimmed_trna_seq.norm_seq_represent_names.append(norm_seq.represent_name)
-                                if ref_fiveprime_length - ref_alignment_start > 0:
-                                    norm_seq_start_pos = 0
-                                else:
-                                    norm_seq_start_pos = ref_alignment_start - ref_fiveprime_length
-                                norm_seq.start_positions.append(norm_seq_start_pos)
-                                norm_seq.stop_positions.append(norm_seq_stop_pos)
-                                break
-            interval_index += 1
+                    seq_Um = UniqueMappedSequence(seq_Un.string, name_Un, seq_Un.read_count, xtra_5prime_length=length_query_5prime)
+                    dict_Um[name_Un] = seq_Um
 
-            del aligned_query_dict
-            gc.collect()
+                    seq_Tm = TrimmedMappedSequence(seq_Um)
+                    seq_Nf.names_T.append(name_Un)
+                    seq_Nf.categories_T.append('Tm')
+                    seq_Tm.names_N.append(seq_Nf.name)
+                    seq_Nf.starts_T_in_N.append(start_Tm_in_Nf)
+                    seq_Nf.stops_T_in_N.append(stop_Tm_in_Nf)
+                    dict_Tm[name_Un] = seq_Tm
+                else:
+                    for prev_name_T, prev_category_T in zip(seq_Nf.names_T[::-1], seq_Nf.categories_T[::-1]):
+                        # Ensure that Tm maps to Nf only once. Multiple targets can be created from
+                        # the same Nf for different 5' extensions. Tm are added after Tf and Tc to
+                        # the list of T in Nf.
+                        if seq_Tm.name == prev_name_T:
+                            break
 
-            self.progress.end()
+                        if prev_category_T != 'Tm':
+                            seq_Nf.names_T.append(seq_Tm.name)
+                            seq_Nf.categories_T.append('Tm')
+                            seq_Tm.names_N.append(seq_Nf.name)
+                            if length_target_5prime - query_start > 0:
+                                start_Tm_in_Nf = 0
+                            else:
+                                start_Tm_in_Nf = query_start - length_target_5prime
+                            seq_Nf.starts_T_in_N.append(start_Tm_in_Nf)
+                            seq_Nf.stops_T_in_N.append(stop_Tm_in_Nf)
+                            break
+        progress.end()
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed mapping tRNA fragments (min)", time.time() - start_time, is_time_value=True))
 
 
+    def restructure_fragment_match_table(self, match_df):
+        """Helper method for `map_fragments`."""
+        names_U = []
+        for query_name in match_df['query_name']:
+            # Sequence names in anvi'o cannot contain a hyphen.
+            name_U, length_U = query_name.split('-')
+            names_U.append(name_U)
+        match_df.loc[:, 'query_name'] = names_U
+
+        names_N = []
+        lengths_5prime = []
+        for target_name in match_df['target_name']:
+            name_N, length_5prime, index_5prime = target_name.split('-')
+            names_N.append(name_N)
+            lengths_5prime.append(int(length_5prime))
+        match_df.loc[:, 'target_name'] = names_N
+        match_df['length_5prime'] = lengths_5prime
+
+
+    def report_map_stats(self):
+        """Report to terminal stats on fragment mapping immediately after these steps."""
+        count_spec_Nf = 0
+        count_nonspec_Nf = 0
+        count_any_Nf = 0
+        mean_spec_Tm_Nf = 0
+        mean_nonspec_Tm_Nf = 0
+        spec_reads_Nf = 0
+        nonspec_reads_Nf = 0
+        absent_3prime_terminus_seqs_Tm = 0
+        absent_3prime_terminus_reads_Tm = 0
+        for seq_Nf in self.dict_Nf.values():
+            if seq_Nf.spec_map_seq_count:
+                count_spec_Nf += 1
+                mean_spec_Tm_Nf += seq_Nf.spec_map_seq_count
+                spec_reads_Nf += seq_Nf.spec_map_read_count
+                if not PROFILE_ABSENT_3PRIME_TERMINUS:
+                    absent_3prime_terminus_seqs_Tm += seq_Nf.absent_3prime_terminus_seq_count
+                    absent_3prime_terminus_reads_Tm += seq_Nf.absent_3prime_terminus_read_count
+            if seq_Nf.nonspec_map_seq_count:
+                count_nonspec_Nf += 1
+                mean_nonspec_Tm_Nf += seq_Nf.nonspec_map_seq_count
+                nonspec_reads_Nf += seq_Nf.nonspec_map_read_count
+            if seq_Nf.spec_map_seq_count or seq_Nf.nonspec_map_seq_count:
+                count_any_Nf += 1
+        count_Nf = len(self.dict_Nf)
+        mean_spec_Tm_Nf /= count_Nf
+        mean_nonspec_Tm_Nf /= count_Nf
+        spec_reads_Nf /= count_Nf
+        nonspec_reads_Nf /= count_Nf
+
+        count_spec_Tm = 0
+        count_nonspec_Tm = 0
+        reads_spec_Tm = 0
+        reads_nonspec_Tm = 0
+        spec_short_5prime_seq_Tm = 0
+        nonspec_short_5prime_seq_Tm = 0
+        spec_long_5prime_seq_Tm = 0
+        nonspec_long_5prime_seq_Tm = 0
+        spec_short_5prime_read_Tm = 0
+        nonspec_short_5prime_read_Tm = 0
+        spec_long_5prime_read_Tm = 0
+        nonspec_long_5prime_read_Tm = 0
+        spec_short_5prime_Nf_names = []
+        spec_long_5prime_Nf_names = []
+        nonspec_short_5prime_Nf_names = []
+        nonspec_long_5prime_Nf_names = []
+        for seq_Tm in self.dict_Tm.values():
+            if len(seq_Tm.names_N) == 1:
+                count_spec_Tm += 1
+                reads_spec_Tm += seq_Tm.read_count
+                if seq_Tm.read_with_xtra_5prime_count:
+                    if seq_Tm.long_5prime_extension_dict:
+                        spec_long_5prime_seq_Tm += 1
+                        spec_long_5prime_read_Tm += seq_Tm.read_count
+                        spec_long_5prime_Nf_names.append(seq_Tm.names_N[0])
+                    else:
+                        spec_short_5prime_seq_Tm += 1
+                        spec_short_5prime_read_Tm += seq_Tm.read_count
+                        spec_short_5prime_Nf_names.append(seq_Tm.names_N[0])
+            else:
+                count_nonspec_Tm += 1
+                reads_nonspec_Tm += seq_Tm.read_count
+                if seq_Tm.read_with_xtra_5prime_count:
+                    if seq_Tm.long_5prime_extension_dict:
+                        nonspec_long_5prime_seq_Tm += 1
+                        nonspec_long_5prime_read_Tm += seq_Tm.read_count
+                        nonspec_long_5prime_Nf_names.extend(seq_Tm.names_N)
+                    else:
+                        nonspec_short_5prime_seq_Tm += 1
+                        nonspec_short_5prime_read_Tm += seq_Tm.read_count
+                        nonspec_short_5prime_Nf_names.extend(seq_Tm.names_N)
+        spec_short_5prime_Nf = len(set(spec_short_5prime_Nf_names))
+        spec_long_5prime_Nf = len(set(spec_long_5prime_Nf_names))
+        nonspec_short_5prime_Nf = len(set(nonspec_short_5prime_Nf_names))
+        nonspec_long_5prime_Nf = len(set(nonspec_long_5prime_Nf_names))
+
+        run = self.run
+        run.info_single("Results of fragment mapping (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+
+        run.info_single("Normalized seqs with tRNA profile")
+        run.info("With specific mapping", count_spec_Nf)
+        run.info("With nonspecific mapping", count_nonspec_Nf)
+        run.info("With any mapping", count_any_Nf)
+        run.info("Mean specific mapped seqs per seq", round(mean_spec_Tm_Nf, 2))
+        run.info("Mean nonspecific mapped seqs per seq", round(mean_nonspec_Tm_Nf, 2))
+        run.info("Mean specific mapped reads per seq", round(spec_reads_Nf, 2))
+        run.info("Mean nonspecific mapped reads per seq", round(nonspec_reads_Nf, 2))
+        run.info(f"With specific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_Nf)
+        run.info(f"With specific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_Nf)
+        run.info(f"With nonspecific mapping to 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_Nf)
+        run.info(f"With nonspecific mapping to ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_Nf, nl_after=1)
+
+        run.info_single("Mapped seq counts")
+        run.info("Specific seqs", count_spec_Tm)
+        run.info("Nonspecific seqs", count_nonspec_Tm)
+        run.info("Specific reads", reads_spec_Tm)
+        run.info("Nonspecific reads", reads_nonspec_Tm)
+        run.info(f"Specific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_seq_Tm)
+        run.info(f"Specific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_seq_Tm)
+        run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_Tm)
+        run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_Tm)
+        run.info(f"Nonspecific seqs with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_seq_Tm)
+        run.info(f"Nonspecific seqs with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_seq_Tm)
+        run.info(f"Nonspecific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_read_Tm)
+        run.info(f"Nonspecific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_read_Tm)
+        if not PROFILE_ABSENT_3PRIME_TERMINUS:
+            run.info("Seqs only missing a 3' terminus", absent_3prime_terminus_seqs_Tm)
+            run.info("Reads only missing a 3' terminus", absent_3prime_terminus_reads_Tm)
+            run.info_single("Consider including an absent 3' terminus (by using '_') "
+                            "in the `anvi-trnaseq` parameterization of allowed 3' termini "
+                            "if the number of mapped seqs identical to a normalized seq but missing a 3' terminus seems high.",
+                            mc='red')
+
+
+    def report_N_cov_stats(self):
+        """Report to terminal stats on N coverages immediately after N initialization."""
+        spec_read_Nf = 0
+        nonspec_read_Nf = 0
+        mean_spec_cov_Nf = 0
+        mean_nonspec_cov_Nf = 0
+        total_length_Nf = 0
+        max_spec_cov_Nf = 0
+        max_nonspec_cov_Nf = 0
+        max_total_cov_Nf = 0
+        for seq_Nf in self.dict_Nf.values():
+            spec_read_Nf += seq_Nf.spec_read_count
+            nonspec_read_Nf += seq_Nf.nonspec_read_count
+            length_Nf = len(seq_Nf.string)
+            mean_spec_cov = seq_Nf.mean_spec_cov
+            mean_nonspec_cov = seq_Nf.mean_nonspec_cov
+            mean_spec_cov_Nf += mean_spec_cov * length_Nf
+            mean_nonspec_cov_Nf += mean_nonspec_cov * length_Nf
+            total_length_Nf += length_Nf
+            if mean_spec_cov > max_spec_cov_Nf:
+                max_spec_cov_Nf = mean_spec_cov
+            if mean_nonspec_cov > max_nonspec_cov_Nf:
+                max_nonspec_cov_Nf = mean_nonspec_cov
+            if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nf:
+                max_total_cov_Nf = mean_spec_cov + mean_nonspec_cov
+        mean_spec_cov_Nf /= total_length_Nf
+        mean_nonspec_cov_Nf /= total_length_Nf
+
+        spec_read_Nc = 0
+        nonspec_read_Nc = 0
+        mean_spec_cov_Nc = 0
+        mean_nonspec_cov_Nc = 0
+        total_length_Nc = 0
+        max_spec_cov_Nc = 0
+        max_nonspec_cov_Nc = 0
+        max_total_cov_Nc = 0
+        for seq_Nc in self.dict_Nc.values():
+            spec_read_Nc += seq_Nc.spec_read_count
+            nonspec_read_Nc += seq_Nc.nonspec_read_count
+            length_Nc = len(seq_Nc.string)
+            mean_spec_cov = seq_Nc.mean_spec_cov
+            mean_nonspec_cov = seq_Nc.mean_nonspec_cov
+            mean_spec_cov_Nc += mean_spec_cov * length_Nc
+            mean_nonspec_cov_Nc += mean_nonspec_cov * length_Nc
+            total_length_Nc += length_Nc
+            if mean_spec_cov > max_spec_cov_Nc:
+                max_spec_cov_Nc = mean_spec_cov
+            if mean_nonspec_cov > max_nonspec_cov_Nc:
+                max_nonspec_cov_Nc = mean_nonspec_cov
+            if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nc:
+                max_total_cov_Nc = mean_spec_cov + mean_nonspec_cov
+        mean_spec_cov_Nc /= total_length_Nc
+        mean_nonspec_cov_Nc /= total_length_Nc
+
+        run = self.run
+        run.info_single("Results of normalization (subject to change -- see summary output file for final results)", nl_before=2, nl_after=1)
+
+        run.info_single("Normalized seqs with tRNA profile")
+        run.info("Specific reads", spec_read_Nf)
+        run.info("Nonspecific reads", nonspec_read_Nf)
+        run.info("Mean specific coverage", round(mean_spec_cov_Nf, 2))
+        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nf, 2))
+        run.info("Max specific coverage", round(max_spec_cov_Nf, 2))
+        run.info("Max nonspecific coverage", round(max_nonspec_cov_Nf, 2))
+        run.info("Max total coverage", round(max_total_cov_Nf, 2), nl_after=1)
+
+        run.info_single("Normalized seqs with truncated tRNA profile")
+        run.info("Specific reads", spec_read_Nc)
+        run.info("Nonspecific reads", nonspec_read_Nc)
+        run.info("Mean specific coverage", round(mean_spec_cov_Nc, 2))
+        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_Nc, 2))
+        run.info("Max specific coverage", round(max_spec_cov_Nc, 2))
+        run.info("Max nonspecific coverage", round(max_nonspec_cov_Nc, 2))
+        run.info("Max total coverage", round(max_total_cov_Nc, 2), nl_after=2)
+
+
     def find_substitutions(self):
         """Find sites of potential modification-induced substitutions."""
         start_time = time.time()
-        self.progress.new("Finding modification-induced substitutions")
+        progress = self.progress
+        pid = "Finding modification-induced substitutions"
+        progress.new(pid)
+        progress.update("...")
 
-        # Cluster normalized tRNA sequences. Clusters agglomerate sequences that differ from at
-        # least one other sequence in the cluster by no more than 2 substitutions per 71 aligned
-        # positions (by default) in a gapless end-to-end alignment.
-        norm_trna_seq_dict = self.norm_trna_seq_dict
-        norm_seq_represent_names = []
-        norm_seq_strings = []
-        norm_seq_feature_completeness_dict = {}
-        for represent_name, norm_seq in norm_trna_seq_dict.items():
-            norm_seq_represent_names.append(represent_name)
-            norm_seq_strings.append(norm_seq.seq_string)
-            norm_seq_feature_completeness_dict[represent_name] = norm_seq.has_complete_feature_set
+        # Cluster Nf. Clusters agglomerate Nf that differ from at least one other Nf in the cluster
+        # by no more than 3 nts in 100 (by default) in a gapless end-to-end alignment with no
+        # clipping.
+        dict_Nf = self.dict_Nf
+        names_Nf = []
+        strings_Nf = []
+        dict_Nf_feature_completeness = {}
+        for name_Nf, seq_Nf in dict_Nf.items():
+            names_Nf.append(name_Nf)
+            strings_Nf.append(seq_Nf.string)
+            dict_Nf_feature_completeness[name_Nf] = seq_Nf.has_complete_feature_set
+        progress.end()
 
-        agglomerator = Agglomerator(norm_seq_represent_names, norm_seq_strings, num_threads=self.num_threads, progress=self.progress)
-
+        agglomerator = Agglomerator(names_Nf, strings_Nf, num_threads=self.num_threads)
         # Provide a priority function for seeding clusters that favors, in order:
-        # 1. normalized sequences with a complete set of tRNA features,
-        # 2. longer normalized sequences,
-        # 3. normalized sequences with more alignments in the all-against-all search,
-        # 4. alphanumeric order of the normalized sequence representative name.
+        # 1. Nf with a complete set of tRNA features,
+        # 2. longer Nf,
+        # 3. Nf with more alignments in the all-against-all search,
+        # 4. alphanumeric order of the Nf name.
         agglomerator.agglomerate(max_mismatch_freq=self.agglom_max_mismatch_freq,
-                                 priority_function=lambda aligned_ref: (-norm_seq_feature_completeness_dict[aligned_ref.name],
+                                 priority_function=lambda aligned_ref: (-dict_Nf_feature_completeness[aligned_ref.name],
                                                                         -len(aligned_ref.seq_string),
                                                                         -len(aligned_ref.alignments),
-                                                                        aligned_ref.name),
-                                 alignment_target_chunk_size=self.alignment_target_chunk_size,
-                                 alignment_progress_interval=self.alignment_progress_interval,
-                                 agglom_progress_interval=self.mod_progress_interval)
-
+                                                                        aligned_ref.name))
         agglom_aligned_ref_dict = agglomerator.agglom_aligned_ref_dict
 
-        self.progress.update("Decomposing clusters, separating 3-4 nt from 2 nt variants")
+        pid = "Decomposing clusters"
+        progress.new(pid)
+        progress.update("...")
 
-        excluded_norm_seq_names = [] # Used to exclude normalized sequences from being considered as aligned queries in clusters (see below)
-        represent_norm_seq_names = [] # Used to prevent the same modified sequence from being created twice
-        mod_trna_seq_dict = self.mod_trna_seq_dict
-        num_processed_refs = 0
+        excluded_Nf_names = [] # Used to exclude Nf from being considered as aligned queries in clusters (see below)
+        names_Nf = [] # Used to prevent the same M from being created twice
+        dict_M = self.dict_M
+        num_processed_refs = -1
         total_ref_count = len(agglom_aligned_ref_dict)
-        decomposition_progress_interval = self.mod_progress_interval
-        next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
+        decomposition_progress_interval = 1000
+        pp_total_ref_count = pp(total_ref_count)
         for ref_name, aligned_ref in agglom_aligned_ref_dict.items():
-            if num_processed_refs % decomposition_progress_interval == 0:
-                next_interval = total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval
-                self.progress.update(f"Decomposing clusters {num_processed_refs}-{next_interval}/{total_ref_count}")
             num_processed_refs += 1
+            if num_processed_refs % decomposition_progress_interval == 0:
+                pp_progress_interval_end = pp(total_ref_count if num_processed_refs + decomposition_progress_interval > total_ref_count else num_processed_refs + decomposition_progress_interval)
+                progress.update_pid(pid)
+                progress.update(f"{pp(num_processed_refs + 1)}-{pp_progress_interval_end}/{pp_total_ref_count}")
 
-            # A modification requires at least 3 different nucleotides to be detected, and each
-            # normalized sequence differs by at least 1 nucleotide (substitution or gap), so for a
-            # cluster to form a modified sequence, it must contain at least 3 normalized sequences.
+            # A mod requires at least 3 different nts to be detected, and each Nf differs by at
+            # least 1 nt (mismatch or gap), so for a cluster to form an M, it must contain at least
+            # 3 Nf.
             if len(aligned_ref.alignments) < 2:
                 continue
 
             aligned_ref_length = len(aligned_ref.seq_string)
             valid_aligned_queries = []
             for alignment in aligned_ref.alignments:
-                # Normalized tRNA sequences should only align at the 3' end. Alignments to the
-                # interior of the sequence can theoretically occur when the reference is a tRNA-tRNA
-                # chimera.
+                # Nf should only align at the 3' end. Alignments to the interior of Nf can
+                # theoretically occur when the reference is a tRNA-tRNA chimera.
                 if aligned_ref_length != alignment.target_start + alignment.alignment_length:
                     continue
 
                 query_name = alignment.aligned_query.name
-                # The normalized sequence query may have formed a modified sequence already. If the
-                # normalized sequence had a complete feature profile, or if it was the same length
-                # as such a sequence, then it should not be able to form a longer modified sequence
-                # that would have 5' nucleotides beyond the end of a complete feature profile.
-                if query_name in excluded_norm_seq_names:
+                # The Nf query may have formed a M already. If the Nf had a complete feature
+                # profile, or if it was the same length as such a sequence, then it should not be
+                # able to form a longer M that would have 5' nts beyond the end of a complete
+                # feature profile.
+                if query_name in excluded_Nf_names:
                     continue
 
-                valid_aligned_queries.append(norm_trna_seq_dict[query_name])
+                valid_aligned_queries.append(dict_Nf[query_name])
 
-            # Confirm that 2 or more queries passed the filters, so at least 3 normalized sequences
-            # are still in the cluster.
+            # Confirm that 2 or more queries passed the filters, so at least 3 Nf are still in the
+            # cluster.
             if len(valid_aligned_queries) < 2:
                 continue
 
-            valid_aligned_queries.sort(key=lambda norm_seq: (-len(norm_seq.seq_string), -norm_seq.has_complete_feature_set, norm_seq.represent_name))
+            valid_aligned_queries.sort(key=lambda seq_Nf: (-len(seq_Nf.string), -seq_Nf.has_complete_feature_set, seq_Nf.name))
 
             seq_array = np.zeros((len(valid_aligned_queries) + 1, aligned_ref_length), dtype=int)
             # Rather than using the ASCII representation of each character, which saves some time in
             # converting the sequence string to a numpy array, constrain the integer representation
             # to the smallest possible range of integers to speed up the bincount method used to
-            # determine the number of unique nucleotides at an alignment position.
+            # determine the number of unique nts at an alignment position.
             seq_array[0, :] += [NT_INT_DICT[nt] for nt in aligned_ref.seq_string]
-            for i, aligned_query in enumerate(valid_aligned_queries, start=1):
-                seq_array[i, aligned_ref_length - len(aligned_query.seq_string): ] += [NT_INT_DICT[nt] for nt in aligned_query.seq_string]
+            for query_index, aligned_query in enumerate(valid_aligned_queries, start=1):
+                seq_array[query_index, aligned_ref_length - len(aligned_query.string): ] += [NT_INT_DICT[nt] for nt in aligned_query.string]
 
-            norm_seqs = np.array([norm_trna_seq_dict[ref_name]] + valid_aligned_queries)
+            seqs_Nf = np.array([dict_Nf[ref_name]] + valid_aligned_queries)
 
-            # Find positions in the alignment with nucleotide variability.
+            # Find positions in the alignment with nt variability.
             alignment_pos_uniq_nt_counts = (
                 np.bincount(
                     (seq_array + np.arange(aligned_ref_length, dtype=int) * NUM_NT_BINS).ravel(),
                     minlength=aligned_ref_length * NUM_NT_BINS
                 ).reshape(-1, NUM_NT_BINS)[:, 1:] != 0
             ).sum(axis=1)
-            three_four_nt_alignment_positions = (alignment_pos_uniq_nt_counts > 2).nonzero()[0]
+            alignment_positions_3_4_nts = (alignment_pos_uniq_nt_counts > 2).nonzero()[0]
 
-            # Modification sites must have at least 3 nucleotides.
-            if not three_four_nt_alignment_positions.size:
+            # Modification sites must have ≥ 3 nts.
+            if not alignment_positions_3_4_nts.size:
                 continue
 
-            two_nt_alignment_positions = (alignment_pos_uniq_nt_counts == 2).nonzero()[0]
-            clusters = deque(((seq_array, norm_seqs, three_four_nt_alignment_positions), ))
-            for alignment_pos in two_nt_alignment_positions:
+            alignment_positions_2_nts = (alignment_pos_uniq_nt_counts == 2).nonzero()[0]
+            clusters = deque(((seq_array, seqs_Nf, alignment_positions_3_4_nts), ))
+            for alignment_pos in alignment_positions_2_nts:
                 next_clusters = deque() # Make a new object with each iteration rather than clearing the same one
 
                 while clusters:
-                    seq_array, norm_seqs, three_four_nt_alignment_positions = clusters.pop()
+                    seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
 
-                    # A modification requires at least 3 different nucleotides to be detected, and
-                    # each normalized sequence differs by at least 1 nucleotide, so for a cluster to
-                    # form a modified sequence, it must contain at least 3 normalized sequences.
-                    if norm_seqs.size < 3:
+                    # A modification requires ≥ 3 different nts to be detected, and each Nf differs
+                    # by ≥ 1 nt, so for a cluster to form an M it must contain ≥ 3 Nf.
+                    if seqs_Nf.size < 3:
                         continue
 
                     aligned_nts = seq_array[:, alignment_pos]
                     nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
 
                     if (nt_counts != 0).sum() < 2:
-                        # There are now < 2 nucleotides at the alignment position in the cluster
-                        # under consideration. 2 different nucleotides are needed to distinguish
-                        # single nucleotide variants.
-                        next_clusters.appendleft((seq_array, norm_seqs, three_four_nt_alignment_positions))
+                        # There are now < 2 nts at the alignment position in the cluster under
+                        # consideration. 2 different nts are needed to distinguish SNVs.
+                        next_clusters.appendleft((seq_array, seqs_Nf, alignment_positions_3_4_nts))
                         continue
 
-                    # Add a new cluster for each single nucleotide variant to the stack of clusters
-                    # to process if: 1. the new cluster contains at least 3 sequences and 2. the
-                    # longest normalized sequence (with a complete feature profile, if applicable)
-                    # in the new cluster has not yet formed a modified sequence. Agglomerative
-                    # clustering ensures that the sequences agglomerated with the longest normalized
-                    # sequence will be the same regardless of the original unsplit cluster.
+                    # Add a new cluster for each SNV to the stack of clusters to process if: 1. the
+                    # new cluster contains ≥ 3 Nf and 2. the longest Nf (with a complete feature
+                    # profile, if applicable) in the new cluster has not yet formed an M.
+                    # Agglomerative clustering ensures that the Nf agglomerated with the longest Nf
+                    # will be the same regardless of the original unsplit cluster.
                     represented_nts = nt_counts.nonzero()[0] + 1
                     for nt in represented_nts:
                         split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
 
                         if split_cluster_seq_indices.size > 2:
-                            split_cluster_norm_seqs = norm_seqs[split_cluster_seq_indices]
+                            split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
 
-                            if split_cluster_norm_seqs[0].represent_name in represent_norm_seq_names:
+                            if split_cluster_Nf_seqs[0].name in names_Nf:
                                 continue
 
                             next_clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                      split_cluster_norm_seqs,
-                                                      three_four_nt_alignment_positions.copy()))
+                                                      split_cluster_Nf_seqs,
+                                                      alignment_positions_3_4_nts.copy()))
                 if next_clusters:
                     clusters = next_clusters
                 else:
@@ -2886,18 +3527,17 @@ class TRNASeqDataset(object):
             if not clusters:
                 continue
 
-            # Check alignment positions previously found to have 3-4 nucleotides. Further split
-            # clusters when positions now have 2 nucleotides.
+            # Check alignment positions previously found to have 3-4 nts. Further split clusters
+            # when positions now have 2 nts.
             next_clusters = deque()
             while clusters:
-                seq_array, norm_seqs, three_four_nt_alignment_positions = clusters.pop()
+                seq_array, seqs_Nf, alignment_positions_3_4_nts = clusters.pop()
                 candidates_to_remove = []
 
-                for i, alignment_pos in enumerate(three_four_nt_alignment_positions):
+                for i, alignment_pos in enumerate(alignment_positions_3_4_nts):
                     aligned_nts = seq_array[:, alignment_pos]
                     nt_counts = np.bincount(aligned_nts, minlength=NUM_NT_BINS)[1: ]
-                    # At least 3 different nucleotides are needed at a position to predict a
-                    # modification.
+                    # At least 3 different nts are needed at a position to predict a mod.
                     represented_nts = nt_counts.nonzero()[0] + 1
                     if represented_nts.size < 2:
                         candidates_to_remove.append(i)
@@ -2906,1308 +3546,1052 @@ class TRNASeqDataset(object):
                         for nt in represented_nts:
                             split_cluster_seq_indices = (aligned_nts == nt).nonzero()[0]
 
-                            # At least 3 normalized sequences are needed, and the split cluster
-                            # cannot have already formed a modified sequence.
+                            # At least 3 Nf are needed, and the split cluster cannot have already
+                            # formed an M.
                             if split_cluster_seq_indices.size > 2:
-                                split_cluster_norm_seqs = norm_seqs[split_cluster_seq_indices]
+                                split_cluster_Nf_seqs = seqs_Nf[split_cluster_seq_indices]
 
-                                if split_cluster_norm_seqs[0].represent_name in represent_norm_seq_names:
+                                if split_cluster_Nf_seqs[0].name in names_Nf:
                                     continue
 
                                 clusters.appendleft((seq_array[split_cluster_seq_indices, :],
-                                                     split_cluster_norm_seqs,
-                                                     np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
+                                                     split_cluster_Nf_seqs,
+                                                     np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
                         # Reevaluate previous alignment positions in the split clusters.
                         break
                 else:
-                    # At least 1 position was discounted as no longer having 3-4 different
-                    # nucleotides, but these positions had fewer than 2 nucleotides, and so did not
-                    # cause the cluster to be split into new clusters. Therefore, do not cycle
-                    # through the remaining positions again to find any more with fewer than 3
-                    # nucleotides.
+                    # At least 1 position was discounted as no longer having 3-4 different nts, but
+                    # these positions had < 2 nts, and so did not cause the cluster to be split into
+                    # new clusters. Therefore, do not cycle through the remaining positions again to
+                    # find any more with < 3 nts.
                     if candidates_to_remove:
-                        next_clusters.appendleft((norm_seqs, np.delete(three_four_nt_alignment_positions, candidates_to_remove)))
+                        next_clusters.appendleft((seqs_Nf, np.delete(alignment_positions_3_4_nts, candidates_to_remove)))
                     else:
-                        next_clusters.appendleft((norm_seqs, three_four_nt_alignment_positions))
+                        next_clusters.appendleft((seqs_Nf, alignment_positions_3_4_nts))
 
             if not next_clusters:
                 continue
             clusters = next_clusters
 
             while clusters:
-                norm_seqs, mod_positions = clusters.pop() # Normalized sequences should have retained their order
-                norm_seqs = list(norm_seqs) # Turn the array into a list
-                represent_norm_seq = norm_seqs[0]
+                seqs_Nf, mod_positions = clusters.pop() # Nf should have retained their order
+                seqs_Nf = list(seqs_Nf) # Turn the array into a list
+                represent_Nf_seq = seqs_Nf[0]
 
-                represent_norm_seq_length = len(represent_norm_seq.seq_string)
-                represent_norm_seq_start_in_array = aligned_ref_length - represent_norm_seq_length
-                mod_positions -= represent_norm_seq_start_in_array
-                mod_seq = ModifiedSequence(norm_seqs, mod_positions.tolist())
+                length_represent_Nf = len(represent_Nf_seq.string)
+                represent_Nf_start_in_array = aligned_ref_length - length_represent_Nf
+                mod_positions -= represent_Nf_start_in_array
+                seq_M = ModifiedSequence(seqs_Nf, tuple(mod_positions))
 
-                if represent_norm_seq.has_complete_feature_set:
-                    for norm_seq in norm_seqs:
-                        if len(norm_seq.seq_string) < represent_norm_seq_length:
+                if represent_Nf_seq.has_complete_feature_set:
+                    for seq_Nf in seqs_Nf:
+                        if len(seq_Nf.string) < length_represent_Nf:
                             break
-                        excluded_norm_seq_names.append(norm_seq.represent_name)
+                        excluded_Nf_names.append(seq_Nf.name)
 
-                mod_trna_seq_dict[mod_seq.represent_name] = mod_seq
+                dict_M[seq_M.name] = seq_M
 
         with open(self.analysis_summary_path, 'a') as f:
             f.write(self.get_summary_line("Time elapsed finding modification-induced substitutions (min)", time.time() - start_time, is_time_value=True))
 
-        self.progress.end()
+        progress.end()
 
 
-    def find_deletions(self):
-        """Find potential modification-induced deletions. First, in silico "test" deletions are
-        introduced at and around substitution sites in sequences with potential modification-induced
-        substitutions. Notate such modified sequences with in silico deletions as *M'*. M' are
-        searched against two pools of sequence targets:
-        1. normalized tRNA sequences not assigned to modified sequences, notated *Nf*, for
-           normalized sequences with a full feature profile, and
-        2. normalized "non-tRNA" sequences with truncated tRNA profiles, notated *Nt*.
+    def report_sub_stats(self):
+        """Report to terminal stats on potential modification-induced substitutions."""
+        count_M = len(self.dict_M)
+        dict_Nf = self.dict_Nf
+        total_sub_count = 0
+        total_length_M = 0
+        for seq_M in self.dict_M.values():
+            length_M = len(dict_Nf[seq_M.name].string)
+            total_sub_count += len(seq_M.sub_positions)
+            total_length_M += length_M
+        mean_sub_per_seq = total_sub_count / count_M
+        mean_sub_per_nt = total_sub_count / total_length_M
+
+        run = self.run
+        run.info_single("Results of substitution search", nl_before=2)
+        run.info("Modified seqs", count_M)
+        run.info("Mean (*potential*) subs per modified seq", round(mean_sub_per_seq, 1))
+        run.info("Mean subs per nt in modified seq", round(mean_sub_per_nt, 3), nl_after=2)
+
+
+    def find_indels(self):
+        """Find mod-induced indels among Nq normalized seqs not known to be modified, notated *Nq*.
+        These seqs form *Ni* objects, which are incorporated into corresponding mod seq objects,
+        notated *M*.
+
+        Nq are aligned to N with potential mod-induced subs comprising M, notated *Nb*. Vmatch
+        alignments are conducted with Nq as queries and Nb as targets and vice versa, with Nb as
+        queries and Nq as targets. Query seqs must be found fully in the target seq. M may be
+        shorter than Nq due to unknown, untrimmed 5' and 3' nts in Nq.
+
+        Two pools of Nq are searched for indels:
+        1. normalized seqs with a full feature profile and not assigned to M, notated *Nqf*, and
+        2. normalized "non-tRNA" seqs with truncated tRNA profiles, notated *Nc*.
 
         Why these two pools?
-        1. Why are Nf considered at all, when they have been successfully profiled, and therefore,
-           presumably, do not have deletions interrupting the profile? Deletions can be erroneously
-           accommodated by flexibility in feature lengths. For example, a deletion associated with a
-           modification in the D loop can cause the variable-length alpha or beta sections of the D
-           loop to be assigned one fewer nucleotide than is correct in order to optimize the
-           profile.
-        2. Why not all "non-tRNAs," why just those with a truncated feature profile (Nt)? Deletions
-           can cause truncation of the profile. "Non-tRNAs" without even a truncated profile
-           (sequences that were not profiled past the minimum length threshold of the T arm) also
-           have fewer opportunities for modification-induced mutations.
+        1. Why are Nqf considered at all, when they have been successfully profiled, and therefore,
+           presumably, do not have indels interrupting the profile? Indels can be erroneously
+           accommodated by flexibility in feature lengths. For example, an indel associated with a
+           mod in the D loop can cause the variable-length α or β sections of the D loop to be
+           assigned one fewer or one more nt than is correct in order to optimize the profile.
+        2. Why not all "non-tRNAs," why just those with a truncated feature profile (Nc)? Indels can
+           cause truncation of the profile. "Non-tRNAs" without even a truncated profile (seqs that
+           were not profiled past the min length threshold of the T arm) also have fewer
+           opportunities for mod-induced mutations.
 
-        Normalized sequences rather than trimmed or unique sequences are searched for the sake of
-        speed and simplicity. Ideally, normalized sequences found to have deletions would be further
-        processed, finding which of their constituent trimmed and unique sequences actually contain
-        the deletions. However, *nonspecific* trimmed and unique sequences are, by definition, in
-        other normalized sequences, creating the possible ambiguity that the trimmed sequence would
-        be marked as having a deletion in one but not another normalized sequence. This would not
-        necessarily be an error, as identical underlying reads could theoretically originate from
-        different cDNA sequences, with some containing a deletion, and others, representing a
-        different tRNA, not containing a deletion."""
-        start_time = time.time()
-        self.progress.new("Finding seqs with modification-induced dels")
+        Nq seqs rather than constituent T or U are searched for the sake of speed and simplicity.
+        Ideally, Ni would be further processed, finding which of their constituent T and U actually
+        contain the indels. However, *nonspecific* T and U in Nq are, by definition, in other Nq,
+        theoretically permitting the ambiguity that a T would be marked as having an indel in one
+        but not another Nq. This would not necessarily be an error, as identical underlying reads
+        could theoretically originate from different cDNA seqs, with some containing an indel, and
+        others, representing a different tRNA, not containing it."""
+        pid = "Finding seqs with mod-induced indels"
+        progress = self.progress
+        run = self.run
+        progress.new(pid)
 
-        self.progress.update("Generating modified seqs with in silico dels")
-        # A "child" here is a modified sequence with in silico deletions, M'.
-        mod_seq_child_names = []
-        mod_seq_child_reversed_seq_strings = []
-        mod_seq_child_extras = []
-        for mod_seq in self.mod_trna_seq_dict.values():
-            mod_seq_child_index = 0
-            for seq_string_with_del, del_config in self.get_sequences_with_deletions(mod_seq):
-                mod_seq_child_names.append(mod_seq.represent_name + '_' + str(mod_seq_child_index))
-                mod_seq_child_reversed_seq_strings.append(seq_string_with_del[::-1])
-                mod_seq_child_extras.append((del_config, mod_seq))
-                mod_seq_child_index += 1
+        # Write FASTA files of queries and targets to a temp dir used in running Vmatch. Do not
+        # allow the Vmatch driver to automatically remove the dir, as the FASTA file of Nq is used
+        # in multiple searches. The file of parsed output generated by the Vmatch driver must be
+        # removed between searches, as it would otherwise be appended by the next search.
+        temp_dir_path = filesnpaths.get_temp_directory_path()
+        parsed_output_path = os.path.join(temp_dir_path, 'parsed_output.tsv')
+        fasta_path_Nb = os.path.join(temp_dir_path, 'Nb.fa')
+        fasta_path_Nqf = os.path.join(temp_dir_path, 'Nqf.fa')
 
+        # Write a FASTA file of Nb.
+        progress.update("Writing FASTA of norm tRNA seqs with mod-induced subs")
+        count_Nb, max_length_M = self.write_fasta_Nb(fasta_path_Nb)
 
-        self.progress.update("Gathering normalized seqs with truncated feature profiles")
-        norm_trunc_seq_names = []
-        norm_trunc_seq_reversed_seq_strings = []
-        norm_trunc_seq_extras = []
-        for norm_trunc_seq_name, norm_trunc_seq in self.norm_trunc_seq_dict.items():
-            norm_trunc_seq_names.append(norm_trunc_seq_name)
-            norm_trunc_seq_reversed_seq_strings.append(norm_trunc_seq.seq_string[::-1])
-            norm_trunc_seq_extras.append(norm_trunc_seq)
+        # Write a FASTA file of Nqf.
+        progress.update("Writing FASTA of norm tRNA seqs without mod-induced subs")
+        count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
-        self.progress.update("3'-dereplicating seqs with in silico dels and truncated profiles")
-        clusters = self.prefix_dereplicate_deletion_candidates(norm_trunc_seq_names,
-                                                               norm_trunc_seq_reversed_seq_strings,
-                                                               norm_trunc_seq_extras,
-                                                               mod_seq_child_names,
-                                                               mod_seq_child_reversed_seq_strings,
-                                                               mod_seq_child_extras)
+        # Search Nqf against Nb.
+        match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
+                                             fasta_db_file=fasta_path_Nb,
+                                             fasta_query_file=fasta_path_Nqf,
+                                             num_threads=self.num_threads,
+                                             query_chunk_size=count_Nqf // self.num_threads + 1 if count_Nqf < Vmatch.QUERY_CHUNK_SIZE_DEFAULT else 0,
+                                             max_edit_dist=math.ceil(max_length_Nqf * self.max_indel_freq),
+                                             min_ident=int(100 - 100 * self.max_indel_freq),
+                                             align_output_length=10, # This value is chosen to speed up alignment parsing in Vmatch output.
+                                             temp_dir=temp_dir_path,
+                                             keep_temp_dir=True,
+                                             edit_left_buffer=self.left_indel_buffer,
+                                             edit_right_buffer=self.right_indel_buffer)).search_queries()
+        self.organize_vmatch_driver_output(match_df, False)
+        os.remove(parsed_output_path)
 
-        if clusters:
-            self.progress.update("Searching normalized seqs with truncated feature profiles")
-            self.process_deletion_clusters(clusters, 'trunc')
-
-
-        self.progress.update("Gathering normalized seqs with full feature profiles")
-        norm_trna_seq_names = []
-        norm_trna_seq_reversed_seq_strings = []
-        norm_trna_seq_extras = []
-        for norm_trna_seq_name, norm_trna_seq in self.norm_trna_seq_dict.items():
-            if not norm_trna_seq.mod_seqs:
-                norm_trna_seq_names.append(norm_trna_seq_name)
-                norm_trna_seq_reversed_seq_strings.append(norm_trna_seq.seq_string[::-1])
-                norm_trna_seq_extras.append(norm_trna_seq)
-
-        self.progress.update("3'-dereplicating seqs with in silico dels and full profiles")
-        clusters = self.prefix_dereplicate_deletion_candidates(norm_trna_seq_names,
-                                                               norm_trna_seq_reversed_seq_strings,
-                                                               norm_trna_seq_extras,
-                                                               mod_seq_child_names,
-                                                               mod_seq_child_reversed_seq_strings,
-                                                               mod_seq_child_extras)
-
-        if clusters:
-            self.progress.update("Searching normalized seqs with full feature profiles")
-            self.process_deletion_clusters(clusters, 'trna')
+        results_dict = {}
+        # The following method updates `results_dict`.
+        count_Nqf_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, False)
+        progress.end()
+        run.info_single("Completed indel search stage 1/4: norm tRNA seqs within mod tRNA seqs", nl_before=2)
 
 
-        with open(self.analysis_summary_path, 'a') as f:
-            f.write(self.get_summary_line("Time elapsed finding modification-induced dels (min)",
-                                          time.time() - start_time,
-                                          is_time_value=True))
+        # Search Nb against Nqf.
+        progress.new(pid)
+        if count_Nqf_with_indels:
+            # Indels were found in some Nqf, so rewrite the FASTA file of Nqf to exclude these.
+            progress.update("Writing FASTA of norm tRNA seqs without known mod-induced mutations")
+            count_Nqf, max_length_Nqf = self.write_fasta_Nqf(fasta_path_Nqf)
 
-        self.progress.end()
+        match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
+                                             fasta_db_file=fasta_path_Nqf,
+                                             fasta_query_file=fasta_path_Nb,
+                                             num_threads=self.num_threads,
+                                             query_chunk_size=count_Nb // self.num_threads + 1 if count_Nb < Vmatch.QUERY_CHUNK_SIZE_DEFAULT else 0,
+                                             max_edit_dist=math.ceil(max_length_M * self.max_indel_freq),
+                                             min_ident=int(100 - 100 * self.max_indel_freq),
+                                             align_output_length=10,
+                                             temp_dir=temp_dir_path,
+                                             keep_temp_dir=True,
+                                             edit_left_buffer=self.left_indel_buffer,
+                                             edit_right_buffer=self.right_indel_buffer)).search_queries()
+        self.organize_vmatch_driver_output(match_df, True)
+        os.remove(parsed_output_path)
 
-
-    def get_sequences_with_deletions(self, mod_seq):
-        """Generate in silico modified sequences with deletions, *M'*, at and/or around substitution
-        sites. This method is called by `find_deletions`.
-
-        This method first introduces in silico nucleotide *substitutions* at possible substitution
-        sites to create template sequences. Substitutions are only allowed to the nucleotides
-        observed in the normalized sequences comprising the modified sequence, i.e., if 3
-        nucleotides are observed at a substitution site, then 3 are introduced in silico, rather
-        than the maximum 4. For each template sequence produced, `introduce_deletions` is called to
-        introduce deletions of different lengths at the possible configurations of substitution
-        sites. This may produce redundant sequences from the different templates, which are removed
-        in the present method.
-
-        Returns
-        =======
-        del_set : set
-            A set of tuples, each with 2 elements. The first element is a sequence string containing
-            deletions. The second element is a tuple of the indices of these deletions in the input
-            sequence.
-        """
-        longest_norm_seq_string = mod_seq.norm_seqs_without_dels[0].seq_string
-        mod_seq_length = len(longest_norm_seq_string)
-        sub_positions = mod_seq.sub_positions
-
-        # Record the configurations of nucleotides at the substitution positions found in the
-        # normalized sequences comprising the modified sequence. For normalized sequences shorter
-        # than the modified sequence (shorter than its longest normalized sequence) that do not
-        # include certain substitution positions nearer the 5' end of the modified sequence, use the
-        # nucleotides at the missing substitution positions from the representative longest
-        # normalized sequence in the substitution configuration.
-        longest_norm_seq_sub_nts = tuple([longest_norm_seq_string[sub_pos] for sub_pos in sub_positions])
-        sub_nt_config_set = set([longest_norm_seq_sub_nts])
-        for norm_seq in mod_seq.norm_seqs_without_dels[1: ]:
-            norm_seq_string = norm_seq.seq_string
-            norm_seq_start_in_mod_seq = mod_seq_length - len(norm_seq_string)
-            norm_seq_sub_nts = []
-            for sub_num, sub_pos in enumerate(sub_positions):
-                if sub_pos < norm_seq_start_in_mod_seq:
-                    norm_seq_sub_nts.append(longest_norm_seq_sub_nts[sub_num])
-                else:
-                    norm_seq_sub_nts.append(norm_seq_string[sub_pos - norm_seq_start_in_mod_seq])
-            sub_nt_config_set.add(tuple(norm_seq_sub_nts))
-
-        # Make template sequences (without deletions) from the substitution configurations.
-        seq_strings_without_dels = []
-        for sub_nt_config in sub_nt_config_set:
-            altered_seq_string = longest_norm_seq_string
-            for sub_nt, sub_pos in zip(sub_nt_config, sub_positions):
-                altered_seq_string = altered_seq_string[: sub_pos] + sub_nt + altered_seq_string[sub_pos + 1: ]
-            seq_strings_without_dels.append(altered_seq_string)
-
-        del_set = set()
-        for max_distinct_dels in range(self.max_distinct_dels, 0, -1):
-            # Introduce deletions into each template sequence, potentially producing a number of new
-            # sequences.
-            del_dict = {}
-            for seq_string in seq_strings_without_dels:
-                del_dict_for_seq = self.introduce_deletions(seq_string, sub_positions, max_distinct_dels=max_distinct_dels)
-                # The same sequence with deletions may sometimes be generated from different
-                # template normalized sequences. In case of redundancy, favor the deletion
-                # configuration closest to the substitution site around which deletions were
-                # introduced, with equally close configurations resolved by favoring more 5' over
-                # more 3' configurations.
-                for seq_string_with_del, del_pos_info in del_dict_for_seq.items():
-                    if seq_string_with_del in del_dict:
-                        if del_pos_info[1] >= del_dict[seq_string_with_del][1]:
-                            continue
-                    del_dict[seq_string_with_del] = del_pos_info
-            # Nota bene: Generated sequences may be 3' subsequences of each other. These are
-            # 3'-dereplicated in `find_deletions`, which calls the present method.
-            del_set = set([(seq_string_with_del, del_pos_info[0]) for seq_string_with_del, del_pos_info in del_dict.items()])
-            if len(del_set) <= self.max_del_configs:
-                # A very large number of sequences with in silico deletions was generated,
-                # potentially preventing processing in a reasonable time, so decrement the number of
-                # distinct sites at which deletions can be introduced in a single template sequence.
-                break
-        return del_set
+        count_Nqf_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nf, results_dict, True)
+        progress.end()
+        run.info_single("Completed indel search stage 2/4: mod tRNA seqs within norm tRNA seqs")
 
 
-    def introduce_deletions(self, seq_string, sub_positions, max_distinct_dels):
-        """Generate in silico sequences with deletions at and/or around substitution sites in the
-        input sequence. This method is called by `get_sequences_with_deletions`.
+        # Write a FASTA file of Nc.
+        progress.new(pid)
+        progress.update("Writing FASTA of norm trunc seqs")
+        fasta_path_Nc = os.path.join(temp_dir_path, 'Nc.fa')
+        count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
-        Parameters
-        ==========
-        seq_string : str
-            The sequence in which deletions will be introduced
+        # Search Nc against Nb.
+        match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
+                                             fasta_db_file=fasta_path_Nb,
+                                             fasta_query_file=fasta_path_Nc,
+                                             num_threads=self.num_threads,
+                                             query_chunk_size=count_Nc // self.num_threads + 1 if count_Nc < Vmatch.QUERY_CHUNK_SIZE_DEFAULT else 0,
+                                             max_edit_dist=math.ceil(max_length_Nc * self.max_indel_freq),
+                                             min_ident=int(100 - 100 * self.max_indel_freq),
+                                             align_output_length=10,
+                                             temp_dir=temp_dir_path,
+                                             keep_temp_dir=True,
+                                             edit_left_buffer=self.left_indel_buffer,
+                                             edit_right_buffer=self.right_indel_buffer)).search_queries()
+        self.organize_vmatch_driver_output(match_df, False)
+        os.remove(parsed_output_path)
 
-        sub_positions : list-like
-            Where substitutions are located in the input sequence
-
-        Returns
-        =======
-        del_dict : dict
-            Each dict key is a sequence string resulting from the introduction of deletions in the
-            input sequence. Each dict value is a length-two tuple. The first element of the tuple is
-            another tuple of the deletion positions in the input. The second element is a score used
-            to measure the distance of the deletions from the substitution loci of the input
-            sequence.
-        """
-        del_ranges = self.del_ranges
-        min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
-        min_dist_between_dels = self.min_dist_between_dels
-        # Find all the ways deletions can be introduced into the sequence given the
-        # parameterization.
-        del_pos_configs = []
-        seq_string_length = len(seq_string)
-        # Deletions of different sizes can be situated at each substitution site. Deletions may be
-        # found at one or multiple sites, if multiple substititutions are present. Call each
-        # deletion site a "locus".
-        for num_del_loci in range(1, max_distinct_dels + 1):
-            # Example: `num_del_loci` of 2 means deletions will be introduced in 2 places.
-            del_range_configs = product(*[del_ranges for _ in range(num_del_loci)])
-            for del_locus_config in combinations(sub_positions, num_del_loci):
-                # Example: `del_locus_config` of (10, 20) means deletions will be introduced around
-                # the substitutions at positions 10 and 20 in the input sequence.
-                for del_range_config in del_range_configs:
-                    # Example: `del_range_config` of (range(-2, 0), range(0, 1)) means the 2
-                    # nucleotides 5' of the first substitution position and the nucleotide at the
-                    # second substitution position will be deleted.
-                    all_del_positions = []
-                    all_del_pos_scores = []
-                    for del_locus_index, del_range in enumerate(del_range_config):
-                        sub_pos = del_locus_config[del_locus_index]
-                        locus_del_positions = []
-                        locus_del_pos_scores = []
-                        for del_pos_relative_to_sub in del_range:
-                            del_pos = sub_pos + del_pos_relative_to_sub
-
-                            # Deletion positions must be within the template sequence. There must be
-                            # sufficient sequence length on the 5' end to confirm the deletion. This
-                            # is related to the issue of nontemplated nucleotides. For example,
-                            # there may be a *biological* 3' tRNA fragment that ends at a
-                            # modification site, but a nontemplated nucleotide is added to the 5'
-                            # end of the read and is the same as the nucleotide that occurs 3
-                            # nucleotides 5' of the modification site, so without an "anchoring"
-                            # stretch of nucleotides on the 5' end, a deletion of length 2 could be
-                            # mistakenly identified as lying between the modification and the
-                            # nontemplated nucleotide. Therefore, only allow silico deletions that
-                            # occur some distance from the 5' end.
-                            if not seq_string_length > del_pos >= min_fiveprime_del_pos:
-                                continue
-
-                            if not locus_del_positions:
-                                if all_del_positions:
-                                    if del_pos - all_del_positions[-1] < min_dist_between_dels:
-                                        continue
-
-                            locus_del_positions.append(del_pos)
-
-                            # Lower deletion position scores are better (see below for the purpose
-                            # of the score). Distinguish 3' and 5' deletions that are the same
-                            # distance from the substitution locus by adding 0.5 to the magnitude of
-                            # the 3' distance.
-                            if del_pos_relative_to_sub <= 0:
-                                locus_del_pos_scores.append(abs(del_pos_relative_to_sub))
-                            else:
-                                locus_del_pos_scores.append(abs(del_pos_relative_to_sub) + 0.5)
-                        all_del_positions.extend(locus_del_positions)
-                        all_del_pos_scores.extend(locus_del_pos_scores)
-                    if all_del_positions:
-                        # It is possible that in silico deletions originating from one substitution
-                        # locus may coincide with those originating from another, so these
-                        # redundancies must be resolved.
-                        del_pos_config = []
-                        prev_del_pos = -1
-                        for del_pos_info in sorted(zip(all_del_positions, all_del_pos_scores), key=lambda del_pos_info: (del_pos_info[0], del_pos_info[1])):
-                            if del_pos_info[0] > prev_del_pos:
-                                del_pos_config.append(del_pos_info)
-                        del_pos_configs.append(tuple(del_pos_config))
-        # It is possible to generate the same sequence with deletions given different deletion
-        # configurations. For example, ACCG can become ACG by deleting either C. If the second C is
-        # the sole substitution locus in the sequence, then only record the in silico deletion as
-        # occurring at that nucleotide rather one nucleotide 5' of it. This is resolved by choosing
-        # the lower deletion position score. The deletion at the first C has a score of 1, whereas
-        # the deletion at the second has a score of 0.
-        del_dict = {}
-        for del_pos_config in del_pos_configs:
-            seq_string_with_dels = seq_string
-            del_positions = []
-            total_del_pos_score = 0
-            for del_pos, del_pos_score in del_pos_config[::-1]:
-                seq_string_with_dels = seq_string_with_dels[: del_pos] + seq_string_with_dels[del_pos + 1: ]
-                del_positions.append(del_pos)
-                total_del_pos_score += del_pos_score
-
-            if seq_string_with_dels in del_dict:
-                if total_del_pos_score >= del_dict[seq_string_with_dels][1]:
-                    continue
-            del_dict[seq_string_with_dels] = (tuple(sorted(del_positions)), total_del_pos_score)
-        return del_dict
+        count_Nc_with_indels = self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, False)
+        progress.end()
+        run.info_single("Completed indel search stage 3/4: trunc tRNA seqs within mod tRNA seqs")
 
 
-    def prefix_dereplicate_deletion_candidates(self,
-                                               norm_seq_names,
-                                               norm_seq_reversed_seq_strings,
-                                               norm_seq_extras,
-                                               mod_seq_child_names,
-                                               mod_seq_child_reversed_seq_strings,
-                                               mod_seq_child_extras):
-        """3'-dereplicate modified sequence "children" with speculative in silico deletions (M') and
-        normalized sequences (N). Clusters seeded by M' are produced when an N is found that is a 3'
-        subsequence of M', potentially of equal length. Other M' that are 3' subsequences of the
-        seed M' may also be part of these clusters. Clusters seeded by N are produced. Only M' are
-        3' subsequences in these clusters, as N have already been dereplicated. No cluster, seeded
-        either by M' or N, can contain more than one N."""
-        hashed_norm_seq_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in norm_seq_reversed_seq_strings]
-        hashed_mod_seq_child_strings = [sha1(seq_string.encode('utf-8')).hexdigest() for seq_string in mod_seq_child_reversed_seq_strings]
+        # Search Nb against Nc.
+        progress.new(pid)
+        if count_Nc_with_indels:
+            # Indels were found in some Nc, so rewrite the FASTA file of Nc to exclude these.
+            progress.update("Writing FASTA of norm trunc seqs without known mod-induced mutations")
+            count_Nc, max_length_Nc = self.write_fasta_Nc(fasta_path_Nc)
 
-        # Find N and other M' in M'.
-        # Make an `AlignedTarget` object for each M' target that is hit, and add info on matching N
-        # or M' queries to its alignment attribute. Store these objects in the following dict.
-        mod_seq_child_aligned_target_dict = {}
-        # If an N is a 3' subsequence of an M', then do not search for it later as a target to form
-        # a cluster seeded by N.
-        matched_norm_seq_names = set()
-        # Generate k-mers of the size of each N or M' query from the 3' end of each M' target.
-        kmer_sizes = sorted(set([len(seq_string) for seq_string in mod_seq_child_reversed_seq_strings + norm_seq_reversed_seq_strings]))
-        chunk_start = 0
-        target_chunk_size = self.alignment_target_chunk_size
-        chunk_stop = target_chunk_size
-        while chunk_start < len(mod_seq_child_names):
+        match_df = Vmatch(argparse.Namespace(match_mode='query_substring_with_indels',
+                                             fasta_db_file=fasta_path_Nc,
+                                             fasta_query_file=fasta_path_Nb,
+                                             num_threads=self.num_threads,
+                                             query_chunk_size=count_Nb // self.num_threads + 1 if count_Nb < Vmatch.QUERY_CHUNK_SIZE_DEFAULT else 0,
+                                             max_edit_dist=math.ceil(max_length_M * self.max_indel_freq),
+                                             min_ident=int(100 - 100 * self.max_indel_freq),
+                                             align_output_length=10,
+                                             temp_dir=temp_dir_path,
+                                             keep_temp_dir=True,
+                                             edit_left_buffer=self.left_indel_buffer,
+                                             edit_right_buffer=self.right_indel_buffer)).search_queries()
+        self.organize_vmatch_driver_output(match_df, True)
+        os.remove(parsed_output_path)
 
-            # Generate a dict mapping M' target 3' prefix k-mers to target info. This is like a
-            # `sequence.Kmerizer` method that uses multiple k-mer sizes and doesn't generate
-            # `AlignedTarget` objects for each target. To speed up lookup, create a nested dict,
-            # with the outer dict keyed by k-mer length.
-            kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
-            for name, seq_string, target_extra in zip(mod_seq_child_names[chunk_start: chunk_stop],
-                                                      mod_seq_child_reversed_seq_strings[chunk_start: chunk_stop],
-                                                      mod_seq_child_extras[chunk_start: chunk_stop]):
-                seq_length = len(seq_string)
-                # The target extra here is a tuple with the first element being the in silico
-                # deletion configuration of M' and the second being the modified sequence object, M.
-                target_info = (name, seq_string, target_extra)
-                for kmer_size in kmer_sizes:
-                    if kmer_size > seq_length:
-                        break
-
-                    hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-                    try:
-                        kmer_dict[kmer_size][hashed_kmer].append(target_info)
-                    except KeyError:
-                        kmer_dict[kmer_size][hashed_kmer] = [target_info]
-
-            # Search for N queries in M' targets.
-            for hashed_norm_seq_string, norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra in zip(hashed_norm_seq_strings,
-                                                                                                           norm_seq_names,
-                                                                                                           norm_seq_reversed_seq_strings,
-                                                                                                           norm_seq_extras):
-                try:
-                    # N may be found in multiple M'.
-                    target_info_list = kmer_dict[len(norm_seq_reversed_seq_string)][hashed_norm_seq_string]
-                except KeyError:
-                    # N is not a 3' subsequence of any M'.
-                    continue
-
-                for target_name, target_seq_string, target_extra in target_info_list:
-                    try:
-                        # The M' target has already been hit by another sequence -- presumably an M'
-                        # query, since only one N can hit any target, as no N can be a 3' subsequence of
-                        # another N.
-                        target = mod_seq_child_aligned_target_dict[target_name]
-                    except KeyError:
-                        target = AlignedTarget(target_seq_string, name=target_name)
-                        mod_seq_child_aligned_target_dict[target_name] = target
-                        # Record information on the target as the target object's first alignment item.
-                        target.alignments.append((target_name, target_seq_string, target_extra))
-                    target.alignments.append((norm_seq_name, norm_seq_reversed_seq_string, norm_seq_extra))
-                    matched_norm_seq_names.add(norm_seq_name)
-
-            # Search for M' queries in M' targets.
-            for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
-                                                                                                                               mod_seq_child_names,
-                                                                                                                               mod_seq_child_reversed_seq_strings,
-                                                                                                                               mod_seq_child_extras):
-                try:
-                    target_info_list = kmer_dict[len(mod_seq_child_reversed_seq_string)][hashed_mod_seq_child_string]
-                except KeyError:
-                    continue
-
-                self_match = False
-                for target_name, target_seq_string, target_extra in target_info_list:
-                    if not self_match:
-                        # Use the Boolean, `self_match`, to limit string comparisons.
-                        if mod_seq_child_name == target_name:
-                            # Ignore self matches
-                            self_match = True
-                            continue
-                    try:
-                        target = mod_seq_child_aligned_target_dict[target_name]
-                    except KeyError:
-                        target = AlignedTarget(target_seq_string, name=target_name)
-                        mod_seq_child_aligned_target_dict[target_name] = target
-                        target.alignments.append((target_name, target_seq_string, target_extra))
-                    target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-
-            # Delete the k-mer dict for the current chunk.
-            del(kmer_dict)
-            gc.collect()
-            chunk_start = chunk_stop
-            chunk_stop += target_chunk_size
-
-        # Find N that did not match any M' to use as targets in the next search.
-        matched_norm_seq_names = list(matched_norm_seq_names)
-        unmatched_norm_seq_names = []
-        unmatched_norm_seq_reversed_seq_strings = []
-        unmatched_norm_seq_extras = []
-        for name, seq_string, extra in zip(norm_seq_names, norm_seq_reversed_seq_strings, norm_seq_extras):
-            if name not in matched_norm_seq_names:
-                unmatched_norm_seq_names.append(name)
-                unmatched_norm_seq_reversed_seq_strings.append(seq_string)
-                unmatched_norm_seq_extras.append(extra)
-
-        del(matched_norm_seq_names)
-        # Delete lists for all N rather than just unmatched N.
-        del(hashed_norm_seq_strings)
-        del(norm_seq_names)
-        del(norm_seq_reversed_seq_strings)
-        del(norm_seq_extras)
-        gc.collect()
-
-        # Find M' in unmatched N.
-        # Make an `AlignedTarget` object for each N target that is hit, and add info on matching M'
-        # queries to its alignment attribute. Store these objects in the following dict.
-        norm_seq_aligned_target_dict = {}
-        # Generate k-mers of the size of each M' query from the 3' end of each N target.
-        kmer_sizes = sorted(set([len(seq_string) for seq_string in mod_seq_child_reversed_seq_strings]))
-        chunk_start = 0
-        chunk_stop = target_chunk_size
-        while chunk_start < len(unmatched_norm_seq_names):
-            chunk_norm_seq_lengths = sorted(set([len(seq_string) for seq_string in unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop]]))
-
-            # Generate a dict mapping N target 3' prefix k-mers to target info.
-            kmer_dict = {kmer_size: {} for kmer_size in kmer_sizes}
-            for name, seq_string, target_extra in zip(unmatched_norm_seq_names[chunk_start: chunk_stop],
-                                                      unmatched_norm_seq_reversed_seq_strings[chunk_start: chunk_stop],
-                                                      unmatched_norm_seq_extras[chunk_start: chunk_stop]):
-                seq_length = len(seq_string)
-                target_info = (name, seq_string, target_extra)
-                for kmer_size in kmer_sizes:
-                    if kmer_size > seq_length:
-                        break
-
-                    hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
-                    try:
-                        kmer_dict[kmer_size][hashed_kmer].append(target_info)
-                    except KeyError:
-                        kmer_dict[kmer_size][hashed_kmer] = [target_info]
-
-            for hashed_mod_seq_child_string, mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra in zip(hashed_mod_seq_child_strings,
-                                                                                                                               mod_seq_child_names,
-                                                                                                                               mod_seq_child_reversed_seq_strings,
-                                                                                                                               mod_seq_child_extras):
-                try:
-                    target_info_list = kmer_dict[len(mod_seq_child_reversed_seq_string)][hashed_mod_seq_child_string]
-                except KeyError:
-                    continue
-
-                for target_name, target_seq_string, target_extra in target_info_list:
-                    try:
-                        target = norm_seq_aligned_target_dict[target_name]
-                    except KeyError:
-                        target = AlignedTarget(target_seq_string, name=target_name)
-                        norm_seq_aligned_target_dict[target_name] = target
-                        target.alignments.append((target_name, target_seq_string, target_extra))
-                    target.alignments.append((mod_seq_child_name, mod_seq_child_reversed_seq_string, mod_seq_child_extra))
-
-            del(kmer_dict)
-            gc.collect()
-            chunk_start = chunk_stop
-            chunk_stop += target_chunk_size
-
-        del(hashed_mod_seq_child_strings)
-        gc.collect()
-
-        clusters = []
-        # Create a cluster object for each M' containing an N.
-        for mod_seq_child_target in mod_seq_child_aligned_target_dict.values():
-            norm_seq_added = False
-            if mod_seq_child_target.alignments:
-                # Start filling out a cluster object, but only add meaningful clusters containing an
-                # N to the final list.
-                cluster = Cluster()
-                # The first item in the alignment is info on the M' seed. Do not add info on the
-                # seed to the cluster until it is established that the cluster contains an N. For
-                # full reproducibility, sort matching queries in descending order of length, and in
-                # case of ties, by name.
-                for name, reversed_seq_string, extra in sorted(mod_seq_child_target.alignments[1: ],
-                                                               key=lambda alignment_with_mod_seq_child: (-len(alignment_with_mod_seq_child[1]), alignment_with_mod_seq_child[0])):
-                    cluster.member_names.append(name)
-                    cluster.member_seqs.append(reversed_seq_string)
-                    cluster.member_extras.append(extra)
-                    if not norm_seq_added:
-                        if not isinstance(extra, tuple):
-                            norm_seq_added = True
-                if norm_seq_added:
-                    name, reversed_seq_string, extra = mod_seq_child_target.alignments[0]
-                    cluster.member_names.insert(0, name)
-                    cluster.member_seqs.insert(0, reversed_seq_string)
-                    cluster.member_extras.insert(0, extra)
-                    clusters.append(cluster)
-
-        # Create cluster objects for each N containing but not contained by an M'.
-        for norm_seq_target in norm_seq_aligned_target_dict.values():
-            if norm_seq_target.alignments:
-                cluster = Cluster()
-                # The first item is info on the N seed.
-                name, reversed_seq_string, extra = norm_seq_target.alignments[0]
-                cluster.member_names.append(name)
-                cluster.member_seqs.append(reversed_seq_string)
-                cluster.member_extras.append(extra)
-                # Add info on matching M' queries.
-                for name, reversed_seq_string, extra in sorted(norm_seq_target.alignments[1: ],
-                                                               key=lambda mod_seq_child_alignment_with_norm_seq: (-len(mod_seq_child_alignment_with_norm_seq[1]), mod_seq_child_alignment_with_norm_seq[0])):
-                    cluster.member_names.append(name)
-                    cluster.member_seqs.append(reversed_seq_string)
-                    cluster.member_extras.append(extra)
-                clusters.append(cluster)
-
-        # For full reproducibility, sort clusters in descending order of size, and in case of ties,
-        # by name.
-        clusters.sort(key=lambda cluster: (-len(cluster.member_names), cluster.member_names[0]))
-        return clusters
+        count_Nc_with_indels += self.process_Nq_with_indels(match_df, self.dict_Nc, results_dict, True)
+        progress.end()
+        run.info_single("Completed indel search stage 4/4: mod tRNA seqs within trunc tRNA seqs")
 
 
-    def process_deletion_clusters(self, clusters, norm_seq_type):
-        """Process 3'-dereplicated clusters comprised of modified sequences with in silico
-        deletions, *M'*, and normalized sequences. The normalized sequences either all have a
-        truncated feature profile, *Nt*, or all have a full feature profile, *Nf*.
+        # Consolidate Nq differing by 5' and 3' extensions into a new Ni object.
+        progress.new(pid)
+        progress.update("Finalizing norm seqs with indels")
+        self.add_Ni_to_M(results_dict)
+        progress.end()
 
-        We are interested in clusters with both M' and a normalized sequence, verifying the
-        speculative deletions in M' by the existence of a corresponding normalized sequence. There
-        can only be one N per cluster, as normalized sequences have previously been 3'-dereplicated.
-        There can be multiple M'.
+        trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+        set_meta_value = trnaseq_db.db.set_meta_value
+        set_meta_value('count_Nqf_with_indels', count_Nqf_with_indels)
+        set_meta_value('count_Nc_with_indels', count_Nc_with_indels)
+        trnaseq_db.disconnect()
 
-        N with supported deletions are removed and reconstituted as `NormalizedDeletionSequence`
-        objects.
 
-        Normalized sequences can often be sequences with deletions that also have extra 5'
-        nucleotides. When this type of normalized sequence is present in the cluster, M' will be
-        shorter. In the case of Nf, the extra nucleotides went undetected in the initial assignment
-        of the feature profile, as they are within a normalized sequence, which, by definition, is
-        meant to have trimmed 3' and 5' ends. For the extra 5' nucleotides to be detected, it must
-        be confirmed that the longest modified sequence is a full-length tRNA.
+    def write_fasta_Nb(self, fasta_path):
+        """This helper method for `find_indels` writes a FASTA file of Nb constituting M."""
+        count_Nb = 0
+        max_length_M = 0
+        dict_Nf = self.dict_Nf
+        with open(fasta_path, 'w') as fasta:
+            for name_M, seq_M in self.dict_M.items():
+                length_M = seq_M.length
+                for num_Nb, name_Nb in enumerate(seq_M.names_Nb):
+                    string_Nb = dict_Nf[name_Nb].string
+                    length_Nb = len(string_Nb)
+                    fasta.write(f">{name_M}_{num_Nb}_{length_M - length_Nb}\n{string_Nb}\n")
+                    count_Nb += 1
+                    if length_Nb > max_length_M:
+                        max_length_M = length_Nb
+        return count_Nb, max_length_M
 
-        N can also arise from tRNA fragments. In a cluster, these would be 3' subsequences of one or
-        more M'.
-        """
-        norm_seq_mod_seqs_dict = self.get_normalized_sequences_containing_modified_sequences_with_deletions(clusters)
 
-        # Process the matches between N and one or more M'.
-        if norm_seq_type == 'trna':
-            norm_seq_dict = self.norm_trna_seq_dict
-        elif norm_seq_type == 'trunc':
-            norm_seq_dict = self.norm_trunc_seq_dict
-        new_norm_del_seq_dict = {}
-        # It is useful to know which of a trimmed sequence's normalized sequences are found to
-        # contain deletions.
-        trimmed_seq_norm_del_seq_dict = defaultdict(list)
-        # Winnow the matches down to one-to-one matches between a normalized sequence and modified
-        # sequence, ignoring N that can be formed from the introduction of deletions in different
-        # modified sequences, as indicated by the following variable, which is set to `False` and
-        # cannot currently be changed by the user.
-        allow_norm_seq_with_dels_from_multiple_mod_seqs = self.allow_norm_seq_with_dels_from_multiple_mod_seqs
-        for norm_seq_name, match_info in norm_seq_mod_seqs_dict.items():
-            if len(match_info) == 1:
-                norm_seq, mod_seq, del_config, extra_fiveprime_length = match_info[0]
-            else:
-                # The normalized sequence was found in multiple M', which may be from the same or
-                # different modified sequences.
-                uniq_mod_seq_info_dict = {}
-                # In the following loop, `norm_seq` is the same in every iteration. This same
-                # variable is referenced after the loop.
-                for norm_seq, mod_seq, del_config, extra_fiveprime_length in match_info:
-                    if mod_seq.represent_name in uniq_mod_seq_info_dict:
-                        # Multiple deletion configurations in the same modified sequence are
-                        # apparently able to produce the normalized sequence.
-                        if len(del_config) < len(uniq_mod_seq_info_dict[mod_seq.represent_name]):
-                            # Favor the most parsimonious configuration of deletions producing the
-                            # normalized sequence.
-                            uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
-                    else:
-                        uniq_mod_seq_info_dict[mod_seq.represent_name] = del_config
+    def write_fasta_Nqf(self, fasta_path):
+        """This helper method for `find_indels` writes a FASTA file of Nqf."""
+        count_Nqf = 0
+        max_length_Nqf = 0
+        with open(fasta_path, 'w') as fasta:
+            for name_Nf, seq_Nf in self.dict_Nf.items():
+                if not seq_Nf.names_M:
+                    string_Nf = seq_Nf.string
+                    length_Nf = len(string_Nf)
+                    fasta.write(f">{name_Nf}_{length_Nf}\n{string_Nf}\n")
+                    count_Nqf += 1
+                    if length_Nf > max_length_Nqf:
+                        max_length_Nqf = length_Nf
+        return count_Nqf, max_length_Nqf
 
-                if len(uniq_mod_seq_info_dict) > 1:
-                    if not allow_norm_seq_with_dels_from_multiple_mod_seqs:
-                        # The normalized sequence with deletions can arise from multiple modified
-                        # sequences, so ignore it.
-                        continue
 
-                mod_seq = match_info[0][1]
-                del_config = uniq_mod_seq_info_dict[mod_seq.represent_name]
-                extra_fiveprime_length = match_info[0][3]
-            for trimmed_seq in norm_seq.trimmed_seqs:
-                trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name].append(norm_seq.represent_name)
+    def write_fasta_Nc(self, fasta_path):
+        """This helper method for `find_indels` writes a FASTA file of Nc."""
+        max_length_Nc = 0
+        with open(fasta_path, 'w') as fasta:
+            for name_Nc, seq_Nc in self.dict_Nc.items():
+                string_Nc = seq_Nc.string
+                length_Nc = len(string_Nc)
+                fasta.write(f">{name_Nc}_{length_Nc}\n{string_Nc}\n")
+                if length_Nc > max_length_Nc:
+                    max_length_Nc = length_Nc
+        return len(self.dict_Nc), max_length_Nc
 
-            # Transfer the contents of a normalized sequence with supported deletions to a
-            # `NormalizedDeletionSequence` object. Some if not all of the feature profiles of the
-            # trimmed/unique sequences underlying the normalized sequence are invalidated by the
-            # deletions. However, do not alter the trimmed and unique sequences. A certain amount of
-            # information contradicting the trimmed and unique sequence profiles is stored in the
-            # `NormalizedDeletionSequence`, such as any additional 5' extension contained in the
-            # normalized sequence.
-            if not extra_fiveprime_length:
-                # N was the same length as M'. No other normalized sequence will contain M', as
-                # normalized sequences were 3' dereplicated earlier in the workflow.
-                norm_seq_dict.pop(norm_seq.represent_name)
-                norm_del_seq_string = norm_seq.seq_string
-                # Offload the work of finding the position of N in M and whether N contains the
-                # anticodon to `TRNASeqDataset` rather than having methods for this in each instance
-                # of `NormalizedDeletionSequence`.
-                norm_del_seq_start_in_mod_seq, norm_seq_del_config = self.find_normalized_deletion_sequence_in_modified_sequence(len(norm_del_seq_string), mod_seq, del_config)
-                norm_del_seq_contains_anticodon = self.check_normalized_deletion_sequence_for_anticodon(mod_seq, norm_del_seq_start_in_mod_seq)
-                norm_del_seq = NormalizedDeletionSequence(norm_del_seq_string, norm_seq, mod_seq, del_config, norm_del_seq_start_in_mod_seq, norm_seq_del_config, norm_del_seq_contains_anticodon)
-                new_norm_del_seq_dict[norm_del_seq_string] = norm_del_seq
-                mod_seq.norm_seqs_with_dels.append(norm_del_seq)
-                mod_seq.del_configs.append(del_config)
 
+    def organize_vmatch_driver_output(self, match_df, queries_are_Nb):
+        """This helper method for `find_indels` organizes a table of alignment data for further
+        analysis."""
+        if queries_are_Nb:
+            col_name_Nb = 'query_name'
+            col_name_N = 'target_name'
+        else:
+            col_name_Nb = 'target_name'
+            col_name_N = 'query_name'
+
+        names_M = []
+        starts_Nb_in_M = []
+        for defline in match_df[col_name_Nb]:
+            split_name = defline.split('_')
+            names_M.append('_'.join(split_name[: -2]))
+            starts_Nb_in_M.append(int(split_name[-1]))
+        match_df['M_name'] = names_M
+        match_df['Nb_start_in_M'] = starts_Nb_in_M
+        match_df.drop(col_name_Nb, axis=1, inplace=True)
+
+        names_N = []
+        lengths_N = []
+        for defline in match_df[col_name_N]:
+            split_name = defline.split('_')
+            names_N.append('_'.join(split_name[: -1]))
+            lengths_N.append(int(defline.split('_')[-1]))
+        match_df['Nq_name'] = names_N
+        match_df['Nq_length'] = lengths_N
+        match_df.drop(col_name_N, axis=1, inplace=True)
+
+        if queries_are_Nb:
+            match_df.rename({'query_start_in_target': 'Nb_start_in_Nq',
+                             'del_lengths': 'insert_lengths',
+                             'target_align_del_starts': 'Nq_align_insert_starts',
+                             'query_align_del_starts': 'Nb_align_insert_starts',
+                             'insert_lengths': 'del_lengths',
+                             'target_align_insert_starts': 'Nq_align_del_starts',
+                             'query_align_insert_starts': 'Nb_align_del_starts'}, axis=1, inplace=True)
+        else:
+            match_df.rename({'query_start_in_target': 'Nq_start_in_Nb',
+                             'query_align_insert_starts': 'Nq_align_insert_starts',
+                             'target_align_insert_starts': 'Nb_align_insert_starts',
+                             'query_align_del_starts': 'Nq_align_del_starts',
+                             'target_align_del_starts': 'Nb_align_del_starts'}, axis=1, inplace=True)
+
+
+    def process_Nq_with_indels(self, match_df, dict_N, results_dict, queries_are_Nb):
+        """This helper method for `find_indels` finds indels in Nq from parsed Vmatch output. This
+        method is generalized to handle Nq (Nqf or Nc) as queries and Nb as targets (Nq length ≤ Nb
+        length in alignments) and vice versa (Nb as queries, Nq as targets, Nb length ≤ Nq length in
+        alignments).
+
+        A mod-induced insertion in Nq is a gap in Nb (or M), whereas a del in Nq corresponds to nts
+        in Nb (or M). The position of an insertion in Nq or a del in M is marked as the first nt of
+        the insertion or del. The position of an insertion in M or a del in Nq is marked by the
+        position of the adjacent 5' nt."""
+        count_of_Nq_with_indels = 0
+        dict_M = self.dict_M
+        max_length_3prime_terminus = self.max_length_3prime_terminus
+        for name_Nq, match_df_Nq in match_df.groupby('Nq_name'):
+            names_M = match_df_Nq['M_name']
+            if len(set(names_M)) > 1:
+                # Ignore Nq with indels that can arise from multiple M for simplicity's sake. This
+                # can exclude real molecules with indels. For instance, a mod occurring next to a
+                # SNV that distinguishes two M could generate a del that removes the SNV in both M,
+                # resulting in a single Nq derived from two M.
                 continue
 
-            # By reaching this point, N was found to be longer than M'. Multiple N can contain a
-            # given M'. N is longer than M' when it contains previously unidentified extra 5'
-            # nucleotides. The new 5' extension is recorded in the `NormalizedDeletionSequence`
-            # object. When multiple N are the same as M' except for the new 5' extension, they
-            # are consolidated into the same object.
-            norm_del_seq_string = norm_seq.seq_string[extra_fiveprime_length: ]
-            if norm_del_seq_string in new_norm_del_seq_dict:
-                norm_del_seq = new_norm_del_seq_dict[norm_del_seq_string]
-                # Avoid adding duplicate trimmed sequences to the object (those shorter than N).
-                norm_del_seq_length = len(norm_del_seq_string)
-                trimmed_seqs = [trimmed_seq for trimmed_seq in norm_seq.trimmed_seqs if len(trimmed_seq.seq_string) > norm_del_seq_length]
-                norm_del_seq.trimmed_seqs.extend(trimmed_seqs)
-                norm_del_seq.defunct_norm_seqs.extend([norm_seq for _ in trimmed_seqs])
+            # Ignore Nq that align to different places in M.
+            if queries_are_Nb:
+                # When searching Nb against Nq, the start position of Nq in M is ≤ 0.
+                starts_Nq_in_M = match_df_Nq['Nb_start_in_M'] - match_df_Nq['Nb_start_in_Nq']
+                if len(set(starts_Nq_in_M)) > 1:
+                    continue
             else:
-                # Prevent N from actually being a slightly shorter, deletion-free 3' subsequence
-                # fragment of the modified sequence, M.
-                unsupported_dels = False
-                for norm_seq_without_dels in mod_seq.norm_seqs_without_dels:
-                    if norm_del_seq_string == norm_seq_without_dels.seq_string[len(del_config): ]:
-                        unsupported_dels = True
-                        break
-                if unsupported_dels:
+                # When searching Nq against Nb, the start position of Nq in M is ≥ 0.
+                starts_Nq_in_M = match_df_Nq['Nq_start_in_Nb'] + match_df_Nq['Nb_start_in_M']
+                if len(set(starts_Nq_in_M)) > 1:
                     continue
 
-                # The following code is the same as above, when dealing with normalized sequences
-                # without a newly discovered 5' extension; perhaps it should be a separate method.
-                norm_seq_dict.pop(norm_seq.represent_name)
-                norm_del_seq_start_in_mod_seq, norm_seq_del_config = self.find_normalized_deletion_sequence_in_modified_sequence(len(norm_del_seq_string), mod_seq, del_config)
-                norm_del_seq_contains_anticodon = self.check_normalized_deletion_sequence_for_anticodon(mod_seq, norm_del_seq_start_in_mod_seq)
-                norm_del_seq = NormalizedDeletionSequence(norm_del_seq_string, norm_seq, mod_seq, del_config, norm_del_seq_start_in_mod_seq, norm_seq_del_config, norm_del_seq_contains_anticodon)
-                new_norm_del_seq_dict[norm_del_seq_string] = norm_del_seq
-                mod_seq.norm_seqs_with_dels.append(norm_del_seq)
-                mod_seq.del_configs.append(del_config)
+            start_Nq_in_M = starts_Nq_in_M.iat[0]
 
-        norm_del_seq_dict = self.norm_del_seq_dict
-        trimmed_del_seq_dict = self.trimmed_del_seq_dict
-        uniq_del_seq_dict = self.uniq_del_seq_dict
-        for norm_seq in new_norm_del_seq_dict.values():
-            norm_seq.init()
-            norm_del_seq_dict[norm_seq.represent_name] = norm_seq
-            # Record the constituent sequences of normalized sequences with deletions.
-            for trimmed_seq in norm_seq.trimmed_seqs:
-                trimmed_del_seq_dict[trimmed_seq.represent_name] = (trimmed_seq, set(trimmed_seq_norm_del_seq_dict[trimmed_seq.represent_name]))
-                for uniq_seq in trimmed_seq.uniq_seqs:
-                    uniq_del_seq_dict[uniq_seq.represent_name] = uniq_seq
-        if norm_seq_type == 'trunc':
-            # If a sequence with a truncated feature profile is identified as tRNA, albeit with a
-            # deletion, then record it as such. Trimmed truncated sequences may be nonspecific,
-            # found in other normalized truncated sequences not recovered by this method. This
-            # nuance should not affect anything downstream.
-            trimmed_trna_seq_dict = self.trimmed_trna_seq_dict
-            trimmed_trunc_seq_dict = self.trimmed_trunc_seq_dict
-            uniq_trna_seq_dict = self.uniq_trna_seq_dict
-            uniq_trunc_seq_dict = self.uniq_trunc_seq_dict
-            for norm_seq in new_norm_del_seq_dict.values():
-                for trimmed_seq in norm_seq.trimmed_seqs:
-                    if isinstance(trimmed_seq, TrimmedTruncatedProfileSequence):
-                        try:
-                            trimmed_trunc_seq_dict.pop(trimmed_seq.represent_name)
-                        except KeyError:
-                            # The trimmed sequence was part of another normalized sequence with
-                            # deletions that was already processed.
-                            continue
-                        trimmed_trna_seq_dict[trimmed_seq.represent_name] = trimmed_seq
-                        for uniq_seq in trimmed_seq.uniq_seqs:
-                            uniq_trunc_seq_dict.pop(uniq_seq.represent_name)
-                            uniq_trna_seq_dict[uniq_seq.represent_name] = uniq_seq
+            insert_length_configs = []
+            sum_insert_lengths = []
+            for insert_length_config in match_df_Nq['insert_lengths']:
+                if insert_length_config:
+                    parsed_insert_length_config = tuple(map(int, insert_length_config.split(',')))
+                    insert_length_configs.append(parsed_insert_length_config)
+                    sum_insert_lengths.append(sum(parsed_insert_length_config))
+                else:
+                    insert_length_configs.append(tuple())
+                    sum_insert_lengths.append(0)
+            sum_insert_lengths = np.array(sum_insert_lengths)
+            del_length_configs = []
+            sum_del_lengths = []
+            for del_length_config in match_df_Nq['del_lengths']:
+                if del_length_config:
+                    parsed_del_length_config = tuple(map(int, del_length_config.split(',')))
+                    del_length_configs.append(parsed_del_length_config)
+                    sum_del_lengths.append(sum(parsed_del_length_config))
+                else:
+                    del_length_configs.append(tuple())
+                    sum_del_lengths.append(0)
+            sum_del_lengths = np.array(sum_del_lengths)
+
+            # If Nq length ≤ M length, Nq must align to the 3' end of M. If Nq length > M length, Nq
+            # must have the same number of extra 3' nts in all alignments.
+            stops_Nq_in_M = starts_Nq_in_M + match_df_Nq['Nq_length'] - sum_insert_lengths + sum_del_lengths
+
+            if len(set(stops_Nq_in_M)) > 1:
+                continue
+            stop_Nq_in_M = stops_Nq_in_M.iat[0]
+
+            name_M = names_M.iat[0]
+            try:
+                results_M_dict = results_dict[name_M]
+                seq_M = results_M_dict['M_name']['M_seq']
+            except KeyError:
+                results_M_dict = None
+                seq_M = dict_M[name_M]
+
+            if queries_are_Nb:
+                # Ensure that the 3' overhang of Nq in M does not exceed the maximum 3' terminus
+                # length allowed in profiling. This heuristic mainly addresses an inconsistency
+                # caused by chimeric Nc targets with a 5' part that is tRNA. The Nb query may align
+                # to the 5' part of the target, resulting in numerous extra 3' nts in Nc. Were these
+                # sequences allowed, this would be the only case in the workflow where the 5' part
+                # of a chimera is counted as tRNA.
+                if stop_Nq_in_M - seq_M.length > max_length_3prime_terminus:
+                    continue
+            else:
+                if stop_Nq_in_M != seq_M.length:
+                    continue
+
+            # Nq is now known to have indels. Their locations are to be determined.
+            count_of_Nq_with_indels += 1
+
+            seq_Nq = dict_N.pop(name_Nq)
+            if not results_M_dict:
+                results_dict[name_M] = results_M_dict = {'M_seq': seq_M}
+                results_M_dict['Nq_seqs'] = []
+                results_M_dict['Nq_starts_in_M'] = []
+                results_M_dict['Nq_stops_in_M'] = []
+                results_M_dict['Nq_insert_starts'] = []
+                results_M_dict['M_insert_starts'] = []
+                results_M_dict['insert_lengths'] = []
+                results_M_dict['Nq_del_starts'] = []
+                results_M_dict['M_del_starts'] = []
+                results_M_dict['del_lengths'] = []
+
+            results_M_dict['Nq_seqs'].append(seq_Nq)
+            results_M_dict['Nq_starts_in_M'].append(start_Nq_in_M)
+            results_M_dict['Nq_stops_in_M'].append(stop_Nq_in_M)
+
+            indel_configs = []
+            if queries_are_Nb:
+                align_starts_in_Nq = match_df_Nq['Nb_start_in_Nq']
+                align_starts_in_Nb = [0] * len(match_df_Nq)
+            else:
+                align_starts_in_Nq = [0] * len(match_df_Nq)
+                align_starts_in_Nb = match_df_Nq['Nq_start_in_Nb']
+            for (align_start_in_Nq,
+                 align_start_in_Nb,
+                 start_Nb_in_M,
+                 align_insert_starts_Nq,
+                 align_insert_starts_Nb,
+                 insert_lengths,
+                 align_del_starts_Nq,
+                 align_del_starts_Nb,
+                 del_lengths) in zip(align_starts_in_Nq,
+                                     align_starts_in_Nb,
+                                     match_df_Nq['Nb_start_in_M'],
+                                     match_df_Nq['Nq_align_insert_starts'],
+                                     match_df_Nq['Nb_align_insert_starts'],
+                                     insert_length_configs,
+                                     match_df_Nq['Nq_align_del_starts'],
+                                     match_df_Nq['Nb_align_del_starts'],
+                                     del_length_configs):
+                indel_config = []
+                if align_insert_starts_Nq:
+                    indel_config.append(tuple(
+                        [align_insert_start_Nq + align_start_in_Nq for align_insert_start_Nq
+                         in map(int, align_insert_starts_Nq.split(','))]))
+                    indel_config.append(tuple(
+                        [align_insert_start_Nb + align_start_in_Nb + start_Nb_in_M for align_insert_start_Nb
+                         in map(int, align_insert_starts_Nb.split(','))]))
+                    indel_config.append(insert_lengths)
+                else:
+                    indel_config.append(tuple())
+                    indel_config.append(tuple())
+                    indel_config.append(tuple())
+                if align_del_starts_Nq:
+                    indel_config.append(tuple(
+                        [align_del_start_Nq + align_start_in_Nq for align_del_start_Nq
+                         in map(int, align_del_starts_Nq.split(','))]))
+                    indel_config.append(tuple(
+                        [align_del_start_Nb + align_start_in_Nb for align_del_start_Nb
+                         in map(int, align_del_starts_Nb.split(','))]))
+                    indel_config.append(del_lengths)
+                else:
+                    indel_config.append(tuple())
+                    indel_config.append(tuple())
+                    indel_config.append(tuple())
+                indel_configs.append(tuple(indel_config))
+            indel_configs = list(set(tuple(indel_configs)))
+
+            if len(indel_configs) > 1:
+                # Determine the configuration of indels in Nq from the different possibilities
+                # suggested by the alignments.
+                indel_config = self.select_indel_config(indel_configs, seq_M.sub_positions)
+            else:
+                # Only one configuration of indels in N was found.
+                indel_config = indel_configs.pop()
+
+            results_M_dict['Nq_insert_starts'].append(indel_config[0])
+            results_M_dict['M_insert_starts'].append(indel_config[1])
+            results_M_dict['insert_lengths'].append(indel_config[2])
+            results_M_dict['Nq_del_starts'].append(indel_config[3])
+            results_M_dict['M_del_starts'].append(indel_config[4])
+            results_M_dict['del_lengths'].append(indel_config[5])
+
+        return count_of_Nq_with_indels
 
 
-    def get_normalized_sequences_containing_modified_sequences_with_deletions(self, clusters):
-        """The first step of `process_deletion_clusters`. Clusters are inspected to find normalized
-        sequences that are the same as or contain as 3' subsequences modified sequences with in
-        silico deletions."""
-        norm_seq_mod_seqs_dict = defaultdict(list)
-        min_fiveprime_del_pos = self.min_length_of_long_fiveprime_extension - 1
+    def select_indel_config(self, indel_configs, sub_positions):
+        """This helper method for `process_Nq_with_indels` is called when multiple possible indel
+        configurations are found for a given N aligned with M. The configuration that best fits the
+        substitution configuration of M is selected. Fit is determined by the distance of indels to
+        the closest substitution sites and the positions of indels relative to those substitutions
+        -- when choosing between two indel candidates the same distance from a substitution, choose
+        the more 5' indel."""
+        sum_sub_distances = []
+        counts_5prime_indels = []
+        # Count the number of indels that occur to the 5' rather than 3' side of the closest sub.
+        count_5prime_indels = 0
+        for indel_config in indel_configs:
+            # Analyze insertions.
+            sum_sub_dist = 0
+            for insert_start_pos, insert_length in zip(indel_config[2], indel_config[3]):
+                insert_midpoint_pos = insert_start_pos + 0.5
+                sub_index = bisect_left(sub_positions, insert_midpoint_pos)
+                if sub_index == 0:
+                    sum_sub_dist += sub_positions[sub_index] - insert_midpoint_pos
+                    count_5prime_indels += 1
+                elif sub_index == len(sub_positions):
+                    sum_sub_dist += insert_midpoint_pos - sub_positions[sub_index - 1]
+                else:
+                    sub_pos_5prime = sub_positions[sub_index - 1]
+                    sub_pos_3prime = sub_positions[sub_index]
+                    sub_dist_5prime = insert_midpoint_pos - sub_pos_5prime
+                    sub_dist_3prime = sub_pos_3prime - insert_midpoint_pos
+                    if sub_dist_5prime >= sub_dist_3prime:
+                        sum_sub_dist += sub_dist_3prime
+                        count_5prime_indels += 1
+                    else:
+                        sum_sub_dist += sub_dist_5prime
+
+            # Analyze deletions.
+            for del_start_pos, del_length in zip(indel_config[4], indel_config[5]):
+                del_midpoint_pos = del_start_pos + (del_length - 1) / 2
+                sub_index = bisect_left(sub_positions, del_midpoint_pos)
+                if sub_index == 0:
+                    sum_sub_dist += sub_positions[sub_index] - del_midpoint_pos
+                    count_5prime_indels += 1
+                elif sub_index == len(sub_positions):
+                    sum_sub_dist += del_midpoint_pos - sub_positions[sub_index - 1]
+                else:
+                    sub_pos_5prime = sub_positions[sub_index - 1]
+                    sub_pos_3prime = sub_positions[sub_index]
+                    sub_dist_5prime = del_midpoint_pos - sub_pos_5prime
+                    sub_dist_3prime = sub_pos_3prime - del_midpoint_pos
+                    if sub_dist_5prime >= sub_dist_3prime:
+                        sum_sub_dist += sub_dist_3prime
+                        count_5prime_indels += 1
+                    else:
+                        sum_sub_dist += sub_dist_5prime
+            sum_sub_distances.append(sum_sub_dist)
+            counts_5prime_indels.append(count_5prime_indels)
+
+        min_sum_sub_dist = min(sum_sub_distances)
+        max_5prime_indel_count = -1
+        selected_config_index = -1
+        config_index = 0
+        for sub_sum_dist, count_5prime_indels in zip(sum_sub_distances, counts_5prime_indels):
+            if min_sum_sub_dist == sub_sum_dist:
+                if count_5prime_indels > max_5prime_indel_count:
+                    # If multiple indel configurations somehow have both the same distance of indels
+                    # from subs AND the same count of indels to the 5' side of the closest
+                    # subs, then the first configuration is selected.
+                    selected_config_index = config_index
+            config_index += 1
+
+        return indel_configs[selected_config_index]
+
+
+    def add_Ni_to_M(self, results_dict):
+        """This helper method for `find_indels` generates Ni from Nq and adds them to M."""
+        dict_Ni_string = {}
+        for name_M, results_M_dict in results_dict.items():
+            names_Ni, starts_Ni_in_M = self.make_Ni(results_M_dict, dict_Ni_string)
+            seq_M = results_M_dict['M_seq']
+            seq_M.names_Ni = tuple(names_Ni)
+            seq_M.starts_Ni_in_M = tuple(starts_Ni_in_M)
+
+
+    def make_Ni(self, results_M_dict, dict_Ni_string):
+        """Given an M with mapped Nq containing indels, make Ni from Nq.
+
+        Nq may be Nqf or Nc. Each Nqf must contain ≥ 1 Tf, each of which is formed from ≥ 1 Uf.
+        Each Nc must contain ≥ 1 Tc, each of which is formed from 1 Uc. Some Nq may contain Tm,
+        each of which can only contain 1 Um. Uf/Uc are adjusted for extra 5'/3' nts, forming new Uip
+        objects. Uip are pooled and trimmed, forming new Tip. 3' dereplication of Tip strings
+        produces clusters of Tip in each new Ni. Ni strings are *already known* from mapping Nq to
+        M (Nb). Ni objects can then be instantiated from their component Tip objects. Tim objects,
+        derived from Tm adjusted for extra 5'/3' nts, are then added to Ni. Tim membership in Ni
+        was known from the relation of Nq to Ni: Tm are part of Nq, and each Tm yields one Tim."""
+        # Indels have not been added to M, which only has subs.
+        seq_M = results_M_dict['M_seq']
+        # From the search against M, Nq may have been found to have extra 5'/3' nts. The following
+        # lists store information on Ni created from Nq.
+        strings_Ni = []
+        xtra_5primes_Nq = []
+        xtra_3primes_Nq = []
+        starts_Ni_in_M = []
+        length_M = seq_M.length
+
+        # Relate Tip strings to lists of Uip objects.
+        dict_Uip_in_Tip = defaultdict(list)
+        # Relate Ni strings to Tim objects.
+        dict_Uim_Tim_in_Ni = defaultdict(list)
+        # Relate Ti strings to their start positions in Ni.
+        dict_Ti_start_in_Ni = {}
+        dict_Ti_strings_from_T_name = defaultdict(list)
+        excluded_Ti_strings = []
+        for seq_Nq, start_Nq_in_M, stop_Nq_in_M in zip(results_M_dict['Nq_seqs'],
+                                                       results_M_dict['Nq_starts_in_M'],
+                                                       results_M_dict['Nq_stops_in_M']):
+            string_Nq = seq_Nq.string
+            length_Nq = len(string_Nq)
+            # If Nq has 5' nts overhanging M, the start position of Nq in M is negative.
+            xtra_5prime_Nq = -start_Nq_in_M if start_Nq_in_M < 0 else 0
+            # If Nq has 3' nts overhanging M, indicating an adjustment is needed in the 3'
+            # terminus, the stop position of Nq in M lies beyond the length of M.
+            xtra_3prime_Nq = stop_Nq_in_M - length_M if stop_Nq_in_M > length_M else 0
+            string_Ni = string_Nq[xtra_5prime_Nq: length_Nq - xtra_3prime_Nq]
+
+            strings_Ni.append(string_Ni)
+            xtra_5primes_Nq.append(xtra_5prime_Nq)
+            xtra_3primes_Nq.append(xtra_3prime_Nq)
+            starts_Ni_in_M.append(start_Nq_in_M + xtra_5prime_Nq)
+
+            self.process_T_in_Nq(seq_Nq,
+                                 string_Ni,
+                                 xtra_5prime_Nq,
+                                 xtra_3prime_Nq,
+                                 dict_Ti_start_in_Ni,
+                                 dict_Uip_in_Tip,
+                                 dict_Uim_Tim_in_Ni,
+                                 dict_Ti_strings_from_T_name,
+                                 excluded_Ti_strings)
+
+        # 3' dereplicate Tip to form Ni clusters and then Ni objects.
+        seqs_Tip = []
+        dict_Ti = self.dict_Ti
+        dict_Ui = self.dict_Ui
+        for string_Tip, seqs_Uip in dict_Uip_in_Tip.items():
+            if string_Tip in excluded_Ti_strings:
+                # Different Tip strings were found to originate from the same T.
+                pass
+            else:
+                seq_Tip = TrimmedIndelSequence(string_Tip, seqs_Uip)
+                seqs_Tip.append(seq_Tip)
+                dict_Ti[seq_Tip.name] = seq_Tip
+                for seq_Uip in seqs_Uip:
+                    dict_Ui[seq_Uip.name] = seq_Uip
+
+        names_Tip = [seq_Tip.name for seq_Tip in seqs_Tip]
+        reverse_Tip_strings = [seq_Tip.string[::-1] for seq_Tip in seqs_Tip]
+        extras_Tip = [(seq_Tip, dict_Ti_start_in_Ni[seq_Tip.string]) for seq_Tip in seqs_Tip]
+        clusters = Dereplicator(names_Tip, reverse_Tip_strings, extras=extras_Tip).prefix_dereplicate()
+        names_Ni = []
+        dict_Ni = self.dict_Ni
         for cluster in clusters:
-            norm_seq_name = None
-            # Track the previous (the only) normalized sequence found in the cluster.
-            norm_seq = None
-            norm_seq_length = None
-            # Track the previous modified sequences found in the cluster before a normalized
-            # sequence is found.
-            mod_seqs = []
-            del_configs = []
-            for seq_name, member_extra in zip(cluster.member_names, cluster.member_extras):
-                if isinstance(member_extra, tuple):
-                    del_config = member_extra[0]
-                    mod_seq = member_extra[1]
-                    del_configs.append(del_config)
-                    mod_seqs.append(mod_seq)
-                    if norm_seq:
-                        # The normalized sequence came before the modified sequence in the cluster.
-                        extra_fiveprime_length = norm_seq_length + len(del_config) - len(mod_seq.norm_seqs_without_dels[0].seq_string)
-                        if extra_fiveprime_length == 0:
-                            # The normalized sequence is equal in length to the longest M' in the
-                            # cluster, and happened to come before it in the cluster. It seems that
-                            # this does not actually happen when this method is called from
-                            # `find_deletions` due to the order in which sequences are processed
-                            # during clustering, but entertain the possibility for the sake of
-                            # completeness were the clusters to be formed slightly differently.
-                            for mod_seq, del_config in zip(mod_seqs, del_configs):
-                                norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
-                            mod_seqs = []
-                            del_configs = []
-                        elif extra_fiveprime_length > 0:
-                            # The normalized sequence is longer than the longest M' in the cluster.
-                            if mod_seq.norm_seqs_without_dels[0].has_complete_feature_set:
-                                # The longest modified sequence in the cluster is a full-length
-                                # tRNA. Therefore, the normalized sequence contains extra 5'
-                                # nucleotides that should be trimmed.
-                                for mod_seq, del_config in zip(mod_seqs, del_configs):
-                                    norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, extra_fiveprime_length))
-                                mod_seqs = []
-                                del_configs = []
-                else: # considering normalized sequence
-                    norm_seq_name = seq_name
-                    norm_seq = member_extra
-                    norm_seq_length = len(norm_seq.seq_string)
-                    if not mod_seqs:
-                        continue
-                    for mod_seq, del_config in zip(mod_seqs, del_configs):
-                        if del_config[0] - len(mod_seq.norm_seqs_without_dels[0].seq_string) + norm_seq_length + len(del_config) < min_fiveprime_del_pos:
-                            # There must be sufficient matching sequence length on the 5' end of the
-                            # normalized sequence to confirm the 5'-most deletion.
-                            continue
-                        norm_seq_mod_seqs_dict[norm_seq_name].append((norm_seq, mod_seq, del_config, 0))
-                    mod_seqs = []
-                    del_configs = []
-        return norm_seq_mod_seqs_dict
+            seqs_Tip = []
+            starts_Tip_in_Ni = []
+            for extra in cluster.member_extras:
+                seqs_Tip.append(extra[0])
+                starts_Tip_in_Ni.append(extra[1])
+            string_Ni = seqs_Tip[0].string
+            index_Ni = strings_Ni.index(string_Ni)
+            xtra_5prime_Nq = xtra_5primes_Nq[index_Ni]
+            # Find the positions of insertions in Ni adjusting for extra 5' nts.
+            insert_starts_Ni = tuple([insert_start_Nq - xtra_5prime_Nq for insert_start_Nq in results_M_dict['Nq_insert_starts'][index_Ni]])
+            # Find the positions of deletions in Ni adjusting for extra 5' nts.
+            del_starts_Ni = tuple([del_start_Nq - xtra_5prime_Nq for del_start_Nq in results_M_dict['Nq_del_starts'][index_Ni]])
+            contains_anticodon = self.check_normalized_indel_sequence_for_anticodon(seq_M, starts_Ni_in_M[index_Ni])
+            seq_Ni = NormalizedIndelSequence(string_Ni,
+                                             seqs_Tip,
+                                             starts_Tip_in_Ni,
+                                             seq_M.name,
+                                             insert_starts_Ni,
+                                             tuple(results_M_dict['M_insert_starts'][index_Ni]),
+                                             tuple(results_M_dict['insert_lengths'][index_Ni]),
+                                             del_starts_Ni,
+                                             tuple(results_M_dict['M_del_starts'][index_Ni]),
+                                             tuple(results_M_dict['del_lengths'][index_Ni]),
+                                             contains_anticodon)
+            # Add Tim to Ni.
+            seqs_Tim = []
+            try:
+                for seq_Uim, seq_Tim, start_Tim_in_Ni in dict_Uim_Tim_in_Ni[string_Ni]:
+                    if seq_Tim.string not in excluded_Ti_strings:
+                        name_Tim = seq_Tim.name
+                        seq_Ni.names_T.append(name_Tim)
+                        seq_Ni.starts_T_in_N.append(start_Tim_in_Ni)
+                        dict_Ui[name_Tim] = seq_Uim
+                        dict_Ti[name_Tim] = seq_Tim
+            except KeyError:
+                # Ni does not contain any Tim.
+                pass
+            seq_Ni.init(seqs_Tip + seqs_Tim, self.dict_Ui)
+            dict_Ni[seq_Ni.name] = seq_Ni
+            names_Ni.append(seq_Ni.name)
+
+        return names_Ni, starts_Ni_in_M
 
 
-    def find_normalized_deletion_sequence_in_modified_sequence(self, norm_del_seq_length, mod_seq, del_config):
-        """Normalized sequences with deletions and modified sequences are aligned at the 3' end, so
-        find the start position of the normalized sequence in the modified sequence by working
-        backward from the 3' end. Also record the normalized sequence positions immediately 5' of
-        the deletions."""
-        # Example:
-        # ACGTAAC (mod seq)
-        #    T  C (norm seq)
-        # del_pos = 4
-        # norm_seq_pos == 1
-        # mod_seq_pos == 6
-        # mod_seq_pos -> 5
-        # norm_seq_pos -> 0
-        # mod_seq_pos -> 4 (continue)
-        # mod_seq_pos -> 3 (del_pos = -1)
-        # mod_seq_pos -> 2
-        # norm_seq_pos -> -1 (break)
-        # norm_seq_start = mod_seq_pos + 1 == 3
-
-        del_config_iterator = iter(del_config[::-1])
-        del_pos = next(del_config_iterator)
-        norm_seq_pos = norm_del_seq_length - 1
-        mod_seq_pos = len(mod_seq.norm_seqs_without_dels[0].seq_string) - 1
-        norm_seq_del_config = []
-        while norm_seq_pos > -1:
-            if mod_seq_pos == del_pos:
-                mod_seq_pos -= 1
-                norm_seq_del_config.append(norm_seq_pos)
-                try:
-                    del_pos = next(del_config_iterator)
-                    continue
-                except StopIteration:
-                    del_pos = -1
-            mod_seq_pos -= 1
-            norm_seq_pos -= 1
-        norm_seq_start_in_mod_seq = mod_seq_pos + 1
-        return norm_seq_start_in_mod_seq, norm_seq_del_config
-
-
-    def check_normalized_deletion_sequence_for_anticodon(self, mod_seq, norm_del_seq_start_in_mod_seq):
-        # Determine whether the normalized sequence with deletions contains the anticodon.
+    def process_T_in_Nq(self,
+                        seq_Nq,
+                        string_Ni,
+                        xtra_5prime_Nq,
+                        xtra_3prime_Nq,
+                        dict_Ti_start_in_Ni,
+                        dict_Uip_in_Tip,
+                        dict_Uim_Tim_in_Ni,
+                        dict_Ti_strings_from_T_name,
+                        excluded_Ti_strings):
+        """Process T in an Nq mapped to M with indels. Generate Ui and Tim objects. Gather
+        information to generate Tip objects, which can come from multiple Ni."""
+        length_Nq = len(seq_Nq.string)
+        dict_Um = self.dict_Um
         try:
-            anticodon_loop_start = mod_seq.norm_seqs_without_dels[0].trimmed_seqs[0].feature_start_indices[self.RELATIVE_ANTICODON_LOOP_INDEX]
+            # Nq is Nf.
+            categories_T = seq_Nq.categories_T
+        except AttributeError:
+            # Nq is Nc.
+            categories_T = ['Tc_nontrna'] * len(seq_Nq.names_T)
+        for name_T, category_T, start_T_in_Nq in zip(seq_Nq.names_T, categories_T, seq_Nq.starts_T_in_N):
+            seq_T = getattr(self, 'dict_' + category_T)[name_T]
+            string_T = seq_T.string
+            # T has 5' nts overhanging M when T is within `xtra_5prime_Nq` nts of the start of Nq.
+            # These overhanging nts are trimmed in Ti.
+            xtra_5prime_T = xtra_5prime_Nq - start_T_in_Nq if start_T_in_Nq < xtra_5prime_Nq else 0
+            type_T = type(seq_T)
+            # Extra 3' nts are handled differently in Tm and Tp.
+            if type_T is TrimmedMappedSequence:
+                # Find the distance from the end of Tm to the end of N.
+                delta_3prime = length_Nq - start_T_in_Nq - len(string_T)
+                # If Tm has 3' nts overhanging M, the stop position of Tm in M lies beyond the
+                # length of M.
+                xtra_3prime_T = xtra_3prime_Nq - delta_3prime if delta_3prime < xtra_3prime_Nq else 0
+            else:
+                # Tp ends at the same point as Nq, so the number of extra 3' nts is the same in
+                # each.
+                xtra_3prime_T = xtra_3prime_Nq
+            string_Ti = string_T[xtra_5prime_T: len(string_T) - xtra_3prime_T]
+
+            # It is required that the same T generate the same Ti in alignments to different M.
+            # Conflicting Ti strings from the same T are recorded and their Ti objects later purged.
+            strings_Ti_from_T_name = dict_Ti_strings_from_T_name[seq_T.name]
+            if len(strings_Ti_from_T_name) == 0:
+                strings_Ti_from_T_name.append(string_Ti)
+            elif len(strings_Ti_from_T_name) == 1:
+                if string_Ti != strings_Ti_from_T_name[0]:
+                    excluded_Ti_strings.append(strings_Ti_from_T_name[0])
+                    excluded_Ti_strings.append(string_Ti)
+                    strings_Ti_from_T_name.append(string_Ti)
+            else:
+                if string_Ti not in strings_Ti_from_T_name:
+                    excluded_Ti_strings.append(string_Ti)
+                    strings_Ti_from_T_name.append(string_Ti)
+
+            start_Ti_in_Ni = 0 if start_T_in_Nq < xtra_5prime_Nq else start_T_in_Nq - xtra_5prime_Nq
+            dict_Ti_start_in_Ni[string_Ti] = start_Ti_in_Ni
+
+            # Make Ui objects.
+            for index_U, name_U in enumerate(seq_T.names_U):
+                if type_T == TrimmedMappedSequence:
+                    seq_Ui = UniqueIndelSequence(dict_Um[name_U], xtra_3prime_T, xtra_5prime_T)
+                    # There is only 1 Um per Tm, so the loop can be terminated after the first
+                    # iteration.
+                    break
+
+                # Only Up are considered after this point in the loop. Due to 5'/3' adjustments, Up
+                # from different Tp and Np can end up in the same Tip. Therefore, initialize Tip
+                # after processing all Nq.
+                if type_T == TrimmedTruncatedProfileSequence:
+                    seq_U = getattr(self, 'dict_Uc_' + seq_T.category)[name_U]
+                    # Uc are flush with Tc at the 5' end, so they undergo the same 5' adjustment
+                    # when converted into Ui and Ti.
+                    length_5prime_U = xtra_5prime_T
+                else:
+                    seq_U = getattr(self, 'dict_' + seq_T.categories_U[index_U])[name_U]
+                    # Adjust the nts beyond the 5' tRNA terminus as needed in Up.
+                    length_5prime_U = xtra_5prime_T + seq_U.xtra_5prime_length
+
+                length_3prime_U = xtra_3prime_T + seq_U.length_3prime_terminus
+                seq_Uip = UniqueIndelSequence(seq_U, length_3prime_U, length_5prime_U)
+                dict_Uip_in_Tip[string_Ti].append(seq_Uip)
+            else:
+                # This point is reached for Tp.
+                continue
+
+            # This point is reached for Tm. Since this is a mapped sequence, Tim is a mirror of Uim
+            # and the string is not trimmed.
+            seq_Tim = TrimmedIndelSequence(seq_Ui.string, [seq_Ui])
+            dict_Uim_Tim_in_Ni[string_Ni].append((seq_Ui, seq_Tim, start_Ti_in_Ni))
+
+
+    def check_normalized_indel_sequence_for_anticodon(self, seq_M, start_Ni_in_M):
+        # Determine whether Ni contains the anticodon.
+        seq_Tf = self.dict_Tf[self.dict_Nf[seq_M.name].names_T[0]]
+        try:
+            anticodon_loop_start = seq_Tf.feature_starts[self.RELATIVE_ANTICODON_LOOP_INDEX]
         except IndexError:
             # The anticodon loop was not reached in the profile.
             return False
-        if anticodon_loop_start >= norm_del_seq_start_in_mod_seq:
+        if anticodon_loop_start >= start_Ni_in_M:
             return True
         else:
             return False
 
 
-    def report_statistics(self):
-        """Add run statistics to the database and write them to the summary file."""
-        profiled_trna_reads = 0
-        trna_reads_with_threeprime_cca = 0
-        trna_reads_with_threeprime_cc = 0
-        trna_reads_with_threeprime_c = 0
-        trna_reads_with_other_threeprime_termini = 0
-        profiled_trna_reads_containing_anticodon = 0
-        full_length_trna_reads = 0
-        trna_reads_with_extrapolated_fiveprime_feature = 0
-        min_length_of_long_fiveprime_extension = self.min_length_of_long_fiveprime_extension
-        profiled_trna_reads_with_short_fiveprime_extension = 0
-        profiled_trna_reads_with_long_fiveprime_extension = 0
-        trna_reads_with_recovered_trunc_profile = 0
-        uniq_profiled_trna_seqs = 0
-        uniq_trna_seqs_with_threeprime_cca = 0
-        uniq_trna_seqs_with_threeprime_cc = 0
-        uniq_trna_seqs_with_threeprime_c = 0
-        uniq_trna_seqs_with_other_threeprime_termini = 0
-        uniq_trna_seqs_containing_anticodon = 0
-        full_length_uniq_seqs = 0
-        uniq_seqs_with_extrapolated_fiveprime_feature = 0
-        uniq_seqs_with_short_fiveprime_extension = 0
-        uniq_seqs_with_long_fiveprime_extension = 0
-        uniq_seqs_with_recovered_trunc_profile = 0
-        interior_mapped_reads = 0
-        fiveprime_mapped_reads = 0
-        interior_mapped_uniq_seqs = 0
-        fiveprime_mapped_uniq_seqs = 0
-        for uniq_trna_seq in self.uniq_trna_seq_dict.values():
-            read_count = uniq_trna_seq.read_count
-
-            if isinstance(uniq_trna_seq, UniqueMappedSequence):
-                if uniq_trna_seq.extra_fiveprime_length:
-                    fiveprime_mapped_reads += read_count
-                    fiveprime_mapped_uniq_seqs += 1
+    def report_M_stats(self):
+        """Report to terminal stats on M. Stats on subs were already reported."""
+        spec_read_count_M = 0
+        nonspec_read_count_M = 0
+        spec_short_5prime_read_count_M = 0
+        spec_long_5prime_read_count_M = 0
+        nonspec_short_5prime_read_count_M = 0
+        nonspec_long_5prime_read_count_M = 0
+        mean_spec_cov_M = 0
+        mean_nonspec_cov_M = 0
+        total_length_M = 0
+        max_spec_cov_M = 0
+        max_nonspec_cov_M = 0
+        max_total_cov_M = 0
+        for seq_M in self.dict_M.values():
+            spec_read_count_M += seq_M.spec_read_count
+            nonspec_read_count_M += seq_M.nonspec_read_count
+            if seq_M.spec_read_xtra_5prime_count:
+                if seq_M.spec_long_5prime_extension_dict:
+                    spec_long_5prime_read_count = sum(seq_M.spec_long_5prime_extension_dict.values())
+                    spec_long_5prime_read_count_M += spec_long_5prime_read_count
+                    spec_short_5prime_read_count_M += seq_M.spec_read_xtra_5prime_count - spec_long_5prime_read_count
                 else:
-                    interior_mapped_reads += read_count
-                    interior_mapped_uniq_seqs += 1
-                continue
-
-            # To reach this point, the unique sequence has a full or truncated feature profile.
-            profiled_trna_reads += read_count
-            uniq_profiled_trna_seqs += 1
-
-            has_full_profile = True
-            if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
-                has_full_profile = False
-
-            if uniq_trna_seq.threeprime_terminus_length:
-                threeprime_terminus = uniq_trna_seq.seq_string[-uniq_trna_seq.threeprime_terminus_length: ]
-                if threeprime_terminus == 'CCA':
-                    trna_reads_with_threeprime_cca += read_count
-                    uniq_trna_seqs_with_threeprime_cca += 1
-                elif threeprime_terminus == 'CC':
-                    trna_reads_with_threeprime_cc += read_count
-                    uniq_trna_seqs_with_threeprime_cc += 1
-                elif threeprime_terminus == 'C':
-                    trna_reads_with_threeprime_c += read_count
-                    uniq_trna_seqs_with_threeprime_c += 1
+                    spec_short_5prime_read_count_M += seq_M.spec_read_xtra_5prime_count
+            if seq_M.nonspec_read_xtra_5prime_count:
+                if seq_M.nonspec_long_5prime_extension_dict:
+                    nonspec_long_5prime_read_count = sum(seq_M.nonspec_long_5prime_extension_dict.values())
+                    nonspec_long_5prime_read_count_M += nonspec_long_5prime_read_count
+                    nonspec_short_5prime_read_count_M += seq_M.nonspec_read_xtra_5prime_count - nonspec_long_5prime_read_count
                 else:
-                    trna_reads_with_other_threeprime_termini += read_count
-                    uniq_trna_seqs_with_other_threeprime_termini += 1
+                    nonspec_short_5prime_read_count_M += seq_M.nonspec_read_xtra_5prime_count
+            length_M = len(seq_M.consensus_string)
+            mean_spec_cov = seq_M.mean_spec_cov
+            mean_nonspec_cov = seq_M.mean_nonspec_cov
+            mean_spec_cov_M += mean_spec_cov * length_M
+            mean_nonspec_cov_M += mean_nonspec_cov * length_M
+            total_length_M += length_M
+            if mean_spec_cov > max_spec_cov_M:
+                max_spec_cov_M = mean_spec_cov
+            if mean_nonspec_cov > max_nonspec_cov_M:
+                max_nonspec_cov_M = mean_nonspec_cov
+            if mean_spec_cov + mean_nonspec_cov > max_total_cov_M:
+                max_total_cov_M = mean_spec_cov + mean_nonspec_cov
+        mean_spec_cov_M /= total_length_M
+        mean_nonspec_cov_M /= total_length_M
+
+        if not self.skip_indel_profiling:
+            count_indel_M = 0
+            count_insert_M = 0
+            count_del_M = 0
+            for seq_M in self.dict_M.values():
+                if seq_M.insert_starts:
+                    count_insert_M += 1
+                if seq_M.del_starts:
+                    count_del_M += 1
+                if seq_M.insert_starts or seq_M.del_starts:
+                    count_indel_M += 1
+
+        run = self.run
+        run.info_single("Final results of modification analysis", nl_before=2, nl_after=1)
+
+        run.info_single("Modified seqs")
+        run.info("Specific reads", spec_read_count_M)
+        run.info("Nonspecific reads", nonspec_read_count_M)
+        run.info(f"Specific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_short_5prime_read_count_M)
+        run.info(f"Specific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", spec_long_5prime_read_count_M)
+        run.info(f"Nonspecific reads with 1-{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_short_5prime_read_count_M)
+        run.info(f"Nonspecific reads with ≥{MIN_LENGTH_LONG_5PRIME_EXTENSION} extra 5' nts", nonspec_long_5prime_read_count_M)
+        run.info("Mean specific coverage", round(mean_spec_cov_M, 2))
+        run.info("Mean nonspecific coverage", round(mean_nonspec_cov_M, 2))
+        run.info("Max specific coverage", round(max_spec_cov_M, 2))
+        run.info("Max nonspecific coverage", round(max_nonspec_cov_M, 2))
+        run.info("Max total coverage", round(max_total_cov_M, 2), nl_after=0 if self.skip_indel_profiling else 1)
+
+        if not self.skip_indel_profiling:
+            run.info_single("Results of indel search")
+            run.info("Modified seqs with indels", count_indel_M)
+            run.info("Modified seqs with insertions", count_insert_M)
+            run.info("Modified seqs with deletions", count_del_M)
+
+            trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
+            get_meta_value = trnaseq_db.db.get_meta_value
+            count_Nqf_with_indels = get_meta_value('count_Nqf_with_indels')
+            count_Nc_with_indels = get_meta_value('count_Nc_with_indels')
+            trnaseq_db.disconnect()
+            run.info("Normalized tRNA seqs found to have indels", count_Nqf_with_indels)
+            run.info("Normalized trunc seqs found to have indels", count_Nc_with_indels, nl_after=2)
+
+
+    def report_stats(self):
+        """Add final stats to the db and write them to a summary file."""
+        # Define Ntrna to encompass Nf and Ni.
+        anticodon_profiled_trna_reads = 0
+        complete_profiled_trna_reads = 0
+        spec_reads_Ntrna = 0
+        nonspec_reads_Ntrna = 0
+
+        for seq_Tf in self.dict_Tf.values():
+            if seq_Tf.contains_anticodon:
+                anticodon_profiled_trna_reads += seq_Tf.read_count
+                if seq_Tf.has_complete_feature_set:
+                    complete_profiled_trna_reads += seq_Tf.has_complete_feature_set
+            if len(seq_Tf.names_N) == 1:
+                spec_reads_Ntrna += seq_Tf.read_count
             else:
-                trna_reads_with_other_threeprime_termini += read_count
-                uniq_trna_seqs_with_other_threeprime_termini += 1
+                nonspec_reads_Ntrna += seq_Tf.read_count
 
-            if uniq_trna_seq.contains_anticodon:
-                profiled_trna_reads_containing_anticodon += read_count
-                uniq_trna_seqs_containing_anticodon += 1
-
-            if has_full_profile:
-                if uniq_trna_seq.has_complete_feature_set:
-                    full_length_trna_reads += read_count
-                    full_length_uniq_seqs += 1
-
-                if uniq_trna_seq.num_extrapolated_fiveprime_nts:
-                    trna_reads_with_extrapolated_fiveprime_feature += read_count
-                    uniq_seqs_with_extrapolated_fiveprime_feature += 1
-
-                if uniq_trna_seq.extra_fiveprime_length:
-                    if uniq_trna_seq.extra_fiveprime_length >= min_length_of_long_fiveprime_extension:
-                        profiled_trna_reads_with_long_fiveprime_extension += read_count
-                        uniq_seqs_with_long_fiveprime_extension += 1
-                    else:
-                        profiled_trna_reads_with_short_fiveprime_extension += read_count
-                        uniq_seqs_with_short_fiveprime_extension += 1
+        for seq_Tc_trna in self.dict_Tc_trna.values():
+            if seq_Tc_trna.contains_anticodon:
+                anticodon_profiled_trna_reads += seq_Tc_trna.read_count
+            if len(seq_Tc_trna.names_N) == 1:
+                spec_reads_Ntrna += seq_Tc_trna.read_count
             else:
-                trna_reads_with_recovered_trunc_profile += read_count
-                uniq_seqs_with_recovered_trunc_profile += 1
+                nonspec_reads_Ntrna += seq_Tc_trna.read_count
+        profiled_trna_reads = spec_reads_Ntrna + nonspec_reads_Ntrna
 
-        total_trna_reads = profiled_trna_reads + interior_mapped_reads + fiveprime_mapped_reads
-        total_uniq_trna_seqs = uniq_profiled_trna_seqs + interior_mapped_uniq_seqs + fiveprime_mapped_uniq_seqs
-        mean_profiled_reads_per_uniq_seq = profiled_trna_reads / uniq_profiled_trna_seqs
-        mean_mapped_reads_per_uniq_seq = (fiveprime_mapped_reads + interior_mapped_reads) / (fiveprime_mapped_uniq_seqs + interior_mapped_uniq_seqs)
-
-
-        trimmed_del_seq_dict = self.trimmed_del_seq_dict
-        trna_reads_specific_to_norm_seqs_with_del_signature = 0
-        trna_reads_nonspecific_to_norm_seqs_with_del_signature = 0
-        uniq_seqs_specific_to_norm_seqs_with_del_signature = 0
-        uniq_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
-        # Count unique sequences that are part of normalized sequences with deletions. For unique
-        # sequences that are only part of normalized sequences with deletions, subtract their counts
-        # from the previous counts.
-        for uniq_trna_seq in self.uniq_del_seq_dict.values():
-            read_count = uniq_trna_seq.read_count
-
-            trimmed_seq, defunct_norm_seq_names = trimmed_del_seq_dict[uniq_trna_seq.trimmed_seq_represent_name]
-            if len(trimmed_seq.norm_seq_represent_names) == len(defunct_norm_seq_names):
-                specific_to_norm_seqs_with_del_signature = True
+        for seq_Tm in self.dict_Tm.values():
+            if len(seq_Tm.names_N) == 1:
+                spec_reads_Ntrna += seq_Tm.read_count
             else:
-                specific_to_norm_seqs_with_del_signature = False
+                nonspec_reads_Ntrna += seq_Tm.read_count
 
-            if specific_to_norm_seqs_with_del_signature:
-                trna_reads_specific_to_norm_seqs_with_del_signature += read_count
-                uniq_seqs_specific_to_norm_seqs_with_del_signature += 1
+        for seq_Ti in self.dict_Ti.values():
+            if len(seq_Ti.names_N) == 1:
+                spec_reads_Ntrna += seq_Ti.read_count
             else:
-                trna_reads_nonspecific_to_norm_seqs_with_del_signature += read_count
-                uniq_seqs_nonspecific_to_norm_seqs_with_del_signature += 1
-                continue
+                nonspec_reads_Ntrna += seq_Ti.read_count
+        trna_reads = spec_reads_Ntrna + nonspec_reads_Ntrna
 
-            # To reach this point, the unique sequence must be specific to a normalized sequence
-            # with deletions.
-            if isinstance(uniq_trna_seq, UniqueMappedSequence):
-                if uniq_trna_seq.extra_fiveprime_length:
-                    fiveprime_mapped_reads -= read_count
-                    fiveprime_mapped_uniq_seqs -= 1
-                else:
-                    interior_mapped_reads -= read_count
-                    interior_mapped_uniq_seqs -= 1
-                continue
-
-            # To reach this point, the unique sequence has a full or truncated profile.
-            profiled_trna_reads -= read_count
-            uniq_profiled_trna_seqs -= 1
-
-            has_full_profile = True
-            if isinstance(uniq_trna_seq, UniqueTruncatedProfileSequence):
-                has_full_profile = False
-
-            if uniq_trna_seq.threeprime_terminus_length:
-                threeprime_terminus = uniq_trna_seq.seq_string[-uniq_trna_seq.threeprime_terminus_length: ]
-                if threeprime_terminus == 'CCA':
-                    trna_reads_with_threeprime_cca -= read_count
-                    uniq_trna_seqs_with_threeprime_cca -= 1
-                elif threeprime_terminus == 'CC':
-                    trna_reads_with_threeprime_cc -= read_count
-                    uniq_trna_seqs_with_threeprime_cc -= 1
-                elif threeprime_terminus == 'C':
-                    trna_reads_with_threeprime_c -= read_count
-                    uniq_trna_seqs_with_threeprime_c -= 1
-                else:
-                    trna_reads_with_other_threeprime_termini -= read_count
-                    uniq_trna_seqs_with_other_threeprime_termini -= 1
-            else:
-                trna_reads_with_other_threeprime_termini -= read_count
-                uniq_trna_seqs_with_other_threeprime_termini -= 1
-
-            if uniq_trna_seq.contains_anticodon:
-                profiled_trna_reads_containing_anticodon -= read_count
-                uniq_trna_seqs_containing_anticodon -= 1
-
-            if has_full_profile:
-                if uniq_trna_seq.has_complete_feature_set:
-                    full_length_trna_reads -= read_count
-                    full_length_uniq_seqs -= 1
-
-                if uniq_trna_seq.num_extrapolated_fiveprime_nts:
-                    trna_reads_with_extrapolated_fiveprime_feature -= read_count
-                    uniq_seqs_with_extrapolated_fiveprime_feature -= 1
-
-                if uniq_trna_seq.extra_fiveprime_length:
-                    if uniq_trna_seq.extra_fiveprime_length >= min_length_of_long_fiveprime_extension:
-                        profiled_trna_reads_with_long_fiveprime_extension -= read_count
-                        uniq_seqs_with_long_fiveprime_extension -= 1
-                    else:
-                        profiled_trna_reads_with_short_fiveprime_extension -= read_count
-                        uniq_seqs_with_short_fiveprime_extension -= 1
-            else:
-                trna_reads_with_recovered_trunc_profile -= read_count
-                uniq_seqs_with_recovered_trunc_profile -= 1
-
-
-        # The TOTAL count of trimmed sequence objects combines apples and oranges (profiled and
-        # mapped sequences) and so should not be reported. Separate trimmed sequences are formed for
-        # each unique mapped sequence, because the 5' extension of a mapped sequence can be most of
-        # its length, so consolidation of unique mapped sequences with different 5' extensions would
-        # result in very short trimmed sequences of only a handful of nucleotides.
-        trimmed_profiled_seqs_containing_anticodon = 0
-        full_length_trimmed_seqs = 0
-        trimmed_seqs_with_extrapolated_fiveprime_feature = 0
-        trimmed_seqs_with_recovered_trunc_profile = 0
-        for trimmed_trna_seq in self.trimmed_trna_seq_dict.values():
-            if isinstance(trimmed_trna_seq, TrimmedMappedSequence):
-                continue
-
-            represent_uniq_seq = trimmed_trna_seq.uniq_seqs[0]
-
-            if trimmed_trna_seq.contains_anticodon:
-                trimmed_profiled_seqs_containing_anticodon += 1
-
-            has_full_profile = True
-            if isinstance(trimmed_trna_seq, TrimmedTruncatedProfileSequence):
-                has_full_profile = False
-
-            if has_full_profile:
-                if trimmed_trna_seq.has_complete_feature_set:
-                    full_length_trimmed_seqs += 1
-
-                if represent_uniq_seq.num_extrapolated_fiveprime_nts:
-                    trimmed_seqs_with_extrapolated_fiveprime_feature += 1
-            else:
-                trimmed_seqs_with_recovered_trunc_profile += 1
-
-
-        # Count trimmed sequences that are part of normalized sequences with deletions. For trimmed
-        # sequences that are only part of normalized sequences with deletions, subtract their counts
-        # from the previous counts.
-        trimmed_seqs_specific_to_norm_seqs_with_del_signature = 0
-        trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature = 0
-        for trimmed_trna_seq, defunct_norm_seq_names in self.trimmed_del_seq_dict.values():
-            if len(trimmed_trna_seq.norm_seq_represent_names) == len(defunct_norm_seq_names):
-                specific_to_norm_seqs_with_del_signature = True
-            else:
-                specific_to_norm_seqs_with_del_signature = False
-
-            if specific_to_norm_seqs_with_del_signature:
-                trimmed_seqs_specific_to_norm_seqs_with_del_signature += 1
-            else:
-                trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature += 1
-                continue
-
-            if isinstance(trimmed_trna_seq, TrimmedMappedSequence):
-                continue
-
-            # To reach this point, the trimmed sequence must be specific to a normalized sequence
-            # with deletions.
-            has_full_profile = True
-            if isinstance(trimmed_trna_seq, TrimmedTruncatedProfileSequence):
-                has_full_profile = False
-
-            if has_full_profile:
-                if trimmed_trna_seq.has_complete_feature_set:
-                    full_length_trimmed_seqs -= 1
-
-                if trimmed_trna_seq.uniq_seqs[0].num_extrapolated_fiveprime_nts:
-                    trimmed_seqs_with_extrapolated_fiveprime_feature -= 1
-            else:
-                trimmed_seqs_with_recovered_trunc_profile -= 1
-
-
-        norm_trna_seqs = len(self.norm_trna_seq_dict)
-        norm_trna_seqs_without_mods = 0
-        norm_trna_seqs_containing_anticodon = 0
-        full_length_norm_seqs = 0
-        for norm_trna_seq in self.norm_trna_seq_dict.values():
-            if not norm_trna_seq.mod_seqs:
-                norm_trna_seqs_without_mods += 1
-
-            if norm_trna_seq.trimmed_seqs[0].contains_anticodon:
-                norm_trna_seqs_containing_anticodon += 1
-
-            if norm_trna_seq.has_complete_feature_set:
-                full_length_norm_seqs += 1
-
-        norm_seqs_with_del_signature = len(self.norm_del_seq_dict)
-
-        mod_trna_seqs = len(self.mod_trna_seq_dict)
-        mod_seqs_with_del_signature = 0
-        for mod_trna_seq in self.mod_trna_seq_dict.values():
-            if mod_trna_seq.del_configs:
-                mod_seqs_with_del_signature += 1
+        # Define Nfu to be Nf not in M.
+        count_M = len(self.dict_M)
+        count_Nfu = 0
+        for seq_Nf in self.dict_Nf.values():
+            if not seq_Nf.names_M:
+                count_Nfu += 1
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         set_meta_value = trnaseq_db.db.set_meta_value
-
-        set_meta_value('total_trna_reads', total_trna_reads)
+        set_meta_value('trna_reads', trna_reads)
         set_meta_value('profiled_trna_reads', profiled_trna_reads)
-        set_meta_value('trna_reads_with_threeprime_cca', trna_reads_with_threeprime_cca)
-        set_meta_value('trna_reads_with_threeprime_cc', trna_reads_with_threeprime_cc)
-        set_meta_value('trna_reads_with_threeprime_c', trna_reads_with_threeprime_c)
-        set_meta_value('trna_reads_with_other_threeprime_termini', trna_reads_with_other_threeprime_termini)
-        set_meta_value('profiled_trna_reads_containing_anticodon', profiled_trna_reads_containing_anticodon)
-        set_meta_value('full_length_trna_reads', full_length_trna_reads)
-        set_meta_value('trna_reads_with_extrapolated_fiveprime_feature', trna_reads_with_extrapolated_fiveprime_feature)
-        set_meta_value('profiled_trna_reads_with_short_fiveprime_extension', profiled_trna_reads_with_short_fiveprime_extension)
-        set_meta_value('profiled_trna_reads_with_long_fiveprime_extension', profiled_trna_reads_with_long_fiveprime_extension)
-        set_meta_value('trna_reads_with_recovered_truncated_profile', trna_reads_with_recovered_trunc_profile)
-        set_meta_value('interior_mapped_reads', interior_mapped_reads)
-        set_meta_value('fiveprime_mapped_reads', fiveprime_mapped_reads)
-        set_meta_value('trna_reads_specific_to_norm_seqs_with_del_signature', trna_reads_specific_to_norm_seqs_with_del_signature)
-        set_meta_value('trna_reads_nonspecific_to_norm_seqs_with_del_signature', trna_reads_nonspecific_to_norm_seqs_with_del_signature)
+        set_meta_value('anticodon_profiled_trna_reads', anticodon_profiled_trna_reads)
+        set_meta_value('complete_profiled_trna_reads', complete_profiled_trna_reads)
+        set_meta_value('spec_reads_Ntrna', spec_reads_Ntrna)
+        set_meta_value('nonspec_reads_Ntrna', nonspec_reads_Ntrna)
+        set_meta_value('count_M', count_M)
+        set_meta_value('count_Nfu', count_Nfu)
 
-        set_meta_value('total_unique_trna_seqs', total_uniq_trna_seqs)
-        set_meta_value('unique_profiled_trna_seqs', uniq_profiled_trna_seqs)
-        set_meta_value('unique_trna_seqs_with_threeprime_cca', uniq_trna_seqs_with_threeprime_cca)
-        set_meta_value('unique_trna_seqs_with_threeprime_cc', uniq_trna_seqs_with_threeprime_cc)
-        set_meta_value('unique_trna_seqs_with_threeprime_c', uniq_trna_seqs_with_threeprime_c)
-        set_meta_value('unique_trna_seqs_with_other_threeprime_termini', uniq_trna_seqs_with_other_threeprime_termini)
-        set_meta_value('unique_trna_seqs_containing_anticodon', uniq_trna_seqs_containing_anticodon)
-        set_meta_value('full_length_unique_seqs', full_length_uniq_seqs)
-        set_meta_value('unique_seqs_with_extrapolated_fiveprime_feature', uniq_seqs_with_extrapolated_fiveprime_feature)
-        set_meta_value('unique_seqs_with_short_fiveprime_extension', uniq_seqs_with_short_fiveprime_extension)
-        set_meta_value('unique_seqs_with_long_fiveprime_extension', uniq_seqs_with_long_fiveprime_extension)
-        set_meta_value('unique_seqs_with_recovered_truncated_profile', uniq_seqs_with_recovered_trunc_profile)
-        set_meta_value('interior_mapped_uniq_seqs', interior_mapped_uniq_seqs)
-        set_meta_value('fiveprime_mapped_uniq_seqs', fiveprime_mapped_uniq_seqs)
-        set_meta_value('uniq_seqs_specific_to_norm_seqs_with_del_signature', uniq_seqs_specific_to_norm_seqs_with_del_signature)
-        set_meta_value('uniq_seqs_nonspecific_to_norm_seqs_with_del_signature', uniq_seqs_nonspecific_to_norm_seqs_with_del_signature)
-
-        set_meta_value('trimmed_profiled_seqs_containing_anticodon', trimmed_profiled_seqs_containing_anticodon)
-        set_meta_value('full_length_trimmed_seqs', full_length_trimmed_seqs)
-        set_meta_value('trimmed_seqs_with_extrapolated_fiveprime_feature', trimmed_seqs_with_extrapolated_fiveprime_feature)
-        set_meta_value('trimmed_seqs_with_recovered_trunc_profile', trimmed_seqs_with_recovered_trunc_profile)
-        set_meta_value('trimmed_seqs_specific_to_norm_seqs_with_del_signature', trimmed_seqs_specific_to_norm_seqs_with_del_signature)
-        set_meta_value('trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature', trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature)
-
-        set_meta_value('normalized_trna_seqs', norm_trna_seqs)
-        set_meta_value('normalized_trna_seqs_without_potential_modifications', norm_trna_seqs_without_mods)
-        set_meta_value('normalized_trna_seqs_containing_anticodon', norm_trna_seqs_containing_anticodon)
-        set_meta_value('full_length_normalized_seqs', full_length_norm_seqs)
-        set_meta_value('normalized_seqs_with_del_signature', norm_seqs_with_del_signature)
-
-        set_meta_value('potentially_modified_seqs', mod_trna_seqs)
-        set_meta_value('potentially_modified_seqs_with_del_signature', mod_seqs_with_del_signature)
+        get_summary_line = self.get_summary_line
+        get_meta_value = trnaseq_db.db.get_meta_value
+        with open(self.analysis_summary_path, 'a') as f:
+            f.write(get_summary_line("Input reads", get_meta_value('input_reads')))
+            f.write(get_summary_line("Input uniq seqs", get_meta_value('input_U')))
+            f.write(get_summary_line("tRNA reads", trna_reads))
+            f.write(get_summary_line("Profiled tRNA reads", profiled_trna_reads))
+            f.write(get_summary_line("Profiled tRNA reads with anticodon", anticodon_profiled_trna_reads))
+            f.write(get_summary_line("Profiled reads with complete features", complete_profiled_trna_reads))
+            f.write(get_summary_line("Reads specific to normalized tRNA seqs", spec_reads_Ntrna))
+            f.write(get_summary_line("Reads nonspecific to normalized tRNA seqs", nonspec_reads_Ntrna))
+            f.write(get_summary_line("Potentially modified seqs", count_M))
+            f.write(get_summary_line("Normalized tRNA seqs without detected modifications", count_Nfu))
 
         trnaseq_db.disconnect()
 
-        # Use debug flag to write additional statistics of technical but not general interest to the
-        # summary text file.
-        get_summary_line = self.get_summary_line
-        with open(self.analysis_summary_path, 'a') as f:
-            f.write(get_summary_line("Total tRNA reads (profiled and mapped)", total_trna_reads))
-            f.write(get_summary_line("Reads profiled as tRNA", profiled_trna_reads))
-            f.write(get_summary_line("Profiled reads ending 3'-CCA", trna_reads_with_threeprime_cca))
-            f.write(get_summary_line("Profiled reads ending 3'-CC", trna_reads_with_threeprime_cc))
-            f.write(get_summary_line("Profiled reads ending 3'-C", trna_reads_with_threeprime_c))
-            f.write(get_summary_line("Profiled reads ending in other 3' termini", trna_reads_with_other_threeprime_termini))
-            f.write(get_summary_line("Profiled reads containing anticodon", profiled_trna_reads_containing_anticodon))
-            f.write(get_summary_line("Profiled reads spanning acceptor stem", full_length_trna_reads))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Profiled reads with extrapolated 5' feature", trna_reads_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Profiled reads with 1-%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_short_fiveprime_extension))
-            f.write(get_summary_line("Profiled reads with >%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), profiled_trna_reads_with_long_fiveprime_extension))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Profiled reads with recovered truncated profile", trna_reads_with_recovered_trunc_profile))
-            f.write(get_summary_line("Reads mapped to tRNA interior", interior_mapped_reads))
-            f.write(get_summary_line("Reads mapped to tRNA with extra 5' nts", fiveprime_mapped_reads))
-            f.write(get_summary_line("Profiled reads specific to normalized seqs with del signature", trna_reads_specific_to_norm_seqs_with_del_signature))
-            f.write(get_summary_line("Profiled reads nonspecific to normalized seqs with del signature", trna_reads_nonspecific_to_norm_seqs_with_del_signature))
-
-            f.write(get_summary_line("Total unique tRNA seqs", total_uniq_trna_seqs))
-            f.write(get_summary_line("Unique profiled tRNA seqs", uniq_profiled_trna_seqs))
-            f.write(get_summary_line("Unique tRNA seqs ending 3'-CCA", uniq_trna_seqs_with_threeprime_cca))
-            f.write(get_summary_line("Unique tRNA seqs ending 3'-CC", uniq_trna_seqs_with_threeprime_cc))
-            f.write(get_summary_line("Unique tRNA seqs ending 3'-C", uniq_trna_seqs_with_threeprime_c))
-            f.write(get_summary_line("Unique tRNA seqs ending in other 3' termini", uniq_trna_seqs_with_other_threeprime_termini))
-            f.write(get_summary_line("Unique tRNA seqs containing anticodon", uniq_trna_seqs_containing_anticodon))
-            f.write(get_summary_line("Unique tRNA seqs spanning acceptor stem", full_length_uniq_seqs))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Unique tRNA seqs with extrapolated 5' feature", uniq_seqs_with_extrapolated_fiveprime_feature))
-            f.write(get_summary_line("Unique tRNA seqs with 1-%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_short_fiveprime_extension))
-            f.write(get_summary_line("Unique tRNA seqs with >%d extra 5' nts" % (self.min_length_of_long_fiveprime_extension - 1), uniq_seqs_with_long_fiveprime_extension))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Unique tRNA seqs with recovered truncated profile", uniq_seqs_with_recovered_trunc_profile))
-            f.write(get_summary_line("Mean profiled reads per unique seq", mean_profiled_reads_per_uniq_seq))
-            f.write(get_summary_line("Unique seqs mapped to tRNA interior", interior_mapped_uniq_seqs))
-            f.write(get_summary_line("Unique seqs mapped to tRNA with extra 5' nts", fiveprime_mapped_uniq_seqs))
-            f.write(get_summary_line("Mean mapped reads per unique seq", mean_mapped_reads_per_uniq_seq))
-
-            f.write(get_summary_line("Trimmed tRNA seqs containing anticodon", trimmed_profiled_seqs_containing_anticodon))
-            f.write(get_summary_line("Trimmed tRNA seqs spanning acceptor stem", full_length_trimmed_seqs))
-            if anvio.DEBUG:
-                f.write(get_summary_line("Trimmed tRNA seqs with extrapolated 5' feature", trimmed_seqs_with_extrapolated_fiveprime_feature))
-                f.write(get_summary_line("Trimmed tRNA seqs specific to normalized seqs with del signature", trimmed_seqs_specific_to_norm_seqs_with_del_signature))
-                f.write(get_summary_line("Trimmed tRNA seqs nonspecific to normalized seqs with del signature", trimmed_seqs_nonspecific_to_norm_seqs_with_del_signature))
-
-            f.write(get_summary_line("Normalized tRNA seqs", norm_trna_seqs))
-            f.write(get_summary_line("Normalized tRNA seqs without potential modifications", norm_trna_seqs_without_mods))
-            f.write(get_summary_line("Normalized tRNA seqs containing anticodon", norm_trna_seqs_containing_anticodon))
-            f.write(get_summary_line("Normalized tRNA seqs spanning acceptor stem", full_length_norm_seqs))
-            f.write(get_summary_line("Normalized seqs with del signature", norm_seqs_with_del_signature))
-
-            f.write(get_summary_line("Potentially modified seqs", mod_trna_seqs))
-            f.write(get_summary_line("Potentially modified seqs with del signature", mod_seqs_with_del_signature))
-
-        self.run.info("Summary", self.analysis_summary_path)
+        self.run.info("Summary", self.analysis_summary_path, nl_before=2)
 
 
     def write_feature_table(self):
         self.progress.new("Writing tRNA-seq db table of profiled tRNA features")
         self.progress.update("...")
 
-        feature_table_entries = []
-        for uniq_seq in self.uniq_trna_seq_dict.values():
-            class_name = type(uniq_seq).__name__
-            if class_name == 'UniqueMappedSequence':
-                continue
-            if class_name == 'UniqueFullProfileSequence' or class_name == 'UniqueTransferredProfileSequence':
-                has_complete_feature_set = uniq_seq.has_complete_feature_set
-                num_extrapolated_fiveprime_nts = uniq_seq.num_extrapolated_fiveprime_nts
-                extra_fiveprime_length = uniq_seq.extra_fiveprime_length
-            elif class_name == 'UniqueTruncatedProfileSequence':
-                has_complete_feature_set = False
-                num_extrapolated_fiveprime_nts = 0
-                extra_fiveprime_length = 0
-            else:
-                raise ConfigError(f"An object of class, {class_name}, is not recognized as a profiled tRNA sequence.")
-            feature_table_entries.append(
-                (uniq_seq.represent_name,
-                 has_complete_feature_set,
-                 uniq_seq.anticodon_string,
-                 uniq_seq.anticodon_aa,
-                 len(uniq_seq.seq_string),
-                 # Zero-based start position of identified tRNA features within the read.
-                 len(uniq_seq.seq_string) - uniq_seq.profiled_seq_length,
-                 uniq_seq.num_conserved,
-                 uniq_seq.num_unconserved,
-                 uniq_seq.num_paired,
-                 uniq_seq.num_unpaired,
-                 num_extrapolated_fiveprime_nts,
-                 extra_fiveprime_length,
-                 uniq_seq.threeprime_terminus_length)
-                # When tRNA features are not found at the 5' end of the read,
-                # the start and stop positions of these features also are not found.
-                + tuple([None for _ in range((len(self.TRNA_FEATURE_NAMES) - len(uniq_seq.feature_start_indices)))]) * 2
-                + tuple(itertools.chain(*zip(
-                    [str(start) if isinstance(start, int) else ','.join(map(str, start))
-                     for start in uniq_seq.feature_start_indices],
-                    # Convert Pythonic stop position to real stop position of feature.
-                    [str(stop - 1) if isinstance(stop, int) else ','.join(str(i - 1) for i in stop)
-                     for stop in uniq_seq.feature_stop_indices])))
-                # The alpha and beta sections of the D loop are "subfeatures," not "features,"
-                # so add them as columns to the table after the features.
-                + (uniq_seq.alpha_start_index,
-                   uniq_seq.alpha_stop_index - 1 if uniq_seq.alpha_stop_index else None,
-                   uniq_seq.beta_start_index,
-                   uniq_seq.beta_stop_index - 1 if uniq_seq.beta_stop_index else None)
-            )
+        rows = []
+        TRNA_FEATURE_NAMES = self.TRNA_FEATURE_NAMES
+        for dict_name, dict_U in zip(('dict_Uf', 'dict_Us', 'dict_Uc_trna'),
+                                     (self.dict_Uf, self.dict_Us, self.dict_Uc_trna)):
+            for seq_U in dict_U.values():
+                if dict_name == 'dict_Uc_trna':
+                    has_complete_feature_set = False
+                    num_extrap_5prime_nts = 0
+                    xtra_5prime_length = 0
+                else:
+                    has_complete_feature_set = seq_U.has_complete_feature_set
+                    num_extrap_5prime_nts = seq_U.num_extrap_5prime_nts
+                    xtra_5prime_length = seq_U.xtra_5prime_length
+                length_U = len(seq_U.string)
 
-        if feature_table_entries:
+                row = (
+                    (seq_U.name,
+                     has_complete_feature_set,
+                     seq_U.anticodon_string,
+                     seq_U.anticodon_aa,
+                     length_U,
+                     length_U - seq_U.profiled_seq_length,
+                     seq_U.num_conserved,
+                     seq_U.num_unconserved,
+                     seq_U.num_paired,
+                     seq_U.num_unpaired,
+                     num_extrap_5prime_nts,
+                     xtra_5prime_length,
+                     seq_U.length_3prime_terminus)
+                    # When tRNA features are not found at the 5' end of the read, the start and stop
+                    # positions of these features also are not found.
+                    + tuple([None for _ in range((len(TRNA_FEATURE_NAMES) - len(seq_U.feature_starts)))]) * 2
+                    + tuple(chain(*zip(
+                        [str(start) if isinstance(start, int)
+                         else ','.join(map(str, start))
+                         for start in seq_U.feature_starts],
+                        # Convert pythonic stop position to real stop position of feature.
+                        [str(stop - 1) if isinstance(stop, int)
+                         else ','.join(str(strand_stop - 1) for strand_stop in stop)
+                         for stop in seq_U.feature_stops])))
+                    # The α and β sections of the D loop are "subfeatures," not "features," so add them
+                    # to the row after the features.
+                    + (seq_U.alpha_start,
+                       seq_U.alpha_stop - 1 if seq_U.alpha_stop else None,
+                       seq_U.beta_start,
+                       seq_U.beta_stop - 1 if seq_U.beta_stop else None)
+                )
+                rows.append(row)
+
+        if rows:
             trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('feature', ','.join('?' * len(tables.trnaseq_feature_table_structure))),
-                                     feature_table_entries)
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO feature VALUES ({','.join('?' * len(tables.trnaseq_feature_table_structure))})''',
+                rows)
             trnaseq_db.disconnect()
 
         self.progress.end()
@@ -4217,41 +4601,35 @@ class TRNASeqDataset(object):
         self.progress.new("Writing tRNA-seq db table of unconserved nts in fully profiled tRNA")
         self.progress.update("...")
 
-        unconserved_table_entries = []
-        for uniq_seq in self.uniq_trna_seq_dict.values():
-            if not isinstance(uniq_seq, UniqueFullProfileSequence):
-                continue
+        rows = []
+        for seq_Uf in self.dict_Uf.values():
+            for unconserved_tuple in seq_Uf.unconserved_info:
+                rows.append((seq_Uf.name, ) + unconserved_tuple)
 
-            for unconserved_tuple in uniq_seq.unconserved_info:
-                unconserved_table_entries.append((uniq_seq.represent_name, ) + unconserved_tuple)
-
-        if unconserved_table_entries:
+        if rows:
             trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('unconserved', ','.join('?' * len(tables.trnaseq_unconserved_table_structure))),
-                                     unconserved_table_entries)
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO unconserved VALUES ({','.join('?' * len(tables.trnaseq_unconserved_table_structure))})''',
+                rows)
             trnaseq_db.disconnect()
 
         self.progress.end()
 
 
     def write_unpaired_table(self):
-        self.progress.new("Writing tRNA-seq db table of unpaired nts in profiled tRNA")
+        self.progress.new("Writing tRNA-seq db table of unpaired nts in fully profiled tRNA")
         self.progress.update("...")
 
-        unpaired_table_entries = []
-        for uniq_seq in self.uniq_trna_seq_dict.values():
-            if not isinstance(uniq_seq, UniqueFullProfileSequence):
-                continue
+        rows = []
+        for seq_Uf in self.dict_Uf.values():
+            for unpaired_tuple in seq_Uf.unpaired_info:
+                rows.append((seq_Uf.name, ) + unpaired_tuple)
 
-            for unpaired_tuple in uniq_seq.unpaired_info:
-                unpaired_table_entries.append((uniq_seq.represent_name, ) + unpaired_tuple)
-
-        if unpaired_table_entries:
+        if rows:
             trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('unpaired', ','.join('?' * len(tables.trnaseq_unpaired_table_structure))),
-                                     unpaired_table_entries)
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO unpaired VALUES ({','.join('?' * len(tables.trnaseq_unpaired_table_structure))})''',
+                rows)
             trnaseq_db.disconnect()
 
         self.progress.end()
@@ -4261,25 +4639,11 @@ class TRNASeqDataset(object):
         self.progress.new("Writing tRNA-seq db table of unique tRNA seqs")
         self.progress.update("...")
 
-        sequences_table_entries = []
-        class_name_id_info_dict = {'UniqueFullProfileSequence': 'full_profile',
-                                   'UniqueTruncatedProfileSequence': 'truncated_profile',
-                                   'UniqueTransferredProfileSequence': 'transferred_profile',
-                                   'UniqueMappedSequence': 'mapped'}
-        for uniq_seq in self.uniq_trna_seq_dict.values():
-            class_name = type(uniq_seq).__name__
-            try:
-                id_info = class_name_id_info_dict[class_name]
-            except KeyError:
-                raise ConfigError(f"An object of class, {class_name}, is not recognized as a unique tRNA sequence. "
-                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
-
-            sequences_table_entries.append(
-                (uniq_seq.represent_name,
-                 uniq_seq.read_count,
-                 id_info,
-                 uniq_seq.seq_string)
-            )
+        rows = []
+        for info_U, dict_U in zip(('full_profile', 'transferred_profile', 'truncated_profile', 'mapped', 'indel_aligned'),
+                                  (self.dict_Uf, self.dict_Us, self.dict_Uc_trna, self.dict_Um, self.dict_Ui)):
+            for seq_U in dict_U.values():
+                rows.append((seq_U.name, seq_U.read_count, info_U, seq_U.string))
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         # Overwrite the existing table if starting from a checkpoint.
@@ -4288,10 +4652,10 @@ class TRNASeqDataset(object):
             trnaseq_db.db.create_table('sequences',
                                        tables.trnaseq_sequences_table_structure,
                                        tables.trnaseq_sequences_table_types)
-        if sequences_table_entries:
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('sequences', ','.join('?' * len(tables.trnaseq_sequences_table_structure))),
-                                     sequences_table_entries)
+        if rows:
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO sequences VALUES ({','.join('?' * len(tables.trnaseq_sequences_table_structure))})''',
+                rows)
         trnaseq_db.disconnect()
 
         self.progress.end()
@@ -4301,38 +4665,36 @@ class TRNASeqDataset(object):
         self.progress.new("Writing tRNA-seq db table of trimmed tRNA seqs")
         self.progress.update("...")
 
-        trimmed_table_entries = []
-        class_name_id_info_dict = {'TrimmedFullProfileSequence': 'full_profile',
-                                   'TrimmedTruncatedProfileSequence': 'truncated_profile',
-                                   'TrimmedMappedSequence': 'mapped'}
-        no_threeprime_variants = tuple([0 for _ in THREEPRIME_VARIANTS])
-        for trimmed_seq in self.trimmed_trna_seq_dict.values():
-            class_name = type(trimmed_seq).__name__
-            try:
-                id_info = class_name_id_info_dict[class_name]
-            except KeyError:
-                raise ConfigError(f"An object of class, {class_name}, is not recognized as a trimmed tRNA sequence. "
-                                  f"The following classes are recognized: f{', '.join(class_name_id_info_dict)}.")
+        rows = []
+        for info_T, dict_T in zip(('full_profile', 'truncated_profile', 'mapped', 'indel_aligned'),
+                                  (self.dict_Tf, self.dict_Tc_trna, self.dict_Tm, self.dict_Ti)):
+            for seq_T in dict_T.values():
+                termini_3prime = ''
+                read_counts_3prime_termini = ''
+                if info_T != 'mapped':
+                    for string_3prime_terminus, read_count in seq_T.read_3prime_terminus_count_dict.items():
+                        termini_3prime += string_3prime_terminus + ','
+                        read_counts_3prime_termini += str(read_count) + ','
 
-            threeprime_termini = ''
-            threeprime_terminus_read_counts = ''
-            if id_info != 'mapped':
-                for threeprime_terminus_string, read_count in trimmed_seq.read_threeprime_terminus_count_dict.items():
-                    threeprime_termini += threeprime_terminus_string + ','
-                    threeprime_terminus_read_counts += str(read_count) + ','
+                if info_T != 'truncated_profile':
+                    uniq_with_xtra_5prime_count = seq_T.uniq_with_xtra_5prime_count
+                    read_with_xtra_5prime_count = seq_T.read_with_xtra_5prime_count
+                else:
+                    uniq_with_xtra_5prime_count = 0
+                    read_with_xtra_5prime_count = 0
 
-            trimmed_table_entries.append(
-                (trimmed_seq.represent_name,
-                 len(trimmed_seq.uniq_seqs),
-                 trimmed_seq.read_count,
-                 id_info,
-                 trimmed_seq.seq_string,
-                 len(trimmed_seq.norm_seq_represent_names),
-                 trimmed_seq.uniq_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
-                 trimmed_seq.read_with_extra_fiveprime_count if id_info != 'truncated_profile' else 0,
-                 threeprime_termini,
-                 threeprime_terminus_read_counts)
-            )
+                rows.append(
+                    (seq_T.name,
+                     len(seq_T.names_U),
+                     seq_T.read_count,
+                     info_T,
+                     seq_T.string,
+                     len(seq_T.names_N),
+                     uniq_with_xtra_5prime_count,
+                     read_with_xtra_5prime_count,
+                     termini_3prime,
+                     read_counts_3prime_termini)
+                )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         # Overwrite the existing table if starting from a checkpoint.
@@ -4341,72 +4703,71 @@ class TRNASeqDataset(object):
             trnaseq_db.db.create_table('trimmed',
                                        tables.trnaseq_trimmed_table_structure,
                                        tables.trnaseq_trimmed_table_types)
-        if trimmed_table_entries:
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('trimmed', ','.join('?' * len(tables.trnaseq_trimmed_table_structure))),
-                                     trimmed_table_entries)
+        if rows:
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO trimmed VALUES ({','.join('?' * len(tables.trnaseq_trimmed_table_structure))})''',
+                rows)
         trnaseq_db.disconnect()
 
         self.progress.end()
 
 
     def write_normalized_table(self):
-        self.progress.new("Writing tRNA-seq db table of fragment-dereplicated tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of fragment-dereplicated (\"normalized\") tRNA seqs")
         self.progress.update("...")
 
-        norm_table_entries = []
-        for norm_seqs, id_info in ((self.norm_trna_seq_dict.values(), 'full_profile'),
-                                   (self.norm_del_seq_dict.values(), 'deletion')):
-            for norm_seq in norm_seqs:
-                specific_long_fiveprime_extensions = ''
-                specific_long_fiveprime_extension_read_counts = ''
-                for fiveprime_extension_string, read_count in sorted(norm_seq.specific_long_fiveprime_extension_dict.items(),
-                                                                     key=lambda item: -len(item[0])):
-                    specific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                    specific_long_fiveprime_extension_read_counts += str(read_count) + ','
+        rows = []
+        for info_N, dict_N in zip(('full_profile', 'indel_aligned'),
+                                  (self.dict_Nf, self.dict_Ni)):
+            for seq_N in dict_N.values():
+                spec_long_5prime_extensions = ''
+                spec_long_5prime_read_counts = ''
+                for string_5prime, read_count in sorted(seq_N.spec_long_5prime_extension_dict.items(),
+                                                        key=lambda item: -len(item[0])):
+                    spec_long_5prime_extensions += string_5prime + ','
+                    spec_long_5prime_read_counts += str(read_count) + ','
 
-                nonspecific_long_fiveprime_extensions = ''
-                nonspecific_long_fiveprime_extension_read_counts = ''
-                for fiveprime_extension_string, read_count in sorted(norm_seq.nonspecific_long_fiveprime_extension_dict.items(),
-                                                                     key=lambda item: -len(item[0])):
-                    nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                    nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
+                nonspec_long_5prime_extensions = ''
+                nonspec_long_5prime_read_counts = ''
+                for string_5prime, read_count in sorted(seq_N.nonspec_long_5prime_extension_dict.items(),
+                                                        key=lambda item: -len(item[0])):
+                    nonspec_long_5prime_extensions += string_5prime + ','
+                    nonspec_long_5prime_read_counts += str(read_count) + ','
 
-                specific_threeprime_termini = ''
-                specific_threeprime_terminus_read_counts = ''
-                for threeprime_terminus_string, read_count in norm_seq.specific_read_threeprime_terminus_count_dict.items():
-                    specific_threeprime_termini += threeprime_terminus_string + ','
-                    specific_threeprime_terminus_read_counts += str(read_count) + ','
+                spec_3prime_termini = ''
+                spec_3prime_terminus_read_counts = ''
+                for string_3prime_terminus, read_count in seq_N.spec_read_3prime_terminus_count_dict.items():
+                    spec_3prime_termini += string_3prime_terminus + ','
+                    spec_3prime_terminus_read_counts += str(read_count) + ','
 
-                nonspecific_threeprime_termini = ''
-                nonspecific_threeprime_terminus_read_counts = ''
-                for threeprime_terminus_string, read_count in norm_seq.nonspecific_read_threeprime_terminus_count_dict.items():
-                    nonspecific_threeprime_termini += threeprime_terminus_string + ','
-                    nonspecific_threeprime_terminus_read_counts += str(read_count) + ','
+                nonspec_3prime_termini = ''
+                nonspec_3prime_terminus_read_counts = ''
+                for string_3prime_terminus, read_count in seq_N.nonspec_read_3prime_terminus_count_dict.items():
+                    nonspec_3prime_termini += string_3prime_terminus + ','
+                    nonspec_3prime_terminus_read_counts += str(read_count) + ','
 
-                norm_table_entries.append(
-                    (norm_seq.represent_name,
-                    len(norm_seq.trimmed_seqs),
-                    id_info,
-                    norm_seq.mean_specific_cov,
-                    norm_seq.mean_nonspecific_cov,
-                    ','.join(map(str, norm_seq.specific_covs)) + ',',
-                    ','.join(map(str, norm_seq.nonspecific_covs)) + ',',
-                    len(norm_seq.mod_seqs),
-                    norm_seq.specific_read_count,
-                    norm_seq.nonspecific_read_count,
-                    norm_seq.specific_read_with_extra_fiveprime_count,
-                    norm_seq.nonspecific_read_with_extra_fiveprime_count,
-                    norm_seq.specific_mapped_read_count,
-                    norm_seq.nonspecific_mapped_read_count,
-                    specific_long_fiveprime_extensions,
-                    specific_long_fiveprime_extension_read_counts,
-                    nonspecific_long_fiveprime_extensions,
-                    nonspecific_long_fiveprime_extension_read_counts,
-                    specific_threeprime_termini,
-                    specific_threeprime_terminus_read_counts,
-                    nonspecific_threeprime_termini,
-                    nonspecific_threeprime_terminus_read_counts)
+                rows.append(
+                    (seq_N.name,
+                     len(seq_N.names_T),
+                     info_N,
+                     seq_N.mean_spec_cov,
+                     seq_N.mean_nonspec_cov,
+                     ','.join(map(str, seq_N.spec_covs)) + ',',
+                     ','.join(map(str, seq_N.nonspec_covs)) + ',',
+                     seq_N.spec_read_count,
+                     seq_N.nonspec_read_count,
+                     seq_N.spec_read_xtra_5prime_count,
+                     seq_N.nonspec_read_xtra_5prime_count,
+                     seq_N.spec_map_read_count,
+                     seq_N.nonspec_map_read_count,
+                     spec_long_5prime_extensions,
+                     spec_long_5prime_read_counts,
+                     nonspec_long_5prime_extensions,
+                     nonspec_long_5prime_read_counts,
+                     spec_3prime_termini,
+                     spec_3prime_terminus_read_counts,
+                     nonspec_3prime_termini,
+                     nonspec_3prime_terminus_read_counts)
                 )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -4416,78 +4777,83 @@ class TRNASeqDataset(object):
             trnaseq_db.db.create_table('normalized',
                                        tables.trnaseq_normalized_table_structure,
                                        tables.trnaseq_normalized_table_types)
-        if norm_table_entries:
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('normalized', ','.join('?' * len(tables.trnaseq_normalized_table_structure))),
-                                     norm_table_entries)
+        if rows:
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO normalized VALUES ({','.join('?' * len(tables.trnaseq_normalized_table_structure))})''',
+                rows)
         trnaseq_db.disconnect()
 
         self.progress.end()
 
 
     def write_modified_table(self):
-        self.progress.new("Writing tRNA-seq db table of modified tRNA seqs")
+        self.progress.new("Writing tRNA-seq db table of potentially modified tRNA seqs")
         self.progress.update("...")
 
-        mod_table_entries = []
-        for mod_seq in self.mod_trna_seq_dict.values():
-            specific_long_fiveprime_extensions = ''
-            specific_long_fiveprime_extension_read_counts = ''
-            for fiveprime_extension_string, read_count in sorted(mod_seq.specific_long_fiveprime_extension_dict.items(),
-                                                                 key=lambda item: -len(item[0])):
-                specific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                specific_long_fiveprime_extension_read_counts += str(read_count) + ','
+        rows = []
+        for seq_M in self.dict_M.values():
+            spec_long_5prime_extensions = ''
+            spec_long_5prime_read_counts = ''
+            for string_5prime, read_count in sorted(seq_M.spec_long_5prime_extension_dict.items(),
+                                                    key=lambda item: -len(item[0])):
+                spec_long_5prime_extensions += string_5prime + ','
+                spec_long_5prime_read_counts += str(read_count) + ','
 
-            nonspecific_long_fiveprime_extensions = ''
-            nonspecific_long_fiveprime_extension_read_counts = ''
-            for fiveprime_extension_string, read_count in sorted(mod_seq.nonspecific_long_fiveprime_extension_dict.items(),
-                                                                 key=lambda item: -len(item[0])):
-                nonspecific_long_fiveprime_extensions += fiveprime_extension_string + ','
-                nonspecific_long_fiveprime_extension_read_counts += str(read_count) + ','
+            nonspec_long_5prime_extensions = ''
+            nonspec_long_5prime_read_counts = ''
+            for string_5prime, read_count in sorted(seq_M.nonspec_long_5prime_extension_dict.items(),
+                                                    key=lambda item: -len(item[0])):
+                nonspec_long_5prime_extensions += string_5prime + ','
+                nonspec_long_5prime_read_counts += str(read_count) + ','
 
-            specific_threeprime_termini = ''
-            specific_threeprime_terminus_read_counts = ''
-            for threeprime_terminus_string, read_count in mod_seq.specific_read_threeprime_terminus_count_dict.items():
-                specific_threeprime_termini += threeprime_terminus_string + ','
-                specific_threeprime_terminus_read_counts += str(read_count) + ','
+            spec_3prime_termini = ''
+            spec_3prime_terminus_read_counts = ''
+            for string_3prime_terminus, read_count in seq_M.spec_read_3prime_terminus_count_dict.items():
+                spec_3prime_termini += string_3prime_terminus + ','
+                spec_3prime_terminus_read_counts += str(read_count) + ','
 
-            nonspecific_threeprime_termini = ''
-            nonspecific_threeprime_terminus_read_counts = ''
-            for threeprime_terminus_string, read_count in mod_seq.nonspecific_read_threeprime_terminus_count_dict.items():
-                nonspecific_threeprime_termini += threeprime_terminus_string + ','
-                nonspecific_threeprime_terminus_read_counts += str(read_count) + ','
+            nonspec_3prime_termini = ''
+            nonspec_3prime_terminus_read_counts = ''
+            for string_3prime_terminus, read_count in seq_M.nonspec_read_3prime_terminus_count_dict.items():
+                nonspec_3prime_termini += string_3prime_terminus + ','
+                nonspec_3prime_terminus_read_counts += str(read_count) + ','
 
-            mod_table_entries.append(
-                (mod_seq.represent_name,
-                 mod_seq.mean_specific_cov,
-                 mod_seq.mean_nonspecific_cov,
-                 ','.join(map(str, mod_seq.specific_covs)) + ',',
-                 ','.join(map(str, mod_seq.nonspecific_covs)) + ',',
-                 ','.join([str(sub_pos) for sub_pos in mod_seq.sub_positions]) + ',')
-                + tuple([','.join(map(str, mod_seq.specific_sub_covs[:, i - 1])) + ',' for i in INT_NT_DICT])
-                + tuple([','.join(map(str, mod_seq.nonspecific_sub_covs[:, i - 1])) + ',' for i in INT_NT_DICT])
-                + (';'.join(','.join(map(str, del_config)) for del_config in mod_seq.del_configs) + ',', )
-                + (','.join(str(del_cov) for del_cov in mod_seq.specific_del_covs) + ',',
-                   ','.join(str(del_cov) for del_cov in mod_seq.nonspecific_del_covs) + ',')
-                + (mod_seq.consensus_seq_string,
-                   len(mod_seq.norm_seqs_without_dels),
-                   ','.join([norm_seq.represent_name for norm_seq in mod_seq.norm_seqs_without_dels]),
-                   len(mod_seq.norm_seqs_with_dels),
-                   ','.join([norm_seq.represent_name for norm_seq in mod_seq.norm_seqs_with_dels]),
-                   mod_seq.specific_read_count,
-                   mod_seq.nonspecific_read_count,
-                   mod_seq.specific_read_with_extra_fiveprime_count,
-                   mod_seq.nonspecific_read_with_extra_fiveprime_count,
-                   mod_seq.specific_mapped_read_count,
-                   mod_seq.nonspecific_mapped_read_count,
-                   specific_long_fiveprime_extensions,
-                   specific_long_fiveprime_extension_read_counts,
-                   nonspecific_long_fiveprime_extensions,
-                   nonspecific_long_fiveprime_extension_read_counts,
-                   specific_threeprime_termini,
-                   specific_threeprime_terminus_read_counts,
-                   nonspecific_threeprime_termini,
-                   nonspecific_threeprime_terminus_read_counts)
+            rows.append(
+                (seq_M.name,
+                 seq_M.mean_spec_cov,
+                 seq_M.mean_nonspec_cov,
+                 ','.join(map(str, seq_M.spec_covs)) + ',',
+                 ','.join(map(str, seq_M.nonspec_covs)) + ',',
+                 ','.join([str(sub_pos) for sub_pos in seq_M.sub_positions]) + ',')
+                + tuple([','.join(map(str, seq_M.spec_sub_covs[:, nt_index - 1])) + ',' for nt_index in INT_NT_DICT])
+                + tuple([','.join(map(str, seq_M.nonspec_sub_covs[:, nt_index - 1])) + ',' for nt_index in INT_NT_DICT])
+                + (','.join([str(insert_start) for insert_start in seq_M.insert_starts]) + ',',
+                   ','.join([insert_string for insert_string in seq_M.insert_strings]) + ',',
+                   ','.join([str(spec_insert_cov) for spec_insert_cov in seq_M.spec_insert_covs]) + ',',
+                   ','.join([str(nonspec_insert_cov) for nonspec_insert_cov in seq_M.nonspec_insert_covs]) + ',',
+                   ','.join([str(del_start) for del_start in seq_M.del_starts]) + ',',
+                   ','.join([str(del_length) for del_length in seq_M.del_lengths]) + ',',
+                   ','.join([str(spec_del_cov) for spec_del_cov in seq_M.spec_del_covs]) + ',',
+                   ','.join([str(nonspec_del_cov) for nonspec_del_cov in seq_M.nonspec_del_covs]) + ',',
+                   seq_M.consensus_string,
+                   len(seq_M.names_Nb),
+                   ','.join(seq_M.names_Nb),
+                   len(seq_M.names_Ni),
+                   ','.join(seq_M.names_Ni),
+                   seq_M.spec_read_count,
+                   seq_M.nonspec_read_count,
+                   seq_M.spec_read_xtra_5prime_count,
+                   seq_M.nonspec_read_xtra_5prime_count,
+                   seq_M.spec_map_read_count,
+                   seq_M.nonspec_map_read_count,
+                   spec_long_5prime_extensions,
+                   spec_long_5prime_read_counts,
+                   nonspec_long_5prime_extensions,
+                   nonspec_long_5prime_read_counts,
+                   spec_3prime_termini,
+                   spec_3prime_terminus_read_counts,
+                   nonspec_3prime_termini,
+                   nonspec_3prime_terminus_read_counts)
             )
 
         trnaseq_db = dbops.TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
@@ -4497,61 +4863,59 @@ class TRNASeqDataset(object):
             trnaseq_db.db.create_table('modified',
                                        tables.trnaseq_modified_table_structure,
                                        tables.trnaseq_modified_table_types)
-        if mod_table_entries:
-            trnaseq_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
-                                     % ('modified', ','.join('?' * len(tables.trnaseq_modified_table_structure))),
-                                     mod_table_entries)
+        if rows:
+            trnaseq_db.db._exec_many(
+                f'''INSERT INTO modified VALUES ({','.join('?' * len(tables.trnaseq_modified_table_structure))})''',
+                rows)
         trnaseq_db.disconnect()
 
         self.progress.end()
 
 
-    def write_unique_nontrna_supplement(self):
+    def write_nontrna_supplement(self):
+        """Write a supplementary file on Un and Uc_nontrna."""
         self.progress.new("Writing file of unique seqs not identified as tRNA")
         self.progress.update("...")
 
-        with open(self.uniq_nontrna_path, 'w') as nontrna_file:
-            nontrna_file.write("\t".join(self.UNIQ_NONTRNA_HEADER) + "\n")
-            for uniq_seq in self.uniq_nontrna_seq_dict.values():
-                nontrna_file.write(uniq_seq.represent_name + "\t"
-                                   + str(uniq_seq.read_count) + "\t"
-                                   + "\t"
-                                   + uniq_seq.seq_string + "\n")
-            for uniq_seq in self.uniq_trunc_seq_dict.values():
-                nontrna_file.write(uniq_seq.represent_name + "\t"
-                                   + str(uniq_seq.read_count) + "\t"
-                                   + str(uniq_seq.trunc_profile_index) + "\t"
-                                   + uniq_seq.seq_string + "\n")
+        with open(self.path_Un_supplement, 'w') as file_Un_supplement:
+            file_Un_supplement.write("\t".join(self.UNIQ_NONTRNA_HEADER) + "\n")
+            for seq_Un in self.dict_Un.values():
+                file_Un_supplement.write(seq_Un.name + "\t"
+                                         + str(seq_Un.read_count) + "\t"
+                                         + "\t"
+                                         + seq_Un.string + "\n")
+
+            for seq_Uc_nontrna in self.dict_Uc_nontrna.values():
+                file_Un_supplement.write(seq_Uc_nontrna.name + "\t"
+                                         + str(seq_Uc_nontrna.read_count) + "\t"
+                                         + str(seq_Uc_nontrna.trunc_profile_index) + "\t"
+                                         + seq_Uc_nontrna.string + "\n")
 
         self.progress.end()
 
-        self.run.info("Unique non-tRNA supplement", self.uniq_nontrna_path)
+        self.run.info("Unique non-tRNA supplement", self.path_Un_supplement)
 
 
-    def write_trimmed_supplement(self):
-        """Write a supplementary file showing the spectrum of 5'/3' extensions of trimmed, fully
-        profiled tRNA sequences."""
+    def write_Tf_ends_supplement(self):
+        """Write a supplementary file showing the spectrum of 5'/3' extensions of Tf."""
         self.progress.new("Writing file showing 5'/3' ends of trimmed, fully profiled tRNA seqs")
         self.progress.update("...")
 
-        with open(self.trimmed_ends_path, 'w') as trimmed_file:
-            trimmed_file.write("\t".join(self.TRIMMED_ENDS_HEADER) + "\n")
-            for trimmed_seq in sorted(self.trimmed_trna_seq_dict.values(), key=lambda trimmed_seq: -trimmed_seq.read_count):
-                if not isinstance(trimmed_seq, TrimmedFullProfileSequence):
-                    continue
-
-                represent_name = trimmed_seq.represent_name
-                for uniq_seq in sorted(trimmed_seq.uniq_seqs,
-                                       key=lambda uniq_seq: (-uniq_seq.extra_fiveprime_length, -uniq_seq.threeprime_terminus_length)):
-                    trimmed_file.write(represent_name + "\t"
-                                       + uniq_seq.represent_name + "\t"
-                                       + uniq_seq.seq_string[: uniq_seq.extra_fiveprime_length] + "\t"
-                                       + uniq_seq.seq_string[len(uniq_seq.seq_string) - uniq_seq.threeprime_terminus_length: ] + "\t"
-                                       + str(uniq_seq.read_count) + "\n")
+        with open(self.path_Tf_ends, 'w') as file_Tf_ends:
+            file_Tf_ends.write("\t".join(self.TRIMMED_ENDS_HEADER) + "\n")
+            for seq_Tf in sorted(self.dict_Tf.values(), key=lambda seq_Tf: -seq_Tf.read_count):
+                name_Tf = seq_Tf.name
+                seqs_U = [getattr(self, 'dict_' + category_U)[name_U] for category_U, name_U in zip(seq_Tf.categories_U, seq_Tf.names_U)]
+                for seq_U in sorted(seqs_U, key=lambda seq_U: (-seq_U.xtra_5prime_length, -seq_U.length_3prime_terminus)):
+                    file_Tf_ends.write(name_Tf + "\t"
+                                       + seq_U.name + "\t"
+                                       + seq_U.string[: seq_U.xtra_5prime_length] + "\t"
+                                       + seq_U.string[len(seq_U.string) - seq_U.length_3prime_terminus: ] + "\t"
+                                       + str(seq_U.read_count) + "\n")
 
         self.progress.end()
 
-        self.run.info("Trimmed tRNA supplement", self.trimmed_ends_path)
+        self.run.info("Trimmed tRNA supplement", self.path_Tf_ends)
 
 
 def profile_worker(input_queue, output_queue, profiler):
@@ -4609,23 +4973,35 @@ class ModifiedSeqSummary(object):
         'nonspecific_nt_covs_dict',
         'specific_covs',
         'nonspecific_covs',
-        'specific_del_covs',
-        'nonspecific_del_covs',
+        'insert_starts',
+        'insert_strings',
+        'spec_insert_covs',
+        'nonspec_insert_covs',
+        'del_starts',
+        'del_lengths',
+        'spec_del_covs',
+        'nonspec_del_covs',
         'norm_seq_summaries'
     )
 
     def __init__(self):
-        name = None
-        sample_id = None
-        consensus_seq_string = None
-        sub_positions = None
-        specific_nt_covs_dict = None
-        nonspecific_nt_covs_dict = None
-        specific_covs = None
-        nonspecific_covs = None
-        specific_del_covs = None
-        nonspecific_del_covs = None
-        norm_seq_summaries = None
+        self.name = None
+        self.sample_id = None
+        self.consensus_seq_string = None
+        self.sub_positions = None
+        self.specific_nt_covs_dict = None
+        self.nonspecific_nt_covs_dict = None
+        self.specific_covs = None
+        self.nonspecific_covs = None
+        self.insert_starts = None
+        self.insert_strings = None
+        self.spec_insert_covs = None
+        self.nonspec_insert_covs = None
+        self.del_starts = None
+        self.del_lengths = None
+        self.spec_del_covs = None
+        self.nonspec_del_covs = None
+        self.norm_seq_summaries = None
 
 
 class SeedSeq(object):
@@ -4676,8 +5052,8 @@ class SeedSeq(object):
         'total_mod_positions',
         'sample_mod_positions_dict',
         'sample_variability_dict',
-        'sample_specific_dels_dict',
-        'sample_nonspecific_dels_dict'
+        'sample_insert_dict',
+        'sample_del_dict'
     )
 
     def __init__(self):
@@ -4726,8 +5102,8 @@ class SeedSeq(object):
         self.total_mod_positions = None
         self.sample_mod_positions_dict = None
         self.sample_variability_dict = None
-        self.sample_specific_dels_dict = None
-        self.sample_nonspecific_dels_dict = None
+        self.sample_insert_dict = None
+        self.sample_del_dict = None
 
 
 class DatabaseConverter(object):
@@ -4757,8 +5133,8 @@ class DatabaseConverter(object):
         'name',
         'specific_coverages',
         'nonspecific_coverages',
-        'names_of_normalized_seqs_without_dels',
-        'names_of_normalized_seqs_with_dels',
+        'names_of_normalized_seqs_without_indels',
+        'names_of_normalized_seqs_with_indels',
         'substitution_positions',
         'substitution_A_specific_coverage',
         'substitution_C_specific_coverage',
@@ -4768,9 +5144,14 @@ class DatabaseConverter(object):
         'substitution_C_nonspecific_coverage',
         'substitution_G_nonspecific_coverage',
         'substitution_T_nonspecific_coverage',
-        'deletion_positions',
-        'deletion_specific_coverage',
-        'deletion_nonspecific_coverage',
+        'insertion_starts',
+        'insertion_seqs',
+        'insertion_specific_coverages',
+        'insertion_nonspecific_coverages',
+        'deletion_starts',
+        'deletion_lengths',
+        'deletion_specific_coverages',
+        'deletion_nonspecific_coverages',
         'consensus_sequence'
     ]
 
@@ -4798,7 +5179,7 @@ class DatabaseConverter(object):
         self.nonspecific_output = A('nonspecific_output')
         self.min_variation = A('min_variation')
         self.min_third_fourth_nt = A('min_third_fourth_nt')
-        self.min_del_fraction = A('min_deletion_fraction')
+        self.min_indel_fraction = A('min_indel_fraction')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
 
@@ -4939,7 +5320,7 @@ class DatabaseConverter(object):
             self.descrip = open(self.descrip_path).read()
 
         if self.seed_seq_limit == -1:
-            self.seed_seq_limit = sys.maxsize
+            self.seed_seq_limit = MAXSIZE
         elif self.seed_seq_limit < 1:
             raise ConfigError(f"{self.seed_seq_limit} is an invalid value for `--max-reported-seed-seqs`. "
                               "To remove the limit on tRNA seeds reported to the contigs db, "
@@ -5094,8 +5475,8 @@ class DatabaseConverter(object):
              specific_covs_string,
              nonspecific_covs_string) = norm_seq_info
 
-            if id_info == 'deletion':
-                # Ignore normalized sequences with deletions. The coverage of deletions themselves
+            if id_info == 'indel_aligned':
+                # Ignore normalized sequences with indels. The coverage of indels themselves
                 # is recorded in the parent modified sequence, but the contribution of these
                 # sequences to nucleotide coverage is ignored. Inclusion of these sequences would
                 # produce numerous complications (e.g., they don't have feature profiles).
@@ -5119,8 +5500,8 @@ class DatabaseConverter(object):
             (name,
              specific_covs,
              nonspecific_covs,
-             names_of_norm_seqs_without_dels,
-             names_of_norm_seqs_with_dels,
+             names_of_norm_seqs_without_indels,
+             names_of_norm_seqs_with_indels,
              sub_positions,
              sub_A_specific_covs,
              sub_C_specific_covs,
@@ -5130,9 +5511,14 @@ class DatabaseConverter(object):
              sub_C_nonspecific_covs,
              sub_G_nonspecific_covs,
              sub_T_nonspecific_covs,
-             del_positions,
-             del_specific_covs,
-             del_nonspecific_covs,
+             insert_starts,
+             insert_strings,
+             spec_insert_covs,
+             nonspec_insert_covs,
+             del_starts,
+             del_lengths,
+             spec_del_covs,
+             nonspec_del_covs,
              consensus_seq_string) = mod_seq_info
 
             mod_seq_summary = ModifiedSeqSummary()
@@ -5184,21 +5570,32 @@ class DatabaseConverter(object):
             mod_seq_summary.specific_nt_covs_dict = specific_nt_covs_dict
             mod_seq_summary.nonspecific_nt_covs_dict = nonspecific_nt_covs_dict
 
-            specific_del_covs = np.zeros(seq_length, int)
-            nonspecific_del_covs = np.zeros(seq_length, int)
-            if del_positions != ',':
-                for (del_pos,
-                     specific_del_cov,
-                     nonspecific_del_cov) in zip(sorted(set(map(int, del_positions.replace(';', ',').split(',')[: -1]))),
-                                                 map(int, del_specific_covs.split(',')[: -1]),
-                                                 map(int, del_nonspecific_covs.split(',')[: -1])):
-                    specific_del_covs[del_pos] = specific_del_cov
-                    nonspecific_del_covs[del_pos] = nonspecific_del_cov
-            mod_seq_summary.specific_del_covs = specific_del_covs
-            mod_seq_summary.nonspecific_del_covs = nonspecific_del_covs
+            if insert_starts == ',':
+                mod_seq_summary.insert_starts = []
+                mod_seq_summary.insert_strings = []
+                mod_seq_summary.spec_insert_covs = []
+                mod_seq_summary.nonspec_insert_covs = []
+            else:
+                mod_seq_summary.insert_starts = list(map(int, insert_starts.split(',')[: -1]))
+                mod_seq_summary.insert_strings = list(insert_strings.split(',')[: -1])
+                mod_seq_summary.spec_insert_covs = list(map(int, spec_insert_covs.split(',')[: -1]))
+                mod_seq_summary.nonspec_insert_covs = list(map(int, nonspec_insert_covs.split(',')[: -1]))
+            assert len(mod_seq_summary.insert_starts) == len(mod_seq_summary.insert_strings) == len(mod_seq_summary.spec_insert_covs) == len(mod_seq_summary.nonspec_insert_covs)
+
+            if del_starts == ',':
+                mod_seq_summary.del_starts = []
+                mod_seq_summary.del_lengths = []
+                mod_seq_summary.spec_del_covs = []
+                mod_seq_summary.nonspec_del_covs = []
+            else:
+                mod_seq_summary.del_starts = list(map(int, del_starts.split(',')[: -1]))
+                mod_seq_summary.del_lengths = list(map(int, del_lengths.split(',')[: -1]))
+                mod_seq_summary.spec_del_covs = list(map(int, spec_del_covs.split(',')[: -1]))
+                mod_seq_summary.nonspec_del_covs = list(map(int, nonspec_del_covs.split(',')[: -1]))
+            assert len(mod_seq_summary.del_starts) == len(mod_seq_summary.del_lengths) == len(mod_seq_summary.spec_del_covs) == len(mod_seq_summary.nonspec_del_covs)
 
             mod_seq_summary.norm_seq_summaries = []
-            for norm_seq_name in names_of_norm_seqs_without_dels.split(','):
+            for norm_seq_name in names_of_norm_seqs_without_indels.split(','):
                 norm_seq_summary = norm_seq_summary_dict[norm_seq_name]
 
                 # Cross-reference the modified sequence summary and constituent modified normalized
@@ -5468,7 +5865,7 @@ class DatabaseConverter(object):
         self.set_mods()
         self.set_consensus_mod_nts()
 
-        self.set_sample_dels()
+        self.set_sample_indels()
 
         self.progress.end()
 
@@ -5478,12 +5875,13 @@ class DatabaseConverter(object):
         requiring addition of empty positions in the normalized sequence coverage arrays at the 5'
         end, as normalized (and modified) sequences are aligned from the 3' end."""
         # The positions of substitutions are recorded in the seed sequence index.
-        mod_seq_summary.sub_positions += fiveprime_extension.size
+        length_5prime_extension = fiveprime_extension.size
+        mod_seq_summary.sub_positions += length_5prime_extension
         for nt in UNAMBIG_NTS:
             mod_seq_summary.specific_nt_covs_dict[nt] = np.concatenate([fiveprime_extension, mod_seq_summary.specific_nt_covs_dict[nt]])
             mod_seq_summary.nonspecific_nt_covs_dict[nt] = np.concatenate([fiveprime_extension, mod_seq_summary.nonspecific_nt_covs_dict[nt]])
-        mod_seq_summary.specific_del_covs = np.concatenate([fiveprime_extension, mod_seq_summary.specific_del_covs])
-        mod_seq_summary.nonspecific_del_covs = np.concatenate([fiveprime_extension, mod_seq_summary.nonspecific_del_covs])
+        mod_seq_summary.insert_starts = [start + length_5prime_extension for start in mod_seq_summary.insert_starts]
+        mod_seq_summary.del_starts = [start + length_5prime_extension for start in mod_seq_summary.del_starts]
 
 
     def set_anticodon(self, seed_seqs):
@@ -5744,24 +6142,34 @@ class DatabaseConverter(object):
             seed_seq.seq_string = seq_string
 
 
-    def set_sample_dels(self):
+    def set_sample_indels(self):
         for seed_seq in self.seed_seqs:
-            sample_specific_dels_dict = {}
-            sample_nonspecific_dels_dict = {}
-            seed_seq_length = len(seed_seq.seq_string)
+            sample_insert_dict = {}
+            sample_del_dict = {}
 
             for sample_id in self.trnaseq_db_sample_ids:
-                sample_specific_dels_dict[sample_id] = np.zeros(seed_seq_length, int)
-                sample_nonspecific_dels_dict[sample_id] = np.zeros(seed_seq_length, int)
+                sample_insert_dict[sample_id] = []
+                sample_del_dict[sample_id] = []
 
             for mod_seq_summary in seed_seq.mod_seq_summaries:
                 sample_id = mod_seq_summary.sample_id
 
-                sample_specific_dels_dict[sample_id] += mod_seq_summary.specific_del_covs
-                sample_nonspecific_dels_dict[sample_id] += mod_seq_summary.nonspecific_del_covs
+                sample_insert_info = sample_insert_dict[sample_id]
+                for insert_start, insert_string, spec_insert_cov, nonspec_insert_cov in zip(mod_seq_summary.insert_starts,
+                                                                                            mod_seq_summary.insert_strings,
+                                                                                            mod_seq_summary.spec_insert_covs,
+                                                                                            mod_seq_summary.nonspec_insert_covs):
+                    sample_insert_info.append((insert_start, insert_string, spec_insert_cov, nonspec_insert_cov))
 
-            seed_seq.sample_specific_dels_dict = sample_specific_dels_dict
-            seed_seq.sample_nonspecific_dels_dict = sample_nonspecific_dels_dict
+                sample_del_info = sample_del_dict[sample_id]
+                for del_start, del_length, spec_del_cov, nonspec_del_cov in zip(mod_seq_summary.del_starts,
+                                                                                mod_seq_summary.del_lengths,
+                                                                                mod_seq_summary.spec_del_covs,
+                                                                                mod_seq_summary.nonspec_del_covs):
+                    sample_del_info.append((del_start, del_length, spec_del_cov, nonspec_del_cov))
+
+            seed_seq.sample_insert_dict = sample_insert_dict
+            seed_seq.sample_del_dict = sample_del_dict
 
 
     def gen_contigs_db(self):
@@ -5774,43 +6182,45 @@ class DatabaseConverter(object):
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         contigs_db.touch()
+        set_meta_value = contigs_db.db.set_meta_value
+        insert_many = contigs_db.db.insert_many
 
         # Meta-values are set like in `dbops.ContigsDatabase.create`.
-        contigs_db.db.set_meta_value('db_type', 'contigs')
-        contigs_db.db.set_meta_value('db_variant', 'trnaseq')
-        contigs_db.db.set_meta_value('project_name', self.project_name)
-        contigs_db.db.set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
-        contigs_db.db.set_meta_value('contigs_db_hash', self.contigs_db_hash)
-        contigs_db.db.set_meta_value('split_length', 10000) # sys.maxsize
-        contigs_db.db.set_meta_value('num_contigs', len(self.seed_seqs))
-        contigs_db.db.set_meta_value('num_splits', len(self.seed_seqs))
-        contigs_db.db.set_meta_value('total_length', self.total_seed_length)
-        contigs_db.db.set_meta_value('kmer_size', 0)
-        contigs_db.db.set_meta_value('gene_level_taxonomy_source', None)
-        contigs_db.db.set_meta_value('gene_function_sources', 'Transfer_RNAs')
-        contigs_db.db.set_meta_value('genes_are_called', True)
-        contigs_db.db.set_meta_value('external_gene_calls', True)
-        contigs_db.db.set_meta_value('external_gene_amino_acid_seqs', False)
-        contigs_db.db.set_meta_value('skip_predict_frame', True)
-        contigs_db.db.set_meta_value('splits_consider_gene_calls', False)
-        contigs_db.db.set_meta_value('scg_taxonomy_was_run', False)
-        contigs_db.db.set_meta_value('scg_taxonomy_database_version', None)
-        contigs_db.db.set_meta_value('trna_taxonomy_was_run', False)
-        contigs_db.db.set_meta_value('trna_taxonomy_database_version', None)
-        contigs_db.db.set_meta_value('creation_date', time.time())
+        set_meta_value('db_type', 'contigs')
+        set_meta_value('db_variant', 'trnaseq')
+        set_meta_value('project_name', self.project_name)
+        set_meta_value('description', self.descrip if self.descrip else '_No description is provided_')
+        set_meta_value('contigs_db_hash', self.contigs_db_hash)
+        set_meta_value('split_length', 10000) # sys.maxsize
+        set_meta_value('num_contigs', len(self.seed_seqs))
+        set_meta_value('num_splits', len(self.seed_seqs))
+        set_meta_value('total_length', self.total_seed_length)
+        set_meta_value('kmer_size', 0)
+        set_meta_value('gene_level_taxonomy_source', None)
+        set_meta_value('gene_function_sources', 'Transfer_RNAs')
+        set_meta_value('genes_are_called', True)
+        set_meta_value('external_gene_calls', True)
+        set_meta_value('external_gene_amino_acid_seqs', False)
+        set_meta_value('skip_predict_frame', True)
+        set_meta_value('splits_consider_gene_calls', False)
+        set_meta_value('scg_taxonomy_was_run', False)
+        set_meta_value('scg_taxonomy_database_version', None)
+        set_meta_value('trna_taxonomy_was_run', False)
+        set_meta_value('trna_taxonomy_database_version', None)
+        set_meta_value('creation_date', time.time())
 
-        contigs_db.db.insert_many('contig_sequences', [(seed_seq.name, seed_seq.seq_string) for seed_seq in self.seed_seqs])
-        contigs_db.db.insert_many('contigs_basic_info', self.get_contigs_basic_info_table_entries())
-        contigs_db.db.insert_many('splits_basic_info', self.get_splits_basic_info_table_entries())
-        contigs_db.db.insert_many('hmm_hits', self.get_hmm_hits_table_entries())
-        contigs_db.db.insert_many('hmm_hits_in_splits', self.get_hmm_hits_in_splits_table_entries())
+        insert_many('contig_sequences', [(seed_seq.name, seed_seq.seq_string) for seed_seq in self.seed_seqs])
+        insert_many('contigs_basic_info', self.get_contigs_basic_info_table_entries())
+        insert_many('splits_basic_info', self.get_splits_basic_info_table_entries())
+        insert_many('hmm_hits', self.get_hmm_hits_table_entries())
+        insert_many('hmm_hits_in_splits', self.get_hmm_hits_in_splits_table_entries())
         # tRNA predictions are treated like HMM or tRNAScan-SE hits. The blank columns of the HMM
         # hits info table are 'ref', 'search_type', 'domain' and 'genes'.
         contigs_db.db.insert('hmm_hits_info', ('Transfer_RNAs', '', 'Transfer_RNAs', None, ''))
-        contigs_db.db.insert_many('genes_in_contigs', self.get_genes_in_contigs_table_entries())
-        contigs_db.db.insert_many('gene_amino_acid_sequences', [(i, '') for i in range(len(self.seed_seqs))])
-        contigs_db.db.insert_many('genes_in_splits', self.get_genes_in_splits_table_entries())
-        contigs_db.db.insert_many('gene_functions', self.get_gene_functions_table_entries())
+        insert_many('genes_in_contigs', self.get_genes_in_contigs_table_entries())
+        insert_many('gene_amino_acid_sequences', [(i, '') for i in range(len(self.seed_seqs))])
+        insert_many('genes_in_splits', self.get_genes_in_splits_table_entries())
+        insert_many('gene_functions', self.get_gene_functions_table_entries())
 
         contigs_db.disconnect()
 
@@ -5855,7 +6265,7 @@ class DatabaseConverter(object):
                 'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
                 sha1(seed_seq.seq_string.encode('utf-8')).hexdigest(), # "Gene unique identifier"
                 i, # "Gene callers ID"
-                ANTICODON_TO_AA[seed_seq.anticodon_seq_string] + '_' + seed_seq.anticodon_seq_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
+                ANTICODON_AA_DICT[seed_seq.anticodon_seq_string] + '_' + seed_seq.anticodon_seq_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
                 '-', # "Gene HMM ID"
                 0.0) # "HMM E-value"
             )
@@ -5910,7 +6320,7 @@ class DatabaseConverter(object):
             entries.append(
                 (i,
                  'Transfer_RNAs',
-                 '%s_%s_%d' % (ANTICODON_TO_AA[seed_seq.anticodon_seq_string], seed_seq.anticodon_seq_string, i),
+                 '%s_%s_%d' % (ANTICODON_AA_DICT[seed_seq.anticodon_seq_string], seed_seq.anticodon_seq_string, i),
                  'tRNA transcript',
                  0.0)
             )
@@ -6184,100 +6594,150 @@ class DatabaseConverter(object):
 
 
     def set_indels_table_entries(self):
-        """Deletions are determined separately from specific and nonspecific coverages. Currently,
-        insertions are not sought by `anvi-trnaseq`, as the addition of nontemplated nucleotides to
-        cDNA in reverse transcription is less common than the deletion of nucleotides from the
-        transcript."""
+        """Indels are determined separately from specific and nonspecific coverages."""
         specific_entries = []
         nonspecific_entries = []
         summed_entries = []
+        min_indel_fraction = self.min_indel_fraction
         for sample_id in self.trnaseq_db_sample_ids:
-            for i, seed_seq in enumerate(self.seed_seqs):
-                specific_del_covs = seed_seq.sample_specific_dels_dict[sample_id]
-                specific_covs = seed_seq.sample_specific_covs_dict[sample_id]
-                for pos in np.nonzero(specific_del_covs)[0]:
-                    specific_del_cov = specific_del_covs[pos]
-                    specific_cov = specific_covs[pos]
-                    if specific_cov == 0:
-                        # This only occurs when there is specific coverage of the deletion but not
-                        # the reference nucleotide.
-                        del_fraction = 1
-                    else:
-                        del_fraction = specific_del_cov / specific_cov
-                    if del_fraction >= self.min_del_fraction:
+            for seed_seq_index, seed_seq in enumerate(self.seed_seqs):
+                insert_info = seed_seq.sample_insert_dict[sample_id]
+                del_info = seed_seq.sample_del_dict[sample_id]
+                spec_covs = seed_seq.sample_specific_covs_dict[sample_id]
+                nonspec_covs = seed_seq.sample_nonspecific_covs_dict[sample_id]
+
+                for insert_start, insert_string, insert_spec_cov, insert_nonspec_cov in insert_info:
+                    spec_cov = (spec_covs[insert_start] + spec_covs[insert_start + 1]) / 2
+
+                    # A frequency of 1 only occurs when there is specific coverage of the insertion
+                    # but not the reference nucleotide.
+                    insert_freq = 1 if spec_cov == 0 else insert_spec_cov / spec_cov
+                    if insert_freq >= min_indel_fraction:
                         specific_entries.append((sample_id,
                                                  seed_seq.name + '_split_00001',
-                                                 pos, # Position in split
-                                                 pos, # Position in contig
-                                                 i, # Corresponding gene call
+                                                 insert_start, # Position in split
+                                                 insert_start, # Position in contig
+                                                 seed_seq_index, # Corresponding gene call
                                                  1, # In noncoding gene call
                                                  0, # In coding gene call
                                                  0, # Base position in codon (0 for noncoding gene call)
                                                  -1, # Codon order in gene (-1 for noncoding gene call)
                                                  0, # Coverage outlier in split (0 or 1)
                                                  0, # Coverage outlier in contig (0 or 1)
-                                                 seed_seq.seq_string[pos], # Reference nt
-                                                 'DEL', # Type of indel
-                                                 '', # Indel sequence ('' for deletion)
-                                                 1, # Indel length
-                                                 specific_del_cov, # Deletion count (coverage)
-                                                 specific_cov)) # Reference sequence coverage
+                                                 seed_seq.seq_string[insert_start], # Reference nt
+                                                 'INS', # Type of indel
+                                                 insert_string, # Indel sequence ('' for deletion)
+                                                 len(insert_string), # Indel length
+                                                 insert_spec_cov, # Deletion count (coverage)
+                                                 spec_cov)) # Reference sequence coverage
 
-                nonspecific_del_covs = seed_seq.sample_nonspecific_dels_dict[sample_id]
-                nonspecific_covs = seed_seq.sample_nonspecific_covs_dict[sample_id]
-                for pos in np.nonzero(nonspecific_del_covs)[0]:
-                    nonspecific_del_cov = nonspecific_del_covs[pos]
-                    nonspecific_cov = nonspecific_covs[pos]
-                    if nonspecific_cov == 0:
-                        del_fraction = 1
-                    else:
-                        del_fraction = nonspecific_del_cov / nonspecific_cov
-                    if del_fraction >= self.min_del_fraction:
+                    nonspec_cov = (nonspec_covs[insert_start] + nonspec_covs[insert_start + 1]) / 2
+                    insert_freq = 1 if nonspec_cov == 0 else insert_nonspec_cov / nonspec_cov
+                    if insert_freq >= min_indel_fraction:
                         nonspecific_entries.append((sample_id,
                                                     seed_seq.name + '_split_00001',
-                                                    pos,
-                                                    pos,
-                                                    i,
+                                                    insert_start,
+                                                    insert_start,
+                                                    seed_seq_index,
                                                     1,
                                                     0,
                                                     0,
                                                     -1,
                                                     0,
                                                     0,
-                                                    seed_seq.seq_string[pos],
-                                                    'DEL',
-                                                    '',
-                                                    1,
-                                                    nonspecific_del_cov,
-                                                    nonspecific_cov))
+                                                    seed_seq.seq_string[insert_start],
+                                                    'INS',
+                                                    insert_string,
+                                                    len(insert_string),
+                                                    insert_nonspec_cov,
+                                                    nonspec_cov))
 
-                summed_del_covs = specific_del_covs + nonspecific_del_covs
-                summed_covs = specific_covs + nonspecific_covs
-                for pos in np.nonzero(summed_del_covs)[0]:
-                    summed_del_cov = summed_del_covs[pos]
-                    summed_cov = summed_covs[pos]
-                    if summed_cov == 0:
-                        del_fraction = 1
-                    else:
-                        del_fraction = summed_del_cov / summed_cov
-                    if del_fraction >= self.min_del_fraction:
+                    sum_cov = spec_cov + nonspec_cov
+                    insert_sum_cov = insert_spec_cov + insert_nonspec_cov
+                    insert_freq = 1 if sum_cov == 0 else insert_sum_cov / sum_cov
+                    if insert_freq >= min_indel_fraction:
                         summed_entries.append((sample_id,
                                                seed_seq.name + '_split_00001',
-                                               pos,
-                                               pos,
-                                               i,
+                                               insert_start,
+                                               insert_start,
+                                               seed_seq_index,
                                                1,
                                                0,
                                                0,
                                                -1,
                                                0,
                                                0,
-                                               seed_seq.seq_string[pos],
+                                               seed_seq.seq_string[insert_start],
+                                               'INS',
+                                               insert_string,
+                                               len(insert_string),
+                                               insert_sum_cov,
+                                               sum_cov))
+
+                for del_start, del_length, del_spec_cov, del_nonspec_cov in del_info:
+                    spec_cov = spec_covs[del_start: del_start + del_length].mean()
+                    del_freq = 1 if spec_cov == 0 else del_spec_cov / spec_cov
+                    if del_freq >= min_indel_fraction:
+                        specific_entries.append((sample_id,
+                                                 seed_seq.name + '_split_00001',
+                                                 del_start, # Position in split
+                                                 del_start, # Position in contig
+                                                 seed_seq_index, # Corresponding gene call
+                                                 1, # In noncoding gene call
+                                                 0, # In coding gene call
+                                                 0, # Base position in codon (0 for noncoding gene call)
+                                                 -1, # Codon order in gene (-1 for noncoding gene call)
+                                                 0, # Coverage outlier in split (0 or 1)
+                                                 0, # Coverage outlier in contig (0 or 1)
+                                                 seed_seq.seq_string[del_start], # Reference nt
+                                                 'DEL', # Type of indel
+                                                 '', # Indel sequence ('' for deletion)
+                                                 del_length, # Indel length
+                                                 del_spec_cov, # Deletion count (coverage)
+                                                 spec_cov)) # Reference sequence coverage
+
+                    nonspec_cov = nonspec_covs[del_start: del_start + del_length].mean()
+                    del_freq = 1 if nonspec_cov == 0 else del_nonspec_cov / nonspec_cov
+                    if del_freq >= min_indel_fraction:
+                        nonspecific_entries.append((sample_id,
+                                                    seed_seq.name + '_split_00001',
+                                                    del_start,
+                                                    del_start,
+                                                    seed_seq_index,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    -1,
+                                                    0,
+                                                    0,
+                                                    seed_seq.seq_string[del_start],
+                                                    'DEL',
+                                                    '',
+                                                    del_length,
+                                                    del_nonspec_cov,
+                                                    nonspec_cov))
+
+                    sum_cov = spec_cov + nonspec_cov
+                    del_sum_cov = del_spec_cov + del_nonspec_cov
+                    del_freq = 1 if sum_cov == 0 else del_sum_cov / sum_cov
+                    if del_freq >= min_indel_fraction:
+                        summed_entries.append((sample_id,
+                                               seed_seq.name + '_split_00001',
+                                               del_start,
+                                               del_start,
+                                               seed_seq_index,
+                                               1,
+                                               0,
+                                               0,
+                                               -1,
+                                               0,
+                                               0,
+                                               seed_seq.seq_string[del_start],
                                                'DEL',
                                                '',
-                                               1,
-                                               summed_del_cov,
-                                               summed_cov))
+                                               del_length,
+                                               del_sum_cov,
+                                               sum_cov))
         self.specific_indels_table_entries = specific_entries
         self.nonspecific_indels_table_entries = nonspecific_entries
         self.summed_indels_table_entries = summed_entries
@@ -6325,7 +6785,7 @@ class DatabaseConverter(object):
         profile_db.db.set_meta_value('blank', False)
         profile_db.db.set_meta_value('default_view', 'mean_coverage')
         profile_db.db.set_meta_value('min_contig_length', 1)
-        profile_db.db.set_meta_value('max_contig_length', sys.maxsize)
+        profile_db.db.set_meta_value('max_contig_length', MAXSIZE)
         profile_db.db.set_meta_value('SNVs_profiled', False)
         profile_db.db.set_meta_value('SCVs_profiled', False)
         profile_db.db.set_meta_value('INDELs_profiled', False)
@@ -6347,40 +6807,43 @@ class DatabaseConverter(object):
             profile_db.db.commit()
 
         if db_cov_type == 'specific' or db_cov_type == 'nonspecific' or db_cov_type == 'summed':
-            for attr, table_basename in [
-                ('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
-                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
-                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
-                ('sample_' + db_cov_type + '_relative_abundances_dict', 'relative_abundance'),
-                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
-                ('sample_' + db_cov_type + '_max_normalized_ratio_dict', 'max_normalized_ratio'),
-                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_' + db_cov_type + '_cov_dict', 'mean_coverage'),
+                                ('sample_std_' + db_cov_type + '_cov_dict', 'std_coverage'),
+                                ('sample_' + db_cov_type + '_abundances_dict', 'abundance'),
+                                ('sample_' + db_cov_type + '_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_' + db_cov_type + '_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
                 self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+
+            # Variability is the measure of the frequency of modification-induced substitutions in
+            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
-            self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_specific_nonspecific_or_summed_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
                                      getattr(self, db_cov_type + '_indels_table_entries'))
         elif db_cov_type == 'combined':
-            for specific_attr, nonspecific_attr, table_basename in [
-                ('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
-                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
-                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
-                ('sample_specific_relative_abundances_dict', 'sample_nonspecific_relative_abundances_dict', 'relative_abundance'),
-                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
-                ('sample_specific_max_normalized_ratio_dict', 'sample_nonspecific_max_normalized_ratio_dict', 'max_normalized_ratio'),
-                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]:
+            tables_to_create = [('sample_mean_specific_cov_dict', 'sample_mean_nonspecific_cov_dict', 'mean_coverage'),
+                                ('sample_std_specific_cov_dict', 'sample_std_nonspecific_cov_dict', 'std_coverage'),
+                                ('sample_specific_abundances_dict', 'sample_nonspecific_abundances_dict', 'abundance'),
+                                ('sample_specific_detection_dict', 'sample_nonspecific_detection_dict', 'detection'),
+                                ('sample_mean_Q2Q3_specific_cov_dict', 'sample_mean_Q2Q3_nonspecific_cov_dict', 'mean_coverage_Q2Q3')]
+
+            for specific_attr, nonspecific_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(specific_attr, nonspecific_attr)
                 self.create_combined_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
+
+            # Variability is the measure of the frequency of modification-induced substitutions in
+            # seeds. Subs are only calculated from specific coverage -- nonspecific coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
-            self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            self.create_combined_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             combined_indels_table_entries = []
             for entry in self.specific_indels_table_entries:
                 combined_indels_table_entries.append((entry[0] + '_specific', ) + entry[1: ])
-            combined_indels_table_entries = []
             for entry in self.nonspecific_indels_table_entries:
                 combined_indels_table_entries.append((entry[0] + '_nonspecific', ) + entry[1: ])
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
@@ -6395,7 +6858,7 @@ class DatabaseConverter(object):
         data_dict = {}
         for seed_seq in self.seed_seqs:
             data_dict[seed_seq.name + '_split_00001'] = {'anticodon': seed_seq.anticodon_seq_string,
-                                                         'amino_acid': ANTICODON_TO_AA[seed_seq.anticodon_seq_string]}
+                                                         'amino_acid': ANTICODON_AA_DICT[seed_seq.anticodon_seq_string]}
         items_additional_data_table.add(data_dict, ['anticodon', 'amino_acid'])
 
         # Cluster tRNA seeds to form the central dendrogram in anvi-interactive.
@@ -6417,16 +6880,7 @@ class DatabaseConverter(object):
         profile_db_super.load_views(omit_parent_column=True)
         layer_orders_data_dict = {}
         failed_attempts = []
-        for essential_field in [
-            'abundance',
-            'std_coverage',
-            'mean_coverage',
-            'mean_coverage_Q2Q3',
-            'max_normalized_ratio',
-            'relative_abundance',
-            'detection',
-            'variability'
-        ]:
+        for essential_field in constants.essential_data_fields_for_anvio_profiles:
             try:
                 data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
                                                                       distance=self.distance,
@@ -6457,7 +6911,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_split_name] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_split_name] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id] = getattr(seed_seq, seed_seq_attr)[sample_id]
         return data_dict
@@ -6469,7 +6923,7 @@ class DatabaseConverter(object):
         for seed_seq in self.seed_seqs:
             seed_seq_name = seed_seq.name
             seed_seq_split_name = seed_seq_name + '_split_00001'
-            data_dict[seed_seq_name + '_split_00001'] = {'__parent__': seed_seq_name}
+            data_dict[seed_seq_name + '_split_00001'] = {}
             for sample_id in self.trnaseq_db_sample_ids:
                 data_dict[seed_seq_split_name][sample_id + '_specific'] = getattr(seed_seq, specific_seed_seq_attr)[sample_id]
                 data_dict[seed_seq_split_name][sample_id + '_nonspecific'] = getattr(seed_seq, nonspecific_seed_seq_attr)[sample_id]
@@ -6481,17 +6935,15 @@ class DatabaseConverter(object):
         and splits tables contain the same information since tRNA, unlike a metagenomic contig, is
         not long enough to be split."""
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_contigs',
-            table_structure=['contig'] + self.trnaseq_db_sample_ids + ['__parent__'],
-            table_types=['text'] + ['numeric'] * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=None)
+            view_name=None,
+            from_matrix_form=True)
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_splits',
-            table_structure=['contig'] + self.trnaseq_db_sample_ids + ['__parent__'],
-            table_types=['text'] + ['numeric'] * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=table_basename)
+            view_name=table_basename,
+            from_matrix_form=True)
 
 
     def create_combined_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
@@ -6499,17 +6951,15 @@ class DatabaseConverter(object):
         the same information since tRNA, unlike a metagenomic contig, is not long enough to be
         split."""
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_contigs',
-            table_structure=['contig'] + list(itertools.chain(*[(sample_id + '_specific', sample_id + '_nonspecific') for sample_id in self.trnaseq_db_sample_ids])) + ['__parent__'],
-            table_types=['text'] + ['numeric'] * 2 * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=None)
+            view_name=None,
+            from_matrix_form=True)
         TablesForViews(profile_db_path).create_new_view(
-            data_dict=data_dict,
+            view_data=data_dict,
             table_name=table_basename + '_splits',
-            table_structure=['contig'] + list(itertools.chain(*[(sample_id + '_specific', sample_id + '_nonspecific') for sample_id in self.trnaseq_db_sample_ids])) + ['__parent__'],
-            table_types=['text'] + ['numeric'] * 2 * len(self.trnaseq_db_sample_ids) + ['text'],
-            view_name=table_basename)
+            view_name=table_basename,
+            from_matrix_form=True)
 
 
 def trnaseq_db_loader(input_queue, output_queue, db_converter):

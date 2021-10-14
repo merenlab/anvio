@@ -20,6 +20,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.argparse import ArgumentParser
 from anvio.errors import UpgradeError, ConfigError
 
+__authors__ = ['ozcan']
 __description__ = "Download and install minor releases of anvi'o from a Github repository"
 
 run = terminal.Run()
