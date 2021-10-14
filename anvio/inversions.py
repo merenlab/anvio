@@ -2,7 +2,6 @@
 # pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
-import os
 import sys
 import argparse
 import numpy as np
@@ -211,7 +210,7 @@ class Inversions:
                     self.progress.reset()
                     self.run.warning(None, header=f"Palindromes in {sequence_name}", lc='yellow', nl_before=3)
                     self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
-                    self.run.info_single(f"Coverage:", nl_before=1, nl_after=1)
+                    self.run.info_single("Coverage:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
                 ################################################################################
