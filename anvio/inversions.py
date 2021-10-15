@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
+import os
 import argparse
 import numpy as np
 
@@ -348,6 +349,26 @@ class Inversions:
 
 
     def process(self):
+        """Do the processing of everything"""
+
+        w = self.run.width
+        self.run.width += 15
+        self.run.info("[General] Input BAMs and profiles file", os.path.abspath(self.bams_and_profiles_file_path))
+        self.run.info("[General] Number of samples to process", len(self.profile_db_bam_file_pairs))
+        self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
+
+        self.run.info("[Defining regions] Min coverage to define a stretch", self.min_coverage_to_define_stretches)
+        self.run.info("[Defining regions] Min stretch length", self.min_stretch_length)
+        self.run.info("[Defining regions] Min dist between independent stretches", self.min_distance_between_independent_stretches)
+        self.run.info("[Defining regions] Num nts to pad a ROI", self.num_nts_to_pad_a_stretch, nl_after=1)
+
+        self.run.info("[Palindrome search] min palindrome length", self.min_palindrome_length)
+        self.run.info("[Palindrome search] max num mismatches", self.max_num_mismatches)
+        self.run.info("[Palindrome search] min distance between palindromes", self.min_distance_palindrome, nl_after=1)
+
+        self.run.info("[Inversion search] process only inverted reads?",  "True" if self.process_only_inverted_reads else "False")
+        self.run.width = w
+
         for entry_name in self.profile_db_bam_file_pairs:
             bam_file_path = self.profile_db_bam_file_pairs[entry_name]['bam_file_path']
             profile_db_path = self.profile_db_bam_file_pairs[entry_name]['profile_db_path']
