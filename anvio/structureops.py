@@ -1649,7 +1649,12 @@ class Structure(object):
         """Loads exactly one chain from one model of a PDB"""
 
         p = PDBParser()
-        model = p.get_structure(name_id, pdb_path).get_list()[model_index]
+        structure_obj = p.get_structure(name_id, pdb_path)
+
+        if not len(structure_obj.get_list()):
+            raise FilesNPathsError(f"Biopython was unable to parse {pdb_path} as a PDB file...")
+
+        model = structure_obj.get_list()[model_index]
         self.structure = model.get_list()[chain_index]
 
 
