@@ -320,6 +320,8 @@ class Inversions:
                              "install it by running `pip install plotext` in your anvi'o "
                              "environment.", header="NO PLOT FOR YOU :(")
 
+            return
+
         plt.clp()
         plt.title(f"{sequence_name}")
         plt.xlabel("Position")
