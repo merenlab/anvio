@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren', 'FlorianTrigodet']
 __requires__ = ["contigs-db", "profile-db"]
 __provides__ = ["inversions"]
-__description__ = "Reports inversions."
+__description__ = "Reports inversions"
 
 
 @time_program
@@ -30,16 +30,50 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('INPUT DATA', "Essentially a BAMs and profiles file")
+    groupA = parser.add_argument_group('INPUT DATA', "Essentially a BAMs and profiles file and nothing more.")
     groupA.add_argument(*anvio.A('bams-and-profiles'), **anvio.K('bams-and-profiles'))
 
-    groupB = parser.add_argument_group('FINDING PALINDROMES', "Some essential stuff here about your palindromes")
-    groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
-    groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
-    groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
+    groupB = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 01: IDENTIFYING REGIONS OF INTERSET', "How should anvi'o identify regions of interest "
+                    "based on REV/REV and FWD/FWD paired-end reads? Defaults will be good for most cases.")
+    groupB.add_argument('--min-coverage-to-define-stretches', default=10, type=int, help="Value to break up contigs into 'stretches' of "
+                    "high-coverage regions of FWD/FWD and REV/REV reads. The lower the value, the more noise. This acts as a low-pass "
+                    "filter if it helps you imagine how it works.", metavar="INT")
+    groupB.add_argument('--min-stretch-length', default=50, type=int, help="These are not the stretches you are looking for (unless they "
+                    "are longer than this, obv).", metavar="INT")
+    groupB.add_argument('--min-distance-between-independent-stretches', default=2000, type=int, help="Our 'low pass' filter may break a "
+                    "single stretch of reasonable coverage of FWD/FWD and REV/REV reads into multiple pieces. To recover from that, we "
+                    "wish to merge the fragmented ones if they are closer to one another than this value.", metavar="INT")
+    groupB.add_argument('--num-nts-to-pad-a-stretch', default=100, type=int, help="Some leeway towards upstream and downstream context "
+                    "that is essential to not miss key information due to coverage variation that may influence the beginnings and ends "
+                    "of final stretches.", metavar="INT")
 
-    groupC = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "For the never satisfied.")
-    groupC.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupC = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 02: FINDING PALINDROMES', "Some essential parameters to find palindromes in sequence "
+                    "stretches anvi'o identified in the previous step")
+    groupC.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
+    groupC.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
+    groupC.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
+
+    groupD = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 03: CONFIRMING INVERSIONS', "Which palindromes are inversions? A one million dollar "
+                    "question that is quite difficult to get right (but as anvi'o does get it right frequently).")
+    groupD.add_argument('--process-only-inverted-reads', default=False, action="store_true", help="At one point, "
+                    "anvi'o will have all the regions of interest in contigs that include palindromes that look "
+                    "promising. At that point, it will access to short reads in the BAM file to determine which "
+                    "palindromes in fact represent active inversions by searching for unique constructs that "
+                    "can only occur when a genomic region did funny things. One option is to search for such "
+                    "reads that are evidence of inversion activity among paired-end reads that are in FWD/FWD "
+                    "or REV/REV orientation. Which is defined by the fetch-filter 'inversions'. However, this "
+                    "may be too limiting as there may be paired-end reads that are too downstream or too upstream "
+                    "to the region of interest, and thus mapping FWD/REV or REV/FWD orientation just like every "
+                    "other non-rebellious paired end read, YET including one of the constructs. Thus, searching "
+                    "all reads may in fact help the identification of more inversions (especially those that are "
+                    "covered less), with only an added disadvantage of compute time, which should be negligible "
+                    "in almost all instances (since anvi'o at this stage is only focusing on very specific "
+                    "regions of genomes). But this parameter is here in case you insist on only using inverted "
+                    "paired-end reads and assert your authority. You do you and turn on the flag, you rebellious "
+                    "scientist who will likely miss a lot of additoinal inversions like a boss.")
+
+    groupE = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
+    groupE.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
 
     args = parser.get_args(parser)
