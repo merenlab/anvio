@@ -425,7 +425,10 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
 
 
 class CoverageStats:
-    """This class should replace `coverage_c` function in bamops"""
+    """A class to return coverage stats for an array of nucleotide level coverages.
+
+    FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+    """
 
     def __init__(self, coverage, skip_outliers=False):
         self.min = np.amin(coverage)
@@ -446,7 +449,7 @@ class CoverageStats:
         if skip_outliers:
             self.is_outlier = None
         else:
-            self.is_outlier = utils.get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+            self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
 
 class RunInDirectory(object):
