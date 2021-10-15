@@ -405,6 +405,7 @@ class StructureSuperclass(object):
         =====
         - If self.create=False, parameters in self.args accessed by this function are first set via
           self.set_prior_modeller_params
+        - If self.run_mode != 'modeller', all values are set to null values
         """
 
         if not self.create:
@@ -414,16 +415,28 @@ class StructureSuperclass(object):
         A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
 
-        return {
-            'modeller_database': A('modeller_database', null),
-            'scoring_method': A('scoring_method', null),
-            'max_number_templates': A('max_number_templates', null),
-            'percent_cutoff': A('percent_cutoff', null),
-            'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
-            'num_models': A('num_models', null),
-            'deviation': A('deviation', null),
-            'very_fast': A('very_fast', bool),
-        }
+        if self.run_mode == 'modeller':
+            return {
+                'modeller_database': A('modeller_database', null),
+                'scoring_method': A('scoring_method', null),
+                'max_number_templates': A('max_number_templates', null),
+                'percent_cutoff': A('percent_cutoff', null),
+                'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
+                'num_models': A('num_models', null),
+                'deviation': A('deviation', null),
+                'very_fast': A('very_fast', bool),
+            }
+        else:
+            return {
+                'modeller_database': None,
+                'scoring_method': None,
+                'max_number_templates': 0,
+                'percent_cutoff': 0,
+                'alignment_fraction_cutoff': 0,
+                'num_models': 0,
+                'deviation': 0,
+                'very_fast': False,
+            }
 
 
     def set_prior_modeller_params(self):
@@ -447,7 +460,7 @@ class StructureSuperclass(object):
                              "properly credit their work.", lc='green', header="CITATION")
 
         # if self.percent_cutoff is < 25, you should be careful about accuracy of models
-        if self.modeller_params['percent_cutoff'] < 25:
+        if self.run_mode == 'modeller' and self.modeller_params['percent_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
                              "to the quality of the proteins... Keep in mind random sequence are expected to share "
                              "around 10% identity.".format(self.modeller_params['percent_cutoff']))
@@ -456,18 +469,6 @@ class StructureSuperclass(object):
             self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
                              "an expert could justify... Anvi'o's respect for you increases slightly.")
 
-        # Perform a rather extensive check on whether the MODELLER executable is going to work. We
-        # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
-        # check every time
-        self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
-        self.modeller_executable = self.args.modeller_executable
-        self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
-
-        # Check and populate modeller databases if required
-        self.progress.new("MODELLER")
-        self.progress.update("Populating databases")
-        MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
-        self.progress.end()
         if self.run_mode == 'modeller':
             # Perform a rather extensive check on whether the MODELLER executable is going to work. We
             # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
@@ -486,10 +487,10 @@ class StructureSuperclass(object):
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Nabs the genes of interest based on genes_of_interest_path and gene_caller_ids
+        """Nabs the genes of interest based on genes_of_interest_path, gene_caller_ids, and self.external_structures
 
-        If no genes of interest are provided through either genes_of_interest_path or
-        gene_caller_ids, all will be assumed
+        If no genes of interest are provided through either genes_of_interest_path,
+        gene_caller_ids, or self.external_structures, all will be assumed
 
         Parameters
         ==========
@@ -498,6 +499,16 @@ class StructureSuperclass(object):
         """
 
         genes_of_interest = None
+
+        if self.run_mode == 'external':
+            if genes_of_interest_path or gene_caller_ids:
+                raise ConfigError("You can't provide a --gene-caller-ids or --genes-of-interest concurrently with --external-structures. "
+                                  "If you are trying to create a database from a subset of structures in your external structures file, "
+                                  "please instead create an external structures file containing only those structures and use that instead."
+                                  "Sorry for the inconvenience.")
+
+            genes_of_interest = self.external_structures.content['gene_callers_id']
+            return genes_of_interest
 
         # identify the gene caller ids of all genes available
         genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
@@ -586,17 +597,18 @@ class StructureSuperclass(object):
         self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('skip_DSSP', self.skip_DSSP)
 
-        self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
-        self.run.info('modeller_executable', self.modeller_executable)
-        for param, value in self.modeller_params.items():
-            self.run.info(param, value)
-        self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+        if self.run_mode == 'modeller':
+            self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
+            self.run.info('modeller_executable', self.modeller_executable)
+            for param, value in self.modeller_params.items():
+                self.run.info(param, value)
+            self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
 
         if not anvio.DEBUG:
             self.run.warning("Do you want live info about how the modelling procedure is going for "
                              "each gene? Then restart this process with the --debug flag", lc='yellow')
 
-        if not self.full_modeller_output:
+        if self.run_mode == 'modeller' and not self.full_modeller_output:
             self.run.warning("When this finishes, do you want a potentially massive folder that "
                              "contains a murder of unorganized data in volumes that far exceed what "
                              "you could possibly want? Perfect, then restart this process and "
@@ -1844,13 +1856,13 @@ class Structure(object):
 
 
 class ExternalStructuresFile(object):
-    def __init__(self, path, contigs_db_path=None, lazy=False, p=terminal.Progress(), r=terminal.Run()):
+    def __init__(self, path, contigs_db_path, lazy=False, p=terminal.Progress(), r=terminal.Run()):
         """Check the integrity of an external structures file and provide contents as the attribute self.content
 
         Parameters
         ==========
         contigs_db_path : str, None
-            The path to the corresponding contigs database. Can be None if lazy is True.
+            The path to the corresponding contigs database.
         lazy : bool, False
             If false, each structure file will be opened and the sequence therein will be explicitly compared to
             the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
@@ -1863,17 +1875,17 @@ class ExternalStructuresFile(object):
         self.path = path
         self.contigs_db_path = contigs_db_path
 
-        if self.contigs_db_path is None and not lazy:
-            raise ConfigError("ExternalStructuresFile :: contigs_db_path must be set if lazy is False")
-
+        utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_file_tab_delimited(self.path)
+
         self.content = pd.read_csv(self.path, sep='\t')
 
         self.is_header_ok()
         self.is_duplicates()
+        self.is_gene_caller_ids_ok()
         self.is_files_exist()
         if not lazy:
-            self.test_integrity(self.contigs_db_path)
+            self.test_integrity()
 
 
     def is_header_ok(self):
@@ -1911,17 +1923,30 @@ class ExternalStructuresFile(object):
         return True
 
 
-    def test_integrity(self, contigs_db_path):
+    def is_gene_caller_ids_ok(self):
+        """Returns True if all gene_callers_ids in external structures file are in the contigs database and are coding"""
+
+        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
+        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
+        genes_in_contigs_db_with_aa_seqs = table.loc[table['sequence'] != '', 'gene_callers_id'].tolist()
+        missing_in_contigs = [x for x in self.content['gene_callers_id'] if x not in genes_in_contigs_db_with_aa_seqs]
+
+        if len(missing_in_contigs):
+            raise ConfigError(f"Some gene caller ids in your external structures file are either missing from your contigs database "
+                              f"or are non-coding (they have no corresponding amino acid sequence). This is a show stopper. "
+                              f"Here are the gene caller ids: {missing_in_contigs}")
+
+
+    def test_integrity(self):
         """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
 
         # Fetch the amino acid sequences found in contigs database
-        utils.is_contigs_db(contigs_db_path)
-        contigs_db = db.DB(contigs_db_path, client_version=None, ignore_version=True)
+        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
         table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
         amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
 
-        self.progress.new('Testing', progress_total_items=self.content.shape[0])
-        self.progress.update('personal integrity')
+        self.progress.new('Testing personal integrity', progress_total_items=self.content.shape[0])
+        self.progress.update('...')
 
         for _, row in self.content.iterrows():
             gene_callers_id, path = row['gene_callers_id'], row['path']
