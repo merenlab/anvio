@@ -74,6 +74,11 @@ if __name__ == '__main__':
 
     groupE = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
     groupE.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupE.add_argument('--only-report-from', default=None, type=str, help="This is more of a debugging flag more than anything, and can be "
+                    "helpful to work on problematic cases over and over again. To engage this mode, you need to mention a region mentioned in "
+                    "in your output file or printouts you see when you use the `--verbose` flag. It will be different from project to project, "
+                    "but it should look something like this: CONTIG_NAME_5364768_5365139. When declared, anvi'o will only report data from this "
+                    "particular region, and nothing at all if it does not find it in your while processing palindromes.", metavar="REGION_STRING")
 
 
     args = parser.get_args(parser)

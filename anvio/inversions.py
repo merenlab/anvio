@@ -69,6 +69,12 @@ class Inversions:
         # be talkative or not
         self.verbose = A('verbose')
 
+        # debugging mode:
+        self.only_report_from = A('only_report_from')
+
+        if self.only_report_from:
+            self.verbose = True
+
         if not skip_sanity_check:
             self.sanity_check()
 
@@ -210,6 +216,12 @@ class Inversions:
                 stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
+
+                # if the user wants to learn about only a single sequence, we only
+                # focus on that one and prematurely go to the next stretch unless
+                # there is a match
+                if self.only_report_from and sequence_name != self.only_report_from:
+                    continue
 
                 # before we go any further, let's print out the sequence in consideration
                 # for the user if they used `--verbose`
@@ -366,7 +378,11 @@ class Inversions:
         self.run.info("[Palindrome search] max num mismatches", self.max_num_mismatches)
         self.run.info("[Palindrome search] min distance between palindromes", self.min_distance_palindrome, nl_after=1)
 
-        self.run.info("[Inversion search] process only inverted reads?",  "True" if self.process_only_inverted_reads else "False")
+        self.run.info("[Inversion search] process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
+
+        if self.only_report_from:
+            self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)
+
         self.run.width = w
 
         for entry_name in self.profile_db_bam_file_pairs:
