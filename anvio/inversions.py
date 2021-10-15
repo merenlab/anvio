@@ -50,6 +50,13 @@ class Inversions:
         self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
         self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values()]
 
+        # params to identify regions of interest. if you are studying the code, don't forget to read
+        # the information stored in the help menu of the program about these parameters
+        self.min_coverage_to_define_stretches = A('min_coverage_to_define_stretches') or 10
+        self.min_stretch_length = A('min_stretch_length') or 50
+        self.min_distance_between_independent_stretches = A('min_distance_between_independent_stretches') or 2000
+        self.num_nts_to_pad_a_stretch = A('num_nts_to_pad-a_stretch') or 100
+
         # palindrome search parameters
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
@@ -105,12 +112,6 @@ class Inversions:
         # REV/REV reads.
         bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
 
-        # FIXME: this will need to have more reasonable defaults
-        #        that are also parameterized
-        min_cov = 10
-        min_stretch_length = 50
-        min_distance_between_independent_stretches = 2000
-        num_nts_to_pad_stretches = 100
         if self.process_only_inverted_reads:
             bam_file.fetch_filter = 'inversions'
         else:
@@ -135,7 +136,7 @@ class Inversions:
                 contig_coverage = np.concatenate((contig_coverage, split_coverages[sample_id]), axis=None)
 
             # now we know the `contig_coverage`. it is time to break it into stretches
-            # of 'high coverage' regions (as in coverage > `min_cov`), and store that
+            # of 'high coverage' regions (as in coverage > `self.min_coverage_to_define_stretches`), and store that
             # information into the dictionary `coverage_stretches_in_contigs`
             coverage_stretches_in_contigs[contig_name] = []
 
@@ -144,7 +145,7 @@ class Inversions:
 
             # to find regions of high coverage, we first need to 'pad' our array to ensure it always
             # starts and ends with 'low coverage'.
-            regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= min_cov, [False]])
+            regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= self.min_coverage_to_define_stretches, [False]])
 
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
@@ -157,7 +158,7 @@ class Inversions:
             for i in range(0, len(cov_stretch_start_positions)):
                 cov_stretch_start, cov_stretch_end = cov_stretch_start_positions[i], cov_stretch_end_positions[i]
 
-                if (cov_stretch_end - cov_stretch_start) >= min_stretch_length:
+                if (cov_stretch_end - cov_stretch_start) >= self.min_stretch_length:
                     coverage_stretches_in_contigs[contig_name].append((cov_stretch_start, cov_stretch_end),)
 
             # now it is time to merge those stretches of coverage if they are close to one another to avoid
@@ -173,11 +174,11 @@ class Inversions:
             #           -----------------------
             # -----------------------------------------------
             coverage_stretches_in_contigs[contig_name] = utils.merge_stretches(coverage_stretches_in_contigs[contig_name],
-                                                                               min_distance_between_independent_stretches=min_distance_between_independent_stretches)
+                                                                               min_distance_between_independent_stretches=self.min_distance_between_independent_stretches)
             # extend start and stop positions of merged stretches to ENSURE we are not
             # missing important information because bioinformatics.
-            coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - num_nts_to_pad_stretches < 0) else e[0] - num_nts_to_pad_stretches,
-                                                           contig_length if (e[1] + num_nts_to_pad_stretches) > contig_length else e[1] + num_nts_to_pad_stretches) \
+            coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - self.num_nts_to_pad_a_stretch< 0) else e[0] - self.num_nts_to_pad_a_stretch,
+                                                           contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
             contig_coverages[contig_name] = contig_coverage
