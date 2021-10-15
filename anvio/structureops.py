@@ -345,9 +345,6 @@ class StructureSuperclass(object):
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.rerun_genes = A('rerun_genes', null)
-        self.splits_of_interest_path = A('splits_of_interest', null)
-        self.bin_id = A('bin_id', null)
-        self.collection_name = A('collection_name', null)
 
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
