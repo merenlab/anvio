@@ -12,5 +12,8 @@ External structures is a user-provided TAB-delimited file that should follow thi
 |8|path/to/gene6/structure.pdb|
 |(...)|(...)|
 
+Each path should point to a %(protein-structure-txt)s.
+
+{:.notice}
 Please note that anvi'o will try its best to test the integrity of each file, and work with any limitations, however ultimately the user may be subject to the strict requirements set forth by anvi'o. For example, if a structure has a missing residue, you will hear about it.
 

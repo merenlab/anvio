@@ -1,5 +1,5 @@
 
-This program creates a %(structure-database)s either by (a) attempting to solve for the 3D structures of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER, or (b) importing pre-existing structures provided by the user using an %(external-structures)s file.
+This program creates a %(structure-db)s either by (a) attempting to solve for the 3D structures of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER, or (b) importing pre-existing structures provided by the user using an %(external-structures)s file.
 
 ### The basics of the pipeline
 

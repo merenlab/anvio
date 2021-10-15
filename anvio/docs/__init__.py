@@ -58,6 +58,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "external-structures": {
+        "name": "EXTERNAL STRUCTURES",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
         "type": "FASTA",
