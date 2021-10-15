@@ -1645,10 +1645,12 @@ class Structure(object):
         self._load_pdb_file(self.path)
 
 
-    def _load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+    def _load_pdb_file(self, pdb_path, name_id='structure', model_index=0, chain_index=0):
+        """Loads exactly one chain from one model of a PDB"""
+
         p = PDBParser()
-        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        self.structure = model[chain]
+        model = p.get_structure(name_id, pdb_path).get_list()[model_index]
+        self.structure = model.get_list()[chain_index]
 
 
     def get_contact_map(self, distance_method='CA', compressed=False, c='order'):
