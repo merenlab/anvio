@@ -55,6 +55,9 @@ class Inversions:
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance_palindrome = A('min-distance') or 50
 
+        # parameters to survey inversions
+        self.process_only_inverted_reads = A('process_only_inverted_reads')
+
         # be talkative or not
         self.verbose = A('verbose')
 
@@ -101,7 +104,6 @@ class Inversions:
         # we will access to it later when it is time to get the FWD/FWD and
         # REV/REV reads.
         bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
-        bam_file.fetch_filter = 'inversions'
 
         # FIXME: this will need to have more reasonable defaults
         #        that are also parameterized
@@ -109,6 +111,10 @@ class Inversions:
         min_stretch_length = 50
         min_distance_between_independent_stretches = 2000
         num_nts_to_pad_stretches = 100
+        if self.process_only_inverted_reads:
+            bam_file.fetch_filter = 'inversions'
+        else:
+            bam_file.fetch_filter = None
 
         ################################################################################
         self.progress.update("Computing coverage stretches")
