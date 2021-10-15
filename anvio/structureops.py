@@ -468,6 +468,21 @@ class StructureSuperclass(object):
         self.progress.update("Populating databases")
         MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
         self.progress.end()
+        if self.run_mode == 'modeller':
+            # Perform a rather extensive check on whether the MODELLER executable is going to work. We
+            # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
+            # check every time
+            self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
+            self.modeller_executable = self.args.modeller_executable
+            self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
+
+            # Check and populate modeller databases if required
+            self.progress.new("MODELLER")
+            self.progress.update("Populating databases")
+            MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+            self.progress.end()
+        elif self.run_mode == 'external':
+            self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
@@ -1826,3 +1841,104 @@ class Structure(object):
         COM2 = self.get_residue_center_of_mass(residue2)
 
         return np.sqrt(np.sum((COM1 - COM2)**2))
+
+
+class ExternalStructuresFile(object):
+    def __init__(self, path, contigs_db_path=None, lazy=False, p=terminal.Progress(), r=terminal.Run()):
+        """Check the integrity of an external structures file and provide contents as the attribute self.content
+
+        Parameters
+        ==========
+        contigs_db_path : str, None
+            The path to the corresponding contigs database. Can be None if lazy is True.
+        lazy : bool, False
+            If false, each structure file will be opened and the sequence therein will be explicitly compared to
+            the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
+            will be carried out, like making sure the file is tab-delimited and that all files pointed to actually
+            exist.
+        """
+
+        self.run, self.progress = r, p
+
+        self.path = path
+        self.contigs_db_path = contigs_db_path
+
+        if self.contigs_db_path is None and not lazy:
+            raise ConfigError("ExternalStructuresFile :: contigs_db_path must be set if lazy is False")
+
+        filesnpaths.is_file_tab_delimited(self.path)
+        self.content = pd.read_csv(self.path, sep='\t')
+
+        self.is_header_ok()
+        self.is_duplicates()
+        self.is_files_exist()
+        if not lazy:
+            self.test_integrity(self.contigs_db_path)
+
+
+    def is_header_ok(self):
+        headers_proper = ['gene_callers_id', 'path']
+        with open(self.path, 'rU') as input_file:
+            headers = input_file.readline().strip().split('\t')
+            missing_headers = [h for h in headers_proper if h not in headers]
+
+            if len(headers) != 2:
+                raise FilesNPathsError("Your external structures file does not contain the right number of columns :/ Here are "
+                                       "what the header columns should be called, in this order: '%s'." % ', '.join(headers_proper))
+
+            if len(missing_headers):
+                raise FilesNPathsError("Your external structures file has the wrong headers. They should be: '%s', not '%s'." % (', '.join(headers_proper), ', '.join(headers)))
+
+        return True
+
+
+    def is_duplicates(self):
+        counts = self.content['gene_callers_id'].value_counts()
+        multiple = counts[counts > 1].index.tolist()
+        if len(multiple):
+            raise FilesNPathsError(f"Only one structure can be assigned to each gene callers id. But the following genes are present "
+                                   f"multiple times in your external structures file: {multiple}")
+
+
+    def is_files_exist(self):
+        """Check that all files pointed to in the file actually exist"""
+        for _, row in self.content.iterrows():
+            gene_callers_id, path = row['gene_callers_id'], row['path']
+            if not filesnpaths.is_file_exists(path, dont_raise=True):
+                raise FilesNPathsError(f"This is kind of an issue. Your external structures file points to the following path: {path}. "
+                                       f"for gene callers id {gene_callers_id}. Well that path is not a file :\\")
+
+        return True
+
+
+    def test_integrity(self, contigs_db_path):
+        """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
+
+        # Fetch the amino acid sequences found in contigs database
+        utils.is_contigs_db(contigs_db_path)
+        contigs_db = db.DB(contigs_db_path, client_version=None, ignore_version=True)
+        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
+        amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
+
+        self.progress.new('Testing', progress_total_items=self.content.shape[0])
+        self.progress.update('personal integrity')
+
+        for _, row in self.content.iterrows():
+            gene_callers_id, path = row['gene_callers_id'], row['path']
+            s = Structure(path)
+            aa_seq_structure = ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in s.structure.get_list()])
+            aa_seq_contigs = ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in s.structure.get_list()])
+
+            if aa_seq_structure != aa_seq_contigs:
+                self.progress.end()
+                raise ConfigError(f"The sequence in the structure for gene callers id {gene_callers_id} ({path}) does not match the sequence "
+                                  f"found for this gene in the contigs database. Here is the sequence found in the structure: {aa_seq_structure}. "
+                                  f"And here is the sequence in the contigs database that anvi'o was expecting: {aa_seq_contigs}.")
+
+            self.progress.increment()
+            self.progress.update(self.progress.msg)
+
+        self.progress.end()
+        return True
+
+
