@@ -44,7 +44,7 @@ class Inversions:
         self.bams_and_profiles_file_path = A('bams_and_profiles')
 
         if not self.bams_and_profiles_file_path:
-            raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` arguemnt.")
+            raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` argument.")
 
         # get these filled in immediately
         self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
