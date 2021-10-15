@@ -1633,7 +1633,7 @@ class PDBDatabase(object):
 
 
 class Structure(object):
-    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
+    def __init__(self, pdb_path):
         """Object to handle the analysis of PDB files"""
 
         self.distances_methods_dict = {
