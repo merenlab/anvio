@@ -9,6 +9,7 @@ make_structure_db() {
                                 --output-db-path test-output/STRUCTURE.db \
                                 --very-fast \
                                 --debug \
+                                --alignment-fraction-cutoff 0.7 \
                                 --num-threads 2 \
                                 --num-models 1
 }
