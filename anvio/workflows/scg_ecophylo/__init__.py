@@ -102,7 +102,6 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             'rename_and_filter_external_gene_calls_file': {'threads': 2},
             'cat_external_gene_calls_file': {'threads': 2},
             'subset_external_gene_calls_file_all': {'threads': 5},
-            'trim_alignment': {'threads': 5},
             'make_fasta_txt': {'threads': 2},
             'make_metagenomics_config_file': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
