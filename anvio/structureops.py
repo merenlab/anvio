@@ -334,9 +334,12 @@ class StructureSuperclass(object):
 
         self.contigs_db_path = A('contigs_db', null)
         self.structure_db_path = A('structure_db', null)
+        self.external_structures_path = A('external_structures', null)
         self.modeller_executable = A('modeller_executable', null)
         self.list_modeller_params = A('list_modeller_params', null)
         self.full_modeller_output = A('dump_dir', null)
+
+        self.run_mode = 'modeller' if not self.external_structures_path else 'external'
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 2
@@ -364,10 +367,6 @@ class StructureSuperclass(object):
                 raise ConfigError("This structure DB already exists. Anvi'o will not overwrite")
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
-
-            self.run.warning("Anvi'o will use 'MODELLER' by Webb and Sali (DOI: 10.1002/cpbi.3) to model "
-                             "protein structures. If you publish your findings, please do not forget to "
-                             "properly credit their work.", lc='green', header="CITATION")
 
 
         # init StructureDatabase
@@ -442,6 +441,11 @@ class StructureSuperclass(object):
 
 
     def sanity_check(self):
+        if self.run_mode == 'modeller':
+            self.run.warning("Anvi'o will use 'MODELLER' by Webb and Sali (DOI: 10.1002/cpbi.3) to model "
+                             "protein structures. If you publish your findings, please do not forget to "
+                             "properly credit their work.", lc='green', header="CITATION")
+
         # if self.percent_cutoff is < 25, you should be careful about accuracy of models
         if self.modeller_params['percent_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "

@@ -324,6 +324,14 @@ D = {
                      "for your own case)) can be found at the URL https://bit.ly/2qEEHuQ. If you are providing external gene calls, "
                      "please also see the flag `--skip-predict-frame`."}
                 ),
+    'external-structures': (
+            ['--external-structures'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists PDB protein structures. The first item "
+                     "in the header line should read 'gene_callers_id', and the second should read 'path'. Each line in the "
+                     "file should describe a single entry, where the first column is the gene_callers_id that the structure corresponds "
+                     "to, and the second column is the path to the structure file."}
+                ),
     'external-genomes': (
             ['-e', '--external-genomes'],
             {'metavar': 'FILE_PATH',

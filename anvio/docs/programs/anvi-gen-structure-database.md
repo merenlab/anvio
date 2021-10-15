@@ -45,7 +45,7 @@ anvi-gen-structure-database -c %(contigs-db)s \
 {{ codestop }}
 
 {:.notice}
-Please avoid using any MODELLER-specific options when using this mode, as they will be silently ignored.
+Please avoid using any MODELLER-specific parameters when using this mode, as they will be silently ignored.
 
 
 ### Advanced Parameters
