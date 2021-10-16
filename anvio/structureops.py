@@ -858,12 +858,30 @@ class StructureSuperclass(object):
         return structure_info
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
-        """Do not try modelling gene if it is not clean"""
+    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path=None, sequence=None):
+        """Do not try modelling gene if it is not clean
 
-        fasta = u.SequenceSource(fasta_path); next(fasta)
+        Parameters
+        ==========
+        corresponding_gene_call : int
+            What is the gene callers id?
+        fasta_path : str, None
+            Provide either the path to the amino acid fasta
+        sequence : str, None
+            Or the amino acid sequence itself. Don't provide both
+        """
+
+        if not (fasta_path or sequence):
+            raise ConfigError("skip_gene_if_not_clean :: provide a fasta_path or sequence")
+        if fasta_path and sequence:
+            raise ConfigError("skip_gene_if_not_clean :: don't provide both a fasta_path and a sequence")
+
+        if fasta_path:
+            fasta = u.SequenceSource(fasta_path); next(fasta)
+            sequence = fasta.seq
+
         try:
-            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
+            utils.is_gene_sequence_clean(sequence, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
             return False
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
