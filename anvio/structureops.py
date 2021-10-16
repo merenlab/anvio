@@ -350,9 +350,9 @@ class StructureSuperclass(object):
         self.rerun_genes = A('rerun_genes', null)
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
-        self.contigs_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -475,14 +475,12 @@ class StructureSuperclass(object):
             # check every time
             self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
             self.modeller_executable = self.args.modeller_executable
-            self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
+            self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, nl_before=1, mc='green')
 
             # Check and populate modeller databases if required
-            self.progress.new("MODELLER")
-            self.progress.update("Populating databases")
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
-            self.progress.end()
         elif self.run_mode == 'external':
+            self.run.info_single("Anvi'o will attempt to generate a database using external structures", nl_after=1, nl_before=1, mc='green')
             self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
 
 
@@ -596,6 +594,7 @@ class StructureSuperclass(object):
         self.run.info('genes_of_interest', self.genes_of_interest_path)
         self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('skip_DSSP', self.skip_DSSP)
+        self.run.info('run_mode', self.run_mode)
 
         if self.run_mode == 'modeller':
             self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
