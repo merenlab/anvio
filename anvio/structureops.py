@@ -1703,6 +1703,10 @@ class Structure(object):
         self.structure = model.get_list()[chain_index]
 
 
+    def get_sequence(self):
+        return ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in self.structure.get_list()])
+
+
     def get_contact_map(self, distance_method='CA', compressed=False, c='order'):
         """Returns a contact map (pairwise distances in Angstroms)
 
@@ -1905,6 +1909,22 @@ class ExternalStructuresFile(object):
             self.test_integrity()
 
 
+    def get_structure(self, gene_callers_id):
+        """Return Structure object for given gene callers id"""
+
+        path = self.get_path(gene_callers_id)
+        return Structure(path)
+
+
+    def get_path(self, gene_callers_id):
+        """Return Structure object for given gene callers id"""
+
+        result = self.content.loc[self.content['gene_callers_id'] == gene_callers_id, 'path']
+        if result.empty:
+            raise ConfigError(f"Structure.get_path :: Can't find gene callers id '{gene_callers_id}'.")
+        return result.iloc[0]
+
+
     def is_header_ok(self):
         headers_proper = ['gene_callers_id', 'path']
         with open(self.path, 'rU') as input_file:
@@ -1962,13 +1982,13 @@ class ExternalStructuresFile(object):
         table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
         amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
 
-        self.progress.new('Testing personal integrity', progress_total_items=self.content.shape[0])
-        self.progress.update('...')
+        self.progress.new('External structures', progress_total_items=self.content.shape[0])
+        self.progress.update('Testing personal integrity')
 
         for _, row in self.content.iterrows():
             gene_callers_id, path = row['gene_callers_id'], row['path']
             s = Structure(path)
-            aa_seq_structure = ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in s.structure.get_list()])
+            aa_seq_structure = s.get_sequence()
             aa_seq_contigs = amino_acid_sequences[gene_callers_id]
 
             if aa_seq_structure != aa_seq_contigs:
