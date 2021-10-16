@@ -481,6 +481,10 @@ class StructureSuperclass(object):
             MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
         elif self.run_mode == 'external':
             self.run.info_single("Anvi'o will attempt to generate a database using external structures", nl_after=1, nl_before=1, mc='green')
+
+            if self.full_modeller_output:
+                raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
+
             self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
 
 
@@ -820,42 +824,67 @@ class StructureSuperclass(object):
             'has_structure': False,
         }
 
-        directory = filesnpaths.get_temp_directory_path()
+        if self.run_mode == 'modeller':
+            directory = filesnpaths.get_temp_directory_path()
 
-        # Export sequence
-        target_fasta_path = filesnpaths.get_temp_file_path()
-        self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                              output_file_path=target_fasta_path,
-                                                              report_aa_sequences=True,
-                                                              simple_headers=True)
+            # Export sequence
+            target_fasta_path = filesnpaths.get_temp_file_path()
+            self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
+                                                                  output_file_path=target_fasta_path,
+                                                                  report_aa_sequences=True,
+                                                                  simple_headers=True)
 
-        try:
-            filesnpaths.is_file_fasta_formatted(target_fasta_path)
-        except FilesNPathsError:
-            self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
-                             "is not what anvi'o considers a FASTA formatted file. The reason why this "
-                             "occassionally happens has not been investigated, but if it is any consolation, "
-                             "it is not your fault. You may want to try again, and maybe it will work. Or "
-                             "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
-                             "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
-            return structure_info
+            try:
+                filesnpaths.is_file_fasta_formatted(target_fasta_path)
+            except FilesNPathsError:
+                self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
+                                 "is not what anvi'o considers a FASTA formatted file. The reason why this "
+                                 "occassionally happens has not been investigated, but if it is any consolation, "
+                                 "it is not your fault. You may want to try again, and maybe it will work. Or "
+                                 "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
+                                 "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+                return structure_info
 
-        if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
-            return structure_info
+            if self.skip_gene_if_not_clean(corresponding_gene_call, fasta_path=target_fasta_path):
+                return structure_info
 
-        # Model structure
-        structure_info['modeller'] = self.run_modeller(target_fasta_path, directory)
+            # Model structure
+            structure_info['results'] = self.run_modeller(target_fasta_path, directory)
+
+        elif self.run_mode == 'external':
+
+            structure = self.external_structures.get_structure(corresponding_gene_call)
+            if self.skip_gene_if_not_clean(corresponding_gene_call, sequence=structure.get_sequence()):
+                return structure_info
+
+            structure_info['results'] = self.create_results_dict_for_external_structure(corresponding_gene_call)
 
         # Annotate residues
-        if structure_info['modeller']['structure_exists']:
+        if structure_info['results']['structure_exists']:
             structure_info['has_structure'] = True
 
             structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
                 corresponding_gene_call=corresponding_gene_call,
-                pdb_filepath=structure_info['modeller']['best_model_path'],
+                pdb_filepath=structure_info['results']['best_model_path'],
             )
 
         return structure_info
+
+
+    def create_results_dict_for_external_structure(self, corresponding_gene_call):
+        return {
+            'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
+            'models': {'molpdf': [0], 'GA341_score': [0], 'DOPE_score': [0], 'picked_as_best': [True]},
+            'corresponding_gene_call': corresponding_gene_call,
+            'structure_exists': True,
+            'best_model_path': self.external_structures.get_path(corresponding_gene_call),
+            'best_score': None,
+            'scoring_method': self.modeller_params['scoring_method'],
+            'percent_cutoff': self.modeller_params['percent_cutoff'],
+            'alignment_fraction_cutoff': self.modeller_params['alignment_fraction_cutoff'],
+            'very_fast': self.modeller_params['very_fast'],
+            'deviation': self.modeller_params['deviation'],
+        }
 
 
     def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path=None, sequence=None):
@@ -955,22 +984,22 @@ class StructureSuperclass(object):
         if not self.full_modeller_output:
             return
 
-        if 'modeller' not in structure_info:
+        if 'results' not in structure_info:
             return
 
-        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['modeller']['corresponding_gene_call'])
-        shutil.move(structure_info['modeller']['directory'], output_gene_dir)
+        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['results']['corresponding_gene_call'])
+        shutil.move(structure_info['results']['directory'], output_gene_dir)
 
 
     def store_gene(self, structure_info):
         """Store a gene's info into the structure database"""
 
-        if 'modeller' not in structure_info:
+        if 'results' not in structure_info:
             # There is nothing to store
             return
 
         corresponding_gene_call = structure_info["corresponding_gene_call"]
-        modeller_out = structure_info['modeller']
+        results = structure_info['results']
 
         # If the gene is present in the database, remove it first
         if corresponding_gene_call in self.structure_db.genes_with_structure:
@@ -978,24 +1007,24 @@ class StructureSuperclass(object):
             self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
 
         # templates is always added, even when structure was not modelled
-        templates = pd.DataFrame(modeller_out['templates'])
+        templates = pd.DataFrame(results['templates'])
         templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
         self.structure_db.entries[t.templates_table_name] = \
             self.structure_db.entries[t.templates_table_name].append(templates)
         self.structure_db.store(t.templates_table_name)
 
         # entries that are only added if a structure was modelled
-        if modeller_out['structure_exists']:
+        if results['structure_exists']:
 
             # models
-            models = pd.DataFrame(modeller_out['models'])
+            models = pd.DataFrame(results['models'])
             models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
             self.structure_db.entries[t.models_table_name] = \
                 self.structure_db.entries[t.models_table_name].append(models)
             self.structure_db.store(t.models_table_name)
 
             # pdb file data
-            pdb_file = open(modeller_out['best_model_path'], 'rb')
+            pdb_file = open(results['best_model_path'], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
             pdb_table_entry = (corresponding_gene_call, pdb_contents)
