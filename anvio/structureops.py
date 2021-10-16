@@ -1969,7 +1969,7 @@ class ExternalStructuresFile(object):
             gene_callers_id, path = row['gene_callers_id'], row['path']
             s = Structure(path)
             aa_seq_structure = ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in s.structure.get_list()])
-            aa_seq_contigs = ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in s.structure.get_list()])
+            aa_seq_contigs = amino_acid_sequences[gene_callers_id]
 
             if aa_seq_structure != aa_seq_contigs:
                 self.progress.end()
