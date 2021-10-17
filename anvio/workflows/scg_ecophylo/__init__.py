@@ -38,6 +38,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
                            'add_misc_data_to_taxonomy',
                            'anvi_get_external_gene_calls_file',
                            'rename_and_filter_external_gene_calls_file',
+                           'replace_gene_callers_ids_in_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'subset_external_gene_calls_file_all',
                            'cluster_X_percent_sim_mmseqs',
@@ -55,6 +56,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'anvi_import_state',
+                           'muscle',
                            'fasttree',
                            'iqtree'
                            ])
@@ -72,6 +74,7 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
+        rule_acceptable_params_dict['muscle'] = ['additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
@@ -90,6 +93,8 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5},
             'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
             'align_sequences': {'threads': 5},
+            'muscle': {'additional_params': '-maxiters 2'},
+            'replace_gene_callers_ids_in_external_gene_calls_file': {'threads': 2},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'fasttree': {'run': True, 'threads': 5},
@@ -238,9 +243,9 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         for reference_protein_name in self.SCG_protein_list:
 
             # Count num sequences removed per step
-            # tail_path = "%s_stats.tsv" % (reference_protein_name)
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
-            # target_files.append(target_file)
+            tail_path = "%s_stats.tsv" % (reference_protein_name)
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], reference_protein_name, tail_path)
+            target_files.append(target_file)
 
             # Import state file to customize interactive interface
             target_file = os.path.join(f"{reference_protein_name}_state_imported.done")

@@ -187,7 +187,7 @@ rule add_misc_data_to_taxonomy:
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{SCG_protein_name}.log")
     input:
         taxonomy = rules.anvi_estimate_scg_taxonomy_for_SCGs.output.taxonomy,
-        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     output:
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{SCG_protein_name}_misc.tsv")
     params:
@@ -252,14 +252,39 @@ rule cat_external_gene_calls_file:
         shell("cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")
 
 
+rule replace_gene_callers_ids_in_external_gene_calls_file:
+    """Cat all external_gene_calls files from all samples into one file"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_external_gene_calls_file_{SCG_protein_name}.log")
+    input: external_gene_calls_all = rules.cat_external_gene_calls_file.output.external_gene_calls_all
+    output: external_gene_calls_all_ed = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_all_ed.tsv"),
+    threads: M.T('replace_gene_callers_ids_in_external_gene_calls_file')
+    run:
+        external_gene_calls = pd.read_csv(input.external_gene_calls_all, \
+                              sep="\t", \
+                              index_col=None)
+
+        external_gene_calls['index1'] = external_gene_calls.index
+        external_gene_calls = external_gene_calls.drop('gene_callers_id', 1)
+        external_gene_calls.rename(columns={'index1': 'gene_callers_id'}, inplace=True)
+        external_gene_calls = external_gene_calls[["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]]
+
+
+        external_gene_calls.to_csv(output.external_gene_calls_all_ed, \
+                                   sep="\t", \
+                                   index=None, \
+                                   na_rep="NA")
+
+
 rule subset_external_gene_calls_file_all:
     """Subset external gene calls for only SCG sequences"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{SCG_protein_name}.log")
     input:
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_all.tsv"),
-        headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_all_ed.tsv"),
+        headers = os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     output:
         external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_external_gene_calls_subset.tsv"),
     threads: M.T('subset_external_gene_calls_file_all')
@@ -309,17 +334,18 @@ rule subset_AA_seqs_with_mmseqs_reps:
         anvi-script-reformat-fasta {input.fa} -I {output.headers} -o {output.fasta} >> {log} 2>&1
         """
 
-
 rule align_sequences:
     """MSA of AA sequences subset."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{SCG_protein_name}.log")
-	input: rules.subset_AA_seqs_with_mmseqs_reps.output.fasta
-	output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned.fa")
-	threads: M.T('align_sequences')
-	shell:
-		"muscle -in {input} -out {output} -maxiters 2 -verbose 2> {log}"
+    input: rules.subset_AA_seqs_with_mmseqs_reps.output.fasta
+    output: os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_aligned.fa")
+    params:
+        additional_params = M.get_param_value_from_config(['muscle', 'additional_params'])
+    threads: M.T('align_sequences')
+    shell:
+        "muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}"
 
 
 rule trim_alignment:
@@ -328,7 +354,7 @@ rule trim_alignment:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{SCG_protein_name}.log")
     input: rules.align_sequences.output
-    output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed.fa")
+    output: os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed.fa")
     params:
         gt = M.get_param_value_from_config(['trim_alignment', '-gt']),
         gappyout = M.get_rule_param('trim_alignment', '-gappyout'),
@@ -347,9 +373,9 @@ rule remove_sequences_with_X_percent_gaps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_gaps_{SCG_protein_name}.log")
     input: rules.trim_alignment.output
-    output: os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed_filtered.fa")
+    output: os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_aligned_trimmed_filtered.fa")
     params:
-        seq_counts_tsv = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_gaps_counts"),
+        seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
 	shell:
@@ -398,7 +424,7 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
         NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}/{SCG_protein_name}_references_for_mapping_NT.fa"),
-        headers = os.path.join(dirs_dict['MSA'], "MSA/{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
+        headers = os.path.join(dirs_dict['MSA'], "{SCG_protein_name}/{SCG_protein_name}_headers.tmp")
     threads: M.T('subset_DNA_reps_with_QCd_AA_reps_for_mapping')
     run:
         shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
