@@ -1,16 +1,17 @@
 
-This program attempts to solve for the 3D structures of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER.  
+This program creates a %(structure-db)s either by (a) attempting to solve for the 3D structures of proteins encoded by genes in your %(contigs-db)s using DIAMOND and MODELLER, or (b) importing pre-existing structures provided by the user using an %(external-structures)s file.
+
+### The basics of the pipeline
+
+This section covers option (a), where the user is interested in having structures predicted for them.
 
 DIAMOND first searches your sequence(s) against a database of proteins with a known structure.  This database is downloaded from the [Sali lab](https://salilab.org/modeller/supplemental.html), who created and maintain MODELLER, and contains all of the PDB sequences clustered at 95%% identity.
 
-
 If any good hits are found, they are selected as templates, and their structures are nabbed either from [the RCSB directly](https://www.rcsb.org/), or from a local %(pdb-db)s database which you can create yourself with %(anvi-setup-pdb-database)s. Then, anvi'o passes control over to MODELLER, which creates a 3D alignment for your sequence to the template structures, and makes final adjustments to it based off of empirical distributions of bond angles. For more information, check [this blogpost](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#how-modeller-works).
 
+The output of this program is a %(structure-db)s, which contains all of the modelled structures. Currently, the primary use of the %(structure-db)s is for interactive exploration with %(anvi-display-structure)s. You can also export your structures into external .pdb files with %(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s with %(anvi-gen-variability-profile)s.
 
-The output of this program is a %(structure-db)s, which contains all of the modelled structures.  Currently, the primary use of the %(structure-db)s is for interactive exploration with %(anvi-display-structure)s. You can also export your structures into external .pdb files with %(anvi-export-structures)s, or incorporate structural information in the %(variability-profile-txt)s with %(anvi-gen-variability-profile)s.
-
-
-### Basic run 
+### Basic standard run
 
 Here is a simple run: 
 
@@ -32,6 +33,20 @@ anvi-gen-structure-database -c %(contigs-db)s \
 {{ codestop }}
 
 To quickly get a very rough estimate for your structures, you can run with the flag `--very-fast`. 
+
+### Basic import run
+
+If you already possess structures and would like to create a %(structure-db)s for downstream anvi'o uses such as %(anvi-display-structure)s, you should create a %(external-structures)s file. Then, create the database as follows:
+
+{{ codestart }}
+anvi-gen-structure-database -c %(contigs-db)s \
+                            --external-structures %(external-structures)s \
+                            -o STRUCTURE.db 
+{{ codestop }}
+
+{:.notice}
+Please avoid using any MODELLER-specific parameters when using this mode, as they will be silently ignored.
+
 
 ### Advanced Parameters
 
