@@ -115,7 +115,7 @@ class Palindromes:
                               "class, not both :/")
 
         if self.output_file_path:
-            filesnpaths.is_output_file_writable(self.output_file_path)
+            filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
         else:
             self.verbose = True
 
@@ -512,6 +512,12 @@ class Palindromes:
                 if palindrome.distance > most_distant_palindrome:
                     most_distant_palindrome = palindrome.distance
                 num_palindromes += 1
+
+        if num_palindromes == 0:
+            self.run.warning(f"Anvi'o searched {P('sequence', num_sequences)} you have provided and found no "
+                             f"palindromes that satisfy your input criteria :/ No output file will be generated.")
+
+            return
 
         self.run.warning(None, header="SEARCH RESULTS", lc="green")
         self.run.info('Total number of sequences processed', num_sequences)
