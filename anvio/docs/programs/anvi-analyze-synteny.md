@@ -59,36 +59,33 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
 
 If you are following the anvi'o master branch on your computer, you can create a test case for this program.
 
-First, go to your source code directory. Then run the following commands:
+First, go to any work dirctory, and run the following commands:
 
 ``` bash
-cd anvio/anvio/tests
-./run_all_tests.sh
-
-# set output dir
-output_dir=sandbox/test-output
+anvi-self-test --suite metagenomics-full \
+               --output-dir TEST-OUTPUT
 
 # make a external-genomesfile
-echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
+echo -e "name\tcontigs_db_path\ng01\tTEST-OUTPUT/01.db\ng02\tTEST-OUTPUT/02.db\ng03\tTEST-OUTPUT/03.db" > TEST-OUTPUT/external-genomes-file.txt
 ```
 
 Run one or more alternative scenarios and check output files:
 
 ```
-anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-file.txt \
                      --annotation-source COG_FUNCTION \
                      --window-range 2:3 \
-                     -o $output_dir/synteny_output_no_unknowns.tsv
+                     -o TEST-OUTPUT/synteny_output_no_unknowns.tsv
 
-anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-file.txt \
                      --annotation-source COG_FUNCTION \
                      --window-range 2:3 \
-                     -o $output_dir/synteny_output_with_unknowns.tsv \
+                     -o TEST-OUTPUT/synteny_output_with_unknowns.tsv \
                      --analyze-unknown-functions
 
-anvi-analyze-synteny -e $output_dir/external-genomes-cps.txt \
+anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-cps.txt \
                      --annotation-source COG_FUNCTION \
                      --window-range 2:3 \
-                     -o $output_dir/tsv.txt \
+                     -o TEST-OUTPUT/tsv.txt \
                      --analyze-unknown-functions
 ```
