@@ -28,7 +28,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 
 
-up_to_date_modeller_exec = "mod9.23" # default exec to use
+up_to_date_modeller_exec = "mod10.1" # default exec to use
 
 J = lambda x, y: os.path.join(x, y)
 
