@@ -131,7 +131,7 @@ def extract_misc_from_taxonomy_file(input_taxonomy, mmseqs_cluster_rep_index, fi
     final_sequences_headers = pd.read_csv(final_sequences_headers, \
                                     sep="\t", \
                                     index_col=False, \
-                                    header=None)
+                                    names=["identifier"])
 
     # If metagenome_name is in external_genomes_names_list then it's a genome
     #------------------------------------------------------------------------
@@ -162,8 +162,14 @@ def extract_misc_from_taxonomy_file(input_taxonomy, mmseqs_cluster_rep_index, fi
     #-----------------------
     df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
 
-    misc_data = pd.merge(misc_data, df, left_on='identifier', right_on='cluster_members')
 
+    # add cluster size to misc data
+    misc_data = pd.merge(misc_data, df, left_on='identifier', right_on='cluster_members', how='inner')
+
+    # subset misc data to final set of proteins
+    misc_data = pd.merge(misc_data, final_sequences_headers, how='inner')
+
+    # grab the right columns
     misc_data = misc_data[['split_name', 'identifier', 'percent_identity', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size', 't_domain', 't_phylum', 't_class', 't_order', 't_family', 't_genus', 't_species']]
 
     # Export
@@ -196,9 +202,9 @@ rule add_misc_data_to_taxonomy:
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
         extract_misc_from_taxonomy_file(input_taxonomy = input.taxonomy,
-                                                       mmseqs_cluster_rep_index = params.cluster_rep_index,
-                                                       final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
-                                                       output = output.misc_data_final)
+                                        mmseqs_cluster_rep_index = params.cluster_rep_index,
+                                        final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                                        output = output.misc_data_final)
 
 
 rule anvi_get_external_gene_calls_file:
