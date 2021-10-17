@@ -11,7 +11,6 @@ import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -27,6 +26,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+P = terminal.pluralize
 pp = terminal.pretty_print
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
@@ -81,7 +81,6 @@ class Palindromes:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
@@ -90,6 +89,7 @@ class Palindromes:
         self.fasta_file_path = A('fasta_file')
         self.output_file_path = A('output_file')
 
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
         self.blast_word_size = A('blast_word_size') or 10
 
         self.translate = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
@@ -101,8 +101,10 @@ class Palindromes:
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
         self.run.info('Minimum gap length', self.min_distance)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
+        self.run.info('Number of threads for BLAST', self.num_threads)
         self.run.info('BLAST word size', self.blast_word_size, nl_after=1)
 
+        self.user_is_warned_for_potential_performance_issues = False
 
         self.palindromes = {}
 
@@ -235,7 +237,6 @@ class Palindromes:
         root = ET.parse(blast.search_output_path).getroot()
         for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
-                hit_num =int(hit_xml.find('Hit_num').text)
 
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
                     p = Palindrome(run=self.run)
@@ -458,14 +459,13 @@ class Palindromes:
         substrings = self.resolve_mismatch_map(mismatch_map,
                                                min_palindrome_length=self.min_palindrome_length,
                                                max_num_mismatches=self.max_num_mismatches)
-
         # if we don't get any substrings, it means it is time to go back
         if not len(substrings):
             return []
 
         if anvio.DEBUG or display_palindromes or self.verbose:
             self.progress.reset()
-            self.run.warning(None, header=f'SPLITTING A HIT', lc='red')
+            self.run.warning(None, header='SPLITTING A HIT', lc='red')
             self.run.info('1st sequence', p.first_sequence, mc='green')
             self.run.info('ALN', p.midline, mc='green')
             self.run.info('2nd sequence', p.second_sequence, mc='green')
