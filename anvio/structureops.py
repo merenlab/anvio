@@ -945,7 +945,12 @@ class StructureSuperclass(object):
                     "codon":               [],
                     "amino_acid":          []}
 
-        gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
+        last_codon = nt_sequence[:-3]
+        if last_codon in ['TAA', 'TAG', 'TGA']:
+            gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
+        else:
+            gene_length_in_codons = len(nt_sequence)//3
+
         for codon_order_in_gene in range(gene_length_in_codons):
             seq_dict["codon_order_in_gene"].append(codon_order_in_gene)
             seq_dict["codon_number"].append(codon_order_in_gene+1)
