@@ -90,6 +90,8 @@ class Palindromes:
         self.fasta_file_path = A('fasta_file')
         self.output_file_path = A('output_file')
 
+        self.blast_word_size = A('blast_word_size') or 10
+
         self.translate = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
 
         self.sanity_check()
@@ -99,6 +101,8 @@ class Palindromes:
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
         self.run.info('Minimum gap length', self.min_distance)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
+        self.run.info('BLAST word size', self.blast_word_size, nl_after=1)
+
 
         self.palindromes = {}
 
@@ -128,6 +132,12 @@ class Palindromes:
             self.max_num_mismatches = int(self.max_num_mismatches)
         except:
             raise ConfigError("Maximum number of mismatches must be an integer.")
+
+        if self.blast_word_size < 4:
+            raise ConfigError("For everyone's sake, we set the minimum value for the minimum word size for BLAST to "
+                              "5. If you need this to change, please let us know (or run the same command with `--debug` "
+                              "flag, find the location of this control, and hack anvi'o by replacing that 4 with something "
+                              "smaller -- anvi'o doesn't mind being hacked).")
 
         if self.min_palindrome_length < 5:
             raise ConfigError("For everyone's sake, we set the minimum value for the minimum palindrome length to "
@@ -207,12 +217,19 @@ class Palindromes:
         blast.log_file_path = log_file_path
         blast.makedb(dbtype='nucl')
 
-        if self.min_palindrome_length < 20 and len(sequence) > 10000:
-            self.run.warning("Please note, you are searching for palindromes that are as short as {self.min_palindrome_length} "
-                             "in a sequence that is {pp(len(sequence))} nts long. If your BLAST search takes a VERY long time "
-                             "you may want to go for longer palindromes by setting a different `--min-palindrome-length` parameter.")
+        if self.min_palindrome_length < 20 and len(sequence) > 10000 and not self.user_is_warned_for_potential_performance_issues:
+            self.progress.reset()
+            self.run.warning(f"Please note, you are searching for palindromes that are as short as {self.min_palindrome_length} "
+                             f"in a sequence that is {pp(len(sequence))} nts long. If your palindrome search takes a VERY long time "
+                             f"you may want to go for longer palindromes by setting a different `--min-palindrome-length` parameter "
+                             f"and by increasing the BLAST word size using `--blast-word-size` parameter (please read the help menu first). "
+                             f"This part of the code does not know if you have many more seqeunces to search, but anvi'o will not "
+                             f"continue displaying this warning for additional seqeunces to minimize redundant informatio in your "
+                             f"log files (because despite the popular belief anvi'o can actually sometimes be like nice and all).",
+                             header="ONE-TIME PERFORMANCE WARNING")
+            self.user_is_warned_for_potential_performance_issues = True
 
-        blast.blast(outputfmt='5', word_size=self.min_palindrome_length, strand='minus')
+        blast.blast(outputfmt='5', word_size=self.blast_word_size, strand='minus')
 
         # parse the BLAST XML output
         root = ET.parse(blast.search_output_path).getroot()
@@ -252,6 +269,11 @@ class Palindromes:
                             continue
 
                     p.length = int(hsp_xml.find('Hsp_align-len').text)
+
+                    if p.length < self.min_palindrome_length:
+                        # buckle your seat belt Dorothy, 'cause Kansas is going bye-bye:
+                        continue
+
                     p.num_gaps = int(hsp_xml.find('Hsp_gaps').text)
                     p.num_mismatches = int(hsp_xml.find('Hsp_align-len').text) - int(hsp_xml.find('Hsp_identity').text)
                     p.midline = ''.join(['|' if p.first_sequence[i] == p.second_sequence[i] else 'x' for i in range(0, len(p.first_sequence))])
@@ -261,13 +283,10 @@ class Palindromes:
                         # briefly, we conclude that there are too many mismatches in this match, we will
                         # try and see if there is anything we can salvage from it.
                         p_list = self.get_split_palindromes(p, display_palindromes=display_palindromes)
-                    elif p.length >= self.min_palindrome_length:
-                        # there aren't too many mismatches, and the length of it checks out. we will
-                        # continue processing this hit as a sole palindrome
-                        p_list = [p]
                     else:
-                        # buckle your seat belt Dorothy, 'cause Kansas is going bye-bye:
-                        continue
+                        # there aren't too many mismatches, and the length checks out. we will continue
+                        # processing this hit as a sole palindrome
+                        p_list = [p]
 
                     for sp in p_list:
                         if anvio.DEBUG or display_palindromes or self.verbose:

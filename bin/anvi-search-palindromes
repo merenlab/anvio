@@ -47,12 +47,28 @@ if __name__ == "__main__":
     groupA.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupA.add_argument(*anvio.A('dna-sequence'), **anvio.K('dna-sequence'))
 
-    groupB = parser.add_argument_group('PALINDROME BUT HOW?', "Some essential stuff here about your palindromes")
+    groupB = parser.add_argument_group('PALINDROME BUT HOW?', "Some essential stuff here about your palindromes. Please also "
+                    "see the search sensitivity section below.")
     groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
     groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
     groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
 
-    groupC = parser.add_argument_group('PERFORMANCE', "Yes.")
+    groupC = parser.add_argument_group('SEARCH SENSITIVITY & PERFORMANCE', "Yes.")
+    groupC.add_argument('--blast-word-size', metavar="INT", type=int, default=10, help="This parameter is passed to "
+                    "blastn as the `-word_size`, which literally means in the BLAST world the length of best perfect "
+                    "among your alignments. The shorter the word size, the more short palindromes you will find, but it "
+                    "will also influence your ability to find palindromes with mismatches. For instance, if the word size "
+                    "is 10, then you will not find a palindrome that is 18 nt long but have a mismatch right at the 9th "
+                    "nucleotide (because individual perfect matches in the alignment will have word sizes of less than 10). "
+                    "So if you want to search for palindromes with a lot of mismatches, then you would like to keep your "
+                    "word size small. But smaller word sizes will impact your performance negatively, and very small ones "
+                    "will simply make it impossible to finish running for especially long contigs. If you want to find "
+                    "palindromes with no mismatches, then you can safely match the word size to the minimum palindrome "
+                    "length. If you want to do some test run, take a DNA sequence (say about 1,000 nts) that contains a "
+                    "palindrome that looks like the kinds of palindromes you will be interested in finding, and run the "
+                    "program `anvi-search-palindromes` with `--dna` parameter and `--verbose` flag. As you play with the "
+                    "word size, minimum number of mismatches, and the minimum palindrome length, the output messages will "
+                    "help you determine your best parameters.")
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     groupD = parser.add_argument_group('OUTPUT', "Output options.")
