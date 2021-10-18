@@ -3,6 +3,7 @@
 import argparse
 
 import anvio.terminal as terminal
+import anvio.taxonomyops as taxonomyops
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -16,7 +17,7 @@ cT = lambda level: cX()[level]
 
 def pX(scg_dict):
     for i in scg_dict:
-        scg_dict[i]['tax_hash'] = scgtaxonomyops.HASH(scg_dict[i])
+        scg_dict[i]['tax_hash'] = taxonomyops.HASH(scg_dict[i])
     return p.get_consensus_taxonomy(scg_dict)
 
 pT = lambda level: pX(scg_dict)[level]
