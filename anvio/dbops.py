@@ -1193,11 +1193,9 @@ class ContigsSuperclass(object):
                 gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
                 gene_call['contig'] = gene_call['header']
 
-
-            if output_file_path_external_gene_calls and not flank_length:
-                gene_call['start'] = 0
-                gene_call['stop'] = gene_call['length']
-                
+                if not flank_length:
+                    gene_call['start'] = 0
+                    gene_call['stop'] = gene_call['length']
             else:
                 if simple_headers:
                     gene_call['header'] = '%d' % (gene_callers_id)
