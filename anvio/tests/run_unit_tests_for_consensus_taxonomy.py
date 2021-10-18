@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # some tests for SCG taxonomy string processing
 
 import argparse
