@@ -115,7 +115,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --splits-of-interest test-output/splits_of_interest.txt \
                              --engine NT
 
-head test-output/variability_NT.txt
+SHOW_FILE test-output/variability_NT.txt
 
 INFO "anvi-gen-variability for AA"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -125,7 +125,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --quince-mode \
                              --engine AA
 
-head test-output/variability_AA.txt
+SHOW_FILE test-output/variability_AA.txt
 
 INFO "anvi-gen-variability for AA (--kiefl-mode)"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -135,7 +135,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --kiefl-mode \
                              --engine AA
 
-head test-output/variability_AA_kiefl.txt
+SHOW_FILE test-output/variability_AA_kiefl.txt
 
 INFO "anvi-gen-variability for CDN"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -146,7 +146,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --include-site-pnps \
                              --engine CDN
 
-head test-output/variability_CDN.txt
+SHOW_FILE test-output/variability_CDN.txt
 
 INFO "anvi-gen-variability for CDN (--kiefl-mode)"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -157,7 +157,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --kiefl-mode \
                              --engine CDN
 
-head test-output/variability_CDN_kiefl.txt
+SHOW_FILE test-output/variability_CDN_kiefl.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT"
 anvi-gen-fixation-index-matrix -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -177,13 +177,13 @@ anvi-gen-fixation-index-matrix -V test-output/variability_NT_no_quince.txt \
                                --engine NT
 
 INFO "diff between test-output/fixation_NT_external.txt and test-output/fixation_NT.txt (should be same)"
-cat test-output/fixation_NT.txt
-cat test-output/fixation_NT_external.txt
+SHOW_FILE test-output/fixation_NT.txt
+SHOW_FILE test-output/fixation_NT_external.txt
 
 INFO "comparison between test-output/fixation_NT_external_no_quince.txt and test-output/fixation_NT_external.txt"
 INFO "(the value should be the same but the order of the samples becomes arbitrary)"
-cat test-output/fixation_NT_external_no_quince.txt
-cat test-output/fixation_NT_external.txt
+SHOW_FILE test-output/fixation_NT_external_no_quince.txt
+SHOW_FILE test-output/fixation_NT_external.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
 rm -rf test-output/pn_ps_ratio_output

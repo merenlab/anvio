@@ -1322,7 +1322,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, Popul
 
         self.ctx = ctx
 
-        self.max_target_seqs = int(A('max_num_target_sequences')) or 20
+        self.max_target_seqs = int(A('max_num_target_sequences')) if A('max_num_target_sequences') else 20
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
         self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
 
