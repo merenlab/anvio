@@ -3,7 +3,7 @@
 
 """
 This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
- it done using query and target coverage
+is done using query and/or target coverage
 """
 
 import sys
