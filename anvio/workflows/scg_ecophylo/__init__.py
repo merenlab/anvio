@@ -192,12 +192,12 @@ class SCGEcoPhyloWorkflow(WorkflowSuperClass):
         self.SCG_protein_list_path = self.get_param_value_from_config(['SCG_protein_list'])
         filesnpaths.is_file_exists(self.SCG_protein_list_path)
         try:
-            self.Reference_protein_df = pd.read_csv(self.SCG_protein_list_path, sep='\t', index_col=False)
-            self.SCG_protein_list = self.Reference_protein_df.iloc[:, 0].to_list() 
+            self.Reference_protein_df = pd.read_csv(self.SCG_protein_list_path, sep='\t', index_col=False, header=None)
+            self.SCG_protein_list = self.Reference_protein_df.iloc[:, 0].to_list()
 
         except IndexError as e:
             raise ConfigError("The SCG_protein_list.txt file, '%s', does not appear to be properly formatted. "
-                              "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+                              "This is the error from trying to load it: '%s'" % (self.Reference_protein_df, e))
 
         # Load samples.txt
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
