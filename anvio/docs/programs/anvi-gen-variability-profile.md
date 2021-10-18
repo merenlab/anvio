@@ -117,9 +117,18 @@ You can filter the output in various ways, so that you can get straight to the v
 * The maximum and minimum departure from the reference or consensus
 * The minimum coverage value in all samples (if a position is covered less than that value in _one_ sample, it will not be reported for _all_ samples)
 
-### Adding additional information
+
+### --quince-mode
 
 You can also set `--quince-mode`, which reports the variability data across all samples for each position reported (even if that position isn't variable in some samples). For example, if nucleotide position 34 of contig 1 was a SNV in one sample, the output would contain data for nucleotide position 34 for all of your samples. 
+
+### --kiefl-mode
+
+The default behavior is to report codon/amino-acid frequencies only at positions where variation was reported during profiling (which by default uses some heuristics to minimize the impact of error-driven variation). Fair enough, but for some diabolical cases, you may want to report _even_ invariant positions. When this flag is used, all positions are reported, regardless of whether they contained variation in any sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` or `--engine CDN` and is incompatible wth `--quince-mode`.
+
+This flag was added in this [pull request](https://github.com/merenlab/anvio/pull/1794) where you can read about all of the tests that were performed to ensure this mode is behaving properly.
+
+### Adding additional information
 
 You can also ask the program to report the contig names, split names, and gene-level coverage statistics, which appear as additional columns in the output.
 

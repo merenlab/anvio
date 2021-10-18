@@ -17,7 +17,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'ekiefl', 'ShaiberAlon']
+__authors__ = ['ekiefl', 'meren', 'ShaiberAlon']
 __resources__ = [("All about SNVs, SCVs, and SAAVs", "http://merenlab.org/2015/07/20/analyzing-variability/"), ("This program in action in the anvi'o structure tutorial", "http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#supplying-anvi-display-structure-with-sequence-variability")]
 __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile', 'splits-txt']
 __provides__ = ['variability-profile-txt']
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupG.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
     groupG.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
+    groupG.add_argument(*anvio.A('kiefl-mode'), **anvio.K('kiefl-mode'))
 
     groupH = parser.add_argument_group('OUTPUT', 'Output file and style')
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt', 'metavar': 'VARIABILITY_PROFILE'}))

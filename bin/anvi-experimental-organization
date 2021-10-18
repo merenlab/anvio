@@ -50,12 +50,7 @@ def experimental_organization(args):
         utils.is_this_name_OK_for_database('--name parameter', args.name)
 
     if args.profile_db:
-        profile_db = dbops.ProfileDatabase(args.profile_db)
-        if int(profile_db.meta['merged']):
-            split_names = profile_db.db.get_single_column_from_table('mean_coverage_splits', 'contig')
-        else:
-            split_names = profile_db.db.get_single_column_from_table('atomic_data_splits', 'contig')
-        profile_db.disconnect()
+        split_names = utils.get_all_item_names_from_the_database(args.profile_db)
 
     db_paths = {'CONTIGS.db': args.contigs_db}
     config = ClusteringConfiguration(args.config_file, args.input_directory, db_paths = db_paths, row_ids_of_interest = split_names)

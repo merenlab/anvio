@@ -29,7 +29,7 @@ __resources__ = [("A beginners tutorial on anvi'o interactive interface", "http:
                  ("Working with SVG files from the interactive interface", "http://merenlab.org/2016/10/27/high-resolution-figures/"),
                  ("Running remote anvi'o interactive interfaces on your local computer", "http://merenlab.org/2018/03/07/working-with-remote-interative/")]
 __requires__ = ['profile-db', 'single-profile-db', 'contigs-db', 'genes-db', 'bin', 'view-data', 'dendrogram', 'phylogeny']
-__provides__ = ['collection', 'bin', 'interactive', 'svg']
+__provides__ = ['collection', 'bin', 'interactive', 'svg', 'contig-inspection']
 __description__ = "Start an anvi'o server for the interactive interface"
 
 

@@ -197,7 +197,7 @@ class COGs:
 
         if not aa_sequences_file_path:
             aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
-            dbops.ContigsSuperclass(self.args).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
+            dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
                                                                                   report_aa_sequences=True,
                                                                                   simple_headers=True)
 
@@ -638,9 +638,10 @@ class COGsSetup:
             raise ConfigError(f"Bad news :( While parsing a COG input file, anvi'o encountered an error (which said: [{e}]) "
                               f"while processing the line {line_counter} in your file. Where the fields in that file looked "
                               f"looked like this: {fields}. Sadly, this has been a long-standing and very annoying issue that "
-                              f"anvi'o developers were unable to reproduce. If you would like to help us find a solution, please "
-                              f"visit the issue located at https://github.com/merenlab/anvio/issues/1738. There you can copy-paste "
-                              f"this error message and attach the file in question that is located on your disk at '{input_file_path}'.")
+                              f"anvi'o developers were unable to reproduce. But we recently learned that the issue is likely due "
+                              f"to your internet speed (https://github.com/merenlab/anvio/issues/1738). Slower connections lead "
+                              f"to broken connections with the NCBI servers, and leave you with an unfinished file :/ The only "
+                              f"working solution so far is to try again with a faster internet connection.")
 
         progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
 

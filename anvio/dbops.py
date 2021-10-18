@@ -465,10 +465,10 @@ class ContigsSuperclass(object):
                                                  missing_split_names[0], list(self.splits_basic_info.keys())[0]))
 
             self.progress.end()
-            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database "
-                                 "knows about, to be precise). Nothing to worry about. Probably." \
-                                                % (len(split_names_of_interest), len(self.splits_basic_info)),
-                                  mc="cyan", nl_after=1, nl_before=1)
+            if len(split_names_of_interest) != len(self.splits_basic_info):
+                self.run.info_single(f"FYI: A subset of split sequences are being initialized (to be precise, only "
+                                     f"{len(split_names_of_interest)} of {len(self.splits_basic_info)} splits the contigs database "
+                                     f"knows about). Nothing to worry about. Probably.", mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
         else:
             split_names_of_interest = list(self.splits_basic_info.keys())
@@ -1269,7 +1269,7 @@ class ContigsSuperclass(object):
 
         # let's see if there are functions
         gene_functions_found = False
-        if 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
+        if self.a_meta['gene_function_sources'] and 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
             self.init_functions(requested_sources=["COG20_FUNCTION"])
             gene_functions_found = True
             self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
@@ -3636,15 +3636,20 @@ class ProfileDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
+        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'num_splits', 'total_length']:
+                    'min_coverage_for_variability', 'max_contig_length', 'num_splits', 'total_length']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
         self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+        for key in ['min_percent_identity', 'min_indel_fraction']:
+            try:
+                self.meta[key] = float(self.meta[key])
+            except:
+                pass
 
 
         # open the database

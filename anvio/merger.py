@@ -66,7 +66,7 @@ class MultipleRuns:
         self.profiles = []
         self.num_profile_dbs = None
         self.split_names = None
-        self.sample_ids_found_in_input_dbs = []
+        self.sample_tuples_from_input_dbs = []
 
         self.profile_dbs_info_dict = {}
 
@@ -266,11 +266,11 @@ class MultipleRuns:
 
         self.populate_layer_additional_data_dict()
 
-        self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
-        if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
+        self.sample_tuples_from_input_dbs = sorted([(v['sample_id'], v['fetch_filter'], v['min_percent_identity']) for v in list(self.profile_dbs_info_dict.values())])
+        if len(self.profile_dbs_info_dict) != len(set(self.sample_tuples_from_input_dbs)):
             raise ConfigError("Sample ids in each single profile database to be merged must be unique. But it is not the case "
                               "with your input :/ Here are the sample names in case you would like to find out which ones occur "
-                              "more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
+                              "more than once: '%s'" % (', '.join([tpl[0] for tpl in self.sample_tuples_from_input_dbs])))
 
         self.num_profile_dbs = len(self.profile_dbs_info_dict)
 
@@ -468,13 +468,18 @@ class MultipleRuns:
 
         self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
 
-        sample_ids_list = ', '.join(sorted(self.sample_ids_found_in_input_dbs))
-        total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[sample_id]) for sample_id in self.sample_ids_found_in_input_dbs])
+        sample_ids_list = ', '.join([tpl[0] for tpl in self.sample_tuples_from_input_dbs])
+        sample_fetch_filters_list = ', '.join([tpl[1] or 'None' for tpl in self.sample_tuples_from_input_dbs])
+        sample_min_pct_identity_of_short_reads_list = ', '.join([f"{tpl[2]}" for tpl in self.sample_tuples_from_input_dbs])
+
+        total_reads_mapped_list = ', '.join([str(self.total_reads_mapped_per_sample[tpl[0]]) for tpl in self.sample_tuples_from_input_dbs])
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
                        'sample_id': self.sample_id,
                        'samples': sample_ids_list,
+                       'fetch_filter': sample_fetch_filters_list,
+                       'min_percent_identity': sample_min_pct_identity_of_short_reads_list,
                        'total_reads_mapped': total_reads_mapped_list,
                        'merged': True,
                        'blank': False,
@@ -501,8 +506,10 @@ class MultipleRuns:
         self.run.info('profile_db', self.merged_profile_db_path)
         self.run.info('merged', True)
         self.run.info('contigs_db_hash', self.contigs_db_hash)
-        self.run.info('num_runs_processed', len(self.sample_ids_found_in_input_dbs))
+        self.run.info('num_runs_processed', len(sample_ids_list))
         self.run.info('merged_sample_ids', sample_ids_list)
+        self.run.info('fetch_filter', sample_fetch_filters_list)
+        self.run.info('min_percent_identity', sample_min_pct_identity_of_short_reads_list)
         self.run.info("Common layer additional data keys", ', '.join(self.layer_additional_data_keys))
         self.run.info('total_reads_mapped', total_reads_mapped_list)
         self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)

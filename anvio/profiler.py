@@ -7,6 +7,7 @@ import os
 import sys
 import shutil
 import argparse
+import numpy as np
 import multiprocessing
 
 from collections import OrderedDict
@@ -44,10 +45,247 @@ null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
 
 
+class BAMProfilerQuick:
+    """A class for rapid profiling of BAM files that produce text files rather than profile dbs"""
+
+    def __init__(self, args, skip_sanity_check=False, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.bam_file_paths = A('bam_files')
+        self.contigs_db_path = A('contigs_db')
+        self.output_file_path = A('output_file')
+        self.gene_level_stats = A('gene_mode')
+        self.gene_caller = A('gene_caller')
+        self.report_minimal = A('report_minimal')
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+        self.run.info('Contigs DB', self.contigs_db_path)
+        self.run.info('Num BAM files', len(self.bam_file_paths))
+        self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
+
+
+        # to be filled later if necessary
+        self.contigs_basic_info = {}
+        self.gene_calls_per_contig = {}
+
+
+    def sanity_check(self):
+        if not self.contigs_db_path:
+            raise ConfigError("You need to provide an anvi'o contigs database for this to work :/")
+
+        utils.is_contigs_db(self.contigs_db_path)
+
+        if not len(self.bam_file_paths):
+            raise ConfigError("You need to provide at least one BAM file for this to work.")
+
+        if not self.output_file_path:
+            raise ConfigError("Please provide an output file path.")
+
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+
+        # find all the bad BAM files
+        bad_bam_files = [f for f in self.bam_file_paths if not filesnpaths.is_file_bam_file(f, dont_raise=True)]
+        if len(bad_bam_files):
+            raise ConfigError(f"Not all of your BAM files look like BAM files. Here is the list that "
+                              f"samtools didn't like: {', '.join(bad_bam_files)}")
+
+        if self.gene_level_stats:
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+            genes_are_called = contigs_db.meta['genes_are_called']
+            gene_callers_list = contigs_db.meta['gene_callers']
+            contigs_db.disconnect()
+
+            if not genes_are_called:
+                raise ConfigError("There are no gene calls in this contigs database :/ You can't use the flag "
+                                  "`--report-gene-level-stats`. Yes.")
+
+            gene_callers = [tpl[0] for tpl in gene_callers_list]
+            if self.gene_caller not in gene_callers:
+                dbops.ContigsDatabase(self.contigs_db_path).list_gene_caller_sources()
+                raise ConfigError(f"The gene caller '{self.gene_caller}' is not among those that are found in "
+                                  f"the contigs database (and shown above for your convenience).")
+
+
+
+    def process(self):
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+
+        self.run.warning(None, header="CONTIGS DB", lc="green")
+        self.run.info("Number of contigs", pp(contigs_db.meta['num_contigs']))
+        self.run.info("Total num nucleotides", pp(contigs_db.meta['total_length']))
+        self.run.info("Genes are called", "Yes" if contigs_db.meta['genes_are_called'] else "No :/")
+
+        self.run.info("Reporting mode", "GENES" if self.gene_level_stats else "CONTIGS", mc='green')
+        if self.gene_level_stats:
+            self.run.info("Gene caller", self.gene_caller)
+            self.run.info("Number of genes", pp([tpl[1] for tpl in contigs_db.meta['gene_callers'] if tpl[0] == self.gene_caller][0]))
+
+        self.progress.new('Reading data into memory')
+        self.progress.update('Contigs basic info table ...')
+        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name)
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+        if self.gene_level_stats:
+            self.recover_gene_data()
+
+        self.report_stats()
+
+
+    def recover_gene_data(self):
+        # if we are working with genes, we need to first read the gene calls table into
+        # memory
+        self.progress.new('Reading data into memory')
+        self.progress.update('Gene calls table ...')
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=f"source == '{self.gene_caller}'", error_if_no_data=True)
+
+        # and then update contigs basic info to easily track gene calls in a given contig
+        # for reporting purposes
+        self.progress.update('Updating contigs basic info ...')
+        for gene_callers_id in self.genes_in_contigs:
+            contig_name = self.genes_in_contigs[gene_callers_id]['contig']
+
+            if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
+                self.contigs_basic_info[contig_name]['gene_caller_ids'] = set([gene_callers_id])
+            else:
+                self.contigs_basic_info[contig_name]['gene_caller_ids'].add(gene_callers_id)
+
+        self.progress.end()
+
+        contigs_db.disconnect()
+
+
+    def report_stats(self):
+        """Iterates through bam files, reports contigs stats"""
+
+        # the total number of items we will process is equal to the number of contigs that will
+        # have to be processed for each BAM file
+        total_num_items = len(self.bam_file_paths) * len(self.contigs_basic_info)
+        total_num_bam_files = len(self.bam_file_paths)
+        contig_names = list(self.contigs_basic_info.keys())
+        num_contigs = len(self.contigs_basic_info)
+
+        self.progress.new("Bleep bloop", progress_total_items=total_num_items)
+        self.progress.update('...')
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        with open(self.output_file_path, 'w') as output:
+            if self.report_minimal and not self.gene_level_stats:
+                header = ['contig', 'sample', 'length', 'gc_content', 'detection', 'mean_cov']
+            elif not self.report_minimal and not self.gene_level_stats:
+                header = ['contig', 'sample', 'length', 'gc_content',  'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+            elif self.report_minimal and self.gene_level_stats:
+                header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov']
+            else:
+                header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+
+            output.write('\t'.join(header) + '\n')
+
+            for i in range(0, total_num_bam_files):
+                bam_file_path = self.bam_file_paths[i]
+
+                bam = bamops.BAMFileObject(bam_file_path, 'rb')
+                bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
+
+                contigs_stats = {}
+                for j in range(0, num_contigs):
+                    contig_name = contig_names[j]
+
+                    if j - 1 == 0 or j % 100 == 0:
+
+                        if mem_tracker.measure():
+                            mem_usage = mem_tracker.get_last()
+                            mem_diff = mem_tracker.get_last_diff()
+
+                        self.progress.increment(increment_to=((i * num_contigs) + j))
+                        self.progress.update(f"BAM {i+1}/{pp(total_num_bam_files)} :: CONTIG {pp(j)}/{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+
+                    c = bamops.Coverage()
+
+                    try:
+                        c.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
+                    except:
+                        continue
+
+                    if self.report_minimal and not self.gene_level_stats:
+                        # we are in contigs mode, and want a minimal report
+                        mean = np.mean(c.c)
+                        detection = np.sum(c.c > 0) / len(c.c)
+                        output.write(f"{contig_name}\t"
+                                     f"{bam_file_name}\t"
+                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{detection:.4}\t"
+                                     f"{mean:.4}\n")
+                    elif not self.report_minimal and not self.gene_level_stats:
+                        # we are in contigs mode, but want an extended report
+                        C = utils.CoverageStats(c.c, skip_outliers=True)
+                        output.write(f"{contig_name}\t"
+                                     f"{bam_file_name}\t"
+                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{C.detection:.4}\t"
+                                     f"{C.mean:.4}\t"
+                                     f"{C.mean_Q2Q3:.4}\t"
+                                     f"{C.median}\t"
+                                     f"{C.min}\t"
+                                     f"{C.max}\t"
+                                     f"{C.std:.4}\n")
+                    elif self.gene_level_stats:
+                        # we are in gene mode!
+                        if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
+                            # this means we don't have a gene call in this contig. Long hair don't
+                            # care. MOVING ON.
+                            continue
+
+                        for gene_callers_id in self.contigs_basic_info[contig_name]['gene_caller_ids']:
+                            g = self.genes_in_contigs[gene_callers_id]
+                            gc = c.c[g['start']:g['stop']]
+
+                            if self.report_minimal:
+                                # we want a minimal report
+                                mean = np.mean(gc)
+                                detection = np.sum(gc > 0) / len(gc)
+                                output.write(f"{gene_callers_id}\t"
+                                             f"{contig_name}\t"
+                                             f"{bam_file_name}\t"
+                                             f"{g['stop'] - g['start']}\t"
+                                             f"{detection:.4}\t"
+                                             f"{mean:.4}\n")
+                            else:
+                                GC = utils.CoverageStats(gc, skip_outliers=True)
+                                output.write(f"{gene_callers_id}\t"
+                                             f"{contig_name}\t"
+                                             f"{bam_file_name}\t"
+                                             f"{g['stop'] - g['start']}\t"
+                                             f"{GC.detection:.4}\t"
+                                             f"{GC.mean:.4}\t"
+                                             f"{GC.mean_Q2Q3:.4}\t"
+                                             f"{GC.median}\t"
+                                             f"{GC.min}\t"
+                                             f"{GC.max}\t"
+                                             f"{GC.std:.4}\n")
+                    else:
+                        raise ConfigError("We need an adult :(")
+
+                bam.close()
+
+            self.progress.end()
+
+
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
 
-    def __init__(self, args, r=terminal.Run(width=35), p=terminal.Progress()):
+    def __init__(self, args, r=terminal.Run(width=50), p=terminal.Progress()):
         self.args = args
         self.progress = p
         self.run = r
@@ -71,6 +309,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
+        self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -121,9 +360,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
         # Initialize contigs db
-        dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
+        dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
+        # the line below is kind of out of place, but it is necessary. here is why: we don't want to
+        # see any run messages from ContigsSuper in profiler output. But when we pass a `run=null_run`
+        # to the the class, due to inheritance, it also modifies our own `self.run` with the null one
+        # so here we basically re-engage our `self.run` (funny detail, no one cares, but I do because
+        # I have no friends):
+        self.run = terminal.Run(width=50)
 
         self.bam = None
         self.contigs = []
@@ -160,8 +406,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
 
-        self.output_directory = filesnpaths.check_output_directory(self.output_directory or self.input_file_path + '-ANVIO_PROFILE',\
-                                                                   ok_if_exists=self.overwrite_output_destinations)
+        if self.output_directory:
+            self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)
+        else:
+            output_dir_path = os.path.dirname(os.path.abspath(self.input_file_path))
+
+            if self.sample_id:
+                self.output_directory = filesnpaths.check_output_directory(os.path.join(output_dir_path, self.sample_id), ok_if_exists=self.overwrite_output_destinations)
+            else:
+                raise ConfigError("There is no `self.sample_id`, there is no `self.output_directory` :/ Anvi'o needs an adult :(")
 
         self.progress.new('Initializing')
 
@@ -190,6 +443,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
                        'min_percent_identity': self.min_percent_identity or 0,
+                       'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -206,19 +460,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.end()
 
-        if self.skip_SNV_profiling:
-            self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
-        else:
+        if not self.skip_SNV_profiling:
             self.variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
 
-        if not self.profile_SCVs:
-            self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
-        else:
+        if self.profile_SCVs:
             self.variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
 
-        if self.skip_INDEL_profiling:
-            self.run.warning('Indels (read insertion and deletions) will not be characterized for this profile.')
-        else:
+        if not self.skip_INDEL_profiling:
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
 
@@ -230,27 +478,28 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.init_dirs_and_dbs()
 
         self.run.log_file_path = self.generate_output_destination('RUNLOG.txt')
-        self.run.info('anvio', anvio.__version__)
-        self.run.info('profiler_version', anvio.__profile__version__)
-        self.run.info('sample_id', self.sample_id)
-        self.run.info('description', 'Found (%d characters)' % len(self.description) if self.description else None)
-        self.run.info('profile_db', self.profile_db_path, display_only=True)
-        self.run.info('contigs_db', True if self.contigs_db_path else False)
-        self.run.info('contigs_db_hash', self.a_meta['contigs_db_hash'])
-        self.run.info('cmd_line', utils.get_cmd_line(), align_long_values=False)
-        self.run.info('merged', False)
-        self.run.info('blank', self.blank)
-        self.run.info('split_length', self.a_meta['split_length'])
-        self.run.info('min_contig_length', self.min_contig_length)
-        self.run.info('max_contig_length', self.max_contig_length)
-        self.run.info('min_mean_coverage', self.min_mean_coverage)
-        self.run.info('clustering_performed', self.contigs_shall_be_clustered)
-        self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
-        self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
-        self.run.info('skip_INDEL_profiling', self.skip_INDEL_profiling)
-        self.run.info('profile_SCVs', self.profile_SCVs)
-        self.run.info('min_percent_identity', self.min_percent_identity)
-        self.run.info('report_variability_full', self.report_variability_full)
+        self.run.info('Sample name set', self.sample_id)
+        self.run.info('Description', 'Found (%d characters)' % len(self.description) if self.description else None)
+        self.run.info('Profile DB path', self.profile_db_path, display_only=True)
+        self.run.info('Contigs DB path', self.contigs_db_path)
+        self.run.info('Contigs DB hash', self.a_meta['contigs_db_hash'])
+        self.run.info('Command line', utils.get_cmd_line(), align_long_values=False, nl_after=1)
+
+        self.run.info('Minimum percent identity of reads to be profiled', self.min_percent_identity, mc='green')
+        self.run.info('Fetch filter engaged', self.fetch_filter, mc='green', nl_after=1)
+
+        self.run.info('Is merged profile?', False)
+        self.run.info('Is blank profile?', self.blank)
+        self.run.info('Skip contigs shorter than', self.min_contig_length)
+        self.run.info('Skip contigs longer than', self.max_contig_length)
+        self.run.info('Skip contigs covered less than', self.min_mean_coverage)
+        self.run.info('Perform hierarchical clustering of contigs?', self.contigs_shall_be_clustered, nl_after=1)
+
+        self.run.info('Profile single-nucleotide variants (SNVs)?', not self.skip_SNV_profiling)
+        self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
+        self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
+        self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
+        self.run.info('Report FULL variability data?', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
                          "consideration anything below that. If you need to kill this an restart your "
@@ -287,8 +536,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # update layer additional data table content
         if self.layer_additional_data:
-            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run, p=self.progress)
+            self.progress.new("Additional layer data")
+            self.progress.update("Updating the profile db ...")
+            layer_additional_data_table = TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=null_run, p=null_progress)
             layer_additional_data_table.add({self.sample_id: self.layer_additional_data}, self.layer_additional_keys)
+            self.progress.end()
+
+            self.run.info("Additional data added to the new profile DB", f"{', '.join(self.layer_additional_keys)}", nl_before=1)
 
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
@@ -368,11 +622,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             if self.input_file_path:
                 self.input_file_path = os.path.abspath(self.input_file_path)
-                self.sample_id = os.path.basename(self.input_file_path).upper().split('.BAM')[0]
-                self.sample_id = self.sample_id.replace('-', '_')
-                self.sample_id = self.sample_id.replace('.', '_')
+                self.sample_id = os.path.splitext(os.path.basename(self.input_file_path))[0]
+                self.sample_id = self.sample_id.replace('-', '_').replace('.', '_').replace(' ', '_')
+
                 if self.sample_id[0] in constants.digits:
                     self.sample_id = 's' + self.sample_id
+
+                if self.fetch_filter:
+                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper()}"
+
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
                 self.serialized_profile_path = os.path.abspath(self.serialized_profile_path)
@@ -406,6 +664,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
         self.bam = bamops.BAMFileObject(self.input_file_path, 'rb')
+        self.bam.fetch_filter = self.fetch_filter
         self.progress.end()
 
         self.contig_names = self.bam.references
@@ -463,9 +722,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def init_profile_from_BAM(self):
+        filesnpaths.is_file_bam_file(self.input_file_path)
+
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = bamops.BAMFileObject(self.input_file_path)
+
+        try:
+            self.bam = bamops.BAMFileObject(self.input_file_path)
+        except Exception as e:
+            raise ConfigError(f"Sorry, this BAM file does not look like a BAM file :( Here is "
+                              f"the complaint coming from the depths of the codebase: '{e}'.")
+
+        self.bam.fetch_filter = self.fetch_filter
         self.num_reads_mapped = self.bam.mapped
         self.progress.end()
 
@@ -487,16 +755,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         utils.check_contig_names(self.contig_names)
 
-        self.run.info('input_bam', self.input_file_path)
-        self.run.info('output_dir', self.output_directory, display_only=True)
-        self.run.info('num_reads_in_bam', pp(int(self.num_reads_mapped)))
-        self.run.info('num_contigs', pp(len(self.contig_names)))
+        self.run.info('Input BAM', self.input_file_path)
+        self.run.info('Output directory path', self.output_directory, display_only=True, nl_after=1)
+
+        self.run.info('Number of reads in the BAM file', pp(int(self.num_reads_mapped)))
+        self.run.info('Number of sequences in the contigs DB', pp(len(self.contig_names)))
 
         if self.contig_names_of_interest:
             indexes = [self.contig_names.index(r) for r in self.contig_names_of_interest if r in self.contig_names]
             self.contig_names = [self.contig_names[i] for i in indexes]
             self.contig_lengths = [self.contig_lengths[i] for i in indexes]
-            self.run.info('num_contigs_selected_for_analysis', pp(len(self.contig_names)))
+            self.run.info('Number of contigs selected for analysis', pp(len(self.contig_names)), mc='green')
 
         # it brings good karma to let the user know what the hell is wrong with their data:
         self.check_contigs_without_any_gene_calls(self.contig_names)
@@ -516,10 +785,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                    "prior to mapping, which is described here: %s"\
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS'))
 
-        self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
-        self.run.info('num_contigs', self.num_contigs, quiet=True)
-        self.run.info('num_splits', self.num_splits)
-        self.run.info('total_length', self.total_length)
+        self.run.info('Number of contigs to be conisdered (after -M)', self.num_contigs, display_only=True)
+        self.run.info('Number of splits', self.num_splits)
+        self.run.info('Number of nucleotides', self.total_length)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         profile_db.db.set_meta_value('num_splits', self.num_splits)
@@ -624,6 +892,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.fetch_filter = self.fetch_filter
 
         while True:
             try:
@@ -727,6 +996,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         """The main method for anvi-profile when num_threads is 1"""
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
+        bam_file.fetch_filter = self.fetch_filter
 
         received_contigs = 0
         discarded_contigs = 0
@@ -786,7 +1056,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # FIXME: this needs to be checked:
         if discarded_contigs > 0:
-            self.run.info('contigs_after_C', pp(received_contigs - discarded_contigs))
+            self.run.info('Num contigs after coverage removal (-C)', pp(received_contigs - discarded_contigs))
 
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
@@ -817,12 +1087,28 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # Num reads in profile do not equal num reads in bam
             diff = self.num_reads_mapped - self.total_reads_kept
             perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
-            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
-                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
-                             "This could be either because you supplied --contigs-of-interest, "
-                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
-                             "but had no defined sequence, or they had a sequence but did not map. "
-                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
+
+            if self.contig_names_of_interest:
+                self.run.warning(f"There were {pp(diff)} reads present in the BAM file that did not end up being used "
+                                 f"by the profiler, which corresponds to about {perc}% of all reads. This is "
+                                 f"most likely due to the parameter `--contigs-of-interest`. Regardless, anvi'o "
+                                 f"thought you should know about this.")
+            elif self.fetch_filter:
+                self.run.warning(f"There were {pp(diff)} reads present in the BAM file that did not end up being used "
+                                 f"by the profiler, which corresponds to about {perc}% of all reads. This is "
+                                 f"most likely due to your `--fetch-filter`, which, depending on the filter, can "
+                                 f"make use of a very tiny fraction of all reads. If you think this is much more or "
+                                 f"much less than what you would have expected, you may want to investigate it.")
+            else:
+                self.run.warning(f"There were {pp(diff)} reads present in the BAM file that did not end up being used "
+                                 f"by the profiler, which corresponds to about {perc}% of all reads. Since you "
+                                 f"don't seem to have used parameters such as `--contigs-of-interest` or `--fetch-filter` "
+                                 f"anvi'o is Jon Snow here. There are other reasons why some of your reads may end up "
+                                 f"not being considered by the profiler. For instance, if pysam encounteres reads that "
+                                 f"it can't deal with (i.e., mapped reads in the BAM file with no defined sequences, or "
+                                 f"read with defined sequences without mapping). Another reason can be that you have used "
+                                 f"a new paramter in the profiler that removes contigs or reads from consideration. "
+                                 f"Regardless, if you think this is worth your attention, now you know.")
 
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')
