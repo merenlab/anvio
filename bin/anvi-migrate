@@ -94,10 +94,13 @@ class Migrater(object):
             except:
                 pass
 
+
+        if self.db_path.endswith('GENOMES.h5'):
+            utils.check_h5py_module()
+            import h5py
+
         try:
             if self.db_path.endswith('GENOMES.h5'):
-                utils.check_h5py_module()
-                import h5py
                 fp = h5py.File(self.db_path, 'r')
 
                 self.db_type = 'genomestorage'

@@ -40,6 +40,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "dna-sequence": {
+        "name": "DNA SEQUENCE",
+        "type": "SEQUENCE",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "trnaseq-fasta": {
         "name": "TRNASEQ",
         "type": "FASTA",
@@ -54,6 +60,12 @@ ANVIO_ARTIFACTS ={
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "external-structures": {
+        "name": "EXTERNAL STRUCTURES",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
@@ -321,6 +333,18 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
+    },
+    "palindromes-txt": {
+        "name": "PALINDROMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "inversions": {
+        "name": "INVERSIONS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "phylogeny": {
         "name": "PHYLOGENY",

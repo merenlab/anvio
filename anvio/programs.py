@@ -378,6 +378,7 @@ class Artifact:
 
     def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
+            progress.reset()
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
                               "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
