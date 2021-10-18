@@ -162,7 +162,6 @@ def extract_misc_from_taxonomy_file(input_taxonomy, mmseqs_cluster_rep_index, fi
     #-----------------------
     df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
 
-
     # add cluster size to misc data
     misc_data = pd.merge(misc_data, df, left_on='identifier', right_on='cluster_members', how='inner')
 
