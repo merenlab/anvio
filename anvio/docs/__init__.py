@@ -40,6 +40,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "dna-sequence": {
+        "name": "DNA SEQUENCE",
+        "type": "SEQUENCE",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "trnaseq-fasta": {
         "name": "TRNASEQ",
         "type": "FASTA",
