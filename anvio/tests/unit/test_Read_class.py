@@ -13,7 +13,6 @@ import unittest
 import anvio
 
 from anvio.bamops import Read
-from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
