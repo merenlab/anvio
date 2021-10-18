@@ -4257,10 +4257,6 @@ class ContigsDatabase:
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 
-        contigs_DB_basename = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
-        contigs_DB_basename = contigs_DB_basename.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_') 
-        self.db.set_meta_value('contigs_db_basename', contigs_DB_basename)
-
         # this will be the unique information that will be passed downstream whenever this db is used:
         contigs_db_hash = self.get_hash()
         self.db.set_meta_value('contigs_db_hash', contigs_db_hash)
