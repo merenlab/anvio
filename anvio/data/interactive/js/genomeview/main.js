@@ -114,22 +114,24 @@ function loadAdditionalDataLayers(){
       settings['additional-data-layers'] = resp
       settings['additional-data-layers']['layers'].push('ruler') // add ruler by default
       settings['group-layer-order'] = ['Genome', 'Ruler']
-
       settings['display'] = {}
-      settings['display']['layers'] = {} // set default layer visibility
+      settings['display']['colors'] = {}
+      settings['display']['layers'] = {}
       settings['display']['layers']['Ruler'] = true
       settings['display']['layers']['Genome'] = true
 
       if (settings['additional-data-layers']['layers'].includes('Coverage')) {
         settings['group-layer-order'].unshift('Coverage')
         settings['display']['layers']['coverage'] = true
-        maxGroupSize += 1 // increase group size if coverage layer exists
+        settings['display']['colors']['coverage'] = '#000000'
+        maxGroupSize += 1
       }
 
       if (settings['additional-data-layers']['layers'].includes('GC_content')) {
         settings['group-layer-order'].unshift('GC_Content')
         settings['display']['layers']['GC_Content'] = true
-        maxGroupSize += 1 // increase group size if GC layer exists
+        settings['display']['colors']['GC_Content'] = '#000000'
+        maxGroupSize += 1
       }
     }
   });
@@ -210,7 +212,6 @@ function serializeSettings() {
 }
 
 function processState(stateName, stateData) {
-  console.log(stateData)
   settings['state-name'] = stateName
 
   calculateMaxGenomeLength()
@@ -221,11 +222,6 @@ function processState(stateName, stateData) {
   if (stateData.hasOwnProperty('additional-data-layers')) {
     settings['additional-data-layers'] = stateData['additional-data-layers']
   }
-
-  $('#tbody_additionalDataLayers').html('') // clear div before reprocess
-  settings['group-layer-order'].map(layer => {
-    buildGroupLayersTable(layer)
-  })
 
   if (stateData.hasOwnProperty('genome-order-method')) {
     settings['genome-order-method'] = stateData['genome-order-method']
@@ -245,18 +241,6 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('display')) {
     settings['display'] = stateData['display']
-    if(stateData['display']['layers']['Coverage']){
-      settings['display']['layers']['Coverage'] = stateData['display']['layers']['Coverage']
-    }
-    if(stateData['display']['layers']['GC_Content']){
-      settings['display']['layers']['GC_Content'] = stateData['display']['layers']['GC_Content']
-    }
-    if(stateData['display']['layers']['Ruler']){
-      settings['display']['layers']['Ruler'] = stateData['display']['layers']['Ruler']
-    }
-    if(stateData['display']['layers']['Genome']){
-      settings['display']['layers']['Genome'] = stateData['display']['layers']['Genome']
-    }
   }
 
   if (stateData.hasOwnProperty('genome-spacing')){
@@ -281,6 +265,11 @@ function processState(stateName, stateData) {
     settings['display']['bookmarks'] = []
     respondToBookmarkSelect() // set listener for user bookmark selection
   }
+
+  $('#tbody_additionalDataLayers').html('') // clear div before reprocess
+  settings['group-layer-order'].map(layer => {
+    buildGroupLayersTable(layer)
+  })
 }
 
 function loadAll(loadType) {
