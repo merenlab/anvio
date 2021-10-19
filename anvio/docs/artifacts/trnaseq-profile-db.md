@@ -14,6 +14,6 @@ The other significant difference between a tRNA-seq profile database and a norma
 
 ## Uses
 
-Tabulation of tRNA-seq data by %(anvi-tabulate-trnaseq)s takes a specific and optionally nonspecific profile database in addition to a %(trnaseq-contigs-databases).
+Tabulation of tRNA-seq data by %(anvi-tabulate-trnaseq)s takes a specific and optionally nonspecific profile database in addition to a %(trnaseq-contigs-db)s.
 
-Interactive visualization of tRNA-seq data in %(anvi-interactive)s requires a specific, nonspecific, combined, or summed profile database in addition to a %(trnaseq-contigs-database)s.
+Interactive visualization of tRNA-seq data in %(anvi-interactive)s requires a specific, nonspecific, combined, or summed profile database in addition to a %(trnaseq-contigs-db)s.

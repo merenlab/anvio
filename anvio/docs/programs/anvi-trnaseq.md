@@ -36,10 +36,10 @@ Feature profiling parameters can be modified by the user by in an optional `.ini
 
 {{ codestart }}
 anvi-trnaseq --default-feature-param-file <param.ini>
-{{ codestart }}
+{{ codestop }}
 
 *Nicely display the `.ini` defaults that can be written to the file in standard output.*
 
 {{ codestart }}
 anvi-trnaseq --print-default-feature-params
-{{ codestart }}
+{{ codestop }}

@@ -1,6 +1,6 @@
 This tabular file contains data on the specific coverages of tRNA-seq seeds.
 
-Specific coverage represents reads that are assigned uniquely to a tRNA seed. See the %(trnaseq-profile-db)s artifact for a fuller explanation of specific versus nonspecific coverage. The rows and columns of this table are identical to %(seeds-nonspecific-txt)s except the type of coverage data reported in each.
+Specific coverage represents reads that are assigned uniquely to a tRNA seed. See the %(trnaseq-profile-db)s artifact for a fuller explanation of specific versus nonspecific coverage. The rows and columns of this table are identical to %(seeds-non-specific-txt)s except the type of coverage data reported in each.
 
 This file is produced by %(anvi-tabulate-trnaseq)s. The artifact for that program describes this and related tables in detail.
 
@@ -8,7 +8,7 @@ This tab-delimited file can be easily manipulated by the user. It is required in
 
 ## Example
 
-The seeds shown in this table are also shown in the %(seeds-nonspecific-txt)s example. Modifications from these seeds are shown in the %(modifications-txt)s example.
+The seeds shown in this table are also shown in the %(seeds-non-specific-txt)s example. Modifications from these seeds are shown in the %(modifications-txt)s example.
 
 | gene_callers_id | contig_name | anticodon | aa | domain | phylum | class | order | family | genus | species | taxon_percent_id | sample_name | mean_coverage | relative_mean_coverage | relative_discriminator_coverage | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 17a | 18 | 19 | 20 | 20a | 20b | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 | 31 | 32 | 33 | 34 | 35 | 36 | 37 | 38 | 39 | 40 | 41 | 42 | 43 | 44.01 | 44.02 | 44.03 | 44.04 | 44.05 | 44.06 | 44.07 | 44.08 | 44.09 | 44.1 | 44.11 | 44.12 | 44.13 | 44.14 | 44.15 | 44.16 | 44.17 | 44.18 | 44.19 | 44.2 | 44.21 | 44.22 | 44.23 | 49 | 50 | 51 | 52 | 53 | 54 | 55 | 56 | 57 | 58 | 59 | 60 | 61 | 62 | 63 | 64 | 65 | 66 | 67 | 68 | 69 | 70 | 71 | 72 | 73 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

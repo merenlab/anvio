@@ -18,7 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
-__requires__ = ['trnaseq-contigs-db', 'trnaseq-seed-txt', 'trnaseq-mod-txt']
+__requires__ = ['trnaseq-contigs-db', 'trnaseq-seed-txt', 'modifications-txt']
 __provides__ = ['trnaseq-plot']
 __description__ = "A program to write plots of coverage and modification data from flexible groups of tRNA-seq seeds"
 

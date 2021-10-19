@@ -6,7 +6,7 @@ This tab-delimited file can be easily manipulated by the user. It is required in
 
 ## Example
 
-The modifications shown in this table are from the seeds represented in the %(seeds-specific-txt)s and %(seeds-nonspecific-txt)s example tables.
+The modifications shown in this table are from the seeds represented in the %(seeds-specific-txt)s and %(seeds-non-specific-txt)s example tables.
 
 | gene_callers_id | contig_name | anticodon | aa | domain | phylum | class | order | family | genus | species | taxon_percent_id | seed_position | ordinal_name | ordinal_position | canonical_position | reference | sample_name | A | C | G | T |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

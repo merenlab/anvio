@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 __requires__ = ['trnaseq-contigs-db', 'trnaseq-profile-db']
-__provides__ = ['trnaseq-seed-txt', 'trnaseq-mod-txt']
+__provides__ = ['trnaseq-seed-txt', 'modifications-txt']
 __description__ = "A program to write standardized tab-delimited files of tRNA-seq seed coverage and modification results"
 
 

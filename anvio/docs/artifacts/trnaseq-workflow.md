@@ -10,7 +10,7 @@ The workflow can run the following programs in order.
 
 ## Input
 
-The tRNA-seq workflow requires two files to run: a json-formatted config file and %(samples_txt)s. Generate the default config file, here called `config.json`, with the following command.
+The tRNA-seq workflow requires two files to run: a json-formatted config file and %(samples-txt)s. Generate the default config file, here called `config.json`, with the following command.
 
 {{ codestart }}
 anvi-run-workflow -w trnaseq --get-default-config config.json
@@ -18,7 +18,7 @@ anvi-run-workflow -w trnaseq --get-default-config config.json
 
 Different "rules," or steps, of the workflow can be turned on and off as needed in the config file. The workflow can be restarted at intermediate rules without rerunning prior rules that have already completed.
 
-%(samples_txt)s will contain a list of FASTQ or FASTA files and associated information on each library. FASTQ files contain unmerged paired-end tRNA-seq reads. Reads are merged in the workflow by [Illumina-utils](https://github.com/merenlab/illumina-utils). FASTA files contain merged reads, and the initial read-merging steps in the workflow are skipped.
+%(samples-txt)s will contain a list of FASTQ or FASTA files and associated information on each library. FASTQ files contain unmerged paired-end tRNA-seq reads. Reads are merged in the workflow by [Illumina-utils](https://github.com/merenlab/illumina-utils). FASTA files contain merged reads, and the initial read-merging steps in the workflow are skipped.
 
 Here is an example tRNA-seq samples file with FASTQ inputs.
 
