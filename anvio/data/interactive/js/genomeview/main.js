@@ -115,13 +115,20 @@ function loadAdditionalDataLayers(){
       settings['additional-data-layers']['layers'].push('ruler') // add ruler by default
       settings['group-layer-order'] = ['Genome', 'Ruler']
 
+      settings['display'] = {}
+      settings['display']['layers'] = {} // set default layer visibility
+      settings['display']['layers']['Ruler'] = true
+      settings['display']['layers']['Genome'] = true
+
       if (settings['additional-data-layers']['layers'].includes('Coverage')) {
         settings['group-layer-order'].unshift('Coverage')
+        settings['display']['layers']['coverage'] = true
         maxGroupSize += 1 // increase group size if coverage layer exists
       }
 
       if (settings['additional-data-layers']['layers'].includes('GC_content')) {
         settings['group-layer-order'].unshift('GC_Content')
+        settings['display']['layers']['GC_Content'] = true
         maxGroupSize += 1 // increase group size if GC layer exists
       }
     }
@@ -174,6 +181,7 @@ function serializeSettings() {
   state['group-layer-order'] = settings['group-layer-order']
   state['bookmarks'] = settings['display']['bookmarks']
   state['genome-order'] = settings['genomeData']['genomes']
+  state['display'] = settings['display']
   state['gene-link-style'] = $('#link_style').val()
   state['gene-shade-style'] = $('#shade_by').val()
   state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
@@ -237,15 +245,18 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('display')) {
     settings['display'] = stateData['display']
-    if(stateData['display']['additional-data-layers']['coverage']){
-      settings['display']['additional-data-layers']['coverage'] = stateData['display']['additional-data-layers']['coverage']
+    if(stateData['display']['layers']['Coverage']){
+      settings['display']['layers']['Coverage'] = stateData['display']['layers']['Coverage']
     }
-    if(stateData['display']['additional-data-layers']['gc-content']){
-      settings['display']['additional-data-layers']['gc-content'] = stateData['display']['additional-data-layers']['gc-content']
+    if(stateData['display']['layers']['GC_Content']){
+      settings['display']['layers']['GC_Content'] = stateData['display']['layers']['GC_Content']
     }
-  } else {
-    settings['display'] = {}
-    settings['display']['additional-data-layers'] = {}
+    if(stateData['display']['layers']['Ruler']){
+      settings['display']['layers']['Ruler'] = stateData['display']['layers']['Ruler']
+    }
+    if(stateData['display']['layers']['Genome']){
+      settings['display']['layers']['Genome'] = stateData['display']['layers']['Genome']
+    }
   }
 
   if (stateData.hasOwnProperty('genome-spacing')){
