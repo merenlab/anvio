@@ -26,14 +26,18 @@ __authors__ = ['meren', 'semiller10', 'ekiefl', 'ivagljiva']
 __description__ = "A script for anvi'o to test itself"
 
 
-tests = {'mini'                 : ['run_mini_test.sh'],
-         'metagenomics-full'    : ['run_metagenomics_full_tests.sh'],
-         'pangenomics'          : ['run_pangenome_tests.sh'],
-         'interactive-interface': ['run_manual_interactive.sh'],
-         'metabolism'           : ['run_metabolism_tests.sh'],
-         'display-functions'    : ['run_display_functions_tests.sh'],
-         'alons-classifier'     : ['run_alons_classifier_tests.sh'],
-         'trnaseq'              : ['run_trnaseq_tests.sh']}
+tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomics.sh'],
+         'metagenomics-full'     : ['run_component_tests_for_metagenomics.sh'],
+         'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
+         'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
+         'metabolism'            : ['run_component_tests_for_metabolism.sh'],
+         'display-functions'     : ['run_component_tests_for_display_functions.sh'],
+         'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
+         'workflow-contigs'      : ['run_workflow_tests_for_contigs.sh'],
+         'workflow-metagenomics' : ['run_workflow_tests_for_metagenomics.sh'],
+         'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
+         'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh']
+         }
 
 run = terminal.Run()
 

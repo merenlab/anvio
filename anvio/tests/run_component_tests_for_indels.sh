@@ -66,8 +66,8 @@ anvi-profile -i test-output/large/sample_T300del.bam     -c test-output/large/co
 anvi-profile -i test-output/large/sample_norm_on_del.bam -c test-output/large/contig_T300del.db -o test-output/large/sample-PROFILE_norm_on_del -M 0 --cluster-contigs
 
 INFO "Profiling the BAM files"
-anvi-merge test-output/large/sample-PROFILE/PROFILE.db test-output/large/sample-PROFILE_del_on_norm/PROFILE.db -c test-output/large/contig.db -o test-output/large/MERGED --skip-concoct-binning
-anvi-merge test-output/large/sample-PROFILE_T300del/PROFILE.db test-output/large/sample-PROFILE_norm_on_del/PROFILE.db -c test-output/large/contig_T300del.db -o test-output/large/MERGED_T300del --skip-concoct-binning
+anvi-merge test-output/large/sample-PROFILE/PROFILE.db test-output/large/sample-PROFILE_del_on_norm/PROFILE.db -c test-output/large/contig.db -o test-output/large/MERGED
+anvi-merge test-output/large/sample-PROFILE_T300del/PROFILE.db test-output/large/sample-PROFILE_norm_on_del/PROFILE.db -c test-output/large/contig_T300del.db -o test-output/large/MERGED_T300del
 
 INFO "Visualizing the profile"
 anvi-interactive -c test-output/large/contig.db -p test-output/large/MERGED/PROFILE.db

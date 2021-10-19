@@ -31,9 +31,9 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-slave_mode = False if 'workflows/metagenomics' in workflow.included[0] else True
+this_workflow_is_inherited_by_another = False if 'workflows/metagenomics' in workflow.included[0] else True
 
-if not slave_mode:
+if not this_workflow_is_inherited_by_another:
     # it is important that this comes before the include statement since
     # M is defined here and will also be used in the contigs workflow
     M = MetagenomicsWorkflow(argparse.Namespace(config=config))

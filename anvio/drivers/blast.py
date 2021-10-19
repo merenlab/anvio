@@ -124,7 +124,7 @@ class BLAST:
         self.run.info('BLAST search db', self.target_fasta)
 
 
-    def blast(self, outputfmt='5', word_size=None, strand=None):
+    def blast(self, outputfmt='6', word_size=None, strand=None):
         self.run.warning(None, header="NCBI BLAST SEARCH", lc="green")
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
