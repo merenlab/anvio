@@ -12,12 +12,4 @@ The external genomes file format enables anvi'o to work with one or more externa
 {:.warning}
 Please make sure names in the `name` column does not include any special characters (underscore is fine). It is also a good idea to keep these names short and descriptive as they will appear in various figures in downstream analyses.
 
-## Additional columns
-
-In some cases additional columns may be required to be in this file. Below is a table of the possible columns you may need.
-
-| header | description | required for |
-|----|----|----|
-| group | which group the genome belongs to (can be empty) | %(anvi-compute-functional-enrichment)s |
-
 Also see **%(internal-genomes)s** and **%(metagenomes)s**.
