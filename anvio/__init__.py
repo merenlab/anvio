@@ -15,7 +15,7 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '7.1-rc'
+anvio_version = '7.1'
 anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
