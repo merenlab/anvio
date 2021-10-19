@@ -365,10 +365,10 @@ function toggleAdditionalDataLayer(e){
   let layer = e.target.id.split('-')[0]
 
   if(e.target.checked){
-    settings['display']['additionalDataLayers'][layer] = true
+    settings['display']['layers'][layer] = true
     maxGroupSize += 1
   } else {
-    settings['display']['additionalDataLayers'][layer] = false
+    settings['display']['layers'][layer] = false
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   drawer.draw()
