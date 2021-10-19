@@ -313,28 +313,30 @@ function buildGenomesTable(genomes, order){
 
 function buildGroupLayersTable(layerLabel){
   let color;
+  let show = settings['display']['layers'][layerLabel]
 
-  if(layerLabel == 'GC_Content') color = '#9B9B9B' // TODO: replace hardcoded values w state data
-  if(layerLabel == 'Coverage') color = '#3D3D3D'
+  if(layerLabel == 'GC_Content') color = settings['display']['colors']['GC_Content'] // TODO: replace hardcoded values w state data
+  if(layerLabel == 'Coverage') color = settings['display']['colors']['coverage']
 
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
     var template =  `<tr id=${layerLabel}>
                     <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td>
                     <td> ${layerLabel} </td>
                     <td style="margin-left: 5px;"> n/a </td>
-                    <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>
+                    <td><input type="checkbox" class="additional_selectors" id="${layerLabel}-show" onclick="toggleAdditionalDataLayer(event)" checked=${show}></input></td>
                     </tr>;`
   } else {
     var template =  `<tr id=${layerLabel}>
                      <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td>
                      <td> ${layerLabel} </td>' +
                      <td><div id="${layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: ${color}" color=${color} background-color=${color} ></div></td>
-                     <td><input type="checkbox" class="additional_selectors" id=${layerLabel}-show onclick="toggleAdditionalDataLayer(event)" checked=true></input></td>
+                     <td><input type="checkbox" class="additional_selectors" id="${layerLabel}-show" onclick="toggleAdditionalDataLayer(event)" checked=''></input></td>
                      </tr>;`
   }
-
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+  $(`#${layerLabel}-show`).prop('checked', show) // needs to trigger after the template layer is appended to the DOM
 
   $("#tbody_additionalDataLayers").on("sortupdate", (event, ui) => {
     changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
@@ -349,8 +351,8 @@ function buildGroupLayersTable(layerLabel){
         $(el).attr('color', '#' + hex);
 
         if(bySetColor){
-          if(layerLabel == 'Coverage') settings['additional-data-layers'][0]['coverage-color'] = `#${hex}`
-          if(layerLabel == 'GC_Content') settings['additional-data-layers'][0]['gcContent-color'] = `#${hex}`
+          if(layerLabel == 'Coverage') settings['display']['colors']['coverage'] = `#${hex}`
+          if(layerLabel == 'GC_Content') settings['display']['colors']['GC_Content'] = `#${hex}`
           drawer.draw()
         } else {
           $(el).val(hex);
