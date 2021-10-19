@@ -250,11 +250,14 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None or read.query_sequence is None:
+            if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
                 # mapping software decided it did not want to include a cigar string for this read.
-                # The origin of why query sequence would be None is unkown.
+                # The origin of why query sequence would be None is unkown. Alternatively, this read
+                # has a query sequence, has a cigar string (and therefore mapped), but for some
+                # reason pysam has given the read the attribute read.is_unmapped == True. We choose
+                # not to work with such a read (see https://github.com/merenlab/anvio/issues/1821)
                 continue
 
             read = Read(read)
@@ -298,11 +301,14 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None or read.query_sequence is None:
+            if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
                 # mapping software decided it did not want to include a cigar string for this read.
-                # The origin of why query sequence would be None is unkown.
+                # The origin of why query sequence would be None is unkown. Alternatively, this read
+                # has a query sequence, has a cigar string (and therefore mapped), but for some
+                # reason pysam has given the read the attribute read.is_unmapped == True. We choose
+                # not to work with such a read (see https://github.com/merenlab/anvio/issues/1821)
                 continue
 
             read = Read(read)

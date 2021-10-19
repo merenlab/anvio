@@ -187,7 +187,9 @@ class ArgumentParser(argparse.ArgumentParser):
         to see can still be sorted out.
         """
 
-        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown', '--tmp-dir', '--display-db-calls']
+        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
+                                '--quiet', '--no-progress', '--as-markdown', '--tmp-dir',
+                                '--display-db-calls', '--force-use-my-tree']
 
         args, unknown = parser.parse_known_args()
 
