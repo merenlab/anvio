@@ -164,12 +164,12 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     let contigArr = Object.values(contigObj)[0]
     let stroke = 'black'
 
-    if(layer == 'Coverage'){
-      this.settings['display']['additional-data-layers']['coverage'] ? stroke = this.settings['display']['additional-data-layers']['coverage'] : stroke = 'black'
-    }
-    if(layer == 'GC_content'){
-      this.settings['display']['additional-data-layers']['gc-content'] ? stroke = this.settings['display']['additional-data-layers']['gc-content'] : stroke = 'black'
-    }
+    // if(layer == 'Coverage'){
+    //   this.settings['display']['additional-data-layers']['coverage'] ? stroke = this.settings['display']['additional-data-layers']['coverage'] : stroke = 'black'
+    // }
+    // if(layer == 'GC_content'){
+    //   this.settings['display']['additional-data-layers']['gc-content'] ? stroke = this.settings['display']['additional-data-layers']['gc-content'] : stroke = 'black'
+    // }
 
     let maxDataLayerValue = 0
     let startingTop = marginTop + yOffset + layerPos
