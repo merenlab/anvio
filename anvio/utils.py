@@ -424,6 +424,34 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
         os.remove(input_file_path)
 
 
+class CoverageStats:
+    """A class to return coverage stats for an array of nucleotide level coverages.
+
+    FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+    """
+
+    def __init__(self, coverage, skip_outliers=False):
+        self.min = np.amin(coverage)
+        self.max = np.amax(coverage)
+        self.median = np.median(coverage)
+        self.mean = np.mean(coverage)
+        self.std = np.std(coverage)
+        self.detection = np.sum(coverage > 0) / len(coverage)
+
+        if coverage.size < 4:
+            self.mean_Q2Q3 = self.mean
+        else:
+            sorted_c = sorted(coverage)
+            Q = int(coverage.size * 0.25)
+            Q2Q3 = sorted_c[Q:-Q]
+            self.mean_Q2Q3 = np.mean(Q2Q3)
+
+        if skip_outliers:
+            self.is_outlier = None
+        else:
+            self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+
 class RunInDirectory(object):
     """ Run any block of code in a specified directory. Return to original directory
 
@@ -1586,9 +1614,10 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
-        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end "
-                          "with a stop codon and is therefore probably not what you want. If you "
-                          "want to continue anyways, use the just_do_it flag")
+        raise ConfigError("The sequence `get_synonymous_and_non_synonymous_potential` received does "
+                          "end with a stop codon and may be irrelevant for this analysis. If you "
+                          "want to continue anyways, include the flag `--just-do-it` in your call "
+                          "(if you are a programmer see the function header).")
 
     synonymous_potential = 0
     num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG
@@ -1721,6 +1750,60 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
             os.remove(f)
 
     return dest_file
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches):
+    """A function to merge stretches of indices in an array.
+
+    It takes an array, `stretches`, that looks like this:
+
+        >>> [(3, 9), (14, 27), (32, 36), (38, 42)]
+
+    And returns an array like this, if `min_distance_between_independent_stretches`, say, 3:
+
+        >>> [(3, 9), (14, 27), (32, 42)]
+
+    """
+    stretches_to_merge = []
+
+    # The following state machine determines which entries in a given array
+    # should be merged
+    CURRENT = 0
+    START, END = 0, 1
+    while 1:
+        if not len(stretches):
+            break
+
+        NEXT = CURRENT + 1
+
+        if NEXT == len(stretches):
+            stretches_to_merge.append([stretches[CURRENT]])
+            break
+
+        while 1:
+            if NEXT > len(stretches):
+                break
+
+            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
+                NEXT = NEXT + 1
+
+                if NEXT == len(stretches):
+                    break
+            else:
+                break
+
+        if NEXT > len(stretches):
+            break
+        elif NEXT - CURRENT == 1:
+            stretches_to_merge.append([stretches[CURRENT]])
+            CURRENT += 1
+        else:
+            stretches_to_merge.append(stretches[CURRENT:NEXT])
+            CURRENT = NEXT + 1
+
+    # here the array `stretches_to_merge` contains all the lists of
+    # stretches that need to be merged.
+    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -3146,6 +3229,54 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
+def get_bams_and_profiles_txt_as_data(file_path):
+    """bams-and-profiles.txt is an anvi'o artifact with four columns.
+
+    This function will sanity check one, process it, and return data.
+    """
+
+    COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
+
+    if not filesnpaths.is_file_tab_delimited(file_path, dont_raise=True):
+        raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
+                          f"The file you have at '{file_path}' is nothing of that sorts.")
+
+    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if not set(expected_columns).issubset(set(columns_found)):
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+
+    names = COLUMN_DATA('name')
+    if len(set(names)) != len(names):
+        raise ConfigError("Every name listed in the `names` column in a bams and profiles txt must be unique :/ "
+                          "You have some redundant names in yours.")
+
+    contigs_db_paths = COLUMN_DATA('contigs_db_path')
+    if len(set(contigs_db_paths)) != 1:
+        raise ConfigError("All single profiles in bams and profiles file must be associated with the same "
+                          "contigs database. Meaning, you have to use the same contigs database path for "
+                          "every entry. Confusing? Yes. Still a rule? Yes.")
+
+    profile_db_paths = COLUMN_DATA('profile_db_path')
+    if len(set(profile_db_paths)) != len(profile_db_paths):
+        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+
+    bam_file_paths = COLUMN_DATA('bam_file_path')
+    if len(set(bam_file_paths)) != len(bam_file_paths):
+        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+
+    contigs_db_path = contigs_db_paths[0]
+    profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
+    for sample_name in profiles_and_bams:
+        profiles_and_bams[sample_name].pop('contigs_db_path')
+        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+
+    return contigs_db_path, profiles_and_bams
+
+
 def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
 
@@ -3910,11 +4041,10 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     cdb = dbi(contigs_db_path)
 
     if cdb.hash != pdb.hash:
-        raise ConfigError('The contigs database and the profile database does not '
-                          'seem to be compatible. More specifically, this contigs '
-                          'database is not the one that was used when %s generated '
-                          'this profile database (%s != %s).'\
-                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
+        raise ConfigError(f"The contigs database and the profile database at '{profile_db_path}' "
+                          f"does not seem to be compatible. More specifically, this contigs "
+                          f"database is not the one that was used when %s generated this profile "
+                          f"database (%s != %s)." % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
     return True
 
 

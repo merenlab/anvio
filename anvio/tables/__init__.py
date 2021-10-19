@@ -15,7 +15,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "20"
-profile_db_version = "37"
+profile_db_version = "38"
 genes_db_version = "6"
 pan_db_version = "15"
 auxiliary_data_version = "2"

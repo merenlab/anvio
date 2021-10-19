@@ -317,6 +317,9 @@ class HMMer:
         for worker in workers:
             worker.terminate()
 
+        self.progress.end()
+        self.run.info_single('Done 🎊', level=0, nl_after=1, mc="cyan")
+
         output_file_paths = []
         for output in desired_output:
             if hmmer_output_dir:
@@ -334,8 +337,6 @@ class HMMer:
                 output_file_path = output_file_path if num_raw_hits else None
 
             output_file_paths.append(output_file_path)
-
-        self.progress.end()
 
         # Return output path as string if desired_output is len 1. Else return tuple of output paths
         output = output_file_paths[0] if len(output_file_paths) == 1 else tuple(output_file_paths)

@@ -12,6 +12,9 @@ cp $inseq_files/CONTIGS.db $output_dir/CONTIGS.db
 cp $inseq_files/PROFILE.db $output_dir/PROFILE.db
 cp $inseq_files/AUXILIARY-DATA.db $output_dir/AUXILIARY-DATA.db
 
+INFO "Migrate all dbs"
+anvi-migrate $output_dir/*db --migrate-dbs-quickly
+
 # Generate gene-level-stats database
 INFO "Computing gene level stats database"
 anvi-gen-gene-level-stats-databases -p $output_dir/PROFILE.db \

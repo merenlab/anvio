@@ -21,11 +21,16 @@ __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "c
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
 __provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
-__description__ = "Creates a single anvi'o profile database. \
-                   When it is run on a BAM file, depending on the user parameters, the program quantifies\
-                   coverage per nucleotide position (and averages them  per contig), calculates\
-                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
-                   such as insertion and deletions and stores these data into appropriate tables"
+__description__ = ("The flagship anvi'o proram to profile a BAM file. Running this program on a BAM file "
+                   "will quantify coverages per nucleotide position in read recruitment results and will "
+                   "average coverage and detection data per contig. It will also calculate single-nucleotide, "
+                   "single-codon, and single-amino acid variants, as well as structural variants, such as "
+                   "insertion and deletions, to eventually stores all data into a single anvi'o profile database. "
+                   "For very large projects, this program can demand a lot of time, memory, and storage "
+                   "resources. If all you want is to learn coverages of your nutleotides, genes, contigs, or your "
+                   "bins collections from BAM files very rapidly, and/or you do not need anvi'o single profile "
+                   "databases for your project, please see other anvi'o programs that profile BAM files, "
+                   "`anvi-script-get-coverage-from-bam` and `anvi-profile-blitz`")
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
@@ -43,6 +48,7 @@ if __name__ == '__main__':
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
 
+    groupJ = parser.add_argument_group('FILTERS', 'Choose which reads to work (or not to work) with like a pro.')
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but can be useful if/when declared.')
     groupX = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Do you want your splits to be clustered? Yes? No?\
                                         Maybe? Remember: By default, anvi-profile will not perform hierarchical clustering\
@@ -57,6 +63,11 @@ if __name__ == '__main__':
 
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('blank-profile'), **anvio.K('blank-profile'))
+    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
+                            'Ignore any reads with a percent identity to the reference less '
+                            'than this number, e.g. 95. If not provided, all reads in the BAM '
+                            'file will be used (and things will run faster).', 'default': None}))
+    groupJ.add_argument(*anvio.A('fetch-filter'), **anvio.K('fetch-filter'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
@@ -64,10 +75,6 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupM.add_argument(*anvio.A('skip-INDEL-profiling'), **anvio.K('skip-INDEL-profiling'))
     groupM.add_argument(*anvio.A('profile-SCVs'), **anvio.K('profile-SCVs'))
-    groupM.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
-                            'Ignore any reads with a percent identity to the reference less '
-                            'than this number, e.g. 95. If not provided, all reads in the BAM '
-                            'file will be used (and things will run faster).', 'default': None}))
     groupM.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupX.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupX.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))

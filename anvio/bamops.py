@@ -39,6 +39,176 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
+class PairedEndTemplateDist:
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.bam_file_path = A('bam_file')
+        self.min_frequency_of_tlen = A('min_template_length_frequency') or 10
+        self.max_tlen_to_consider = A('max_template_length_to_consider') or 500000
+        self.output_file_path = A('output_file') or 'TEMPLATE-LENGTH-STATS.txt'
+        self.plot_data = A('plot_data')
+
+        self.run.info('BAM file', self.bam_file_path)
+
+        self.template_lengths = {}
+
+
+    def process(self):
+        filesnpaths.is_file_bam_file(self.bam_file_path)
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+
+        bam = BAMFileObject(self.bam_file_path, 'rb')
+        self.contig_names = bam.references
+        self.contig_lengths = bam.lengths
+
+        self.progress.new('Initializing')
+        self.progress.update('Counting num contigs ...')
+        num_contigs = len(self.contig_names)
+        self.progress.update('Counting num reads ...')
+        num_reads = bam.count()
+        self.progress.end()
+
+        self.run.info('Number of contigs', pp(num_contigs))
+        self.run.info('Number of reads', pp(num_reads))
+        self.run.info('Minimum template length frequency', pp(self.min_frequency_of_tlen))
+        self.run.info('Maximum template length to consider', pp(self.max_tlen_to_consider), nl_after=1)
+
+        self.progress.new("Bleep bloop", progress_total_items=num_reads)
+        self.progress.update('...')
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        for j in range(0, num_contigs):
+            contig_name = self.contig_names[j]
+
+            template_lengths_counter = Counter()
+
+            num_reads_processed = 0
+            for read in bam.fetch_only(contig_name):
+                num_reads_processed += 1
+
+                if read.is_paired and not read.mate_is_unmapped and read.tlen != 0:
+                    template_lengths_counter[abs(read.tlen)] += 1
+
+                if num_reads_processed % 100000 == 0:
+                    if mem_tracker.measure():
+                        mem_usage = mem_tracker.get_last()
+                        mem_diff = mem_tracker.get_last_diff()
+
+                    self.progress.increment(increment_to=num_reads_processed)
+                    self.progress.update(f"READ {pp(num_reads_processed)}/{pp(num_reads)} :: CONTIG {pp(j+1)}/{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+
+            # remove rarely occuring template lengths
+            tlens_to_discard = [tlen for tlen in template_lengths_counter if template_lengths_counter[tlen] < self.min_frequency_of_tlen or tlen > self.max_tlen_to_consider]
+            [template_lengths_counter.pop(tlen) for tlen in tlens_to_discard]
+
+            # code below looks dumb, b/c we first count frequencies using a Counter,
+            # and then turn it into a huge Python array by adding each tlen as many
+            # times as it was observed. but in fact this is faster than `.append()`
+            # for an array, or adding numbers to a numpy array. LOOK I HAM AS CONFUSE
+            # AS U R, BUT I HAS TESTED IT.
+            self.template_lengths[contig_name] = []
+            for tlen in template_lengths_counter:
+                self.template_lengths[contig_name].extend([tlen] * template_lengths_counter[tlen])
+
+        self.progress.end()
+
+        contigs_without_tlen_data = [c for c in self.template_lengths if not len(self.template_lengths[c])]
+        if len(contigs_without_tlen_data) == num_contigs:
+            raise ConfigError("So. None of your contigs seem to have any template length data, which suggests that "
+                              "either the reads that were mapped to your sequences to generate this BAM file were "
+                              "single reads rather than paired-end reads, or you set a crazy high `--min-tlen-frequency` "
+                              "value even though you didn't have a large number of reads in your BAM file. WHICH ONE "
+                              "IS IT, FLORIAN, WHICH ONE?")
+        elif len(contigs_without_tlen_data) < num_contigs:
+            self.run.warning(f"Some of your contigs, {pp(len(contigs_without_tlen_data))} of {pp(num_contigs)} to "
+                             f"be precise, did not seem to have any template lenght data. There are many reasons "
+                             f"this could happen, including a very high `--min-tlen-frequency` parameter for BAM files "
+                             f"with small number of reads. But since there are some contigs that seem to have proper paired-"
+                             f"end reads with template lengths, anvi'o will continue reporting and put zeros for "
+                             f"contigs that have no data in output files.")
+        else:
+            # we're golden
+            pass
+
+        if self.output_file_path:
+            self.report()
+
+        if self.plot_data:
+            self.plot_histogram()
+
+
+    def report(self):
+        stats = {}
+
+        self.progress.new("Summarizing data for reporting", progress_total_items=len(self.contig_names))
+        for contig_name in self.template_lengths:
+            self.progress.update(f"{contig_name}", increment=True)
+
+            if len(self.template_lengths[contig_name]):
+                # the following class was designed for coverage stats, but it does a large part
+                # of what we need to learn for these np arrays, so why not:
+                arr = np.array(self.template_lengths[contig_name])
+                C = utils.CoverageStats(arr, skip_outliers=True)
+
+                stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
+                                      'num_reads_considered': len(arr),
+                                      'mean'     : f"{C.mean:.4}",
+                                      'mean_Q2Q3': f"{C.mean_Q2Q3:.4}",
+                                      'median'   : f"{C.median}",
+                                      'min'      : f"{C.min}",
+                                      'max'      : f"{C.max}",
+                                      'std'      : f"{C.std:.4}"}
+            else:
+                stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
+                                      'num_reads_considered': 0,
+                                      'mean'     : f"",
+                                      'mean_Q2Q3': f"",
+                                      'median'   : f"",
+                                      'min'      : f"",
+                                      'max'      : f"",
+                                      'std'      : f""}
+
+        self.progress.end()
+
+        headers = ['contig', 'length', 'num_reads_considered', 'mean', 'mean_Q2Q3', 'median', 'min', 'max', 'std']
+        utils.store_dict_as_TAB_delimited_file(stats, self.output_file_path, headers=headers)
+
+        self.run.info('Output file', self.output_file_path, nl_after=1)
+
+
+    def plot_histogram(self, num_bins=50):
+        try:
+            import plotext as plt
+        except:
+            self.run.warning("You don't have the `plotext` library to plot data :/ You can "
+                             "install it by running `pip install plotext` in your anvi'o "
+                             "environment.", header="NO PLOT FOR YOU :(")
+            return
+
+        self.progress.new("Bleep bloop")
+        self.progress.update('Merging all tlens from all contigs ...')
+        tlens_across_all_contigs = []
+        for contig_name in self.template_lengths:
+            tlens_across_all_contigs.extend(self.template_lengths[contig_name])
+        self.progress.end()
+
+        self.run.info_single("All the data are ready for plotting, if you are lucky, you "
+                             "should see a histogram of tlen distributions below.", nl_after=1)
+
+        plt.clp()
+        plt.title(f"The overall distribution of pair1 and pair2 distances in {os.path.basename(self.bam_file_path)}")
+        plt.xlabel("Template length")
+        plt.ylabel("Frequency")
+        plt.hist(tlens_across_all_contigs, num_bins)
+        plt.plotsize(progress.terminal_width, 40)
+        plt.show()
+
 
 class BAMFileObject(pysam.AlignmentFile):
     def __init__(self, *args):
@@ -49,17 +219,27 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         self.input_bam_path = args[0]
-        filesnpaths.is_file_exists(self.input_bam_path)
 
-        try:
-            pysam.AlignmentFile.__init__(self)
-        except ValueError as e:
-            raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
+        filesnpaths.is_file_bam_file(self.input_bam_path)
 
-        try:
-            self.mapped
-        except ValueError:
-            raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
+        self.fetch_filter = None
+
+        pysam.AlignmentFile.__init__(self)
+
+
+    def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
+        """A wrapper function for `bam.fetch()`.
+
+        Having a single function enables global application of `fetch_filters` to reads
+        reported from a BAM file.
+        """
+
+        for read in self.fetch(contig_name, start, end):
+            if self.fetch_filter:
+                if constants.fetch_filters[self.fetch_filter](read):
+                    yield read
+            else:
+                yield read
 
 
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
@@ -69,7 +249,7 @@ class BAMFileObject(pysam.AlignmentFile):
         defined region so that they fit inside the start and stop.
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -117,7 +297,7 @@ class BAMFileObject(pysam.AlignmentFile):
             percent_id_cutoff=95.0
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -182,7 +362,7 @@ class BAMFileObject(pysam.AlignmentFile):
         reads_checked = 0
 
         for contig_name in self.references:
-            for read in self.fetch(contig_name):
+            for read in self.fetch_only(contig_name):
                 if read.cigartuples is None:
                     # if it didn't map we forgive it for not having an MD tag
                     continue
@@ -563,7 +743,7 @@ class Coverage:
     def _fetch_iterator(self, bam, contig_name, start, end):
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
-        for read in bam.fetch(contig_name, start, end):
+        for read in bam.fetch_only(contig_name, start, end):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -929,7 +1109,7 @@ class GetReadsFromBAM:
             has_unknown_mate = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
 
                         defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
 
@@ -943,7 +1123,7 @@ class GetReadsFromBAM:
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
 
-                            # rev_comp either R1 or R2 to match the original short reads orientation 
+                            # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
                                 short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
                                 short_reads_for_splits_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
@@ -958,7 +1138,7 @@ class GetReadsFromBAM:
                 short_reads_for_splits_dict['UNPAIRED'].update(has_unknown_mate)
             else:
                 for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
                         short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])] = read.query_sequence
             bam_file_object.close()
 

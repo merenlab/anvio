@@ -5,15 +5,6 @@ source 00.sh
 SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
 
-INFO "Initializing raw BAM files"
-# init raw bam files.
-for f in 01 02 03
-do
-    anvi-init-bam $files/SAMPLE-$f-RAW.bam \
-                  --output-file $output_dir/SAMPLE-$f.bam
-    echo
-done
-
 INFO "Reformat the contigs FASTA"
 anvi-script-reformat-fasta $files/contigs.fa -o $output_dir/contigs.fa \
                                              -l 0 \
@@ -41,6 +32,50 @@ anvi-gen-contigs-database -f $files/contigs.fa \
 
 INFO "Displaying the info for the contigs databse"
 anvi-db-info $output_dir/CONTIGS.db
+
+INFO "Searching for palindromes in a DNA sequence"
+anvi-search-palindromes --dna-sequence TGTGAGTAGCTGCGGCGTCCGCGACCGGCGGGCGGCATGCATTGACGACACGCTCCGGGCCGCTCAGGCCAAGTCTTTACGGTCTTACAACGCATGCCGCCCACCGGTCGCTCGTAGGTGCGGAAAAGTTATTTGAGATAA \
+                        --max-num-mismatches 2
+
+INFO "Searching for palindromes in a FASTA file"
+anvi-search-palindromes -f $output_dir/contigs.fa \
+                        --max-num-mismatches 2 \
+                        --min-palindrome-length 20 \
+                        --blast-word-size 10 \
+                        --output-file $output_dir/PALINDROMES-IN-FASTA.txt
+SHOW_FILE $output_dir/PALINDROMES-IN-FASTA.txt
+
+INFO "Searching for palindromes in a contigs database"
+anvi-search-palindromes -c $output_dir/CONTIGS.db \
+                        --max-num-mismatches 2 \
+                        --min-palindrome-length 20 \
+                        --blast-word-size 10 \
+                        --output-file $output_dir/PALINDROMES-IN-CONTIGS-DB.txt
+SHOW_FILE $output_dir/PALINDROMES-IN-CONTIGS-DB.txt
+
+
+INFO "Initializing raw BAM files"
+# init raw bam files.
+for f in 01 02 03
+do
+    anvi-init-bam $files/SAMPLE-$f-RAW.bam \
+                  --output-file $output_dir/SAMPLE-$f.bam
+    echo
+done
+
+
+INFO "Rapid profiling of BAM files with anvi-profile blitz in gene mode"
+anvi-profile-blitz $output_dir/*bam \
+                   -c $output_dir/CONTIGS.db \
+                   --gene-mode \
+                   -o $output_dir/PROFILE-BLITZ-GENES.txt
+
+INFO "Rapid profiling of BAM files with anvi-profile blitz in contig mode"
+anvi-profile-blitz $output_dir/*bam \
+                   -c $output_dir/CONTIGS.db \
+                   --gene-mode \
+                   -o $output_dir/PROFILE-BLITZ-CONTIGS.txt
+SHOW_FILE $output_dir/PROFILE-BLITZ-CONTIGS.txt
 
 INFO "Setting a new self value in the self table of the contigs databse"
 anvi-db-info $output_dir/CONTIGS.db \
@@ -230,11 +265,24 @@ do
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
                                     -i $files/example_files_for_kraken_hll_taxonomy/SAMPLE-$f.mpa \
                                     --parser krakenuniq
+
+    INFO "Importing a collection"
+    anvi-import-collection -c $output_dir/CONTIGS.db \
+                           -p $output_dir/SAMPLE-$f/PROFILE.db \
+                           -C CONCOCT \
+                           $files/concoct_mini_test.txt
 done
+
+INFO "Fast summary of the single profile databases"
+anvi-summarize-blitz $output_dir/SAMPLE-0*/PROFILE.db \
+                     -c $output_dir/CONTIGS.db \
+                     -C CONCOCT \
+                     -o $output_dir/SUMMARY-BLITZ.txt
+SHOW_FILE $output_dir/SUMMARY-BLITZ.txt
 
 # Run anvi-profile on one of the samples using the multi-process routine, just to make sure it does
 # not crash. FIXME Ideally, this step would compare the identicalness of
-# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db 
+# MULTI-THREAD-SAMPLE-01/PROFILE.db and SAMPLE-01/PROFILE.db
 INFO "Profiling sample SAMPLE-01 with --force-multi"
 anvi-profile -i $output_dir/SAMPLE-01.bam \
              -o $output_dir/MULTI-THREAD-SAMPLE-01 \

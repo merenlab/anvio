@@ -52,6 +52,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "dna-sequence": {
+        "name": "DNA SEQUENCE",
+        "type": "SEQUENCE",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "trnaseq-fasta": {
         "name": "TRNASEQ",
         "type": "FASTA",
@@ -66,6 +72,12 @@ ANVIO_ARTIFACTS ={
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "external-structures": {
+        "name": "EXTERNAL STRUCTURES",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
@@ -93,6 +105,12 @@ ANVIO_ARTIFACTS ={
         "type": "BAM",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "bam-stats-txt": {
+        "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "protein-structure-txt": {
         "name": "PDB FILE",
@@ -328,6 +346,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "palindromes-txt": {
+        "name": "PALINDROMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "inversions": {
+        "name": "INVERSIONS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
@@ -532,6 +562,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "quick-summary": {
+        "name": "QUICK SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",
@@ -663,5 +699,17 @@ ANVIO_ARTIFACTS ={
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "contig-inspection" : {
+        "name" : "CONTIG INSPECTION",
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True,
+        "provided_by_user" : False
+    },
+    "gene-cluster-inspection" : {
+        "name" : "GENE CLUSTER INSPECTION",
+        "type" : "DISPLAY",
+        "provided_by_anvio" : True,
+        "provided_by_user" : False
     }
 }

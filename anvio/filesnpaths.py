@@ -5,9 +5,10 @@
 import os
 import json
 import time
+import pysam
 import shutil
-import tempfile
 import tarfile
+import tempfile
 
 import anvio
 import anvio.fastalib as u
@@ -183,7 +184,7 @@ def is_file_empty(file_path):
     return os.stat(file_path).st_size == 0
 
 
-def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
+def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, dont_raise=False):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
@@ -195,22 +196,34 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
             else:
                 break
     except UnicodeDecodeError:
-        raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
-        raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                               "Did you export this file on MAC using EXCEL? :(" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
+                                   "Did you export this file on MAC using EXCEL? :(" % file_path)
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
     if len(num_fields_set) != 1:
-        raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
 
     if expected_number_of_fields:
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
-            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
-                                   "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
+            if dont_raise:
+                return False
+            else:
+                raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
+                                       "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
     return True
@@ -272,6 +285,34 @@ def is_file_tar_file(file_path, dont_raise=False):
             return False
         else:
             raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
+
+
+def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
+    """Checks if a BAM file is a proper BAM file, AND if it is intexed"""
+
+    is_file_exists(file_path)
+
+    try:
+        bam_file = pysam.AlignmentFile(file_path, "rb")
+    except Exception as e:
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The BAM file you have there upsets samtools very much: '{e}'.")
+
+    if not ok_if_not_indexed:
+        try:
+            bam_file.mapped
+        except ValueError:
+            if dont_raise:
+                return False
+            else:
+                raise FilesNPathsError(f"The BAM file at '{file_path}' does not seem to be indexed (when a BAM file) "
+                                       f"is indexed, you usually find a file with the same name that ends with '.bam.bai' "
+                                       f"extention in the same directory). You can do it via `samtools`, or using the "
+                                       f"anvi'o program 'anvi-init-bam'.")
+
+    return True
 
 
 def is_program_exists(program):
