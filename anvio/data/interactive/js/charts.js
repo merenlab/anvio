@@ -321,7 +321,11 @@ function loadAll() {
                 if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
                 if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
                 if(state['snv_scale_dir_up']) $("#scale_dir_box").attr("checked", "checked");
-                if(state['fixed-y-scale']) $('#fixed_ys_box').attr("checked", "checked");
+
+                if(state.hasOwnProperty('fixed-y-scale')){
+                  $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
+                }
+
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -1498,7 +1502,7 @@ function processState(state_name, state) {
     state['show_indels'] = $('#toggle_indel_box').val() == "on";
     state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
     state['snv_scale_dir_up'] = $('#scale_dir_box').val() == "on";
-    state['fixed-y-scale'] = $('#fixed_ys_box').val() == "on";
+    // state['fixed-y-scale'] = $('#fixed_ys_box').val() == "on";
 
     state['state-name'] = current_state_name = state_name;
 
