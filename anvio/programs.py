@@ -88,7 +88,12 @@ def get_param_set(output):
         desc = ''
         _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
     else:
+        output.pop(0)
         section = output.pop(0)
+
+        if section.startswith('━'):
+            return None, None, None
+
         if output[0].startswith('  -'):
             # no description, goes into params immediately (someone did a crappy job)
             desc = ''
@@ -121,29 +126,28 @@ def parse_help_output(output):
     if not output[0].startswith('usage:'):
         raise ConfigError("This output does not seem to have the proper usage statement.")
 
-    usage = J([l[7:] for l in get_until_blank(output)])
+    usage = J([l for l in get_until_blank(output)])
 
     if output.pop(0) != '':
         raise ConfigError("This output is missing the description start marker.")
 
-    description = J(get_until_blank(output))
-
     params = {}
     while 1:
-        if output.pop(0) != '':
-            raise ConfigError("The params section does not seem to be where this script expects to find it.")
-
         if not len(output):
             break
 
         section, desc, _params = get_param_set(output)
+
+        if section == None:
+            break
+
         if _params == '':
             pass
         else:
             params[section] = {'description': J(desc),
                                'params': _params}
 
-    return usage, description, params, output
+    return usage,  params, output
 
 
 class AnvioPrograms(AnvioAuthors):
@@ -916,10 +920,10 @@ class ProgramsVignette(AnvioPrograms):
             output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
-                    usage, description, params, output = parse_help_output(output)
+                    usage, params, output = parse_help_output(output)
             else:
                 try:
-                    usage, description, params, output = parse_help_output(output)
+                    usage, params, output = parse_help_output(output)
                 except Exception as e:
                     progress.end()
                     run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next. "
@@ -927,7 +931,7 @@ class ProgramsVignette(AnvioPrograms):
                     continue
 
             d[program.name] = {'usage': usage,
-                               'description': description,
+                               'description': program.meta_info['description']['value'],
                                'params': params,
                                'tags': program.meta_info['tags']['value'],
                                'resources': program.meta_info['resources']['value']}
