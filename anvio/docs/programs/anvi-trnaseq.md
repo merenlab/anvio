@@ -1,30 +1,45 @@
-The input for this program is a **properly formatted** %(trnaseq-fasta)s, containing sequences from a tRNA-seq sample or split.
+This program **analyzes a tRNA-seq library, generating de novo predictions of tRNA sequences, structures, and modification positions**.
 
-The program identifies tRNA among the input sequences, profiles the tRNA primary sequence and secondary structure, and filters single nucleotide variants from modified nucleotides.
+A FASTA file of merged paired-end tRNA-seq reads is required as input. This file is produced by the initial steps of the %(trnaseq-workflow)s, in which [Illumina-utils](https://github.com/merenlab/illumina-utils), merges paired-end reads and %(anvi-script-reformat-fasta)s creates anvi'o-compliant deflines in the FASTA file.
 
-The primary output of the program is a %(trnaseq-db)s. Supplemental files are also produced: an analysis summary file, a tab-separated file of unique sequences not identified as tRNA, and a tab-separated file showing the range of 5' and 3' variants trimmed from tRNA sequences.
+The primary output of anvi-trnaseq is a %(trnaseq-db)s. Supplemental outputs are also produced -- an analysis summary, a tabular file of unique sequences not identified as tRNA, an a tabular file of 5' and 3' extensions trimmed off mature tRNA.
 
-We encourage you to read the list of options in the `anvi-trnaseq --help` menu to understand how the user can manipulate the multifaceted analyses performed by the program.
+The `anvi-trnaseq --help` menu provides detailed explanations of the parameters controlling the multifacted analyses performed by the program.
 
-The program can generate a .ini file for tRNA feature parameterization using an alternate command, `anvi-trnaseq --default-feature-param-file <param.ini>`. The default parameterizations in the file can be modified by the user, and the file can be used as the `--feature-param-file` argument in the main mode of the program. `anvi-trnaseq --print-default-feature-params` can also be used to quickly and neatly display the defaults in the terminal.
+## Examples
 
-
-### Create a tRNA-seq database from a FASTA file, using 16 cores
+*Generate a %(trnaseq-db)s from a sample using 16 cores.*
 
 {{ codestart }}
-anvi-trnaseq -f %(trnaseq-fasta)s \
-             -S example_sample_name \
-             -o example_empty_output_directory_path \
+anvi-trnaseq -f <trnaseq_fasta> \
+             -S <sample_name> \
+             -o <new_output_directory> \
              -T 16
 {{ codestop }}
 
-### Create a tRNA-seq database from a sample identified as a demethylase split, overwriting the output directory if it already exists
+*Generate a %(trnaseq-db)s from a sample flagged as being treated with demethylase. The output directory is overwritten if it already exists.*
 
 {{ codestart }}
-anvi-trnaseq -f %(trnaseq-fasta)s \
-             -S example_sample_name \
-             -o example_empty_output_directory_path \
+anvi-trnaseq -f <trnaseq_fasta> \
+             -S <sample_name> \
+             -o <output_directory> \
              -T 16 \
              --treatment demethylase \
              -W
+{{ codestop }}
+
+## Parameterize tRNA feature profiling
+
+Feature profiling parameters can be modified by the user by in an optional `.ini` file. For example, the user may want a more permissive definition of a tRNA (more false positive identifications of sequences as tRNA, fewer false negative failures to identify sequences as tRNA), increasing the number of unpaired nucleotides allowed in the T stem or increasing the number of unconserved canonical nucleotides allowed in the anticodon loop. Numerous structural parameters like these can be altered.
+
+*Write the `.ini` file to `param.ini`.*
+
+{{ codestart }}
+anvi-trnaseq --default-feature-param-file <param.ini>
+{{ codestop }}
+
+*Nicely display the `.ini` defaults that can be written to the file in standard output.*
+
+{{ codestart }}
+anvi-trnaseq --print-default-feature-params
 {{ codestop }}
