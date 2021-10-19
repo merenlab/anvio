@@ -2,13 +2,13 @@
 # pylint: disable=line-too-long
 """Library for tRNA-seq dataset operations
 
-`bin/anvi-trnaseq` and `bin/anvi-convert-trnaseq-database` are the default clients using this
-module. `anvi-trnaseq` instantiates a `TRNASeqDataset` object. `anvi-convert-trnaseq-database`
-instantiates a `DatabaseConverter` object. The clients call the objects' `process` methods to start
-the analytic workflows.
+`bin/anvi-trnaseq` and `bin/anvi-merge-trnaseq` are the default clients using this module.
+`anvi-trnaseq` instantiates a `TRNASeqDataset` object. `anvi-merge-trnaseq` instantiates a
+`DatabaseMerger` object. The clients call the objects' `process` methods to start the analytic
+workflows.
 
 Each sequence library in an experiment is processed separately as a `TRNASeqDataset`, storing an
-information-rich anvi'o tRNA-seq database. `DatabaseConverter` finds reference seed sequences from a
+information-rich anvi'o tRNA-seq database. `DatabaseMerger` finds reference seed sequences from a
 set of tRNA-seq databases, storing seeds in an anvi'o contigs database and coverage patterns for
 each dataset in anvi'o profile and auxiliary databases. Contigs and profile databases interface with
 a range of other tools in the anvi'o platform.
@@ -5141,8 +5141,8 @@ class SeedSequence(object):
             setattr(self, attr_name, None)
 
 
-class DatabaseConverter(object):
-    """Converts tRNA-seq database(s) into contigs, auxiliary, and profile databases. "Contigs" in
+class DatabaseMerger(object):
+    """Merges tRNA-seq database(s) into contigs, auxiliary, and profile databases. "Contigs" in
     this context are tRNA seed sequences representing tRNA identified in the samples."""
 
     # The following constants are columns needed from tables of a tRNA-seq database.
@@ -5316,7 +5316,7 @@ class DatabaseConverter(object):
 
 
     def sanity_check(self):
-        """Check `anvi-convert-trnaseq-database` arguments."""
+        """Check `anvi-merge-trnaseq` arguments."""
         for trnaseq_db_path in self.trnaseq_db_paths:
             utils.is_trnaseq_db(trnaseq_db_path)
         self.populate_trnaseq_dbs_info_dict()
@@ -5383,7 +5383,7 @@ class DatabaseConverter(object):
                  for trnaseq_db_path, trnaseq_db_info_dict in self.trnaseq_dbs_info_dict.items()])
             if anvio.FORCE:
                 self.run.warning("Not all input tRNA-seq dbs have the same version number, but since you have used the `--force` flag, "
-                                 "`anvi-convert-trnaseq-database` will proceed though this is dangerous and may lead to errors. "
+                                 "`anvi-merge-trnaseq` will proceed though this is dangerous and may lead to errors. "
                                  f"Here is the version number of each database:\n{trnaseq_db_version_report}")
             else:
                 raise ConfigError("Not all input tRNA-seq dbs have the same version number. "
@@ -7244,12 +7244,12 @@ class DatabaseConverter(object):
             from_matrix_form=True)
 
 
-def trnaseq_db_loader(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, db_converter):
-    """This client for `DatabaseConverter.load_trnaseq_database_sequence_summaries` is located outside the
-    `DatabaseConverter` class to allow multiprocessing."""
+def trnaseq_db_loader(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, db_merger):
+    """This client for `DatabaseMerger.load_trnaseq_database_sequence_summaries` is located outside the
+    `DatabaseMerger` class to allow multiprocessing."""
     while True:
         trnaseq_db_path = input_queue.get()
-        summaries_Nu, summaries_M = db_converter.load_trnaseq_database_sequence_summaries(trnaseq_db_path)
+        summaries_Nu, summaries_M = db_merger.load_trnaseq_database_sequence_summaries(trnaseq_db_path)
         for summary_Nu in summaries_Nu:
             output_queue_Nu_summaries.put((trnaseq_db_path, summary_Nu))
         for summary_M in summaries_M:
@@ -7834,6 +7834,18 @@ class ResultPlotter(object):
 
     NT_COLORS = ('blue', 'green', 'orange', 'red')
     RANKS = ('domain', 'phylum', 'class', 'order', 'family', 'genus', 'species')
+    DEFAULT_FORMAT_PARAM_DICT = {
+        'nt_key_y': 1.07,
+        'nt_key_font_size': 3,
+        'group_id_y': 1.07,
+        'group_id_font_size': 6,
+        'seed_count_y': 1.07,
+        'seed_count_font_size': 6,
+        'cov_tick_font_size': 3,
+        'mod_frac_tick_font_size': 2,
+        'sample_rel_abund_font_size': 3,
+        'ordinal_pos_tick_font_size': 4
+    }
 
     def __init__(self, args, run=terminal.Run(width=100)):
         self.run = run
@@ -7858,6 +7870,8 @@ class ResultPlotter(object):
         if not self.mod_txt_path:
             raise ConfigError("Please provide the path to a tRNA modifications table using `--modifications-txt` or `-m`.")
 
+        self.format_param_dict = self.DEFAULT_FORMAT_PARAM_DICT
+
 
     def go(self):
         """Load data and get standard input from user to produce plots."""
@@ -7866,6 +7880,7 @@ class ResultPlotter(object):
         self.print_help()
 
         RANKS = self.RANKS
+        DEFAULT_FORMAT_PARAM_DICT = self.DEFAULT_FORMAT_PARAM_DICT
         warning = self.run.warning
         while True:
             entry = input("\033[36;1;3mInput -> \033[0m")
@@ -7875,14 +7890,18 @@ class ResultPlotter(object):
             elif entry == 'h':
                 self.print_help()
                 continue
+            elif entry == 'f':
+                self.print_formatting_options()
+                continue
 
             loop_ranks = []
+            format_command = False
             taxon_rank_filter = None
             taxon_filter = None
             single_aa = None
             single_anticodon = None
             out_dir = self.out_dir
-            for field in [field.strip() for field in entry.split(';')]:
+            for field_index, field in enumerate([field.strip() for field in entry.split(';')]):
                 split_field = field.split(',')
 
                 if len(split_field) == 1:
@@ -7891,7 +7910,12 @@ class ResultPlotter(object):
                         break
 
                     single_field = split_field[0]
-                    if single_field in RANKS:
+                    if single_field == 'f':
+                        if field_index > 0:
+                            warning("A format command must start with f; and not include plot commands.", "INVALID FIELD")
+                            break
+                        format_command = True
+                    elif single_field in RANKS:
                         loop_ranks.append(single_field)
                     elif single_field in AMINO_ACIDS:
                         if single_aa:
@@ -7903,21 +7927,34 @@ class ResultPlotter(object):
                             warning("Multiple anticodons were given.", "INVALID FIELD")
                             break
                         single_anticodon = single_field
+                    elif format_command:
+                        if single_field == 'reset':
+                            self.format_param_dict = DEFAULT_FORMAT_PARAM_DICT
+                        else:
+                            warning("A format option must have a value of 'reset' or be similar to 'nt_key_y, 1.1'", "INVALID FIELD")
                     else:
                         warning(f"{single_field} is not recognized as a taxonomic rank, amino acid, or anticodon.", "INVALID FIELD")
+                        break
                 elif len(split_field) == 2:
-                    if split_field[0] == 'outdir':
-                        if os.path.isdir(split_field[1]):
-                            if not os.access(os.path.abspath(split_field[1]), os.W_OK):
-                                warning(f"Permission denied to create files in {split_field[1]}", "INVALID DIRECTORY PATH")
+                    if format_command:
+                        format_param = split_field[0].strip()
+                        if format_param not in DEFAULT_FORMAT_PARAM_DICT:
+                            warning(f"{format_param} is not recognized. Type f for format options.", "INVALID FIELD")
+                        self.format_param_dict[format_param] = float(split_field[1].strip())
+                        continue
+
+                    if split_field[0].strip() == 'outdir':
+                        out_dir = split_field[1].strip()
+                        if os.path.isdir(out_dir):
+                            if not os.access(os.path.abspath(out_dir), os.W_OK):
+                                warning(f"Permission denied to create files in {out_dir}", "INVALID DIRECTORY PATH")
                                 break
                         else:
                             try:
-                                os.mkdir(split_field[1])
+                                os.mkdir(out_dir)
                             except FileNotFoundError:
-                                warning(f"{split_field[1]}", "INVALID DIRECTORY PATH")
+                                warning(f"{out_dir}", "INVALID DIRECTORY PATH")
                                 break
-                        out_dir = split_field[1]
                         continue
 
                     if taxon_filter:
@@ -7933,6 +7970,9 @@ class ResultPlotter(object):
                     warning(f"A field with {len(split_field)} commas was given: '{field}'.", "INVALID FIELD")
                     break
             else:
+                if format_command:
+                    continue
+
                 if not taxon_rank_filter and not loop_ranks:
                     warning(f"A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
                     continue
@@ -8159,8 +8199,28 @@ class ResultPlotter(object):
         info_single("Invalid: class, Clostridia; class, Bacteroidia", mc='red', level=2)
         info_single("Invalid: Arg; Asp", mc='red', level=2, nl_after=1)
 
+        info_single("Alter plot appearance with format options.", mc='cyan')
+        info_single("The available parameters, such as tick label size, may need to be tuned to make everything fit.", cut_after=120, mc='magenta', level=2)
+        info_single("A format command affects all subsequent plots.", mc='magenta', level=2)
+        info_single("A format command starts with f;", mc='magenta', level=2)
+        info_single("Example: f; sample_rel_abund_size, 2; group_id_y, 1.1; seed_count_y, 1.1", mc='magenta', cut_after=120, level=2)
+        info_single("A format command should not include a command to make a plot.", mc='magenta', level=2)
+        info_single("Invalid: f; sample_rel_abund_size, 2; class", mc='red', level=2)
+        info_single("Reset format options to their default values: f; reset", mc='magenta', level=2, nl_after=1)
+
+        info_single("Type f for format options.")
         info_single("Type h for this help message.")
         info_single("Type q to quit.", nl_after=2)
+
+
+    def print_formatting_options(self):
+        self.run.warning("", header="FORMAT OPTIONS", lc='green')
+        info_single = self.run.info_single
+        DEFAULT_FORMAT_PARAM_DICT = self.DEFAULT_FORMAT_PARAM_DICT
+        info_single("The name and default value of the option is given.", mc='magenta', level=1)
+        for param, value in self.DEFAULT_FORMAT_PARAM_DICT.items():
+            info_single(f"{param}, {value}", mc='yellow', level=2)
+        print("\n")
 
 
     def plot_rank(self, rank, spec_df, mod_df, aa, anticodon, out_dir, nonspec_df=None):
@@ -8206,6 +8266,7 @@ class ResultPlotter(object):
 
         plt.subplots_adjust(hspace=0)
 
+        format_param_dict = self.format_param_dict
         cov_index = self.cov_index
         cov_cutoff = self.cov_cutoff
         cov_length = self.cov_length
@@ -8230,7 +8291,7 @@ class ResultPlotter(object):
                                 xy=(1.04, 1),
                                 xycoords=('axes fraction', 'axes fraction'),
                                 va='top',
-                                fontsize=3)
+                                fontsize=format_param_dict['sample_rel_abund_font_size'])
                 continue
 
             # Display seed coverages from bottom to top in descending order of mean specific coverage.
@@ -8246,7 +8307,7 @@ class ResultPlotter(object):
             cov_ax.plot(cov_x_values, spec_cov_array.sum(axis=0), linewidth=0.15, color='purple')
 
             cov_ax.set_ylim(0)
-            cov_ax.yaxis.set_tick_params(labelsize=2, length=2, pad=0)
+            cov_ax.yaxis.set_tick_params(labelsize=format_param_dict['cov_tick_font_size'], length=2, pad=0)
             if ax_count == 0 and ax_count == len(cov_axs) - 1:
                 cov_ax.yaxis.set_major_locator(MaxNLocator(nbins=3, steps=[5], integer=True, min_n_ticks=2))
             elif ax_count == 0:
@@ -8261,7 +8322,7 @@ class ResultPlotter(object):
                             xy=(1.04, 0.98),
                             xycoords=('axes fraction', 'axes fraction'),
                             va='top',
-                            fontsize=3)
+                            fontsize=format_param_dict['sample_rel_abund_font_size'])
 
             mod_ax = cov_ax.twinx()
             try:
@@ -8296,11 +8357,11 @@ class ResultPlotter(object):
                 mod_ax.set_yticks(mod_y_ticks[: -1])
             else:
                 mod_ax.set_yticks(mod_y_ticks[1: -1])
-            mod_ax.yaxis.set_tick_params(labelsize=2, length=2, pad=0)
+            mod_ax.yaxis.set_tick_params(labelsize=format_param_dict['mod_frac_tick_font_size'], length=2, pad=0)
 
         bottom_cov_ax.set_xlim(-1, cov_length)
         bottom_cov_ax.set_xticks(cov_x_values)
-        bottom_cov_ax.set_xticklabels(cov_x_labels, fontsize=4, rotation='vertical')
+        bottom_cov_ax.set_xticklabels(cov_x_labels, fontsize=format_param_dict['ordinal_pos_tick_font_size'], rotation='vertical')
         bottom_cov_ax.xaxis.set_tick_params(length=2, pad=0)
 
         top_cov_ax = cov_axs[0]
@@ -8309,23 +8370,23 @@ class ResultPlotter(object):
         nt_num = 0
         for nt, nt_color in zip(UNAMBIG_NTS, NT_COLORS):
             top_cov_ax.annotate(f"{nt}",
-                                xy=(0.01, 1.04 + 0.12 * nt_num),
+                                xy=(0.01 + 0.007 * nt_num, format_param_dict['nt_key_y']),
                                 xycoords=('axes fraction', 'axes fraction'),
-                                fontsize=3,
+                                fontsize=format_param_dict['nt_key_font_size'],
                                 ha='center',
                                 color=nt_color)
             nt_num += 1
 
         top_cov_ax.annotate(f"{aa}-{anticodon}\n{rank.capitalize()} {taxon}",
-                            xy=(0.05, 1.04),
+                            xy=(0.05, format_param_dict['group_id_y']),
                             xycoords=('axes fraction', 'axes fraction'),
-                            fontsize=6)
+                            fontsize=format_param_dict['group_id_font_size'])
 
         top_cov_ax.annotate(f"Seeds: {pp(len(sample_spec_df))}",
-                            xy=(1, 1.04),
+                            xy=(1, format_param_dict['seed_count_y']),
                             xycoords=('axes fraction', 'axes fraction'),
                             ha='right',
-                            fontsize=6)
+                            fontsize=format_param_dict['seed_count_font_size'])
 
         filename = f"{aa}_{anticodon}_{rank}_{taxon}.png"
         out_path = os.path.join(out_dir, filename)

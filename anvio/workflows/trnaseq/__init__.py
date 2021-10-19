@@ -44,7 +44,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             'iu_merge_pairs',
             'anvi_reformat_fasta',
             'anvi_trnaseq',
-            'anvi_convert_trnaseq_database',
+            'anvi_merge_trnaseq',
             'anvi_run_trna_taxonomy',
             'anvi_tabulate_trnaseq'
         ])
@@ -87,7 +87,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             '--alignment-target-chunk-size',
             '--profiling-chunk-size'
         ]
-        rule_acceptable_params_dict['anvi_convert_trnaseq_database'] = [
+        rule_acceptable_params_dict['anvi_merge_trnaseq'] = [
             'run',
             '--project-name',
             '--max-reported-trna-seeds',
@@ -162,7 +162,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 '--alignment-target-chunk-size': anvio.D['alignment-target-chunk-size'][1]['default'],
                 'threads': 1
             },
-            'anvi_convert_trnaseq_database': {
+            'anvi_merge_trnaseq': {
                 'run': True,
                 '--project-name': "",
                 '--max-reported-trna-seeds': anvio.D['max-reported-trna-seeds'][1]['default'],
@@ -211,7 +211,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
         self.gzip_anvi_reformat_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output']) if self.run_anvi_reformat_fasta else False
         self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
-        self.run_anvi_convert_trnaseq_database = self.get_param_value_from_config(['anvi_convert_trnaseq_database', 'run'])
+        self.run_anvi_merge_trnaseq = self.get_param_value_from_config(['anvi_merge_trnaseq', 'run'])
         self.run_anvi_run_trna_taxonomy = self.get_param_value_from_config(['anvi_run_trna_taxonomy', 'run'])
         self.run_anvi_tabulate_trnaseq = self.get_param_value_from_config(['anvi_tabulate_trnaseq', 'run'])
 
@@ -386,10 +386,10 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
     def check_project_name(self):
         """Check the name of the tRNA-seq project."""
-        if self.run_anvi_convert_trnaseq_database:
-            project_name = self.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])
+        if self.run_anvi_merge_trnaseq:
+            project_name = self.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])
             if not project_name:
-                raise ConfigError("Since you are running anvi-convert-trnaseq-database, "
+                raise ConfigError("Since you are running anvi-merge-trnaseq, "
                                   "please provide a project name for the sample(s) in the config file.")
             try:
                 u.check_sample_id(project_name)
@@ -479,8 +479,8 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 # were used as targets, they would be deleted upon workflow failure.
                 target_files.append(os.path.join(out_dir, "IDENT.done"))
 
-        if self.run_anvi_convert_trnaseq_database:
-            project_name = self.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])
+        if self.run_anvi_merge_trnaseq:
+            project_name = self.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])
             target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "CONVERT.done"))
 
         if self.run_anvi_run_trna_taxonomy:

@@ -478,9 +478,9 @@ D = {
             {'metavar': 'VARIANT',
              'required': False,
              'default': 'unknown',
-             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers "
+             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers. "
                      "Please leave this blank unless you are certain that you need to set a db variant since it may influence "
-                     "downstream processes. In an ideal world a varainat would be a single-word, without any capitalized letters "
+                     "downstream processes. In an ideal world a variant would be a single-word, without any capitalized letters "
                      "or special characters."}
                 ),
     'contigs-fasta': (
@@ -2874,8 +2874,7 @@ D = {
                      "as tRNA-seq samples are commonly split for these treatments. "
                      "Anvi'o will warn you if you do not choose one of these known options, but it will not affect data processing. "
                      "Treatment type is stored for further reference in the output tRNA-seq database, "
-                     "and can be used in anvi-convert-trnaseq-database "
-                     "to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
+                     "and can be used in anvi-merge-trnaseq to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
                 ),
     'write-checkpoints': (
             ['--write-checkpoints'],
@@ -3200,14 +3199,14 @@ D = {
             {'metavar': 'PROFILE_DB',
              'required': True,
              'help': "The path to an anvi'o profile database containing specific coverage information on tRNA seeds. "
-                     "`anvi-convert-trnaseq-database` generates a specific profile database from a tRNA-seq experiment."}
+                     "`anvi-merge-trnaseq` generates a specific profile database from a tRNA-seq experiment."}
                 ),
     'nonspecific-profile-db': (
             ['--nonspecific-profile-db', '-n'],
             {'metavar': 'PROFILE_DB',
              'required': False,
              'help': "The path to an anvi'o profile database containing nonspecific coverage information on tRNA seeds. "
-                     "`anvi-convert-trnaseq-database` optionally generates a nonspecific profile database from a tRNA-seq experiment."}
+                     "`anvi-merge-trnaseq` optionally generates a nonspecific profile database from a tRNA-seq experiment."}
                 ),
     'seeds-specific-txt': (
             ['--seeds-specific-txt', '-s'],
