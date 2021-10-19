@@ -927,8 +927,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
-        # everything we need is in the database now. time to add a mini state:
-        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read()
+        # everything we need is in the database now. time to add a mini state (note that we
+        # replace the function layer name template with the annotation source on the fly):
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read().replace('__FUNCTIONS_LAYER_NAME__', facc.function_annotation_source)
         TablesForStates(self.profile_db_path).store_state('default', mini_state)
 
         # create an instance of states table
