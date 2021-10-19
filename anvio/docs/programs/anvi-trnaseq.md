@@ -11,21 +11,21 @@ The `anvi-trnaseq --help` menu provides detailed explanations of the parameters 
 *Generate a %(trnaseq-db)s from a sample using 16 cores.*
 
 {{ codestart }}
-anvi-trnaseq -f <trnaseq_fasta> \
-             -S <sample_name> \
-             -o <new_output_directory> \
+anvi-trnaseq -f %(trnaseq-fasta)s \
+             -S SAMPLE_NAME \
+             -o OUTPUT_DIRECTORY \
              -T 16
 {{ codestop }}
 
 *Generate a %(trnaseq-db)s from a sample flagged as being treated with demethylase. The output directory is overwritten if it already exists.*
 
 {{ codestart }}
-anvi-trnaseq -f <trnaseq_fasta> \
-             -S <sample_name> \
-             -o <output_directory> \
+anvi-trnaseq -f %(trnaseq-fasta)s \
+             -S SAMPLE_NAME \
+             -o OUTPUT_DIRECTORY \
              -T 16 \
              --treatment demethylase \
-             -W
+             --overwrite-output-destinations
 {{ codestop }}
 
 ## Parameterize tRNA feature profiling
@@ -35,7 +35,7 @@ Feature profiling parameters can be modified by the user by in an optional `.ini
 *Write the `.ini` file to `param.ini`.*
 
 {{ codestart }}
-anvi-trnaseq --default-feature-param-file <param.ini>
+anvi-trnaseq --default-feature-param-file PARAM.ini
 {{ codestop }}
 
 *Nicely display the `.ini` defaults that can be written to the file in standard output.*

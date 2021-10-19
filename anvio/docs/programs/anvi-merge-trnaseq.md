@@ -21,16 +21,16 @@ Other key parameters, `--min-variation` and `--min-third-fourth-nt`, determine t
 *Merge two samples.*
 
 {{ codestart }}
-anvi-merge-trnaseq <trnaseq_database_1> <trnaseq_database_2> \
-                   -o <new_output_directory>
-                   -n <project_name>
+anvi-merge-trnaseq trnaseq_database_1 trnaseq_database_2 (...) \
+                   -o OUTPUT_DIRECTORY \
+                   -n PROJECT_NAME \
 {{ codestop }}
 
 *Merge two samples with and without demethylase treatment, giving priority to the demethylase split in calling the underlying nucleotide at modified positions.*
 
 {{ codestart }}
-anvi-merge-trnaseq <untreated_trnaseq_database> <demethylase_trnaseq_database> \
-                   -o <new_output_directory>
-                   -n <project_name>
+anvi-merge-trnaseq untreated_trnaseq_database demethylase_trnaseq_database (...) \
+                   -o OUTPUT_DIRECTORY \
+                   -n PROJECT_NAME \
                    --preferred-treatment demethylase
 {{ codestop }}
