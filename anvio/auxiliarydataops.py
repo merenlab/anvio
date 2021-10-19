@@ -25,13 +25,16 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-COVERAGE_DTYPE = 'uint16'
-COVERAGE_MAX_VALUE = np.iinfo(COVERAGE_DTYPE).max
+DEFAULT_COVERAGE_DTYPE = 'uint16'
+DEFAULT_COVERAGE_MAX_VALUE = np.iinfo(DEFAULT_COVERAGE_DTYPE).max
+TRNASEQ_COVERAGE_DTYPE = 'uint32'
+TRNASEQ_COVERAGE_MAX_VALUE = np.iinfo(TRNASEQ_COVERAGE_DTYPE).max
 
 class AuxiliaryDataForSplitCoverages(object):
-    def __init__(self, db_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, db_hash, db_variant='unknown', create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.db_hash = str(db_hash)
+        self.db_variant = str(db_variant)
         self.version = anvio.__auxiliary_data_version__
         self.db_path = db_path
         self.quiet = quiet
@@ -40,6 +43,8 @@ class AuxiliaryDataForSplitCoverages(object):
         self.coverage_entries = []
         self.create_new = create_new
 
+        self.coverage_dtype = TRNASEQ_COVERAGE_DTYPE if db_variant == 'trnaseq' else DEFAULT_COVERAGE_DTYPE
+        self.coverage_max_value = TRNASEQ_COVERAGE_MAX_VALUE if db_variant == 'trnaseq' else DEFAULT_COVERAGE_MAX_VALUE
         self.db = db.DB(self.db_path, self.version, new_database=self.create_new)
 
         if self.create_new:
@@ -65,7 +70,7 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=COVERAGE_DTYPE))
+        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.coverage_dtype))
         self.coverage_entries.append((split_name, sample_name, coverage_list_blob, ))
 
 
@@ -119,7 +124,7 @@ class AuxiliaryDataForSplitCoverages(object):
         for row in rows:
             sample_name, coverage_blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=COVERAGE_DTYPE)
+            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.coverage_dtype)
 
         return split_coverage
 

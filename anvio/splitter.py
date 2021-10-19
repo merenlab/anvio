@@ -451,6 +451,8 @@ class BinSplitter(summarizer.Bin, XSplitter):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.compress_auxiliary_data = A('compress_auxiliary_data')
 
+        self.db_variant = str(utils.get_db_variant(self.profile_db_path))
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
         self.clustering_configs = constants.clustering_configs['merged']
@@ -564,10 +566,12 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         bin_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(new_auxiliary_profile_data_path,
                                                                                 self.contigs_db_hash,
+                                                                                db_variant=self.db_variant,
                                                                                 create_new=True)
 
         parent_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(parent_auxiliary_profile_data_path,
-                                                                                   self.summary.a_meta['contigs_db_hash'])
+                                                                                   self.summary.a_meta['contigs_db_hash'],
+                                                                                   db_variant=self.db_variant)
 
         for split_name in self.split_names:
             sample_coverages = parent_profile_auxiliary.get(split_name)

@@ -28,15 +28,15 @@ do
 done
 
 INFO "Converting tRNA-seq databases to contigs and profile databases"
-anvi-convert-trnaseq-database ${output_dir}/S01_untreated/S01_untreated-TRNASEQ.db \
-                              ${output_dir}/S01_demethylase/S01_demethylase-TRNASEQ.db \
-                              ${output_dir}/S02_untreated/S02_untreated-TRNASEQ.db \
-                              ${output_dir}/S02_demethylase/S02_demethylase-TRNASEQ.db \
-                              -o ${output_dir}/CONVERTED \
-                              -n TEST_EXPERIMENT \
-                              --max-reported-trna-seeds 1000 \
-                              --preferred-treatment demethylase \
-                              --nonspecific-output nonspecific_db,combined_db,summed_db
+anvi-merge-trnaseq ${output_dir}/S01_untreated/S01_untreated-TRNASEQ.db \
+                   ${output_dir}/S01_demethylase/S01_demethylase-TRNASEQ.db \
+                   ${output_dir}/S02_untreated/S02_untreated-TRNASEQ.db \
+                   ${output_dir}/S02_demethylase/S02_demethylase-TRNASEQ.db \
+                   -o ${output_dir}/CONVERTED \
+                   -n TEST_EXPERIMENT \
+                   --max-reported-trna-seeds 1000 \
+                   --preferred-treatment demethylase \
+                   --nonspecific-output nonspecific_db,combined_db,summed_db
 
 INFO "Assigning taxonomy to tRNA seeds"
 anvi-run-trna-taxonomy -c ${output_dir}/CONVERTED/CONTIGS.db \
