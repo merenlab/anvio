@@ -22,6 +22,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-contigs-db": {
+        "name": "TRNASEQ CONTIGS",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-profile-db": {
+        "name": "TRNASEQ PROFILE",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "modules-db": {
         "name": "MODULES",
         "type": "DB",
