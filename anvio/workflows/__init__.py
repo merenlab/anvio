@@ -70,7 +70,7 @@ class WorkflowSuperClass:
 
         # if this class is being inherited from a snakefile that was 'included' from
         # within another snakefile.
-        self.slave_mode = A('slave_mode')
+        self.this_workflow_is_inherited_by_another = A('this_workflow_is_inherited_by_another')
 
         if self.config_file:
             filesnpaths.is_file_json_formatted(self.config_file)
@@ -134,7 +134,7 @@ class WorkflowSuperClass:
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
 
         # lets check everything
-        if not self.slave_mode:
+        if not self.this_workflow_is_inherited_by_another:
             self.check_config()
             self.check_rule_params()
 
@@ -211,7 +211,7 @@ class WorkflowSuperClass:
            snake file `get_workflow_snake_file_path(self.name)`, it can be called with
            a compiled snakemake `workflow` instance."""
 
-        if self.slave_mode:
+        if self.this_workflow_is_inherited_by_another:
             return
 
         self.progress.new('Bleep bloop')
@@ -273,7 +273,7 @@ class WorkflowSuperClass:
           See https://github.com/merenlab/anvio/issues/1316 for discussion.
         """
 
-        if self.slave_mode:
+        if self.this_workflow_is_inherited_by_another:
             return
 
         shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
