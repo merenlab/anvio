@@ -233,7 +233,7 @@ function loadAll() {
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
-                if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = true;
+                if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
                 if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
@@ -316,12 +316,26 @@ function loadAll() {
                     $("div.indels-disabled").fadeIn(300);
                   }
                 }
+                if(state.hasOwnProperty('show_snvs')){
+                  $('#toggle_snv_box').attr("checked", state['show_snvs']);
+                }
 
-                if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
-                if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
-                if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
-                if(state['snv_scale_dir_up']) $("#scale_dir_box").attr("checked", "checked");
-                if(state['fixed-y-scale']) $('#fixed_ys_box').attr("checked", "checked");
+                if(state.hasOwnProperty('show_indels')){
+                  $('#toggle_indel_box').attr("checked", state['show_indels']);
+                }
+
+                if(state.hasOwnProperty('snv_scale_bottom')){
+                  $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
+                }
+
+                if(state.hasOwnProperty('snv_scale_dir_up')){
+                  $("#scale_dir_box").attr("checked", state['snv_scale_dir_up']);
+                }
+
+                if(state.hasOwnProperty('fixed-y-scale')){
+                  $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
+                }
+
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -1438,6 +1452,8 @@ function saveState()
 
                 current_state_name = name;
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+                toastr.info("Now loading saved state '" + current_state_name + "' into current session.");
+                processState(current_state_name, serializeSettings())
             }
         }
     });
@@ -1493,12 +1509,25 @@ function processState(state_name, state) {
       //$('#minIndelInput').val(0);
     }
 
-    state['show_highlights'] = $('#toggle_highlight_box').val() == "on";
-    state['show_snvs'] = $('#toggle_snv_box').val() == "on";
-    state['show_indels'] = $('#toggle_indel_box').val() == "on";
-    state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
-    state['snv_scale_dir_up'] = $('#scale_dir_box').val() == "on";
-    state['fixed-y-scale'] = $('#fixed_ys_box').val() == "on";
+    if(state.hasOwnProperty('show_snvs')){
+      $('#toggle_snv_box').attr("checked", state['show_snvs']);
+    }
+
+    if(state.hasOwnProperty('show_indels')){
+      $('#toggle_indel_box').attr("checked", state['show_indels']);
+    }
+
+    if(state.hasOwnProperty('snv_scale_bottom')){
+      $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
+    }
+
+    if(state.hasOwnProperty('snv_scale_dir_up')){
+      $("#scale_dir_box").attr("checked", state['snv_scale_dir_up']);
+    }
+
+    if(state.hasOwnProperty('fixed-y-scale')){
+      $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
+    }
 
     state['state-name'] = current_state_name = state_name;
 
