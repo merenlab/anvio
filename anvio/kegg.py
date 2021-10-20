@@ -1595,6 +1595,31 @@ class KeggEstimatorArgs():
         return output_dict
 
 
+    def init_data_from_modules_db(self):
+        """This function reads mucho data from the MODULES.db into dictionaries for later access.
+
+        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
+        in the db, keyed by module number.
+        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
+
+        We do this once at the start so as to reduce the number of on-the-fly database queries
+        that have to happen during the estimation process.
+        """
+
+        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+
+        self.all_kos_in_db = {}
+        for mod in self.all_modules_in_db:
+            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
+            if not isinstance(ko_list, list):
+                ko_list = [ko_list]
+            # we convert to a set because some modules have duplicate orthology lines for the same KO
+            for k in set(ko_list):
+                if k not in self.all_kos_in_db:
+                    self.all_kos_in_db[k] = []
+                self.all_kos_in_db[k].append(mod)
+
+
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
 
@@ -1914,31 +1939,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
 
         return kofam_gene_split_contig
-
-
-    def init_data_from_modules_db(self):
-        """This function reads mucho data from the MODULES.db into dictionaries for later access.
-
-        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
-        in the db, keyed by module number.
-        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
-
-        We do this once at the start so as to reduce the number of on-the-fly database queries
-        that have to happen during the estimation process.
-        """
-
-        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
-
-        self.all_kos_in_db = {}
-        for mod in self.all_modules_in_db:
-            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
-            if not isinstance(ko_list, list):
-                ko_list = [ko_list]
-            # we convert to a set because some modules have duplicate orthology lines for the same KO
-            for k in set(ko_list):
-                if k not in self.all_kos_in_db:
-                    self.all_kos_in_db[k] = []
-                self.all_kos_in_db[k].append(mod)
 
 
     def init_paths_for_modules(self):
@@ -2880,7 +2880,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
-                            return_subset_for_matrix_format=False):
+                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -2903,6 +2903,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return_subset_for_matrix_format : boolean
             set to True if you want subsets of the superdicts to be returned: one subdict for module completeness scores, one
             subdict for module presence/absence, and one subdict for KO hits. Used for matrix format output.
+        all_modules_in_db : dictionary
+            if this function is called from the KeggMetabolismEstimatorMulti class, this parameter contains the module information
+            loaded from the MODULES.db in init_data_from_modules_db(). Otherwise, it is None and this function will have to call
+            init_data_from_modules_db()
+        all_kos_in_db : dictionary
+            This is the same deal as the all_modules_in_db param - it should only have a value if passed from the
+            KeggMetabolismEstimatorMulti class
 
         RETURNS
         =======
@@ -2930,7 +2937,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
-            self.init_data_from_modules_db()
+            # we either get the modules DB info from the previous class, or we have to initialize it here
+            if all_modules_in_db:
+                self.all_modules_in_db = all_modules_in_db
+                self.all_kos_in_db = all_kos_in_db
+            else:
+                self.init_data_from_modules_db()
 
             kofam_hits_info = self.init_hits_and_splits()
             self.init_paths_for_modules()
@@ -3738,7 +3750,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True, return_subset_for_matrix_format=True)
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
+                                                                                                    progress=progress_quiet, \
+                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True, \
+                                                                                                    return_subset_for_matrix_format=True, \
+                                                                                                    all_modules_in_db=self.all_modules_in_db, \
+                                                                                                    all_kos_in_db=self.all_kos_in_db)
 
             self.progress.increment()
             self.progress.reset()
@@ -3779,11 +3796,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.init_data_from_modules_db()
+
         # these will be empty dictionaries unless matrix format
         kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
 
         if self.matrix_format:
             self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
+
+        self.kegg_modules_db.disconnect()
 
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
 
@@ -3912,8 +3934,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
 
-        # we need this for metadata
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
         include_zeros = not self.exclude_zero_modules
 
         # module stats that each will be put in separate matrix file
@@ -3991,8 +4011,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 skipped_list = ", ".join(skipped_mods)
                 self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
                                  "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
-
-        self.kegg_modules_db.disconnect()
 
 
 class KeggModulesDatabase(KeggContext):
