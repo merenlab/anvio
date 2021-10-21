@@ -244,11 +244,11 @@ class WorkflowSuperClass:
 
             if u.is_program_exists('dot', dont_raise=True):
                 dot_log_file = filesnpaths.get_temp_file_path()
-                u.run_command(['dot', '-Tpng', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.png'], dot_log_file)
+                u.run_command(['dot', '-Tpdf', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.pdf'], dot_log_file)
                 os.remove(dot_log_file)
-                self.run.info('Workflow PNG file', workflow_graph_output_file_path_prefix + '.png')
+                self.run.info('Workflow PDF file', workflow_graph_output_file_path_prefix + '.pdf')
             else:
-                self.run.warning("Well, anvi'o was going to try to save a nice PNG file for your workflow "
+                self.run.warning("Well, anvi'o was going to try to save a nice PDF file for your workflow "
                                  "graph, but clearly you don't have `dot` installed on your system. That's OK. You "
                                  "have your dot file now, and you can Google 'how to view dot file on [your operating "
                                  "system goes here]', and install necessary programs (like .. `dot`).")
