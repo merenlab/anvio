@@ -88,7 +88,12 @@ def get_param_set(output):
         desc = ''
         _params = J([p for p in get_until_blank(output) if not p.startswith('  -h, --help')])
     else:
+        output.pop(0)
         section = output.pop(0)
+
+        if section.startswith('━'):
+            return None, None, None
+
         if output[0].startswith('  -'):
             # no description, goes into params immediately (someone did a crappy job)
             desc = ''
@@ -121,29 +126,28 @@ def parse_help_output(output):
     if not output[0].startswith('usage:'):
         raise ConfigError("This output does not seem to have the proper usage statement.")
 
-    usage = J([l[7:] for l in get_until_blank(output)])
+    usage = J([l for l in get_until_blank(output)])
 
     if output.pop(0) != '':
         raise ConfigError("This output is missing the description start marker.")
 
-    description = J(get_until_blank(output))
-
     params = {}
     while 1:
-        if output.pop(0) != '':
-            raise ConfigError("The params section does not seem to be where this script expects to find it.")
-
         if not len(output):
             break
 
         section, desc, _params = get_param_set(output)
+
+        if section == None:
+            break
+
         if _params == '':
             pass
         else:
             params[section] = {'description': J(desc),
                                'params': _params}
 
-    return usage, description, params, output
+    return usage,  params, output
 
 
 class AnvioPrograms(AnvioAuthors):
@@ -232,10 +236,8 @@ class AnvioPrograms(AnvioAuthors):
 
         # here we will go through each program, and see if there are any with no author information
         programs_with_no_authors = [p for p in self.programs if not len(self.programs[p].meta_info['authors']['value'])]
-        if len(programs_with_no_authors):
-            raise ConfigError(f"The following programs have no author names listed under `__authors__` tag -- every "
-                              f"program in the anvi'o codebase with `__provides__` and/or `__requires__` statements "
-                              f"must also have one or more authors: {', '.join(programs_with_no_authors)}.")
+        if len(programs_with_no_authors) and anvio.DEBUG:
+            self.run.warning(f"The following programs have no `__authors__` tag: {', '.join(programs_with_no_authors)}.")
 
         # here we will go through each program, and see if there are any with authors that
         # are not described in the AUTHORS.yaml file:
@@ -256,26 +258,28 @@ class AnvioPrograms(AnvioAuthors):
                               f"an entry in the authors YAML file: {', '.join(programs_with_unknown_authors)}.")
 
         # report missing provides/requires information
-        self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
-                             "statements :/ This may be normal for some programs, but here is the "
-                             "complete list of those that are missing __provides__ and __requires__ "
-                             "tags in their code in case you see something you can complete: '%s'." % \
-                                        (len(self.all_program_filepaths),
-                                         len(programs_without_provides_requires_info),
-                                         ', '.join(programs_without_provides_requires_info)),
-                             nl_after=1, nl_before=1)
+        if anvio.DEBUG:
+            self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
+                                 "statements :/ This may be normal for some programs, but here is the "
+                                 "complete list of those that are missing __provides__ and __requires__ "
+                                 "tags in their code in case you see something you can complete: '%s'." % \
+                                            (len(self.all_program_filepaths),
+                                             len(programs_without_provides_requires_info),
+                                             ', '.join(programs_without_provides_requires_info)),
+                                 nl_after=1, nl_before=1)
 
         # report missing provides/requires information
-        self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
-                             "help by adding usage information for programs by creating markdown "
-                             "formatted files under the directory '%s'. Please see examples in anvi'o "
-                             "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
-                             "Here is a complete list of programs that are missing usage statements: %s " % \
-                                        (len(self.all_program_filepaths),
-                                         len(programs_without_provides_requires_info),
-                                         anvio.DOCS_PATH,
-                                         ', '.join(programs_without_provides_requires_info)),
-                             nl_after=1, nl_before=1)
+        if anvio.DEBUG:
+            self.run.info_single("Of %d programs found, %d did not have any PROVIDES/REQUIRES statements. You can "
+                                 "help by adding usage information for programs by creating markdown "
+                                 "formatted files under the directory '%s'. Please see examples in anvi'o "
+                                 "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
+                                 "Here is a complete list of programs that are missing usage statements: %s " % \
+                                            (len(self.all_program_filepaths),
+                                             len(programs_without_provides_requires_info),
+                                             anvio.DOCS_PATH,
+                                             ', '.join(programs_without_provides_requires_info)),
+                                 nl_after=1, nl_before=1)
 
 
 class Program:
@@ -378,6 +382,7 @@ class Artifact:
 
     def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
+            progress.reset()
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
                               "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
@@ -915,10 +920,10 @@ class ProgramsVignette(AnvioPrograms):
             output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
-                    usage, description, params, output = parse_help_output(output)
+                    usage, params, output = parse_help_output(output)
             else:
                 try:
-                    usage, description, params, output = parse_help_output(output)
+                    usage, params, output = parse_help_output(output)
                 except Exception as e:
                     progress.end()
                     run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next. "
@@ -926,7 +931,7 @@ class ProgramsVignette(AnvioPrograms):
                     continue
 
             d[program.name] = {'usage': usage,
-                               'description': description,
+                               'description': program.meta_info['description']['value'],
                                'params': params,
                                'tags': program.meta_info['tags']['value'],
                                'resources': program.meta_info['resources']['value']}

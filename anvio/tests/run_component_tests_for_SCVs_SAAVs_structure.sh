@@ -9,6 +9,7 @@ make_structure_db() {
                                 --output-db-path test-output/STRUCTURE.db \
                                 --very-fast \
                                 --debug \
+                                --alignment-fraction-cutoff 0.7 \
                                 --num-threads 2 \
                                 --num-models 1
 }
@@ -42,6 +43,56 @@ display_structure2() {
               -c test-output/one_contig_five_genes.db \
               -s test-output/STRUCTURE.db \
               --debug
+}
+display_structure3() {
+    anvi-display-structure -p test-output/SAMPLES-MERGED/PROFILE.db \
+              -c test-output/one_contig_five_genes.db \
+              -s test-output/EXTERNAL_STRUCTURE.db \
+              --gene-caller-ids 2,4 \
+              --debug
+}
+
+make_routine() {
+    INFO "anvi-gen-structure-database with DSSP"
+    make_structure_db
+
+    INFO "anvi-update-structure-database"
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --gene-caller-ids 2 --rerun
+
+    INFO "anvi-export-structures"
+    anvi-export-structures -o test-output/exported_pdbs -s test-output/STRUCTURE.db
+
+    INFO "make db with external structures"
+    cat <<EOF > external_structures
+gene_callers_id	path
+2	test-output/exported_pdbs/gene_2.pdb
+EOF
+    anvi-gen-structure-database -o test-output/EXTERNAL_STRUCTURE.db --external-structures external_structures -c test-output/one_contig_five_genes.db --debug
+
+    INFO "update db with external structures"
+    cat <<EOF > external_structures
+gene_callers_id	path
+2	test-output/exported_pdbs/gene_2.pdb
+4	test-output/exported_pdbs/gene_4.pdb
+EOF
+    anvi-update-structure-database -s test-output/EXTERNAL_STRUCTURE.db --external-structures external_structures -c test-output/one_contig_five_genes.db --rerun --debug
+}
+
+display_routine() {
+    INFO "anvi-gen-variability-profile --engine AA"
+    gen_var_profile1
+
+    INFO "anvi-gen-variability-profile --engine CDN"
+    gen_var_profile2
+
+    INFO "anvi-display-structure with profile database"
+    display_structure1
+
+    INFO "anvi-display-structure with variability"
+    display_structure2
+
+    INFO "anvi-display-structure with external structure database"
+    display_structure3
 }
 
 
@@ -105,21 +156,8 @@ then
     INFO "Importing additional layers data"
     anvi-import-misc-data mock_data_for_structure/additional_layers_data.txt -p test-output/SAMPLES-MERGED/PROFILE.db --target-data-table layers
 
-    INFO "anvi-gen-structure-database with DSSP"
-    make_structure_db
-
-    INFO "anvi-gen-variability-profile --engine AA"
-    gen_var_profile1
-
-    INFO "anvi-gen-variability-profile --engine CDN"
-    gen_var_profile2
-
-    INFO "anvi-display-structure with profile database"
-    display_structure1
-
-    INFO "anvi-display-structure with variability"
-    display_structure2
-
+    make_routine
+    display_routine
 
 ####################################################################################
 
@@ -140,29 +178,12 @@ then
     fi
 
     rm -rf test-output/STRUCTURE.db
+    rm -rf test-output/EXTERNAL_STRUCTURE.db
     rm -rf test-output/RAW_MODELLER_OUTPUT
     rm -rf test-output/exported_pdbs
 
-    INFO "anvi-gen-structure-database with DSSP"
-    make_structure_db
-
-    INFO "anvi-update-structure-database"
-    anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --gene-caller-ids 2 --rerun
-
-    INFO "anvi-export-structures"
-    anvi-export-structures -o test-output/exported_pdbs -s test-output/STRUCTURE.db
-
-    INFO "anvi-gen-variability-profile --engine AA"
-    gen_var_profile1
-
-    INFO "anvi-gen-variability-profile --engine CDN"
-    gen_var_profile2
-
-    INFO "anvi-display-structure with profile database"
-    display_structure1
-
-    INFO "anvi-display-structure with variability"
-    display_structure2
+    make_routine
+    display_routine
 
     echo
     echo
@@ -186,17 +207,7 @@ then
     rm -rf test-output/variability_CDN.txt
     rm -rf test-output/variability_AA.txt
 
-    INFO "anvi-gen-variability-profile --engine AA"
-    gen_var_profile1
-
-    INFO "anvi-gen-variability-profile --engine CDN"
-    gen_var_profile2
-
-    INFO "anvi-display-structure with profile and contigs databases"
-    display_structure1
-
-    INFO "anvi-display-structure with variability"
-    display_structure2
+    display_routine
 
     echo
     echo

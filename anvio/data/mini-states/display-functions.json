@@ -34,6 +34,13 @@
             "margin": "15",
             "type": "intensity",
             "color-start": "#3d7a00"
+        },
+        "__FUNCTIONS_LAYER_NAME__": {
+            "color": "#000000",
+            "height": "0",
+            "margin": "15",
+            "type": "text",
+            "color-start": "#e8e8e8"
         }
     },
     "views": {

@@ -22,6 +22,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trnaseq-contigs-db": {
+        "name": "TRNASEQ CONTIGS",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-profile-db": {
+        "name": "TRNASEQ PROFILE",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "modules-db": {
         "name": "MODULES",
         "type": "DB",
@@ -40,6 +52,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "dna-sequence": {
+        "name": "DNA SEQUENCE",
+        "type": "SEQUENCE",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "trnaseq-fasta": {
         "name": "TRNASEQ",
         "type": "FASTA",
@@ -54,6 +72,12 @@ ANVIO_ARTIFACTS ={
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "external-structures": {
+        "name": "EXTERNAL STRUCTURES",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
@@ -322,6 +346,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "palindromes-txt": {
+        "name": "PALINDROMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "inversions": {
+        "name": "INVERSIONS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
@@ -499,6 +535,36 @@ ANVIO_ARTIFACTS ={
     "fixation-index-matrix": {
         "name": "FIXATION INDEX MATRIX",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-seed-txt": {
+        "name": "TRNASEQ SEED SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "seeds-specific-txt": {
+        "name": "TRNASEQ SEED SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "seeds-non-specific-txt": {
+        "name": "TRNASEQ SEED SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "modifications-txt": {
+        "name": "TRNASEQ MODIFICATION SUMMARY",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "trnaseq-plot": {
+        "name": "TRNASEQ PLOT",
+        "type": "DISPLAY",
         "provided_by_anvio": True,
         "provided_by_user": False
     },

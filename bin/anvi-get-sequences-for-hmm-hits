@@ -78,7 +78,10 @@ def main(args):
 
     if args.list_hmm_sources or args.list_available_gene_names:
         if args.contigs_db:
-            ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+            if args.list_hmm_sources:
+                ContigsDatabase(args.contigs_db).list_available_hmm_sources()
+            else:
+                hmmops.SequencesForHMMHits(args.contigs_db).list_available_gene_names(sources=[s.strip() for s in args.hmm_sources.split(',')] if args.hmm_sources else [])
         elif args.external_genomes or args.internal_genomes:
             genomedescriptions.GenomeDescriptions(args).list_HMM_info_and_quit()
 

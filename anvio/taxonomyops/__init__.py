@@ -158,7 +158,8 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.initialized = False
 
         self.run.info('Contigs DB', self.contigs_db_path)
-        self.run.info('Profile DB', self.profile_db_path)
+        if self.profile_db_path:
+            self.run.info('Profile DB', self.profile_db_path, mc="green")
         self.run.info('Metagenome mode', self.metagenome_mode)
         if self.metagenome_mode:
             self.run.info(f'{self._ITEM} for metagenome', self.item_name_for_metagenome_mode)

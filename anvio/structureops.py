@@ -334,9 +334,12 @@ class StructureSuperclass(object):
 
         self.contigs_db_path = A('contigs_db', null)
         self.structure_db_path = A('structure_db', null)
+        self.external_structures_path = A('external_structures', null)
         self.modeller_executable = A('modeller_executable', null)
         self.list_modeller_params = A('list_modeller_params', null)
         self.full_modeller_output = A('dump_dir', null)
+
+        self.run_mode = 'modeller' if not self.external_structures_path else 'external'
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 2
@@ -345,14 +348,11 @@ class StructureSuperclass(object):
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
         self.rerun_genes = A('rerun_genes', null)
-        self.splits_of_interest_path = A('splits_of_interest', null)
-        self.bin_id = A('bin_id', null)
-        self.collection_name = A('collection_name', null)
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
-        self.contigs_db.disconnect()
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -367,10 +367,6 @@ class StructureSuperclass(object):
                 raise ConfigError("This structure DB already exists. Anvi'o will not overwrite")
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
-
-            self.run.warning("Anvi'o will use 'MODELLER' by Webb and Sali (DOI: 10.1002/cpbi.3) to model "
-                             "protein structures. If you publish your findings, please do not forget to "
-                             "properly credit their work.", lc='green', header="CITATION")
 
 
         # init StructureDatabase
@@ -409,6 +405,7 @@ class StructureSuperclass(object):
         =====
         - If self.create=False, parameters in self.args accessed by this function are first set via
           self.set_prior_modeller_params
+        - If self.run_mode != 'modeller', all values are set to null values
         """
 
         if not self.create:
@@ -418,16 +415,28 @@ class StructureSuperclass(object):
         A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
 
-        return {
-            'modeller_database': A('modeller_database', null),
-            'scoring_method': A('scoring_method', null),
-            'max_number_templates': A('max_number_templates', null),
-            'percent_cutoff': A('percent_cutoff', null),
-            'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
-            'num_models': A('num_models', null),
-            'deviation': A('deviation', null),
-            'very_fast': A('very_fast', bool),
-        }
+        if self.run_mode == 'modeller':
+            return {
+                'modeller_database': A('modeller_database', null),
+                'scoring_method': A('scoring_method', null),
+                'max_number_templates': A('max_number_templates', null),
+                'percent_cutoff': A('percent_cutoff', null),
+                'alignment_fraction_cutoff': A('alignment_fraction_cutoff', null),
+                'num_models': A('num_models', null),
+                'deviation': A('deviation', null),
+                'very_fast': A('very_fast', bool),
+            }
+        else:
+            return {
+                'modeller_database': None,
+                'scoring_method': None,
+                'max_number_templates': 0,
+                'percent_cutoff': 0,
+                'alignment_fraction_cutoff': 0,
+                'num_models': 0,
+                'deviation': 0,
+                'very_fast': False,
+            }
 
 
     def set_prior_modeller_params(self):
@@ -445,8 +454,13 @@ class StructureSuperclass(object):
 
 
     def sanity_check(self):
+        if self.run_mode == 'modeller':
+            self.run.warning("Anvi'o will use 'MODELLER' by Webb and Sali (DOI: 10.1002/cpbi.3) to model "
+                             "protein structures. If you publish your findings, please do not forget to "
+                             "properly credit their work.", lc='green', header="CITATION")
+
         # if self.percent_cutoff is < 25, you should be careful about accuracy of models
-        if self.modeller_params['percent_cutoff'] < 25:
+        if self.run_mode == 'modeller' and self.modeller_params['percent_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
                              "to the quality of the proteins... Keep in mind random sequence are expected to share "
                              "around 10% identity.".format(self.modeller_params['percent_cutoff']))
@@ -455,25 +469,30 @@ class StructureSuperclass(object):
             self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
                              "an expert could justify... Anvi'o's respect for you increases slightly.")
 
-        # Perform a rather extensive check on whether the MODELLER executable is going to work. We
-        # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
-        # check every time
-        self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
-        self.modeller_executable = self.args.modeller_executable
-        self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
+        if self.run_mode == 'modeller':
+            # Perform a rather extensive check on whether the MODELLER executable is going to work. We
+            # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
+            # check every time
+            self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
+            self.modeller_executable = self.args.modeller_executable
+            self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, nl_before=1, mc='green')
 
-        # Check and populate modeller databases if required
-        self.progress.new("MODELLER")
-        self.progress.update("Populating databases")
-        MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
-        self.progress.end()
+            # Check and populate modeller databases if required
+            MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+        elif self.run_mode == 'external':
+            self.run.info_single("Anvi'o will attempt to generate a database using external structures", nl_after=1, nl_before=1, mc='green')
+
+            if self.full_modeller_output:
+                raise ConfigError("No sense providing a --dump-dir when --external-structures are provided.")
+
+            self.external_structures = ExternalStructuresFile(path=self.external_structures_path, contigs_db_path=self.contigs_db_path)
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
-        """Nabs the genes of interest based on genes_of_interest_path and gene_caller_ids
+        """Nabs the genes of interest based on genes_of_interest_path, gene_caller_ids, and self.external_structures
 
-        If no genes of interest are provided through either genes_of_interest_path or
-        gene_caller_ids, all will be assumed
+        If no genes of interest are provided through either genes_of_interest_path,
+        gene_caller_ids, or self.external_structures, all will be assumed
 
         Parameters
         ==========
@@ -482,6 +501,16 @@ class StructureSuperclass(object):
         """
 
         genes_of_interest = None
+
+        if self.run_mode == 'external':
+            if genes_of_interest_path or gene_caller_ids:
+                raise ConfigError("You can't provide a --gene-caller-ids or --genes-of-interest concurrently with --external-structures. "
+                                  "If you are trying to create a database from a subset of structures in your external structures file, "
+                                  "please instead create an external structures file containing only those structures and use that instead."
+                                  "Sorry for the inconvenience.")
+
+            genes_of_interest = self.external_structures.content['gene_callers_id']
+            return genes_of_interest
 
         # identify the gene caller ids of all genes available
         genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
@@ -569,18 +598,20 @@ class StructureSuperclass(object):
         self.run.info('genes_of_interest', self.genes_of_interest_path)
         self.run.info('gene_caller_ids', self.gene_caller_ids)
         self.run.info('skip_DSSP', self.skip_DSSP)
+        self.run.info('run_mode', self.run_mode)
 
-        self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
-        self.run.info('modeller_executable', self.modeller_executable)
-        for param, value in self.modeller_params.items():
-            self.run.info(param, value)
-        self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+        if self.run_mode == 'modeller':
+            self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
+            self.run.info('modeller_executable', self.modeller_executable)
+            for param, value in self.modeller_params.items():
+                self.run.info(param, value)
+            self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
 
         if not anvio.DEBUG:
             self.run.warning("Do you want live info about how the modelling procedure is going for "
                              "each gene? Then restart this process with the --debug flag", lc='yellow')
 
-        if not self.full_modeller_output:
+        if self.run_mode == 'modeller' and not self.full_modeller_output:
             self.run.warning("When this finishes, do you want a potentially massive folder that "
                              "contains a murder of unorganized data in volumes that far exceed what "
                              "you could possibly want? Perfect, then restart this process and "
@@ -793,50 +824,93 @@ class StructureSuperclass(object):
             'has_structure': False,
         }
 
-        directory = filesnpaths.get_temp_directory_path()
+        if self.run_mode == 'modeller':
+            directory = filesnpaths.get_temp_directory_path()
 
-        # Export sequence
-        target_fasta_path = filesnpaths.get_temp_file_path()
-        self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                              output_file_path=target_fasta_path,
-                                                              report_aa_sequences=True,
-                                                              simple_headers=True)
+            # Export sequence
+            target_fasta_path = filesnpaths.get_temp_file_path()
+            self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
+                                                                  output_file_path=target_fasta_path,
+                                                                  report_aa_sequences=True,
+                                                                  simple_headers=True)
 
-        try:
-            filesnpaths.is_file_fasta_formatted(target_fasta_path)
-        except FilesNPathsError:
-            self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
-                             "is not what anvi'o considers a FASTA formatted file. The reason why this "
-                             "occassionally happens has not been investigated, but if it is any consolation, "
-                             "it is not your fault. You may want to try again, and maybe it will work. Or "
-                             "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
-                             "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
-            return structure_info
+            try:
+                filesnpaths.is_file_fasta_formatted(target_fasta_path)
+            except FilesNPathsError:
+                self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
+                                 "is not what anvi'o considers a FASTA formatted file. The reason why this "
+                                 "occassionally happens has not been investigated, but if it is any consolation, "
+                                 "it is not your fault. You may want to try again, and maybe it will work. Or "
+                                 "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
+                                 "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+                return structure_info
 
-        if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
-            return structure_info
+            if self.skip_gene_if_not_clean(corresponding_gene_call, fasta_path=target_fasta_path):
+                return structure_info
 
-        # Model structure
-        structure_info['modeller'] = self.run_modeller(target_fasta_path, directory)
+            # Model structure
+            structure_info['results'] = self.run_modeller(target_fasta_path, directory)
+
+        elif self.run_mode == 'external':
+
+            structure = self.external_structures.get_structure(corresponding_gene_call)
+            if self.skip_gene_if_not_clean(corresponding_gene_call, sequence=structure.get_sequence()):
+                return structure_info
+
+            structure_info['results'] = self.create_results_dict_for_external_structure(corresponding_gene_call)
 
         # Annotate residues
-        if structure_info['modeller']['structure_exists']:
+        if structure_info['results']['structure_exists']:
             structure_info['has_structure'] = True
 
             structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
                 corresponding_gene_call=corresponding_gene_call,
-                pdb_filepath=structure_info['modeller']['best_model_path'],
+                pdb_filepath=structure_info['results']['best_model_path'],
             )
 
         return structure_info
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
-        """Do not try modelling gene if it is not clean"""
+    def create_results_dict_for_external_structure(self, corresponding_gene_call):
+        return {
+            'templates': {'pdb_id': ['none'], 'chain_id': ['none'], 'proper_percent_similarity': [0], 'percent_similarity': [0], 'align_fraction': [0]},
+            'models': {'molpdf': [0], 'GA341_score': [0], 'DOPE_score': [0], 'picked_as_best': [True]},
+            'corresponding_gene_call': corresponding_gene_call,
+            'structure_exists': True,
+            'best_model_path': self.external_structures.get_path(corresponding_gene_call),
+            'best_score': None,
+            'scoring_method': self.modeller_params['scoring_method'],
+            'percent_cutoff': self.modeller_params['percent_cutoff'],
+            'alignment_fraction_cutoff': self.modeller_params['alignment_fraction_cutoff'],
+            'very_fast': self.modeller_params['very_fast'],
+            'deviation': self.modeller_params['deviation'],
+        }
 
-        fasta = u.SequenceSource(fasta_path); next(fasta)
+
+    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path=None, sequence=None):
+        """Do not try modelling gene if it is not clean
+
+        Parameters
+        ==========
+        corresponding_gene_call : int
+            What is the gene callers id?
+        fasta_path : str, None
+            Provide either the path to the amino acid fasta
+        sequence : str, None
+            Or the amino acid sequence itself. Don't provide both
+        """
+
+        if not (fasta_path or sequence):
+            raise ConfigError("skip_gene_if_not_clean :: provide a fasta_path or sequence")
+        if fasta_path and sequence:
+            raise ConfigError("skip_gene_if_not_clean :: don't provide both a fasta_path and a sequence")
+
+        if fasta_path:
+            fasta = u.SequenceSource(fasta_path); next(fasta)
+            sequence = fasta.seq
+
         try:
-            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
+            utils.is_gene_sequence_clean(sequence, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
             return False
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
@@ -871,7 +945,12 @@ class StructureSuperclass(object):
                     "codon":               [],
                     "amino_acid":          []}
 
-        gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
+        last_codon = nt_sequence[:-3]
+        if last_codon in ['TAA', 'TAG', 'TGA']:
+            gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
+        else:
+            gene_length_in_codons = len(nt_sequence)//3
+
         for codon_order_in_gene in range(gene_length_in_codons):
             seq_dict["codon_order_in_gene"].append(codon_order_in_gene)
             seq_dict["codon_number"].append(codon_order_in_gene+1)
@@ -910,22 +989,22 @@ class StructureSuperclass(object):
         if not self.full_modeller_output:
             return
 
-        if 'modeller' not in structure_info:
+        if 'results' not in structure_info:
             return
 
-        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['modeller']['corresponding_gene_call'])
-        shutil.move(structure_info['modeller']['directory'], output_gene_dir)
+        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['results']['corresponding_gene_call'])
+        shutil.move(structure_info['results']['directory'], output_gene_dir)
 
 
     def store_gene(self, structure_info):
         """Store a gene's info into the structure database"""
 
-        if 'modeller' not in structure_info:
+        if 'results' not in structure_info:
             # There is nothing to store
             return
 
         corresponding_gene_call = structure_info["corresponding_gene_call"]
-        modeller_out = structure_info['modeller']
+        results = structure_info['results']
 
         # If the gene is present in the database, remove it first
         if corresponding_gene_call in self.structure_db.genes_with_structure:
@@ -933,24 +1012,24 @@ class StructureSuperclass(object):
             self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
 
         # templates is always added, even when structure was not modelled
-        templates = pd.DataFrame(modeller_out['templates'])
+        templates = pd.DataFrame(results['templates'])
         templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
         self.structure_db.entries[t.templates_table_name] = \
             self.structure_db.entries[t.templates_table_name].append(templates)
         self.structure_db.store(t.templates_table_name)
 
         # entries that are only added if a structure was modelled
-        if modeller_out['structure_exists']:
+        if results['structure_exists']:
 
             # models
-            models = pd.DataFrame(modeller_out['models'])
+            models = pd.DataFrame(results['models'])
             models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
             self.structure_db.entries[t.models_table_name] = \
                 self.structure_db.entries[t.models_table_name].append(models)
             self.structure_db.store(t.models_table_name)
 
             # pdb file data
-            pdb_file = open(modeller_out['best_model_path'], 'rb')
+            pdb_file = open(results['best_model_path'], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
             pdb_table_entry = (corresponding_gene_call, pdb_contents)
@@ -1633,7 +1712,7 @@ class PDBDatabase(object):
 
 
 class Structure(object):
-    def __init__(self, pdb_path, p=terminal.Progress(), r=terminal.Run()):
+    def __init__(self, pdb_path):
         """Object to handle the analysis of PDB files"""
 
         self.distances_methods_dict = {
@@ -1645,10 +1724,21 @@ class Structure(object):
         self._load_pdb_file(self.path)
 
 
-    def _load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+    def _load_pdb_file(self, pdb_path, name_id='structure', model_index=0, chain_index=0):
+        """Loads exactly one chain from one model of a PDB"""
+
         p = PDBParser()
-        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        self.structure = model[chain]
+        structure_obj = p.get_structure(name_id, pdb_path)
+
+        if not len(structure_obj.get_list()):
+            raise FilesNPathsError(f"Biopython was unable to parse {pdb_path} as a PDB file...")
+
+        model = structure_obj.get_list()[model_index]
+        self.structure = model.get_list()[chain_index]
+
+
+    def get_sequence(self):
+        return ''.join([constants.AA_to_single_letter_code[res.resname.capitalize()] for res in self.structure.get_list()])
 
 
     def get_contact_map(self, distance_method='CA', compressed=False, c='order'):
@@ -1818,3 +1908,133 @@ class Structure(object):
         COM2 = self.get_residue_center_of_mass(residue2)
 
         return np.sqrt(np.sum((COM1 - COM2)**2))
+
+
+class ExternalStructuresFile(object):
+    def __init__(self, path, contigs_db_path, lazy=False, p=terminal.Progress(), r=terminal.Run()):
+        """Check the integrity of an external structures file and provide contents as the attribute self.content
+
+        Parameters
+        ==========
+        contigs_db_path : str, None
+            The path to the corresponding contigs database.
+        lazy : bool, False
+            If false, each structure file will be opened and the sequence therein will be explicitly compared to
+            the amino acid of the gene callers id found in the contigs database. If True, only superficial checks
+            will be carried out, like making sure the file is tab-delimited and that all files pointed to actually
+            exist.
+        """
+
+        self.run, self.progress = r, p
+
+        self.path = path
+        self.contigs_db_path = contigs_db_path
+
+        utils.is_contigs_db(self.contigs_db_path)
+        filesnpaths.is_file_tab_delimited(self.path)
+
+        self.content = pd.read_csv(self.path, sep='\t')
+
+        self.is_header_ok()
+        self.is_duplicates()
+        self.is_gene_caller_ids_ok()
+        self.is_files_exist()
+        if not lazy:
+            self.test_integrity()
+
+
+    def get_structure(self, gene_callers_id):
+        """Return Structure object for given gene callers id"""
+
+        path = self.get_path(gene_callers_id)
+        return Structure(path)
+
+
+    def get_path(self, gene_callers_id):
+        """Return Structure object for given gene callers id"""
+
+        result = self.content.loc[self.content['gene_callers_id'] == gene_callers_id, 'path']
+        if result.empty:
+            raise ConfigError(f"Structure.get_path :: Can't find gene callers id '{gene_callers_id}'.")
+        return result.iloc[0]
+
+
+    def is_header_ok(self):
+        headers_proper = ['gene_callers_id', 'path']
+        with open(self.path, 'rU') as input_file:
+            headers = input_file.readline().strip().split('\t')
+            missing_headers = [h for h in headers_proper if h not in headers]
+
+            if len(headers) != 2:
+                raise FilesNPathsError("Your external structures file does not contain the right number of columns :/ Here are "
+                                       "what the header columns should be called, in this order: '%s'." % ', '.join(headers_proper))
+
+            if len(missing_headers):
+                raise FilesNPathsError("Your external structures file has the wrong headers. They should be: '%s', not '%s'." % (', '.join(headers_proper), ', '.join(headers)))
+
+        return True
+
+
+    def is_duplicates(self):
+        counts = self.content['gene_callers_id'].value_counts()
+        multiple = counts[counts > 1].index.tolist()
+        if len(multiple):
+            raise FilesNPathsError(f"Only one structure can be assigned to each gene callers id. But the following genes are present "
+                                   f"multiple times in your external structures file: {multiple}")
+
+
+    def is_files_exist(self):
+        """Check that all files pointed to in the file actually exist"""
+        for _, row in self.content.iterrows():
+            gene_callers_id, path = row['gene_callers_id'], row['path']
+            if not filesnpaths.is_file_exists(path, dont_raise=True):
+                raise FilesNPathsError(f"This is kind of an issue. Your external structures file points to the following path: {path}. "
+                                       f"for gene callers id {gene_callers_id}. Well that path is not a file :\\")
+
+        return True
+
+
+    def is_gene_caller_ids_ok(self):
+        """Returns True if all gene_callers_ids in external structures file are in the contigs database and are coding"""
+
+        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
+        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
+        genes_in_contigs_db_with_aa_seqs = table.loc[table['sequence'] != '', 'gene_callers_id'].tolist()
+        missing_in_contigs = [x for x in self.content['gene_callers_id'] if x not in genes_in_contigs_db_with_aa_seqs]
+
+        if len(missing_in_contigs):
+            raise ConfigError(f"Some gene caller ids in your external structures file are either missing from your contigs database "
+                              f"or are non-coding (they have no corresponding amino acid sequence). This is a show stopper. "
+                              f"Here are the gene caller ids: {missing_in_contigs}")
+
+
+    def test_integrity(self):
+        """Parse the sequence contents of each PDB and ensure it matches the sequences in the contigs database"""
+
+        # Fetch the amino acid sequences found in contigs database
+        contigs_db = db.DB(self.contigs_db_path, client_version=None, ignore_version=True)
+        table = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
+        amino_acid_sequences = dict(zip(table['gene_callers_id'], table['sequence']))
+
+        self.progress.new('External structures', progress_total_items=self.content.shape[0])
+        self.progress.update('Testing personal integrity')
+
+        for _, row in self.content.iterrows():
+            gene_callers_id, path = row['gene_callers_id'], row['path']
+            s = Structure(path)
+            aa_seq_structure = s.get_sequence()
+            aa_seq_contigs = amino_acid_sequences[gene_callers_id]
+
+            if aa_seq_structure != aa_seq_contigs:
+                self.progress.end()
+                raise ConfigError(f"The sequence in the structure for gene callers id {gene_callers_id} ({path}) does not match the sequence "
+                                  f"found for this gene in the contigs database. Here is the sequence found in the structure: {aa_seq_structure}. "
+                                  f"And here is the sequence in the contigs database that anvi'o was expecting: {aa_seq_contigs}.")
+
+            self.progress.increment()
+            self.progress.update(self.progress.msg)
+
+        self.progress.end()
+        return True
+
+

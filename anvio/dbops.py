@@ -2852,6 +2852,7 @@ class ProfileSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
+        self.p_meta['db_variant'] = str(utils.get_db_variant(self.profile_db_path))
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
@@ -2909,7 +2910,8 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'])
+                                                                                         self.p_meta['contigs_db_hash'],
+                                                                                         db_variant=self.p_meta['db_variant'])
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
@@ -3634,15 +3636,20 @@ class ProfileDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
+        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'num_splits', 'total_length']:
+                    'min_coverage_for_variability', 'max_contig_length', 'num_splits', 'total_length']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
         self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+        for key in ['min_percent_identity', 'min_indel_fraction']:
+            try:
+                self.meta[key] = float(self.meta[key])
+            except:
+                pass
 
 
         # open the database
@@ -3949,7 +3956,7 @@ class ContigsDatabase:
         return 'hash' + str('%08x' % random.randrange(16**8))
 
 
-    def touch(self):
+    def touch(self, db_variant='unknown'):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -3981,6 +3988,9 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
+
+        if db_variant == 'trnaseq':
+            self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
 
         return self.db
 
@@ -4240,7 +4250,7 @@ class ContigsDatabase:
             skip_mindful_splitting = True
 
         # create a blank contigs database on disk, and set the self.db
-        self.touch()
+        self.touch(db_variant)
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')

@@ -15,7 +15,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "20"
-profile_db_version = "37"
+profile_db_version = "38"
 genes_db_version = "6"
 pan_db_version = "15"
 auxiliary_data_version = "2"
@@ -137,6 +137,18 @@ gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,  
 gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
+
+
+####################################################################################################
+#
+#     ADDITIONAL TABLE DESCRIPTIONS FOR THE TRNASEQ VARIANT OF THE CONTIGS DATABASE
+#
+####################################################################################################
+
+trna_seed_feature_table_name            = 'trna_feature'
+trna_seed_feature_table_structure       = ['gene_callers_id'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]], [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TRNA_FEATURE_NAMES[: -1]) * 2                                                                                    + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
 
 ####################################################################################################
 #
@@ -370,6 +382,7 @@ table_requires_unique_entry_id = {'self': False,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
+                                  trna_seed_feature_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
                                   variable_codons_table_name: True,
