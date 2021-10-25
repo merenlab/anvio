@@ -21,8 +21,8 @@ function checkNews() {
                 } else {
                     unread_count++;
                 }
-                $('#news-panel-inner').append('<div class="news-item"> \
-                                              <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
+                $('#modNewsBadger-inner').append('<div class="news-item"> \
+                                              <h1>' + ((hash_found) ? 'asdk' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
                                               <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
             }
 
