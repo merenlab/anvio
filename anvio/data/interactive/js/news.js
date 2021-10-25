@@ -27,6 +27,7 @@ function checkNews() {
             }
 
             if (unread_count > 0) {
+                $('#modNewsBadger').modal('show')
                 $('#toggle-panel-right-3').css('color', '#FF0000');
                 $('#toggle-panel-right-3').addClass('fading-button');
 
