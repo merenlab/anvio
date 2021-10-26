@@ -26,9 +26,6 @@ function checkNews() {
 
             if (unread_count > 0) {
                 $('#modNewsBadger').modal('show')
-            } else {
-		        // remove upon starting interface in case 'last-seen-hash' cookie is not cleared
-	    	    $('#news-mark-read').remove();
             }
         }
     });
@@ -36,6 +33,5 @@ function checkNews() {
 
 function newsMarkRead() {
     $('.blue-dot').remove();
-    $('#news-mark-read').remove();
     createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
 }
