@@ -3,8 +3,6 @@ $(document).ready(function() {
 });
 
 function checkNews() {
-    $('#news-panel-inner').empty();
-
     $.ajax({
         type: 'GET',
         cache: false,
