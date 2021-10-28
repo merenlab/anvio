@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.kegg as kegg
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['ivagljiva']
+__provides__ = ["modules-db"]
+__description__ = "Set up user-defined metabolic pathways and their HMMs"
+
+@time_program
+def main(args):
+    ## initialize some empty arguments that are unnecessary here but expected by KeggSetup class
+    args.kegg_archive = None
+    args.kegg_snapshot = None
+    args.download_from_kegg = None
+
+    setup = kegg.KeggSetup(args)
+    setup.setup_data()
+
+if __name__ == '__main__':
+    from anvio.argparse import ArgumentParser
+
+    parser = ArgumentParser(description=__description__)
+    groupU = parser.add_argument_group('USER DATA SETUP', "If you have organized your own metabolism data into a set "
+                                       "of metabolic modules and HMM profiles, you can use this program to set up this "
+                                       "data into the format required for metabolism estimation.")
+    groupU.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where your metabolism data "
+                                                                      "files are kept. It is also the output directory, since "
+                                                                      "the modules database and HMM profiles will be set up in "
+                                                                      "this folder."}))
+    groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

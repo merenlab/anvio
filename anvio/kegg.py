@@ -427,17 +427,10 @@ class KeggSetup(KeggContext):
         # init the base class
         KeggContext.__init__(self, self.args)
 
-        if self.user_input_dir and (self.kegg_snapshot or self.kegg_archive_path or self.download_from_kegg):
-            raise ConfigError("You appear to have requested setup from KEGG as well as setup from user data. Well. Anvi'o cannot "
-                              "multitask like that, so please try again and only provide one setup option (KEGG or USER) at a time. "
-                              "We thank you for your patience.")
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
                              f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
-                             f"followed our formatting guidelines, so keep an eye out for errors below. (By the way, if "
-                             f"you provided a value for --kegg-data-dir because you wanted to set up KEGG data, too, you "
-                             f"should know that it is not going to happen. If you want KEGG data, you will need to run "
-                             f"this program again with only KEGG options.)")
+                             f"followed our formatting guidelines, so keep an eye out for errors below.")
 
         filesnpaths.is_program_exists('hmmpress')
 
