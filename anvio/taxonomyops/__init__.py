@@ -414,7 +414,11 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.progress.reset()
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
 
-        if not (len(hits) == 1 and hits[0]['anticodon'] == 'CONSENSUS'):
+        target = 'gene_name' if self.scgs_focus else 'anticodon'
+
+        if len(hits) == 1 and hits[0][target] == 'CONSENSUS':
+            self.run.info_single("No hits :/")
+        else:
             if self.scgs_focus:
                 header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
                 field_names = [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']
@@ -444,8 +448,6 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                     table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['amino_acid']), str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
             anvio.TABULATE(table, header)
-        else:
-            self.run.info_single("No hits :/")
 
 
     def get_taxonomy_dict(self, gene_caller_ids, bin_name=None):
