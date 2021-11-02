@@ -52,13 +52,20 @@ def export_from_contigs(args):
             raise ConfigError("External gene calls file is not compatble with GFF format.")
         if args.flank_length:
             raise ConfigError("Due to the lazy programming, --flank-length and --export-gff3 flags are incompatible :(")
+        if args.annotation_source:
+            func_kwargs['gene_annotation_source'] = args.annotation_source
 
         c.gen_GFF3_file_of_sequences_for_gene_caller_ids(**func_kwargs)
     else:
+        if args.annotation_source:
+            raise ConfigError("A functional annotation source is only relevant for the GFF output format.")
         c.get_sequences_for_gene_callers_ids(**func_kwargs, report_aa_sequences=args.get_aa_sequences, flank_length=args.flank_length, output_file_path_external_gene_calls=args.external_gene_calls)
 
 
 def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
+    if args.export_gff3:
+        raise ConfigError("GFF output is only relevant if you are working with a contigs database :/")
+
     g = genomestorage.GenomeStorage(genomes_storage_db_path)
     g.gen_combined_aa_sequences_FASTA(output_file_path)
 
@@ -90,14 +97,13 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('OPTION #1: EXPORT FROM CONTIGS DB')
+    groupA = parser.add_argument_group('OPTION #1: GET SEQUENCES FROM A CONTIGS DB')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
     groupA.add_argument(*anvio.A('flank-length'), **anvio.K('flank-length'))
     groupA.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
     groupA.add_argument(*anvio.A('report-extended-deflines'), **anvio.K('report-extended-deflines'))
     groupA.add_argument(*anvio.A('wrap'), **anvio.K('wrap'))
-    groupA.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
     groupA.add_argument(*anvio.A('get-aa-sequences'), **anvio.K('get-aa-sequences'))
     groupA.add_argument(*anvio.A('external-gene-calls'), **anvio.K('external-gene-calls',
                                         {"help": ("An optional external gene calls file path that precisely "
@@ -105,12 +111,16 @@ if __name__ == '__main__':
                                                   "you can create an anvi'o contigs database from the resulting "
                                                   "genes FASTA file without having to do a gene calling from scratch.")}))
 
-    groupB = parser.add_argument_group('OPTION #2: EXPORT FROM A GENOMES STORAGE')
-    groupB.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
-    groupB.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
+    groupB = parser.add_argument_group('OPTION #1.1: STORE SEQEUNCES AS GFF?', "This only works with OPTION #1 :/")
+    groupB.add_argument(*anvio.A('export-gff3'), **anvio.K('export-gff3'))
+    groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
 
-    groupC = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupC = parser.add_argument_group('OPTION #2: GET SEQUENCES FROM A GENOMES STORAGE')
+    groupC.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names'))
+
+    groupD = parser.add_argument_group('OPTIONS COMMON TO ALL INPUTS')
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     args = parser.get_args(parser)
 
