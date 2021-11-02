@@ -1296,7 +1296,7 @@ class ContigsSuperclass(object):
                 if entry['source'] == 'Transfer_RNAs':
                     seq_type = "tRNA"
                 elif entry['source'].startswith('Ribosomal_RNA'):
-                    seq_type = "mRNA"
+                    seq_type = "rRNA"
                 else:
                     seq_type = "CDS"
 
