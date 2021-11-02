@@ -1293,6 +1293,13 @@ class ContigsSuperclass(object):
                 entry = sequences_dict[gene_callers_id]
                 strand = entry['direction'].replace('f','+').replace('r','-')
 
+                if entry['source'] == 'Transfer_RNAs':
+                    seq_type = "tRNA"
+                elif entry['source'].startswith('Ribosomal_RNA'):
+                    seq_type = "mRNA"
+                else:
+                    seq_type = "CDS"
+
                 entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
@@ -1301,7 +1308,7 @@ class ContigsSuperclass(object):
                         accession, function = accession.split('!!!')[0], function.split('!!!')[0]
                         attributes += f";Name={accession};db_xref=COG20:{accession};product={function}"
 
-                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
+                output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
