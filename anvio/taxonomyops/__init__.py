@@ -669,6 +669,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
 
     def print_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+        if anvio.QUIET:
+            return
+
         self.progress.reset()
 
         if self.collection_name:
