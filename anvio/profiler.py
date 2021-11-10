@@ -89,10 +89,14 @@ class BAMProfilerQuick:
         filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
 
         # find all the bad BAM files
+        self.progress.new("Sanity checking BAM files")
+        self.progress.update('...')
         bad_bam_files = [f for f in self.bam_file_paths if not filesnpaths.is_file_bam_file(f, dont_raise=True)]
         if len(bad_bam_files):
+            self.progress.reset()
             raise ConfigError(f"Not all of your BAM files look like BAM files. Here is the list that "
                               f"samtools didn't like: {', '.join(bad_bam_files)}")
+        self.progress.end()
 
         if self.gene_level_stats:
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
