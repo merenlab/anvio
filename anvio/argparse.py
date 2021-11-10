@@ -38,8 +38,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.epilog = epilog or self.get_anvio_epilogue()
 
         self.anvio_allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
-                                           '--quiet', '--no-progress', '--as-markdown', '--tmp-dir',
-                                           '--display-db-calls', '--force-use-my-tree']
+                                           '--quiet', '--no-progress', '--as-markdown',
+                                           '--display-db-calls', '--force-use-my-tree',
+                                           '--I-know-this-is-not-a-good-idea', '--tmp-dir']
 
 
     def get_anvio_epilogue(self):
