@@ -986,7 +986,7 @@ class DB:
             row_num += 1
 
         if error_if_no_data and not len(results_dict):
-            raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table_name, where_clause))
+            raise ConfigError("Query on %s with the where clause of '%s' did not return anything. Are you sure that’s the right contig/split name?" % (table_name, where_clause))
 
         return results_dict
 
