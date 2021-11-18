@@ -85,7 +85,7 @@ rule filter_hmm_hits_by_query_coverage:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_query_coverage-{sample_name}-{HMM}.log")
     input:
-        done = os.path.join(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/contigs-hmmsearch.done")),
+        done = rules.anvi_run_hmms_hmmsearch.output.done,
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.domtable")
     output:
         done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-contigsDB_filtered.done"))
@@ -132,8 +132,6 @@ rule anvi_get_sequences_for_hmm_hits:
         done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}_hmm_hits.faa.done")),
         faa = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}_hmm_hits.faa"),
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{HMM}_hmm_hits.fna"),
-    params:
-        hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--hmm-source')
     threads: M.T('anvi_get_sequences_for_hmm_hits')
     run:
         HMM_source = M.HMM_source_dict[wildcards.HMM]
@@ -147,18 +145,7 @@ rule anvi_get_sequences_for_hmm_hits:
                                                -o {output.fna} 2> {log.NT}")
 
 
-rule cat_external_gene_calls_file:
-    """Cat all external_gene_calls files from all samples into one file"""
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{external_hmm}.log")
-    input:
-        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list),
-    output:
-        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_external_gene_calls_all.tsv"),
-    threads: M.T('cat_external_gene_calls_file')
-    shell:
-        "cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}"
 
 
 rule simplify_names_from_hmm_hits:
@@ -212,3 +199,53 @@ rule cat_sequences_to_one_fasta:
         shell(f"cat {input.NT} >> {output.NT_all}")
 
         shell(f"cat {input.AA} >> {output.AA_all}")
+
+
+rule anvi_get_external_gene_calls_file:
+    """Extract external_gene_calls table from all samples"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "get_external_gene_calls_file_{sample_name}_{HMM}.log")
+    input:
+        done = rules.anvi_get_sequences_for_hmm_hits.output.done,
+    output:
+        external_gene_calls = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{HMM}_external_gene_calls.tsv")
+    params:
+        fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{HMM}_orfs.fna")),
+    threads: M.T('anvi_get_external_gene_calls_file')
+    run:
+        contigsDB = os.path.join(M.input_dirs_dict[wildcards.sample_name], f"{wildcards.sample_name}-contigs.db")
+        shell('anvi-get-sequences-for-gene-calls -c {contigsDB} \
+                                                 --external-gene-calls {output.external_gene_calls} \
+                                                 -o {params.fasta} 2> {log}')
+
+
+rule rename_and_filter_external_gene_calls_file:
+    """
+    Create primary key from external-gene-calls.txt to join with references sequences to make
+    a contigsDB for the metagenomics workflow
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_{sample_name}_{HMM}.log")
+    input:
+        external_gene_calls = rules.anvi_get_external_gene_calls_file.output.external_gene_calls
+    output:
+        external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{HMM}_external_gene_calls_renamed.tsv")
+    threads: M.T('rename_and_filter_external_gene_calls_file')
+    script:
+        "scripts/rename_external_gene_calls_file.py"
+ 
+
+rule cat_external_gene_calls_file:
+    """Cat all external_gene_calls files from all samples into one file"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_external_gene_calls_file_{HMM}.log")
+    input:
+        external_gene_calls_renamed = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_external_gene_calls_renamed.tsv"), sample_names = M.names_list),
+    output:
+        external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_external_gene_calls_all.tsv"),
+    threads: M.T('cat_external_gene_calls_file')
+    run:
+        shell(f"cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")

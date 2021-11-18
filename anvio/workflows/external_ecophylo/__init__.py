@@ -38,6 +38,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_get_sequences_for_hmm_hits',
                            'simplify_names_from_hmm_hits',
                            'cat_sequences_to_one_fasta',
+                           'anvi_get_external_gene_calls_file',
+                           'cat_external_gene_calls_file',
                            'simplify_names_from_scg_hits',
                            'rename_and_filter_external_gene_calls_file_all',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
@@ -45,7 +47,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'cat_scgs_to_one_fasta',
                            'add_misc_data_to_taxonomy',
                            'subset_external_gene_calls_file_all',
-                           'anvi_get_external_gene_calls_file',
                            'cat_reformat_files_nt',
                            'cat_ribo_proteins_to_one_fasta',
                            'cluster_X_percent_sim_mmseqs',
@@ -83,8 +84,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
-        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs_aa'] = ['--hmm-source']
-        rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs_nt'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
@@ -98,17 +97,13 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
 
         # Set default values for accessible rules and order of rules in config.json file
         self.default_config.update({
-            'metagenomes': 'metagenomes.txt',
-            'external_genomes': 'external-genomes.txt',
-            'external_hmm_list': 'external_hmm_list.txt',
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 5},
             'simplify_names_from_hmm_hits': {'threads': 5},
             'cat_sequences_to_one_fasta': {'threads': 5},
-            'anvi_script_reformat_fasta': {'threads': 5},
-            'rename_and_filter_external_gene_calls_file_all': {'threads': 5},
             'anvi_get_external_gene_calls_file': {'threads': 5},
+            'cat_external_gene_calls_file': {'threads': 2},
             'make_fasta_txt': {'threads': 5},
             'make_metagenomics_config_file': {'threads': 5},
             'add_misc_data_to_taxonomy': {'threads': 5},
@@ -134,7 +129,10 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'fasttree': {'run': True, 'threads': 5},
             'iqtree': {'threads': 5,'-m': "MFP"},
-            'run_metagenomics_workflow': {'threads': 5, 'clusterize': False}
+            'run_metagenomics_workflow': {'threads': 5, 'clusterize': False},
+            'metagenomes': 'metagenomes.txt',
+            'external_genomes': 'external-genomes.txt',
+            'external_hmm_list': 'external_hmm_list.txt',
             })
 
         # Directory structure for Snakemake workflow
@@ -270,7 +268,10 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         for HMM in self.HMM_source_dict.keys():
             for sample_name in self.names_list:
 
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_all.faa")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_external_gene_calls_all.tsv")
+                target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_all.fna")
                 target_files.append(target_file)
 
         return target_files
