@@ -86,7 +86,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--hmm-source', '--query-coverage', 'additional_params']
+        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs_aa'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits_SCGs_nt'] = ['--hmm-source']
         rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
@@ -128,7 +128,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 5},
-            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8, '--hmm-source': 'Bacteria_71'},
+            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
@@ -279,7 +279,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         for HMM in self.HMM_source_dict.keys():
             for sample_name in self.names_list:
 
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}-{HMM}_hmm_hits.faa.done")
+                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{HMM}_reformat_report_nt.txt")
                 target_files.append(target_file)
 
             # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv")
