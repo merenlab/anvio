@@ -123,8 +123,8 @@ rule anvi_get_sequences_for_hmm_hits:
 
     version: 1.0
     log: 
-        AA = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_AA-{sample_name}-{HMM}.log"),
-        NT = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_SCGs_NT-{sample_name}-{HMM}.log")
+        AA = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_AA-{sample_name}-{HMM}.log"),
+        NT = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_NT-{sample_name}-{HMM}.log")
     input:
         done_file = rules.filter_hmm_hits_by_query_coverage.output.done,
         contigsDB = ancient(lambda wildcards: os.path.join(M.input_dirs_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
@@ -133,8 +133,8 @@ rule anvi_get_sequences_for_hmm_hits:
         faa = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}_hmm_hits.faa"),
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_{HMM}_hmm_hits.fna"),
     params:
-        hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits_SCGs', '--hmm-source')
-    threads: M.T('anvi_get_sequences_for_hmm_hits_SCGs_aa')
+        hmm_source = M.get_rule_param('anvi_get_sequences_for_hmm_hits', '--hmm-source')
+    threads: M.T('anvi_get_sequences_for_hmm_hits')
     run:
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         shell(f"anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
@@ -194,21 +194,21 @@ rule simplify_names_from_hmm_hits:
                               -o {output.fasta_AA} >> {log.AA} 2>&1")
 
 
-rule cat_scgs_to_one_fasta_nt:
+rule cat_sequences_to_one_fasta:
     """
-    Cat all SCG sequences from seperate metagenomes into one fasta
+    Cat all sequences from seperate metagenomes, genomes, SAGs, or MAGs into one fasta
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_ribo_proteins_to_one_fasta_{external_hmm}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_sequences_to_one_fasta_{HMM}.log")
     input:
-        NT = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_hmm_hits_renamed_final.fna"), sample_names = M.names_list),
-        AA = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_hmm_hits_renamed_final.faa"), sample_names = M.names_list),
+        NT = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_hmm_hits_renamed.fna"), sample_names = M.names_list),
+        AA = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}_{{HMM}}_hmm_hits_renamed.faa"), sample_names = M.names_list),
     output:
-        NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_all.fna"),
-        AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{external_hmm}/{external_hmm}_all.faa"),
-    threads: M.T('cat_scgs_to_one_fasta_nt')
+        NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_all.fna"),
+        AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_all.faa"),
+    threads: M.T('cat_sequences_to_one_fasta')
     run:
-        shell(f"cat -c {input.NT} >> {output.NT_all}")
+        shell(f"cat {input.NT} >> {output.NT_all}")
 
-        shell(f"cat -c {input.AA} >> {output.AA_all}")
+        shell(f"cat {input.AA} >> {output.AA_all}")
