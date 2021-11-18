@@ -41,7 +41,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_get_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'simplify_names_from_scg_hits',
-                           'rename_and_filter_external_gene_calls_file_all',
+                           'rename_and_filter_external_gene_calls_file',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
                            'cat_scgs_to_one_fasta',
