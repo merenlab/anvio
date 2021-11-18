@@ -223,13 +223,14 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             filesnpaths.is_file_exists(self.external_hmm_list_path)
             try:
                 external_HMM_df = pd.read_csv(self.external_hmm_list_path, sep='\t', index_col=False)
-                self.external_HMM_dict = dict(zip(external_HMM_df.name, external_HMM_df.path))
+                self.HMM_source_dict = dict(zip(external_HMM_df.name, external_HMM_df.source))
+                self.HMM_path_dict = dict(zip(external_HMM_df.name, external_HMM_df.path))
 
             except IndexError as e:
                 raise ConfigError("The external_hmm_list.txt file, '%s', does not appear to be properly formatted. "
                                   "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
 
-            if any("-" in s for s in self.external_HMM_dict.keys()):
+            if any("-" in s for s in self.HMM_source_dict.keys()):
                 raise ConfigError(f"Please do not use "-" in your external HMM names in: "
                                   f"{self.external_hmm_list_path}. It will make our lives "
                                   f"easier with Snakemake wildcards :)")
@@ -275,37 +276,42 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for external_hmm in self.external_HMM_dict.keys():
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv")
-            target_files.append(target_file)
+        for HMM in self.HMM_source_dict.keys():
+            for sample_name in self.names_list:
 
-            # Count num sequences removed per step
-            tail_path = f"{external_hmm}_stats.tsv"
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], external_hmm, tail_path)
-            target_files.append(target_file)
-
-            # Import state file to customize interactive interface
-            target_file = os.path.join(f"{external_hmm}_state_imported.done")
-            target_files.append(target_file)
-
-            # Reformat names to match splits in interactive interface
-            target_file = os.path.join(f"{external_hmm}_combined.done")
-            target_files.append(target_file)
-
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
-            target_files.append(target_file)
-
-            # The FINAL trees :)
-            # iq-tree
-            if self.run_iqtree == True:
-                tail_path = "%s.iqtree" % (external_hmm)
-                target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
+                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}-{HMM}_hmm_hits.faa.done")
                 target_files.append(target_file)
-            # fasttree
-            elif self.run_fasttree == True:
-                tail_path = "%s.nwk" % (external_hmm)
-                target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
-                target_files.append(target_file)
+
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{external_hmm}/{external_hmm}_external_gene_calls_all.tsv")
+            # target_files.append(target_file)
+
+            # # Count num sequences removed per step
+            # tail_path = f"{external_hmm}_stats.tsv"
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], external_hmm, tail_path)
+            # target_files.append(target_file)
+
+            # # Import state file to customize interactive interface
+            # target_file = os.path.join(f"{external_hmm}_state_imported.done")
+            # target_files.append(target_file)
+
+            # # Reformat names to match splits in interactive interface
+            # target_file = os.path.join(f"{external_hmm}_combined.done")
+            # target_files.append(target_file)
+
+            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{external_hmm}_misc.tsv")
+            # target_files.append(target_file)
+
+            # # The FINAL trees :)
+            # # iq-tree
+            # if self.run_iqtree == True:
+            #     tail_path = "%s.iqtree" % (external_hmm)
+            #     target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
+            #     target_files.append(target_file)
+            # # fasttree
+            # elif self.run_fasttree == True:
+            #     tail_path = "%s.nwk" % (external_hmm)
+            #     target_file = os.path.join(self.dirs_dict['TREES'], external_hmm, tail_path)
+            #     target_files.append(target_file)
 
             # anvio.P(target_files)
         return target_files
