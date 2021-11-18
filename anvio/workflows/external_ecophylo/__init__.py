@@ -35,18 +35,14 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
                            'filter_hmm_hits_by_query_coverage',
-                           'anvi_get_sequences_for_hmm_hits_SCGs_aa',
-                           'anvi_get_sequences_for_hmm_hits_SCGs_nt',
-                           'anvi_estimate_scg_taxonomy_for_SCGs',
-                           'cat_external_gene_calls_file',
+                           'anvi_get_sequences_for_hmm_hits',
+                           'simplify_names_from_hmm_hits',
+                           'cat_sequences_to_one_fasta',
+                           'simplify_names_from_scg_hits',
                            'rename_and_filter_external_gene_calls_file_all',
-                           'change_names_scg_hits_nt',
-                           'change_names_scg_hits_aa',
-                           'simplify_names_from_scg_hits_aa',
-                           'simplify_names_from_scg_hits_nt',
+                           'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
-                           'cat_scgs_to_one_fasta_nt',
-                           'cat_scgs_to_one_fasta_aa',
+                           'cat_scgs_to_one_fasta',
                            'add_misc_data_to_taxonomy',
                            'subset_external_gene_calls_file_all',
                            'anvi_get_external_gene_calls_file',
@@ -100,35 +96,30 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
-        # Set default values for parameters accessible in config.json file
+        # Set default values for accessible rules and order of rules in config.json file
         self.default_config.update({
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
+            'external_hmm_list': 'external_hmm_list.txt',
+            'anvi_run_hmms_hmmsearch': {'threads': 5},
+            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
+            'anvi_get_sequences_for_hmm_hits': {'threads': 5},
+            'simplify_names_from_hmm_hits': {'threads': 5},
+            'cat_sequences_to_one_fasta': {'threads': 5},
             'anvi_script_reformat_fasta': {'threads': 5},
-            'anvi_get_sequences_for_hmm_hits_SCGs_aa': {'threads': 5},
-            'anvi_get_sequences_for_hmm_hits_SCGs_nt': {'threads': 5},
             'rename_and_filter_external_gene_calls_file_all': {'threads': 5},
-            'simplify_names_from_scg_hits_nt': {'threads': 5},
-            'change_names_scg_hits_nt': {'threads': 5},
             'anvi_get_external_gene_calls_file': {'threads': 5},
             'make_fasta_txt': {'threads': 5},
             'make_metagenomics_config_file': {'threads': 5},
-            'change_names_scg_hits_aa': {'threads': 5},
             'add_misc_data_to_taxonomy': {'threads': 5},
             'subset_external_gene_calls_file_all': {'threads': 5},
             'count_num_sequences_filtered': {'threads': 5},
             'subset_DNA_reps_with_QCd_AA_reps_for_mapping': {'threads': 5},
-            'simplify_names_from_scg_hits_aa': {'threads': 5},
             'cat_reformat_files_nt': {'threads': 5},
             'anvi_import_state': {'threads': 5},
-            'cat_scgs_to_one_fasta_nt': {'threads': 5},
-            'cat_scgs_to_one_fasta_aa': {'threads': 5},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 5},
-            'external_hmm_list': 'external_hmm_list.txt',
-            'anvi_run_hmms_hmmsearch': {'threads': 5},
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 5},
-            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
             'filter_for_scg_sequences_and_metadata': {'threads': 5},
             'cat_ribo_proteins_to_one_fasta': {'threads': 5},
@@ -279,7 +270,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         for HMM in self.HMM_source_dict.keys():
             for sample_name in self.names_list:
 
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}_{HMM}_reformat_report_nt.txt")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_all.faa")
                 target_files.append(target_file)
-                
+
         return target_files
