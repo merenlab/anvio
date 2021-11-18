@@ -927,8 +927,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
-        # everything we need is in the database now. time to add a mini state:
-        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read()
+        # everything we need is in the database now. time to add a mini state (note that we
+        # replace the function layer name template with the annotation source on the fly):
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read().replace('__FUNCTIONS_LAYER_NAME__', facc.function_annotation_source)
         TablesForStates(self.profile_db_path).store_state('default', mini_state)
 
         # create an instance of states table
@@ -1302,8 +1303,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['item_orders'] = self.item_orders
 
-        # add user tree if there is one
-        self.add_user_tree()
+        # add user tree if there is one (but skip the collection mode as it adds its own trees)
+        if not self.mode == 'collection':
+            self.add_user_tree()
 
         # set title
         if self.title:
@@ -1460,6 +1462,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def add_user_tree(self):
         if self.tree:
             clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
+
             if not self.p_meta['item_orders']:
                 self.p_meta['default_item_order'] = clustering_id
                 self.p_meta['available_item_orders'] = [clustering_id]
@@ -1474,15 +1477,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 item_names_in_collection = set(self.collection.keys())
                 item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
                 if not item_names_in_collection == item_names_in_user_tree:
-                    raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
-                                      f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
-                                      f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
-                                      f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
-                                      f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
-                                      f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
-                                      f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
-                                      f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
-                                      f"to one match between the two.")
+                    if anvio.FORCE_USE_MY_TREE:
+                        run.warning(f"Anvi'o told you that the tree file you provided had {len(item_names_in_user_tree)} names, which "
+                                    f"the {len(item_names_in_collection)} names in the collection '{self.collection_name}', but you said "
+                                    f"--force-use-my-tree. So that's what will happen now (and you will thank Obama if things go wrong)",
+                                    header="YOU USED YOUR AUTHORITY ◔_◔")
+                    else:
+                        raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
+                                          f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
+                                          f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
+                                          f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
+                                          f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
+                                          f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
+                                          f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
+                                          f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
+                                          f"to one match between the two.")
 
 
     def update_items_additional_data_with_functions_per_split_summary(self):

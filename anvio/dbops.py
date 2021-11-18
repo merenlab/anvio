@@ -1266,28 +1266,32 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+    def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, gene_annotation_source=None):
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
 
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
-        # let's see if there are functions
-        gene_functions_found = False
-        if self.a_meta['gene_function_sources'] and 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
-            self.init_functions(requested_sources=["COG20_FUNCTION"])
-            gene_functions_found = True
-            self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
-                             "and will include that information in the output GFF file (anvi'o also admits that "
-                             "it is looking for `COG20_FUNCTION` instead of an annotation source of your choice due to "
-                             "the laziness of its developers. If you would like to be able to choose a different "
-                             "annotation source, please let the developers know and they will parameterize this option).",
-                             header="FUNCTIONS FOUND 🎊", lc="green")
-        else:
-            self.run.warning("Just so you know: anvi'o wanted to include functions for your genes into the GFF file "
-                             "but your contigs database does not seem to include annotations from `COG20_FUNCTION`. "
-                             "You can ignore this message if you don't care. But if you would like your GFF file to "
-                             "include functions for your genes, you can run `anvi-run-ncbi-cogs` on your contigs db "
-                             "and re-run this command to have an output file with functions :)")
+        # let's see the situation with functions
+        if gene_annotation_source and not self.a_meta['gene_function_sources']:
+            raise ConfigError("The code came all the way here with a `gene_annotation_source` but without the proper contigs db configuration o_O "
+                              "Anvi'o needs an adult :(")
+
+        if not gene_annotation_source and self.a_meta['gene_function_sources']:
+            self.run.warning(f"You didn't ask for functions to be included in your GFF output file, but anvi'o found "
+                             f"in your contigs database all these in case you would like to include one of them via "
+                             f"the parameter `--annotation-source`: {', '.join(self.a_meta['gene_function_sources'])}",
+                             header="THE MORE YOU KNOW 🌈", lc='yellow')
+
+        gene_functions_found = False 
+        if gene_annotation_source and self.a_meta['gene_function_sources']:
+            if gene_annotation_source in self.a_meta['gene_function_sources']:
+                self.init_functions(requested_sources=[gene_annotation_source])
+                gene_functions_found = True
+                self.run.warning(f"Anvi'o found gene function annotations by '{gene_annotation_source}' in your contigs database "
+                                 f"and will include that information in the output GFF file.", header="FUNCTIONS FOUND 🎊", lc="green")
+            else:
+                raise ConfigError(f"The function annotation source you have requested ('{gene_annotation_source}') does not "
+                                  f"seem to be in this contigs database :/ Here is what we have: {', '.join(self.a_meta['gene_function_sources'])}")
 
         self.progress.new('Storing sequences')
         self.progress.update('...')
@@ -1297,15 +1301,22 @@ class ContigsSuperclass(object):
                 entry = sequences_dict[gene_callers_id]
                 strand = entry['direction'].replace('f','+').replace('r','-')
 
+                if entry['source'] == 'Transfer_RNAs':
+                    seq_type = "tRNA"
+                elif entry['source'].startswith('Ribosomal_RNA'):
+                    seq_type = "rRNA"
+                else:
+                    seq_type = "CDS"
+
                 entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
                     if gene_callers_id in self.gene_function_calls_dict:
-                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id]['COG20_FUNCTION']
+                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
                         accession, function = accession.split('!!!')[0], function.split('!!!')[0]
-                        attributes += f";Name={accession};db_xref=COG20:{accession};product={function}"
+                        attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
 
-                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
+                output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
@@ -2856,6 +2867,7 @@ class ProfileSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
+        self.p_meta['db_variant'] = str(utils.get_db_variant(self.profile_db_path))
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
@@ -2913,7 +2925,8 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'])
+                                                                                         self.p_meta['contigs_db_hash'],
+                                                                                         db_variant=self.p_meta['db_variant'])
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
@@ -3958,7 +3971,7 @@ class ContigsDatabase:
         return 'hash' + str('%08x' % random.randrange(16**8))
 
 
-    def touch(self):
+    def touch(self, db_variant='unknown'):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -3990,6 +4003,9 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
+
+        if db_variant == 'trnaseq':
+            self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
 
         return self.db
 
@@ -4249,7 +4265,7 @@ class ContigsDatabase:
             skip_mindful_splitting = True
 
         # create a blank contigs database on disk, and set the self.db
-        self.touch()
+        self.touch(db_variant)
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')

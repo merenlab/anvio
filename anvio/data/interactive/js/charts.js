@@ -233,7 +233,7 @@ function loadAll() {
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
-                if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = true;
+                if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
                 if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
@@ -316,12 +316,26 @@ function loadAll() {
                     $("div.indels-disabled").fadeIn(300);
                   }
                 }
+                if(state.hasOwnProperty('show_snvs')){
+                  $('#toggle_snv_box').attr("checked", state['show_snvs']);
+                }
 
-                if(state['show_snvs']) $('#toggle_snv_box').attr("checked", "checked");
-                if(state['show_indels']) $('#toggle_indel_box').attr("checked", "checked");
-                if(state['snv_scale_bottom']) $("#snv_scale_box").attr("checked", "checked");
-                if(state['snv_scale_dir_up']) $("#scale_dir_box").attr("checked", "checked");
-                if(state['fixed-y-scale']) $('#fixed_ys_box').attr("checked", "checked");
+                if(state.hasOwnProperty('show_indels')){
+                  $('#toggle_indel_box').attr("checked", state['show_indels']);
+                }
+
+                if(state.hasOwnProperty('snv_scale_bottom')){
+                  $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
+                }
+
+                if(state.hasOwnProperty('snv_scale_dir_up')){
+                  $("#scale_dir_box").attr("checked", state['snv_scale_dir_up']);
+                }
+
+                if(state.hasOwnProperty('fixed-y-scale')){
+                  $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
+                }
+
                 $('#toggle_highlight_box').attr("checked", "checked");
                 $('#toggle_nucl_box').attr("checked", "checked");
 
@@ -335,14 +349,25 @@ function loadAll() {
                           cache: false,
                           url: '/state/get/' + state['state-name'],
                           success: function(response) {
-                              try{
-                                  clusteringData = response[1]['data'];
-                                  info("Loading ordering data");
-                                  loadOrderingAdditionalData(response[1]);
+                              try {
+                                  if(!response){
+                                      // FIXME: This means we are likely in stand-alone mode where the inspection page
+                                      // is called via `anvi-inspect` and without going through the main interface.
+                                      // In this case there is no state, and no other data to be read from, and we
+                                      // fail to show SNVs and INDELs even when they are there, which is not the best
+                                      // behavior here. leaving this here so we remember:
+                                      toastr.error("You probably are here via `anvi-inspect`, and due to some technical issues, "
+                                                   + "the interface is being initialized without any SNV or INDEL data :/ Anvi'o "
+                                                   + "developers apologize for this shortcoming.");
+                                  } else {
+                                      clusteringData = response[1]['data'];
+                                      info("Loading ordering data");
+                                      loadOrderingAdditionalData(response[1]);
 
-                                  info("Processing state data from the server");
-                                  processState(state['state-name'], response[0]);
-                              }catch(e){
+                                      info("Processing state data from the server");
+                                      processState(state['state-name'], response[0]);
+                                  }
+                              } catch(e) {
                                   console.error("Exception thrown", e.stack);
                                   toastr.error('Failed to parse state data, ' + e);
                                   defer.reject();
@@ -1438,6 +1463,8 @@ function saveState()
 
                 current_state_name = name;
                 toastr.success("State '" + current_state_name + "' successfully saved.");
+                toastr.info("Now loading saved state '" + current_state_name + "' into current session.");
+                processState(current_state_name, serializeSettings())
             }
         }
     });
@@ -1493,12 +1520,25 @@ function processState(state_name, state) {
       //$('#minIndelInput').val(0);
     }
 
-    state['show_highlights'] = $('#toggle_highlight_box').val() == "on";
-    state['show_snvs'] = $('#toggle_snv_box').val() == "on";
-    state['show_indels'] = $('#toggle_indel_box').val() == "on";
-    state['snv_scale_bottom'] = $('#snv_scale_box').val() == "on";
-    state['snv_scale_dir_up'] = $('#scale_dir_box').val() == "on";
-    state['fixed-y-scale'] = $('#fixed_ys_box').val() == "on";
+    if(state.hasOwnProperty('show_snvs')){
+      $('#toggle_snv_box').attr("checked", state['show_snvs']);
+    }
+
+    if(state.hasOwnProperty('show_indels')){
+      $('#toggle_indel_box').attr("checked", state['show_indels']);
+    }
+
+    if(state.hasOwnProperty('snv_scale_bottom')){
+      $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
+    }
+
+    if(state.hasOwnProperty('snv_scale_dir_up')){
+      $("#scale_dir_box").attr("checked", state['snv_scale_dir_up']);
+    }
+
+    if(state.hasOwnProperty('fixed-y-scale')){
+      $('#fixed_ys_box').attr("checked", state['fixed-y-scale']);
+    }
 
     state['state-name'] = current_state_name = state_name;
 

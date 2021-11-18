@@ -15,7 +15,7 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '7-dev'
+anvio_version = '7.1-dev'
 anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
@@ -28,7 +28,9 @@ NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
+FORCE_USE_MY_TREE = '--force-use-my-tree' in sys.argv
 DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
+USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
 
@@ -497,9 +499,9 @@ D = {
             {'metavar': 'VARIANT',
              'required': False,
              'default': 'unknown',
-             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers "
+             'help': "A free-form text variable to associate a database with a variant for power users and/or programmers. "
                      "Please leave this blank unless you are certain that you need to set a db variant since it may influence "
-                     "downstream processes. In an ideal world a varainat would be a single-word, without any capitalized letters "
+                     "downstream processes. In an ideal world a variant would be a single-word, without any capitalized letters "
                      "or special characters."}
                 ),
     'contigs-fasta': (
@@ -2960,8 +2962,7 @@ D = {
                      "as tRNA-seq samples are commonly split for these treatments. "
                      "Anvi'o will warn you if you do not choose one of these known options, but it will not affect data processing. "
                      "Treatment type is stored for further reference in the output tRNA-seq database, "
-                     "and can be used in anvi-convert-trnaseq-database "
-                     "to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
+                     "and can be used in anvi-merge-trnaseq to affect which nucleotides are called at predicted modification sites in tRNA seed sequences."}
                 ),
     'write-checkpoints': (
             ['--write-checkpoints'],
@@ -3136,7 +3137,7 @@ D = {
                 ),
     'profiling-chunk-size': (
             ['--profiling-chunk-size'],
-            {'default': 500000,
+            {'default': 100000,
              'metavar': 'INT',
              'type': int,
              'help': "Anvi'o manages memory consumption during tRNA feature profiling by chunking the unique input sequences. "
@@ -3280,6 +3281,41 @@ D = {
              'help': "This parameter controls which indels are reported in the tRNA-seq profile database. "
                      "Coverage of an indel in a sample must meet the minimum fraction of specific coverage. "
                      "Indel coverages are calculated separately for specific, nonspecific, and summed coverages."}
+                ),
+    'specific-profile-db': (
+            ['--specific-profile-db', '-s'],
+            {'metavar': 'PROFILE_DB',
+             'required': True,
+             'help': "The path to an anvi'o profile database containing specific coverage information on tRNA seeds. "
+                     "`anvi-merge-trnaseq` generates a specific profile database from a tRNA-seq experiment."}
+                ),
+    'nonspecific-profile-db': (
+            ['--nonspecific-profile-db', '-n'],
+            {'metavar': 'PROFILE_DB',
+             'required': False,
+             'help': "The path to an anvi'o profile database containing nonspecific coverage information on tRNA seeds. "
+                     "`anvi-merge-trnaseq` optionally generates a nonspecific profile database from a tRNA-seq experiment."}
+                ),
+    'seeds-specific-txt': (
+            ['--seeds-specific-txt', '-s'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file containing data on tRNA seeds including specific coverages. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
+                ),
+    'seeds-nonspecific-txt': (
+            ['--seeds-nonspecific-txt', '-n'],
+            {'metavar': 'TEXT_FILE',
+             'required': False,
+             'help': "A tab-delimited text file containing data on tRNA seeds including nonspecific coverages. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
+                ),
+    'modifications-txt': (
+            ['--modifications-txt', '-m'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file containing modification data on tRNA seeds. "
+                     "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
     ),
     'stats-to-summarize': (
             ['--stats-to-summarize', '-S'],

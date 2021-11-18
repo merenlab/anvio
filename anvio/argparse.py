@@ -37,6 +37,11 @@ class ArgumentParser(argparse.ArgumentParser):
         self.description = description
         self.epilog = epilog or self.get_anvio_epilogue()
 
+        self.anvio_allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
+                                           '--quiet', '--no-progress', '--as-markdown',
+                                           '--display-db-calls', '--force-use-my-tree',
+                                           '--I-know-this-is-not-a-good-idea', '--tmp-dir']
+
 
     def get_anvio_epilogue(self):
         """Function that formats the additional message that appears at the end of help."""
@@ -187,8 +192,6 @@ class ArgumentParser(argparse.ArgumentParser):
         to see can still be sorted out.
         """
 
-        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown', '--tmp-dir', '--display-db-calls']
-
         args, unknown = parser.parse_known_args()
 
         if auto_fill_anvio_dbs:
@@ -199,8 +202,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # if there are any args in the unknown that we do not expect to find
         # we we will make argparse complain about those.
-        if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
-            for f in allowed_ad_hoc_flags:
+        if len([f for f in unknown if f not in self.anvio_allowed_ad_hoc_flags]):
+            for f in self.anvio_allowed_ad_hoc_flags:
                 # handle non-boolean flags
                 if f in ['--tmp-dir']:
                     parser.add_argument(f)
