@@ -3323,6 +3323,36 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     return samples_txt
 
 
+def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
+    """Primers-txt is an anvi'o artifact for primer sequencs."""
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if 'name' not in columns_found:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have a column that is called `name` for the primer name.")
+
+    if 'primer_sequence' not in columns_found:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have a column that is called `primer_sequence` for the primer sequence.")
+
+    if len(columns_found) < 2:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have at least two columns - one for primer names, and one for primer sequences.")
+
+    item_column = columns_found[0]
+    if item_column != 'name':
+        progress.reset()
+        raise ConfigError("The first column in your primers-txt file does not seem to be `name`. Anvi'o expects the first "
+                          "column to have sequence names.")
+
+    primers_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    return primers_txt
+
+
 def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
     """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
 

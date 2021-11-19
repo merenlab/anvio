@@ -124,6 +124,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "primers-txt": {
+        "name": "PRIMERS TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
     "fasta-txt": {
         "name": "FASTA TXT",
         "type": "TXT",

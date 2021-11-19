@@ -349,14 +349,25 @@ function loadAll() {
                           cache: false,
                           url: '/state/get/' + state['state-name'],
                           success: function(response) {
-                              try{
-                                  clusteringData = response[1]['data'];
-                                  info("Loading ordering data");
-                                  loadOrderingAdditionalData(response[1]);
+                              try {
+                                  if(!response){
+                                      // FIXME: This means we are likely in stand-alone mode where the inspection page
+                                      // is called via `anvi-inspect` and without going through the main interface.
+                                      // In this case there is no state, and no other data to be read from, and we
+                                      // fail to show SNVs and INDELs even when they are there, which is not the best
+                                      // behavior here. leaving this here so we remember:
+                                      toastr.error("You probably are here via `anvi-inspect`, and due to some technical issues, "
+                                                   + "the interface is being initialized without any SNV or INDEL data :/ Anvi'o "
+                                                   + "developers apologize for this shortcoming.");
+                                  } else {
+                                      clusteringData = response[1]['data'];
+                                      info("Loading ordering data");
+                                      loadOrderingAdditionalData(response[1]);
 
-                                  info("Processing state data from the server");
-                                  processState(state['state-name'], response[0]);
-                              }catch(e){
+                                      info("Processing state data from the server");
+                                      processState(state['state-name'], response[0]);
+                                  }
+                              } catch(e) {
                                   console.error("Exception thrown", e.stack);
                                   toastr.error('Failed to parse state data, ' + e);
                                   defer.reject();
