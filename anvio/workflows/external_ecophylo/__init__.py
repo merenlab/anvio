@@ -47,19 +47,19 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'remove_sequences_with_X_percent_gaps',
                            'count_num_sequences_filtered',
                            'subset_DNA_reps_with_QCd_AA_reps_for_mapping',
+                           'subset_external_gene_calls_file_all',
+                           'make_fasta_txt',
                            'simplify_names_from_scg_hits',
                            'rename_and_filter_external_gene_calls_file',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
                            'cat_scgs_to_one_fasta',
                            'add_misc_data_to_taxonomy',
-                           'subset_external_gene_calls_file_all',
                            'cat_reformat_files_nt',
                            'cat_ribo_proteins_to_one_fasta',
                            'anvi_script_reformat_fasta',
                            'cat_misc_data_to_one_file',
                            'join_renamed_fasta_with_misc_data',
-                           'make_fasta_txt',
                            'make_metagenomics_config_file',
                            'get_gap_count_distribution',
                            'filter_out_outlier_sequences',
@@ -86,8 +86,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
-        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
+        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
         rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
@@ -102,9 +102,9 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'external_hmm_list': 'external_hmm_list.txt',
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
-            'anvi_get_sequences_for_hmm_hits': {'threads': 5},
-            'simplify_names_from_hmm_hits': {'threads': 5},
-            'cat_sequences_to_one_fasta': {'threads': 5},
+            'anvi_get_sequences_for_hmm_hits': {'threads': 2},
+            'simplify_names_from_hmm_hits': {'threads': 2},
+            'cat_sequences_to_one_fasta': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 5},
             'cat_external_gene_calls_file': {'threads': 2},
             'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
@@ -112,12 +112,12 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'align_sequences': {'threads': 5},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
+            'count_num_sequences_filtered': {'threads': 5},
+            'subset_DNA_reps_with_QCd_AA_reps_for_mapping': {'threads': 2},
+            'subset_external_gene_calls_file_all': {'threads': 2},
             'make_fasta_txt': {'threads': 5},
             'make_metagenomics_config_file': {'threads': 5},
             'add_misc_data_to_taxonomy': {'threads': 5},
-            'subset_external_gene_calls_file_all': {'threads': 5},
-            'count_num_sequences_filtered': {'threads': 5},
-            'subset_DNA_reps_with_QCd_AA_reps_for_mapping': {'threads': 5},
             'cat_reformat_files_nt': {'threads': 5},
             'anvi_import_state': {'threads': 5},
             'anvi_summarize': {'threads': 5},
@@ -279,7 +279,10 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
             target_files.append(target_file)
         
-            target_file = os.path.join(self.dirs_dict['MSA'], f"{HMM}-aligned.fa")
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_references_for_mapping_NT.fa")
+            target_files.append(target_file)
+
+            target_file = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt")
             target_files.append(target_file)
                 # anvio.P(target_files)
 

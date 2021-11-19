@@ -312,3 +312,124 @@ rule align_sequences:
 	threads: M.T('align_sequences')
 	shell:
 		"muscle -in {input} -out {output} -maxiters 3 -verbose 2> {log}"
+
+
+rule trim_alignment:
+    """Trim MSA alignment"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "trim_alignment_{HMM}.log")
+    input: rules.align_sequences.output
+    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed.fa")
+    params:
+        gt = M.get_param_value_from_config(['trim_alignment', '-gt']),
+        gappyout = M.get_rule_param('trim_alignment', '-gappyout'),
+        additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
+    threads: M.T('trim_alignment')
+    shell:
+        'trimal -in {input} \
+                -out {output} \
+                {params.gappyout} \
+                {params.additional_params} 2> {log}'
+
+
+rule remove_sequences_with_X_percent_gaps:
+    """Removing sequences that have Z > X% gaps"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "remove_sequences_with_X_percent_gaps_{HMM}.log")
+    input: rules.trim_alignment.output
+    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
+    params:
+        seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_gaps_counts"),
+        max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
+    threads: M.T('remove_sequences_with_X_percent_gaps')
+	shell:
+		"anvi-script-reformat-fasta {input} \
+									-o {output} \
+									--max-percentage-gaps {params.max_percentage_gaps} \
+									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
+
+
+rule count_num_sequences_filtered:
+    """Record the number of sequences filtered at each step of the workflow"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{HMM}.log")
+    input:
+        step1 = rules.cat_sequences_to_one_fasta.output.NT_all,
+        step2 = rules.cluster_X_percent_sim_mmseqs.output,
+        step3 = rules.remove_sequences_with_X_percent_gaps.output
+    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
+    threads: M.T('count_num_sequences_filtered')
+    shell:
+        """
+        # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
+        step1=$(grep -c '>' {input.step1})
+        echo -e "num_input_seqs\t$step1\t{input.step1}\n" > {output}
+
+        # How many SCGs do we have after we cluster them at the nt level and pick representatives?
+        step2=$(grep -c '>' {input.step2})
+        echo -e "cluster_X_percent_sim_mmseqs\t$step2\t{input.step2}\n" >> {output}
+
+        # How many seqs are in the NR set?
+        step3=$(grep -c '>' {input.step3})
+        echo -e "remove_sequences_with_X_percent_gaps\t$step3\t{input.step3}\n" >> {output}
+
+        # Add column names here
+        echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
+        """
+
+
+rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
+    """Filter for SCG NT sequences what will be used for read recruitment later"""
+
+    version: 1.0
+    input:
+        fasta = rules.cat_sequences_to_one_fasta.output.NT_all,
+        reps = rules.remove_sequences_with_X_percent_gaps.output
+    output:
+        NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_references_for_mapping_NT.fa"),
+        headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
+    threads: M.T('subset_DNA_reps_with_QCd_AA_reps_for_mapping')
+    run:
+        shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
+        shell("anvi-script-reformat-fasta {input.fasta} -I {output.headers} -o {output.NT_for_mapping}")
+
+
+rule subset_external_gene_calls_file_all:
+    """Subset the concatenated exteral_gene_calls.txt for the final set of NT sequences for profiling"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{HMM}.log")
+    input:
+        external_gene_calls_all = rules.cat_external_gene_calls_file.output.external_gene_calls_all,
+        headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
+    output:
+        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_external_gene_calls_subset.tsv"),
+    threads: M.T('subset_external_gene_calls_file_all')
+    script:
+        "scripts/subset_external_gene_calls_file.py"
+
+
+rule make_fasta_txt:
+    """
+    Format a fasta.txt with the filtered NT sequences that will be profiled 
+    using the metagenomics workflow.
+    """
+
+    version: 1.0
+    input:
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_external_gene_calls_subset.tsv"), HMM = M.HMM_source_dict.keys()),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_references_for_mapping_NT.fa"), HMM = M.HMM_source_dict.keys()),
+    output:
+        fasta_txt = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
+    threads: M.T('make_fasta_txt')
+    run:
+        fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '_references_for_mapping_NT.fa') for r in M.HMM_source_dict.keys()]
+        external_gene_calls = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '_external_gene_calls_subset.tsv') for r in M.HMM_source_dict.keys()]
+
+        list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.HMM_source_dict.keys(), fastas, external_gene_calls)]
+
+        shell('echo -e "name\tpath\texternal_gene_calls" > {output.fasta_txt}')
+        shell('echo -n "%s" >> {output.fasta_txt}' % ''.join(list_of_strings))
