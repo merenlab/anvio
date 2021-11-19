@@ -49,7 +49,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'subset_DNA_reps_with_QCd_AA_reps_for_mapping',
                            'subset_external_gene_calls_file_all',
                            'make_fasta_txt',
-                           'simplify_names_from_scg_hits',
+                           'fasttree',
+                           'iqtree',
                            'rename_and_filter_external_gene_calls_file',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
@@ -67,9 +68,7 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'add_default_collection',
                            'rename_tree_tips',
                            'anvi_import_state',
-                           'fasttree',
                            'anvi_summarize',
-                           'iqtree',
                            'make_anvio_state_file',
                            'run_metagenomics_workflow'
                            ])
@@ -116,6 +115,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'subset_DNA_reps_with_QCd_AA_reps_for_mapping': {'threads': 2},
             'subset_external_gene_calls_file_all': {'threads': 2},
             'make_fasta_txt': {'threads': 5},
+            'fasttree': {'run': True, 'threads': 5},
+            'iqtree': {'threads': 5,'-m': "MFP"},
             'make_metagenomics_config_file': {'threads': 5},
             'add_misc_data_to_taxonomy': {'threads': 5},
             'cat_reformat_files_nt': {'threads': 5},
@@ -130,8 +131,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'add_default_collection': {'threads': 5},
             'make_anvio_state_file': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
-            'fasttree': {'run': True, 'threads': 5},
-            'iqtree': {'threads': 5,'-m': "MFP"},
             'run_metagenomics_workflow': {'threads': 5, 'clusterize': False},
             })
 
@@ -277,6 +276,9 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_files.append(target_file)
 
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
+            target_files.append(target_file)
+
+            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_tree.done")
             target_files.append(target_file)
         
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_references_for_mapping_NT.fa")

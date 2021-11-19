@@ -433,3 +433,42 @@ rule make_fasta_txt:
 
         shell('echo -e "name\tpath\texternal_gene_calls" > {output.fasta_txt}')
         shell('echo -n "%s" >> {output.fasta_txt}' % ''.join(list_of_strings))
+
+if M.run_iqtree == True:
+  rule iqtree:
+      """Calculate a phylogenetic tree using iqtree"""
+
+      version: 1.0
+      log: os.path.join(dirs_dict['LOGS_DIR'], "iqtree_{HMM}.log")
+      input: rules.remove_sequences_with_X_percent_gaps.output
+      output: 
+          tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_tree.done"))
+      params:
+          outfile=os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}"),
+          model = M.get_param_value_from_config(['iqtree', '-m']),
+          additional_params = M.get_param_value_from_config(['iqtree', 'additional_params'])
+      threads: M.T('iqtree')
+      shell:
+          "iqtree -s {input} \
+                  -nt AUTO \
+                  -m {params.model} \
+                  -pre {params.outfile} \
+                  -T AUTO \
+                  {params.additional_params} >> {log} 2>&1"
+
+elif M.run_fasttree == True:
+  rule fasttree:
+      """Want to go faster?? Then Fasttree"""
+
+      version: 1.0
+      log: os.path.join(dirs_dict['LOGS_DIR'], "fasttree_{HMM}.log")
+      input: rules.remove_sequences_with_X_percent_gaps.output
+      output:
+          tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
+          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_tree.done"))
+      params:
+          additional_params = M.get_param_value_from_config(['fasttree', 'additional_params'])
+      threads: M.T('fasttree')
+      shell:
+          "FastTree -fastest {input} 2> {log} 1> {output.tree}"
