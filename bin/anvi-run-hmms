@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
 
-    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
+    groupA = parser.add_argument_group("DB", "An anvi'o contigs database to populate with HMM hits")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
     groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
