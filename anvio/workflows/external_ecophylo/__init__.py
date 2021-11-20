@@ -51,6 +51,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'make_fasta_txt',
                            'fasttree',
                            'iqtree',
+                           'make_metagenomics_config_file',
+                           'run_metagenomics_workflow',
                            'rename_and_filter_external_gene_calls_file',
                            'anvi_estimate_scg_taxonomy_for_SCGs',
                            'filter_for_scg_sequences_and_metadata',
@@ -61,7 +63,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_script_reformat_fasta',
                            'cat_misc_data_to_one_file',
                            'join_renamed_fasta_with_misc_data',
-                           'make_metagenomics_config_file',
                            'get_gap_count_distribution',
                            'filter_out_outlier_sequences',
                            'anvi_get_sequences_for_gene_calls',
@@ -70,7 +71,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_import_state',
                            'anvi_summarize',
                            'make_anvio_state_file',
-                           'run_metagenomics_workflow'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -117,7 +117,8 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'make_fasta_txt': {'threads': 5},
             'fasttree': {'run': True, 'threads': 5},
             'iqtree': {'threads': 5,'-m': "MFP"},
-            'make_metagenomics_config_file': {'threads': 5},
+            'make_metagenomics_config_file': {'threads': 1},
+            'run_metagenomics_workflow': {'threads': 5, 'clusterize': False},
             'add_misc_data_to_taxonomy': {'threads': 5},
             'cat_reformat_files_nt': {'threads': 5},
             'anvi_import_state': {'threads': 5},
@@ -131,7 +132,6 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             'add_default_collection': {'threads': 5},
             'make_anvio_state_file': {'threads': 5},
             'filter_out_outlier_sequences': {'threads': 5},
-            'run_metagenomics_workflow': {'threads': 5, 'clusterize': False},
             })
 
         # Directory structure for Snakemake workflow
@@ -278,13 +278,13 @@ class ExternalEcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
             target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_tree.done")
+            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}-tree.done")
             target_files.append(target_file)
         
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}_references_for_mapping_NT.fa")
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-references_for_mapping_NT.fa")
             target_files.append(target_file)
 
-            target_file = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt")
+            target_file = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
             target_files.append(target_file)
                 # anvio.P(target_files)
 

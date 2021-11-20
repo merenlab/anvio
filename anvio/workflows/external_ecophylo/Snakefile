@@ -173,6 +173,8 @@ rule simplify_names_from_hmm_hits:
         fasta_AA = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits_renamed.faa"),
         report_file_NT = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-reformat_report_nt.txt"),
         report_file_AA = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-reformat_report_AA.txt")
+    params:
+
     threads: M.T('simplify_names_from_scg_hits_nt')
     run:
         prefix_list = [wildcards.sample_name, wildcards.HMM]
@@ -385,20 +387,26 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     """Filter for SCG NT sequences what will be used for read recruitment later"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{HMM}.log")
     input:
         fasta = rules.cat_sequences_to_one_fasta.output.NT_all,
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
-        NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_references_for_mapping_NT.fa"),
+        NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-references_for_mapping_NT.fa"),
         headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
     threads: M.T('subset_DNA_reps_with_QCd_AA_reps_for_mapping')
     run:
         shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
-        shell("anvi-script-reformat-fasta {input.fasta} -I {output.headers} -o {output.NT_for_mapping}")
+
+        shell("anvi-script-reformat-fasta {input.fasta} -I {output.headers} -o {output.NT_for_mapping} >> {log} 2>&1")
 
 
 rule subset_external_gene_calls_file_all:
-    """Subset the concatenated exteral_gene_calls.txt for the final set of NT sequences for profiling"""
+    """
+    Subset the concatenated exteral_gene_calls.txt for the final set of NT sequences for profiling.
+    ALSO, once all external-gene-calls are concatenated, gene-callers-ids will be re-indexed so that 
+    there is NO repeating values. 
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_external_gene_calls_file_all_{HMM}.log")
@@ -406,7 +414,7 @@ rule subset_external_gene_calls_file_all:
         external_gene_calls_all = rules.cat_external_gene_calls_file.output.external_gene_calls_all,
         headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
     output:
-        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_external_gene_calls_subset.tsv"),
+        external_gene_calls_subset = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_subset.tsv"),
     threads: M.T('subset_external_gene_calls_file_all')
     script:
         "scripts/subset_external_gene_calls_file.py"
@@ -420,14 +428,14 @@ rule make_fasta_txt:
 
     version: 1.0
     input:
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_external_gene_calls_subset.tsv"), HMM = M.HMM_source_dict.keys()),
-        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}_references_for_mapping_NT.fa"), HMM = M.HMM_source_dict.keys()),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_subset.tsv"), HMM = M.HMM_source_dict.keys()),
+        expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-references_for_mapping_NT.fa"), HMM = M.HMM_source_dict.keys()),
     output:
         fasta_txt = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
     threads: M.T('make_fasta_txt')
     run:
-        fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '_references_for_mapping_NT.fa') for r in M.HMM_source_dict.keys()]
-        external_gene_calls = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '_external_gene_calls_subset.tsv') for r in M.HMM_source_dict.keys()]
+        fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-references_for_mapping_NT.fa') for r in M.HMM_source_dict.keys()]
+        external_gene_calls = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-external_gene_calls_subset.tsv') for r in M.HMM_source_dict.keys()]
 
         list_of_strings = ['\t'.join(t) + '\n' for t in zip(M.HMM_source_dict.keys(), fastas, external_gene_calls)]
 
@@ -443,7 +451,7 @@ if M.run_iqtree == True:
       input: rules.remove_sequences_with_X_percent_gaps.output
       output: 
           tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree"),
-          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_tree.done"))
+          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done"))
       params:
           outfile=os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}"),
           model = M.get_param_value_from_config(['iqtree', '-m']),
@@ -466,9 +474,71 @@ elif M.run_fasttree == True:
       input: rules.remove_sequences_with_X_percent_gaps.output
       output:
           tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
-          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_tree.done"))
+          done = touch(os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done"))
       params:
           additional_params = M.get_param_value_from_config(['fasttree', 'additional_params'])
       threads: M.T('fasttree')
       shell:
           "FastTree -fastest {input} 2> {log} 1> {output.tree}"
+
+
+rule make_metagenomics_config_file:
+    """Make a METAGENOMICS WORKFLOW config.json customized for ECO_PHYLO_WORKFLOW"""
+
+    version: 1.0
+    input:
+        rules.make_fasta_txt.output.fasta_txt
+    output:
+        config = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_config.json")
+    threads: M.T('make_metagenomics_config_file')
+    run:
+
+        shell('anvi-run-workflow -w metagenomics --get-default-config {output.config}')
+
+        config = open(output.config)
+        config_dict = json.load(config)
+        config_dict['fasta_txt'] = 'fasta.txt'
+        sample_txt_path = "../../" + M.samples_txt_file
+        config_dict['samples_txt'] = sample_txt_path
+        config_dict['references_mode'] = True
+        config_dict['anvi_run_hmms']['run'] = False
+        config_dict["anvi_script_reformat_fasta"]['run'] = False
+        config_dict['anvi_run_kegg_kofams']['run'] = False
+        config_dict['anvi_run_ncbi_cogs']['run'] = False
+        config_dict['anvi_run_scg_taxonomy']['run'] = False
+        config_dict['anvi_run_trna_scan']['run'] = False
+        config_dict['anvi_run_scg_taxonomy']['run'] = False
+        config_dict['iu_filter_quality_minoche']['run'] = False
+        config_dict['anvi_profile']['--min-contig-length'] = 0
+        config_dict['bowtie']['threads'] = 5
+
+        if M.clusterize_metagenomics_workflow == True:
+            config_dict['bowtie']['threads'] = 10
+            config_dict['anvi_profile']['threads'] = 10
+            config_dict['anvi_merge']['threads'] = 10
+        else:
+            pass
+
+        with open(output.config, "w") as outfile:
+          json.dump(config_dict, outfile, indent=4)
+
+
+rule run_metagenomics_workflow:
+    """Run metagenomics workflow"""
+
+    version: 1.0
+    input:
+        config = rules.make_metagenomics_config_file.output.config,
+    output:
+        touch(os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
+    params:
+        HPC_string = M.metagenomics_workflow_HPC_string
+    threads: M.T('run_metagenomics_workflow')
+    run:
+        if M.clusterize_metagenomics_workflow == True:
+            shell('cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+        elif M.metagenomics_workflow_HPC_string:
+            HPC_string = params.HPC_string
+            shell(f'cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+        else:
+            shell('cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -')
