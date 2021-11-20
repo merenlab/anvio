@@ -3,6 +3,7 @@
 """A module to characterize Florian's inversions"""
 
 import os
+import copy
 import argparse
 import numpy as np
 from collections import OrderedDict
@@ -52,6 +53,9 @@ class Inversions:
         # REV/REV or FWD/FWD reads indicated some activity. this is
         # regardless of whether we found a true inversion or not
         self.stretches_considered = {}
+
+        # the purpose of this is to report all the consensus inversions
+        self.consensus_inversions = []
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
@@ -123,7 +127,7 @@ class Inversions:
 
         self.progress.new(f"Processing '{entry_name}'")
 
-        self.inversions[entry_name] = {}
+        self.inversions[entry_name] = []
 
         ################################################################################
         self.progress.update("Recovering the coverage data")
@@ -382,10 +386,81 @@ class Inversions:
                                      'length': true_inversion.length,
                                      'distance': true_inversion.distance})
 
-                    if contig_name not in self.inversions[entry_name]:
-                        self.inversions[entry_name][contig_name] = []
+                    self.inversions[entry_name].append(d)
 
-                    self.inversions[entry_name][contig_name].append(d)
+        self.progress.end()
+
+
+    def compute_consensus_inversions(self):
+        """Compute a final, consensus list of unique inversions.
+
+        By identifying redundant inversions and reporting only one
+        of them, this function reports a final list of inversions
+        identifications of which are informed by invdividual samples
+        and their coverages in them, but will continue their lives
+        as strong and independent inversions.
+        """
+
+        # to do this, we need to get all the start positions for all
+        # inversions across all samples, cluster them if their start
+        # positions are too close to one another to be an different
+        # inversion, and choose a single representative for each
+        # cluster. first, we get a simpler version of all entries:
+        all_entries = []
+
+        self.progress.new('Computing consensus inversions')
+        self.progress.update('...')
+
+        for sample_name in self.inversions:
+            for inv in self.inversions[sample_name]:
+                all_entries.append((sample_name, inv['contig_name'], inv['first_start'], inv['length']), )
+
+        # now it is time to identify clusters. the following state
+        # machine does that:
+        self.progress.update('Running the state machine')
+        clusters = []
+        while 1:
+            if not len(all_entries):
+                break
+
+            entry = all_entries.pop(0)
+            cluster = [entry]
+            sample, contig_name, start, length = entry
+            matching_entries = []
+
+            for i in range(0, len(all_entries)):
+                n_sample, n_contig_name, n_start, n_length = all_entries[i]
+                if n_contig_name == contig_name and n_start > start - 5 and n_start < start + 5:
+                    matching_entries.append(i)
+
+            # add all matching entries
+            for i in sorted(matching_entries, reverse=True):
+                cluster.append(all_entries.pop(i))
+
+            clusters.append(cluster)
+
+        # now we know our clusters. time to collect all the entires
+        # that match to them to have a final list of consensus
+        # inversions that occur in at least one sample.
+        self.progress.update('Selecting representatives')
+        for cluster in clusters:
+            num_samples = len(cluster)
+            sample_names = ','.join(sorted([x[0] for x in cluster]))
+            sample, contig_name, start, length = sorted(cluster, key=lambda x: x[3], reverse=True)[0]
+
+            consensus_found = False
+            for sample_name in self.inversions:
+                if consensus_found:
+                    break
+
+                for inv in self.inversions[sample_name]:
+                    if inv['contig_name'] == contig_name and inv['first_start'] == start:
+                        consensus_inversion = copy.deepcopy(inv)
+                        consensus_inversion['num_samples'] = num_samples
+                        consensus_inversion['sample_names'] = sample_names
+                        self.consensus_inversions.append(consensus_inversion)
+                        consensus_found = True
+                        break
 
         self.progress.end()
 
@@ -450,6 +525,12 @@ class Inversions:
             # populate `self.inversions` with inversions associated with `entry_name`
             self.process_db(entry_name, profile_db_path, bam_file_path)
 
+        # here we know every single inversion. The same inversion site might be
+        # found as true inversion in multiple samples when bams and profiles file
+        # includes more than one sample. To avoid redundancy, we wish to report
+        # a concensus file that describes only unique inversions.
+        self.compute_consensus_inversions()
+
 
     def sanity_check(self):
         bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] != 'inversions']
@@ -481,25 +562,33 @@ class Inversions:
         # just learning headers here. NO JUDGING.
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
-                for v in self.inversions[entry_name].values():
-                    headers = list(v[0].keys())
-                    break
+                headers = list(self.inversions[entry_name][0].keys())
+                break
 
         self.run.warning(None, header="REPORTING OUTPUTS", lc="green")
 
-        # reporting inversions per sample
+        # report inversions per sample
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
                 output_path = os.path.join(self.output_directory, f'INVERSIONS-IN-{entry_name}.txt')
                 with open(output_path, 'w') as output:
                     output.write('\t'.join(headers) + '\n')
-                    for contig_name in self.inversions[entry_name]:
-                        for v in self.inversions[entry_name][contig_name]:
-                            output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
+                    for v in self.inversions[entry_name]:
+                        output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
                 self.run.info(f'Inversions in {entry_name}', os.path.abspath(output_path), mc='green')
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
+        # report consensus inversions
+        output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
+        headers = ['contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names']
+        with open(output_path, 'w') as output:
+            output.write('\t'.join(headers) + '\n')
+            for v in self.consensus_inversions:
+                output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
+        self.run.info('Reporting file for consensus inversions', os.path.abspath(output_path), mc='green')
+
+        # report all stretches
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
