@@ -5,6 +5,7 @@
 import os
 import argparse
 import numpy as np
+from collections import OrderedDict
 
 import anvio
 import anvio.tables as t
@@ -40,6 +41,11 @@ class Inversions:
         self.args = args
         self.run = run
         self.progress = progress
+
+        # the primary data structure that will be filled by this
+        # class once everything is initialized and the user calls
+        # the member function `self.process`:
+        self.inversions = {}
 
         # the purpose of this is to keep track of every stretch where
         # REV/REV or FWD/FWD reads indicated some activity. this is
@@ -108,9 +114,14 @@ class Inversions:
         """Function that does everything.
 
         `entry_name` is the entry name in bams and profiles file.
+
+        Once this function is done, it will populate the `self.inversions` dictionary
+        with all the inversions.
         """
 
         self.progress.new(f"Processing '{entry_name}'")
+
+        self.inversions[entry_name] = {}
 
         ################################################################################
         self.progress.update("Recovering the coverage data")
@@ -354,6 +365,26 @@ class Inversions:
                 if true_inversion:
                     self.stretches_considered[f"{entry_name}_{sequence_name}"]['true_inversions_found'] = True
 
+                    d = OrderedDict({'entry_id': true_inversion.sequence_name,
+                                     'sample_name': entry_name,
+                                     'contig_name': contig_name,
+                                     'first_seq': true_inversion.first_sequence,
+                                     'midline': true_inversion.midline,
+                                     'second_seq': utils.rev_comp(true_inversion.second_sequence),
+                                     'first_start': true_inversion.first_start + start,
+                                     'first_end': true_inversion.first_end + start,
+                                     'second_start': true_inversion.second_start + start,
+                                     'second_end': true_inversion.second_end + start,
+                                     'num_mismatches': true_inversion.num_mismatches,
+                                     'num_gaps': true_inversion.num_gaps,
+                                     'length': true_inversion.length,
+                                     'distance': true_inversion.distance})
+
+                    if contig_name not in self.inversions[entry_name]:
+                        self.inversions[entry_name][contig_name] = {}
+
+                    self.inversions[entry_name][contig_name][start] = d
+
         self.progress.end()
 
 
@@ -413,6 +444,8 @@ class Inversions:
         for entry_name in self.profile_db_bam_file_pairs:
             bam_file_path = self.profile_db_bam_file_pairs[entry_name]['bam_file_path']
             profile_db_path = self.profile_db_bam_file_pairs[entry_name]['profile_db_path']
+
+            # populate `self.inversions` with inversions associated with `entry_name`
             self.process_db(entry_name, profile_db_path, bam_file_path)
 
 
