@@ -23,6 +23,10 @@ headers = pd.read_csv(snakemake.input.headers, \
 #-----------------
 external_gene_calls_subset = external_gene_calls_all.merge(headers, on="contig", how="inner")
 
+# Make new gene-callers-ids starting from 1:x
+#--------------------------------------------
+external_gene_calls_subset['gene_callers_id'] = external_gene_calls_subset.index 
+
 # Write file
 #-------------
 external_gene_calls_subset.to_csv(snakemake.output.external_gene_calls_subset, \
