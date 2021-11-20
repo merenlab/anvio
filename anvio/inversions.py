@@ -383,9 +383,9 @@ class Inversions:
                                      'distance': true_inversion.distance})
 
                     if contig_name not in self.inversions[entry_name]:
-                        self.inversions[entry_name][contig_name] = {}
+                        self.inversions[entry_name][contig_name] = []
 
-                    self.inversions[entry_name][contig_name][start] = d
+                    self.inversions[entry_name][contig_name].append(d)
 
         self.progress.end()
 
@@ -482,24 +482,19 @@ class Inversions:
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
                 for v in self.inversions[entry_name].values():
-                    if len(headers):
-                        break
-
-                    for k in v:
-                        headers = list(v[k].keys())
-                        break
+                    headers = list(v[0].keys())
+                    break
 
         self.run.warning(None, header="REPORTING OUTPUTS", lc="green")
 
-        # reporting inversions per etnry in bams and profiles
+        # reporting inversions per sample
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
                 output_path = os.path.join(self.output_directory, f'INVERSIONS-IN-{entry_name}.txt')
                 with open(output_path, 'w') as output:
                     output.write('\t'.join(headers) + '\n')
                     for contig_name in self.inversions[entry_name]:
-                        for start_position in self.inversions[entry_name][contig_name]:
-                            v = self.inversions[entry_name][contig_name][start_position]
+                        for v in self.inversions[entry_name][contig_name]:
                             output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
                 self.run.info(f'Inversions in {entry_name}', os.path.abspath(output_path), mc='green')
             else:
