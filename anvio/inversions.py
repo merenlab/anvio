@@ -472,7 +472,33 @@ class Inversions:
     def report(self):
         """Reporting per-sample as well as consensus inversions, along with other reporting files"""
 
+        headers = []
+        # just learning headers here. NO JUDGING.
+        for entry_name in self.inversions:
+            if len(self.inversions[entry_name]):
+                for v in self.inversions[entry_name].values():
+                    if len(headers):
+                        break
+
+                    for k in v:
+                        headers = list(v[k].keys())
+                        break
+
         self.run.warning(None, header="REPORTING OUTPUTS", lc="green")
+
+        # reporting inversions per etnry in bams and profiles
+        for entry_name in self.inversions:
+            if len(self.inversions[entry_name]):
+                output_path = f'INVERSIONS-IN-{entry_name}.txt'
+                with open(output_path, 'w') as output:
+                    output.write('\t'.join(headers) + '\n')
+                    for contig_name in self.inversions[entry_name]:
+                        for start_position in self.inversions[entry_name][contig_name]:
+                            v = self.inversions[entry_name][contig_name][start_position]
+                            output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
+                self.run.info(f'Inversions in {entry_name}', os.path.abspath(output_path), mc='green')
+            else:
+                self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
         output_path = 'STRETCHES-CONSIDERED.txt'
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
