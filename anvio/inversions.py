@@ -41,6 +41,11 @@ class Inversions:
         self.run = run
         self.progress = progress
 
+        # the purpose of this is to keep track of every stretch where
+        # REV/REV or FWD/FWD reads indicated some activity. this is
+        # regardless of whether we found a true inversion or not
+        self.stretches_considered = {}
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
 
@@ -232,6 +237,16 @@ class Inversions:
                     self.run.info_single("Coverage:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
+                # make a record of the stretch that is about to be considered for having
+                # palindromes and later true inversions
+                self.stretches_considered[f"{entry_name}_{sequence_name}"] = {'sequence_name': sequence_name,
+                                                                              'sample_name': entry_name,
+                                                                              'contig_name': contig_name,
+                                                                              'start_stop': f"{start}-{stop}",
+                                                                              'max_coverage': int(max(stretch_sequence_coverage)),
+                                                                              'num_palindromes_found': 0,
+                                                                              'true_inversions_found': False}
+
                 ################################################################################
                 self.progress.update(f"{contig_name}: looking for palindromes")
                 ################################################################################
@@ -244,9 +259,12 @@ class Inversions:
                         self.run.info_single("No palindromes in this one :/", mc="red")
                     continue
                 else:
+                    num_palindromes_found = len(P.palindromes[sequence_name])
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['num_palindromes_found'] = num_palindromes_found
+
                     if anvio.DEBUG or self.verbose:
                         self.progress.reset()
-                        self.run.info_single(f"The sequence has {PL('palindrome', len(P.palindromes[sequence_name]))}:", mc="green")
+                        self.run.info_single(f"The sequence has {PL('palindrome', num_palindromes_found)}:", mc="green")
 
                 ################################################################################
                 self.progress.update(f"{contig_name}: building constructs")
@@ -328,6 +346,13 @@ class Inversions:
                         self.run.info_single(f"No true inversions in this one: none of the REV/REV or FWD/FWD reads "
                                              f"had any of the constructs in {PL('inversion candidate', len(inversion_candidates))}.",
                                              mc="red", nl_before=1)
+
+                # if we are here, it means we took care of one region.
+                # it is time to update our global data dictionaries with
+                # everything we know about this inversion, and the stretch
+                # it belongs:
+                if true_inversion:
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['true_inversions_found'] = True
 
         self.progress.end()
 
@@ -412,4 +437,11 @@ class Inversions:
 
 
     def report(self):
-        raise ConfigError("Nothing to report yet :(")
+        """Reporting per-sample as well as consensus inversions, along with other reporting files"""
+
+        self.run.warning(None, header="REPORTING OUTPUTS", lc="green")
+
+        output_path = 'STRETCHES-CONSIDERED.txt'
+        headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
+        utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
+        self.run.info('Reporting file on all stretches considered', os.path.abspath(output_path), nl_before=1, nl_after=1)
