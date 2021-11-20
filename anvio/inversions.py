@@ -14,6 +14,7 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.bamops as bamops
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
@@ -54,6 +55,7 @@ class Inversions:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
+        self.output_directory = A('output_dir') or 'INVERSIONS-OUTPUT'
 
         if not self.bams_and_profiles_file_path:
             raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` argument.")
@@ -468,6 +470,9 @@ class Inversions:
                               f"flag `--fetch-filter inversions`. PLUS, you can always use the program `anvi-db-info` to "
                               f"learn about whether a fetch filter was used when anvi'o profiled the data. BYE NOW.")
 
+        filesnpaths.check_output_directory(self.output_directory)
+        filesnpaths.gen_output_directory(self.output_directory)
+
 
     def report(self):
         """Reporting per-sample as well as consensus inversions, along with other reporting files"""
@@ -489,7 +494,7 @@ class Inversions:
         # reporting inversions per etnry in bams and profiles
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
-                output_path = f'INVERSIONS-IN-{entry_name}.txt'
+                output_path = os.path.join(self.output_directory, f'INVERSIONS-IN-{entry_name}.txt')
                 with open(output_path, 'w') as output:
                     output.write('\t'.join(headers) + '\n')
                     for contig_name in self.inversions[entry_name]:
@@ -500,7 +505,7 @@ class Inversions:
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
-        output_path = 'STRETCHES-CONSIDERED.txt'
+        output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
         self.run.info('Reporting file on all stretches considered', os.path.abspath(output_path), nl_before=1, nl_after=1)
