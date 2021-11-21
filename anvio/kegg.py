@@ -4476,6 +4476,7 @@ class ModulesDatabase(KeggContext):
             f = open(mod_file_path, 'rU')
 
             prev_data_name_field = None
+            module_has_annotation_source = False
             for line in f.readlines():
                 line = line.strip('\n')
                 line_number += 1
@@ -4506,8 +4507,19 @@ class ModulesDatabase(KeggContext):
                         # keep track of distinct annotation sources for user modules
                         if self.data_source != 'KEGG' and name == "ANNOTATION_SOURCE":
                             self.annotation_sources.add(definition)
+                            module_has_annotation_source = True
 
                 f.close()
+
+            # every user module needs at least one annotation source
+            if self.data_source != 'KEGG' and not module_has_annotation_source:
+                os.remove(self.db_path)
+                raise ConfigError(f"While parsing user module {mnum}, we noticed that it does not have a single "
+                                  f"'ANNOTATION_SOURCE' field. We are sorry to tell you that this is not okay, "
+                                  f"because every user-defined module requires at least one of those fields to tell "
+                                  f"anvi'o where to find its gene annotations. So you should go and take a look at "
+                                  f"the module file at {mod_file_path} and add one 'ANNOTATION_SOURCE' line for each "
+                                  f"gene in the module definition, before re-trying this setup program. Thank you!")
 
             num_modules_parsed += 1
         # once we are done parsing all modules, we store whatever db entries remain in the db_entries list
