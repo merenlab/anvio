@@ -358,9 +358,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "inversions": {
-        "name": "INVERSIONS",
-        "type": "CONCEPT",
+    "inversions-txt": {
+        "name": "INVERSIONS TXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },

@@ -14,8 +14,8 @@ __copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'FlorianTrigodet']
-__requires__ = ["contigs-db", "profile-db"]
-__provides__ = ["inversions"]
+__requires__ = ["bams-and-profiles-txt"]
+__provides__ = ["inversions-txt"]
 __description__ = "Reports inversions"
 
 run = Run()
