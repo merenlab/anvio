@@ -4163,6 +4163,11 @@ class ModulesDatabase(KeggContext):
         self.progress = progress
         self.quiet = quiet
 
+        # keep track of functional annotation sources needed for the modules in this db
+        self.annotation_sources = set()
+        if self.data_source == 'KEGG':
+            self.annotation_sources.add('KOfam')
+
         if anvio.DEBUG:
             self.run.info("Modules DB quiet param", self.quiet)
 
@@ -4498,6 +4503,10 @@ class ModulesDatabase(KeggContext):
                         else:
                             line -= 1
 
+                        # keep track of distinct annotation sources for user modules
+                        if self.data_source != 'KEGG' and name == "ANNOTATION_SOURCE":
+                            self.annotation_sources.add(definition)
+
                 f.close()
 
             num_modules_parsed += 1
@@ -4529,16 +4538,24 @@ class ModulesDatabase(KeggContext):
                 self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
                 self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
+        if not self.annotation_sources:
+            raise ConfigError("We're not sure how you made it this far without having any annotation sources defined in your module files, "
+                              "because we should have noticed this while parsing them. But it happened, and here we are. You need to go add "
+                              "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
+        annotation_source_list = ",".join(list(self.annotation_sources))
+
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
+        self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('data_source', self.data_source)
+        self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
