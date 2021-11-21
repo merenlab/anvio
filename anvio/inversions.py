@@ -472,25 +472,30 @@ class Inversions:
             self.run.warning("You don't have the `plotext` library to plot data :/ You can "
                              "install it by running `pip install plotext` in your anvi'o "
                              "environment.", header="NO PLOT FOR YOU :(")
-
             return
 
-        plt.clp()
-        plt.title(f"{sequence_name}")
-        plt.xlabel("Position")
-        plt.ylabel("Coverage")
-        plt.plot(coverage, fillx = True)
-        plt.plotsize(self.progress.terminal_width, 25)
-        plt.canvas_color("cloud")
-        plt.axes_color("cloud")
-        plt.ticks_color("iron")
+        try:
+            plt.clp()
+            plt.title(f"{sequence_name}")
+            plt.xlabel("Position")
+            plt.ylabel("Coverage")
+            plt.plot(coverage, fillx = True)
+            plt.plotsize(self.progress.terminal_width, 25)
+            plt.canvas_color("cloud")
+            plt.axes_color("cloud")
+            plt.ticks_color("iron")
+        except Exception as e:
+            self.run.warning(f"Something bad happen when anvi'o atempted to plot the coverage data :/ "
+                             f"Your program will continue running, but here is the error message from "
+                             f"the library: \"{e}\".", nl_after=0)
+            return
 
         try:
             plt.show()
         except OSError:
             self.run.warning("Redirecting things into files and working with funny TTYs confuse "
                              "the plotting services. Is ok tho.", header="NO PLOT FOR YOU :(")
-            pass
+            return
 
 
     def process(self):
