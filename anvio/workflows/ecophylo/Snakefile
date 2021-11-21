@@ -13,7 +13,7 @@ import anvio.workflows as w
 
 from Bio import SeqIO
 from anvio.errors import ConfigError
-from anvio.workflows.external_ecophylo import ExternalEcoPhyloWorkflow
+from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
 __author__ = "Matthew S. Schechter"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -24,12 +24,12 @@ __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
 
 
-M = ExternalEcoPhyloWorkflow(argparse.Namespace(config=config))
+M = EcoPhyloWorkflow(argparse.Namespace(config=config))
 M.init()
 
 dirs_dict = M.dirs_dict
 
-rule EXTERNAL_ECO_PHYLO_WORKFLOW_target_rule:
+rule ECO_PHYLO_WORKFLOW_target_rule:
     input: M.target_files
 
 rule anvi_run_hmms_hmmsearch:
