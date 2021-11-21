@@ -3233,6 +3233,9 @@ def get_bams_and_profiles_txt_as_data(file_path):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
+
+    Updates to this function may require changes in the artifact description at
+    anvio/docs/artifacts/bams-and-profiles-txt.md
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
