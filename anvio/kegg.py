@@ -4551,6 +4551,7 @@ class ModulesDatabase(KeggContext):
                 self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
         if not self.annotation_sources:
+            os.remove(self.db_path)
             raise ConfigError("We're not sure how you made it this far without having any annotation sources defined in your module files, "
                               "because we should have noticed this while parsing them. But it happened, and here we are. You need to go add "
                               "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
