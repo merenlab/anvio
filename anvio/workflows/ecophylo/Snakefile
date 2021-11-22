@@ -587,7 +587,7 @@ rule rename_tree_tips:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_tree_tips_{HMM}.log")
     input:
-        done = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"),
+        # done = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"),
         tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done")
     output:
         done = os.path.join("{HMM}_combined.done"),
@@ -721,19 +721,22 @@ rule make_anvio_state_file:
 
 
 rule anvi_import_state:
-    """Import state file for interactive interface"""
+    """Import state file AND phylogenetic tree to interactive interface"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
     input:
-        rules.make_anvio_state_file.output
+        state = rules.make_anvio_state_file.output,
+        tree = rules.rename_tree_tips.output.tree 
     params:
-        profileDB = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db")
-    output: touch(os.path.join("{HMM}_state_imported.done"))
+        profileDB = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
+    output: touch(os.path.join("ECO_PHYLO_WORKFLOW", "{HMM}_state_imported.done"))
     threads: M.T('anvi_import_state')
-    shell:
-        """
-        anvi-import-state -p {params.profileDB} \
-                          -s {input} \
-                          -n {wildcards.HMM}
-        """
+    run:
+        shell("anvi-import-state -p {params.profileDB} \
+                                 -s {input.state} \
+                                 -n {wildcards.HMM}")
+                                 
+        shell("anvi-import-items-order -p {params.profileDB} \
+                                       -i {input.tree} \
+                                       --name {wildcards.HMM}")
