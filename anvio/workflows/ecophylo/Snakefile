@@ -50,12 +50,10 @@ rule anvi_run_hmms_hmmsearch:
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch")
 
-        internal_HMM_sources = ["Bacteria_71", "Archaeal_XX"]
-
         HMM_source = M.HMM_source_dict[wildcards.HMM]
 
         # Run different HMM search depending on whether a HMM is internal or external because anvio
-        if HMM_source in internal_HMM_sources:
+        if HMM_source in M.internal_HMM_sources:
             print(f"Running internal HMM dataset: {HMM_source}")
             HMM_source = M.HMM_source_dict[wildcards.HMM]
             shell(f"anvi-run-hmms -c {contigsDB} \

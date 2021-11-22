@@ -226,11 +226,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                   f"easier with Snakemake wildcards :)")
 
         # FIXME: this line prints the list of HMM_sources to stdout and I don't want that
-        internal_HMM_sources = list(anvio.data.hmm.sources.keys())
+        self.internal_HMM_sources = list(anvio.data.hmm.sources.keys())
 
         for HMM, HMM_path in self.HMM_source_dict.items():
-            if HMM_path != "INTERNAL":
-                if self.HMM_source_dict[HMM] not in internal_HMM_sources:
+            if HMM_path == "INTERNAL":
+                if self.HMM_source_dict[HMM] not in self.internal_HMM_sources:
                     HMM_source = self.HMM_source_dict[HMM]
                     raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
