@@ -60,19 +60,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'rename_tree_tips',
                            'make_anvio_state_file',
                            'anvi_import_state',
-                           'rename_and_filter_external_gene_calls_file',
-                           'anvi_estimate_scg_taxonomy_for_SCGs',
-                           'filter_for_scg_sequences_and_metadata',
-                           'cat_scgs_to_one_fasta',
-                           'add_misc_data_to_taxonomy',
-                           'cat_reformat_files_nt',
-                           'cat_ribo_proteins_to_one_fasta',
-                           'anvi_script_reformat_fasta',
-                           'cat_misc_data_to_one_file',
-                           'join_renamed_fasta_with_misc_data',
-                           'get_gap_count_distribution',
-                           'filter_out_outlier_sequences',
-                           'anvi_get_sequences_for_gene_calls',
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -88,8 +75,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
-        rule_acceptable_params_dict['anvi_estimate_scg_taxonomy_for_SCGs'] = ['--metagenome-mode']
-        rule_acceptable_params_dict['filter_out_outlier_sequences'] = ['-M']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
         rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params']
@@ -269,30 +254,30 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for HMM in self.HMM_source_dict.keys():
-            for sample_name in self.names_list:
+        # for HMM in self.HMM_source_dict.keys():
+        #     for sample_name in self.names_list:
 
-                target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}-{HMM}-hmm_hits_renamed.fna")
-                target_files.append(target_file)
+        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}-{HMM}-hmm_hits_renamed.fna")
+        #         target_files.append(target_file)
                 
         for HMM in self.HMM_source_dict.keys():
 
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-external_gene_calls_all.tsv")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-external_gene_calls_all.tsv")
+            # target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
+            # target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}-tree.done")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}-tree.done")
+            # target_files.append(target_file)
         
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-references_for_mapping_NT.fa")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-references_for_mapping_NT.fa")
+            # target_files.append(target_file)
 
-            target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", f"{HMM}_summarize.done")
-            target_files.append(target_file)
+            # target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", f"{HMM}_summarize.done")
+            # target_files.append(target_file)
 
-            target_file = os.path.join(f"{HMM}_state_imported.done")
+            target_file = os.path.join("ECO_PHYLO_WORKFLOW", f"{HMM}_state_imported.done")
             target_files.append(target_file)
 
             target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
