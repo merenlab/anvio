@@ -478,10 +478,11 @@ class Palindromes:
             split_p.first_start = p.first_start + start
             split_p.first_end = p.first_start + end
             split_p.first_sequence = p.first_sequence[start:end]
-            split_p.second_start = p.second_start + start
-            split_p.second_end = p.second_start + end
+            split_p.second_start = p.second_end - end
+            split_p.second_end = p.second_end - start
             split_p.second_sequence = p.second_sequence[start:end]
             split_p.midline = p.midline[start:end]
+            split_p.num_gaps = split_p.midline.count('-')
             split_p.num_mismatches = split_p.midline.count('x')
             split_p.length = end - start
             split_p.distance = p.distance
