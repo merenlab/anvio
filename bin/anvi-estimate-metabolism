@@ -42,6 +42,12 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
+    groupD = parser.add_argument_group('METABOLISM DATA LOCATION', "What modules database(s) do you want to use?")
+    groupD.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
+    groupD.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where user-defined module "
+                                                                      "files (and database) are kept. You must have previously run "
+                                                                      "`anvi-setup-user-modules` on this directory for this to work."}))
+
     groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
                                                    "The minimum you must provide this program is a contigs database. In which case "
                                                    "anvi'o will attempt to estimate metabolism for all contigs in it, assuming that "
@@ -49,7 +55,6 @@ if __name__ == '__main__':
                                                    "a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
-    groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
 
     groupP = parser.add_argument_group('INPUT #2 - ESTIMATION ON BINS', "If you also provide a profile database AND a collection name, anvi'o will "
                                                    "estimate metabolism separately for each bin in your collection. You can also limit "
