@@ -2337,6 +2337,13 @@ D = {
                      "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
                      "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
+    'add-to-functions-table': (
+            ['--add-to-functions-table'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want anvi'o to store your HMM hits as gene annotations in the 'gene_functions'"
+                     "table of the database, rather than in the 'hmm_hits' table."}
+                ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',
