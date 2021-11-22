@@ -235,7 +235,8 @@ rule rename_and_filter_external_gene_calls_file:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_and_filter_external_gene_calls_file_{sample_name}_{HMM}.log")
     input:
-        external_gene_calls = rules.anvi_get_external_gene_calls_file.output.external_gene_calls
+        reformat_file = rules.simplify_names_from_hmm_hits.output.report_file_AA,
+        external_gene_calls = rules.anvi_get_external_gene_calls_file.output.external_gene_calls,
     output:
         external_gene_calls_renamed = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-external_gene_calls_renamed.tsv")
     threads: M.T('rename_and_filter_external_gene_calls_file')
