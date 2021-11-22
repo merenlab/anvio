@@ -252,10 +252,7 @@ class KeggContext(object):
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
         if self.user_input_dir:
-            self.user_hmm_data_dir = os.path.join(self.user_input_dir, "HMMs")
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
-            self.user_orphan_data_dir = os.path.join(self.user_input_dir, "orphan_data")
-            self.user_hmm_file_path = os.path.join(self.user_hmm_data_dir, "USER_PROFILES.hmm")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
@@ -491,15 +488,13 @@ class KeggSetup(KeggContext):
                 self.is_user_database_exists()
 
             if args.reset:
-                self.run.warning("Since you used the --reset flag, anvi'o will get rid of any existing user modules database "
-                                 "and concatenated HMM profiles. Now ye be warned.")
-                paths_to_remove = [f for f in glob.glob(self.user_hmm_file_path + '*')] + [self.user_modules_db_path]
+                self.run.warning("Since you used the --reset flag, anvi'o will get rid of any existing user modules database. "
+                                 "Now ye be warned.")
+                paths_to_remove = [self.user_modules_db_path]
                 for path in paths_to_remove:
                     if os.path.exists(path):
                         os.remove(path)
                         self.run.info("Successfully removed", path)
-
-            filesnpaths.gen_output_directory(self.user_orphan_data_dir, delete_if_exists=args.reset)
 
 
     def is_database_exists(self):
@@ -538,11 +533,10 @@ class KeggSetup(KeggContext):
         """This function checks whether the user input directory exists and contains the required subfolders
 
         The required subfolders are:
-            HMMs : directory containing the user's HMM profiles that go with their metabolic pathway definitions
             modules : directory containing the user's metabolic pathway definitions (as text files)
         """
 
-        for path in [self.user_input_dir, self.user_hmm_data_dir, self.user_module_data_dir]:
+        for path in [self.user_input_dir, self.user_module_data_dir]:
             if not os.path.exists(path):
                 raise ConfigError(f"There is a problem with the input directory you provided. The following path does not "
                                   f"exist: '{path}'. Please make sure that your input folder exists and that it follows the "
@@ -558,10 +552,6 @@ class KeggSetup(KeggContext):
 
     def is_user_database_exists(self):
         """This function checks whether user data has already been set up in the provided input directory."""
-
-        if os.path.exists(self.user_hmm_file_path):
-            raise ConfigError(f"It seems you already have user HMM profiles installed at '{self.user_hmm_file_path}', "
-                              f"please use the --reset flag or delete this file manually if you want to re-generate it.")
 
         if os.path.exists(self.user_modules_db_path):
             raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
