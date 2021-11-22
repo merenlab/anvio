@@ -21,6 +21,7 @@ from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -40,13 +41,14 @@ pp = terminal.pretty_print
 
 class TablesForHMMHits(Table):
     def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False,
-                 hmm_program_to_use='hmmscan', hmmer_output_directory=None, get_domain_table_output=False):
+                 hmm_program_to_use='hmmscan', hmmer_output_directory=None, get_domain_table_output=False, add_to_functions_table=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
         self.just_do_it = just_do_it
         self.hmm_program = hmm_program_to_use or 'hmmscan'
         self.hmmer_output_dir = hmmer_output_directory
         self.hmmer_desired_output = ('table', 'domtable') if get_domain_table_output else 'table'
+        self.add_to_functions_table = add_to_functions_table
 
         utils.is_contigs_db(self.db_path)
         filesnpaths.is_program_exists(self.hmm_program)
@@ -282,7 +284,10 @@ class TablesForHMMHits(Table):
                                                                                                            search_results_dict,
                                                                                                            skip_amino_acid_sequences=True)
 
-            self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+            if self.add_to_functions_table: # add to gene_functions table (upon request)
+                self.append_to_gene_functions_table(source, search_results_dict)
+            else:                           # add to hmm_hits table (default)
+                self.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
 
         # FIXME: I have no clue why importing the anvio module is necessary at this point,
@@ -399,7 +404,28 @@ class TablesForHMMHits(Table):
                         % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
-    def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
+    def append_to_gene_functions_table(self, source, search_results_dict):
+        """Append custom HMM hits to the gene functions table in the contigs database."""
+
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.db_path, self.run, self.progress)
+
+        # first we massage the hmm_hits dictionary to match expected input for the gene_functions table
+        if search_results_dict:
+            for entry_id in search_results_dict:
+                hit = search_results_dict[entry_id]
+                hit['source'] = source
+                hit['accession'] = hit['gene_hmm_id']
+                hit['function'] = hit['gene_name']
+
+            gene_function_calls_table.create(search_results_dict)
+        else:
+            self.run.warning("There are no hits to add to the database. Returning empty handed, "
+                             f"but still adding {source} as a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({source})
+
+
+    def append_to_hmm_hits_table(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
         """Append a new HMM source in the contigs database."""
 
         # just to make 100% sure.
