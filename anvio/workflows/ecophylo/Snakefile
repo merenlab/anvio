@@ -431,7 +431,7 @@ rule make_fasta_txt:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_subset.tsv"), HMM = M.HMM_source_dict.keys()),
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-references_for_mapping_NT.fa"), HMM = M.HMM_source_dict.keys()),
     output:
-        fasta_txt = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
+        fasta_txt = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
     threads: M.T('make_fasta_txt')
     run:
         fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-references_for_mapping_NT.fa') for r in M.HMM_source_dict.keys()]
@@ -489,7 +489,7 @@ rule make_metagenomics_config_file:
     input:
         rules.make_fasta_txt.output.fasta_txt
     output:
-        config = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_config.json")
+        config = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_config.json")
     threads: M.T('make_metagenomics_config_file')
     run:
 
@@ -530,15 +530,15 @@ rule run_metagenomics_workflow:
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
-        touch(os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
+        touch(os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     params:
         HPC_string = M.metagenomics_workflow_HPC_string
     threads: M.T('run_metagenomics_workflow')
     run:
         if M.clusterize_metagenomics_workflow == True:
-            shell('cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+            shell('cd ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
         elif M.metagenomics_workflow_HPC_string:
             HPC_string = params.HPC_string
-            shell(f'cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+            shell(f'cd ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
         else:
-            shell('cd EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -')
+            shell('cd ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -')

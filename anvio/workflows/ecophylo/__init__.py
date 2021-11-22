@@ -1,11 +1,13 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-""" Classes to define and work with anvi'o trnaseq workflows. """
-
+""" Classes to define and work with anvi'o ecophylo workflows. """
 
 import os
 import anvio
 import pandas as pd
+
+import anvio
+import anvio.data.hmm
 import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.workflows as w
@@ -30,7 +32,7 @@ run = terminal.Run()
 class EcoPhyloWorkflow(WorkflowSuperClass):
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
-        self.init_workflow_super_class(args, workflow_name='external_ecophylo')
+        self.init_workflow_super_class(args, workflow_name='ecophylo')
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
@@ -75,7 +77,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
-        self.general_params.extend(['external_hmm_list']) # user must input which Reference proteins will be used for workflow
+        self.general_params.extend(['hmm_list']) # user must input which Reference proteins will be used for workflow
         self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
 
 
@@ -98,7 +100,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.default_config.update({
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
-            'external_hmm_list': 'external_hmm_list.txt',
+            'hmm_list': 'hmm_list.txt',
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 2},
@@ -135,14 +137,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             })
 
         # Directory structure for Snakemake workflow
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "EXTERNAL_ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "EXTERNAL_ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "EXTERNAL_ECO_PHYLO_WORKFLOW/03_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "EXTERNAL_ECO_PHYLO_WORKFLOW/04_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "EXTERNAL_ECO_PHYLO_WORKFLOW/05_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "EXTERNAL_ECO_PHYLO_WORKFLOW/06_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "EXTERNAL_ECO_PHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "EXTERNAL_ECO_PHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
+        self.dirs_dict.update({"MSA": "ECO_PHYLO_WORKFLOW/03_MSA"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "ECO_PHYLO_WORKFLOW/04_SEQUENCE_STATS"})
+        self.dirs_dict.update({"TREES": "ECO_PHYLO_WORKFLOW/05_TREES"})
+        self.dirs_dict.update({"MISC_DATA": "ECO_PHYLO_WORKFLOW/06_MISC_DATA"})
+        self.dirs_dict.update({"SCG_NT_FASTAS": "ECO_PHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECO_PHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
 
     def init(self):
@@ -150,8 +152,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         super().init()
 
-        # Re-assigning LOGS/ dir to inside EXTERNAL_ECO_PHYLO_WORKFLOW/ dir
-        self.dirs_dict.update({"LOGS_DIR": "EXTERNAL_ECO_PHYLO_WORKFLOW/00_LOGS"})
+        # Re-assigning LOGS/ dir to inside ECO_PHYLO_WORKFLOW/ dir
+        self.dirs_dict.update({"LOGS_DIR": "ECO_PHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
         self.names_dirs = []
@@ -205,23 +207,34 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
 
-        # Load External HMM list
-        self.external_hmm_list_path = self.get_param_value_from_config(['external_hmm_list'])
-        if self.external_hmm_list_path: 
-            filesnpaths.is_file_exists(self.external_hmm_list_path)
+        # Load HMM list
+        self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
+        if self.hmm_list_path: 
+            filesnpaths.is_file_exists(self.hmm_list_path)
             try:
-                external_HMM_df = pd.read_csv(self.external_hmm_list_path, sep='\t', index_col=False)
-                self.HMM_source_dict = dict(zip(external_HMM_df.name, external_HMM_df.source))
-                self.HMM_path_dict = dict(zip(external_HMM_df.name, external_HMM_df.path))
+                HMM_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
+                self.HMM_source_dict = dict(zip(HMM_df.name, HMM_df.source))
+                self.HMM_path_dict = dict(zip(HMM_df.name, HMM_df.path))
 
             except IndexError as e:
-                raise ConfigError("The external_hmm_list.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.Ribosomal_protein_df, e))
+                raise ConfigError("The hmm_list.txt file, '%s', does not appear to be properly formatted. "
+                                  "This is the error from trying to load it: '%s'" % (self.hmm_list_path, e))
 
             if any("-" in s for s in self.HMM_source_dict.keys()):
                 raise ConfigError(f"Please do not use "-" in your external HMM names in: "
-                                  f"{self.external_hmm_list_path}. It will make our lives "
+                                  f"{self.hmm_list_path}. It will make our lives "
                                   f"easier with Snakemake wildcards :)")
+
+        # FIXME: this line prints the list of HMM_sources to stdout and I don't want that
+        internal_HMM_sources = list(anvio.data.hmm.sources.keys())
+
+        for HMM, HMM_path in self.HMM_source_dict.items():
+            if HMM_path != "INTERNAL":
+                if self.HMM_source_dict[HMM] not in internal_HMM_sources:
+                    HMM_source = self.HMM_source_dict[HMM]
+                    raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
+                                      f"Please double check {self.hmm_list_path} to see if you spelled it right or "
+                                      f"please checkout the default internal HMMs here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
 
         # Load samples.txt
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
@@ -284,8 +297,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-references_for_mapping_NT.fa")
             target_files.append(target_file)
 
-            target_file = os.path.join("EXTERNAL_ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
+            target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
             target_files.append(target_file)
-                # anvio.P(target_files)
+
+            # anvio.P(target_files)
 
         return target_files
