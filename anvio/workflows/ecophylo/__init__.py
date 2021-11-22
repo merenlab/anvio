@@ -126,14 +126,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'rename_tree_tips': {'threads': 1},
             'make_anvio_state_file': {'threads': 5},
             'anvi_import_state': {'threads': 5},
-            'add_misc_data_to_taxonomy': {'threads': 5},
-            'cat_reformat_files_nt': {'threads': 5},
-            'anvi_estimate_scg_taxonomy_for_SCGs': {'threads': 5, '--metagenome-mode': True},
-            'filter_for_scg_sequences_and_metadata': {'threads': 5},
-            'cat_ribo_proteins_to_one_fasta': {'threads': 5},
-            'join_renamed_fasta_with_misc_data': {'threads': 5},
-            'get_gap_count_distribution': {'threads': 5},
-            'filter_out_outlier_sequences': {'threads': 5},
             })
 
         # Directory structure for Snakemake workflow
