@@ -31,12 +31,12 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupU = parser.add_argument_group('USER DATA SETUP', "If you have organized your own metabolism data into a set "
-                                       "of metabolic modules and HMM profiles, you can use this program to set up this "
-                                       "data into the format required for metabolism estimation.")
-    groupU.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where your metabolism data "
+    groupU = parser.add_argument_group('USER DATA SETUP', "If you have defined your own set "
+                                       "of metabolic modules, you can use this program to parse these "
+                                       "files into the format required for metabolism estimation.")
+    groupU.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where your metabolic module "
                                                                       "files are kept. It is also the output directory, since "
-                                                                      "the modules database and HMM profiles will be set up in "
+                                                                      "the modules database will be set up in "
                                                                       "this folder."}))
     groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
