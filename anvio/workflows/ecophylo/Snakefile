@@ -722,8 +722,11 @@ rule make_anvio_state_file:
 
 
 
-def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_headers, output):
-    """Make misc data file"""
+def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
+    """
+    Here we will extract misc data to add as layers to the interactive interface.
+    e.g. cluster size, contigsDB type, etc. 
+    """
 
     # Import data
     #------------
@@ -737,8 +740,11 @@ def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_he
                                     index_col=False, \
                                     names=["identifier"])
     
+    
+    # Clean data
+    #------------
+    
     # Detect if there is a genomic reference protein in cluster
-    #----------------------------------------------------------
     cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
 
     sup_list = []
@@ -750,7 +756,6 @@ def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_he
                 sup_list.append(seq)
 
     # Count size of clusters
-    #-----------------------
     df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
 
     # Make split names for anvi-interactive
@@ -759,8 +764,20 @@ def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_he
     # subset misc data to final set of proteins
     df = pd.merge(df, final_sequences_headers, left_on='cluster_members', right_on='identifier', how='inner')
 
-    # grab the right columns
-    df = df[['split_name', 'cluster_size']]
+    # Determine contigsDB type: metagenome or genomes
+    # FIXME: This will need to be changed in the future to accomidate SAGs, MAGs, and other genomic sources
+    # If metagenome_name is in external_genomes_names_list then it's a genome
+    contigsDB_type_dict = {}
+    for name in list(df.cluster_members):
+        if any(x in name for x in M.external_genomes_names_list):
+            contigsDB_type_dict[name] = "genome"
+        else:
+            contigsDB_type_dict[name] = "metagenome"
+        
+    df["contig_db_type"] = df.cluster_members.apply(lambda name: contigsDB_type_dict[name])
+
+    # grab the final columns
+    df = df[['split_name', 'contig_db_type', 'cluster_size']]
 
     # Export
     #-------
@@ -776,7 +793,7 @@ def count_cluster_size(group):
     return group
 
 
-rule add_misc_data_to_taxonomy:
+rule make_misc_data:
     """Make misc data file for sequences"""
 
     version: 1.0
@@ -790,7 +807,7 @@ rule add_misc_data_to_taxonomy:
     threads: M.T('add_misc_data_to_taxonomy')
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
-        extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index = params.cluster_rep_index,
+        extract_misc_data(mmseqs_cluster_rep_index = params.cluster_rep_index,
                                         final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
                                         output = output.misc_data_final)
 
@@ -803,7 +820,7 @@ rule anvi_import_everything:
     input:
         state = rules.make_anvio_state_file.output,
         tree = rules.rename_tree_tips.output.tree,
-        misc_data = rules.add_misc_data_to_taxonomy.output.misc_data_final
+        misc_data = rules.make_misc_data.output.misc_data_final
     params:
         profileDB = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
     output: touch(os.path.join("ECO_PHYLO_WORKFLOW", "{HMM}_state_imported.done"))
