@@ -260,9 +260,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         for HMM in self.HMM_source_dict.keys():
 
-            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{HMM}_misc.tsv")
-            # target_files.append(target_file)
-
             target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
             target_files.append(target_file)
 
