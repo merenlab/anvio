@@ -723,7 +723,7 @@ rule make_anvio_state_file:
 
 
 def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_headers, output):
-    """Add contig_db_type to misc data"""
+    """Make misc data file"""
 
     # Import data
     #------------
@@ -777,7 +777,7 @@ def count_cluster_size(group):
 
 
 rule add_misc_data_to_taxonomy:
-    """Add simplified fasta headers to the misc data file"""
+    """Make misc data file for sequences"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{HMM}.log")
@@ -795,8 +795,8 @@ rule add_misc_data_to_taxonomy:
                                         output = output.misc_data_final)
 
 
-rule anvi_import_state:
-    """Import state file AND phylogenetic tree to interactive interface"""
+rule anvi_import_everything:
+    """Import state file, phylogenetic tree, AND misc data to interactive interface"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
