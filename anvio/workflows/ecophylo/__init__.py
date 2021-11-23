@@ -59,8 +59,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_anvio_state_file',
-                           'add_misc_data_to_taxonomy'
-                           'anvi_import_state',
+                           'make_misc_data',
+                           'anvi_import_everything',
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -111,8 +111,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 1},
             'make_anvio_state_file': {'threads': 5},
-            'add_misc_data_to_taxonomy': {'threads': 2},
-            'anvi_import_state': {'threads': 5},
+            'make_misc_data': {'threads': 2},
+            'anvi_import_everything': {'threads': 5},
             })
 
         # Directory structure for Snakemake workflow
