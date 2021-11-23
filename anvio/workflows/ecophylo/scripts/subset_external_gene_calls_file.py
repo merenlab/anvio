@@ -1,9 +1,4 @@
-from Bio import SeqIO
-
 import pandas as pd
-import numpy as np
-import glob
-import os.path
 
 # This script reformats the names from the external_gene_calls.txt file (which comes from anvi-get-sequences-for-gene-calls) with 
 # the names of sequences from anvi-estimate-scg-taxonomy
