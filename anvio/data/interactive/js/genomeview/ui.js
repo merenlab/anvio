@@ -349,10 +349,12 @@ function buildGroupLayersTable(layerLabel){
     onChange: function(hsb, hex, rgb, el, bySetColor) {
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
-
-        if(bySetColor){
-          if(layerLabel == 'Coverage') settings['display']['colors']['coverage'] = `#${hex}`
-          if(layerLabel == 'GC_Content') settings['display']['colors']['GC_Content'] = `#${hex}`
+        if(layerLabel == 'Coverage' && settings['display']['colors']['coverage'] != `#${hex}`){
+          settings['display']['colors']['coverage'] = `#${hex}`
+          drawer.draw()
+        }
+        else if(layerLabel == 'GC_Content' && settings['display']['colors']['GC_Content'] != `#${hex}`){
+          settings['display']['colors']['GC_Content'] = `#${hex}`
           drawer.draw()
         } else {
           $(el).val(hex);

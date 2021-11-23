@@ -167,9 +167,9 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     // if(layer == 'Coverage'){
     //   this.settings['display']['additional-data-layers']['coverage'] ? stroke = this.settings['display']['additional-data-layers']['coverage'] : stroke = 'black'
     // }
-    // if(layer == 'GC_content'){
-    //   this.settings['display']['additional-data-layers']['gc-content'] ? stroke = this.settings['display']['additional-data-layers']['gc-content'] : stroke = 'black'
-    // }
+    if(layer == 'GC_content'){ // we will need to refactor and get our variable case/formatting nonsense sorted.
+      this.settings['display']['colors']['GC_Content'] ? stroke = this.settings['display']['colors']['GC_Content'] : stroke = 'red'
+    }
 
     let maxDataLayerValue = 0
     let startingTop = marginTop + yOffset + layerPos
