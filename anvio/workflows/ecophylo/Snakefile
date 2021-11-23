@@ -169,7 +169,7 @@ rule simplify_names_from_hmm_hits:
         report_file_AA = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-reformat_report_AA.txt")
     params:
 
-    threads: M.T('simplify_names_from_scg_hits_nt')
+    threads: M.T('simplify_names_from_hmm_hits')
     run:
         prefix_list = [wildcards.sample_name, wildcards.HMM]
         prefix = "_".join(prefix_list) 
@@ -624,7 +624,7 @@ rule make_anvio_state_file:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done = rules.anvi_summarize.output
     output:
-        state_file = os.path.join("SCG_ECO_PHYLO_WORKFLOW", "{HMM}_ECO_PHYLO_WORKFLOW_state.json")
+        state_file = os.path.join("ECO_PHYLO_WORKFLOW", "{HMM}_ECO_PHYLO_WORKFLOW_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
@@ -720,6 +720,81 @@ rule make_anvio_state_file:
                   json.dump(state_dict, outfile, indent=4)
 
 
+
+
+def extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index, final_sequences_headers, output):
+    """Add contig_db_type to misc data"""
+
+    # Import data
+    #------------
+    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, \
+                                    sep="\t", \
+                                    index_col=False, \
+                                    names=["representative", "cluster_members"])
+
+    final_sequences_headers = pd.read_csv(final_sequences_headers, \
+                                    sep="\t", \
+                                    index_col=False, \
+                                    names=["identifier"])
+    
+    # Detect if there is a genomic reference protein in cluster
+    #----------------------------------------------------------
+    cluster_rep_index_dict = cluster_rep_index.groupby('representative')['cluster_members'].apply(list).to_dict()
+
+    sup_list = []
+    for seq in final_sequences_headers.iloc[:, 0].tolist():
+        cluster_members_list = cluster_rep_index_dict[seq]
+        for external_genome in M.external_genomes_names_list:
+            check = any(external_genome in s for s in cluster_members_list)
+            if check is True:
+                sup_list.append(seq)
+
+    # Count size of clusters
+    #-----------------------
+    df = cluster_rep_index.groupby('representative').apply(count_cluster_size)[['cluster_members', 'cluster_size']]
+
+    # Make split names for anvi-interactive
+    df['split_name'] = df['cluster_members'].astype(str) + '_split_00001' 
+
+    # subset misc data to final set of proteins
+    df = pd.merge(df, final_sequences_headers, left_on='cluster_members', right_on='identifier', how='inner')
+
+    # grab the right columns
+    df = df[['split_name', 'cluster_size']]
+
+    # Export
+    #-------
+    df.to_csv(output, \
+              sep="\t", \
+              index=None, \
+              na_rep="NA")
+
+def count_cluster_size(group):
+    c = group['cluster_members'].count()
+    group['cluster_size'] = c
+
+    return group
+
+
+rule add_misc_data_to_taxonomy:
+    """Add simplified fasta headers to the misc data file"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{HMM}.log")
+    input:
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
+    output:
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv")
+    params:
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv")
+    threads: M.T('add_misc_data_to_taxonomy')
+    run:
+        """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
+        extract_misc_from_taxonomy_file(mmseqs_cluster_rep_index = params.cluster_rep_index,
+                                        final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                                        output = output.misc_data_final)
+
+
 rule anvi_import_state:
     """Import state file AND phylogenetic tree to interactive interface"""
 
@@ -727,7 +802,8 @@ rule anvi_import_state:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
     input:
         state = rules.make_anvio_state_file.output,
-        tree = rules.rename_tree_tips.output.tree 
+        tree = rules.rename_tree_tips.output.tree,
+        misc_data = rules.add_misc_data_to_taxonomy.output.misc_data_final
     params:
         profileDB = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
     output: touch(os.path.join("ECO_PHYLO_WORKFLOW", "{HMM}_state_imported.done"))
@@ -736,7 +812,10 @@ rule anvi_import_state:
         shell("anvi-import-state -p {params.profileDB} \
                                  -s {input.state} \
                                  -n {wildcards.HMM}")
-                                 
+
         shell("anvi-import-items-order -p {params.profileDB} \
                                        -i {input.tree} \
                                        --name {wildcards.HMM}")
+
+        shell("anvi-import-misc-data -p {params.profileDB} \
+                                     --target-data-table items {input.misc_data}")

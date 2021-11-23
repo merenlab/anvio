@@ -59,6 +59,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_anvio_state_file',
+                           'add_misc_data_to_taxonomy'
                            'anvi_import_state',
                            ])
 
@@ -110,6 +111,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_summarize': {'threads': 5},
             'rename_tree_tips': {'threads': 1},
             'make_anvio_state_file': {'threads': 5},
+            'add_misc_data_to_taxonomy': {'threads': 2},
             'anvi_import_state': {'threads': 5},
             })
 
@@ -254,28 +256,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        # for HMM in self.HMM_source_dict.keys():
-        #     for sample_name in self.names_list:
-
-        #         target_file = os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{sample_name}", f"{sample_name}-{HMM}-hmm_hits_renamed.fna")
-        #         target_files.append(target_file)
-                
         for HMM in self.HMM_source_dict.keys():
 
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-external_gene_calls_all.tsv")
-            # target_files.append(target_file)
+            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{HMM}_misc.tsv")
+            target_files.append(target_file)
 
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-mmseqs_NR_rep_seq.fasta")
-            # target_files.append(target_file)
-
-            # target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}-tree.done")
-            # target_files.append(target_file)
-        
-            # target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{HMM}-references_for_mapping_NT.fa")
-            # target_files.append(target_file)
-
-            # target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", f"{HMM}_summarize.done")
-            # target_files.append(target_file)
+            target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
+            target_files.append(target_file)
 
             target_file = os.path.join("ECO_PHYLO_WORKFLOW", f"{HMM}_state_imported.done")
             target_files.append(target_file)

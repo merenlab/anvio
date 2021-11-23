@@ -196,7 +196,7 @@ rule add_misc_data_to_taxonomy:
     output:
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{SCG_protein_name}_misc.tsv")
     params:
-        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}_mmseqs_NR_cluster.tsv")
+        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{SCG_protein_name}", "{SCG_protein_name}-mmseqs_NR_cluster.tsv")
     threads: M.T('add_misc_data_to_taxonomy')
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
