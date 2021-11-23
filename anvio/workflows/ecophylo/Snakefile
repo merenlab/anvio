@@ -189,7 +189,7 @@ rule simplify_names_from_hmm_hits:
 
 rule cat_sequences_to_one_fasta:
     """
-    Cat all sequences from seperate metagenomes, genomes, SAGs, or MAGs into one fasta
+    Cat all sequences and reformat_files from seperate metagenomes, genomes, SAGs, or MAGs into one fasta
     """
 
     version: 1.0
@@ -197,14 +197,18 @@ rule cat_sequences_to_one_fasta:
     input:
         NT = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}-{{HMM}}-hmm_hits_renamed.fna"), sample_names = M.names_list),
         AA = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}-{{HMM}}-hmm_hits_renamed.faa"), sample_names = M.names_list),
+        reformat_report_list = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}-{{HMM}}-reformat_report_AA.txt"), sample_names = M.names_list),
     output:
         NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.fna"),
         AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.faa"),
+        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
     threads: M.T('cat_sequences_to_one_fasta')
     run:
         shell(f"cat {input.NT} >> {output.NT_all}")
 
         shell(f"cat {input.AA} >> {output.AA_all}")
+
+        shell(f"cat {input.reformat_report_list} >> {output.reformat_report_all}")
 
 
 rule anvi_get_external_gene_calls_file:
@@ -832,7 +836,87 @@ rule anvi_import_everything:
 
         shell("anvi-import-items-order -p {params.profileDB} \
                                        -i {input.tree} \
-                                       --name {wildcards.HMM}")
+                                       --name {wildcards.HMM}_tree")
 
         shell("anvi-import-misc-data -p {params.profileDB} \
-                                     --target-data-table items {input.misc_data}")
+                                     --target-data-table items {input.misc_data} --just-do-it")
+
+
+rule anvi_scg_taxonomy:
+    """Run anvi-estimate-SCG-taxonomy and import the resulting misc data to profileDB"""
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_scg_taxonomy_{HMM}.log")
+    input:
+        metagenomes_txt = M.get_param_value_from_config(['metagenomes']),
+        external_genomes_txt = M.get_param_value_from_config(['external_genomes']),
+        misc_data = rules.make_misc_data.output.misc_data_final,
+        reformat_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
+        done = rules.run_metagenomics_workflow.output
+    params:
+        combined_genomes_txt = os.path.join("ECO_PHYLO_WORKFLOW/", "combined_genomes.db"),
+        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}"),
+        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}_estimate_scg_taxonomy_results"),
+        taxonomy_long = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
+        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
+        profileDB = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
+        final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
+    output: 
+        done = touch(os.path.join("ECO_PHYLO_WORKFLOW", "{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
+    threads: M.T('anvi_scg_taxonomy')
+    run:
+        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        
+        if HMM_source in M.internal_HMM_sources:
+            shell("cat {input.metagenomes_txt} <(tail -n +2 {input.external_genomes_txt}) > {params.combined_genomes_txt}")
+
+            shell("anvi-estimate-scg-taxonomy -M {input.metagenomes_txt} \
+                                              --metagenome-mode \
+                                              --scg-name-for-metagenome-mode {wildcards.HMM} \
+                                              -T {threads} \
+                                              --raw-output \
+                                              -O {params.taxonomy} &> {log}")
+            # Import data
+            #------------
+            pd.set_option('expand_frame_repr', False)
+            misc_data = pd.read_csv(input.misc_data, \
+                                    sep="\t", \
+                                    index_col=False)
+
+            scg_taxonomy = pd.read_csv(params.taxonomy_long, \
+                                       sep="\t", \
+                                       index_col=False)
+                                            
+            reformat_report = pd.read_csv(input.reformat_file, \
+                                          sep="\t", \
+                                          index_col=False, \
+                                          names=["new_header", "header"])
+
+            final_sequences_headers = pd.read_csv(params.final_list_of_sequences_for_mapping_headers, \
+                                                sep="\t", \
+                                                index_col=False, \
+                                                names=["identifier"])
+            
+            # Parse reformat_report to get gene-callers-ids
+            # print(reformat_report)
+            # print(final_sequences_headers)
+            reformat_report = pd.merge(reformat_report, final_sequences_headers, left_on='new_header', right_on='identifier', how='inner')
+            reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
+            reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
+            reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"] 
+            scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
+            scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001' 
+            scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
+
+            # Export
+            #-------
+            scg_taxonomy.to_csv(params.tax_data_final, \
+                                sep="\t", \
+                                index=None, \
+                                na_rep="NA")
+            
+            shell("anvi-import-misc-data -p {params.profileDB} \
+                                         --target-data-table items {params.tax_data_final}")
+
+        else:
+            pass

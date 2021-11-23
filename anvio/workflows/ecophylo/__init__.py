@@ -61,6 +61,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'make_anvio_state_file',
                            'make_misc_data',
                            'anvi_import_everything',
+                           'anvi_scg_taxonomy'
                            ])
 
         self.general_params.extend(['metagenomes']) # user needs to input a metagenomes.txt file
@@ -113,6 +114,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'make_anvio_state_file': {'threads': 5},
             'make_misc_data': {'threads': 2},
             'anvi_import_everything': {'threads': 5},
+            'anvi_scg_taxonomy': {'threads': 5},
             })
 
         # Directory structure for Snakemake workflow
@@ -258,8 +260,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         for HMM in self.HMM_source_dict.keys():
 
-            target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{HMM}_misc.tsv")
-            target_files.append(target_file)
+            # target_file = os.path.join(self.dirs_dict['MISC_DATA'], f"{HMM}_misc.tsv")
+            # target_files.append(target_file)
 
             target_file = os.path.join("ECO_PHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
             target_files.append(target_file)
@@ -269,7 +271,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
             target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
             target_files.append(target_file)
-
+            
+            target_file = os.path.join("ECO_PHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
         return target_files
