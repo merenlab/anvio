@@ -138,10 +138,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         self.names_list = []
         self.names_dirs = []
+        self.contigsDB_name_path_dict = {}
+        self.contigsDB_name_dir_dict = {}
 
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
-        self.input_dirs_dict = {}
 
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
@@ -150,8 +151,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
-                self.input_dirs_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list)))
-                self.names_dirs.extend(self.metagenomes_dirname_list)
+                self.contigsDB_name_dir_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list)))
+                self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
                 self.names_list.extend(self.metagenomes_name_list)
 
             except IndexError as e:
@@ -167,8 +168,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
-                self.input_dirs_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_dirname_list)))
-                self.names_dirs.extend(self.external_genomes_dirname_list)
+                self.contigsDB_name_dir_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_dirname_list)))
+                self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
                 self.names_list.extend(self.external_genomes_names_list)
 
             except IndexError as e:
@@ -177,8 +178,16 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         else:
             self.external_genomes_names_list = []
 
-        # Make a unique list
-        self.names_dirs = list(set(self.names_dirs))
+
+        # Concatenate metagenomes.txt and external-genomes.txt
+        contigsDB_name_path_list = list(self.contigsDB_name_path_dict.items())
+        contigsDB_name_path_df = pd.DataFrame(contigsDB_name_path_list, columns=['name', 'contigs_db_path'])
+        combined_genomes_df_path = "combined_genomes.txt"
+        
+        contigsDB_name_path_df.to_csv(combined_genomes_df_path, \
+                                      sep="\t", \
+                                      index=False, \
+                                      header=True)
 
         # Make variables that tells whether we have metagenomes.txt, external-genomes.txt, or both
         if self.metagenomes and not self.external_genomes:
