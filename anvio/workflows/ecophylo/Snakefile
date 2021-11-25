@@ -723,7 +723,7 @@ rule anvi_scg_taxonomy:
         metagenomes_txt = M.get_param_value_from_config(['metagenomes']),
         external_genomes_txt = M.get_param_value_from_config(['external_genomes']),
         misc_data = rules.make_misc_data.output.misc_data_final,
-        reformat_file = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
+        reformat_file = rules.cat_sequences_to_one_fasta.output.reformat_report_all,
         done = rules.run_metagenomics_workflow.output
     params:
         combined_genomes_txt = os.path.join("ECO_PHYLO_WORKFLOW/", "combined_genomes.db"),
