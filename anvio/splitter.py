@@ -1006,7 +1006,9 @@ class LocusSplitter:
         # Query for gene_call, contig_name, and genes_in_contig_sorted
         gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
-        genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
+
+        # Sort by gene start position
+        genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]), key=lambda tup: tup[1])
 
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
         premature = False
