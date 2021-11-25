@@ -281,4 +281,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             target_file = os.path.join("ECO_PHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
+            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+            target_files.append(target_file)
+            
+
         return target_files
