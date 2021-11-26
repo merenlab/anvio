@@ -748,7 +748,6 @@ rule anvi_scg_taxonomy:
                                               -O {params.taxonomy} &> {log}")
             # Import data
             #------------
-            pd.set_option('expand_frame_repr', False)
             misc_data = pd.read_csv(input.misc_data, \
                                     sep="\t", \
                                     index_col=False)
