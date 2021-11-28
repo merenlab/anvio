@@ -115,9 +115,7 @@ rule anvi_get_sequences_for_hmm_hits:
     """Extract all AA and NT sequences that were recruited by the HMM"""
 
     version: 1.0
-    log: 
-        AA = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_AA-{sample_name}-{HMM}.log"),
-        NT = os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits_NT-{sample_name}-{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits-{sample_name}-{HMM}.log"),
     input:
         done_file = rules.filter_hmm_hits_by_query_coverage.output.done,
         contigsDB = ancient(lambda wildcards: os.path.join(M.contigsDB_name_dir_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
@@ -134,30 +132,28 @@ rule anvi_get_sequences_for_hmm_hits:
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log.AA}")
+                                                -o {output.faa} 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
-                                                -o {output.fna} 2> {log.NT}")
+                                                -o {output.fna} 2> {log}")
         else:
             shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log.AA}")
+                                                -o {output.faa} 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
-                                                -o {output.fna} 2> {log.NT}")
+                                                -o {output.fna} 2> {log}")
 
 
 rule simplify_names_from_hmm_hits:
     """Clean up fasta headers for tree calculation"""
 
     version: 1.0
-    log: 
-        NT = os.path.join(dirs_dict['LOGS_DIR'], "simplify_names_from_hmm_hits_NT_{sample_name}_{HMM}.log"),
-        AA = os.path.join(dirs_dict['LOGS_DIR'], "simplify_names_from_hmm_hits_AA_{sample_name}_{HMM}.log"),
+    log: os.path.join(dirs_dict['LOGS_DIR'], "simplify_names_from_hmm_hits-{sample_name}_{HMM}.log"),
     input: 
         NT = rules.anvi_get_sequences_for_hmm_hits.output.fna,
         AA = rules.anvi_get_sequences_for_hmm_hits.output.faa
@@ -177,13 +173,13 @@ rule simplify_names_from_hmm_hits:
                               --simplify-names \
                               --prefix {prefix} \
                               --report-file {output.report_file_NT} \
-                              -o {output.fasta_NT} >> {log.NT} 2>&1")
+                              -o {output.fasta_NT} >> {log} 2>&1")
 
         shell(f"anvi-script-reformat-fasta {input.AA} \
                               --simplify-names \
                               --prefix {prefix} \
                               --report-file {output.report_file_AA} \
-                              -o {output.fasta_AA} >> {log.AA} 2>&1")
+                              -o {output.fasta_AA} >> {log} 2>&1")
 
 
 rule cat_sequences_to_one_fasta:
