@@ -127,7 +127,6 @@ rule anvi_get_sequences_for_hmm_hits:
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.fna"),
     threads: M.T('anvi_get_sequences_for_hmm_hits')
     run:
-        internal_HMM_sources = ["Bacteria_71", "Archaeal_XX"]
         HMM_source = M.HMM_source_dict[wildcards.HMM]
 
         if HMM_source in M.internal_HMM_sources:

@@ -118,6 +118,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             })
 
         # Directory structure for Snakemake workflow
+        self.dirs_dict.update({"LOGS_DIR": "ECO_PHYLO_WORKFLOW/00_LOGS"})
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECO_PHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECO_PHYLO_WORKFLOW/02_NR_FASTAS"})
         self.dirs_dict.update({"MSA": "ECO_PHYLO_WORKFLOW/03_MSA"})
@@ -132,9 +133,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         """This function is called from within the snakefile to initialize parameters."""
 
         super().init()
-
-        # Re-assigning LOGS/ dir to inside ECO_PHYLO_WORKFLOW/ dir
-        self.dirs_dict.update({"LOGS_DIR": "ECO_PHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
         self.names_dirs = []
