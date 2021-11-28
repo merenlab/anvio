@@ -46,7 +46,7 @@ rule anvi_run_hmms_hmmsearch:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
     threads: M.T('anvi_run_hmms_hmmsearch')
     run:
-        contigsDB = os.path.join(M.contigsDB_name_dir_dict[wildcards.sample_name], f"{wildcards.sample_name}-contigs.db")
+        contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch")
         HMM_source = M.HMM_source_dict[wildcards.HMM]
@@ -85,13 +85,13 @@ rule filter_hmm_hits_by_query_coverage:
         done = rules.anvi_run_hmms_hmmsearch.output.done,
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.domtable")
     output:
-        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-contigsDB_filtered.done"))
+        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}DB_filtered.done"))
     params:
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_query_coverage')
     run:
-        contigsDB = os.path.join(M.contigsDB_name_dir_dict[wildcards.sample_name], f"{wildcards.sample_name}-contigs.db")
+        contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch/hmm.domtable")
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
@@ -118,7 +118,6 @@ rule anvi_get_sequences_for_hmm_hits:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits-{sample_name}-{HMM}.log"),
     input:
         done_file = rules.filter_hmm_hits_by_query_coverage.output.done,
-        contigsDB = ancient(lambda wildcards: os.path.join(M.contigsDB_name_dir_dict[wildcards.sample_name], "%s-contigs.db" % wildcards.sample_name))
     output:
         done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa.done")),
         faa = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa"),
@@ -126,25 +125,26 @@ rule anvi_get_sequences_for_hmm_hits:
     threads: M.T('anvi_get_sequences_for_hmm_hits')
     run:
         HMM_source = M.HMM_source_dict[wildcards.HMM]
+        contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
 
         if HMM_source in M.internal_HMM_sources:
-            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
                                                 -o {output.faa} 2> {log}")
 
-            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 -o {output.fna} 2> {log}")
         else:
-            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
                                                 -o {output.faa} 2> {log}")
 
-            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 -o {output.fna} 2> {log}")
 
@@ -219,7 +219,7 @@ rule anvi_get_external_gene_calls_file:
         fasta = temp(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-orfs.fna")),
     threads: M.T('anvi_get_external_gene_calls_file')
     run:
-        contigsDB = os.path.join(M.contigsDB_name_dir_dict[wildcards.sample_name], f"{wildcards.sample_name}-contigs.db")
+        contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         shell('anvi-get-sequences-for-gene-calls -c {contigsDB} \
                                                  --external-gene-calls {output.external_gene_calls} \
                                                  -o {params.fasta} 2> {log}')
@@ -493,7 +493,7 @@ rule make_metagenomics_config_file:
         config = open(output.config)
         config_dict = json.load(config)
         config_dict['fasta_txt'] = 'fasta.txt'
-        sample_txt_path = "../../" + M.samples_txt_file
+        sample_txt_path = M.samples_txt_file
         config_dict['samples_txt'] = sample_txt_path
         config_dict['references_mode'] = True
         config_dict['anvi_run_hmms']['run'] = False
@@ -531,6 +531,14 @@ rule run_metagenomics_workflow:
         HPC_string = M.metagenomics_workflow_HPC_string
     threads: M.T('run_metagenomics_workflow')
     run:
+
+        # Convert r1 and r2 to absolute paths
+        samples_txt_new_path = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/", M.samples_txt_file)
+        samples_txt_new = pd.read_csv(M.samples_txt_file, sep='\t', index_col=False)
+        samples_txt_new['r1'] = samples_txt_new['r1'].apply(lambda x: os.path.abspath(str(x)))
+        samples_txt_new['r2'] = samples_txt_new['r2'].apply(lambda x: os.path.abspath(str(x)))
+        samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
+
         if M.clusterize_metagenomics_workflow == True:
             shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
         elif M.metagenomics_workflow_HPC_string:
@@ -546,7 +554,7 @@ rule add_default_collection:
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{HMM}.log")
     input: metagenomics_workflow_done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}-contigs.db")),
+        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}.db")),
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db")
     output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done"))
     threads: M.T('add_default_collection')
@@ -566,7 +574,7 @@ rule anvi_summarize:
     input: 
         done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done")
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}-contigs.db")),
+        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}.db")),
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
         output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}")
     output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"))

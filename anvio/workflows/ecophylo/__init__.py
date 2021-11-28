@@ -149,7 +149,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
-                self.contigsDB_name_dir_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_dirname_list)))
                 self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
                 self.names_list.extend(self.metagenomes_name_list)
 
@@ -166,7 +165,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
-                self.contigsDB_name_dir_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_dirname_list)))
                 self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
                 self.names_list.extend(self.external_genomes_names_list)
 
@@ -237,6 +235,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                   "around either. So please add a `samples.txt` directive.")
 
         filesnpaths.is_file_tab_delimited(self.samples_txt_file)
+
         try:
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
@@ -248,7 +247,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                               "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
 
         self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
-
+        
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
         self.run_fasttree = self.get_param_value_from_config(['fasttree', 'run'])
