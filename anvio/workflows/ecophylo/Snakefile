@@ -421,6 +421,7 @@ rule make_fasta_txt:
     """
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_fasta_txt_{HMM}.log")
     input:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_subset.tsv"), HMM = M.HMM_source_dict.keys()),
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-references_for_mapping_NT.fa"), HMM = M.HMM_source_dict.keys()),
@@ -481,6 +482,7 @@ rule make_metagenomics_config_file:
     """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_metagenomics_config_file_{HMM}.log")
     input:
         rules.make_fasta_txt.output.fasta_txt
     output:
@@ -523,6 +525,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile HMM_hits"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "_{HMM}.log")
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
@@ -797,6 +800,7 @@ rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
 
     version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{HMM}.log")
     input:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done = rules.anvi_summarize.output,
