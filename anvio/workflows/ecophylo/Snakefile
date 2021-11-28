@@ -600,7 +600,7 @@ rule rename_tree_tips:
     input:
         tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done")
     output:
-        done = os.path.join("{HMM}_combined.done"),
+        done = os.path.join(dirs_dict['TREES'], "{HMM}_combined.done"),
         tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk")
     params:
         fasttree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
