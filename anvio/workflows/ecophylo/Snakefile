@@ -130,23 +130,23 @@ rule anvi_get_sequences_for_hmm_hits:
         HMM_source = M.HMM_source_dict[wildcards.HMM]
 
         if HMM_source in M.internal_HMM_sources:
-            shell(f"anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
                                                 -o {output.faa} 2> {log.AA}")
 
-            shell(f"anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 -o {output.fna} 2> {log.NT}")
         else:
-            shell(f"anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
                                                 -o {output.faa} 2> {log.AA}")
 
-            shell(f"anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
+            shell("anvi-get-sequences-for-hmm-hits -c {input.contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 -o {output.fna} 2> {log.NT}")
 
