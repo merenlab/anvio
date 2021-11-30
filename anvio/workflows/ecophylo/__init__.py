@@ -3,6 +3,7 @@
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
 import os
+import sys
 import anvio
 import pandas as pd
 
@@ -73,6 +74,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
+        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['--min-percent-identity']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
@@ -88,7 +90,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'hmm_list': 'hmm_list.txt',
-            'anvi_run_hmms_hmmsearch': {'threads': 5},
+            'anvi_run_hmms_hmmsearch': {'threads': 5, '--min-percent-identity': 0.9},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 2},
             'simplify_names_from_hmm_hits': {'threads': 2},
@@ -118,7 +120,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             })
 
         # Directory structure for Snakemake workflow
-        self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
+
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS"})
         self.dirs_dict.update({"MSA": "ECOPHYLO_WORKFLOW/03_MSA"})
@@ -128,11 +130,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
-
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
-
+        
         super().init()
+        #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
+        self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
         self.names_dirs = []

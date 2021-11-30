@@ -12,6 +12,7 @@ import anvio.utils as u
 import anvio.workflows as w
 
 from Bio import SeqIO
+from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
@@ -44,6 +45,7 @@ rule anvi_run_hmms_hmmsearch:
         hmm_table = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.table")
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
+        min_percent_identity = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--min-percent-identity']),
     threads: M.T('anvi_run_hmms_hmmsearch')
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
@@ -55,13 +57,22 @@ rule anvi_run_hmms_hmmsearch:
         if HMM_source in M.internal_HMM_sources:
             print(f"Running internal HMM dataset: {HMM_source}")
             HMM_source = M.HMM_source_dict[wildcards.HMM]
-            shell(f"anvi-run-hmms -c {contigsDB} \
+            shell("anvi-run-hmms -c {contigsDB} \
                                 --hmmer-program hmmsearch \
                                 --hmmer-output-dir {hmmer_output_dir} \
                                 -I {HMM_source} \
                                 --domain-hits-table \
                                 --just-do-it \
                                 -T {threads} 2> {log}")
+
+            # Load contigsDB
+            contigs_db = ContigsDatabase(contigsDB)
+            # Check if anvi-run-scg-taxonomy has been run
+            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
+
+            if scg_taxonomy_was_run_value != 1:
+                print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {HMM_source} is a SCG")
+                shell("anvi-run-scg-taxonomy -c {contigsDB} --min-percent-identity {params.min_percent_identity}")
         else:
             HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
             print("Running external HMM dataset: ", wildcards.HMM)
@@ -716,8 +727,8 @@ rule make_misc_data:
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
         extract_misc_data(mmseqs_cluster_rep_index = params.cluster_rep_index,
-                                        final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
-                                        output = output.misc_data_final)
+                          final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                          output = output.misc_data_final)
 
 
 
@@ -732,9 +743,8 @@ rule anvi_scg_taxonomy:
         done = rules.run_metagenomics_workflow.output
     params:
         combined_genomes_txt = "combined_genomes.txt",
-        fasta_prefix = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}"),
-        taxonomy = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}_estimate_scg_taxonomy_results"),
-        taxonomy_long = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{HMM}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
+        taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_estimate_scg_taxonomy_results"),
+        taxonomy_long = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp")
@@ -754,10 +764,6 @@ rule anvi_scg_taxonomy:
                                               -O {params.taxonomy} &> {log}")
             # Import data
             #------------
-            misc_data = pd.read_csv(input.misc_data, \
-                                    sep="\t", \
-                                    index_col=False)
-
             scg_taxonomy = pd.read_csv(params.taxonomy_long, \
                                        sep="\t", \
                                        index_col=False)
@@ -778,6 +784,7 @@ rule anvi_scg_taxonomy:
             reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
             reformat_report["new_header_tmp"] = reformat_report['new_header'].str.rsplit('_', 1).str[0]
             reformat_report["identifier"] = reformat_report["new_header_tmp"] + "_" + reformat_report["gene_callers_id"] 
+            scg_taxonomy["identifier"] =  scg_taxonomy["metagenome_name"] + "_" +  scg_taxonomy["gene_name"] + "_" +  scg_taxonomy["gene_callers_id"].astype(str)
             scg_taxonomy = scg_taxonomy.merge(reformat_report, on='identifier', how="inner")
             scg_taxonomy['split_name'] = scg_taxonomy['new_header'].astype(str) + '_split_00001' 
             scg_taxonomy = scg_taxonomy[["split_name", "identifier", "percent_identity", "t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]]
