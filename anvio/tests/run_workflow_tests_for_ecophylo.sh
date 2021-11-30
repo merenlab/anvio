@@ -36,11 +36,11 @@ do
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
 done
 
-INFO "Running anvi-run-scg-taxonomy on input genomes"
-for contigsDB in `ls *.db`;
-do
-    anvi-run-scg-taxonomy -c $contigsDB;
-done
+# INFO "Running anvi-run-scg-taxonomy on input genomes"
+# for contigsDB in `ls *.db`;
+# do
+#     anvi-run-scg-taxonomy -c $contigsDB;
+# done
 
 INFO "Listing dependencies for ecophylo workflow"
 anvi-run-workflow -w ecophylo -c default-config.json --list-dependencies
