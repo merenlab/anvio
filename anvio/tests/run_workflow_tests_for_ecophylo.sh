@@ -20,7 +20,6 @@ INFO "Creating a default config for ecophylo workflow"
 anvi-run-workflow -w ecophylo --get-default-config default-config.json
 
 INFO "Generating r1 and r2 short reads for samples"
-# generate short reads for each sample
 mkdir -p output
 samples="sampleB_thetaiotamicron_Ribosomal_L16 sample_IGD_SUBSET_Ribosomal_L16 sample_P_marinus_Ribosomal_L16"
 
@@ -35,12 +34,6 @@ do
     name=$(basename $reads -R1.fastq | sed 's|-|_|g')
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
 done
-
-# INFO "Running anvi-run-scg-taxonomy on input genomes"
-# for contigsDB in `ls *.db`;
-# do
-#     anvi-run-scg-taxonomy -c $contigsDB;
-# done
 
 INFO "Listing dependencies for ecophylo workflow"
 anvi-run-workflow -w ecophylo -c default-config.json --list-dependencies
