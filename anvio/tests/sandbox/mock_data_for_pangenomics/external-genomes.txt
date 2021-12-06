@@ -1,4 +1,6 @@
 name	contigs_db_path
-g01	01.db
-g02	02.db
-g03	03.db
+E_faecalis_6240	E_faecalis_6240.db
+E_faecalis_6255	E_faecalis_6255.db
+E_faecalis_6512	E_faecalis_6512.db
+E_faecalis_6557	E_faecalis_6557.db
+E_faecalis_6563	E_faecalis_6563.db

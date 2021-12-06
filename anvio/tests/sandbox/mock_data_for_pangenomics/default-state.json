@@ -5,115 +5,152 @@
     "current-view": "gene_cluster_presence_absence",
     "angle-min": "0",
     "angle-max": "270",
-    "tree-radius": "3000",
+    "tree-radius": "2456",
     "tree-height": "0",
     "tree-width": "0",
     "layer-margin": "15",
-    "outer-ring-height": "60",
+    "outer-ring-height": "120",
     "outer-ring-margin": "30",
     "edge-normalization": false,
     "custom-layer-margin": true,
-    "show-grid-for-bins": false,
+    "show-grid-for-bins": true,
+    "show-shade-for-bins": false,
+    "shade-fill-opacity": "0.15",
+    "invert-shade-for-bins": false,
+    "inverse-fill-opacity": "0.2",
+    "inverse-color": "#000",
     "grid-color": "#FFFFFF",
     "grid-width": "1",
     "samples-order": "custom",
     "max-font-size": "60",
     "optimize-speed": true,
     "show-bin-labels": true,
+    "begins-from-branch": false,
     "bin-labels-font-size": "128",
     "autorotate-bin-labels": true,
+    "estimate-taxonomy": false,
     "bin-labels-angle": "0",
-    "background-opacity": "0.3",
+    "background-opacity": "0.15",
     "max-font-size-label": "120",
     "draw-guide-lines": "no",
+    "state-name": "",
+    "show-support-values": false,
+    "support-range-low": "0",
+    "support-range-high": "100",
+    "support-display-symbol": false,
+    "support-symbol-invert": false,
+    "support-display-number": false,
+    "support-symbol-size": "12",
+    "support-symbol-color": "#AA0000",
+    "support-font-size": "15",
+    "support-text-rotation": "0",
     "layer-order": [
-        "g01",
-        "g02",
-        "g03",
+        "E_faecalis_6557",
+        "E_faecalis_6240",
+        "E_faecalis_6563",
+        "E_faecalis_6255",
+        "E_faecalis_6512",
+        "COG20_CATEGORY",
+        "COG20_FUNCTION",
+        "COG20_PATHWAY",
         "SCG",
-        "GO_TERMS",
-        "EGGNOG_BACT",
-        "COG_FUNCTION",
-        "KEGG_PATHWAYS",
-        "num_genomes_gene_cluster_has_hits",
-        "num_genes_in_gene_cluster",
-        "max_num_paralogs",
+        "combined_homogeneity_index",
         "functional_homogeneity_index",
-        "geometric_homogeneity_index"
+        "geometric_homogeneity_index",
+        "num_genes_in_gene_cluster",
+        "num_genomes_gene_cluster_has_hits",
+        "max_num_paralogs"
     ],
     "categorical_data_colors": {
-        "KEGG_PATHWAYS": {
-            "KNOWN": "#00AA00",
-            "UNKNOWN": "#F0F0F0"
+        "COG20_CATEGORY": {
+            "UNKNOWN": "#d9d9d9",
+            "KNOWN": "#00AA00"
         },
-        "EGGNOG_BACT": {
-            "KNOWN": "#00AA00",
-            "UNKNOWN": "#F0F0F0"
+        "COG20_FUNCTION": {
+            "UNKNOWN": "#d9d9d9",
+            "KNOWN": "#00AA00"
         },
-        "GO_TERMS": {
-            "KNOWN": "#00AA00",
-            "UNKNOWN": "#F0F0F0"
-        },
-        "COG_FUNCTION": {
-            "KNOWN": "#00AA00",
-            "UNKNOWN": "#F0F0F0"
+        "COG20_PATHWAY": {
+            "UNKNOWN": "#d9d9d9",
+            "KNOWN": "#00AA00"
         }
     },
     "stack_bar_colors": {},
     "layers": {
-        "g01": {
+        "E_faecalis_6240": {
             "color": "#000000",
             "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "g02": {
+        "E_faecalis_6255": {
             "color": "#000000",
             "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "g03": {
+        "E_faecalis_6512": {
             "color": "#000000",
             "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "num_genomes_gene_cluster_has_hits": {
-            "color": "#002e4f",
-            "height": "180",
-            "margin": "60",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "num_genes_in_gene_cluster": {
-            "color": "#002e4f",
-            "height": "180",
+        "E_faecalis_6557": {
+            "color": "#000000",
+            "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "max_num_paralogs": {
-            "color": "#002e4f",
-            "height": "180",
+        "E_faecalis_6563": {
+            "color": "#000000",
+            "height": "300",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
+        },
+        "COG20_CATEGORY": {
+            "color": "#000000",
+            "height": "90",
+            "margin": "45",
+            "type": "color",
+            "color-start": "#DDDDDD"
+        },
+        "COG20_FUNCTION": {
+            "color": "#000000",
+            "height": "90",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#DDDDDD"
+        },
+        "COG20_PATHWAY": {
+            "color": "#000000",
+            "height": "90",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#DDDDDD"
         },
         "SCG": {
             "color": "#4f1111",
-            "height": "90",
-            "margin": "60",
+            "height": "180",
+            "margin": "45",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+        },
+        "combined_homogeneity_index": {
+            "color": "#326b59",
+            "height": "180",
+            "margin": "45",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
         "functional_homogeneity_index": {
             "color": "#3D9970",
             "height": "180",
-            "margin": "60",
+            "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
@@ -124,116 +161,31 @@
             "type": "bar",
             "color-start": "#FFFFFF"
         },
-        "KEGG_PATHWAYS": {
-            "color": "#000000",
-            "height": "30",
-            "margin": "15",
-            "type": "color",
-            "color-start": "#DDDDDD"
+        "max_num_paralogs": {
+            "color": "#002e4f",
+            "height": "180",
+            "margin": "45",
+            "type": "bar",
+            "color-start": "#FFFFFF"
         },
-        "EGGNOG_BACT": {
-            "color": "#000000",
-            "height": "30",
+        "num_genes_in_gene_cluster": {
+            "color": "#002e4f",
+            "height": "180",
             "margin": "15",
-            "type": "color",
-            "color-start": "#DDDDDD"
+            "type": "bar",
+            "color-start": "#FFFFFF"
         },
-        "GO_TERMS": {
-            "color": "#000000",
-            "height": "30",
-            "margin": "60",
-            "type": "color",
-            "color-start": "#DDDDDD"
-        },
-        "COG_FUNCTION": {
-            "color": "#000000",
-            "height": "30",
+        "num_genomes_gene_cluster_has_hits": {
+            "color": "#002e4f",
+            "height": "180",
             "margin": "15",
-            "type": "color",
-            "color-start": "#DDDDDD"
+            "type": "bar",
+            "color-start": "#FFFFFF"
         }
     },
     "views": {
-        "PC_presence_absence": {
-            "g01": {
-                "normalization": "log",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0.30102999566398114",
-                    "disabled": false
-                }
-            },
-            "g02": {
-                "normalization": "log",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0.30102999566398114",
-                    "disabled": false
-                }
-            },
-            "g03": {
-                "normalization": "log",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0.30102999566398114",
-                    "disabled": false
-                }
-            },
-            "SCG": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "1",
-                    "disabled": false
-                }
-            },
-            "KEGG_PATHWAYS": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
-                    "disabled": false
-                }
-            },
-            "EGGNOG_BACT": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
-                    "disabled": false
-                }
-            },
-            "GO_TERMS": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
-                    "disabled": false
-                }
-            },
-            "COG_FUNCTION": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
-                    "disabled": false
-                }
-            }
-        },
         "gene_cluster_presence_absence": {
-            "g01": {
+            "E_faecalis_6240": {
                 "normalization": "none",
                 "min": {
                     "value": "0",
@@ -244,7 +196,7 @@
                     "disabled": false
                 }
             },
-            "g02": {
+            "E_faecalis_6255": {
                 "normalization": "none",
                 "min": {
                     "value": "0",
@@ -255,7 +207,7 @@
                     "disabled": false
                 }
             },
-            "g03": {
+            "E_faecalis_6512": {
                 "normalization": "none",
                 "min": {
                     "value": "0",
@@ -266,40 +218,64 @@
                     "disabled": false
                 }
             },
-            "num_genomes_gene_cluster_has_hits": {
+            "E_faecalis_6557": {
                 "normalization": "none",
                 "min": {
                     "value": "0",
                     "disabled": false
                 },
                 "max": {
-                    "value": "3",
-                    "disabled": false
-                }
-            },
-            "num_genes_in_gene_cluster": {
-                "normalization": "sqrt",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "2.23606797749979",
-                    "disabled": false
-                }
-            },
-            "max_num_paralogs": {
-                "normalization": "none",
-                "min": {
                     "value": "1",
                     "disabled": false
+                }
+            },
+            "E_faecalis_6563": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
                 },
                 "max": {
-                    "value": "2",
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "COG20_CATEGORY": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            },
+            "COG20_FUNCTION": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
+                    "disabled": false
+                }
+            },
+            "COG20_PATHWAY": {
+                "min": {
+                    "disabled": false
+                },
+                "max": {
                     "disabled": false
                 }
             },
             "SCG": {
+                "normalization": "none",
+                "min": {
+                    "value": "0",
+                    "disabled": false
+                },
+                "max": {
+                    "value": "1",
+                    "disabled": false
+                }
+            },
+            "combined_homogeneity_index": {
                 "normalization": "none",
                 "min": {
                     "value": "0",
@@ -332,48 +308,42 @@
                     "disabled": false
                 }
             },
-            "KEGG_PATHWAYS": {
+            "max_num_paralogs": {
+                "normalization": "none",
                 "min": {
+                    "value": "1",
                     "disabled": false
                 },
                 "max": {
+                    "value": "4",
                     "disabled": false
                 }
             },
-            "EGGNOG_BACT": {
+            "num_genes_in_gene_cluster": {
+                "normalization": "sqrt",
                 "min": {
+                    "value": "0",
                     "disabled": false
                 },
                 "max": {
+                    "value": "3.7416573867739413",
                     "disabled": false
                 }
             },
-            "GO_TERMS": {
+            "num_genomes_gene_cluster_has_hits": {
+                "normalization": "none",
                 "min": {
+                    "value": "0",
                     "disabled": false
                 },
                 "max": {
-                    "disabled": false
-                }
-            },
-            "COG_FUNCTION": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
+                    "value": "5",
                     "disabled": false
                 }
             }
         }
     },
-    "samples-categorical-colors": {
-        "default": {
-            "group": {
-                "G1": "#960133",
-                "G2": "#048956"
-            }
-        }
-    },
+    "samples-categorical-colors": {},
     "samples-stack-bar-colors": {},
     "samples-edge-length-normalization": true,
     "samples-ignore-branch-length": false,
@@ -408,40 +378,156 @@
             "group": "default"
         },
         {
-            "layer_name": "num_gene_clusters",
-            "group": "default"
-        },
-        {
             "layer_name": "singleton_gene_clusters",
             "group": "default"
         },
         {
-            "layer_name": "group",
+            "layer_name": "num_gene_clusters",
             "group": "default"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_alignment_coverage"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_alignment_coverage"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_alignment_coverage"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_alignment_coverage"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_alignment_coverage"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_alignment_lengths"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_alignment_lengths"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_alignment_lengths"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_alignment_lengths"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_alignment_lengths"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_hadamard"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_hadamard"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_hadamard"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_hadamard"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_hadamard"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_similarity_errors"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_similarity_errors"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_similarity_errors"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_similarity_errors"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_similarity_errors"
+        },
+        {
+            "layer_name": "E_faecalis_6512",
+            "group": "ANI_full_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6255",
+            "group": "ANI_full_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6563",
+            "group": "ANI_full_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6240",
+            "group": "ANI_full_percentage_identity"
+        },
+        {
+            "layer_name": "E_faecalis_6557",
+            "group": "ANI_full_percentage_identity"
         }
     ],
     "samples-layers": {
         "default": {
             "total_length": {
                 "data-type": "numeric",
-                "height": 180,
+                "height": 0,
                 "margin": 15,
                 "normalization": "none",
-                "color": "#121261",
+                "color": "#414141",
                 "min": {
                     "value": 0,
                     "disabled": false
                 },
                 "max": {
-                    "value": 139930,
+                    "value": 250000,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "gc_content": {
                 "data-type": "numeric",
-                "height": 180,
+                "height": 0,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#004a0f",
@@ -450,32 +536,32 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 0.52075323376,
+                    "value": 0.378024,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "percent_completion": {
                 "data-type": "numeric",
-                "height": 500,
+                "height": 0,
                 "margin": 15,
                 "normalization": "none",
-                "color": "#919191",
+                "color": "#000077",
                 "min": {
                     "value": 0,
                     "disabled": false
                 },
                 "max": {
-                    "value": 4.31654676259,
+                    "value": 100,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "percent_redundancy": {
                 "data-type": "numeric",
-                "height": 200,
+                "height": 0,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#440000",
@@ -484,11 +570,11 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 0,
+                    "value": 100,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "num_genes": {
                 "data-type": "numeric",
@@ -501,11 +587,11 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 119,
+                    "value": 265,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "avg_gene_length": {
                 "data-type": "numeric",
@@ -518,15 +604,15 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 1084.30769231,
+                    "value": 905.280991735537,
                     "disabled": false
                 },
                 "type": "bar",
-                "color-start": "#FFFFFF"
+                "color-start": "#EFEFEF"
             },
             "num_genes_per_kb": {
                 "data-type": "numeric",
-                "height": 180,
+                "height": 0,
                 "margin": 15,
                 "normalization": "none",
                 "color": "#414141",
@@ -535,24 +621,7 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 0.850425212606,
-                    "disabled": false
-                },
-                "type": "bar",
-                "color-start": "#FFFFFF"
-            },
-            "num_gene_clusters": {
-                "data-type": "numeric",
-                "height": 220,
-                "margin": 15,
-                "normalization": "none",
-                "color": "#661111",
-                "min": {
-                    "value": 0,
-                    "disabled": false
-                },
-                "max": {
-                    "value": 117,
+                    "value": 1.06,
                     "disabled": false
                 },
                 "type": "bar",
@@ -560,8 +629,8 @@
             },
             "singleton_gene_clusters": {
                 "data-type": "numeric",
-                "height": 220,
-                "margin": 15,
+                "height": 300,
+                "margin": 45,
                 "normalization": "none",
                 "color": "#661111",
                 "min": {
@@ -569,28 +638,560 @@
                     "disabled": false
                 },
                 "max": {
-                    "value": 4,
+                    "value": 60,
                     "disabled": false
                 },
                 "type": "bar",
                 "color-start": "#EFEFEF"
             },
-            "group": {
-                "data-type": "categorical",
-                "height": 80,
-                "margin": 15,
+            "num_gene_clusters": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 45,
+                "normalization": "none",
+                "color": "#661111",
                 "min": {
-                    "value": null,
+                    "value": 0,
                     "disabled": false
                 },
                 "max": {
-                    "value": null,
+                    "value": 261,
                     "disabled": false
-                }
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            }
+        },
+        "ANI_alignment_coverage": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            }
+        },
+        "ANI_alignment_lengths": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 250000,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 250000,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 250000,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 250000,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 250000,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            }
+        },
+        "ANI_hadamard": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            }
+        },
+        "ANI_percentage_identity": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 45,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.99,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.99,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.99,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.99,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 300,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.99,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            }
+        },
+        "ANI_similarity_errors": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1977,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1855,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1793,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1664,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1663,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            }
+        },
+        "ANI_full_percentage_identity": {
+            "E_faecalis_6512": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.7,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6255": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.7,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6563": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.7,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6240": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.7,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
+            },
+            "E_faecalis_6557": {
+                "data-type": "numeric",
+                "height": 180,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#FF0000",
+                "min": {
+                    "value": 0.7,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 1,
+                    "disabled": false
+                },
+                "type": "intensity",
+                "color-start": "#F2F2F2"
             }
         }
     },
     "samples-groups": {
+        "ANI_alignment_coverage": false,
+        "ANI_alignment_lengths": false,
+        "ANI_full_percentage_identity": false,
+        "ANI_hadamard": false,
+        "ANI_percentage_identity": true,
+        "ANI_similarity_errors": false,
         "default": true
     }
 }
