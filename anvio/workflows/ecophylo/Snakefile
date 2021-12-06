@@ -58,12 +58,12 @@ rule anvi_run_hmms_hmmsearch:
             print(f"Running internal HMM dataset: {HMM_source}")
             HMM_source = M.HMM_source_dict[wildcards.HMM]
             shell("anvi-run-hmms -c {contigsDB} \
-                                --hmmer-program hmmsearch \
-                                --hmmer-output-dir {hmmer_output_dir} \
-                                -I {HMM_source} \
-                                --domain-hits-table \
-                                --just-do-it \
-                                -T {threads} 2> {log}")
+                                 --hmmer-program hmmsearch \
+                                 --hmmer-output-dir {hmmer_output_dir} \
+                                 -I {HMM_source} \
+                                 --domain-hits-table \
+                                 --just-do-it \
+                                 -T {threads} 2> {log}")
 
             # Load contigsDB
             contigs_db = ContigsDatabase(contigsDB)
@@ -72,17 +72,17 @@ rule anvi_run_hmms_hmmsearch:
 
             if scg_taxonomy_was_run_value != 1:
                 print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {HMM_source} is a SCG")
-                shell("anvi-run-scg-taxonomy -c {contigsDB} --min-percent-identity {params.min_percent_identity}")
+                shell("anvi-run-scg-taxonomy -c {contigsDB} --min-percent-identity {params.min_percent_identity} --num-threads {threads}")
         else:
             HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
-            print("Running external HMM dataset: ", wildcards.HMM)
-            shell(f"anvi-run-hmms -c {contigsDB} \
-                            --hmmer-program hmmsearch \
-                            --hmm-profile-dir {HMM_dir} \
-                            --hmmer-output-dir {hmmer_output_dir} \
-                            --domain-hits-table \
-                            --just-do-it \
-                            -T {threads} 2> {log}")
+            print(f"Running external HMM dataset: {wildcards.HMM}")
+            shell("anvi-run-hmms -c {contigsDB} \
+                                 --hmmer-program hmmsearch \
+                                 --hmm-profile-dir {HMM_dir} \
+                                 --hmmer-output-dir {hmmer_output_dir} \
+                                 --domain-hits-table \
+                                 --just-do-it \
+                                 -T {threads} 2> {log}")
 
 rule filter_hmm_hits_by_query_coverage:
     """
