@@ -10,6 +10,7 @@ import pandas as pd
 import anvio
 import anvio.data.hmm
 import anvio.utils as u
+import anvio.genomedescriptions as gd
 import anvio.terminal as terminal
 import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
@@ -150,6 +151,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             try:
                 self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
+                for name in self.metagenomes_name_list:
+                    if " " in name:
+                        raise ConfigError("One of the names in your metagenomes.txt file contains spaces. "
+                                          "The EcoPhylo workflow will have a hard time with this, please "
+                                          "only use underscores in your metagenome names.")
+                    else:
+                        continue
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
                 self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
@@ -166,6 +174,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             try:
                 self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
+                for name in self.external_genomes_names_list:
+                    if " " in name:
+                        raise ConfigError("One of the names in your external-genomes.txt file contains spaces. "
+                                          "The EcoPhylo workflow will have a hard time with this, please "
+                                          "only use underscores in your genome names.")
+                    else:
+                        continue
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
                 self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
