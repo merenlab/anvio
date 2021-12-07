@@ -1880,7 +1880,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               f"in that case. But fine. Hopefully you now know what you need to do to make this message go away.")
         kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
 
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.user_input_dir:
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
