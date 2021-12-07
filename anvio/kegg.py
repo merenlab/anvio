@@ -1872,6 +1872,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             self.modules_db_path = self.kegg_modules_db_path
 
+            # citation output for KEGG data
+            if not self.quiet:
+                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
         # load existing modules db
         if not os.path.exists(self.modules_db_path):
             raise ConfigError(f"It appears that a modules database ({self.modules_db_path}) does not exist in the provided data directory. "
