@@ -3880,7 +3880,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
         self.init_data_from_modules_db()
 
         # these will be empty dictionaries unless matrix format
@@ -4110,7 +4110,7 @@ class ModulesDatabase(KeggContext):
     >>> from anvio import kegg
     >>> path_to_db = "YOUR/PATH/HERE/MODULES.db"
     >>> args = argparse.Namespace()
-    >>> kegg.KeggModulesDatabase(path_to_db, args)
+    >>> kegg.ModulesDatabase(path_to_db, args)
     ```
     """
 
