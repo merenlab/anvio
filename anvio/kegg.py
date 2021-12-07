@@ -1886,12 +1886,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               f"in that case. But fine. Hopefully you now know what you need to do to make this message go away.")
         kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
 
-        if not self.estimate_from_json and not self.user_input_dir:
-            # here we load the contigs DB just for sanity check purposes.
-            # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
-            contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-            self.contigs_db_project_name = contigs_db.meta['project_name']
+        # here we load the contigs DB just for sanity check purposes.
+        # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
 
+        if not self.estimate_from_json and not self.user_input_dir:
             # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
             if 'modules_db_hash' not in contigs_db.meta:
                 raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
@@ -1908,13 +1908,22 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
                                   "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
                                   "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
-            contigs_db.disconnect()
-        kegg_modules_db.disconnect()
 
-        if not self.quiet:
-            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
+        elif self.user_input_dir:
+            # sanity check that contigs db contains all necessary functional sources
+            modules_db_sources = set(kegg_modules_db.db.get_meta_value('annotation_sources').split(','))
+            contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
+            source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
+
+            if source_in_modules_not_contigs:
+                missing_sources = ", ".join(source_in_modules_not_contigs)
+                raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
+                                  f"required for the modules in the database at {self.modules_db_path}. You will have to "
+                                  f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
+                                  f"before running this program again. Here are the missing sources: {missing_sources}")
+
+        contigs_db.disconnect()
+        kegg_modules_db.disconnect()
 
 
     def list_output_modes(self):
