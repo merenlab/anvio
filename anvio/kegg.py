@@ -1866,14 +1866,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.estimate_from_json:
             utils.is_contigs_db(self.contigs_db_path)
 
-        # load existing kegg modules db
-        if not os.path.exists(self.kegg_modules_db_path):
-            raise ConfigError("It appears that a modules database (%s) does not exist in the KEGG data directory %s. "
-                              "Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run "
-                              "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
-                              "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
-                              "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args, quiet=self.quiet)
+        # choose between user or kegg modules db
+        if self.user_input_dir:
+            self.modules_db_path = self.user_modules_db_path
+        else:
+            self.modules_db_path = self.kegg_modules_db_path
+
+        # load existing modules db
+        if not os.path.exists(self.modules_db_path):
+            raise ConfigError(f"It appears that a modules database ({self.modules_db_path}) does not exist in the provided data directory. "
+                              f"Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run "
+                              f"`anvi-setup-kegg-kofams` or `anvi-setup-user-modules`, though we are not sure how you got to this point "
+                              f"in that case. But fine. Hopefully you now know what you need to do to make this message go away.")
+        kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
 
         if not self.estimate_from_json:
             # here we load the contigs DB just for sanity check purposes.
@@ -3010,7 +3015,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = {}
         kofam_hits_superdict = {}
 
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args, run=run_quiet, quiet=self.quiet)
+        self.kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
@@ -3882,7 +3887,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args)
         self.init_data_from_modules_db()
 
         # these will be empty dictionaries unless matrix format
