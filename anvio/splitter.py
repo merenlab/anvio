@@ -1181,7 +1181,7 @@ class LocusSplitter:
             gene_calls = new_gene_calls
 
 
-        # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
+        # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
         with open(locus_sequence_fasta, 'w') as f:
             f.write('>%s\n%s\n' % (contig_name, sequence))
@@ -1237,7 +1237,7 @@ class LocusSplitter:
 
         ############################################################################################
         # DO AMINO ACID SEQUENCES -- we are using external gene calls to generate the new contigs
-        #                            database, but amino acid sequnces are kept in a different table
+        #                            database, but amino acid sequences are kept in a different table
         #                            and anvi'o checks whether provided gene calls resolve to amino
         #                            acid sequences with proper starts and stops. if not, it skips
         #                            them. but amino acid sequences for each gene call was stored
