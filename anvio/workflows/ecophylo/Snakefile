@@ -927,7 +927,7 @@ rule anvi_import_everything:
     run:
         shell("anvi-import-state -p {params.profileDB} \
                                  -s {input.state} \
-                                 -n {wildcards.HMM}")
+                                 -n default")
 
         shell("anvi-import-items-order -p {params.profileDB} \
                                        -i {input.tree} \
