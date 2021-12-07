@@ -1733,7 +1733,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # This can be initialized later if necessary using init_gene_coverage()
         self.profile_db = None
 
+        # init the base classes
         KeggEstimatorArgs.__init__(self, self.args)
+        KeggContext.__init__(self, self.args)
 
         self.name_header = None
         if self.metagenome_mode:
