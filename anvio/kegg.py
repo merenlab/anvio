@@ -238,14 +238,14 @@ class KeggContext(object):
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
         self.user_input_dir = args.input_dir
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
-        self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
-        self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
+        self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
+        self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
         # shared variables for all KEGG subclasses
-        self.kofam_hmm_file_path = os.path.join(self.hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
@@ -446,9 +446,9 @@ class KeggSetup(KeggContext):
 
             if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
@@ -520,11 +520,11 @@ class KeggSetup(KeggContext):
                               "delete this directory manually to let this script re-download everything from scratch."
                               % self.kegg_data_dir)
 
-        if os.path.exists(self.module_data_dir):
+        if os.path.exists(self.kegg_module_data_dir):
             raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.module_data_dir, self.kegg_data_dir))
+                              % (self.kegg_module_data_dir, self.kegg_data_dir))
 
         if os.path.exists(self.pathway_data_dir):
             raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
@@ -751,7 +751,7 @@ class KeggSetup(KeggContext):
 
         # download all modules
         for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.module_data_dir, mnum)
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
             utils.download_file(self.kegg_rest_api_get + '/' + mnum,
                 file_path, progress=self.progress, run=self.run)
             # verify entire file has been downloaded
@@ -924,7 +924,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Running hmmpress...')
         cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.hmm_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
@@ -984,8 +984,8 @@ class KeggSetup(KeggContext):
         # check top-level files and folders
         path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
         expected_directories_and_files = [self.orphan_data_dir,
-                                          self.module_data_dir,
-                                          self.hmm_data_dir,
+                                          self.kegg_module_data_dir,
+                                          self.kegg_hmm_data_dir,
                                           #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
                                           self.ko_list_file_path,
                                           self.kegg_module_file,
@@ -1000,7 +1000,7 @@ class KeggSetup(KeggContext):
                                      % (path_to_f_in_archive))
 
         # check hmm files
-        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.hmm_data_dir))
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
         kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
         expected_hmm_files = [kofam_hmm_basename]
         for h in expected_hmm_files:
@@ -1140,7 +1140,7 @@ class KeggSetup(KeggContext):
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.module_data_dir)
+            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
@@ -1183,14 +1183,14 @@ class RunKOfams(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
                               "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
                               "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.hmm_data_dir)
+                              "to fix this problem. :) " % self.kegg_hmm_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.module_data_dir, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, args=self.args)
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1771,7 +1771,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
-
         if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
@@ -1798,6 +1797,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "values, so the --add-coverage flag will not work.")
         elif self.add_coverage:
             self.add_gene_coverage_to_headers_list()
+
 
         # output options sanity checks
         if anvio.DEBUG:
@@ -1847,10 +1847,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
 
-        # init the base class
-        KeggContext.__init__(self, self.args)
-
-        # let user know what they told anvi'o to work
+        # let user know what they told anvi'o to work on
         self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         self.run.info('Metagenome mode', self.metagenome_mode)
