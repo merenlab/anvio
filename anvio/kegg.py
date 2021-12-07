@@ -4114,10 +4114,10 @@ class ModulesDatabase(KeggContext):
     ```
     """
 
-    def __init__(self, db_path, module_data_directory, args, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_data_directory=None, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
-        self.module_data_directory = module_data_directory
+        self.module_data_directory = module_data_directory # only required for create()
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
         self.data_source = data_source
@@ -4407,6 +4407,10 @@ class ModulesDatabase(KeggContext):
 
     def create(self):
         """Creates the Modules DB"""
+
+        if not self.module_data_directory:
+            raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
+                              "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
 
         self.touch()
 
