@@ -1001,7 +1001,8 @@ class LocusSplitter:
 
         # Query for gene_call, contig_name, and genes_in_contig_sorted
         gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
-        # if in flank mode check that both search terms are on the same contig
+
+        # if in flank mode check that both search terms are NOT on the same contig
         if self.is_in_flank_mode:
             contig_name_1 = self.contigs_db.genes_in_contigs_dict[gene_caller_ids[0]]['contig']
             contig_name_2 = self.contigs_db.genes_in_contigs_dict[gene_caller_ids[1]]['contig']
@@ -1016,7 +1017,7 @@ class LocusSplitter:
         genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]), key=lambda tup: tup[1])
 
         # Here we run Default-mode and cut out the locus based on the anchor gene_callers_id (index) and
-        # cut + self.num_genes_list[0] and - self.num_genes_list[1] arount it
+        # cut + self.num_genes_list[0] and - self.num_genes_list[1] around it
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
 
         if not self.is_in_flank_mode:
@@ -1048,10 +1049,7 @@ class LocusSplitter:
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
-
-        # self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
-
-        # getting the ids for the first and last genes in the contig
+        # getting gene indexes for the first and last genes in the contig
         last_gene_in_contig = len(genes_in_contig_sorted) - 1
         first_gene_in_contig = 0
 
@@ -1072,6 +1070,7 @@ class LocusSplitter:
 
         self.run.info("First and last gene of the locus ", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
+        # convert gene position indexes to gene-callers-ids
         first_gene_of_the_block_gene_callers_id = genes_in_contig_sorted[first_gene_of_the_block][0]
         last_gene_of_the_block_gene_callers_id = genes_in_contig_sorted[last_gene_of_the_block][0]
 
@@ -1088,7 +1087,7 @@ class LocusSplitter:
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
         # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
-        # genes in teh gene calls dict.
+        # genes in the gene calls dict.
         locus_gene_calls_dict = {}
         for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
             gci = genes_in_contig_sorted[g][0]
