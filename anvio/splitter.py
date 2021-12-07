@@ -948,10 +948,6 @@ class LocusSplitter:
             >>> '/path/to/dir/file_name_prefix.fa'
             >>> '/path/to/dir/file_name_prefix.db'
 
-        FIXME Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
-        then you have more then how to choose which contig to cut out?????????
-
-        NOTE ^^^ has this FIXME been addressed? It looks like this _is_ checked, and raises an error - Evan
         """
 
         if gene_callers_id is not None and not isinstance(gene_callers_id, int):
