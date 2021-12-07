@@ -255,6 +255,10 @@ class KeggContext(object):
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
+        # sanity check against specifying both KEGG data and user data
+        if A('kegg_data_dir') and self.user_input_dir:
+            raise ConfigError("Please specify only one input metabolism data source, either --kegg-data-dir OR --input-dir.")
+
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if A('reset') and A('kegg_data_dir'):
             raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
