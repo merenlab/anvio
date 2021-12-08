@@ -2217,18 +2217,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "warnings" : []
                                           }
         for knum in all_kos:
-            if knum not in self.ko_dict:
-                mods_it_is_in = self.all_kos_in_db[knum]
-                if mods_it_is_in:
-                    if anvio.DEBUG:
-                        mods_str = ", ".join(mods_it_is_in)
-                        self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
-                                        "that any modules this KO belongs to can never be fully complete (this includes "
-                                        f"{mods_str}). ")
-                    for m in mods_it_is_in:
-                        if knum[0] != 'M':
-                            bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
-                continue
+            # we can only add warnings about missing KO profiles if we are working exclusively with KEGG data
+            # because for user-defined modules, we don't have a KO dictionary
+            if self.ko_dict:
+                if knum not in self.ko_dict:
+                    mods_it_is_in = self.all_kos_in_db[knum]
+                    if mods_it_is_in:
+                        if anvio.DEBUG:
+                            mods_str = ", ".join(mods_it_is_in)
+                            self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
+                                            "that any modules this KO belongs to can never be fully complete (this includes "
+                                            f"{mods_str}). ")
+                        for m in mods_it_is_in:
+                            if knum[0] != 'M':
+                                bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
+                    continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
                                      "modules" : None,
