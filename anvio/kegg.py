@@ -1886,7 +1886,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # load existing modules db
         if not os.path.exists(self.modules_db_path):
             raise ConfigError(f"It appears that a modules database ({self.modules_db_path}) does not exist in the provided data directory. "
-                              f"Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run "
+                              f"Perhaps you need to specify a different data directory using --kegg-data-dir or --input-dir. Or perhaps you didn't run "
                               f"`anvi-setup-kegg-kofams` or `anvi-setup-user-modules`, though we are not sure how you got to this point "
                               f"in that case. But fine. Hopefully you now know what you need to do to make this message go away.")
         kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
