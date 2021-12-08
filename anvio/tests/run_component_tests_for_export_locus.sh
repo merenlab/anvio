@@ -25,5 +25,3 @@ anvi-export-locus -c CONTIGS.db --gene-caller-id 8616 -o test/ -n 7,30 -O metage
 
 INFO "Running anvi-export-locus in flank-mode"
 anvi-export-locus -c CONTIGS.db --gene-caller-id 68,78 -o test/ -O metagenome_68_78 --flank-mode
-
-anvi-export-locus -c CONTIGS.db --gene-caller-id 11474,13152 -o test/ -O asdf --flank-mode
