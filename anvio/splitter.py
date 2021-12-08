@@ -1008,7 +1008,7 @@ class LocusSplitter:
             contig_name_2 = self.contigs_db.genes_in_contigs_dict[gene_caller_ids[1]]['contig']
             if contig_name_1 != contig_name_2:
                 raise ConfigError(f"Soooooo it turns out that the flanking genes you picked "
-                                  f"are found two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
+                                  f"are found on two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
                                   f"a smaller piece of DNA for you :/")
             
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']

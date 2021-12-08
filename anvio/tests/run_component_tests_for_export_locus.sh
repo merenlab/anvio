@@ -20,5 +20,10 @@ mkdir test
 INFO "Running anvi-export-locus in default-mode"
 anvi-export-locus -c CONTIGS.db --gene-caller-id 68 -n 7,7 -o test/ -O metagenome_68
 
+INFO "Running anvi-export-locus in flank-mode with premature contig end"
+anvi-export-locus -c CONTIGS.db --gene-caller-id 8616 -o test/ -n 7,30 -O metagenome_premature 
+
 INFO "Running anvi-export-locus in flank-mode"
 anvi-export-locus -c CONTIGS.db --gene-caller-id 68,78 -o test/ -O metagenome_68_78 --flank-mode
+
+anvi-export-locus -c CONTIGS.db --gene-caller-id 11474,13152 -o test/ -O asdf --flank-mode
