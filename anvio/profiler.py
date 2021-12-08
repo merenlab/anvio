@@ -5,6 +5,7 @@
 import gc
 import os
 import sys
+import copy
 import shutil
 import argparse
 import numpy as np
@@ -326,6 +327,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_reads_kept = 0
         self.description_file_path = A('description')
 
+        # these are the views this class will be filling in:
+        self.essential_data_fields_for_anvio_profiles = copy.deepcopy(constants.essential_data_fields_for_anvio_profiles)
+
+        # but the views should not include the view `variability` if SNVs are not going to be profiled:
+        if 'variability' in self.essential_data_fields_for_anvio_profiles and self.skip_SNV_profiling:
+            self.essential_data_fields_for_anvio_profiles.pop(self.essential_data_fields_for_anvio_profiles.index('variability'))
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
@@ -520,7 +528,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.init_mock_profile()
 
             # creating a null view_data_splits dict:
-            for view in constants.essential_data_fields_for_anvio_profiles:
+            for view in self.essential_data_fields_for_anvio_profiles:
                 for table_name in [f"{view}_{target}" for target in ['splits', 'contigs']]:
                     TablesForViews(self.profile_db_path).remove(view, table_names_to_blank=[table_name])
                     TablesForViews(self.profile_db_path,
@@ -1278,7 +1286,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.store_split_coverages()
 
         # the crux of the profiling
-        for atomic_data_field in constants.essential_data_fields_for_anvio_profiles:
+        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
             view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field)
 
             table_name = '_'.join([atomic_data_field, 'splits'])
