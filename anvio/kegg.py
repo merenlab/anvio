@@ -1732,6 +1732,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # This can be initialized later if necessary using init_gene_coverage()
         self.profile_db = None
+        # This can be initialized later if necessary by setup_ko_dict()
+        self.ko_dict = None
 
         # init the base classes
         KeggEstimatorArgs.__init__(self, self.args)
@@ -1860,8 +1862,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         elif self.bin_ids_file:
             self.run.info('Bin IDs file', self.bin_ids_file)
 
-        # init the KO dictionary
-        self.setup_ko_dict()
 
         if not self.estimate_from_json:
             utils.is_contigs_db(self.contigs_db_path)
@@ -1869,8 +1869,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # choose between user or kegg modules db
         if self.user_input_dir:
             self.modules_db_path = self.user_modules_db_path
+            self.run.info('Metabolism data', "USER-DEFINED")
         else:
             self.modules_db_path = self.kegg_modules_db_path
+            self.run.info('Metabolism data', "KEGG")
+
+            # init the KO dictionary
+            self.setup_ko_dict()
 
             # citation output for KEGG data
             if not self.quiet:
