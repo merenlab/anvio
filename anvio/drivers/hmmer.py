@@ -208,6 +208,10 @@ class HMMer:
                              f"in the FASTA file for the target '{target}'. Anvi'o will use {P('process', num_parts, sfp='es')} "
                              f"with {P('core', cores_per_process)} instead. And that's that.")
 
+            # if we need to change the number of threads for a SINGLE run, then we need to keep
+            # in mind and set the originally reqeusted number of threads. not doing that leads
+            # to an extremely tricky bug that is described here thanks to help from Daan Speth:
+            # https://github.com/merenlab/anvio/issues/1748
             original_num_threads_requested = self.num_threads_to_use
             self.num_threads_to_use = num_parts
 
