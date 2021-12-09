@@ -35,6 +35,7 @@ Xabier Vázquez-Campos      University of New South Wales                  Austr
 John Eppley                University of Hawaiʻi at Mānoa                 United States
 Jessika Fuessel            University of Chicago                          United States
 Dan Utter                  Harvard University                             United States
+Petra Hribovšek            University of Bergen                           Norway
 Elmar Pruesse              University of Colorado Denver                  United States
 Lucas Paoli                ETH Zurich                                     Switzerland
 Moritz Buck                Uppsala University                             Sweeden
