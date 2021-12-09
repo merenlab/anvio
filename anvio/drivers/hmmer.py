@@ -200,12 +200,15 @@ class HMMer:
 
         num_parts = len(self.target_files_dict[target])
         cores_per_process = 1
+        original_num_threads_requested = None
         if num_parts < self.num_threads_to_use:
             cores_per_process = self.num_threads_to_use // num_parts
 
             self.run.warning(f"You requested {P('core', self.num_threads_to_use)} but there were only {P('sequence', num_parts)} "
                              f"in the FASTA file for the target '{target}'. Anvi'o will use {P('process', num_parts, sfp='es')} "
                              f"with {P('core', cores_per_process)} instead. And that's that.")
+
+            original_num_threads_requested = self.num_threads_to_use
             self.num_threads_to_use = num_parts
 
         if alphabet in ['DNA', 'RNA'] and self.program_to_use == 'hmmsearch':
@@ -318,7 +321,12 @@ class HMMer:
             worker.terminate()
 
         self.progress.end()
-        self.run.info_single('Done 🎊', level=0, nl_after=1, mc="cyan")
+
+        if original_num_threads_requested:
+            self.num_threads_to_use = original_num_threads_requested
+            self.run.info_single(f'Done with {source} 🎊 (and num threads requested is set back to {self.num_threads_to_use}).', level=0, nl_before=1, nl_after=1, mc="cyan")
+        else:
+            self.run.info_single(f'Done with {source} 🎊', level=0, nl_before=1, nl_after=1, mc="cyan")
 
         output_file_paths = []
         for output in desired_output:
