@@ -117,6 +117,7 @@ function loadAdditionalDataLayers(){
       settings['display'] = {}
       settings['display']['colors'] = {}
       settings['display']['layers'] = {}
+      settings['display']['labels'] = {}
       settings['display']['layers']['Ruler'] = true
       settings['display']['layers']['Genome'] = true
 
@@ -264,6 +265,10 @@ function processState(stateName, stateData) {
   } else {
     settings['display']['bookmarks'] = []
     respondToBookmarkSelect() // set listener for user bookmark selection
+  }
+
+  if (stateData.hasOwnProperty('user-gene-labels')){
+    settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
   }
 
   $('#tbody_additionalDataLayers').html('') // clear div before reprocess
