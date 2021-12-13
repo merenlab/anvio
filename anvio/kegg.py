@@ -3813,6 +3813,21 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
         g.load_metagenome_descriptions()
 
+        # sanity check that all dbs are properly annotated with required sources
+        for src in self.annotation_sources_to_use:
+            bad_metagenomes = [v['name'] for v in g.metagenomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
+            if len(bad_metagenomes):
+                bad_metagenomes_txt = [f"'{bad}'" for bad in bad_metagenomes]
+                n = len(bad_metagenomes)
+                it_or_them = P('it', n, alt='them')
+                raise ConfigError(f"Bad news :/ It seems {n} of your {P('metagenome', len(g.metagenomes))} "
+                                  f"{P('is', n, alt='are')} lacking any function annotations for "
+                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
+                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
+                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
+                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
+                                  f"{', '.join(bad_metagenomes_txt)}.")
+
         # enforce metagenome mode
         if not self.metagenome_mode:
             self.metagenome_mode = True
