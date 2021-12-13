@@ -1872,8 +1872,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info('Metabolism data', "USER-DEFINED")
 
              # update available modes output suffixes
-+            for m in self.available_modes:
-+                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
+            for m in self.available_modes:
+                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
         else:
             self.modules_db_path = self.kegg_modules_db_path
             self.run.info('Metabolism data', "KEGG")
@@ -2365,67 +2365,93 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
             for atomic_step in p:
                 # there are 5 types of atomic steps to take care of
-                # 1) regular old single KOs, ie Kxxxxx
-                if atomic_step[0] == "K" and len(atomic_step) == 6:
-                    if atomic_step in present_list_for_mnum:
-                        num_complete_steps_in_path += 1
-                # 2) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
-                elif atomic_step[0] == "K" and (atomic_step[6] == "+" or atomic_step[6] == "-"):
-                    idx = 6
-                    essential_components = [atomic_step[0:idx]]
-                    while idx < len(atomic_step):
-                        component_ko = atomic_step[idx+1:idx+7]
-                        if atomic_step[idx] == "+":
-                            essential_components.append(component_ko)
-                        else:
-                            has_nonessential_step = True
-                            if component_ko not in module_nonessential_kos:
-                                module_nonessential_kos.append(component_ko)
-                        idx += 7
+                if any(x in atomic_step for x in ['-','+']):
+                    # 1) steps without associated enzymes, ie --
+                    if atomic_step == "--":
+                        # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated enzyme.
+                        # we assume that such steps are not complete
+                        has_no_ko_step = True
+                        warning_str = "'--' steps are assumed incomplete"
+                        if warning_str not in meta_dict_for_bin[mnum]["warnings"]:
+                            meta_dict_for_bin[mnum]["warnings"].append(warning_str)
+                    # 2) non-essential KOs, ie -Kxxxxx
+                    elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
+                        """
+                        OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+                        Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+                        ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to
+be non-essential.
+                        For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not includ
+e such steps in
+                        the module completeness estimate.
+                        """
+                        if atomic_step[1:] not in module_nonessential_kos:
+                            module_nonessential_kos.append(atomic_step[1:])
+                        num_nonessential_steps_in_path += 1
+                        has_nonessential_step = True
+                    # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential
+)
+                    else:
+                        # split on '+' or '-'
+                        pattern = re.compile('\+|\-')
+                        match_idxs = []
+                        for match in re.finditer(pattern, atomic_step):
+                            match_idxs.append(match.start())
 
-                    num_present_components = 0
-                    for c in essential_components:
-                        if c in present_list_for_mnum:
-                            num_present_components += 1
-                    component_completeness = num_present_components / len(essential_components)
-                    num_complete_steps_in_path += component_completeness
-                # 3) non-essential KOs, ie -Kxxxxx
-                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
-                    """
-                    OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
-                    Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
-                    ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
-                    It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
-                    For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
-                    But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
-                    the module completeness estimate.
-                    """
-                    if atomic_step[1:] not in module_nonessential_kos:
-                        module_nonessential_kos.append(atomic_step[1:])
-                    num_nonessential_steps_in_path += 1
-                    has_nonessential_step = True
-                # 4) steps without associated KOs, ie --
-                elif atomic_step == "--":
-                    # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
-                    # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
-                    has_no_ko_step = True
-                    warning_str = "'--' steps are assumed incomplete"
-                    if warning_str not in meta_dict_for_bin[mnum]["warnings"]:
-                        meta_dict_for_bin[mnum]["warnings"].append(warning_str)
-                # 5) Module numbers, ie Mxxxxx
-                elif atomic_step[0] == "M" and len(atomic_step) == 6:
-                    """
-                    This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
-                    (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+                        essential_components = []
+                        num_matches_processed = 0
+                        for i, match_idx in enumerate(match_idxs):
+                            # if this is the first match, we need to handle the initial component in the complex
+                            if num_matches_processed == 0:
+                                essential_components.append(atomic_step[0:match_idx])
 
-                    We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
-                    So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
-                    in a list so we can go back and evaluate completeness of steps with module numbers later.
-                    """
-                    defined_by_modules = True
+                            # handle the component after the match character
+                            if i < len(match_idxs)-1:
+                                next_idx = match_idxs[i+1]
+                            else:
+                                next_idx = len(atomic_step)
+                            component_ko = atomic_step[match_idx+1:next_idx]
+
+                            # essential component after  +
+                            if atomic_step[match_idx] == '+':
+                                essential_components.append(component_ko)
+                            # non-essential component after '-'
+                            else:
+                                has_nonessential_step = True
+                                if component_ko not in module_nonessential_kos:
+                                    module_nonessential_kos.append(component_ko)
+
+                            num_matches_processed += 1
+
+                        # after processing all components of the enzyme complex, we compute the complex completeness
+                        num_present_components = 0
+                        for c in essential_components:
+                            if c in present_list_for_mnum:
+                                num_present_components += 1
+                        component_completeness = num_present_components / len(essential_components)
+                        num_complete_steps_in_path += component_completeness
                 else:
-                    raise ConfigError("Well. While estimating completeness for module %s, we found an atomic step in the pathway that we "
-                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
+                    # atomic step is a single enzyme or module
+                    # 4) Module numbers, ie Mxxxxx
+                    if atomic_step in self.all_modules_in_db:
+                        """
+                        This happens when a module is defined by other modules. For example, photosynthesis module M00611 is de
+fined as
+                        (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+
+                        We need all the modules to have been evaluated before we can determine completeness of steps with modul
+e numbers.
+                        So what we will do here is to use a flag variable to keep track of the modules that have this sort of d
+efinition
+                        in a list so we can go back and evaluate completeness of steps with module numbers later.
+                        """
+                        defined_by_modules = True
+                    # 5) regular old single enzymes, ie Kxxxxx (for KOs), COGyyyyy (for COGs), etc
+                    else:
+                        if atomic_step in present_list_for_mnum:
+                            num_complete_steps_in_path += 1
 
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
