@@ -2248,7 +2248,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for knum in all_kos:
             # we can only add warnings about missing KO profiles if we are working exclusively with KEGG data
             # because for user-defined modules, we don't have a KO dictionary
-            if self.ko_dict:
+            if self.ko_dict and not self.setup_ko_dict_from_modules_and_contigs_dbs:
                 if knum not in self.ko_dict:
                     mods_it_is_in = self.all_kos_in_db[knum]
                     if mods_it_is_in:
