@@ -2285,9 +2285,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 bin_level_ko_dict[ko]["contigs_to_genes"][contig] = set([gene_call_id])
 
         if anvio.DEBUG:
-            self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
+            self.run.info("Gene calls processed", "%d in bin" % len(kofam_hits_in_splits))
             if kos_not_in_modules:
-                self.run.warning("Just so you know, the following KOfam hits did not belong to any KEGG modules in the MODULES.db: %s"
+                self.run.warning("Just so you know, the following enzymes did not belong to any modules in the MODULES.db: %s"
                 % ", ".join(kos_not_in_modules))
 
         return bin_level_module_dict, bin_level_ko_dict
@@ -2669,14 +2669,14 @@ efinition
         # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
         if not self.quiet and self.genome_mode:
             if mods_with_nonessential_steps:
-                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
+                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following modules: %s.   "
                                  "At this time, we are not counting these steps in our percent completion estimates."
                                  % (", ".join(mods_with_nonessential_steps)))
 
             if mods_with_unassociated_ko:
-                self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
+                self.run.warning("Just so you know, while estimating the completeness of some modules, anvi'o saw "
                                  "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                 "associated KO. So we really cannot know just based on KOfam hits whether or not this "
+                                 "associated KO. So we really cannot know just based on gene annotations whether or not this "
                                  "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
                                  "and as a result their modules may be falsely considered incomplete. So it may be in your "
                                  "interest to go back and take a look at these individual modules to see if you can find the "
