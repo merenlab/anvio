@@ -3726,10 +3726,18 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
 
-        if not self.quiet:
-            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
+        # choose between user or kegg modules db
+        if self.user_input_dir:
+            self.modules_db_path = self.user_modules_db_path
+            self.run.info('Metabolism data', "USER-DEFINED")
+        else:
+            self.modules_db_path = self.kegg_modules_db_path
+            self.run.info('Metabolism data', "KEGG")
+
+            if not self.quiet:
+                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
@@ -3865,6 +3873,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.database_name = db_name
         args.multi_mode = True
         args.include_metadata = self.matrix_include_metadata
+        args.input_dir = self.user_input_dir or None
 
         self.update_available_headers_for_multi()
 
@@ -3872,6 +3881,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
             self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
+            self.run.info("User data directory: single estimator", args.input_dir)
 
         return args
 
