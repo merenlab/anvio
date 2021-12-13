@@ -2504,19 +2504,16 @@ efinition
             num_complete_module_steps = 0
 
             for atomic_step in p:
-                # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
-                if atomic_step[0] == "K" or atomic_step == "--":
-                    num_essential_steps_in_path += 1
-                # non-essential KO, don't count as a step in the path
-                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
-                    pass
                 # module step; we need to count these based on previously computed module completeness
-                elif atomic_step[0] == "M" and len(atomic_step) == 6:
-                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
-                    num_essential_steps_in_path += 1
-                else:
-                    raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
-                                      "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
+                if atomic_step in self.all_modules_in_db:
+                     num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                     num_essential_steps_in_path += 1
+                # non-essential KO, don't count as a step in the path
+                elif atomic_step[0] == '-' and not atomic_step == "--":
+                    pass
+                # single enzymes, protein complexes and '--' steps; were already counted as complete by previous function
+                 else:
+                     num_essential_steps_in_path += 1
 
             # now we adjust the previous pathway completeness
             old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
