@@ -6,7 +6,7 @@ package:
 
 source:
   git_url: https://github.com/merenlab/anvio
-  git_tag: release-candidate
+  git_tag: master
 
 build:
   number: 0
