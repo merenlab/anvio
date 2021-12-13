@@ -62,7 +62,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'description': "Information on each KOfam hit that belongs to a KEGG module"
                     },
                 'modules': {
-                    'output_suffix': "modules.txt",
+                    'output_suffix': "kegg_modules.txt",
                     'data_dict': "modules",
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
@@ -70,7 +70,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
-                    'output_suffix': "modules_custom.txt",
+                    'output_suffix': "kegg_modules_custom.txt",
                     'data_dict': "modules",
                     'headers': None,
                     'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
@@ -1870,6 +1870,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.user_input_dir:
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
+
+             # update available modes output suffixes
++            for m in self.available_modes:
++                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
         else:
             self.modules_db_path = self.kegg_modules_db_path
             self.run.info('Metabolism data', "KEGG")
