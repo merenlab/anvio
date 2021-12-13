@@ -2037,7 +2037,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         source_list = ','.join(["'%s'" % src for src in annotation_sources])
         hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
-        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession, function",
                                                                where_clause=hits_where_clause)
 
         contigs_db.disconnect()
@@ -2051,13 +2051,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
 
         kofam_gene_split_contig = []
-        for gene_call_id, ko in kofam_hits:
+        for gene_call_id, ko, func in kofam_hits:
             # some genes have multiple annotations that we need to split
-            if '!!!' in ko:
-                for annotation in ko.split('!!!'):
-                    kofam_gene_split_contig.append((annotation, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
-            else:
-                kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+            for annotation in ko.split('!!!'):
+                kofam_gene_split_contig.append((annotation, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+
+                # if we don't yet have a KO dictionary, we make it from the gene calls we just loaded
+                if self.setup_ko_dict_from_modules_and_contigs_dbs:
+                    if not self.ko_dict:
+                        raise ConfigError("Uh oh. The code is currently trying to add gene annotations to self.ko_dict, but this attribute does not "
+                                          "exist! You need to fix this.")
+                    if annotation not in self.ko_dict:
+                        self.ko_dict[annotation] = {'definition': func}
 
         self.progress.update("Done")
         self.progress.end()
