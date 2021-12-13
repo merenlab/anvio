@@ -172,11 +172,11 @@ class TablesForHMMHits(Table):
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
 
             if not self.genes_are_called and context != "CONTIG":
-                raise ConfigError("You are in trouble. The gene calling was skipped for this contigs database, yet anvi'o asked to run an "
-                                  "HMM profile that wishes to operate on %s context using the %s alphabet. It is not OK. You still could run "
-                                  "HMM profiles that does not require gene calls to be present (such as the HMM profile that identifies Ribosomal "
-                                  "RNAs in contigs, but for that you would have to explicitly ask for it by using the additional parameter "
-                                  "'--installed-hmm-profile PROFILE_NAME_HERE')." % (context, alphabet))
+                raise ConfigError(f"You are in trouble. The gene calling was skipped for this contigs database, yet anvi'o asked to run an "
+                                  f"HMM profile that wishes to operate on {context} context using the {alphabet} alphabet. It is not OK. You "
+                                  f"still could run HMM profiles that does not require gene calls to be present (such as the HMM profile that "
+                                  f"identifies Ribosomal RNAs in contigs, but for that you would have to explicitly ask for it by using the "
+                                  f"additional parameter '--installed-hmm-profile PROFILE_NAME_HERE').")
 
             self.run.info('Alphabet/context target found', '%s:%s' % (alphabet, context))
 
@@ -189,21 +189,27 @@ class TablesForHMMHits(Table):
             contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False))
 
             if context == 'GENE':
-                target_files_dict['%s:GENE' % alphabet] = os.path.join(tmp_directory_path, '%s_gene_sequences.fa' % alphabet)
-                contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
+                target_file_path = os.path.join(tmp_directory_path, f'{alphabet}_gene_sequences.fa')
+
+                contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_file_path,
                                                               simple_headers=True,
                                                               rna_alphabet=True if alphabet=='RNA' else False,
                                                               report_aa_sequences=True if alphabet=='AA' else False)
+
+                target_files_dict[f'{alphabet}:GENE'] = target_file_path
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK "
                                       "to ask for AA sequences in the CONTIG context. The answer to that is 'no, thanks'. If "
                                       "you think this is dumb, please let us know.")
                 else:
-                    target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
+                    target_file_path = os.path.join(tmp_directory_path, f'{alphabet}_contig_sequences.fa')
+
                     utils.export_sequences_from_contigs_db(self.db_path,
-                                                           target_files_dict['%s:CONTIG' % alphabet],
+                                                           target_file_path,
                                                            rna_alphabet=True if alphabet=='RNA' else False)
+
+                    target_files_dict[f'{alphabet}:CONTIG'] = target_file_path
 
         if have_hmm_sources_with_non_RNA_contig_context:
             # in that case, we should remind people what's up.
@@ -226,10 +232,10 @@ class TablesForHMMHits(Table):
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
 
             if alphabet in ['DNA', 'RNA'] and 'domtable' in self.hmmer_desired_output:
-                raise ConfigError("Domain table output was requested (probably with the --get-domtable-output flag, "
-                                  "does that look familiar?) but unfortunately this option is incompatible with the "
+                raise ConfigError(f"Domain table output was requested (probably with the --get-domtable-output flag, "
+                                  f"does that look familiar?) but unfortunately this option is incompatible with the "
                                   f"current source of HMM profiles, {source}, because this source uses a nucleotide "
-                                  "alphabet.")
+                                  f"alphabet.")
 
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
