@@ -2046,7 +2046,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kofam_gene_split_contig = []
         for gene_call_id, ko in kofam_hits:
-            kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+            # some genes have multiple annotations that we need to split
+            if '!!!' in ko:
+                for annotation in ko.split('!!!'):
+                    kofam_gene_split_contig.append((annotation, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+            else:
+                kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
 
         self.progress.update("Done")
         self.progress.end()
