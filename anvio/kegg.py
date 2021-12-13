@@ -56,17 +56,17 @@ P = terminal.pluralize
 OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'output_suffix': "kofam_hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["unique_id", "kegg_module", "module_is_complete",
+                    'headers': ["unique_id", "module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
-                                "kofam_hit", "gene_caller_id", "contig"],
+                                "enzyme_hit", "gene_caller_id", "contig"],
                     'description': "Information on each KOfam hit that belongs to a KEGG module"
                     },
                 'modules': {
                     'output_suffix': "kegg_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
+                    'headers': ["unique_id", "module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "kofam_hits_in_module", "gene_caller_ids_in_module", "warnings"],
+                                "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
@@ -78,7 +78,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko", "ko_definition"],
+                    'headers': ["unique_id", "enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
                     'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
                 }
@@ -92,46 +92,46 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'mode_type': 'all',
                         'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
                         },
-                  'kegg_module' : {
+                  'module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "KEGG module number"
+                        'description': "Module number"
                         },
                   'module_is_complete' : {
                         'cdict_key': 'complete',
                         'mode_type': 'modules',
-                        'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
+                        'description': "Whether a module is considered complete or not based on its percent completeness and the completeness threshold"
                         },
                   'module_completeness' : {
                         'cdict_key': 'percent_complete',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a KEGG module"
+                        'description': "Percent completeness of a module"
                         },
                   'module_name' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "English name/description of a KEGG module"
+                        'description': "Name/description of a module"
                         },
                   'module_class' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism class of a KEGG module"
+                        'description': "Metabolism class of a module"
                         },
                   'module_category' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism category of a KEGG module"
+                        'description': "Metabolism category of a module"
                         },
                   'module_subcategory' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism subcategory of a KEGG module"
+                        'description': "Metabolism subcategory of a module"
                         },
                   'module_definition' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
-                                       "in terms of the KOS that belong to the module"
+                        'description': "Definition string of a module. Describes the metabolic pathway "
+                                       "in terms of the enzymes (KOs, COGs, etc) that belong to the module."
                         },
                   'module_substrates' : {
                         'cdict_key': None,
@@ -148,75 +148,76 @@ OUTPUT_HEADERS = {'unique_id' : {
                   'module_intermediates' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of compounds that are intermediates the metabolic pathway "
+                        'description': "Comma-separated list of compounds that are intermediates in the metabolic pathway "
                                        "(compounds that are both outputs and inputs of reaction(s) in the pathway)"
                         },
                   'gene_caller_ids_in_module': {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
+                        'description': "Comma-separated list of gene caller IDs of enzymes that contribute to a module"
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
                         'mode_type': 'all',
-                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
-                                       "line in the output file will be a KOfam hit"
+                        'description': "Gene caller ID of a single enzyme in the contigs DB. If you choose this header, each "
+                                       "line in the output file will be an enzyme annotation"
                         },
-                  'kofam_hits_in_module' : {
+                  'enzyme_hits_in_module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of KOfam hits in a module"
+                        'description': "Comma-separated list of enzyme annotations that contribute to a module"
                         },
-                  'kofam_hit' : {
+                  'enzyme_hit' : {
                         'cdict_key': 'kofam_hits',
                         'mode_type': 'modules',
-                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file "
-                                       "will be a KOfam hit"
+                        'description': "Enzyme identifier for a single annotation (KO, COG, etc). If you choose this header, each line in the output file "
+                                       "will be an enzyme annotation"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
                         'mode_type': 'all',
-                        'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
-                                       "file will be a KOfam hit"
+                        'description': "Contig that an enzyme annotation is found on. If you choose this header, each line in the output "
+                                       "file will be an enzyme annotation"
                         },
                   'path_id' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Integer ID for a path through a KEGG module. No real meaning and just for data organization. "
-                                       "If you choose this header, each line in the output file will be a KOfam hit"
+                        'description': "Integer ID for a path through a module. No real meaning and just for data organization. "
+                                       "If you choose this header, each line in the output file will be an enzyme annotation"
                         },
                   'path' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
-                                       "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
-                                       "each line in the output file will be a KOfam hit"
+                        'description': "A path through a module (a linear sequence of enzymes that together represent each metabolic step "
+                                       "in the module. Most modules have several of these due to enzyme redundancy). If you choose this header, "
+                                       "each line in the output file will be an enzyme annotation"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
-                                       "in the output file will be a KOfam hit"
+                        'description': "Percent completeness of a particular path through a module. If you choose this header, each line "
+                                       "in the output file will be an enzyme annotation"
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
                         'mode_type': 'modules',
-                        'description': "If we are missing a KOfam profile for one of the KOs in a module, there will be a note in this column. "
+                        'description': "This column holds a comma-separated list of notes about things that might affect completeness "
+                                       "estimates for a module, such as missing enzyme profiles."
                         },
-                  'ko' : {
+                  'enzyme' : {
                         'cdict_key': None,
                         'mode_type': 'kofams',
-                        'description': 'KEGG Orthology (KO) number of a KOfam hit'
+                        'description': 'Identifier for an enzyme that is annotated in your database(s), ie a KO or COG number'
                         },
-                  'modules_with_ko': {
+                  'modules_with_enzyme': {
                         'cdict_key': 'modules',
                         'mode_type': 'kofams',
-                        'description': 'A comma-separated list of modules that the KO belongs to'
+                        'description': 'A comma-separated list of modules that the enzyme belongs to'
                         },
-                  'ko_definition': {
+                  'enzyme_definition': {
                         'cdict_key': None,
                         'mode_type': 'kofams',
-                        'description': 'The functional annotation associated with the KO number'
+                        'description': 'The functional annotation associated with the enzyme'
                         },
                   }
 
@@ -236,7 +237,7 @@ class KeggContext(object):
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = args.input_dir
+        self.user_input_dir = A('input_dir')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -1694,6 +1695,7 @@ class KeggEstimatorArgs():
         """
 
         self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+        #TODO: this dictionary may need to change to load annotation source per profile
 
         self.all_kos_in_db = {}
         for mod in self.all_modules_in_db:
@@ -1871,7 +1873,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
 
-             # update available modes output suffixes
+            # update available modes output suffixes
             for m in self.available_modes:
                 self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
         else:
@@ -2380,19 +2382,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
                         Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
                         ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
-                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to
-be non-essential.
+                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
                         For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
-                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not includ
-e such steps in
+                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
                         the module completeness estimate.
                         """
                         if atomic_step[1:] not in module_nonessential_kos:
                             module_nonessential_kos.append(atomic_step[1:])
                         num_nonessential_steps_in_path += 1
                         has_nonessential_step = True
-                    # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential
-)
+                    # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
                     else:
                         # split on '+' or '-'
                         pattern = re.compile('\+|\-')
@@ -2437,14 +2436,11 @@ e such steps in
                     # 4) Module numbers, ie Mxxxxx
                     if atomic_step in self.all_modules_in_db:
                         """
-                        This happens when a module is defined by other modules. For example, photosynthesis module M00611 is de
-fined as
+                        This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
                         (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
 
-                        We need all the modules to have been evaluated before we can determine completeness of steps with modul
-e numbers.
-                        So what we will do here is to use a flag variable to keep track of the modules that have this sort of d
-efinition
+                        We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
+                        So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
                         in a list so we can go back and evaluate completeness of steps with module numbers later.
                         """
                         defined_by_modules = True
@@ -2452,7 +2448,6 @@ efinition
                     else:
                         if atomic_step in present_list_for_mnum:
                             num_complete_steps_in_path += 1
-
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
             meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
@@ -2506,14 +2501,14 @@ efinition
             for atomic_step in p:
                 # module step; we need to count these based on previously computed module completeness
                 if atomic_step in self.all_modules_in_db:
-                     num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
-                     num_essential_steps_in_path += 1
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                    num_essential_steps_in_path += 1
                 # non-essential KO, don't count as a step in the path
                 elif atomic_step[0] == '-' and not atomic_step == "--":
                     pass
                 # single enzymes, protein complexes and '--' steps; were already counted as complete by previous function
-                 else:
-                     num_essential_steps_in_path += 1
+                else:
+                    num_essential_steps_in_path += 1
 
             # now we adjust the previous pathway completeness
             old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
@@ -2676,7 +2671,7 @@ efinition
             if mods_with_unassociated_ko:
                 self.run.warning("Just so you know, while estimating the completeness of some modules, anvi'o saw "
                                  "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                 "associated KO. So we really cannot know just based on gene annotations whether or not this "
+                                 "associated enzyme. So we really cannot know just based on gene annotations whether or not this "
                                  "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
                                  "and as a result their modules may be falsely considered incomplete. So it may be in your "
                                  "interest to go back and take a look at these individual modules to see if you can find the "
@@ -3083,7 +3078,7 @@ efinition
                 self.output_file_dict = self.setup_output_for_appending()
 
         if self.estimate_from_json:
-            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
+            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data() ## TODO: fix this for user data
         else:
             # we either get the modules DB info from the previous class, or we have to initialize it here
             if all_modules_in_db:
@@ -3191,7 +3186,7 @@ efinition
 
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates"])
-        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
@@ -3251,8 +3246,8 @@ efinition
                                 d[self.modules_unique_id] = {}
 
                                 # kofam hit specific info
-                                if "kofam_hit" in headers_to_include:
-                                    d[self.modules_unique_id]["kofam_hit"] = ko
+                                if "enzyme_hit" in headers_to_include:
+                                    d[self.modules_unique_id]["enzyme_hit"] = ko
                                 if "gene_caller_id" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_id"] = gc_id
                                 if "contig" in headers_to_include:
@@ -3280,8 +3275,8 @@ efinition
                                     d[self.modules_unique_id][self.name_header] = bin
                                 if "db_name" in headers_to_include:
                                     d[self.modules_unique_id]["db_name"] = self.database_name
-                                if "kegg_module" in headers_to_include:
-                                    d[self.modules_unique_id]["kegg_module"] = mnum
+                                if 'module' in headers_to_include:
+                                    d[self.modules_unique_id]['module'] = mnum
 
                                 # module specific info
                                 if "module_name" in headers_to_include:
@@ -3311,7 +3306,7 @@ efinition
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
-                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+                                kos_in_mod = sorted(c_dict['enzyme_hits'].keys())
                                 # gene call list should be in same order as KO list
                                 gcids_in_mod = []
                                 kos_in_mod_list = []
@@ -3319,8 +3314,8 @@ efinition
                                     for ko in kos_in_mod:
                                         gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                                         kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                                if "kofam_hits_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
+                                if "enzyme_hits_hits_in_module" in headers_to_include:
+                                    d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
@@ -3349,8 +3344,8 @@ efinition
                         d[self.modules_unique_id][self.name_header] = bin
                     if "db_name" in headers_to_include:
                         d[self.modules_unique_id]["db_name"] = self.database_name
-                    if "kegg_module" in headers_to_include:
-                        d[self.modules_unique_id]["kegg_module"] = mnum
+                    if 'module' in headers_to_include:
+                        d[self.modules_unique_id]['module'] = mnum
 
                     # module specific info
                     if "module_name" in headers_to_include:
@@ -3388,8 +3383,8 @@ efinition
                         for ko in kos_in_mod:
                             gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                             kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                    if "kofam_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
+                    if "enzyme_hits_in_module" in headers_to_include:
+                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
@@ -5357,7 +5352,7 @@ class KeggModuleEnrichment(KeggContext):
         The input format for anvi-script-enrichment-stats is described in a comment at the top of that script, and here is
         how we get the values for each column:
         The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as 'module_name'
-        and 'kegg_module', respectively.
+        and 'module', respectively.
         The 'N_*' columns are the total number of samples in each group.
         For each module, this function determines which samples the module is 'present' in according to the specified completion threshold.
         This determines the list of samples for the 'sample_ids' column as well as the 'p_*' proportions for each group of samples.
@@ -5375,7 +5370,7 @@ class KeggModuleEnrichment(KeggContext):
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name']
+        required_modules_txt_headers = ['module', 'module_completeness', 'module_name']
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -5496,7 +5491,7 @@ class KeggModuleEnrichment(KeggContext):
         # convert modules mode output to enrichment input
         N_values = sample_groups_df['group'].value_counts()
         group_list = N_values.keys()
-        module_list = modules_df['kegg_module'].unique()
+        module_list = modules_df['module'].unique()
 
         output_dict = {}
         header_list = ['KEGG_MODULE', 'accession', 'sample_ids', 'associated_groups']
