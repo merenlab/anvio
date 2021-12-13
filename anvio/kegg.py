@@ -3736,6 +3736,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.annotation_sources_to_use = modules_db.db.get_meta_value('annotation_sources').split(',')
             modules_db.disconnect()
 
+            # update available modes output suffixes
+            for m in self.available_modes:
+                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
+
         else:
             self.modules_db_path = self.kegg_modules_db_path
             self.run.info('Metabolism data', "KEGG")
