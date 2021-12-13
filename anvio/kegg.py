@@ -1918,6 +1918,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
                                   "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
 
+            self.annotation_sources_to_use = ['KOfam']
+
         elif self.user_input_dir:
             # sanity check that contigs db contains all necessary functional sources
             modules_db_sources = set(kegg_modules_db.db.get_meta_value('annotation_sources').split(','))
@@ -1930,6 +1932,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"required for the modules in the database at {self.modules_db_path}. You will have to "
                                   f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
                                   f"before running this program again. Here are the missing sources: {missing_sources}")
+
+            self.annotation_sources_to_use = list(modules_db_sources)
 
         contigs_db.disconnect()
         kegg_modules_db.disconnect()
@@ -3062,7 +3066,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 self.init_data_from_modules_db()
 
-            kofam_hits_info = self.init_hits_and_splits()
+            kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
             self.init_paths_for_modules()
 
             if self.add_coverage:
