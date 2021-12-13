@@ -3730,9 +3730,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.user_input_dir:
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
+
+            # load required sources from modules db
+            modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
+            self.annotation_sources_to_use = modules_db.db.get_meta_value('annotation_sources').split(',')
+            modules_db.disconnect()
+
         else:
             self.modules_db_path = self.kegg_modules_db_path
             self.run.info('Metabolism data', "KEGG")
+
+            self.annotation_sources_to_use = ['KOfam']
 
             if not self.quiet:
                 self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
@@ -3819,15 +3827,19 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
         g.load_genomes_descriptions(skip_functions=True, init=False)
 
-        bad_genomes = [v['name'] for v in g.genomes.values() if not v['gene_function_sources'] or 'KOfam' not in v['gene_function_sources']]
-        if len(bad_genomes):
-            bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
-            raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your {P('genome', len(g.genomes))} "
-                              f"{P('are', len(bad_genomes), alt='is')} lacking any function annotations for "
-                              f"`KOfam`. This means you either need to run the program `anvi-run-kegg-kofams` "
-                              f"on them, or remove them from your internal and/or external genomes files "
-                              f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
-                              f"{', '.join(bad_genomes_txt)}.")
+        # sanity check that all dbs are properly annotated with required sources
+        for src in self.annotation_sources_to_use:
+            bad_genomes = [v['name'] for v in g.genomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
+            if len(bad_genomes):
+                bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
+                it_or_them = P('it', len(bad_genomes), alt='them')
+                raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your {P('genome', len(g.genomes))} "
+                                  f"{P('is', len(bad_genomes), alt='are')} lacking any function annotations for "
+                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
+                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
+                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
+                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
+                                  f"{', '.join(bad_genomes_txt)}.")
 
         # metagenome mode must be off
         if self.metagenome_mode:
