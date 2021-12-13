@@ -2037,7 +2037,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
         # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
-        self.progress.update("Organizing KOfam hit data")
+        self.progress.update("Organizing gene call data")
         gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
         gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
         assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
@@ -2049,13 +2049,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.progress.update("Done")
         self.progress.end()
 
-        self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
+        sources_str = ", ".join(annotation_sources)
+        self.run.info("Annotation sources used", sources_str)
+        self.run.info("Gene calls from these sources", "%d found" % len(kofam_hits), quiet=self.quiet)
 
         if not self.quiet and not len(kofam_hits):
-            self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
-                             "could even be biologically correct. But we thought we'd mention it just in case you thought it was weird. "
-                             "Other, technical reasons that this could have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` "
-                             "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
+            self.run.warning(f"Hmmm. No gene calls from any of the following annotation sources were found in this contigs DB: {sources_str}. "
+                             f"The consequence is that all metabolism estimate outputs will be empty. This is fine, and could even be biologically "
+                             f"correct. But we thought we'd mention it just in case you thought it was weird. Other, technical reasons that this could "
+                             f"have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` or another annotation program, or "
+                             "2) you imported functional annotations but the 'source' did not match those in the list above.")
 
         return kofam_gene_split_contig
 
