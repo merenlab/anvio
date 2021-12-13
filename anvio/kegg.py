@@ -1736,6 +1736,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.profile_db = None
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = None
+        self.setup_ko_dict_from_modules_and_contigs_dbs = False
 
         # init the base classes
         KeggEstimatorArgs.__init__(self, self.args)
@@ -1873,6 +1874,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
 
+            self.setup_ko_dict_from_modules_and_contigs_dbs = True
+
             # update available modes output suffixes
             for m in self.available_modes:
                 self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
@@ -1936,6 +1939,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"before running this program again. Here are the missing sources: {missing_sources}")
 
             self.annotation_sources_to_use = list(modules_db_sources)
+
+            # since we did not setup KO dict above, we do it now using all KOs from the modules database
+            self.ko_dict = kegg_modules_db.get_ko_function_dict()
 
         contigs_db.disconnect()
         kegg_modules_db.disconnect()
