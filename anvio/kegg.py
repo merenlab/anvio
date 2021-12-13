@@ -4809,6 +4809,23 @@ class ModulesDatabase(KeggContext):
         return self.db.get_single_column_from_table(self.module_table_name, 'data_value', unique=True, where_clause=where_clause_string)
 
 
+    def get_ko_function_dict(self):
+        """This function returns a 2-level dictionary keyed by KO number. The inner dict contains a 'definition' field
+           that stores the KO's functional annotation.
+
+           This method effectively builds a partial KO dict similar to the one produced by the setup_ko_dict() function,
+           but containing only the KOs/gene annotations from the modules DB. When being used for user-defined metabolism,
+           it should be expanded later with gene annotations from the contigs database(s) being worked on.
+        """
+        where_clause_string = "data_name = 'ORTHOLOGY'"
+        kos_and_functions = self.db.get_some_columns_from_table(self.module_table_name, "data_value,data_definition", unique=True, where_clause=where_clause_string)
+        ko_func_dict = {}
+        for k,f in kos_and_functions:
+            if k not in ko_func_dict:
+                ko_func_dict[k] = f
+        return ko_func_dict
+
+
     def get_modules_for_knum(self, knum):
         """This function returns a list of modules that the given KO belongs to."""
         where_clause_string = "data_value = '%s'" % (knum)
