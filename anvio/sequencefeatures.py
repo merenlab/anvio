@@ -555,9 +555,10 @@ class FindPalindrome(object):
         i = 0
         while i < L-m+1:
             j = 0
+            skip_ahead = False
             while j < L-i-m:
                 if rev[j] != seq[i]:
-                    # The (i, j) scenario doesn't _start_ with a match. Game over.
+                    # The (i, j) scenario doesn't even _start_ with a match. Game over.
                     pass
                 else:
                     n, k = 0, 0
@@ -568,6 +569,8 @@ class FindPalindrome(object):
                             # Stop of left has exceeded start of right.
                             if is_palindrome:
                                 palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                                skip_ahead = True
+                                skip_amount = last_match
                             break
 
                         if rev[j+k] == seq[i+k]:
@@ -579,6 +582,8 @@ class FindPalindrome(object):
                         if n > N:
                             if is_palindrome:
                                 palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                                skip_ahead = True
+                                skip_amount = last_match
                             break
 
                         if last_match == m-1:
@@ -586,6 +591,9 @@ class FindPalindrome(object):
 
                         k += 1
                 j += 1
+
+            if skip_ahead:
+                i += skip_amount
             i += 1
 
         for p in palindromes:

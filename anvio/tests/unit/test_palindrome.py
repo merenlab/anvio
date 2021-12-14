@@ -177,38 +177,30 @@ class TestFindPalindrome(unittest.TestCase):
         self.assertEqual(seq[for_start:for_stop], seq[5:15])
         self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
 
-    #def test_variedlength_mismatchless(self):
-    #    seq = 'GNAAANCNNTTTTNTAGAAGNCCAAGTGNN'
 
-    #    for_start_expected = 5
-    #    for_stop_expected = 15
+    def test_variedlength_mismatchless(self):
+        seq = self.seq_with_palindromes(
+            template = self.nt_30,
+            start_stops = [
+                (5, 15, 18, 28),
+            ],
+            palindrome_seqs = [
+                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+            ],
+        )
 
-    #    rev_start_expected = 18
-    #    rev_stop_expected = 28
+        p = FindPalindrome(min_len=8)
+        palindromes = p.find(seq)
 
-    #    for_pal = self.nt_10
-    #    rev_pal = anvio.utils.rev_comp(for_pal)
+        for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
-    #    # Insert palindrome into seq
-    #    for_pal = list(for_pal)
-    #    rev_pal = list(rev_pal)
-    #    seq = list(seq)
-    #    seq[for_start_expected:for_stop_expected] = for_pal
-    #    seq[rev_start_expected:rev_stop_expected] = rev_pal
-    #    seq = ''.join(seq)
+        self.assertEqual(for_start, 5)
+        self.assertEqual(for_stop, 15)
+        self.assertEqual(rev_start, 18)
+        self.assertEqual(rev_stop, 28)
 
-    #    p = FindPalindrome(seq, min_len=3)
-    #    palindromes = p.find()
-
-    #    for_start, for_stop, rev_start, rev_stop = palindromes[0]
-
-    #    self.assertEqual(for_start, for_start_expected)
-    #    self.assertEqual(for_stop, for_stop_expected)
-    #    self.assertEqual(rev_start, rev_start_expected)
-    #    self.assertEqual(rev_stop, rev_stop_expected)
-
-    #    self.assertEqual(seq[for_start:for_stop], seq[for_start_expected:for_stop_expected])
-    #    self.assertEqual(seq[rev_start:rev_stop], seq[rev_start_expected:rev_stop_expected])
+        self.assertEqual(seq[for_start:for_stop], seq[5:15])
+        self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
 
 
     def seq_with_palindromes(self, template, start_stops, palindrome_seqs):
