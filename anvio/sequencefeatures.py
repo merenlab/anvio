@@ -564,6 +564,12 @@ class FindPalindrome(object):
                     last_match = 0
                     is_palindrome = False
                     while True:
+                        if (i+k+1) > (L-j-k-1):
+                            # Stop of left has exceeded start of right.
+                            if is_palindrome:
+                                palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                            break
+
                         if rev[j+k] == seq[i+k]:
                             last_match = k
                         else:
