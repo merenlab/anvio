@@ -2800,16 +2800,15 @@ D = {
                      "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                      "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
-    'kegg-output-modes': (
-            ['--kegg-output-modes'],
-            {'default': None,
+    'output-modes': (
+            ['--output-modes'],
+            {'default': 'modules',
              'metavar': 'MODES',
              'type': str,
-             'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
+             'help': "Use this flag to indicate what information you want in the metabolism output files, by "
                      "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
-                     "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
-                     "'complete_modules'. To see a list of available output modes, run this script with the flag "
-                     "--list-available-modes."}
+                     "different output file, all with the same prefix). To see a list of available output modes, "
+                     "run this script with the flag --list-available-modes."}
                 ),
     'list-available-modes': (
             ['--list-available-modes'],

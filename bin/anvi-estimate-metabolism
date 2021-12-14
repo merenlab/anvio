@@ -82,7 +82,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
-    groupL.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))
+    groupL.add_argument(*anvio.A('output-modes'), **anvio.K('output-modes'))
     groupL.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
     groupL.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
     groupL.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
