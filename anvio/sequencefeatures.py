@@ -553,7 +553,8 @@ class FindPalindrome(object):
 
         palindromes = []
 
-        for i in range(L-m+1):
+        i = 0
+        while i < L-m+1:
             for j in range(L-i-m):
                 n, k = 0, 0
                 is_palindrome = False
@@ -566,12 +567,14 @@ class FindPalindrome(object):
                     if n > N:
                         if is_palindrome:
                             palindromes.append((i, i+k, L-j-k, L-j))
+                            i += k-1
                         break
 
                     if k == m-1:
                         is_palindrome = True
 
                     k += 1
+            i += 1
 
         for p in palindromes:
             self.run.info(f"{p}", f"{self.seq[p[0]:p[1]]}, {self.seq[p[2]:p[3]]}")
