@@ -134,11 +134,15 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         left: xDisps[genomeID]+(gene.start+50)*scaleFactor,
         scaleX: 0.5,
         scaleY: 0.5,
+        editable : true,
         hasControls: false,
         lockMovementX: true,
         lockMovementY: true,
         lockScaling: true,
         hoverCursor: 'text'
+      });
+      label.on("editing:exited", function(e) {
+        console.log(label.text)
       });
       if(this.settings['display']['arrow-style'] == 3) {
         label.set({
