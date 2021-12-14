@@ -538,46 +538,40 @@ class Palindromes:
 
 
 class FindPalindrome(object):
-    def __init__(self, sequence, min_len=5, max_mis=0):
+    def __init__(self, min_len=5, max_mis=0):
         self.m = min_len
-        self.seq = sequence
-        self.rev = utils.rev_comp(self.seq)
         self.N = max_mis
 
         self.run = anvio.terminal.Run()
 
 
-    def find(self):
+    def find(self, seq):
+        rev = utils.rev_comp(seq)
         m, N = self.m, self.N
-        L = len(self.seq)
+        L = len(seq)
 
         palindromes = []
 
-        i = 0
-        while i < L-m+1:
+        for i in range(L-m+1):
             for j in range(L-i-m):
                 n, k = 0, 0
-                is_palindrome = False
 
                 while True:
-                    if self.rev[j+k] != self.seq[i+k]:
+                    if rev[j+k] != seq[i+k]:
                         # mismatch
                         n += 1
 
                     if n > N:
-                        if is_palindrome:
-                            palindromes.append((i, i+k, L-j-k, L-j))
-                            i += k-1
                         break
 
                     if k == m-1:
-                        is_palindrome = True
+                        palindromes.append((i, i+k+1, L-j-k-1, L-j))
+                        break
 
                     k += 1
-            i += 1
 
         for p in palindromes:
-            self.run.info(f"{p}", f"{self.seq[p[0]:p[1]]}, {self.seq[p[2]:p[3]]}")
+            self.run.info(f"{p}", f"{seq[p[0]:p[1]]}, {seq[p[2]:p[3]]}")
 
         return palindromes
 
