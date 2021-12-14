@@ -63,10 +63,14 @@ def main(args):
         input_names_missing_from_contigs_db = [n for n in input_data_file_content if n not in contigs_basic_info]
 
         if len(input_names_missing_from_contigs_db):
-            raise ConfigError("OK. %d of %d contig names in your input file have nothing to do with the contig names found in "
-                              "the contigs database. Here is an example: %s." % (len(input_names_missing_from_contigs_db),
-                                                                                 len(input_data_file_content),
-                                                                                 input_names_missing_from_contigs_db[0]))
+            if len(input_names_missing_from_contigs_db) == len(input_data_file_content):
+                raise ConfigError(f"None of the contig names in your input file matches to the contig names found in the contigs :( "
+                                  f"Maybe those are split names and you are mistakenly using `--contigs-mode` flag? Well, here is an "
+                                  f"example: {input_names_missing_from_contigs_db[0]}.")
+            else:
+                raise ConfigError(f"OK. Of the {len(input_data_file_content)} in your input file, {len(input_names_missing_from_contigs_db)} "
+                                  f"have no match to any contig names found in your contigs database. Here is an example contig name from "
+                                  f"your file that does not match to anything in the contigs db: {input_names_missing_from_contigs_db[0]}")
 
         # convert input data names to split names:
         contig_names = list(input_data_file_content.keys())

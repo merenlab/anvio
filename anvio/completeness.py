@@ -299,7 +299,7 @@ class Completeness:
                     info_text = "GREAT DOMAIN EST & YOU'RE GOLDEN. The very high confidence of domain prediction indicates that this set of contigs\
                                  are almost certainly coming from a population that belongs to %s. IN ADDITION, the low redundancy of SCGs\
                                  do not predict any serious contamination. But please remember that this information does not mean there is NO\
-                                 contamination in your genome bin. If you want to take a more carful look, you can try `anvi-refine`." \
+                                 contamination in your genome bin. If you want to take a more careful look, you can try `anvi-refine`." \
                                             % (best_matching_domain)
                 elif best_matching_domain_redundancy >= 10 and best_matching_domain_redundancy <= 100:
                     info_text = "GREAT DOMAIN CONFIDENCE (YAY) BUT SOME SERIOUS REDUNDANCY (BOO). The very high confidence of domain prediction indicates that this\

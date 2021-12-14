@@ -12,7 +12,7 @@
 #
 
 FROM continuumio/miniconda3:4.9.2
-ENV ANVIO_VERSION "7.1-dev"
+ENV ANVIO_VERSION "7.1_dev"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge

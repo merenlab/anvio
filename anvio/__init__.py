@@ -30,6 +30,7 @@ FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
 FORCE_USE_MY_TREE = '--force-use-my-tree' in sys.argv
 DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
+USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
 
