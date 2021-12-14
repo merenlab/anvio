@@ -3503,16 +3503,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id][self.name_header] = bin
                     if "db_name" in headers_to_include:
                         d[self.ko_unique_id]["db_name"] = self.database_name
-                    if "ko" in headers_to_include:
-                        d[self.ko_unique_id]["ko"] = ko
+                    if "enzyme" in headers_to_include:
+                        d[self.ko_unique_id]["enzyme"] = ko
                     if "gene_caller_id" in headers_to_include:
                         d[self.ko_unique_id]["gene_caller_id"] = gc_id
                     if "contig" in headers_to_include:
                         d[self.ko_unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
-                    if "modules_with_ko" in headers_to_include:
-                        d[self.ko_unique_id]["modules_with_ko"] = metadata_dict["modules_with_ko"]
-                    if "ko_definition" in headers_to_include:
-                        d[self.ko_unique_id]["ko_definition"] = metadata_dict["ko_definition"]
+                    if "modules_with_enzyme" in headers_to_include:
+                        d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_ko"]
+                    if "enzyme_definition" in headers_to_include:
+                        d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["ko_definition"]
 
                     if self.add_coverage:
                         if not self.profile_db:
