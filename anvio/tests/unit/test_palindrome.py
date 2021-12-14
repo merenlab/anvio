@@ -178,29 +178,75 @@ class TestFindPalindrome(unittest.TestCase):
         self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
 
 
-    def test_variedlength_mismatchless(self):
+    def test_split(self):
+        pal_for = 'AACTGGAGCTCGAACTG'
+        #          |||||||| |||||||| 
+        pal_rev = 'AACTGGAGGTCGAACTG'
+        pal_rev = anvio.utils.rev_comp(pal_rev)
+
+        x0, x1 = 5, 30
+
         seq = self.seq_with_palindromes(
-            template = self.nt_30,
+            template = self.nt_30*2,
             start_stops = [
-                (5, 15, 18, 28),
+                (x0, x0+len(pal_for), x1, x1+len(pal_for)),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (pal_for, pal_rev),
             ],
         )
 
-        p = FindPalindrome(min_len=8)
+        # One long palindrome should be found
+        MISMATCH_TOL = 1
+        p = FindPalindrome(min_len=8, max_mis=MISMATCH_TOL)
+        palindromes = p.find(seq)
+
+        # Two shorter palindrome should be found
+        MISMATCH_TOL = 0
+        p = FindPalindrome(min_len=7, max_mis=MISMATCH_TOL)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
+        self.assertEqual(for_start, x0)
+        self.assertEqual(for_stop, 13)
+        self.assertEqual(rev_start, 39)
+        self.assertEqual(rev_stop, 47)
+        self.assertEqual(seq[for_start:for_stop], seq[5:13])
+        self.assertEqual(seq[rev_start:rev_stop], seq[39:47])
 
-        self.assertEqual(for_start, 5)
-        self.assertEqual(for_stop, 15)
-        self.assertEqual(rev_start, 18)
-        self.assertEqual(rev_stop, 28)
+        for_start, for_stop, rev_start, rev_stop = palindromes[1]
+        self.assertEqual(for_start, 14)
+        self.assertEqual(for_stop, 22)
+        self.assertEqual(rev_start, 30)
+        self.assertEqual(rev_stop, 38)
+        self.assertEqual(seq[for_start:for_stop], seq[14:22])
+        self.assertEqual(seq[rev_start:rev_stop], seq[30:38])
 
-        self.assertEqual(seq[for_start:for_stop], seq[5:15])
-        self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
+
+    def test_variedlength_mismatchless(self):
+        for m in range(4, 10):
+            seq = self.seq_with_palindromes(
+                template = self.nt_30,
+                start_stops = [
+                    (5, 15, 18, 28),
+                ],
+                palindrome_seqs = [
+                    (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                ],
+            )
+
+            p = FindPalindrome(min_len=m)
+            palindromes = p.find(seq)
+
+            for_start, for_stop, rev_start, rev_stop = palindromes[0]
+
+            self.assertEqual(for_start, 5)
+            self.assertEqual(for_stop, 15)
+            self.assertEqual(rev_start, 18)
+            self.assertEqual(rev_stop, 28)
+
+            self.assertEqual(seq[for_start:for_stop], seq[5:15])
+            self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
 
 
     def seq_with_palindromes(self, template, start_stops, palindrome_seqs):
