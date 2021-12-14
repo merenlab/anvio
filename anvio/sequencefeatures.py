@@ -535,3 +535,44 @@ class Palindromes:
                         output_file.write('\t'.join([f"{getattr(palindrome, h)}" for h in headers]) + '\n')
 
             self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
+
+
+class FindPalindrome(object):
+    def __init__(self, sequence, min_len=5, max_mis=0):
+        self.m = min_len
+        self.seq = sequence
+        self.rev = utils.rev_comp(self.seq)
+        self.N = max_mis
+
+        self.run = anvio.terminal.Run()
+
+
+    def find(self):
+        m, N = self.m, self.N
+        L = len(self.seq)
+
+        palindromes = []
+
+        for i in range(L-m+1):
+            for j in range(L-i-m):
+                n, k = 0, 0
+
+                while True:
+                    if self.rev[j+k] != self.seq[i+k]:
+                        # mismatch
+                        n += 1
+
+                    if n > N:
+                        break
+
+                    if k == m-1:
+                        self.run.info('FOUND MATCH', self.rev[j:j+k+1])
+                        palindromes.append((i, i+k+1, L-j-k-1, L-j))
+                        break
+
+                    k += 1
+
+        return palindromes
+
+
+
