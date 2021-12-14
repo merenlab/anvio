@@ -556,22 +556,24 @@ class FindPalindrome(object):
         while i < L-m+1:
             j = 0
             while j < L-i-m:
-                n, k = 0, 0
+                if rev[j] != seq[i]:
+                    # The (i, j) scenario doesn't _start_ with a match. Game over.
+                    pass
+                else:
+                    n, k = 0, 0
+                    while True:
+                        if rev[j+k] != seq[i+k]:
+                            # mismatch
+                            n += 1
 
-                while True:
-                    if rev[j+k] != seq[i+k]:
-                        # mismatch
-                        n += 1
+                        if n > N:
+                            break
 
-                    if n > N:
-                        break
+                        if k == m-1:
+                            palindromes.append((i, i+k+1, L-j-k-1, L-j))
+                            break
 
-                    if k == m-1:
-                        palindromes.append((i, i+k+1, L-j-k-1, L-j))
-                        break
-
-                    k += 1
-
+                        k += 1
                 j += 1
             i += 1
 
