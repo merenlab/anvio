@@ -538,19 +538,19 @@ class Palindromes:
 
 
 class FindPalindrome(object):
-    def __init__(self, min_len=5, max_mis=0):
-        self.m = min_len
-        self.N = max_mis
-
-        self.run = anvio.terminal.Run()
+    def __init__(self, min_palindrome_length=10, max_num_mismatches=0, min_distance=0):
+        self.min_palindrome_length = min_palindrome_length
+        self.max_num_mismatches = max_num_mismatches
+        self.min_distance = min_distance
 
 
     def find(self, seq):
         rev = utils.rev_comp(seq)
-        m, N = self.m, self.N
+        m, N, D = self.min_palindrome_length, self.max_num_mismatches, self.min_distance
+
         L = len(seq)
 
-        palindromes = []
+        palindrome_coords = []
 
         i = 0
         while i < L-m+1:
@@ -568,7 +568,7 @@ class FindPalindrome(object):
                         if (i+k+1) > (L-j-k-1):
                             # Stop of left has exceeded start of right.
                             if is_palindrome:
-                                palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                                palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
                                 skip_ahead = True
                                 skip_amount = last_match
                             break
@@ -581,7 +581,7 @@ class FindPalindrome(object):
 
                         if n > N:
                             if is_palindrome:
-                                palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                                palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
                                 skip_ahead = True
                                 skip_amount = last_match
                             break
@@ -594,12 +594,10 @@ class FindPalindrome(object):
 
             if skip_ahead:
                 i += skip_amount
-            i += 1
+            else:
+                i += 1
 
-        for p in palindromes:
-            self.run.info(f"{p}", f"{seq[p[0]:p[1]]}, {seq[p[2]:p[3]]}")
-
-        return palindromes
+        return palindrome_coords
 
 
 
