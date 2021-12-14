@@ -4833,7 +4833,7 @@ class ModulesDatabase(KeggContext):
         ko_func_dict = {}
         for k,f in kos_and_functions:
             if k not in ko_func_dict:
-                ko_func_dict[k] = f
+                ko_func_dict[k] = {'definition': f }
         return ko_func_dict
 
 
