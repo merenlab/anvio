@@ -53,7 +53,7 @@ P = terminal.pluralize
 # data_dict indicates which data dictionary is used for generating the output (modules or kofams)
 # headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
 # description is what is printed when --list-available-modes parameter is used
-OUTPUT_MODES = {'kofam_hits_in_modules': {
+OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "kofam_hits_in_modules.txt",
                     'data_dict': "modules",
                     'headers': ["unique_id", "module", "module_is_complete",
@@ -75,7 +75,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'headers': None,
                     'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
                     },
-                'kofam_hits': {
+                'hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
                     'headers': ["unique_id", "enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
@@ -225,7 +225,7 @@ OUTPUT_HEADERS = {'unique_id' : {
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
 # get_XXX_metadata_dictionary() function
 MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
-KO_METADATA_HEADERS = ["ko_definition", "modules_with_ko"]
+KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
 
 
 
@@ -1760,7 +1760,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
                                         'mode_type' : 'all',
-                                        'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
+                                        'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
 
         # input options sanity checks
@@ -2147,12 +2147,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
                                                        'mode_type': 'kofam_hits_in_modules',
-                                                       'description': f"Mean coverage of gene with KOfam hit in sample {s}"
+                                                       'description': f"Mean coverage of gene in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
                                                         'mode_type': 'kofam_hits_in_modules',
-                                                        'description': f"Detection of gene with KOfam hit in sample {s}"
+                                                        'description': f"Detection of gene in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
@@ -2174,8 +2174,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                             }
 
         # we update the header list for the affected modes
-        self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
-        self.available_modes["kofam_hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
@@ -3476,7 +3476,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
-            headers_to_include = set(OUTPUT_MODES["kofam_hits"]["headers"])
+            headers_to_include = set(OUTPUT_MODES["hits"]["headers"])
         else:
             headers_to_include = set(headers_to_include)
 
@@ -3784,19 +3784,19 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.available_headers["genome_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
+                                            'description': "Name of genome in which we find gene annotations (hits) and/or modules"
                                             }
         elif self.name_header == 'bin_name':
             self.available_headers["bin_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
+                                            'description': "Name of bin in which we find gene annotations (hits) and/or modules"
                                             }
         elif self.name_header == 'contig_name':
             self.available_headers["contig_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of contig (in a metagenome) in which we find KOfam hits and/or KEGG modules"
+                                            'description': "Name of contig (in a metagenome) in which we find gene annotations (hits) and/or modules"
                                             }
 
         # here we make sure db_name is always included in the multi-mode output
