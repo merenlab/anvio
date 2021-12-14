@@ -1613,7 +1613,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
-        self.output_modes = A('kegg_output_modes') or A('output_modes') or "modules"
+        self.output_modes = A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
@@ -1633,6 +1633,10 @@ class KeggEstimatorArgs():
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
             self.module_completion_threshold = 0.0
+
+        # we use the below flag to find out if long format output was explicitly requested
+        # this gets around the fact that we always assign 'modules' as the default output mode
+        self.long_format_mode = True if args.output_modes else False
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
@@ -3712,7 +3716,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                               "work for input files with multiple contigs DBs. :( ")
 
         # output sanity checks
-        if self.matrix_format and args.kegg_output_modes:
+        if self.matrix_format and self.long_format_mode:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
                               "like this, anvi'o is confused. :) ")
         if self.matrix_include_metadata and not self.matrix_format:

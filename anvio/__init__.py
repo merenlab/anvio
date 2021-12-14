@@ -2802,7 +2802,7 @@ D = {
                 ),
     'output-modes': (
             ['--output-modes'],
-            {'default': 'modules',
+            {'default': None,
              'metavar': 'MODES',
              'type': str,
              'help': "Use this flag to indicate what information you want in the metabolism output files, by "
