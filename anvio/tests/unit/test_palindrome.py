@@ -55,7 +55,7 @@ class TestFindPalindrome(unittest.TestCase):
         self.assertEqual(seq[rev_start:rev_stop], seq[rev_start_expected:rev_stop_expected])
 
 
-    def test_mismatchless(self):
+    def test_variedlength_mismatchless(self):
         seq = 'GNAAANCNNTTTTNTAGAAGNCCAAGTGNN'
 
         for_start_expected = 5
@@ -75,7 +75,7 @@ class TestFindPalindrome(unittest.TestCase):
         seq[rev_start_expected:rev_stop_expected] = rev_pal
         seq = ''.join(seq)
 
-        p = FindPalindrome(seq, min_len=8)
+        p = FindPalindrome(seq, min_len=3)
         palindromes = p.find()
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
