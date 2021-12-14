@@ -3322,7 +3322,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
                                 # comma-separated lists of KOs and gene calls in module
-                                kos_in_mod = sorted(c_dict['enzyme_hits'].keys())
+                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
                                 # gene call list should be in same order as KO list
                                 gcids_in_mod = []
                                 kos_in_mod_list = []
@@ -3330,7 +3330,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     for ko in kos_in_mod:
                                         gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                                         kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                                if "enzyme_hits_hits_in_module" in headers_to_include:
+                                if "enzyme_hits_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
