@@ -561,18 +561,21 @@ class FindPalindrome(object):
                     pass
                 else:
                     n, k = 0, 0
+                    last_match = 0
                     is_palindrome = False
                     while True:
-                        if rev[j+k] != seq[i+k]:
+                        if rev[j+k] == seq[i+k]:
+                            last_match = k
+                        else:
                             # mismatch
                             n += 1
 
                         if n > N:
                             if is_palindrome:
-                                palindromes.append((i, i+k, L-j-k, L-j))
+                                palindromes.append((i, i+last_match+1, L-j-last_match-1, L-j))
                             break
 
-                        if k == m-1:
+                        if last_match == m-1:
                             is_palindrome = True
 
                         k += 1
