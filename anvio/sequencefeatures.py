@@ -589,6 +589,10 @@ class FindPalindrome(object):
                         if last_match == m-1:
                             is_palindrome = True
 
+                        if (L-j-k-1) - (i+k+1) < D:
+                            skip_ahead = False
+                            break
+
                         k += 1
                 j += 1
 

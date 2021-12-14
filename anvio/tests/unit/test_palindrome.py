@@ -307,30 +307,24 @@ class TestFindPalindrome(unittest.TestCase):
         self.assertEqual(seq[rev_start:rev_stop], seq[30:38])
 
 
-    #def test_min_distance(self):
-    #    for delta in range(5,6):
-    #        seq = self.seq_with_palindromes(
-    #            template = self.nt_30,
-    #            start_stops = [
-    #                (4, 14, 14+delta, 24+delta),
-    #            ],
-    #            palindrome_seqs = [
-    #                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
-    #            ],
-    #        )
+    def test_min_distance(self):
+        delta = 3
+        seq = self.seq_with_palindromes(
+            template = self.nt_30*2,
+            start_stops = [
+                (4, 14, 14+delta, 24+delta),
+            ],
+            palindrome_seqs = [
+                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+            ],
+        )
 
-    #        p = FindPalindrome(min_palindrome_length=10)
-    #        palindromes = p.find(seq)
+        for D in range(10):
+            expected = 0 if D > delta else 1
+            p = FindPalindrome(min_palindrome_length=10, min_distance=D)
+            palindromes = p.find(seq)
 
-    #        for_start, for_stop, rev_start, rev_stop = palindromes[0]
-
-    #        self.assertEqual(for_start, 4)
-    #        self.assertEqual(for_stop, 14)
-    #        self.assertEqual(rev_start, 14+delta)
-    #        self.assertEqual(rev_stop, 24+delta)
-
-    #        self.assertEqual(seq[for_start:for_stop], seq[4:14])
-    #        self.assertEqual(seq[rev_start:rev_stop], seq[14+delta:24+delta])
+            self.assertEqual(len(palindromes), expected)
 
 
     def seq_with_palindromes(self, template, start_stops, palindrome_seqs):
