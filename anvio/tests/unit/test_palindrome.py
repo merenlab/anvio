@@ -47,7 +47,7 @@ class TestFindPalindrome(unittest.TestCase):
         self.assertEqual(seq[rev_start:rev_stop], seq[18:28])
 
 
-    def test_fixedlength_mismatchless(self):
+    def test_fixedlength_mismatchless_multimatch(self):
         seq = self.seq_with_palindromes(
             template = self.nt_30*2,
             start_stops = [
