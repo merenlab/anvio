@@ -7,6 +7,8 @@ import os
 import argparse
 import xml.etree.ElementTree as ET
 
+from numba import jit
+
 import anvio
 import anvio.utils as utils
 import anvio.dbops as dbops
@@ -577,11 +579,12 @@ class FindPalindromes(object):
 
 
     def find(self, sequence, sequence_name="", display_palindromes=False, coords_only=False):
-        sequence_RC = utils.rev_comp(sequence)
+        sequence_array = utils.nt_seq_to_nt_num_array(sequence)
+        sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
 
         palindrome_coords = _find_palindrome(
-            seq = sequence,
-            rev = sequence_RC,
+            seq = sequence_array,
+            rev = sequence_array_RC,
             m = self.min_palindrome_length,
             N = self.max_num_mismatches,
             D = self.min_distance,
@@ -618,6 +621,7 @@ class FindPalindromes(object):
         return palindromes
 
 
+@jit(nopython=True)
 def _find_palindrome(seq, rev, m, N, D):
     L = len(seq)
     palindrome_coords = []
