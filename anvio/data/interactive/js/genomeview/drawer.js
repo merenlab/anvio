@@ -126,7 +126,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
     canvas.add(geneObj);
 
     if(showGeneLabels) {
-      var label = new fabric.IText("geneID: "+geneID, {
+      var label = new fabric.IText(setGeneLabelFromSource(geneID, genomeID), {
         id: 'geneLabel',
         groupID: genomeID,
         fontSize: geneLabelSize,
@@ -141,9 +141,6 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         lockScaling: true,
         hoverCursor: 'text'
       });
-      label.on("editing:exited", function(e) {
-        console.log(label.text)
-      });
       if(this.settings['display']['arrow-style'] == 3) {
         label.set({
           top: geneLabelPos == "inside" ? y-5 : y-30,
@@ -155,7 +152,35 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
           selectionColor:'rgba(128,128,128,.2)'
         });
       }
+      label.on("editing:exited", function(e) {
+        console.log(label.text)
+      });
       canvas.add(label);
+    }
+
+    function setGeneLabelFromSource(geneID, genomeID){
+      let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)
+      // console.log(genomeOfInterest[0][1]['genes']['functions'][geneID])
+
+      if($('#gene_label_source').val() == 'default'){
+        return `geneID: ${geneID}`
+      }
+      if($('#gene_label_source').val() == 'cog-function'){
+        if(!genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION']){
+          return 'None'
+        } else {
+          return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION'][1]
+        }
+      }
+      if($('#gene_label_source').val() == 'cog-category'){
+        if(!genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY']){
+          return 'None'
+        } else {
+          return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY'][1]
+        }
+      }
+
+      return `whoops ${geneID}`
     }
   }
 }
