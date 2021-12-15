@@ -3689,10 +3689,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
                               "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
 
-        # init the base class for access to shared paths and such
+        # init the base classes for access to shared paths and such
         KeggContext.__init__(self, args)
-
         KeggEstimatorArgs.__init__(self, self.args)
+
+        # This can be initialized later if necessary by setup_ko_dict()
+        self.ko_dict = None
+        self.setup_ko_dict_from_modules_and_contigs_dbs = False
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
@@ -3746,9 +3749,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
 
+            self.setup_ko_dict_from_modules_and_contigs_dbs = self.matrix_format
+
             # load required sources from modules db
             modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
             self.annotation_sources_to_use = modules_db.db.get_meta_value('annotation_sources').split(',')
+            self.ko_dict = modules_db.get_ko_function_dict()
             modules_db.disconnect()
 
             # update available modes output suffixes
@@ -3859,7 +3865,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
-        g.load_genomes_descriptions(skip_functions=True, init=False)
+        g.load_genomes_descriptions(skip_functions=(not self.setup_ko_dict_from_modules_and_contigs_dbs), init=False)
 
         # sanity check that all dbs are properly annotated with required sources
         for src in self.annotation_sources_to_use:
@@ -3874,6 +3880,20 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_genomes_txt)}.")
+
+        if self.setup_ko_dict_from_modules_and_contigs_dbs:
+            for genome_name in g.genomes:
+                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
+                # reminder, an entry in gene_functions_in_genome_dict looks like this:
+                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
+                #print(gene_functions_in_genome_dict)
+                for gcid, func_dict in gene_functions_in_genome_dict.items():
+                    for source, func_tuple in func_dict.items():
+                        if func_tuple:
+                            acc_string, func_def, eval = func_tuple
+                            for acc in acc_string.split('!!!'):
+                                if acc not in self.ko_dict:
+                                    self.ko_dict[acc] = {'definition': func_def}
 
         # metagenome mode must be off
         if self.metagenome_mode:
@@ -4155,7 +4175,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
-        self.setup_ko_dict()
+        if not self.setup_ko_dict_from_modules_and_contigs_dbs:
+            self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
         self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
