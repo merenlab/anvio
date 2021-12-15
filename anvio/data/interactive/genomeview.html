@@ -344,8 +344,20 @@
                               <td><div class="colorpicker" id="genome_label_color" color="#000000" style="background-color: #000000; margin-bottom: 10px"></div></td>
                             </tr>
                             <tr id="show_gene_labels">
-                              <td>Show gene labels</td>
+                              <td>Show gene labels:</td>
                               <td style="float: right"><div style="width: 20px;"><input id="show_gene_labels_box" type="checkbox" class="layer_selectors"></div></td>
+                            </tr>
+                            <tr>
+                              <td>Gene label source:</td>
+                              <td><div class="col-md-8">
+                                <select id="gene_label_source" style="margin-bottom: 10px; margin-left: 0px" class="form-control input-xs">
+                                  <option value='default'>Default</option>
+                                  <option value='user'>User-Defined</option>
+                                  <option value='cog-function'>COG Function</option>
+                                  <option value='cog-category'>COG Category</option>
+                                  <option value='kegg'>Kegg</option>
+                                </select>
+                              </div></td>
                             </tr>
                             <tr>
                               <td>Gene label size:</td>
