@@ -3836,7 +3836,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input metagenomes file and adjusts class attributes as needed"""
 
         g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
-        g.load_metagenome_descriptions()
+        g.load_metagenome_descriptions(skip_functions=(not self.setup_ko_dict_from_modules_and_contigs_dbs))
 
         # sanity check that all dbs are properly annotated with required sources
         for src in self.annotation_sources_to_use:
@@ -3852,6 +3852,20 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_metagenomes_txt)}.")
+
+        if self.setup_ko_dict_from_modules_and_contigs_dbs:
+            for name in g.metagenomes:
+                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
+                # reminder, an entry in gene_functions_in_genome_dict looks like this:
+                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
+                #print(gene_functions_in_genome_dict)
+                for gcid, func_dict in gene_functions_in_genome_dict.items():
+                    for source, func_tuple in func_dict.items():
+                        if func_tuple:
+                            acc_string, func_def, eval = func_tuple
+                            for acc in acc_string.split('!!!'):
+                                if acc not in self.ko_dict:
+                                    self.ko_dict[acc] = {'definition': func_def}
 
         # enforce metagenome mode
         if not self.metagenome_mode:
