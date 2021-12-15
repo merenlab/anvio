@@ -3003,6 +3003,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data, but the "
                               f"metabolism data directory you provided is USER data. You should not use the `--input-dir` flag for this file.")
 
+        modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
+        mod_db_hash = modules_db.db.get_meta_value('hash')
+        modules_db.disconnect()
+
+        if mod_db_hash != kegg_metabolism_superdict['modules_db_hash']:
+            raise ConfigError(f"The modules database in the data directory you provided (or the default KEGG data directory, if you didn't "
+                              f"provide anything) has a different hash than the one used to generate this JSON input file. You probably need "
+                              f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
+                              f"the JSON file is {kegg_metabolism_superdict['modules_db_hash']} and the hash in the current modules DB "
+                              f"(at path `{self.modules_db_path}`) is {mod_db_hash}.")
+
         new_kegg_metabolism_superdict = {}
 
         expected_keys_for_module = {"gene_caller_ids", "kofam_hits", "genes_to_contigs", "contigs_to_genes"}
@@ -3013,11 +3024,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
-            if bin_name == 'data_source':
+            if bin_name in ['data_source', 'modules_db_hash']:
                 continue
             else:
                 bins_found.append(bin_name)
-                
+
             for mod, mod_dict in meta_dict_for_bin.items():
                 if mod == "num_complete_modules":
                     self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
@@ -3651,6 +3662,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             kegg_superdict['data_source'] = 'USER'
         else:
             kegg_superdict['data_source'] = 'KEGG'
+
+        modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
+        kegg_superdict['modules_db_hash'] = modules_db.db.get_meta_value('hash')
+        modules_db.disconnect()
 
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
