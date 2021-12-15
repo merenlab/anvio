@@ -33,20 +33,22 @@ progress_quiet = terminal.Progress(verbose=False)
 
 
 class Palindrome:
-    def __init__(self, run=terminal.Run()):
-        self.run=run
-
-        self.sequence_name = None
-        self.first_start = None
-        self.first_end = None
-        self.first_sequence = None
-        self.second_start = None
-        self.second_end = None
-        self.second_sequence = None
-        self.num_mismatches = None
-        self.length = None
-        self.distance = None
-        self.midline = ''
+    def __init__(self, sequence_name=None, first_start=None, first_end=None, first_sequence=None, second_start=None,
+                 second_end=None, second_sequence=None, num_mismatches=None, length=None, distance=None, num_gaps=None,
+                 midline='', run=terminal.Run()):
+        self.run = run
+        self.sequence_name = sequence_name
+        self.first_start = first_start
+        self.first_end = first_end
+        self.first_sequence = first_sequence
+        self.second_start = second_start
+        self.second_end = second_end
+        self.second_sequence = second_sequence
+        self.num_mismatches = num_mismatches
+        self.length = length
+        self.distance = distance
+        self.num_gaps = num_gaps
+        self.midline = midline
 
 
     def __str__(self):
