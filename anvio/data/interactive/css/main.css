@@ -167,7 +167,8 @@ html, body, #wrapper {
     display: block;
     position: relative;
     border: 1px solid lightgray;
-    background-color: white;
+    border-radius: 5px;
+    background-color: #f9f9f9;
     width: 100%;
     padding: 8px;
     font-size: 12px;
