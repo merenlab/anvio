@@ -2247,6 +2247,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "kofam_hits" : {},
                                            "genes_to_contigs" : {},
                                            "contigs_to_genes" : {},
+                                           "unique_to_this_module": set(),
                                            "warnings" : []
                                           }
         for knum in all_kos:
@@ -2287,6 +2288,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
+                # keep track of enzymes unique to this module
+                is_unique = False
+                if len(present_in_mods) == 1:
+                    is_unique = True
+
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
                     if ko in bin_level_module_dict[m]["kofam_hits"] and gene_call_id not in bin_level_module_dict[m]["kofam_hits"][ko]:
@@ -2298,6 +2304,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
                     else:
                         bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
+
+                    # make a special list for the enzymes that are unique
+                    if is_unique:
+                        bin_level_module_dict[m]["unique_to_this_module"].add(ko)
+                    # warn the user if this enzyme is shared between multiple modules
+                    else:
+                        mod_str = "/".join(present_in_mods)
+                        bin_level_module_dict[m]["warnings"].append(f"{ko} is present in multiple modules: {mod_str}")
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
