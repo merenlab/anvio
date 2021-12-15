@@ -593,8 +593,9 @@ class FindPalindromes(object):
         palindromes = []
         for first_start, first_end, second_start, second_end in palindrome_coords:
             first_sequence = sequence[first_start:first_end]
-            second_sequence = sequence[second_start:second_end]
+            second_sequence = utils.rev_comp(sequence[second_start:second_end])
             num_mismatches = sum(1 for a, b in zip(first_sequence, second_sequence) if a != b)
+            midline = ''.join('|' if a == b else 'x' for a, b in zip(first_sequence, second_sequence))
 
             palindrome = Palindrome(
                 sequence_name = sequence_name,
@@ -605,10 +606,10 @@ class FindPalindromes(object):
                 second_end = second_end,
                 second_sequence = second_sequence,
                 num_mismatches = num_mismatches,
+                midline = midline,
                 distance = second_start - first_start, # FIXME this should be second_start - first_end
                 length = len(first_sequence),          # length of first will always be length of second
                 num_gaps = 0,                          # via the behavior of _find_palindrome
-                midline = '',                          # FIXME I don't know what this is
                 run = self.run,
             )
 
