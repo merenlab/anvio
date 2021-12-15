@@ -539,71 +539,109 @@ class Palindromes:
             self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
 
 
-class FindPalindrome(object):
-    def __init__(self, min_palindrome_length=10, max_num_mismatches=0, min_distance=0):
+class FindPalindromes(object):
+    def __init__(self, min_palindrome_length=10, max_num_mismatches=0, min_distance=0, run=terminal.Run()):
+        self.run = run
+
         self.min_palindrome_length = min_palindrome_length
         self.max_num_mismatches = max_num_mismatches
         self.min_distance = min_distance
 
 
-    def find(self, seq):
-        rev = utils.rev_comp(seq)
-        m, N, D = self.min_palindrome_length, self.max_num_mismatches, self.min_distance
+    def find(self, sequence, sequence_name="", display_palindromes=False, coords_only=False):
+        sequence_RC = utils.rev_comp(sequence)
 
-        L = len(seq)
+        palindrome_coords = _find_palindrome(
+            seq = sequence,
+            rev = sequence_RC,
+            m = self.min_palindrome_length,
+            N = self.max_num_mismatches,
+            D = self.min_distance,
+        )
 
-        palindrome_coords = []
+        if coords_only:
+            return palindrome_coords
 
-        i = 0
-        while i < L-m+1:
-            j = 0
-            skip_ahead = False
-            while j < L-i-m:
-                if rev[j] != seq[i]:
-                    # The (i, j) scenario doesn't even _start_ with a match. Game over.
-                    pass
-                else:
-                    n, k = 0, 0
-                    last_match = 0
-                    is_palindrome = False
-                    while True:
-                        if (i+k+1) > (L-j-k-1):
-                            # Stop of left has exceeded start of right.
-                            if is_palindrome:
-                                palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                                skip_ahead = True
-                                skip_amount = last_match
-                            break
+        palindromes = []
+        for first_start, first_end, second_start, second_end in palindrome_coords:
+            first_sequence = sequence[first_start:first_end]
+            second_sequence = sequence[second_start:second_end]
+            num_mismatches = sum(1 for a, b in zip(first_sequence, second_sequence) if a != b)
 
-                        if rev[j+k] == seq[i+k]:
-                            last_match = k
-                        else:
-                            # mismatch
-                            n += 1
+            palindrome = Palindrome(
+                sequence_name = sequence_name,
+                first_start = first_start,
+                first_end = first_end,
+                first_sequence = first_sequence,
+                second_start = second_start,
+                second_end = second_end,
+                second_sequence = second_sequence,
+                num_mismatches = num_mismatches,
+                distance = second_start - first_start, # FIXME this should be second_start - first_end
+                length = len(first_sequence),          # length of first will always be length of second
+                num_gaps = 0,                          # via the behavior of _find_palindrome
+                midline = '',                          # FIXME I don't know what this is
+                run = self.run,
+            )
 
-                        if n > N:
-                            if is_palindrome:
-                                palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                                skip_ahead = True
-                                skip_amount = last_match
-                            break
+            palindromes.append(palindrome)
 
-                        if last_match == m-1:
-                            is_palindrome = True
+        return palindromes
 
-                        if (L-j-k-1) - (i+k+1) < D:
-                            skip_ahead = False
-                            break
 
-                        k += 1
-                j += 1
+def _find_palindrome(seq, rev, m, N, D):
+    L = len(seq)
+    palindrome_coords = []
 
-            if skip_ahead:
-                i += skip_amount
+    i = 0
+    while i < L-m+1:
+        j = 0
+        skip_ahead = False
+        while j < L-i-m:
+            if rev[j] != seq[i]:
+                # The (i, j) scenario doesn't even _start_ with a match. Game over.
+                pass
             else:
-                i += 1
+                n, k = 0, 0
+                last_match = 0
+                is_palindrome = False
+                while True:
+                    if (i+k+1) > (L-j-k-1):
+                        # Stop of left has exceeded start of right.
+                        if is_palindrome:
+                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                            skip_ahead = True
+                            skip_amount = last_match
+                        break
 
-        return palindrome_coords
+                    if rev[j+k] == seq[i+k]:
+                        last_match = k
+                    else:
+                        # mismatch
+                        n += 1
 
+                    if n > N:
+                        if is_palindrome:
+                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                            skip_ahead = True
+                            skip_amount = last_match
+                        break
+
+                    if last_match == m-1:
+                        is_palindrome = True
+
+                    if (L-j-k-1) - (i+k+1) < D:
+                        skip_ahead = False
+                        break
+
+                    k += 1
+            j += 1
+
+        if skip_ahead:
+            i += skip_amount
+        else:
+            i += 1
+
+    return palindrome_coords
 
 

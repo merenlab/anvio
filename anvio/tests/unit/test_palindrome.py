@@ -1,9 +1,9 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Tests for FindPalindrome"""
+"""Tests for FindPalindromes"""
 
 import anvio
-from anvio.sequencefeatures import FindPalindrome
+from anvio.sequencefeatures import FindPalindromes
 
 import unittest
 
@@ -33,7 +33,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=10)
+        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -58,7 +58,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=10)
+        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -84,7 +84,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=10)
+        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -111,7 +111,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=10)
+        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -149,13 +149,13 @@ class TestFindPalindrome(unittest.TestCase):
 
         # No palindrome should be found
         MISMATCH_TOL = 1
-        p = FindPalindrome(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL)
+        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
         palindromes = p.find(seq)
         self.assertEqual(palindromes, [])
 
         # Palindrome should be found
         MISMATCH_TOL = 2
-        p = FindPalindrome(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL)
+        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
         palindromes = p.find(seq)
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
@@ -167,7 +167,7 @@ class TestFindPalindrome(unittest.TestCase):
 
         # Palindrome should be found
         MISMATCH_TOL = 3
-        p = FindPalindrome(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL)
+        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
         palindromes = p.find(seq)
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
@@ -190,7 +190,7 @@ class TestFindPalindrome(unittest.TestCase):
                 ],
             )
 
-            p = FindPalindrome(min_palindrome_length=m)
+            p = FindPalindromes(min_palindrome_length=m, coords_only=True)
             palindromes = p.find(seq)
 
             for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -215,7 +215,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=4)
+        p = FindPalindromes(min_palindrome_length=4, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -242,7 +242,7 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindrome(min_palindrome_length=6)
+        p = FindPalindromes(min_palindrome_length=6, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -282,12 +282,12 @@ class TestFindPalindrome(unittest.TestCase):
 
         # One long palindrome should be found
         MISMATCH_TOL = 1
-        p = FindPalindrome(min_palindrome_length=8, max_num_mismatches=MISMATCH_TOL)
+        p = FindPalindromes(min_palindrome_length=8, max_num_mismatches=MISMATCH_TOL, coords_only=True)
         palindromes = p.find(seq)
 
         # Two shorter palindrome should be found
         MISMATCH_TOL = 0
-        p = FindPalindrome(min_palindrome_length=7, max_num_mismatches=MISMATCH_TOL)
+        p = FindPalindromes(min_palindrome_length=7, max_num_mismatches=MISMATCH_TOL, coords_only=True)
         palindromes = p.find(seq)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
@@ -321,7 +321,7 @@ class TestFindPalindrome(unittest.TestCase):
 
         for D in range(10):
             expected = 0 if D > delta else 1
-            p = FindPalindrome(min_palindrome_length=10, min_distance=D)
+            p = FindPalindromes(min_palindrome_length=10, min_distance=D, coords_only=True)
             palindromes = p.find(seq)
 
             self.assertEqual(len(palindromes), expected)
