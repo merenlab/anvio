@@ -152,7 +152,7 @@ class Palindromes:
                               "flag, find the location of this control, and hack anvi'o by replacing that 4 with something "
                               "smaller -- anvi'o doesn't mind being hacked).")
 
-        if self.min_palindrome_length < 5:
+        if self.min_palindrome_length < 4:
             raise ConfigError("For everyone's sake, we set the minimum value for the minimum palindrome length to "
                               "4. You have a problem with that? WELL, WELCOME TO THE CLUB, YOU'LL FIT RIGHT IN -- "
                               "WE HAVE A PROBLEM WITH LOGIC TOO.")
