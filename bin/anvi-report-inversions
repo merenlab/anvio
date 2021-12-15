@@ -84,6 +84,8 @@ if __name__ == '__main__':
                     "but it should look something like this: CONTIG_NAME_5364768_5365139. When declared, anvi'o will only report data from this "
                     "particular region, and nothing at all if it does not find it in your while processing palindromes.", metavar="REGION_STRING")
 
+    groupE.add_argument('--experiment', action='store_true', help="Run with a potentially faster palindrome finder")
+
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
