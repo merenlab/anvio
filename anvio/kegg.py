@@ -2996,6 +2996,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
+        if (kegg_metabolism_superdict['data_source'] == 'USER' and not self.user_input_dir):
+            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data, but the "
+                              f"metabolism data directory you are using is KEGG data. You should use the `--input-dir` flag instead.")
+        if (kegg_metabolism_superdict['data_source'] == 'KEGG' and self.user_input_dir):
+            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data, but the "
+                              f"metabolism data directory you provided is USER data. You should not use the `--input-dir` flag for this file.")
+
         new_kegg_metabolism_superdict = {}
 
         expected_keys_for_module = {"gene_caller_ids", "kofam_hits", "genes_to_contigs", "contigs_to_genes"}
@@ -3006,7 +3013,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
-            bins_found.append(bin_name)
+            if bin_name == 'data_source':
+                continue
+            else:
+                bins_found.append(bin_name)
+                
             for mod, mod_dict in meta_dict_for_bin.items():
                 if mod == "num_complete_modules":
                     self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
@@ -3635,6 +3646,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         def set_to_list(obj):
             if isinstance(obj, set):
                 return list(obj)
+
+        if self.user_input_dir:
+            kegg_superdict['data_source'] = 'USER'
+        else:
+            kegg_superdict['data_source'] = 'KEGG'
 
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
