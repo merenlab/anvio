@@ -175,6 +175,9 @@ function setEventListeners(){
     alignToGC = null;
     drawer.draw()
   });
+  $('#gene_label_source').on('change', function(){
+    drawer.draw()
+  })
   $('#show_gene_labels_box').on('change', function () {
     showGeneLabels = !showGeneLabels;
     drawer.draw()
