@@ -166,17 +166,17 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         return `geneID: ${geneID}`
       }
       if($('#gene_label_source').val() == 'cog-function'){
-        if(!genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION']){
-          return 'None'
-        } else {
+        if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('COG_FUNCTION') && genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION']){
           return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION'][1]
+        } else {
+          return 'None'
         }
       }
       if($('#gene_label_source').val() == 'cog-category'){
-        if(!genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY']){
-          return 'None'
-        } else {
+        if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('COG_CATEGORY') && genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY']){
           return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY'][1]
+        } else {
+          return 'None'
         }
       }
 
