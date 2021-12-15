@@ -2248,7 +2248,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "genes_to_contigs" : {},
                                            "contigs_to_genes" : {},
                                            "unique_to_this_module": set(),
-                                           "warnings" : []
+                                           "warnings" : set()
                                           }
         for knum in all_kos:
             # we can only add warnings about missing KO profiles if we are working exclusively with KEGG data
@@ -2264,7 +2264,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                             f"{mods_str}). ")
                         for m in mods_it_is_in:
                             if knum[0] != 'M':
-                                bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
+                                bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
                     continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
@@ -2311,7 +2311,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # warn the user if this enzyme is shared between multiple modules
                     else:
                         mod_str = "/".join(present_in_mods)
-                        bin_level_module_dict[m]["warnings"].append(f"{ko} is present in multiple modules: {mod_str}")
+                        bin_level_module_dict[m]["warnings"].add(f"{ko} is present in multiple modules: {mod_str}")
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
@@ -2408,8 +2408,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         # we assume that such steps are not complete
                         has_no_ko_step = True
                         warning_str = "'--' steps are assumed incomplete"
-                        if warning_str not in meta_dict_for_bin[mnum]["warnings"]:
-                            meta_dict_for_bin[mnum]["warnings"].append(warning_str)
+                        meta_dict_for_bin[mnum]["warnings"].add(warning_str)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
@@ -3241,7 +3240,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
-                                    "module_substrates", "module_products", "module_intermediates"])
+                                    "module_substrates", "module_products", "module_intermediates", "warnings"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
@@ -3375,6 +3374,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
+                                # comma-separated list of warnings
+                                if "warnings" in headers_to_include:
+                                    if not c_dict["warnings"]:
+                                        d[self.modules_unique_id]["warnings"] = "None"
+                                    else:
+                                        d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+
                                 # everything else at c_dict level
                                 for h in remaining_headers:
                                     if h not in self.available_headers.keys():
@@ -3443,6 +3449,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
+                    # comma-separated list of warnings
+                    if "warnings" in headers_to_include:
+                        if not c_dict["warnings"]:
+                            d[self.modules_unique_id]["warnings"] = "None"
+                        else:
+                            d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
 
                     # add coverage if requested
                     if self.add_coverage:
