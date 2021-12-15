@@ -4179,7 +4179,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
-        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
+        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                   item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
                                   write_rows_with_all_zeros=include_zeros)
 
