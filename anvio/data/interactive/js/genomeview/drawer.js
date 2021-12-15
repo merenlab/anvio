@@ -179,6 +179,13 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
           return 'None'
         }
       }
+      if($('#gene_label_source').val() == 'eggnog'){
+        if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('EGGNOG_BACT') && genomeOfInterest[0][1]['genes']['functions'][geneID]['EGGNOG_BACT']){
+          return genomeOfInterest[0][1]['genes']['functions'][geneID]['EGGNOG_BACT'][1]
+        } else {
+          return 'None'
+        }
+      }
 
       return `whoops ${geneID}`
     }
