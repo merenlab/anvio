@@ -68,6 +68,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on KEGG modules"
+                                "proportion_unique_enzymes_present", "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     },
                 'modules_custom': {
                     'output_suffix': "kegg_modules_custom.txt",
@@ -106,6 +107,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': 'percent_complete',
                         'mode_type': 'modules',
                         'description': "Percent completeness of a module"
+                        },
+                  'proportion_unique_enzymes_present' : {
+                        'cdict_key': 'proportion_unique_enzymes_present',
+                        'mode_type': 'modules',
+                        'description': "Proportion of enzymes unique to this one module that are present in your sample"
                         },
                   'module_name' : {
                         'cdict_key': None,
