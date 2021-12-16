@@ -1727,6 +1727,13 @@ class KeggEstimatorArgs():
         # initialize module paths into self.module_paths_dict
         self.init_paths_for_modules()
 
+        # add compound lists into self.all_modules_in_db
+        for mod in self.all_modules_in_db:
+            module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mod)
+            self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
+            self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
+            self.all_modules_in_db[mod]['product_list'] = module_product_list
+
 
     def init_paths_for_modules(self):
         """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
@@ -3305,7 +3312,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if not isinstance(definition_list, list):
                     definition_list = [definition_list]
                 module_def = '"' + " ".join(definition_list) + '"'
-                module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):
@@ -3371,18 +3377,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "module_definition" in headers_to_include:
                                     d[self.modules_unique_id]["module_definition"] = module_def
                                 if "module_substrates" in headers_to_include:
-                                    if module_substrate_list:
-                                        d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                                    if self.all_modules_in_db[mnum]['substrate_list']:
+                                        d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
                                     else:
                                         d[self.modules_unique_id]["module_substrates"] = "None"
                                 if "module_products" in headers_to_include:
-                                    if module_product_list:
-                                        d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
+                                    if self.all_modules_in_db[mnum]['product_list']:
+                                        d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
                                     else:
                                         d[self.modules_unique_id]["module_products"] = "None"
                                 if "module_intermediates" in headers_to_include:
-                                    if module_intermediate_list:
-                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                                    if self.all_modules_in_db[mnum]['intermediate_list']:
+                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
                                     else:
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
@@ -3463,18 +3469,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if "module_definition" in headers_to_include:
                         d[self.modules_unique_id]["module_definition"] = module_def
                     if "module_substrates" in headers_to_include:
-                        if module_substrate_list:
-                            d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
+                        if self.all_modules_in_db[mnum]['substrate_list']:
+                            d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
                         else:
                             d[self.modules_unique_id]["module_substrates"] = "None"
                     if "module_products" in headers_to_include:
-                        if module_product_list:
-                            d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
+                        if self.all_modules_in_db[mnum]['product_list']:
+                            d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
                         else:
                             d[self.modules_unique_id]["module_products"] = "None"
                     if "module_intermediates" in headers_to_include:
-                        if module_intermediate_list:
-                            d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
+                        if self.all_modules_in_db[mnum]['intermediate_list']:
+                            d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
                         else:
                             d[self.modules_unique_id]["module_intermediates"] = "None"
 
