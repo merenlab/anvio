@@ -267,10 +267,7 @@ class Inversions:
                 ################################################################################
                 self.progress.update(f"{contig_name}: looking for palindromes")
                 ################################################################################
-                if self.args.experiment:
-                    P.find_fast(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
-                else:
-                    P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
+                P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
 
                 if not len(P.palindromes[sequence_name]):
                     # there is no palindrome in this one
@@ -352,6 +349,7 @@ class Inversions:
                         elif inversion_candidate.v2_right in read.query_sequence:
                             true_inversion = inversion_candidate
                             break
+
 
                 if anvio.DEBUG or self.verbose:
                     if true_inversion:

@@ -35,10 +35,7 @@ def main(args):
     if args.contigs_db or args.fasta_file:
         p.process()
     elif args.dna_sequence:
-        if args.experiment:
-            p.find_fast(args.dna_sequence)
-        else:
-            p.find(args.dna_sequence)
+        p.find(args.dna_sequence)
         p.report()
 
 
@@ -77,7 +74,6 @@ if __name__ == "__main__":
     groupD = parser.add_argument_group('OUTPUT', "Output options.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupD.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
-    groupD.add_argument('--experiment', action='store_true', help="Run with a potentially faster palindrome finder")
 
     args, unknown = parser.parse_known_args()
 
