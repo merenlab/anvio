@@ -1,11 +1,12 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Tests for FindPalindromes"""
+"""Tests for Palindromes"""
 
 import anvio
-from anvio.sequencefeatures import FindPalindromes
+from anvio.sequencefeatures import Palindromes
 
 import unittest
+import argparse
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
@@ -33,8 +34,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
@@ -58,8 +61,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
@@ -84,8 +89,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
@@ -111,8 +118,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=10, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
@@ -149,14 +158,20 @@ class TestFindPalindrome(unittest.TestCase):
 
         # No palindrome should be found
         MISMATCH_TOL = 1
-        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+            max_num_mismatches=MISMATCH_TOL,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
         self.assertEqual(palindromes, [])
 
         # Palindrome should be found
         MISMATCH_TOL = 2
-        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+            max_num_mismatches=MISMATCH_TOL,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
         self.assertEqual(for_stop, 15)
@@ -167,8 +182,11 @@ class TestFindPalindrome(unittest.TestCase):
 
         # Palindrome should be found
         MISMATCH_TOL = 3
-        p = FindPalindromes(min_palindrome_length=10, max_num_mismatches=MISMATCH_TOL, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 10,
+            max_num_mismatches=MISMATCH_TOL,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
         self.assertEqual(for_stop, 15)
@@ -189,9 +207,10 @@ class TestFindPalindrome(unittest.TestCase):
                     (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
                 ],
             )
-
-            p = FindPalindromes(min_palindrome_length=m, coords_only=True)
-            palindromes = p.find(seq)
+            p = Palindromes(argparse.Namespace(
+                min_palindrome_length = m,
+            ))
+            palindromes = p._find_numba(seq, coords_only=True)
 
             for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
@@ -215,8 +234,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=4, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 4,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
 
@@ -242,8 +263,10 @@ class TestFindPalindrome(unittest.TestCase):
             ],
         )
 
-        p = FindPalindromes(min_palindrome_length=6, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 6,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, 5)
@@ -282,13 +305,19 @@ class TestFindPalindrome(unittest.TestCase):
 
         # One long palindrome should be found
         MISMATCH_TOL = 1
-        p = FindPalindromes(min_palindrome_length=8, max_num_mismatches=MISMATCH_TOL, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 8,
+            max_num_mismatches=MISMATCH_TOL,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         # Two shorter palindrome should be found
         MISMATCH_TOL = 0
-        p = FindPalindromes(min_palindrome_length=7, max_num_mismatches=MISMATCH_TOL, coords_only=True)
-        palindromes = p.find(seq)
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 7,
+            max_num_mismatches=MISMATCH_TOL,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
 
         for_start, for_stop, rev_start, rev_stop = palindromes[0]
         self.assertEqual(for_start, x0)
@@ -321,8 +350,11 @@ class TestFindPalindrome(unittest.TestCase):
 
         for D in range(10):
             expected = 0 if D > delta else 1
-            p = FindPalindromes(min_palindrome_length=10, min_distance=D, coords_only=True)
-            palindromes = p.find(seq)
+            p = Palindromes(argparse.Namespace(
+                min_palindrome_length = 10,
+                min_distance=D,
+            ))
+            palindromes = p._find_numba(seq, coords_only=True)
 
             self.assertEqual(len(palindromes), expected)
 
