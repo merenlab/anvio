@@ -658,7 +658,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -680,6 +681,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
         If True, file object will not be closed after writing the dictionary to the file
+    do_not_write_key_column: boolean
+        If True, the first column (keys of the dictionary) will not be written to the file. For use in
+        instances when the key is meaningless or arbitrary.
 
     Returns
     =======
@@ -705,9 +709,15 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             raise ConfigError("Your header item conversion dict is missing keys for one or "
                               "more headers :/ Here is a list of those that do not have any "
                               "entry in the dictionary you sent: '%s'." % (', '.join(missing_headers)))
-        header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
+        if do_not_write_key_column:
+            header_text = '\t'.join([header_item_conversion_dict[h] for h in headers[1:]])
+        else:
+            header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
-        header_text = '\t'.join(headers)
+        if do_not_write_key_column:
+            header_text = '\t'.join(headers[1:])
+        else:
+            header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
         tab = '\t'
@@ -733,7 +743,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                   "missing.")
 
     for k in keys_order:
-        line = [str(k)]
+        if do_not_write_key_column:
+            line = []
+        else:
+            line = [str(k)]
         for header in headers[1:]:
             try:
                 val = d[k][header]
