@@ -193,7 +193,7 @@ class Palindromes:
         self.report()
 
 
-    def get_palindrome_method(self, sequence):
+    def decide_palindrome_method(self, sequence):
         if len(sequence) >= 5000:
             return self._find_BLAST
         else:
@@ -223,7 +223,7 @@ class Palindromes:
                              f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
-        method = self.palindrome_methods.get(self.palindrome_method, self.get_palindrome_method(sequence))
+        method = self.palindrome_methods.get(self.palindrome_method, self.decide_palindrome_method(sequence))
         palindromes = method(sequence)
 
         for palindrome in palindromes:
