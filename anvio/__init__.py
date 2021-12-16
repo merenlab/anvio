@@ -2587,7 +2587,13 @@ D = {
             {'default': 1,
              'metavar': 'INT',
              'type': int,
-             'help': "FIXME (anvio/anvio/__init__.py)"}
+             'help': "This parameter allows you to trim the palindrome when one or more mismatches are n nucleotides away "
+                     "from a palindrome's start or stop. By default, this flag is set to 1, which means anvi'o will trim "
+                     "palindromes with a mismatch that are occuring on the second or n-1 position. Here is an example "
+                     "palindrome `MMMMMM(X)M` where `M` are the matching nucleotides and `X` is a mismatch. By default, "
+                     "anvi'o will only report the first six matches: `MMMMMMM`. The rationale behind this parameter is that "
+                     "when searching for palindromes with mismatches, the algorithm will extend the palindrome length "
+                     "as much as possible, often wrongly including mismatches which are outside of the true palindrome."}
         ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
