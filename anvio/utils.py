@@ -701,6 +701,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     key_header = key_header if key_header else 'key'
     if not headers:
         headers = [key_header] + sorted(list(d.values())[0].keys())
+    elif key_header not in headers:
+        headers = [key_header] + headers
+    # after this point, the key_header is always at index 0 in the headers list
 
     # write header after converting column names (if necessary)
     if header_item_conversion_dict:
