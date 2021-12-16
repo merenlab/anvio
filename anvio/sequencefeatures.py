@@ -195,8 +195,12 @@ class Palindromes:
     def find(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
         """Find palindromes in a single sequence, and populate `self.palindromes`
 
-        The member function `process` may be a better one to call with an `args` object. See `anvi-search-palindromes`
-        for example usage.
+        This method finds palindromes by delegating to either `_find_BLAST` and `_find_numba`.
+
+        Notes
+        =====
+        - The method `process` may be a better one to call if you have an `args` object. See `anvi-search-palindromes`
+          for example usage.
         """
 
         if sequence_name in self.palindromes:
@@ -204,14 +208,38 @@ class Palindromes:
         else:
             self.palindromes[sequence_name] = []
 
-        sequence = sequence.upper()
         sequence_length = len(sequence)
-
         if sequence_length < self.min_palindrome_length * 2 + self.min_distance:
             self.progress.reset()
             self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short "
                              f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
+
+        palindromes = self._find_BLAST(sequence)
+
+        for palindrome in palindromes:
+            if anvio.DEBUG or display_palindromes or self.verbose:
+                self.progress.reset()
+                palindrome.display()
+
+            palindrome.sequence_name = sequence_name
+            self.palindromes[sequence_name].append(palindrome)
+
+
+    def _find_BLAST(self, sequence):
+        """Find palindromes in a single sequence using BLAST
+
+        This method of palindrome finding is slow for short sequences, but scales very well with
+        arbitrarily sized palindrome searching, e.g. entire assemblies or genomes. If the sequence
+        length > 5000, this is a great choice.
+
+        Returns
+        =======
+        out : list of anvio.sequencefeatures.Palindrome
+        """
+
+        palindromes = []
+        sequence = sequence.upper()
 
         # setup BLAST job
         BLAST_search_tmp_dir = filesnpaths.get_temp_directory_path()
@@ -252,7 +280,6 @@ class Palindromes:
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
                     p = Palindrome(run=self.run)
 
-                    p.sequence_name = sequence_name
                     p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
                     p.first_end = int(hsp_xml.find('Hsp_query-to').text)
                     p.first_sequence = hsp_xml.find('Hsp_qseq').text
@@ -272,7 +299,7 @@ class Palindromes:
                     # within larger palindromes of 0 distance. IT DOES HAPPEN I PROM.
                     if p.distance == 0:
                         internal_palindrome = False
-                        for _p in self.palindromes[sequence_name]:
+                        for _p in palindromes:
                             if p.first_start > _p.first_start and p.first_start < _p.first_end:
                                 internal_palindrome = True
                                 break
@@ -294,24 +321,22 @@ class Palindromes:
                         # this is the crazy part: read the function docstring for `get_split_palindromes`.
                         # briefly, we conclude that there are too many mismatches in this match, we will
                         # try and see if there is anything we can salvage from it.
-                        p_list = self.get_split_palindromes(p, display_palindromes=display_palindromes)
+                        p_list = self.get_split_palindromes(p)
                     else:
                         # there aren't too many mismatches, and the length checks out. we will continue
                         # processing this hit as a sole palindrome
                         p_list = [p]
 
                     for sp in p_list:
-                        if anvio.DEBUG or display_palindromes or self.verbose:
-                            self.progress.reset()
-                            sp.display()
-
-                        self.palindromes[sequence_name].append(sp)
+                        palindromes.append(sp)
 
         # clean after yourself
         if anvio.DEBUG:
             self.run.info("BLAST temporary dir kept", BLAST_search_tmp_dir, nl_before=1, mc='red')
         else:
             filesnpaths.shutil.rmtree(BLAST_search_tmp_dir)
+
+        return palindromes
 
 
     def find_fast(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
