@@ -3279,14 +3279,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         d = {}
         if not self.modules_unique_id:
              self.modules_unique_id = 0
-        """
-        ### FIXME ###
-        The unique_id problematic to deal with when we are generating multiple output files because this self.modules_unique_id
-        variable is shared between all output files. Since we append to each output file in turn, this means that within an
-        output file the unique_id column will have 'jumps' in value (such that a row's unique_id is not always 1 greater than the
-        previous row's unique_id). This does not really cause problems and is not an urgent fix, per se, but it looks weird.
-        ### FIXME ###
-        """
 
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
@@ -3596,12 +3588,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         d = {}
         if not self.ko_unique_id:
             self.ko_unique_id = 0
-        """
-        ### FIXME ###
-        See note in previous function about the weirdness of the unique_id with multiple output files.
-        ### FIXME ###
-        """
-
+        
         for bin, ko_dict in ko_superdict.items():
             for ko, k_dict in ko_dict.items():
                 if anvio.DEBUG:
