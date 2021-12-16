@@ -1726,6 +1726,7 @@ class KeggEstimatorArgs():
         that have to happen during the estimation process.
         """
 
+        self.kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
         self.all_modules_in_db = self.kegg_modules_db.get_modules_table_as_dict()
 
         self.all_kos_in_db = {}
@@ -1749,6 +1750,8 @@ class KeggEstimatorArgs():
             self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
             self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
             self.all_modules_in_db[mod]['product_list'] = module_product_list
+
+        self.kegg_modules_db.disconnect()
 
 
     def init_paths_for_modules(self):
@@ -3178,8 +3181,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = {}
         kofam_hits_superdict = {}
 
-        self.kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
-
         if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
         else:
@@ -3217,7 +3218,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
-        self.kegg_modules_db.disconnect()
         if not self.multi_mode:
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
