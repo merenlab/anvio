@@ -2406,14 +2406,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         defined_by_modules = False
 
         meta_dict_for_bin[mnum]["pathway_completeness"] = []
-        meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"] = []
 
         for p in self.module_paths_dict[mnum]:
             num_complete_steps_in_path = 0
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
-            # to count proportion of present enzymes unique to this module
-            num_unique_enzymes_in_path = 0
-            num_unique_enzymes_present = 0
+
             for atomic_step in p:
                 # there are 5 types of atomic steps to take care of
                 if any(x in atomic_step for x in ['-','+']):
@@ -2440,11 +2437,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             module_nonessential_kos.append(ko)
                         num_nonessential_steps_in_path += 1
                         has_nonessential_step = True
-
-                        if ko in meta_dict_for_bin[mnum]["unique_to_this_module"]:
-                            num_unique_enzymes_in_path += 1
-                            if ko in present_list_for_mnum:
-                                num_unique_enzymes_present += 1
 
                     # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
                     else:
@@ -2477,12 +2469,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if component_ko not in module_nonessential_kos:
                                     module_nonessential_kos.append(component_ko)
 
-                                # count nonessential unique enzymes
-                                if component_ko in meta_dict_for_bin[mnum]["unique_to_this_module"]:
-                                    num_unique_enzymes_in_path += 1
-                                    if component_ko in present_list_for_mnum:
-                                        num_unique_enzymes_present += 1
-
                             num_matches_processed += 1
 
                         # after processing all components of the enzyme complex, we compute the complex completeness
@@ -2490,11 +2476,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         for c in essential_components:
                             if c in present_list_for_mnum:
                                 num_present_components += 1
-                            # count essential unique enzymes
-                            if c in meta_dict_for_bin[mnum]["unique_to_this_module"]:
-                                num_unique_enzymes_in_path += 1
-                                if c in present_list_for_mnum:
-                                    num_unique_enzymes_present += 1
                         component_completeness = num_present_components / len(essential_components)
                         num_complete_steps_in_path += component_completeness
                 else:
@@ -2514,17 +2495,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         if atomic_step in present_list_for_mnum:
                             num_complete_steps_in_path += 1
-                        if atomic_step in meta_dict_for_bin[mnum]["unique_to_this_module"]:
-                            num_unique_enzymes_in_path += 1
-                            if atomic_step in present_list_for_mnum:
-                                num_unique_enzymes_present += 1
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
             meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
-            # compute proportion of unique KOs in path
-            if num_unique_enzymes_in_path > 0:
-                path_proportion_unique = num_unique_enzymes_present / num_unique_enzymes_in_path
-                meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"].append(path_proportion_unique)
 
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
@@ -2534,10 +2507,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
 
-        if meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"]:
-            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = max(meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"])
+        # compute proportion of unique enzymes in the module (regardless of which path(s) enzyme is in or whether enzyme is essential)
+        if meta_dict_for_bin[mnum]["unique_to_this_module"]:
+            num_unique_enzymes_present = 0
+            num_unique_enzymes_in_mod = len(meta_dict_for_bin[mnum]["unique_to_this_module"])
+            for ko in present_list_for_mnum:
+                if ko in meta_dict_for_bin[mnum]["unique_to_this_module"]:
+                    num_unique_enzymes_present += 1
+
+            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = num_unique_enzymes_present / num_unique_enzymes_in_mod
+            meta_dict_for_bin[mnum]["unique_enzymes_context_string"] = f"{num_unique_enzymes_present} of {num_unique_enzymes_in_mod} unique enzymes in module"
         else:
             meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = "NA"
+            meta_dict_for_bin[mnum]["unique_enzymes_context_string"] = "NA"
 
 
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
