@@ -128,8 +128,6 @@ class Palindromes:
 
         if self.output_file_path:
             filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
-        else:
-            self.verbose = True
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
