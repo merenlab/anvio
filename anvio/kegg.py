@@ -118,6 +118,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'mode_type': 'modules',
                         'description': "Proportion of enzymes unique to this one module that are present in your sample"
                         },
+                  'unique_enzymes_context_string' : {
+                        'cdict_key': 'unique_enzymes_context_string',
+                        'mode_type': 'modules',
+                        'description': "Describes the unique enzymes contributing to the `proportion_unique_enzymes_present` field"
+                        },
                   'module_name' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
