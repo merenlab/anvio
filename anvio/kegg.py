@@ -407,8 +407,8 @@ class KeggContext(object):
                               "the KO dictionary. This should never have happened.")
 
         metadata_dict = {}
-        metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
-        metadata_dict["modules_with_ko"] = mod_list_str
+        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+        metadata_dict["modules_with_enzyme"] = mod_list_str
         return metadata_dict
 
 
@@ -3624,9 +3624,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if "contig" in headers_to_include:
                         d[self.ko_unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
                     if "modules_with_enzyme" in headers_to_include:
-                        d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_ko"]
+                        d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_enzyme"]
                     if "enzyme_definition" in headers_to_include:
-                        d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["ko_definition"]
+                        d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
 
                     if self.add_coverage:
                         if not self.profile_db:
@@ -4235,7 +4235,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 if self.matrix_include_metadata:
                     if stat_header == 'module':
                         metadata_dict = self.get_module_metadata_dictionary(m)
-                    elif stat_header == 'KO':
+                    elif stat_header == 'enzyme':
                         metadata_dict = self.get_ko_metadata_dictionary(m)
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
