@@ -2582,6 +2582,13 @@ D = {
                      "otherwise. However, you can force a specific method to be used for all palindrome finding using "
                      "this flag. Choose from {'BLAST', 'numba'}."}
         ),
+    'min-mismatch-distance-to-first-base': (
+            ['--min-mismatch-distance-to-first-base'],
+            {'default': 1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "FIXME (anvio/anvio/__init__.py)"}
+        ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
             {'default': 10,

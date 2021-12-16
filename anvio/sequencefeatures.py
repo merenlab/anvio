@@ -91,6 +91,7 @@ class Palindromes:
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
+        self.min_mismatch_distance_to_first_base = A('min_mismatch_distance_to_first_base') or 1
         self.verbose = A('verbose') or False
         self.contigs_db_path = A('contigs_db')
         self.fasta_file_path = A('fasta_file')
@@ -198,7 +199,7 @@ class Palindromes:
             return self._find_numba
 
 
-    def find(self, sequence, sequence_name="N/A", display_palindromes=False):
+    def find(self, sequence, sequence_name="N/A", display_palindromes=False, **kwargs):
         """Find palindromes in a single sequence, and populate `self.palindromes`
 
         This method finds palindromes by delegating to either `_find_BLAST` and `_find_numba`.
@@ -222,7 +223,7 @@ class Palindromes:
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
         method = self.palindrome_methods.get(self.palindrome_method, self.decide_palindrome_method(sequence))
-        palindromes = method(sequence)
+        palindromes = method(sequence, **kwargs)
 
         for palindrome in palindromes:
             if anvio.DEBUG or display_palindromes or self.verbose:
@@ -685,12 +686,15 @@ def _find_palindromes(seq, rev, m, N, D):
             else:
                 n, k = 0, 0
                 last_match = 0
+                first_mismatch = 0
+                last_mismatch = 0
                 is_palindrome = False
                 while True:
                     if (i+k+1) > (L-j-k-1):
                         # Stop of left has exceeded start of right.
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                            first_start, first_end, second_start, second_end = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            palindrome_coords.append((first_start, first_end, second_start, second_end))
                             skip_ahead = True
                             skip_amount = last_match
                         break
@@ -699,11 +703,15 @@ def _find_palindromes(seq, rev, m, N, D):
                         last_match = k
                     else:
                         # mismatch
+                        if first_mismatch == 0:
+                            first_mismatch = k
+                        last_mismatch = k
                         n += 1
 
                     if n > N:
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
+                            first_start, first_end, second_start, second_end = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            palindrome_coords.append((first_start, first_end, second_start, second_end))
                             skip_ahead = True
                             skip_amount = last_match
                         break
