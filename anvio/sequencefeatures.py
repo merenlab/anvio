@@ -308,7 +308,7 @@ class Palindromes:
                     p.second_start = int(hsp_xml.find('Hsp_hit-to').text) - 1
                     p.second_end = int(hsp_xml.find('Hsp_hit-from').text)
                     p.second_sequence = hsp_xml.find('Hsp_hseq').text
-                    p.distance = p.second_start - p.first_start
+                    p.distance = p.second_start - p.first_end
 
                     # for each hit, there will be a copy of its reverse complement.
                     # the first half of the if statement below is to control for that
@@ -425,7 +425,7 @@ class Palindromes:
                 second_sequence = second_sequence,
                 num_mismatches = num_mismatches,
                 midline = midline,
-                distance = second_start - first_start, # FIXME this should be second_start - first_end
+                distance = second_start - first_end,
                 length = len(first_sequence),          # length of first will always be length of second
                 num_gaps = 0,                          # via the behavior of _find_palindrome
                 method = 'numba',
