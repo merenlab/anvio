@@ -66,7 +66,8 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'data_dict': "modules",
                     'headers': ["unique_id", "module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "proportion_unique_enzymes_present", "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
+                                "enzymes_unique_to_module", "proportion_unique_enzymes_present", "enzyme_hits_in_module",
+                                "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on metabolic modules"
                     },
                 'modules_custom': {
@@ -106,6 +107,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': 'percent_complete',
                         'mode_type': 'modules',
                         'description': "Percent completeness of a module"
+                        },
+                  'enzymes_unique_to_module' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "A list of enzymes that only belong to this module (ie, they are not members of multiple modules)"
                         },
                   'proportion_unique_enzymes_present' : {
                         'cdict_key': 'proportion_unique_enzymes_present',
@@ -2531,7 +2537,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"]:
             meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = max(meta_dict_for_bin[mnum]["proportion_unique_enzymes_in_pathway"])
         else:
-            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = "No unique enzymes in module"
+            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = "NA"
 
 
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
@@ -3280,7 +3286,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
-                                    "module_substrates", "module_products", "module_intermediates", "warnings"])
+                                    "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
@@ -3421,6 +3427,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     else:
                                         d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
 
+                                # list of enzymes unique to module
+                                if "enzymes_unique_to_module" in headers_to_include:
+                                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
+                                    if unique_enzymes:
+                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
+                                    else:
+                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
+
                                 # everything else at c_dict level
                                 for h in remaining_headers:
                                     if h not in self.available_headers.keys():
@@ -3496,6 +3510,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["warnings"] = "None"
                         else:
                             d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+
+                    # list of enzymes unique to module
+                    if "enzymes_unique_to_module" in headers_to_include:
+                        unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
+                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
 
                     # add coverage if requested
                     if self.add_coverage:
