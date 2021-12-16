@@ -376,6 +376,7 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
     hasBorders: false,
     lockScaling: true,
     gene: gene,
+    functions: functions,
     geneID: geneID,
     genomeID: genomeID,
     top: style == 3 ? y-17 : y-11, // TODO update this offset to reflect genome layer height (we want to render this arrow in the middle of its allocated height)
