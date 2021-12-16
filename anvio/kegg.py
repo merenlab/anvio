@@ -56,7 +56,7 @@ P = terminal.pluralize
 OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "kofam_hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["unique_id", "module", "module_is_complete",
+                    'headers': ["module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
                                 "enzyme_hit", "gene_caller_id", "contig"],
                     'description': "Information on each enzyme (gene annotation) that belongs to a module"
@@ -64,7 +64,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                 'modules': {
                     'output_suffix': "kegg_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["unique_id", "module", "module_name", "module_class", "module_category",
+                    'headers': ["module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
@@ -79,7 +79,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                 'hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["unique_id", "enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
+                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
@@ -88,12 +88,7 @@ OUTPUT_MODES = {'hits_in_modules': {
 # cdict_key is the header's key in modules or kofams data dictionary (if any)
 # mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
 # description is printed when --list-available-output-headers parameter is used
-OUTPUT_HEADERS = {'unique_id' : {
-                        'cdict_key': None,
-                        'mode_type': 'all',
-                        'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
-                        },
-                  'module' : {
+OUTPUT_HEADERS = {'module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
                         'description': "Module number"
@@ -1677,12 +1672,6 @@ class KeggEstimatorArgs():
         # parse requested output headers if necessary
         if self.custom_output_headers and isinstance(self.custom_output_headers, str):
             self.custom_output_headers = self.custom_output_headers.split(",")
-
-            if "unique_id" not in self.custom_output_headers:
-                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
-            elif self.custom_output_headers.index("unique_id") != 0:
-                self.custom_output_headers.remove("unique_id")
-                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
             self.available_modes['modules_custom']['headers'] = self.custom_output_headers
 
         # parse specific matrix modules if necessary
@@ -3710,7 +3699,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
 
-            file_obj.append(output_dict, key_header="unique_id", headers=header_list)
+            file_obj.append(output_dict, headers=header_list, do_not_write_key_column=True)
 
             if anvio.DEBUG:
                 self.run.warning(f"Appended metabolism dictionary to {file_obj.path}" ,
@@ -3745,7 +3734,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
-            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, headers=header_list, do_not_write_key_column=True)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
