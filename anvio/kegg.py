@@ -1700,24 +1700,26 @@ class KeggEstimatorArgs():
     def init_data_from_modules_db(self):
         """This function reads mucho data from the MODULES.db into dictionaries for later access.
 
-        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
+        It generates the self.all_modules_in_db dictionary, which contains all data for all modules
         in the db, keyed by module number.
-        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
+        It also generates the self.all_kos_in_db dictionary, which maps each enzyme in the db to its list of modules.
+        Note that self.all_kos_in_db can contain module numbers, in cases when the module is a component of another module.
+        It also generates the self.module_paths_dict dictionary by calling the appropriate function.
 
         We do this once at the start so as to reduce the number of on-the-fly database queries
         that have to happen during the estimation process.
         """
 
-        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
-        #TODO: this dictionary may need to change to load annotation source per profile
+        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_as_dict()
 
         self.all_kos_in_db = {}
         for mod in self.all_modules_in_db:
-            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
-            if not isinstance(ko_list, list):
-                ko_list = [ko_list]
-            # we convert to a set because some modules have duplicate orthology lines for the same KO
-            for k in set(ko_list):
+            orthology = self.all_modules_in_db[mod]['ORTHOLOGY']
+            if isinstance(orthology, str):
+                ko_list = [orthology]
+            else:
+                ko_list = list(orthology.keys())
+            for k in ko_list:
                 if k not in self.all_kos_in_db:
                     self.all_kos_in_db[k] = []
                 self.all_kos_in_db[k].append(mod)
