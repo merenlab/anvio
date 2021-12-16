@@ -1724,6 +1724,27 @@ class KeggEstimatorArgs():
                     self.all_kos_in_db[k] = []
                 self.all_kos_in_db[k].append(mod)
 
+        # initialize module paths into self.module_paths_dict
+        self.init_paths_for_modules()
+
+
+    def init_paths_for_modules(self):
+        """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
+        all downstream functions to access.
+
+        It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
+        """
+
+        self.module_paths_dict = {}
+        modules = self.all_modules_in_db.keys()
+        for m in modules:
+            module_definition = self.all_modules_in_db[m]["DEFINITION"]
+            # the below function expects a list
+            if not isinstance(module_definition, list):
+                module_definition = [module_definition]
+            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
+
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
@@ -2095,24 +2116,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "2) you imported functional annotations but the 'source' did not match those in the list above.")
 
         return kofam_gene_split_contig
-
-
-    def init_paths_for_modules(self):
-        """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
-        all downstream functions to access.
-
-        It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
-        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
-        """
-
-        self.module_paths_dict = {}
-        modules = self.all_modules_in_db.keys()
-        for m in modules:
-            module_definition = self.all_modules_in_db[m]["DEFINITION"]
-            # the below function expects a list
-            if not isinstance(module_definition, list):
-                module_definition = [module_definition]
-            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
     def init_gene_coverage(self, gcids_for_kofam_hits):
@@ -3063,7 +3066,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         additional_keys = set([])
 
         self.init_data_from_modules_db()
-        self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
             if bin_name in ['data_source', 'modules_db_hash']:
@@ -3107,7 +3109,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
-                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None):
+                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -3137,6 +3139,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         all_kos_in_db : dictionary
             This is the same deal as the all_modules_in_db param - it should only have a value if passed from the
             KeggMetabolismEstimatorMulti class
+        module_paths_dict : dictionary
+            Again, same thing as all_modules_in_db param - only provided if passed from KeggMetabolismEstimatorMulti
 
         RETURNS
         =======
@@ -3168,11 +3172,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if all_modules_in_db:
                 self.all_modules_in_db = all_modules_in_db
                 self.all_kos_in_db = all_kos_in_db
+                self.module_paths_dict = module_paths_dict
             else:
                 self.init_data_from_modules_db()
 
             kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-            self.init_paths_for_modules()
 
             if self.add_coverage:
                 self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
@@ -3590,7 +3594,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         d = {}
         if not self.ko_unique_id:
             self.ko_unique_id = 0
-        
+
         for bin, ko_dict in ko_superdict.items():
             for ko, k_dict in ko_dict.items():
                 if anvio.DEBUG:
@@ -4100,7 +4104,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                                                                                     run=run_quiet).estimate_metabolism(skip_storing_data=True, \
                                                                                                     return_subset_for_matrix_format=True, \
                                                                                                     all_modules_in_db=self.all_modules_in_db, \
-                                                                                                    all_kos_in_db=self.all_kos_in_db)
+                                                                                                    all_kos_in_db=self.all_kos_in_db, \
+                                                                                                    module_paths_dict=self.module_paths_dict)
 
             self.progress.increment()
             self.progress.reset()
