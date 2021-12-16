@@ -3501,7 +3501,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # list of enzymes unique to module
                     if "enzymes_unique_to_module" in headers_to_include:
                         unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
+                        if unique_enzymes:
+                            d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
+                        else:
+                            d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
 
                     # add coverage if requested
                     if self.add_coverage:
