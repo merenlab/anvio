@@ -110,13 +110,6 @@ class Palindromes:
 
         self.user_is_warned_for_potential_performance_issues = False
 
-        self.palindrome_finder = FindPalindromes(
-            min_palindrome_length = self.min_palindrome_length,
-            max_num_mismatches = self.max_num_mismatches,
-            min_distance = self.min_distance,
-            run = self.run,
-        )
-
         self.palindromes = {}
 
 
@@ -337,27 +330,6 @@ class Palindromes:
             filesnpaths.shutil.rmtree(BLAST_search_tmp_dir)
 
         return palindromes
-
-
-    def find_fast(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
-        """A potentially faster version of `find`"""
-
-        if sequence_name in self.palindromes:
-            raise ConfigError(f"The sequence '{sequence_name}' is already in `self.palindromes`.")
-        else:
-            self.palindromes[sequence_name] = []
-
-        sequence = sequence.upper()
-        sequence_length = len(sequence)
-
-        if sequence_length < self.min_palindrome_length * 2 + self.min_distance:
-            self.progress.reset()
-            self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short "
-                             f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
-                             f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
-
-        for palindrome in self.palindrome_finder.find(sequence):
-            self.palindromes[sequence_name].append(palindrome)
 
 
     def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3):
