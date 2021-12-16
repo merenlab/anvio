@@ -374,7 +374,14 @@ class KeggContext(object):
 
         The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
         using those headers as keys.
+
+        Requires self.all_modules_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
+        before this function.
         """
+
+        if not self.all_modules_in_db:
+            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_modules_in_db attribute to "
+                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
 
         class_data_val = self.all_modules_in_db[mnum]['CLASS']
         fields = class_data_val.split("; ")
@@ -393,7 +400,14 @@ class KeggContext(object):
 
         The dictionary must include all the metadata from KO_METADATA_HEADERS,
         using those headers as keys.
+
+        Requires self.all_kos_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
+        before this function.
         """
+
+        if not self.all_kos_in_db:
+            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_kos_in_db attribute to "
+                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
 
         mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
         if mod_list:
