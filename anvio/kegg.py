@@ -59,28 +59,27 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'headers': ["unique_id", "module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
                                 "enzyme_hit", "gene_caller_id", "contig"],
-                    'description': "Information on each KOfam hit that belongs to a KEGG module"
+                    'description': "Information on each enzyme (gene annotation) that belongs to a module"
                     },
                 'modules': {
                     'output_suffix': "kegg_modules.txt",
                     'data_dict': "modules",
                     'headers': ["unique_id", "module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
-                    'description': "Information on KEGG modules"
                                 "proportion_unique_enzymes_present", "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
+                    'description': "Information on metabolic modules"
                     },
                 'modules_custom': {
                     'output_suffix': "kegg_modules_custom.txt",
                     'data_dict': "modules",
                     'headers': None,
-                    'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
+                    'description': "A custom tab-delimited output file where you choose the included modules data using --custom-output-headers"
                     },
                 'hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
                     'headers': ["unique_id", "enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
-                    'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
+                    'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
 # dict containing matrix headers of information that we can output in custom mode
