@@ -66,8 +66,8 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'data_dict': "modules",
                     'headers': ["unique_id", "module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "enzymes_unique_to_module", "proportion_unique_enzymes_present", "enzyme_hits_in_module",
-                                "gene_caller_ids_in_module", "warnings"],
+                                "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
+                                "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on metabolic modules"
                     },
                 'modules_custom': {
@@ -113,10 +113,15 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'mode_type': 'modules',
                         'description': "A list of enzymes that only belong to this module (ie, they are not members of multiple modules)"
                         },
+                  'unique_enzymes_hit_counts' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "How many times each unique enzyme appears in the sample (order of counts corresponds to list in `enzymes_unique_to_module` field)"
+                        },
                   'proportion_unique_enzymes_present' : {
                         'cdict_key': 'proportion_unique_enzymes_present',
                         'mode_type': 'modules',
-                        'description': "Proportion of enzymes unique to this one module that are present in your sample"
+                        'description': "Proportion of enzymes unique to this one module that are present in the sample"
                         },
                   'unique_enzymes_context_string' : {
                         'cdict_key': 'unique_enzymes_context_string',
@@ -3273,7 +3278,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
-                                    "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module"])
+                                    "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
+                                    "unique_enzymes_hit_counts"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
@@ -3415,12 +3421,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
 
                                 # list of enzymes unique to module
+                                unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
                                 if "enzymes_unique_to_module" in headers_to_include:
-                                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
                                     if unique_enzymes:
                                         d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
                                     else:
                                         d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
+                                if "unique_enzymes_hit_counts" in headers_to_include:
+                                    if unique_enzymes:
+                                        hit_count_list = []
+                                        for e in unique_enzymes:
+                                            hit_count_list.append(len(c_dict["kofam_hits"][e]))
+                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
+                                    else:
+                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
 
                                 # everything else at c_dict level
                                 for h in remaining_headers:
@@ -3499,12 +3513,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
 
                     # list of enzymes unique to module
+                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
                     if "enzymes_unique_to_module" in headers_to_include:
-                        unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
                         if unique_enzymes:
                             d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
                         else:
                             d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
+                    if "unique_enzymes_hit_counts" in headers_to_include:
+                        if unique_enzymes:
+                            hit_count_list = []
+                            for e in unique_enzymes:
+                                hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
+                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
+                        else:
+                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
 
                     # add coverage if requested
                     if self.add_coverage:
