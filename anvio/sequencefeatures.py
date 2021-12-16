@@ -37,7 +37,7 @@ progress_quiet = terminal.Progress(verbose=False)
 class Palindrome:
     def __init__(self, sequence_name=None, first_start=None, first_end=None, first_sequence=None, second_start=None,
                  second_end=None, second_sequence=None, num_mismatches=None, length=None, distance=None, num_gaps=None,
-                 midline='', run=terminal.Run()):
+                 midline='', method=None, run=terminal.Run()):
         self.run = run
         self.sequence_name = sequence_name
         self.first_start = first_start
@@ -51,6 +51,7 @@ class Palindrome:
         self.distance = distance
         self.num_gaps = num_gaps
         self.midline = midline
+        self.method = method
 
 
     def __str__(self):
@@ -66,6 +67,7 @@ class Palindrome:
         self.run.verbose = True
 
         self.run.warning(None, header=f'{self.length} nts palindrome', lc='yellow')
+        self.run.info('Method', self.method, mc='green')
         self.run.info('1st sequence [start:stop]', f"[{self.first_start}:{self.first_end}]", mc='green')
         self.run.info('2nd sequence [start:stop]', f"[{self.second_start}:{self.second_end}]", mc='green')
         self.run.info('Number of mismatches', f"{self.num_mismatches}", mc='red')
@@ -298,7 +300,7 @@ class Palindromes:
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
 
                 for hsp_xml in hit_xml.findall('Hit_hsps/Hsp'):
-                    p = Palindrome(run=self.run)
+                    p = Palindrome(method='BLAST', run=self.run)
 
                     p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
                     p.first_end = int(hsp_xml.find('Hsp_query-to').text)
@@ -423,6 +425,7 @@ class Palindromes:
                 distance = second_start - first_start, # FIXME this should be second_start - first_end
                 length = len(first_sequence),          # length of first will always be length of second
                 num_gaps = 0,                          # via the behavior of _find_palindrome
+                method = 'numba',
                 run = self.run,
             )
 
