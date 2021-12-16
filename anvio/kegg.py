@@ -4839,6 +4839,9 @@ class ModulesDatabase(KeggContext):
         have multiple values (ORTHOLOGY, COMPOUND, REACTION, etc), the value becomes yet another dictionary
         of data_value -> data_definition key-value pairs.
 
+        The one exception is DEFINITION lines - there are occasionally multiple of these for one module but
+        these must be returned as a list, not as a dictionary.
+
         PARAMETERS
         ==========
         data_names_of_interest : list of str
@@ -4876,16 +4879,24 @@ class ModulesDatabase(KeggContext):
             if data_name not in module_dictionary[mod]:
                 module_dictionary[mod][data_name] = data_value
             else:
-                # data_value -> data_definition dictionary
-                if isinstance(module_dictionary[mod][data_name], dict):
-                    if data_value in module_dictionary[mod][data_name]:
-                        module_dictionary[mod][data_name][data_value] += " / " + data_definition
+                # place multiple definition lines into list
+                if data_name == "DEFINITION":
+                    if isinstance(module_dictionary[mod][data_name], list):
+                        module_dictionary[mod][data_name].append(data_value)
                     else:
-                        module_dictionary[mod][data_name][data_value] = data_definition
+                        existing_val = module_dictionary[mod][data_name]
+                        module_dictionary[mod][data_name] = [existing_val, data_value]
                 else:
-                    existing_val = module_dictionary[mod][data_name]
-                    existing_val_data_def = dict_from_mod_table[entry-1]['data_definition']
-                    module_dictionary[mod][data_name] = {existing_val: existing_val_data_def, data_value: data_definition}
+                    # data_value -> data_definition dictionary
+                    if isinstance(module_dictionary[mod][data_name], dict):
+                        if data_value in module_dictionary[mod][data_name]:
+                            module_dictionary[mod][data_name][data_value] += " / " + data_definition
+                        else:
+                            module_dictionary[mod][data_name][data_value] = data_definition
+                    else:
+                        existing_val = module_dictionary[mod][data_name]
+                        existing_val_data_def = dict_from_mod_table[entry-1]['data_definition']
+                        module_dictionary[mod][data_name] = {existing_val: existing_val_data_def, data_value: data_definition}
 
         return module_dictionary
 
