@@ -403,6 +403,9 @@ class Palindromes:
             D = self.min_distance,
         )
 
+        # sort by longest palindrome first
+        palindrome_coords = sorted(palindrome_coords, key = lambda y: y[1]-y[0], reverse=True)
+
         if coords_only:
             return palindrome_coords
 
