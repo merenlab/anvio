@@ -200,7 +200,7 @@ class Palindromes:
             return self._find_numba
 
 
-    def find(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
+    def find(self, sequence, sequence_name="N/A", display_palindromes=False):
         """Find palindromes in a single sequence, and populate `self.palindromes`
 
         This method finds palindromes by delegating to either `_find_BLAST` and `_find_numba`.
