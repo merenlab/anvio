@@ -2571,6 +2571,17 @@ D = {
             'help': "If this is true, the output file will be in GFF3 format."
         }
     ),
+    'palindrome-method': (
+            ['--palindrome-method'],
+            {'default': None,
+             'metavar': 'STRING',
+             'type': str,
+             'choices': {'numba', 'BLAST'},
+             'help': "There are two methods for calculating palindromes: 'BLAST' and 'numba'. To optimize for speed, "
+                     "numba is used if the queried sequence length is less than 5000 nucleotides, and BLAST is used "
+                     "otherwise. However, you can force a specific method to be used for all palindrome finding using "
+                     "this flag. Choose from {'BLAST', 'numba'}."}
+        ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
             {'default': 10,

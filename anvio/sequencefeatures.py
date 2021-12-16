@@ -85,6 +85,7 @@ class Palindromes:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.palindrome_method = A('palindrome_method')
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
@@ -208,7 +209,18 @@ class Palindromes:
                              f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
-        palindromes = self._find_BLAST(sequence)
+        # Decide what method to use to calculate palindromes
+        if not self.palindrome_method:
+            # No choice specified. Use BLAST if sequence is long, otherwise use numba
+            method = self._find_BLAST if sequence_length >= 5000 else self._find_numba
+        elif self.palindrome_method == 'BLAST':
+            method = self._find_BLAST
+        elif self.palindrome_method == 'numba':
+            method = self._find_numba
+        else:
+            raise NotImplementedError(f"Palindromes :: Palindrome method {self.palindrome_method} not implemented.")
+
+        palindromes = method(sequence)
 
         for palindrome in palindromes:
             if anvio.DEBUG or display_palindromes or self.verbose:
@@ -226,11 +238,24 @@ class Palindromes:
         arbitrarily sized palindrome searching, e.g. entire assemblies or genomes. If the sequence
         length > 5000, this is a great choice.
 
+        Here are the timings as a function of sequence length.
+
+            length 100:     51.7 ms ± 2.34 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 278:     48.4 ms ± 947 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 774:     47.9 ms ± 570 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 2154:    49.8 ms ± 541 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 5994:    52 ms ± 2.53 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 16681:   51.7 ms ± 555 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 46415:   56.4 ms ± 623 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 129154:  63.8 ms ± 510 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 359381:  100 ms ± 848 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 1000000: 324 ms ± 4.95 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
         Returns
         =======
         out : list of anvio.sequencefeatures.Palindrome
+            Returns a list of Palindrome objects. If no palindromes are found, empty list is returned.
         """
-
         palindromes = []
         sequence = sequence.upper()
 
@@ -332,6 +357,78 @@ class Palindromes:
         return palindromes
 
 
+    def _find_numba(self, sequence, coords_only=False):
+        """Find palindromes in a single sequence using a numba state machine
+
+        This method of palindrome specializes in finding palindromes for short sequences (<5000). If
+        the sequence length < 5000, this is a great choice.
+
+        Here are timings as a function of sequence size:
+
+            length 100:   17.6 µs ± 480 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+            length 166:   42.8 µs ± 431 ns per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+            length 278:   139 µs ± 1.88 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+            length 464:   429 µs ± 4.18 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+            length 774:   1.3 ms ± 10.5 µs per loop (mean ± std. dev. of 7 runs, 1000 loops each)
+            length 1291:  4.01 ms ± 128 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+            length 2154:  11.2 ms ± 492 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+            length 3593:  31.3 ms ± 1.05 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 5994:  88.8 ms ± 410 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+            length 10000: 241 ms ± 1.86 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+
+        Parameters
+        ==========
+        coords_only : bool, False
+            If True
+
+        Returns
+        =======
+        out : list of anvio.sequencefeatures.Palindrome
+            By default, returns a list of Palindrome objects. But if coords_only is True, a list of
+            4-length tuples are returned. Each tuple is (first_start, first_second, second_start, second_end).
+            If no palindromes are found, an empty list is returned.
+        """
+        sequence_array = utils.nt_seq_to_nt_num_array(sequence)
+        sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
+
+        palindrome_coords = _find_palindromes(
+            seq = sequence_array,
+            rev = sequence_array_RC,
+            m = self.min_palindrome_length,
+            N = self.max_num_mismatches,
+            D = self.min_distance,
+        )
+
+        if coords_only:
+            return palindrome_coords
+
+        palindromes = []
+        for first_start, first_end, second_start, second_end in palindrome_coords:
+            first_sequence = sequence[first_start:first_end]
+            second_sequence = utils.rev_comp(sequence[second_start:second_end])
+            num_mismatches = sum(1 for a, b in zip(first_sequence, second_sequence) if a != b)
+            midline = ''.join('|' if a == b else 'x' for a, b in zip(first_sequence, second_sequence))
+
+            palindrome = Palindrome(
+                first_start = first_start,
+                first_end = first_end,
+                first_sequence = first_sequence,
+                second_start = second_start,
+                second_end = second_end,
+                second_sequence = second_sequence,
+                num_mismatches = num_mismatches,
+                midline = midline,
+                distance = second_start - first_start, # FIXME this should be second_start - first_end
+                length = len(first_sequence),          # length of first will always be length of second
+                num_gaps = 0,                          # via the behavior of _find_palindrome
+                run = self.run,
+            )
+
+            palindromes.append(palindrome)
+
+        return palindromes
+
+
     def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3):
         """Takes a mismatch map, returns longest palindrome start/ends that satisfy all constraints
 
@@ -346,7 +443,7 @@ class Palindromes:
         if len(s) < min_palindrome_length:
             return []
 
-        # The purpose here is ot find the longest stretches of 'o'
+        # The purpose here is to find the longest stretches of 'o'
         # characters in a given string of mismatch map `s` (which
         # correspond to matching nts in a palindromic sequence)
         # without violating the maximum number of mismatches allowed
@@ -566,60 +663,8 @@ class Palindromes:
             self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
 
 
-class FindPalindromes(object):
-    def __init__(self, min_palindrome_length=10, max_num_mismatches=0, min_distance=0, run=terminal.Run()):
-        self.run = run
-
-        self.min_palindrome_length = min_palindrome_length
-        self.max_num_mismatches = max_num_mismatches
-        self.min_distance = min_distance
-
-
-    def find(self, sequence, sequence_name="", display_palindromes=False, coords_only=False):
-        sequence_array = utils.nt_seq_to_nt_num_array(sequence)
-        sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
-
-        palindrome_coords = _find_palindrome(
-            seq = sequence_array,
-            rev = sequence_array_RC,
-            m = self.min_palindrome_length,
-            N = self.max_num_mismatches,
-            D = self.min_distance,
-        )
-
-        if coords_only:
-            return palindrome_coords
-
-        palindromes = []
-        for first_start, first_end, second_start, second_end in palindrome_coords:
-            first_sequence = sequence[first_start:first_end]
-            second_sequence = utils.rev_comp(sequence[second_start:second_end])
-            num_mismatches = sum(1 for a, b in zip(first_sequence, second_sequence) if a != b)
-            midline = ''.join('|' if a == b else 'x' for a, b in zip(first_sequence, second_sequence))
-
-            palindrome = Palindrome(
-                sequence_name = sequence_name,
-                first_start = first_start,
-                first_end = first_end,
-                first_sequence = first_sequence,
-                second_start = second_start,
-                second_end = second_end,
-                second_sequence = second_sequence,
-                num_mismatches = num_mismatches,
-                midline = midline,
-                distance = second_start - first_start, # FIXME this should be second_start - first_end
-                length = len(first_sequence),          # length of first will always be length of second
-                num_gaps = 0,                          # via the behavior of _find_palindrome
-                run = self.run,
-            )
-
-            palindromes.append(palindrome)
-
-        return palindromes
-
-
 @jit(nopython=True)
-def _find_palindrome(seq, rev, m, N, D):
+def _find_palindromes(seq, rev, m, N, D):
     L = len(seq)
     palindrome_coords = []
 

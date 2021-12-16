@@ -56,6 +56,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
     groupC.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
     groupC.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
+    groupC.add_argument(*anvio.A('palindrome-method'), **anvio.K('palindrome-method'))
 
     groupD = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 03: CONFIRMING INVERSIONS', "Which palindromes are inversions? A one million dollar "
                     "question that is quite difficult to get right (but as anvi'o does get it right frequently).")
