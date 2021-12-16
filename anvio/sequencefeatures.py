@@ -94,6 +94,11 @@ class Palindromes:
         self.fasta_file_path = A('fasta_file')
         self.output_file_path = A('output_file')
 
+        self.palindrome_methods = {
+            'BLAST': self._find_BLAST,
+            'numba': self._find_numba,
+        }
+
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
         self.blast_word_size = A('blast_word_size') or 10
 
@@ -186,6 +191,13 @@ class Palindromes:
         self.report()
 
 
+    def get_palindrome_method(self, sequence):
+        if len(sequence) >= 5000:
+            return self._find_BLAST
+        else:
+            return self._find_numba
+
+
     def find(self, sequence, sequence_name="(a sequence does not have a name)", display_palindromes=False):
         """Find palindromes in a single sequence, and populate `self.palindromes`
 
@@ -209,17 +221,7 @@ class Palindromes:
                              f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
 
-        # Decide what method to use to calculate palindromes
-        if not self.palindrome_method:
-            # No choice specified. Use BLAST if sequence is long, otherwise use numba
-            method = self._find_BLAST if sequence_length >= 5000 else self._find_numba
-        elif self.palindrome_method == 'BLAST':
-            method = self._find_BLAST
-        elif self.palindrome_method == 'numba':
-            method = self._find_numba
-        else:
-            raise NotImplementedError(f"Palindromes :: Palindrome method {self.palindrome_method} not implemented.")
-
+        method = self.palindrome_methods.get(self.palindrome_method, self.get_palindrome_method(sequence))
         palindromes = method(sequence)
 
         for palindrome in palindromes:
