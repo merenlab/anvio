@@ -376,7 +376,9 @@ class KeggContext(object):
         using those headers as keys.
         """
 
-        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_value=self.all_modules_in_db[mnum]['CLASS'])
+        class_data_val = self.all_modules_in_db[mnum]['CLASS']
+        fields = class_data_val.split("; ")
+        mnum_class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
 
         metadata_dict = {}
         metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
@@ -3306,7 +3308,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if exclude_zero_completeness and c_dict["percent_complete"] == 0:
                     continue
 
-                # fetch module info from db
+                # fetch module info
                 metadata_dict = self.get_module_metadata_dictionary(mnum)
                 definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
                 if not isinstance(definition_list, list):
