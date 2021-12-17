@@ -8,9 +8,6 @@
     touch-action: none;
 }
 
-#myCanvas {
-}
-
 svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
@@ -49,6 +46,13 @@ g.scale rect.background{
 }
 
 #tooltip-body{
+    background-color: white;
+    opacity: 100%;
+    border-style: solid;
+    border-width: 3px;
+    padding : 10px;
+}
+#deepdive-tooltip-body{
     background-color: white;
     opacity: 100%;
     border-style: solid;
