@@ -1772,6 +1772,42 @@ class KeggEstimatorArgs():
             self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
+    def get_enzymes_from_module_definition_in_order(self, mod_definition):
+        """Given a module DEFINITION string, this function parses out the enzyme accessions in order of appearance.
+
+        PARAMETERS
+        ==========
+        mod_definition : a string or list of strings containing the module DEFINITION lines
+
+        RETURNS
+        ==========
+
+        """
+
+        if isinstance(mod_definition, list):
+            mod_definition = " ".join(mod_definition)
+
+        # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
+        mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+        acc_list = re.split(r'\s+', mod_definition)
+        # remove anything that is not an enzyme and sanity check for weird characters
+        mods_to_remove = set()
+        for a in acc_list:
+            if a in self.all_modules_in_db:
+                mods_to_remove.add(a)
+            if re.match('[^a-zA-Z0-9_\.]', a):
+                raise ConfigError(f"The get_enzymes_from_module_definition_in_order() function found an enzyme accession that looks a bit funny. "
+                                  f"Possibly this is a failure of our parsing strategy, or maybe the enzyme accession just has unexpected characters "
+                                  f"in it. We don't know what module it is, but the weird enzyme is {a}. If you think that accession looks perfectly "
+                                  f"fine, you should reach out to the developers and have them fix this function to accomodate the accession. Or, you "
+                                  f"could just rename the enzyme?")
+        if mods_to_remove:
+            for m in mods_to_remove:
+                acc_list.remove(m)
+
+        return acc_list
+
+
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
 
