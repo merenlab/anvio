@@ -224,7 +224,8 @@ function setEventListeners(){
   $('#brush_start').val(0);
   $('#brush_end').val(Math.floor(canvas.getWidth()));
 
-  $('#tooltip-body').hide() // set initual tooltip hide value
+  $('#deepdive-tooltip-body').hide() // set initual tooltip hide value
+  $('#tooltip-body').hide()
   $('#show_genome_labels_box').attr("checked", showLabels);
   $('#show_gene_labels_box').attr("checked", showGeneLabels);
   $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
@@ -259,7 +260,48 @@ function showDeepDiveToolTip(event){
 
   $('#deepdive-tooltip-body').show().append(`
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
-  <h1>hey everyone</>
+  <h2>Gene Call</h2>
+  <table class="table table-striped" style="width: 100%; text-align: center;">
+  <thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th><th>% in split</th></thead>
+  <tbody>
+  <tr><td>  ${event.target.geneID}
+  </td><td> ${event.target.gene?.source}
+  </td><td> ${event.target.gene.stop - event.target.gene.start}
+  </td><td> ${event.target.gene.direction}
+  </td><td> ${event.target.gene.start}
+  </td><td> ${event.target.gene.stop}
+  </td><td> ${event.target.gene?.call_type}
+  </td><td> ${event.target.gene?.complete_gene_call}
+  </td><td> ${event.target.gene?.percentage_in_split?.toFixed(2) + '%'}
+  </td></tr></tbody></table>;
+
+  <button type="button" class="btn btn-default btn-sm" onClick="show_sequence(${event.target.gene.gene_callers_id});">DNA</button>
+  <button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(${event.target.gene.gene_callers_id});">AA</button>
+  <button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(${event.target.gene.gene_callers_id}, \'blastx\', \'nr\', \'gene\');">blastx @ nr</button>
+  <button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(${event.target.gene.gene_callers_id}, \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button>
+
+
+  <h2>Annotations</h2>;
+  <table class="table table-striped">;
+  <thead><th>Source</th>;
+  <th>Accession</th>;
+  <th>Annotation</th></thead>;
+  <tbody>;
+  <tr>
+  <td>COG-Category</td>
+  <td>idk</td>
+  <td>${event.target.functions?.COG_CATEGORY[1]}<td/>
+  </tr>
+  <tr>
+  <td>COG-Function</td>
+  <td>idk</td>
+  <td>${event.target.functions?.COG_FUNCTION[1]}<td/>
+  </tr>
+  <td>EGGNOG</td>
+  <td>idk</td>
+  <>${event.target.functions?.EGGNOG_BACT[1]}<td/>
+  </tr></tbody></table>;
+  <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
 
