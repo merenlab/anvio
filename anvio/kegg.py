@@ -4204,7 +4204,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
-        self.kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args)
         self.init_data_from_modules_db()
 
         # these will be empty dictionaries unless matrix format
@@ -4213,7 +4212,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.matrix_format:
             self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
 
-        self.kegg_modules_db.disconnect()
 
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
 
