@@ -369,63 +369,6 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
-    def get_module_metadata_dictionary(self, mnum):
-        """Returns a dictionary of metadata for the given module.
-
-        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
-        using those headers as keys.
-
-        Requires self.all_modules_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
-        before this function.
-        """
-
-        if not self.all_modules_in_db:
-            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_modules_in_db attribute to "
-                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
-
-        class_data_val = self.all_modules_in_db[mnum]['CLASS']
-        fields = class_data_val.split("; ")
-        mnum_class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
-
-        metadata_dict = {}
-        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
-        metadata_dict["module_class"] = mnum_class_dict["class"]
-        metadata_dict["module_category"] = mnum_class_dict["category"]
-        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
-        return metadata_dict
-
-
-    def get_ko_metadata_dictionary(self, knum):
-        """Returns a dictionary of metadata for the given KO.
-
-        The dictionary must include all the metadata from KO_METADATA_HEADERS,
-        using those headers as keys.
-
-        Requires self.all_kos_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
-        before this function.
-        """
-
-        if not self.all_kos_in_db:
-            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_kos_in_db attribute to "
-                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
-
-        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
-        if mod_list:
-            mod_list_str = ",".join(mod_list)
-        else:
-            mod_list_str = "None"
-
-        if knum not in self.ko_dict:
-            raise ConfigError("Something is mysteriously wrong. Your contigs database "
-                              f"has an annotation for KO {knum} but this KO is not in "
-                              "the KO dictionary. This should never have happened.")
-
-        metadata_dict = {}
-        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-        metadata_dict["modules_with_enzyme"] = mod_list_str
-        return metadata_dict
-
-
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
@@ -1806,6 +1749,63 @@ class KeggEstimatorArgs():
                 acc_list.remove(m)
 
         return acc_list
+
+
+    def get_module_metadata_dictionary(self, mnum):
+        """Returns a dictionary of metadata for the given module.
+
+        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
+        using those headers as keys.
+
+        Requires self.all_modules_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
+        before this function.
+        """
+
+        if not self.all_modules_in_db:
+            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_modules_in_db attribute to "
+                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
+
+        class_data_val = self.all_modules_in_db[mnum]['CLASS']
+        fields = class_data_val.split("; ")
+        mnum_class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
+
+        metadata_dict = {}
+        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
+        metadata_dict["module_class"] = mnum_class_dict["class"]
+        metadata_dict["module_category"] = mnum_class_dict["category"]
+        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
+        return metadata_dict
+
+
+    def get_ko_metadata_dictionary(self, knum):
+        """Returns a dictionary of metadata for the given KO.
+
+        The dictionary must include all the metadata from KO_METADATA_HEADERS,
+        using those headers as keys.
+
+        Requires self.all_kos_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
+        before this function.
+        """
+
+        if not self.all_kos_in_db:
+            raise ConfigError("The function get_ko_metadata_dictionary() requires the self.all_kos_in_db attribute to "
+                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
+
+        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
+        if mod_list:
+            mod_list_str = ",".join(mod_list)
+        else:
+            mod_list_str = "None"
+
+        if knum not in self.ko_dict:
+            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                              f"for enzyme {knum} but this enzyme is not in "
+                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
+
+        metadata_dict = {}
+        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+        metadata_dict["modules_with_enzyme"] = mod_list_str
+        return metadata_dict
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
