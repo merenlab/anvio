@@ -1700,8 +1700,9 @@ class KeggEstimatorArgs():
                 ko_list = list(orthology.keys())
             for k in ko_list:
                 if k not in self.all_kos_in_db:
-                    self.all_kos_in_db[k] = []
-                self.all_kos_in_db[k].append(mod)
+                    src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
+                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src}
+                self.all_kos_in_db[k]['modules'].append(mod)
 
         # initialize module paths into self.module_paths_dict
         self.init_paths_for_modules()
@@ -1822,7 +1823,7 @@ class KeggEstimatorArgs():
             raise ConfigError("The function get_ko_metadata_dictionary() requires the self.all_kos_in_db attribute to "
                               "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
 
-        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
+        mod_list = self.all_kos_in_db[knum]['modules'] if knum in self.all_kos_in_db else None
         if mod_list:
             mod_list_str = ",".join(mod_list)
         else:
@@ -2365,22 +2366,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "warnings" : set()
                                           }
         for knum in all_kos:
-            # we can only add warnings about missing KO profiles if we are working exclusively with KEGG data
-            # because for user-defined modules, we don't have way to know if profiles are missing
-            # FIXME find a way for this to work for KOfams even in user data case
-            if self.ko_dict and not self.user_input_dir:
-                if knum not in self.ko_dict:
-                    mods_it_is_in = self.all_kos_in_db[knum]
-                    if mods_it_is_in:
-                        if anvio.DEBUG:
-                            mods_str = ", ".join(mods_it_is_in)
-                            self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
-                                            "that any modules this KO belongs to can never be fully complete (this includes "
-                                            f"{mods_str}). ")
-                        for m in mods_it_is_in:
-                            if knum[0] != 'M':
-                                bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
-                    continue
+            """
+            We can only add warnings about missing KOfam profiles because for other annotation sources, we don't
+            have a way to know if profiles are missing. But for KOfams with missing profiles, this step is necessary
+            so that we don't add the enzyme to the bin_level_ko_dict, because later this will cause problems since
+            the enzyme is not in self.ko_dict
+            """
+            if self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+                mods_it_is_in = self.all_kos_in_db[knum]['modules']
+                if mods_it_is_in:
+                    if anvio.DEBUG:
+                        mods_str = ", ".join(mods_it_is_in)
+                        self.run.warning(f"Oh dear. We do not appear to have a KOfam profile for {knum}. This means "
+                                        "that any modules this KO belongs to can never be fully complete (this includes "
+                                        f"{mods_str}). ")
+                    for m in mods_it_is_in:
+                        if knum[0] != 'M':
+                            bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+                continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
                                      "modules" : None,
@@ -2400,7 +2403,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
-                present_in_mods = self.all_kos_in_db[ko]
+                present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
                 # keep track of enzymes unique to this module
