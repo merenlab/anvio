@@ -272,10 +272,6 @@ class KeggContext(object):
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
-        # sanity check against specifying both KEGG data and user data
-        if A('kegg_data_dir') and self.user_input_dir:
-            raise ConfigError("Please specify only one input metabolism data source, either --kegg-data-dir OR --input-dir.")
-
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if A('reset') and A('kegg_data_dir'):
             raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
@@ -1967,47 +1963,41 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.estimate_from_json:
             utils.is_contigs_db(self.contigs_db_path)
 
-        # choose between user or kegg modules db
-        if self.user_input_dir:
-            self.modules_db_path = self.user_modules_db_path
-            self.run.info('Metabolism data', "USER-DEFINED")
+        # citation output for KEGG data
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
-            self.setup_ko_dict_from_modules_and_contigs_dbs = True
+        # init the enzyme accession to function definition dictionary
+        # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
+        self.setup_ko_dict()
+        annotation_source_set = set(['KOfam'])
 
-        else:
-            self.modules_db_path = self.kegg_modules_db_path
-            self.run.info('Metabolism data', "KEGG")
+        # check for kegg modules db
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
+                              f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
+                              f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                              f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
-            # init the KO dictionary
-            self.setup_ko_dict()
+        if not self.estimate_from_json:
+            # here we load the contigs DB just for sanity check purposes.
+            # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+            contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+            self.contigs_db_project_name = contigs_db.meta['project_name']
 
-            # citation output for KEGG data
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
-
-        # load existing modules db
-        if not os.path.exists(self.modules_db_path):
-            raise ConfigError(f"It appears that a modules database ({self.modules_db_path}) does not exist in the provided data directory. "
-                              f"Perhaps you need to specify a different data directory using --kegg-data-dir or --input-dir. Or perhaps you didn't run "
-                              f"`anvi-setup-kegg-kofams` or `anvi-setup-user-modules`, though we are not sure how you got to this point "
-                              f"in that case. But fine. Hopefully you now know what you need to do to make this message go away.")
-        kegg_modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
-
-        # here we load the contigs DB just for sanity check purposes.
-        # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
-
-        if not self.estimate_from_json and not self.user_input_dir:
             # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
             if 'modules_db_hash' not in contigs_db.meta:
                 raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
                                   "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
                                   "before you attempt to run this script again.")
             contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+
+            kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
             mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
+            kegg_modules_db.disconnect()
+
             if contigs_db_mod_hash != mod_db_hash:
                 raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
                                   "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
@@ -2018,28 +2008,44 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
                                   "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
 
-            self.annotation_sources_to_use = ['KOfam']
+            if self.user_input_dir:
+                # check for user modules db
+                if not os.path.exists(self.user_modules_db_path):
+                    raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
+                                      f"Perhaps you need to specify a different data directory using --input-dir. Or perhaps you didn't run "
+                                      f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
 
-        elif self.user_input_dir:
-            # sanity check that contigs db contains all necessary functional sources
-            modules_db_sources = set(kegg_modules_db.db.get_meta_value('annotation_sources').split(','))
-            contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
-            source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
+                # sanity check that contigs db contains all necessary functional sources for user data
+                user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
+                modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
 
-            if source_in_modules_not_contigs:
-                missing_sources = ", ".join(source_in_modules_not_contigs)
-                raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
-                                  f"required for the modules in the database at {self.modules_db_path}. You will have to "
-                                  f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
-                                  f"before running this program again. Here are the missing sources: {missing_sources}")
+                contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
+                source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
 
-            self.annotation_sources_to_use = list(modules_db_sources)
+                if source_in_modules_not_contigs:
+                    missing_sources = ", ".join(source_in_modules_not_contigs)
+                    raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
+                                      f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
+                                      f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
+                                      f"before running this program again. Here are the missing sources: {missing_sources}")
 
-            # since we did not setup KO dict above, we do it now using all KOs from the modules database
-            self.ko_dict = kegg_modules_db.get_ko_function_dict()
+                # expand annotation source set to include those in user db
+                annotation_source_set.update(modules_db_sources)
 
-        contigs_db.disconnect()
-        kegg_modules_db.disconnect()
+                # we now have to add any enzymes from the user's modules db to the ko dict
+                user_kos = user_modules_db.get_ko_function_dict()
+                for k in user_kos:
+                    if k not in self.ko_dict:
+                        self.ko_dict[k] = user_kos[k]
+                user_modules_db.disconnect()
+
+                self.run.info('Metabolism data', "KEGG + USER-DEFINED")
+            else:
+                self.run.info('Metabolism data', "KEGG only")
+
+            contigs_db.disconnect()
+
+        self.annotation_sources_to_use = list(annotation_source_set)
 
 
     def list_output_modes(self):
@@ -2151,8 +2157,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             for annotation in ko.split('!!!'):
                 kofam_gene_split_contig.append((annotation, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
 
-                # if we don't yet have a KO dictionary, we make it from the gene calls we just loaded
-                if self.setup_ko_dict_from_modules_and_contigs_dbs:
+                # for user data, the enzymes in some loaded gene calls may not yet be in the ko dict, so we add them in here.
+                if self.user_input_dir:
                     if not self.ko_dict:
                         raise ConfigError("Uh oh. The code is currently trying to add gene annotations to self.ko_dict, but this attribute does not "
                                           "exist! You need to fix this.")
