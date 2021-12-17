@@ -54,7 +54,7 @@ P = terminal.pluralize
 # headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
 # description is what is printed when --list-available-modes parameter is used
 OUTPUT_MODES = {'hits_in_modules': {
-                    'output_suffix': "kofam_hits_in_modules.txt",
+                    'output_suffix': "hits_in_modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
@@ -62,7 +62,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'description': "Information on each enzyme (gene annotation) that belongs to a module"
                     },
                 'modules': {
-                    'output_suffix': "kegg_modules.txt",
+                    'output_suffix': "modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
@@ -71,13 +71,13 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'description': "Information on metabolic modules"
                     },
                 'modules_custom': {
-                    'output_suffix': "kegg_modules_custom.txt",
+                    'output_suffix': "modules_custom.txt",
                     'data_dict': "modules",
                     'headers': None,
                     'description': "A custom tab-delimited output file where you choose the included modules data using --custom-output-headers"
                     },
                 'hits': {
-                    'output_suffix': "kofam_hits.txt",
+                    'output_suffix': "hits.txt",
                     'data_dict': "kofams",
                     'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
@@ -1975,9 +1975,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             self.setup_ko_dict_from_modules_and_contigs_dbs = True
 
-            # update available modes output suffixes
-            for m in self.available_modes:
-                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
         else:
             self.modules_db_path = self.kegg_modules_db_path
             self.run.info('Metabolism data', "KEGG")
@@ -3925,10 +3922,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.annotation_sources_to_use = modules_db.db.get_meta_value('annotation_sources').split(',')
             self.ko_dict = modules_db.get_ko_function_dict()
             modules_db.disconnect()
-
-            # update available modes output suffixes
-            for m in self.available_modes:
-                self.available_modes[m]['output_suffix'] = self.available_modes[m]['output_suffix'].replace('kegg', 'user').replace('kofam', 'user')
 
         else:
             self.modules_db_path = self.kegg_modules_db_path
