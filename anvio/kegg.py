@@ -4420,7 +4420,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     step_comments = None
 
                 stat = f"{mod}_enzyme_hits"
-                self.write_stat_to_matrix(stat_name=stat, stat_header="KO", stat_key='num_hits', stat_dict=ko_superdict_multi, \
+                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                           item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
                                           write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
