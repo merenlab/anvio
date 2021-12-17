@@ -5320,7 +5320,7 @@ class ModulesDatabase(KeggContext):
         """
 
         def_string = self.get_kegg_module_definition(mnum)
-        return self.split_by_delim_not_within_parens(def_string, " ")
+        return utils.split_by_delim_not_within_parens(def_string, " ")
 
 
     def unroll_module_definition(self, mnum, def_lines = None):
@@ -5350,59 +5350,6 @@ class ModulesDatabase(KeggContext):
         return def_line_paths
 
 
-    def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
-        """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
-
-        This function exists because regular expressions don't handle nested parentheses very well. It is used in the
-        recursive module definition unrolling functions to split module steps, but it is generically written in case
-        it could have other uses in the future.
-
-        The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
-        instead of the list of splits in this situation)
-
-        PARAMETERS
-        ==========
-        d : str
-            string to split
-        delims : str or list of str
-            a single delimiter, or a list of delimiters, to split on
-        return_delims : boolean
-            if this is true then the list of delimiters found between each split is also returned
-
-        RETURNS
-        =======
-        If parentheses are unbalanced in the string, this function returns False. Otherwise:
-        splits : list
-            strings that were split from d
-        delim_list : list
-            delimiters that were found between each split (only returned if return_delims is True)
-        """
-
-        parens_level = 0
-        last_split_index = 0
-        splits = []
-        delim_list = []
-        for i in range(len(d)):
-            # only split if not within parentheses
-            if d[i] in delims and parens_level == 0:
-                splits.append(d[last_split_index:i])
-                delim_list.append(d[i])
-                last_split_index = i + 1 # we add 1 here to skip the space
-            elif d[i] == "(":
-                parens_level += 1
-            elif d[i] == ")":
-                parens_level -= 1
-
-            # if parentheses become unbalanced, return False to indicate this
-            if parens_level < 0:
-                return False
-        splits.append(d[last_split_index:len(d)])
-
-        if return_delims:
-            return splits, delim_list
-        return splits
-
-
     def recursive_definition_unroller(self, step):
         """This function recursively splits a module definition into its components.
 
@@ -5426,7 +5373,7 @@ class ModulesDatabase(KeggContext):
             all paths that the input step has been unrolled into
         """
 
-        split_steps = self.split_by_delim_not_within_parens(step, " ")
+        split_steps = utils.split_by_delim_not_within_parens(step, " ")
         paths_list = [[]]  # list to save all paths, with initial empty path list to extend from
         for s in split_steps:
             # base case: step is a ko, mnum, non-essential step, or '--'
@@ -5437,19 +5384,19 @@ class ModulesDatabase(KeggContext):
                 if s[0] == "(" and s[-1] == ")":
                     # here we try splitting to see if removing the outer parentheses will make the definition become unbalanced
                     # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
-                    comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
+                    comma_substeps = utils.split_by_delim_not_within_parens(s[1:-1], ",")
                     if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
-                        comma_substeps = self.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
+                        comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = utils.split_by_delim_not_within_parens(s[1:-1], " ")
                     if not space_substeps:
-                        space_substeps = self.split_by_delim_not_within_parens(s, " ")
+                        space_substeps = utils.split_by_delim_not_within_parens(s, " ")
                 else:
-                    comma_substeps = self.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = self.split_by_delim_not_within_parens(s, " ")
+                    comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = utils.split_by_delim_not_within_parens(s, " ")
 
                 # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
                 if len(comma_substeps) == 1 and len(space_substeps) == 1:
-                    complex_components, delimiters = self.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
+                    complex_components, delimiters = utils.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
                     complex_strs = [""]
 
                     # reconstruct the complex (and any alternate possible complexes) while keeping the +/- structure the same
@@ -5505,11 +5452,11 @@ class ModulesDatabase(KeggContext):
         """
 
         if step[0] == "(" and step[-1] == ")":
-            substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
+            substeps = utils.split_by_delim_not_within_parens(step[1:-1], ",")
             if not substeps: # if it doesn't work, try without removing surrounding parentheses
-                substeps = self.split_by_delim_not_within_parens(step, ",")
+                substeps = utils.split_by_delim_not_within_parens(step, ",")
         else:
-            substeps = self.split_by_delim_not_within_parens(step, ",")
+            substeps = utils.split_by_delim_not_within_parens(step, ",")
 
         alt_path_list = []
         for s in substeps:
