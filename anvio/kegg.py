@@ -4377,8 +4377,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     continue
 
                 mod_def = self.all_modules_in_db[mod]['DEFINITION']
+                if isinstance(mod_def, list):
+                    mod_def = " ".join(mod_def)
                 kos_in_mod = self.get_enzymes_from_module_definition_in_order(mod_def)
-                mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
+                mod_big_steps = utils.split_by_delim_not_within_parens(mod_def, " ")
 
                 if not kos_in_mod:
                     mods_defined_by_mods.append(mod)
