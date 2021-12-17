@@ -4389,22 +4389,19 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     step_comments = {}
                     lines_with_comment = []
                     for s in mod_big_steps:
-                        # what is the first KO in this step?
-                        first_k = s.find("K")
+                        split_s = re.sub("[\(\)\+\-,]", " ", s).strip()
+                        split_s = split_s.split(" ")
 
                         # we skip making comments on steps without KOs like '--'
-                        if first_k < 0:
+                        if not split_s:
                             continue
+                        # what is the first KO in this step?
+                        first_ko = split_s[0]
 
-                        # figure out where this KO is in the list
-                        first_ko = s[first_k:first_k+6]
+                        # figure out where this KO is in the list (it could be there multiple times)
                         first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
-                        if not first_ko_indices:
-                            raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
-                                              f"matrix for {mod}. We couldn't find the first KO, {first_ko}, in the "
-                                              "KO list for this module.")
 
-                        # where should we put the step comment?
+                        # if there are multiple instances of this KO, where should we put the step comment?
                         idx = first_ko_indices[0]
                         if len(first_ko_indices) > 1:
                             next_index = 0
@@ -4414,6 +4411,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
                         step_comments[idx] = s
                         lines_with_comment.append(idx)
+
                 else:
                     step_comments = None
 
