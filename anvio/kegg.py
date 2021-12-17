@@ -1835,7 +1835,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.profile_db = None
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = None
-        self.setup_ko_dict_from_modules_and_contigs_dbs = False
 
         # init the base classes
         KeggEstimatorArgs.__init__(self, self.args)
@@ -2326,8 +2325,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                           }
         for knum in all_kos:
             # we can only add warnings about missing KO profiles if we are working exclusively with KEGG data
-            # because for user-defined modules, we don't have a KO dictionary
-            if self.ko_dict and not self.setup_ko_dict_from_modules_and_contigs_dbs:
+            # because for user-defined modules, we don't have way to know if profiles are missing
+            # FIXME find a way for this to work for KOfams even in user data case
+            if self.ko_dict and not self.user_input_dir:
                 if knum not in self.ko_dict:
                     mods_it_is_in = self.all_kos_in_db[knum]
                     if mods_it_is_in:
@@ -3861,7 +3861,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = None
-        self.setup_ko_dict_from_modules_and_contigs_dbs = False
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
@@ -3914,8 +3913,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.user_input_dir:
             self.modules_db_path = self.user_modules_db_path
             self.run.info('Metabolism data', "USER-DEFINED")
-
-            self.setup_ko_dict_from_modules_and_contigs_dbs = self.matrix_format
 
             # load required sources from modules db
             modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
@@ -3998,7 +3995,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input metagenomes file and adjusts class attributes as needed"""
 
         g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
-        g.load_metagenome_descriptions(skip_functions=(not self.setup_ko_dict_from_modules_and_contigs_dbs))
+        g.load_metagenome_descriptions(skip_functions=(not self.matrix_format))
 
         # sanity check that all dbs are properly annotated with required sources
         for src in self.annotation_sources_to_use:
@@ -4015,7 +4012,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_metagenomes_txt)}.")
 
-        if self.setup_ko_dict_from_modules_and_contigs_dbs:
+        if self.matrix_format:
             for name in g.metagenomes:
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
                 # reminder, an entry in gene_functions_in_genome_dict looks like this:
@@ -4041,7 +4038,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
-        g.load_genomes_descriptions(skip_functions=(not self.setup_ko_dict_from_modules_and_contigs_dbs), init=False)
+        g.load_genomes_descriptions(skip_functions=(not self.matrix_format), init=False)
 
         # sanity check that all dbs are properly annotated with required sources
         for src in self.annotation_sources_to_use:
@@ -4057,7 +4054,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
                                   f"{', '.join(bad_genomes_txt)}.")
 
-        if self.setup_ko_dict_from_modules_and_contigs_dbs:
+        if self.matrix_format:
             for genome_name in g.genomes:
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
                 # reminder, an entry in gene_functions_in_genome_dict looks like this:
@@ -4350,7 +4347,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
-        if not self.setup_ko_dict_from_modules_and_contigs_dbs:
+        if not self.user_input_dir:
             self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
