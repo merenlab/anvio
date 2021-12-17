@@ -4375,7 +4375,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     skipped_mods.append(mod)
                     continue
 
-                kos_in_mod = self.kegg_modules_db.get_kos_from_module_definition(mod)
+                mod_def = self.all_modules_in_db[mod]['DEFINITION']
+                kos_in_mod = self.get_enzymes_from_module_definition_in_order(mod_def)
                 mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
                 if not self.no_comments:
