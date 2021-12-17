@@ -167,21 +167,21 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
       }
       if($('#gene_label_source').val() == 'cog-function'){
         if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('COG_FUNCTION') && genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION']){
-          return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION'][1]
+          return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION'][1])
         } else {
           return 'None'
         }
       }
       if($('#gene_label_source').val() == 'cog-category'){
         if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('COG_CATEGORY') && genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY']){
-          return genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY'][1]
+          return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_CATEGORY'][1])
         } else {
           return 'None'
         }
       }
       if($('#gene_label_source').val() == 'eggnog'){
         if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('EGGNOG_BACT') && genomeOfInterest[0][1]['genes']['functions'][geneID]['EGGNOG_BACT']){
-          return genomeOfInterest[0][1]['genes']['functions'][geneID]['EGGNOG_BACT'][1]
+          return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID]['EGGNOG_BACT'][1])
         } else {
           return 'None'
         }
@@ -195,6 +195,14 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
       }
 
       return `whoops ${geneID}`
+    }
+
+    function ellipsisMachine(string){ // add ellipsis only to truncated gene label values
+      if(string.substring(0,20).length == 20){
+        return `${string.substring(0,20)}...`
+      } else {
+        return string
+      }
     }
   }
 }
