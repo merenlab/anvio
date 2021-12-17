@@ -4370,6 +4370,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # if necessary, make module specific KO matrices
         if self.module_specific_matrices:
             skipped_mods = []
+            mods_defined_by_mods = []
             for mod in self.module_specific_matrices:
                 if mod not in module_list:
                     skipped_mods.append(mod)
@@ -4378,6 +4379,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 mod_def = self.all_modules_in_db[mod]['DEFINITION']
                 kos_in_mod = self.get_enzymes_from_module_definition_in_order(mod_def)
                 mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
+
+                if not kos_in_mod:
+                    mods_defined_by_mods.append(mod)
+                    continue
 
                 if not self.no_comments:
                     # determine where to place comments containing module steps
@@ -4421,6 +4426,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 skipped_list = ", ".join(skipped_mods)
                 self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
                                  "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
+
+            if mods_defined_by_mods:
+                skipped_list = ", ".join(mods_defined_by_mods)
+                self.run.warning(f"The following modules were completely defined by other modules and therefore we didn't "
+                                 f"generate enzyme hit matrices for them: {skipped_list}.")
 
 
 class ModulesDatabase(KeggContext):
