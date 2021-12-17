@@ -247,10 +247,23 @@ function setEventListeners(){
   canvas.on('mouse:out', (event) => {
     $('#tooltip-body').html('').hide()
   })
+
+  canvas.on('mouse:down', (event) => {
+    if(event.target && event.target.id === 'arrow'){
+      showDeepDiveToolTip(event)
+    }
+  })
+}
+function showDeepDiveToolTip(event){
+  $('#tooltip-body').html('').hide() // if ephemeral tooltip was up, remove it
+
+  $('#deepdive-tooltip-body').show().append(`
+  <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
+  <h1>hey everyone</>
+  `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
 
 function showToolTip(event){
-  console.log(event.target)
   $('#tooltip-body').show().append(`
     <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
     <h2>Gene Call</h2>
