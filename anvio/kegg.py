@@ -3953,27 +3953,48 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
 
-        # choose between user or kegg modules db
+        # citation output for KEGG data
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
+
+        # init the enzyme accession to function definition dictionary
+        # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
+        self.setup_ko_dict()
+        annotation_source_set = set(['KOfam'])
+
+        # check for kegg modules db
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
+                              f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
+                              f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                              f"But fine. Hopefully you now know what you need to do to make this message go away.")
+
         if self.user_input_dir:
-            self.modules_db_path = self.user_modules_db_path
-            self.run.info('Metabolism data', "USER-DEFINED")
+            # check for user modules db
+            if not os.path.exists(self.user_modules_db_path):
+                raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
+                                  f"Perhaps you need to specify a different data directory using --input-dir. Or perhaps you didn't run "
+                                  f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
 
-            # load required sources from modules db
-            modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
-            self.annotation_sources_to_use = modules_db.db.get_meta_value('annotation_sources').split(',')
-            self.ko_dict = modules_db.get_ko_function_dict()
-            modules_db.disconnect()
+            # expand annotation source set to include those in user db
+            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
+            modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
+            annotation_source_set.update(modules_db_sources)
 
+            # we now have to add any enzymes from the user's modules db to the ko dict
+            user_kos = user_modules_db.get_ko_function_dict()
+            for k in user_kos:
+                if k not in self.ko_dict:
+                    self.ko_dict[k] = user_kos[k]
+            user_modules_db.disconnect()
+
+            self.run.info('Metabolism data', "KEGG + USER-DEFINED")
         else:
-            self.modules_db_path = self.kegg_modules_db_path
-            self.run.info('Metabolism data', "KEGG")
+            self.run.info('Metabolism data', "KEGG only")
 
-            self.annotation_sources_to_use = ['KOfam']
-
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
+        self.annotation_sources_to_use = list(annotation_source_set)
 
 
     def list_output_modes(self):
@@ -4391,8 +4412,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
-        if not self.user_input_dir:
-            self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
         self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
