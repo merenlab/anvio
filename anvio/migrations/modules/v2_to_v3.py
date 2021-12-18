@@ -30,6 +30,13 @@ def migrate(db_path):
         raise ConfigError("Version of this modules database is not %s (hence, "
                           "this script cannot really do anything)." % current_version)
 
+    # change name of modules table from 'kegg_modules' to 'modules'
+    modules_db._exec('''ALTER TABLE kegg_modules RENAME TO modules''')
+
+    # add 'annotation_sources' and 'data_source' to self table
+    modules_db.set_meta_value('annotation_sources', 'KOfam')
+    modules_db.set_meta_value('data_source', 'KEGG')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade KEGG Modules database from version 2 to version 3')
