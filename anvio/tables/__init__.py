@@ -415,6 +415,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,
                                   pdb_data_table_name: False,
+                                  'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,
                                   trnaseq_sequences_table_name: False,
