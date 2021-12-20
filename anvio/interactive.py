@@ -1120,7 +1120,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_for_collection[view] = d
 
         default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
-        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['available_item_orders'])
+        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['item_orders'])
 
         # replace self.views with the new view:
         self.views = views_for_collection
