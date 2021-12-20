@@ -37,6 +37,15 @@ def migrate(db_path):
     modules_db.set_meta_value('annotation_sources', 'KOfam')
     modules_db.set_meta_value('data_source', 'KEGG')
 
+    # update version and exit
+    modules_db.remove_meta_key_value_pair('version')
+    modules_db.set_version(next_version)
+    modules_db.disconnect()
+
+    run.info_single("Okie-dokie. Your modules db is now %s. The modules table was re-named and some self table "
+                    "attributes were added to accommodate user-defined metabolism data."
+                    % (next_version), nl_after=1, nl_before=1, mc='green')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade KEGG Modules database from version 2 to version 3')
