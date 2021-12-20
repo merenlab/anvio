@@ -46,6 +46,7 @@ var scaleInterval = 100; // nt scale intervals
 var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
 var showLabels = true; // show genome labels?
 var showGeneLabels = true; // show gene labels?
+var link_gene_label_color_source = false // by default, allow users to display different gene arrow color / gene label source
 var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
 var percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
 var geneLabelPos = "above"; // gene label position; one of "above", "slanted", "inside"
