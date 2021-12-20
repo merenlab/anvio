@@ -39,6 +39,9 @@ if __name__ == '__main__':
                                                                       "the modules database will be set up in "
                                                                       "this folder."}))
     groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir', {'help': "You may need to provide the location of "
+                                                                               "your existing KEGG data so that we can properly "
+                                                                               "sanity check your data. Use this parameter to do so."}))
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 

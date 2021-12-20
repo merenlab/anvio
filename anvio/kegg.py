@@ -918,8 +918,33 @@ class KeggSetup(KeggContext):
         but we won't need them (we hope).
         """
 
-        user_module_list = hmm_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
+        user_module_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
         self.module_dict = {key: {} for key in user_module_list}
+
+        # sanity check that they also have KEGG data since we need to compare module names
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
+                              f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
+                              f"Well, one reason is that we always use KEGG data first when estimating metabolism. And "
+                              f"the other reason is that we need to make sure none of your module names overlap with those "
+                              f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
+                              f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
+                              f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "
+                              f"to find it.")
+
+        # sanity check that user module names are distinct
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
+        kegg_mods = set(kegg_modules_db.get_all_modules_as_list())
+        user_mods = set(user_module_list)
+        bad_user_mods = kegg_mods.intersection(user_mods)
+        if bad_user_mods:
+            bad_mods_str = ", ".join(bad_user_mods)
+            n = len(bad_user_mods)
+            raise ConfigError(f"Hol'up a minute. You see, there {P('is a module', n, alt='are some modules')} "
+                              f"in your user-defined modules data (at {self.user_module_data_dir}) which {P('has', n, alt='have')} "
+                              f"the same name as an existing KEGG module. This is not allowed, for reasons. Please name {P('that module', n, alt='those modules')} "
+                              f"differently. Append an underscore and your best friend's name to {P('it', n, alt='them')} or something. Just make sure it's "
+                              f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
     def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
