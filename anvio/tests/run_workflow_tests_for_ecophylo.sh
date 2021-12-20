@@ -42,7 +42,13 @@ INFO "Saving a workflow graph"
 anvi-run-workflow -w ecophylo -c default-config.json --save-workflow-graph
 
 INFO "Running ecophylo workflow with ecophylo dry-run"
-anvi-run-workflow -w ecophylo -c default-config.json --dry-run
+anvi-run-workflow -w ecophylo -c default-config.json -A --dry-run
+
+INFO "Running ecophylo workflow with ecophylo dry-run: only metagenomes.txt"
+anvi-run-workflow -w ecophylo -c only-metagenomes-txt-config.json -A --dry-run
+
+INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txt"
+anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json -A --dry-run
 
 INFO "Running ecophylo workflow"
 anvi-run-workflow -w ecophylo -c default-config.json
@@ -50,5 +56,4 @@ anvi-run-workflow -w ecophylo -c default-config.json
 INFO "Running ecophylo workflow interactive"
 HMM="Ribosomal_L16"
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
-                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db \
-                 --state-autoload "${HMM}"
+                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
