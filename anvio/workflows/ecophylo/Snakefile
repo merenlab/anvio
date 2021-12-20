@@ -33,8 +33,12 @@ dirs_dict = M.dirs_dict
 rule ECOPHYLO_WORKFLOW_target_rule:
     input: M.target_files
 
+
 rule anvi_run_hmms_hmmsearch:
-    """Run hmmsearch with input HMMs to get domtblout"""
+    """
+    Run hmmsearch with input HMMs to get domtblout.
+    If incoming contigsDBs do not have `scg_taxonomy_was_run` then run anvi-run-scg-taxonomy 
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
@@ -71,7 +75,7 @@ rule anvi_run_hmms_hmmsearch:
             scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
 
             if scg_taxonomy_was_run_value != 1:
-                print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {HMM_source} is a SCG")
+                print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
                 shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
         else:
             HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
@@ -83,6 +87,7 @@ rule anvi_run_hmms_hmmsearch:
                                  --domain-hits-table \
                                  --just-do-it \
                                  -T {threads} 2> {log}")
+
 
 rule filter_hmm_hits_by_query_coverage:
     """
@@ -121,6 +126,7 @@ rule filter_hmm_hits_by_query_coverage:
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
                                                     {params.additional_params} 2> {log}")
+
 
 rule anvi_get_sequences_for_hmm_hits:
     """Extract all AA and NT sequences that were recruited by the HMM"""
@@ -277,7 +283,9 @@ rule cluster_X_percent_sim_mmseqs:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{HMM}.log")
     input: rules.cat_sequences_to_one_fasta.output.NT_all
-    output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta")
+    output: 
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
+        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv")
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-tmp"),
@@ -290,31 +298,140 @@ rule cluster_X_percent_sim_mmseqs:
                                     --threads {threads} \
                                     --min-seq-id {params.min_seq_id} >> {log} 2>&1")
 
+if M.cluster_representative_method == "cluster_rep_with_coverages":
 
-rule subset_AA_seqs_with_mmseqs_reps:
-    """Subset AA sequences for the mmseqs cluster representatives"""
+    rule anvi_profile_blitz:
+        """
+        Choose a NT cluster rep based on read recruitment!
 
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_mmseqs_reps_{HMM}.log")
-    input:
-        fa = rules.cat_sequences_to_one_fasta.output.AA_all,
-        reps = rules.cluster_X_percent_sim_mmseqs.output
-    output:
-        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
-        headers = temp(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-headers.tmp"))
-    threads: M.T('subset_AA_seqs_with_mmseqs_reps')
-    run:
-        shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
+        The sequence with the most read recruitment from the input profiled assembly will be chosen as the cluster representative.
+        """
 
-        shell("anvi-script-reformat-fasta {input.fa} -I {output.headers} -o {output.fasta} >> {log} 2>&1")
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_profile_blitz-{sample_name}.log")
+        input:
+        output:
+            os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-gene-coverages.txt"),
+        params:
+        threads: M.T('anvi_profile_blitz')
+        run:
+            contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
+            bam = os.path.join(M.contigsDB_name_bam_dict[wildcards.sample_name])
+
+            # Run different HMM search depending on whether a HMM is internal or external because anvio
+            shell("anvi-profile-blitz {bam} -c {contigsDB} --gene-mode --report-minimal -o {output}")
+
+
+    rule cat_anvi_profile_blitz:
+        """
+        """
+
+        version: 1.0
+        # log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_profile_blitz-{sample_name}.log")
+        input:
+            expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-gene-coverages.txt"), sample_name = M.names_list),
+        output:
+            os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "gene-coverages.txt"),
+        params:
+        threads: M.T('anvi_profile_blitz')
+        run:
+            shell("echo -e 'gene_callers_id\tcontig\tsample\tlength\tdetection\tmean_cov' > {output}")
+            shell("awk 'FNR>1' {input} >> {output}")
+
+
+    rule pick_cluster_rep_with_coverage:
+        """
+        Pick a cluster rep with coverage values.
+        """
+
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "pick_cluster_rep_with_coverage-{HMM}.log")
+        input:
+            mmseqs_cluster_rep_index = rules.cluster_X_percent_sim_mmseqs.output.mmseqs_cluster_rep_index,
+            reformat_report = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
+            coverages = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "gene-coverages.txt") 
+        output:
+            coverage_reps = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-coverage-headers.txt"),
+            coverage_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-coverage_cluster.tsv")
+        params:
+        run:
+            # Bind anvi-profile-blitz data with cluster rep data and group_by cluster rep then find the cluster member with the highest coverage to pick new rep
+            pd.set_option('expand_frame_repr', False)
+
+            cluster_rep_index = pd.read_csv(input.mmseqs_cluster_rep_index, \
+                                    sep="\t", \
+                                    index_col=False, \
+                                    names=["representative", "cluster_members"])
+
+            reformat_report = pd.read_csv(input.reformat_report, \
+                                            sep="\t", \
+                                            index_col=False, \
+                                            names=["new_header", "header"])
+
+            bam = pd.read_csv(input.coverages, sep="\t", index_col=False)
+
+            bam['primary_key'] = bam['contig'] + "_" + bam['gene_callers_id'].astype(str)
+            reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
+            reformat_report["contig"] = reformat_report['header'].str.split("contig:|\|gene_callers_id:", expand=True)[1].astype(str)
+            reformat_report['primary_key'] = reformat_report['contig'] + "_" + reformat_report['gene_callers_id'].astype(str)
+            
+            df = pd.merge(reformat_report, bam, on='primary_key', how='inner')
+            df2 = pd.merge(cluster_rep_index, df, left_on='cluster_members', right_on='new_header', how='inner')[["representative", "cluster_members", "mean_cov"]]
+
+            def get_new_seed(df):
+                new_seed = df[df['mean_cov'] == df['mean_cov'].max()]['cluster_members'].iloc[0]
+                df['representative'] = [new_seed] * len(df)
+                return df
+
+            df3 = df2.groupby('representative').apply(get_new_seed)
+
+            # export headers of representatives and cluster rep index
+            df3[["representative"]].drop_duplicates().to_csv(output.coverage_reps, sep="\t", index=None, header=False)
+            df3[["representative", "cluster_members"]].to_csv(output.coverage_cluster_rep_index, sep="\t", index=None, na_rep="NA")
+
+
+
+    rule subset_AA_seqs_with_coverage_reps:
+        """Subset AA sequences for the mmseqs cluster representatives"""
+
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_coverage_reps_{HMM}.log")
+        input:
+            fa = rules.cat_sequences_to_one_fasta.output.AA_all,
+            coverage_reps = rules.pick_cluster_rep_with_coverage.output.coverage_reps,
+        output:
+            fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
+        threads: M.T('subset_AA_seqs_with_coverage_reps')
+        run:
+            shell("anvi-script-reformat-fasta {input.fa} -I {input.coverage_reps} -o {output.fasta} >> {log} 2>&1")
+
+
+if M.cluster_representative_method == "mmseqs":
+
+    rule subset_AA_seqs_with_mmseqs_reps:
+        """Subset AA sequences for the mmseqs cluster representatives"""
+
+        version: 1.0
+        log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_mmseqs_reps_{HMM}.log")
+        input:
+            fa = rules.cat_sequences_to_one_fasta.output.AA_all,
+            mmseqs_reps = rules.cluster_X_percent_sim_mmseqs.output.fasta,
+        output:
+            fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
+        params:
+            headers = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-headers.tmp")
+        threads: M.T('subset_AA_seqs_with_mmseqs_reps')
+        run:
+            shell("grep '>' {input.mmseqs_reps} | sed 's/>//g' > {params.headers}")
+            shell("anvi-script-reformat-fasta {input.fa} -I {params.headers} -o {output.fasta} >> {log} 2>&1")
 
 
 rule align_sequences:
     """MSA of AA sequences subset."""
-
+    
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{HMM}.log")
-	input: rules.subset_AA_seqs_with_mmseqs_reps.output.fasta
+	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa")  
 	output: os.path.join(dirs_dict['MSA'], "{HMM}-aligned.fa")
 	threads: M.T('align_sequences')
 	shell:
@@ -649,16 +766,9 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
 
     # Import data
     #------------
-    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, \
-                                    sep="\t", \
-                                    index_col=False, \
-                                    names=["representative", "cluster_members"])
+    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, sep="\t", index_col=False, names=["representative", "cluster_members"])
 
-    final_sequences_headers = pd.read_csv(final_sequences_headers, \
-                                    sep="\t", \
-                                    index_col=False, \
-                                    names=["identifier"])
-    
+    final_sequences_headers = pd.read_csv(final_sequences_headers, sep="\t", index_col=False, names=["identifier"])
     
     # Clean data
     #------------
@@ -724,13 +834,19 @@ rule make_misc_data:
     output:
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv")
     params:
-        cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv")
+        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv"),
+        coverage_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-coverage_cluster.tsv")
     threads: M.T('add_misc_data_to_taxonomy')
     run:
         """Here we determine the origin of each SCG (which kind of contigsDB): metagenome, isolate genome, etc."""
-        extract_misc_data(mmseqs_cluster_rep_index = params.cluster_rep_index,
-                          final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
-                          output = output.misc_data_final)
+        if M.cluster_representative_method == "mmseqs":
+            extract_misc_data(mmseqs_cluster_rep_index = params.mmseqs_cluster_rep_index,
+                              final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                              output = output.misc_data_final)
+        if M.cluster_representative_method == "cluster_rep_with_coverages":
+            extract_misc_data(mmseqs_cluster_rep_index = params.coverage_cluster_rep_index,
+                              final_sequences_headers = input.final_list_of_sequences_for_mapping_headers,
+                              output = output.misc_data_final)
 
 
 
@@ -876,31 +992,31 @@ rule make_anvio_state_file:
         metagenome_layers_dict = {}
 
         metagenome_attributes = {
-          "color": "#000000",
-          "height": "180",
-          "margin": "15",
-          "type": "bar",
-          "color-start": "#FFFFFF"
-        }
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "bar",
+            "color-start": "#FFFFFF"
+            }
 
         for metagenome in metagenomes:
             metagenome_layers_dict[str(metagenome)] = metagenome_attributes
 
         layer_attributes = {
-          "color": "#000000",
-          "height": "180",
-          "margin": "15",
-          "type": "color",
-          "color-start": "#FFFFFF"
-        }
+            "color": "#000000",
+            "height": "180",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#FFFFFF"
+            }
 
         layer_attributes_parent = {
-          "color": "#000000",
-          "height": "0",
-          "margin": "15",
-          "type": "color",
-          "color-start": "#FFFFFF"
-        }
+            "color": "#000000",
+            "height": "0",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#FFFFFF"
+            }
 
         layers_dict.update(metagenome_layers_dict)
         layers_dict['__parent__'] = layer_attributes_parent
@@ -925,13 +1041,8 @@ rule anvi_import_everything:
     output: touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported.done"))
     threads: M.T('anvi_import_state')
     run:
-        shell("anvi-import-state -p {params.profileDB} \
-                                 -s {input.state} \
-                                 -n default")
+        shell("anvi-import-state -p {params.profileDB} -s {input.state} -n default")
 
-        shell("anvi-import-items-order -p {params.profileDB} \
-                                       -i {input.tree} \
-                                       --name {wildcards.HMM}_tree")
+        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
 
-        shell("anvi-import-misc-data -p {params.profileDB} \
-                                     --target-data-table items {input.misc_data} --just-do-it")
+        shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")

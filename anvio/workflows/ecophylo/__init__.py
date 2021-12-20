@@ -70,6 +70,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['external_genomes']) # user can add isolate genomes if needed
         self.general_params.extend(['hmm_list']) # user must input which Reference proteins will be used for workflow
         self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
+        self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
 
 
         # Parameters for each rule that are accessible in the config.json file
@@ -91,6 +92,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'hmm_list': 'hmm_list.txt',
+            'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 2},
@@ -142,6 +144,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.names_dirs = []
         self.contigsDB_name_path_dict = {}
         self.contigsDB_name_dir_dict = {}
+        self.contigsDB_name_bam_dict = {}
 
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
@@ -160,7 +163,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                         continue
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
                 self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
-                self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
+                self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_df.name, self.metagenomes_df.contigs_db_path)))
+                if 'bam' in self.metagenomes_df.columns:
+                    self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_df.name, self.metagenomes_df.bam)))
+                    self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
                 self.names_list.extend(self.metagenomes_name_list)
 
             except IndexError as e:
@@ -184,6 +190,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
                 self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
                 self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
+                if 'bam' in self.external_genomes_df.columns:
+                    self.contigsDB_name_bam_dict.update(dict(zip(self.external_genomes_df.name, self.external_genomes_df.bam)))
                 self.names_list.extend(self.external_genomes_names_list)
 
             except IndexError as e:
@@ -277,6 +285,17 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
         self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'cluster_submission_params'])
 
+        # Pick clustering method
+        self.cluster_representative_method = self.get_param_value_from_config(['cluster_representative_method', 'method'])
+
+        if self.cluster_representative_method not in ['mmseqs', 'cluster_rep_with_coverages']:
+            raise ConfigError(f"anvi'o has never heard of this method to pick a cluster representative: {self.cluster_representative_method} "
+                              f"Please check your config file {self.config_file} and change cluster_representative_method to one of the following: 'mmseqs' and 'cluster_rep_with_coverages'")
+
+        if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigsDB_name_bam_dict) == 0:
+            raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
+                              f"please edit your metagenomes.txt or external-genomes.txt and add BAM files please.")
+
         self.target_files = self.get_target_files()
 
     def get_target_files(self):
@@ -298,6 +317,5 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
             target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
             target_files.append(target_file)
-            
-
+        
         return target_files
