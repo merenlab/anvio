@@ -294,7 +294,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigsDB_name_bam_dict) == 0:
             raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
-                              f"please edit your metagenomes.txt or external-genomes.txt and add BAM files please.")
+                              f"Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
 
         self.target_files = self.get_target_files()
 
