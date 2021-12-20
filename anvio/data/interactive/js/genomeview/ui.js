@@ -182,6 +182,10 @@ function setEventListeners(){
     showGeneLabels = !showGeneLabels;
     drawer.draw()
   });
+  $('#link_gene_label_color_source').on('change', function(){
+    link_gene_label_color_source = !link_gene_label_color_source;
+    drawer.draw()
+  })
   $('#show_only_cags_in_window').on('change', function () {
     filter_gene_colors_to_window = !filter_gene_colors_to_window;
     generateColorTable(null, color_db);
