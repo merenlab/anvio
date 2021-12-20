@@ -155,6 +155,11 @@ function setEventListeners(){
   $('#gene_color_order').on('change', function () {
     color_db = $(this).val();
     generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
+
+    if(link_gene_label_color_source){
+      $('#gene_label_source').val($(this).val())
+    }
+
     drawer.draw()
     $(this).blur();
   });
@@ -176,6 +181,11 @@ function setEventListeners(){
     drawer.draw()
   });
   $('#gene_label_source').on('change', function(){
+    if(link_gene_label_color_source){
+      color_db = $(this).val();
+      $('#gene_color_order').val($(this).val())
+      generateColorTable(null, color_db)
+    }
     drawer.draw()
   })
   $('#show_gene_labels_box').on('change', function () {
