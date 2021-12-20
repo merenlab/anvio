@@ -359,6 +359,23 @@ class TestFindPalindrome(unittest.TestCase):
             self.assertEqual(len(palindromes), expected)
 
 
+    def test_min_distance2(self):
+        seq = 'TTTCAAGGGGGGGGGTTGAAA'
+        for d in range(13):
+            p = Palindromes(argparse.Namespace(
+                min_palindrome_length = 4,
+                min_distance = d,
+            ))
+            palindromes = p._find_numba(seq, coords_only=True)
+
+            if d <= 9:
+                # the gap is 9, so this should produce palindrome
+                self.assertEqual(len(palindromes), 1)
+            else:
+                # the gap is 9, so this should produce palindrome
+                self.assertEqual(len(palindromes), 0)
+
+
     def seq_with_palindromes(self, template, start_stops, palindrome_seqs):
         seq = list(template)
 
