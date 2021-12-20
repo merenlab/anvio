@@ -957,9 +957,7 @@ class KeggSetup(KeggContext):
             print(e)
             raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
                               "If you look at that error and it seems like something you cannot handle, please contact the developers "
-                              "for assistance, as it may be possible that a recent update to KEGG has broken our setup process. If that "
-                              "is the case, we may be able to provide you with a legacy KEGG data archive that you can use to set up "
-                              "KEGG with the --kegg-archive flag, while we try to fix things. :) ")
+                              "for assistance. :) ")
 
 
     def kegg_archive_is_ok(self, unpacked_archive_path):
