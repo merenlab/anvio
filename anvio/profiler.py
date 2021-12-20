@@ -201,7 +201,6 @@ class BAMProfilerQuick:
                 bam = bamops.BAMFileObject(bam_file_path, 'rb')
                 bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
 
-                contigs_stats = {}
                 for j in range(0, num_contigs):
                     contig_name = contig_names[j]
 
