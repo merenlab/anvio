@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __provides__ = ["modules-db"]
-__description__ = "Set up user-defined metabolic pathways and their HMMs"
+__description__ = "Set up user-defined metabolic pathways into an anvi'o-compatible database"
 
 @time_program
 def main(args):
