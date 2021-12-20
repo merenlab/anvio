@@ -1089,8 +1089,7 @@ class KeggSetup(KeggContext):
     def setup_user_data(self):
         """This function sets up user metabolism data from the provided input directory.
 
-        We have to concatenate and hmmpress the provided HMM profiles, and process the user's
-        module files into the USER_MODULES.db.
+        It processes the user's module files into the USER_MODULES.db.
         """
 
         self.create_user_modules_dict()
