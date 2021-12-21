@@ -1192,6 +1192,10 @@ class ContigsSuperclass(object):
                 # dict properly so the FASTA file and the external gene calls file correspond to each other
                 gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
                 gene_call['contig'] = gene_call['header']
+
+                if not flank_length:
+                    gene_call['start'] = 0
+                    gene_call['stop'] = gene_call['length']
             else:
                 if simple_headers:
                     gene_call['header'] = '%d' % (gene_callers_id)

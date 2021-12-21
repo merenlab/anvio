@@ -680,6 +680,17 @@ D = {
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'report-scg-sequences-file-prefix': (
+            ['--report-scg-sequences-file-prefix'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE NAME PREFIX',
+             'help': "When running in metagenome mode, anvi'o has access to each SCG sequence. By providing a "
+                     "file prefix, you can instruct anvi'o to report amino acid and DNA sequences for each SCG "
+                     "it uses to estimate taxonomy. The deflines of the resulting FASTA files will match tot he "
+                     "unique entry IDs used to populate the output file that reports taxonomy. Please note that "
+                     "this parameter will only run if you set the parameter `--scg-name-for-metagenome-mode`."}
+                ),
     'anticodon-for-metagenome-mode': (
             ['-S','--anticodon-for-metagenome-mode'],
             {'default': None,
