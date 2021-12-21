@@ -3166,23 +3166,35 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
-        if (kegg_metabolism_superdict['data_source'] == 'USER' and not self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data, but the "
-                              f"metabolism data directory you are using is KEGG data. You should use the `--input-dir` flag instead.")
-        if (kegg_metabolism_superdict['data_source'] == 'KEGG' and self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data, but the "
-                              f"metabolism data directory you provided is USER data. You should not use the `--input-dir` flag for this file.")
+        if (kegg_metabolism_superdict['data_sources'] == 'USER,KEGG' and not self.user_input_dir):
+            raise ConfigError(f"You provided a JSON file generated from USER data, but you "
+                              f"did not specify which data directory to use with the `--input-dir` flag.")
+        if (kegg_metabolism_superdict['data_sources'] == 'KEGG' and self.user_input_dir):
+            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data only, but then "
+                              f"you provided us with a USER metabolism data directory. You should not use the `--input-dir` flag for this file.")
 
-        modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
-        mod_db_hash = modules_db.db.get_meta_value('hash')
-        modules_db.disconnect()
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+        mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
+        kegg_modules_db.disconnect()
 
-        if mod_db_hash != kegg_metabolism_superdict['modules_db_hash']:
+        if mod_db_hash != kegg_metabolism_superdict['kegg_modules_db_hash']:
             raise ConfigError(f"The modules database in the data directory you provided (or the default KEGG data directory, if you didn't "
                               f"provide anything) has a different hash than the one used to generate this JSON input file. You probably need "
                               f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
-                              f"the JSON file is {kegg_metabolism_superdict['modules_db_hash']} and the hash in the current modules DB "
-                              f"(at path `{self.modules_db_path}`) is {mod_db_hash}.")
+                              f"the JSON file is {kegg_metabolism_superdict['kegg_modules_db_hash']} and the hash in the current modules DB "
+                              f"(at path `{self.kegg_modules_db_path}`) is {mod_db_hash}.")
+
+        if self.user_input_dir:
+            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
+            mod_db_hash = user_modules_db.db.get_meta_value('hash')
+            user_modules_db.disconnect()
+
+            if mod_db_hash != kegg_metabolism_superdict['user_modules_db_hash']:
+                raise ConfigError(f"The modules database in the data directory you provided with --input-dir "
+                                  f"has a different hash than the one used to generate this JSON input file. You probably need "
+                                  f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
+                                  f"the JSON file is {kegg_metabolism_superdict['user_modules_db_hash']} and the hash in the current modules DB "
+                                  f"(at path `{self.user_modules_db_path}`) is {mod_db_hash}.")
 
         new_kegg_metabolism_superdict = {}
 
@@ -3193,7 +3205,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.init_data_from_modules_db()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
-            if bin_name in ['data_source', 'modules_db_hash']:
+            if bin_name in ['data_sources', 'kegg_modules_db_hash', 'user_modules_db_hash']:
                 continue
             else:
                 bins_found.append(bin_name)
@@ -3214,11 +3226,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 additional_keys = additional_keys.union(set(mod_dict.keys()).difference(expected_keys_for_module))
 
-                # convert gene_caller_ids and contigs_to_genes lists to sets
+                # convert certain lists to sets
                 mod_dict['gene_caller_ids'] = set(mod_dict['gene_caller_ids'])
                 for contig, gene_list in mod_dict['contigs_to_genes'].items():
                     mod_dict['contigs_to_genes'][contig] = set(gene_list)
                 mod_dict['genes_to_contigs'] = {int(g):c for g,c in mod_dict['genes_to_contigs'].items()}
+                mod_dict['warnings'] = set(mod_dict['warnings'])
 
             new_kegg_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(meta_dict_for_bin, bin_name=bin_name)
             single_bin_module_superdict = {bin_name: new_kegg_metabolism_superdict[bin_name]}
@@ -3860,13 +3873,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 return list(obj)
 
         if self.user_input_dir:
-            kegg_superdict['data_source'] = 'USER'
+            kegg_superdict['data_sources'] = 'USER,KEGG'
+            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
+            kegg_superdict['user_modules_db_hash'] = user_modules_db.db.get_meta_value('hash')
+            user_modules_db.disconnect()
         else:
-            kegg_superdict['data_source'] = 'KEGG'
+            kegg_superdict['data_sources'] = 'KEGG'
+            kegg_superdict['user_modules_db_hash'] = ''
 
-        modules_db = ModulesDatabase(self.modules_db_path, args=self.args, quiet=self.quiet)
-        kegg_superdict['modules_db_hash'] = modules_db.db.get_meta_value('hash')
-        modules_db.disconnect()
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+        kegg_superdict['kegg_modules_db_hash'] = kegg_modules_db.db.get_meta_value('hash')
+        kegg_modules_db.disconnect()
 
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
