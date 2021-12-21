@@ -670,7 +670,6 @@ def get_workflow_module_dict():
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
     from anvio.workflows.trnaseq import TRNASeqWorkflow
-    from anvio.workflows.scg_ecophylo import SCGEcoPhyloWorkflow
     from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
@@ -678,7 +677,6 @@ def get_workflow_module_dict():
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
                       'trnaseq': TRNASeqWorkflow,
-                      'scg_ecophylo': SCGEcoPhyloWorkflow,
                       'ecophylo': EcoPhyloWorkflow,
                       }
 
