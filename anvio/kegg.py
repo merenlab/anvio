@@ -3539,7 +3539,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     if unique_enzymes:
                                         hit_count_list = []
                                         for e in unique_enzymes:
-                                            hit_count_list.append(len(c_dict["kofam_hits"][e]))
+                                            hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
                                         d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
                                     else:
                                         d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
