@@ -677,8 +677,7 @@ def get_workflow_module_dict():
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
                       'trnaseq': TRNASeqWorkflow,
-                      'ecophylo': EcoPhyloWorkflow,
-                      }
+                      'ecophylo': EcoPhyloWorkflow}
 
     return workflows_dict
 
