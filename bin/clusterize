@@ -1,4 +1,0 @@
-#!/project2/meren/VIRTUAL-ENVS/anvio-master/bin/python3
-# EASY-INSTALL-SCRIPT: 'clusterize==0.2.3','clusterize'
-__requires__ = 'clusterize==0.2.3'
-__import__('pkg_resources').run_script('clusterize==0.2.3', 'clusterize')
