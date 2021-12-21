@@ -154,10 +154,10 @@ The program will print a list like the one below and then exit.
 ```
 AVAILABLE OUTPUT MODES
 ===============================================
-kofam_hits_in_modules ........................: Information on each KOfam hit that belongs to a KEGG module
-modules ......................................: Information on KEGG modules
-modules_custom ...............................: A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers
-kofam_hits ...................................: Information on all KOfam hits in the contigs DB, regardless of KEGG module membership
+hits_in_modules ..............................: Information on each enzyme (gene annotation) that belongs to a module
+modules ......................................: Information on metabolic modules
+modules_custom ...............................: A custom tab-delimited output file where you choose the included modules data using --custom-output-headers
+hits .........................................: Information on all enzyme annotations in the contigs DB, regardless of module membership
 ```
 
 Please note that you _must_ provide your input file(s) for this to work.
@@ -167,7 +167,7 @@ Please note that you _must_ provide your input file(s) for this to work.
 You can specify one or more long-format output modes using the `--output-modes` parameter. The mode names must exactly match to one of the available modes from the `--list-available-modes` output.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes kofam_hits
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes hits
 {{ codestop }}
 
 **Using multiple output modes**
@@ -175,10 +175,10 @@ anvi-estimate-metabolism -c %(contigs-db)s --output-modes kofam_hits
 If you want more than one output mode, you can provide multiple comma-separated mode names to the `--output-modes` parameter. There should be no spaces between the mode names.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes kofam_hits,modules
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes hits,modules
 {{ codestop }}
 
-When multiple output modes are requested, a different output file is produced for each mode. All output files will have the same prefix, and the file suffixes specify the output mode. For example, modules mode output has the suffix `_modules.txt` while kofam hits mode has the suffix `_kofam_hits.txt`.
+When multiple output modes are requested, a different output file is produced for each mode. All output files will have the same prefix, and the file suffixes specify the output mode. For example, modules mode output has the suffix `_modules.txt` while hits mode has the suffix `_hits.txt`.
 
 **Viewing available output headers for 'custom' mode**
 
@@ -195,33 +195,21 @@ The program will print a list like the one below and then exit.
 ```
 AVAILABLE OUTPUT HEADERS
 ===============================================
-unique_id ....................................: Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line [all output modes]
-kegg_module ..................................: KEGG module number [modules output mode]
-module_is_complete ...........................: Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold [modules output mode]
-module_completeness ..........................: Percent completeness of a KEGG module [modules output mode]
-module_name ..................................: English name/description of a KEGG module [modules output mode]
-module_class .................................: Metabolism class of a KEGG module [modules output mode]
-module_category ..............................: Metabolism category of a KEGG module [modules output mode]
-module_subcategory ...........................: Metabolism subcategory of a KEGG module [modules output mode]
-module_definition ............................: KEGG-formatted definition of a KEGG module. Describes the metabolic pathway in terms of the KOS that belong to the module [modules output mode]
-module_substrates ............................: Comma-separated list of compounds that serve as initial input to the metabolic pathway (that is, substrate(s) to the initial reaction(s) in the pathway) [modules output mode]
-module_products ..............................: Comma-separated list of compounds that serve as final output from the metabolic pathway (that is, product(s) of the final reaction(s) in the pathway) [modules output mode]
-module_intermediates .........................: Comma-separated list of compounds that are intermediates the metabolic pathway (compounds that are both outputs and inputs of reaction(s) in the pathway) [modules output mode]
-gene_caller_ids_in_module ....................: Comma-separated list of gene caller IDs of KOfam hits in a module [modules output mode]
-gene_caller_id ...............................: Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each line in the output file will be a KOfam hit [all output modes]
-kofam_hits_in_module .........................: Comma-separated list of KOfam hits in a module [modules output mode]
-kofam_hit ....................................: KO number of a single KOfam hit. If you choose this header, each line in the output file will be a KOfam hit [modules output mode]
-contig .......................................: Contig that a KOfam hit is found on. If you choose this header, each line in the output file will be a KOfam hit [all output modes]
-path_id ......................................: Integer ID for a path through a KEGG module. No real meaning and just for data organization. If you choose this header, each line in the output file will be a KOfam hit
-                                                [modules output mode]
-path .........................................: A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step in the module. Most modules have several of these due to KO redundancy). If
-                                                you choose this header, each line in the output file will be a KOfam hit [modules output mode]
-path_completeness ............................: Percent completeness of a particular path through a KEGG module. If you choose this header, each line in the output file will be a KOfam hit [modules output mode]
-warnings .....................................: If we are missing a KOfam profile for one of the KOs in a module, there will be a note in this column. [modules output mode]
-ko ...........................................: KEGG Orthology (KO) number of a KOfam hit [kofams output mode]
-modules_with_ko ..............................: A comma-separated list of modules that the KO belongs to [kofams output mode]
-ko_definition ................................: The functional annotation associated with the KO number [kofams output mode]
-genome_name ..................................: Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules [all output modes]
+module .......................................: Module number [modules output mode]
+module_is_complete ...........................: Whether a module is considered complete or not based on its percent completeness and the completeness threshold [modules output mode]
+module_completeness ..........................: Percent completeness of a module [modules output mode]
+enzymes_unique_to_module .....................: A list of enzymes that only belong to this module (ie, they are not members of multiple modules) [modules output mode]
+unique_enzymes_hit_counts ....................: How many times each unique enzyme appears in the sample (order of counts corresponds to list in `enzymes_unique_to_module` field) [modules output mode]
+proportion_unique_enzymes_present ............: Proportion of enzymes unique to this one module that are present in the sample [modules output mode]
+unique_enzymes_context_string ................: Describes the unique enzymes contributing to the `proportion_unique_enzymes_present` field [modules output mode]
+module_name ..................................: Name/description of a module [modules output mode]
+
+[.......]
+
+enzyme .......................................: Identifier for an enzyme that is annotated in your database(s), ie a KO or COG number [kofams output mode]
+modules_with_enzyme ..........................: A comma-separated list of modules that the enzyme belongs to [kofams output mode]
+enzyme_definition ............................: The functional annotation associated with the enzyme [kofams output mode]
+genome_name ..................................: Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules [all output modes]
 ```
 
 As you can see, this flag is also useful when you want to quickly look up the description of each column of data in your output files.
@@ -235,7 +223,7 @@ Just as with `--list-available-modes`, you must provide your input file(s) for t
 Here is an example of defining the modules output to contain columns with the module number, the module name, and the completeness score. The corresponding headers for these columns are provided as a comma-separated list (no spaces) to the `--custom-output-headers` flag.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custom-output-headers kegg_module,module_name,module_completeness
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custom-output-headers module,module_name,module_completeness
 {{ codestop }}
 
 **Including modules with 0%% completeness in long-format output**
@@ -251,12 +239,12 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
 {{ codestop }}
 
-For `kofam_hits_in_modules` and `kofam_hits` mode output files, in which each row describes one KOfam hit to a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
+For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
 
-For `modules` mode output files, in which each row describes a KEGG module, the output will contain _four_ additional columns per sample in the profile database. One column will contain comma-separated mean coverage values for each gene call in the module, in the same order as the corresponding gene calls in the `gene_caller_ids_in_module` column. Another column will contain the average of these gene coverage values, which represents the average coverage of the entire module. Likewise, the third and fourth columns will contain comma-separated detection values for each gene call and the average detection, respectively.
+For `modules` mode output files, in which each row describes a metabolic module, the output will contain _four_ additional columns per sample in the profile database. One column will contain comma-separated mean coverage values for each gene call in the module, in the same order as the corresponding gene calls in the `gene_caller_ids_in_module` column. Another column will contain the average of these gene coverage values, which represents the average coverage of the entire module. Likewise, the third and fourth columns will contain comma-separated detection values for each gene call and the average detection, respectively.
 
 Note that you can customize which coverage/detection columns are in the output files if you use `custom` modules mode. Use the following command to find out which coverage/detection headers are available:
 
@@ -265,9 +253,9 @@ anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --add-coverage --li
 {{ codestop }}
 
 ### Matrix Output
-Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or KO hit counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file.
+Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or enzyme annotation (hit) counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file.
 
-In each matrix, the rows will describe modules or KOs, the columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
+In each matrix, the rows will describe modules or enzymes, the columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
 
 **Obtaining matrix-formatted output**
 
@@ -277,15 +265,15 @@ Getting these matrices is as easy as providing the `--matrix-format` flag.
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format
 {{ codestop }}
 
-**Including KEGG metadata in the matrix output**
+**Including metadata in the matrix output**
 
-By default, the matrix output is a matrix ready for use in other computational applications, like visualizing as a heatmap or performing clustering. That means it has a header line and an index in the right-most column, but all other cells are numerical. However, you may want to instead have a matrix that is annotated with more information, like the names and categories of each module or the functional annotations of each KO. To include this additional information in the matrix output (as columns that occur before the sample columns), use the `--include-metadata` flag.
+By default, the matrix output is a matrix ready for use in other computational applications, like visualizing as a heatmap or performing clustering. That means it has a header line and an index in the right-most column, but all other cells are numerical. However, you may want to instead have a matrix that is annotated with more information, like the names and categories of each module or the functional annotations of each enzyme. To include this additional information in the matrix output (as columns that occur before the sample columns), use the `--include-metadata` flag.
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --include-metadata
 {{ codestop }}
 
-Note that this flag only works for matrix output because, well, the long-format output inherently includes KEGG metadata.
+Note that this flag only works for matrix output because, well, the long-format output inherently includes metadata.
 
 **Including rows of all zeros in the matrix output**
 
@@ -295,9 +283,9 @@ The `--include-zeros` flag works for matrix output, too. By default, modules tha
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --include-zeros
 {{ codestop }}
 
-**Getting module-specific KO hit matrices**
+**Getting module-specific enzyme matrices**
 
-The standard KO hit matrix includes all KOfams that were annotated at least once in your input databases (or all KOfams that we know about, if `--include-zeros` is used). But sometimes you might want to see a matrix with only the KOs from a particular metabolic pathway. To do this, pass a comma-separated (no spaces) list of KEGG module numbers to the `--module-specific-matrices` flag, and then your matrix output will include KO hit matrices for each module in the list.
+The standard enzyme hit matrix includes all enzymes that were annotated at least once in your input databases (or all enzymes that we know about, if `--include-zeros` is used). But sometimes you might want to see a matrix with only the enzymes from a particular metabolic pathway. To do this, pass a comma-separated (no spaces) list of module numbers to the `--module-specific-matrices` flag, and then your matrix output will include enzyme hit matrices for each module in the list.
 
 For example,
 
@@ -308,15 +296,16 @@ anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
                          -O external_genomes
 {{ codestop }}
 
-will produce the output files `external_genomes-M00001_ko_hits-MATRIX.txt` and `external_genomes-M00009_ko_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each KO in the module, in the order it appears in the module definition. It will also include comment lines for each major step (or set of steps) in the module definition, to help with interpreting the output.
+will produce the output files `external_genomes-M00001_enzyme_hits-MATRIX.txt` and `external_genomes-M00009_enzyme_hits-MATRIX.txt` (in addition to the typical output matrices). Each additional output matrix will include one row for each enzyme in the module, in the order it appears in the module definition. It will also include comment lines for each major step (or set of steps) in the module definition, to help with interpreting the output.
 
 Check out this (partial) example for module M00001:
 ```
-KO	isolate	E_faecalis_6240	test_2
-# (K00844,K12407,K00845,K00886,K08074,K00918)
+enzyme	isolate	E_faecalis_6240	test_2
+# (K00844,K12407,K00845,K25026,K00886,K08074,K00918)
 K00844	0	0	0
 K12407	0	0	0
-K00845	0	1	0
+K00845	0	0	0
+K25026	0	1	0
 K00886	1	0	1
 K08074	0	0	0
 K00918	0	0	0
@@ -345,10 +334,11 @@ anvi-estimate-metabolism -e input_txt_files/external_genomes.txt \
 
 In this case, the above file would look like this:
 ```
-KO	isolate	E_faecalis_6240	test_2
+enzyme	isolate	E_faecalis_6240	test_2
 K00844	0	0	0
 K12407	0	0	0
-K00845	0	1	0
+K00845	0	0	0
+K25026	0	1	0
 K00886	1	0	1
 K08074	0	0	0
 K00918	0	0	0
@@ -377,7 +367,7 @@ anvi-estimate-metabolism -c %(contigs-db)s -O my-cool-prefix
 
 **Including only complete modules in the output**
 
-Remember that module completion threshold? Well, you can use that to control which modules make it into your output files. If you provide the `--only-complete` flag, then any module-related output files will only include modules that have a completeness score at or above the module completion threshold. (This doesn't affect KO-related outputs, for obvious reasons.)
+Remember that module completion threshold? Well, you can use that to control which modules make it into your output files. If you provide the `--only-complete` flag, then any module-related output files will only include modules that have a completeness score at or above the module completion threshold. (This doesn't affect enzyme-related outputs, for obvious reasons.)
 
 Here is an example of using this flag with long-format output (which is the default, as described above, but we are asking for it explicitly here just to be clear):
 
