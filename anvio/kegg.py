@@ -5809,13 +5809,13 @@ class KeggModuleEnrichment(KeggContext):
         module_list = modules_df['module'].unique()
 
         output_dict = {}
-        header_list = ['KEGG_MODULE', 'accession', 'sample_ids', 'associated_groups']
+        header_list = ['MODULE', 'accession', 'sample_ids', 'associated_groups']
         for c in group_list:
             header_list.append(f"p_{c}")
             header_list.append(f"N_{c}")
 
         for mod_num in module_list:
-            query_string = f"kegg_module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            query_string = f"module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
@@ -5836,7 +5836,7 @@ class KeggModuleEnrichment(KeggContext):
 
             mod_name = samples_with_mod_df['module_name'][0]
             output_dict[mod_name] = {}
-            output_dict[mod_name]['KEGG_MODULE'] = mod_name
+            output_dict[mod_name]['MODULE'] = mod_name
             output_dict[mod_name]['accession'] = mod_num
             output_dict[mod_name]['sample_ids'] = ','.join(samples_with_mod_list)
             sample_group_subset = sample_groups_df.loc[samples_with_mod_list]
