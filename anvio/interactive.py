@@ -898,11 +898,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                         distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
                                         check_names_consistency=False)
 
+            # if there are more than one genome in the analysis (which should almost always be the case),
             # let's get a layer's order, too, and immediately add it to the database:
-            layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
-            self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+            if num_genomes > 1:
+                layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+                args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
+                TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+                self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
             TablesForViews(self.profile_db_path).create_new_view(
@@ -1118,7 +1120,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_for_collection[view] = d
 
         default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
-        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['available_item_orders'])
+        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['item_orders'])
 
         # replace self.views with the new view:
         self.views = views_for_collection

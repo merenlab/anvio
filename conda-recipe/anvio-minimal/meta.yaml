@@ -1,4 +1,4 @@
-{% set version = "7.1-dev" %}
+{% set version = "7.1_dev" %}
 
 package:
   name: anvio-minimal
@@ -6,7 +6,7 @@ package:
 
 source:
   git_url: https://github.com/merenlab/anvio
-  git_tag: release-candidate
+  git_tag: master
 
 build:
   number: 0

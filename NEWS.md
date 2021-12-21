@@ -3,7 +3,7 @@ We are happy to announce anvi'o v7, with the code name 'hope' after 'Hope E. Hop
 
 This release adds more than 35,000 new lines of code and a myriad of new toys into anvi'o.
 
-Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v2), and our updated installation instructions [here](http://merenlab.org/install-anvio).
+Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v7), and our updated installation instructions [here](http://merenlab.org/install-anvio).
 ***
 
 # v6.2: a critical update for "esther" (06.04.2020) #
