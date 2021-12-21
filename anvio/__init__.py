@@ -2914,7 +2914,7 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
                     "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
-                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                    "--output-modes modules` on your samples of interest. Trust us."}
                 ),
     'groups-txt': (
             ['-G', '--groups-txt'],

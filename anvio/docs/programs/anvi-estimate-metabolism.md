@@ -164,18 +164,18 @@ Please note that you _must_ provide your input file(s) for this to work.
 
 **Using a non-default output mode**
 
-You can specify one or more long-format output modes using the `--kegg-output-modes` parameter. The mode names must exactly match to one of the available modes from the `--list-available-modes` output.
+You can specify one or more long-format output modes using the `--output-modes` parameter. The mode names must exactly match to one of the available modes from the `--list-available-modes` output.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --kegg-output-modes kofam_hits
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes kofam_hits
 {{ codestop }}
 
 **Using multiple output modes**
 
-If you want more than one output mode, you can provide multiple comma-separated mode names to the `--kegg-output-modes` parameter. There should be no spaces between the mode names.
+If you want more than one output mode, you can provide multiple comma-separated mode names to the `--output-modes` parameter. There should be no spaces between the mode names.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --kegg-output-modes kofam_hits,modules
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes kofam_hits,modules
 {{ codestop }}
 
 When multiple output modes are requested, a different output file is produced for each mode. All output files will have the same prefix, and the file suffixes specify the output mode. For example, modules mode output has the suffix `_modules.txt` while kofam hits mode has the suffix `_kofam_hits.txt`.
@@ -235,7 +235,7 @@ Just as with `--list-available-modes`, you must provide your input file(s) for t
 Here is an example of defining the modules output to contain columns with the module number, the module name, and the completeness score. The corresponding headers for these columns are provided as a comma-separated list (no spaces) to the `--custom-output-headers` flag.
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --kegg-output-modes modules_custom --custom-output-headers kegg_module,module_name,module_completeness
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custom-output-headers kegg_module,module_name,module_completeness
 {{ codestop }}
 
 **Including modules with 0%% completeness in long-format output**
@@ -251,7 +251,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --kegg-output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
 {{ codestop }}
 
 For `kofam_hits_in_modules` and `kofam_hits` mode output files, in which each row describes one KOfam hit to a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
@@ -382,7 +382,7 @@ Remember that module completion threshold? Well, you can use that to control whi
 Here is an example of using this flag with long-format output (which is the default, as described above, but we are asking for it explicitly here just to be clear):
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --kegg-output-modes modules --only-complete
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules --only-complete
 {{ codestop }}
 
 And here is an example of using this flag with matrix output. In this case, we are working with multiple input samples, and the behavior of this flag is slightly different: a module will be included in the matrix if it is at or above the module completion threshold in **at least one sample**. If there are any samples in which that module's completeness is below the threshold, its completeness in that sample will be **represented by a 0.0** in the matrix, regardless of its actual completeness score.
