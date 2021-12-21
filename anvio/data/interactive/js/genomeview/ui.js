@@ -270,8 +270,6 @@ function setEventListeners(){
   })
 }
 function showDeepDiveToolTip(event){
-  let gene_dna_sequence = this.settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
-  console.log(gene_dna_sequence)
   $('#tooltip-body').html('').hide() // if ephemeral tooltip was up, remove it
   $('#deepdive-tooltip-body').show().append(`
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
@@ -290,8 +288,8 @@ function showDeepDiveToolTip(event){
   </td><td> ${event.target.gene?.percentage_in_split?.toFixed(2) + '%'}
   </td></tr></tbody></table>;
 
-  <button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(${gene_dna_sequence})">DNA</button>
-  <button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(${event.target.geneID});">AA</button>
+  <button type="button" id="gene-dna-sequence-button"class="btn btn-default btn-sm" >DNA</button>
+  <button type="button" id="gene-aa-sequence-button" class="btn btn-default btn-sm" >AA</button>
   <button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(${event.target.geneID}, \'blastx\', \'nr\', \'gene\');">blastx @ nr</button>
   <button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(${event.target.geneID}, \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button>
 
@@ -318,6 +316,14 @@ function showDeepDiveToolTip(event){
   </tr></tbody></table>;
   <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
+
+  $('#gene-dna-sequence-button').on('click', function(){
+    show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence'])
+  })
+
+  $('#gene-aa-sequence-button').on('click', function(){
+    show_sequence_modal('AA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['aa'][event.target.geneID]['sequence'])
+  })
 }
 
 function showToolTip(event){
@@ -360,30 +366,29 @@ function showToolTip(event){
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
 
-function show_sequence_modal(content) {
-  // remove previous modal window
-  console.log(content)
-  // $('.modal-sequence').modal('hide');
-  // $('.modal-sequence').remove();
+function show_sequence_modal(title, content) {
+ // remove previous modal window
+  $('.modal-sequence').modal('hide');
+  $('.modal-sequence').remove();
 
-  // $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
-  //     <div class="modal-dialog"> \
-  //         <div class="modal-content"> \
-  //             <div class="modal-header"> \
-  //                 <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
-  //                 <h4 class="modal-title">' + title + '</h4> \
-  //             </div> \
-  //             <div class="modal-body"> \
-  //                     <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
-  //             </div> \
-  //             <div class="modal-footer"> \
-  //                 <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
-  //             </div> \
-  //         </div> \
-  //     </div> \
-  // </div>');
-  // $('.modal-sequence').modal('show');
-  // $('.modal-sequence textarea').trigger('click');
+  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
+      <div class="modal-dialog"> \
+          <div class="modal-content"> \
+              <div class="modal-header"> \
+                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
+                  <h4 class="modal-title">' + title + '</h4> \
+              </div> \
+              <div class="modal-body"> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+              </div> \
+              <div class="modal-footer"> \
+                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+              </div> \
+          </div> \
+      </div> \
+  </div>');
+  $('.modal-sequence').modal('show');
+  $('.modal-sequence textarea').trigger('click');
 }
 
 
