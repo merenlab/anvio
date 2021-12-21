@@ -779,8 +779,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
     def store_scg_taxonomy_super_dict_raw(self, scg_taxonomy_super_dict_multi):
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
-        # anvio.P(d)
-        # sys.exit
 
         taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
 
