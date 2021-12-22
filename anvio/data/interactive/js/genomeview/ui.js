@@ -270,7 +270,9 @@ function setEventListeners(){
   })
 }
 function showDeepDiveToolTip(event){
-  $('#tooltip-body').html('').hide() // if ephemeral tooltip was up, remove it
+  $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances 
+  $('#deepdive-tooltip-body').html('').hide()
+
   $('#deepdive-tooltip-body').show().append(`
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
   <h2>Gene Call</h2>
