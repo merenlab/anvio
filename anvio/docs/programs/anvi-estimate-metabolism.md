@@ -1,8 +1,8 @@
-%(anvi-estimate-metabolism)s predicts the metabolic capabilities of organisms based on their genetic content. It relies upon %(kegg-functions)s and metabolism information from [KEGG](https://www.genome.jp/kegg/) (%(kegg-data)s), which is stored in a %(modules-db)s. It can also use user-defined metabolic pathways, as described in HERE.
+%(anvi-estimate-metabolism)s predicts the metabolic capabilities of organisms based on their genetic content. It relies upon %(kegg-functions)s and metabolism information from [KEGG](https://www.genome.jp/kegg/) (%(kegg-data)s), which is stored in a %(modules-db)s. It can also use user-defined metabolic pathways, as described in %(user-modules-data)s.
 
 The metabolic pathways that this program considers are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
 
-Additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found HERE.
+Additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
 Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
@@ -19,7 +19,7 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 
 If you also want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
-3. Define your own metabolic modules by following the formatting guidelines described HERE, and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db),
+3. Define your own metabolic modules by following the formatting guidelines described on the %(anvi-setup-user-modules)s page, and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db),
 4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s.
 
 ## Running metabolism estimation
