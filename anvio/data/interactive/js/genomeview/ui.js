@@ -329,7 +329,7 @@ function showDeepDiveToolTip(event){
 
   $('#gene-blastx-at-nr-button').on('click', function(){
     let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
-    let sequenceConcat = '>' + 'dna' + '\n' + sequence
+    let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastx', 'nr', 'gene')
   })
 }
