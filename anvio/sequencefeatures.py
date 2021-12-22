@@ -640,7 +640,7 @@ class Palindromes:
 
         if anvio.DEBUG or display_palindromes or self.verbose:
             self.progress.reset()
-            self.run.warning(None, header='SPLITTING A HIT', lc='red')
+            self.run.warning(None, header=f'SPLITTING A HIT [{p.first_start}:{p.first_end} / {p.first_start}:{p.second_end}]', lc='red')
             self.run.info('1st sequence', p.first_sequence, mc='green')
             self.run.info('ALN', p.midline, mc='green')
             self.run.info('2nd sequence', p.second_sequence, mc='green')
@@ -650,17 +650,25 @@ class Palindromes:
         for start, end in substrings:
             split_p = Palindrome()
             split_p.sequence_name = p.sequence_name
+
             split_p.first_start = p.first_start + start
             split_p.first_end = p.first_start + end
             split_p.first_sequence = p.first_sequence[start:end]
+
             split_p.second_start = p.second_end - end
             split_p.second_end = p.second_end - start
             split_p.second_sequence = p.second_sequence[start:end]
+
+            if split_p.first_start > split_p.second_start:
+                # this can only be the case if we are splitting an in-place palindrome
+                # so we will not report the mirrored pair.
+                continue
+
             split_p.midline = p.midline[start:end]
             split_p.num_gaps = split_p.midline.count('-')
             split_p.num_mismatches = split_p.midline.count('x')
             split_p.length = end - start
-            split_p.distance = p.distance
+            split_p.distance = split_p.second_start - split_p.first_end
 
             split_palindromes.append(split_p)
 
