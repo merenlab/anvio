@@ -5,6 +5,7 @@
 
 import os
 import argparse
+import subprocess
 import xml.etree.ElementTree as ET
 
 from numba import jit
@@ -16,7 +17,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.drivers.blast import BLAST
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -270,23 +270,6 @@ class Palindromes:
         palindromes = []
         sequence = sequence.upper()
 
-        # setup BLAST job
-        BLAST_search_tmp_dir = filesnpaths.get_temp_directory_path()
-        fasta_file_path = os.path.join(BLAST_search_tmp_dir, 'sequence.fa')
-        log_file_path = os.path.join(BLAST_search_tmp_dir, 'blast-log.txt')
-        results_file_path = os.path.join(BLAST_search_tmp_dir, 'hits.xml')
-        with open(fasta_file_path, 'w') as fasta_file:
-            fasta_file.write(f'>sequence\n{sequence}\n')
-
-        # run blast
-        blast = BLAST(fasta_file_path, search_program='blastn', run=run_quiet, progress=progress_quiet)
-        blast.evalue = 10
-        blast.num_threads = self.num_threads
-        blast.min_pct_id = 100 - self.max_num_mismatches
-        blast.search_output_path = results_file_path
-        blast.log_file_path = log_file_path
-        blast.makedb(dbtype='nucl')
-
         if self.min_palindrome_length < 20 and len(sequence) > 10000 and not self.user_is_warned_for_potential_performance_issues:
             self.progress.reset()
             self.run.warning(f"Please note, you are searching for palindromes that are as short as {self.min_palindrome_length} "
@@ -299,10 +282,25 @@ class Palindromes:
                              header="ONE-TIME PERFORMANCE WARNING")
             self.user_is_warned_for_potential_performance_issues = True
 
-        blast.blast(outputfmt='5', word_size=self.blast_word_size, strand='minus')
+        # setup BLAST job
+        BLAST_search_tmp_dir = filesnpaths.get_temp_directory_path()
+        fasta_file_path = os.path.join(BLAST_search_tmp_dir, 'sequence.fa')
+        with open(fasta_file_path, 'w') as fasta_file:
+            fasta_file.write(f'>sequence\n{sequence}\n')
+
+        search_command = f"""blastn -query {fasta_file_path} \
+                                    -subject {fasta_file_path} \
+                                    -evalue 10 \
+                                    -outfmt 5 \
+                                    -num_threads {self.num_threads} \
+                                    -word_size 10 \
+                                    -strand minus"""
+
+        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash')
+        BLAST_output = p.communicate()[0]
 
         # parse the BLAST XML output
-        root = ET.parse(blast.search_output_path).getroot()
+        root = ET.fromstring(BLAST_output.decode())
         for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
 
