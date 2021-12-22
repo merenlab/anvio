@@ -2571,16 +2571,17 @@ D = {
             'help': "If this is true, the output file will be in GFF3 format."
         }
     ),
-    'palindrome-method': (
-            ['--palindrome-method'],
+    'palindrome-search-algorithm': (
+            ['--palindrome-search-algorithm'],
             {'default': None,
              'metavar': 'STRING',
              'type': str,
              'choices': {'numba', 'BLAST'},
-             'help': "There are two methods for calculating palindromes: 'BLAST' and 'numba'. To optimize for speed, "
-                     "numba is used if the queried sequence length is less than 5000 nucleotides, and BLAST is used "
-                     "otherwise. However, you can force a specific method to be used for all palindrome finding using "
-                     "this flag. Choose from {'BLAST', 'numba'}."}
+             'help': "There are two algorithms for calculating palindromes: 'BLAST' and 'numba'. By default, anvi'o will dynamically "
+                     "optimize your search for speed and will use numba when a given sequence is shorter than 5,000 nucleotides or "
+                     "will use BLAST otherwise. However, you can use this parameter to ask anvi'o to use either of these methods "
+                     "explicitly to search for palindromes. You can choose from the options 'BLAST' or 'numba'. Please note that "
+                     "the results from the two approaches may differ."}
         ),
     'min-mismatch-distance-to-first-base': (
             ['--min-mismatch-distance-to-first-base'],

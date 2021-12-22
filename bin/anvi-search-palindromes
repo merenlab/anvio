@@ -53,7 +53,6 @@ if __name__ == "__main__":
     groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
     groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
     groupB.add_argument(*anvio.A('min-mismatch-distance-to-first-base'), **anvio.K('min-mismatch-distance-to-first-base'))
-    groupB.add_argument(*anvio.A('palindrome-method'), **anvio.K('palindrome-method'))
 
     groupC = parser.add_argument_group('SEARCH SENSITIVITY & PERFORMANCE', "Yes.")
     groupC.add_argument('--blast-word-size', metavar="INT", type=int, default=10, help="This parameter is passed to "

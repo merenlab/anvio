@@ -87,7 +87,7 @@ class Palindromes:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.palindrome_method = A('palindrome_method')
+        self.palindrome_search_algorithm = A('palindrome_search_algorithm')
         self.min_palindrome_length = 10 if A('min_palindrome_length') == None else A('min_palindrome_length')
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
@@ -97,7 +97,7 @@ class Palindromes:
         self.fasta_file_path = A('fasta_file')
         self.output_file_path = A('output_file')
 
-        self.palindrome_methods = {
+        self.palindrome_search_algorithms = {
             'BLAST': self._find_BLAST,
             'numba': self._find_numba,
         }
@@ -196,7 +196,7 @@ class Palindromes:
         self.report()
 
 
-    def decide_palindrome_method(self, sequence):
+    def set_palindrome_search_algorithm(self, sequence):
         if len(sequence) >= 5000:
             return self._find_BLAST
         else:
@@ -230,7 +230,7 @@ class Palindromes:
                              f"short to find any palindromes in it that are at least {self.min_palindrome_length} nts with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will most likely skip it.")
 
-        method = self.palindrome_methods.get(self.palindrome_method, self.decide_palindrome_method(sequence))
+        method = self.palindrome_search_algorithms.get(self.palindrome_search_algorithm, self.set_palindrome_search_algorithm(sequence))
         palindromes = method(sequence, **kwargs)
 
         for palindrome in palindromes:
