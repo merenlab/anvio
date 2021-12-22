@@ -32,6 +32,10 @@ def main(args):
 
     p = Palindromes(args)
 
+    # although there is numba-implemented faster alternative in the class for short 
+    # seqeunces (<5000 nts), here we enforce the use of BLAST for this program:
+    p.palindrome_search_algorithm = 'BLAST'
+
     if args.contigs_db or args.fasta_file:
         p.process()
     elif args.dna_sequence:
