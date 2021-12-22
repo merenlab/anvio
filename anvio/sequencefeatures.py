@@ -127,6 +127,10 @@ class Palindromes:
             raise ConfigError("You should either choose a FASTA file or a contigs db to send to this "
                               "class, not both :/")
 
+        if self.min_mismatch_distance_to_first_base < 1:
+            raise ConfigError("The minimum mismatch thistance to the first base from either of the palindrome "
+                              "must be greater than 0.")
+
         if self.output_file_path:
             filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
 
