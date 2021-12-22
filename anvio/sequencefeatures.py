@@ -88,7 +88,7 @@ class Palindromes:
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.palindrome_method = A('palindrome_method')
-        self.min_palindrome_length = A('min_palindrome_length') or 10
+        self.min_palindrome_length = 10 if A('min_palindrome_length') == None else A('min_palindrome_length')
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance = A('min_distance') or 0
         self.min_mismatch_distance_to_first_base = A('min_mismatch_distance_to_first_base') or 1
