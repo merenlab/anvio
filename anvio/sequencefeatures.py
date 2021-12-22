@@ -312,16 +312,52 @@ class Palindromes:
                     p.first_start = int(hsp_xml.find('Hsp_query-from').text) - 1
                     p.first_end = int(hsp_xml.find('Hsp_query-to').text)
                     p.first_sequence = hsp_xml.find('Hsp_qseq').text
+
                     p.second_start = int(hsp_xml.find('Hsp_hit-to').text) - 1
                     p.second_end = int(hsp_xml.find('Hsp_hit-from').text)
                     p.second_sequence = hsp_xml.find('Hsp_hseq').text
-                    p.distance = p.second_start - p.first_end
 
-                    # for each hit, there will be a copy of its reverse complement.
-                    # the first half of the if statement below is to control for that
-                    # and make sure we keep only one of them. the other half is to
-                    # remove those that do not meet the minimum distance criterion.
-                    if p.distance < 0 or p.distance < self.min_distance:
+                    # Calculating the 'distance' next. But it is a bit tricky. Imagine this as your genomic context for
+                    # this 'in-place' palindrome:
+                    #
+                    #    >>> 0        1
+                    #    >>> 1234567890
+                    #    >>> ...TCGA...
+                    #
+                    # where you indeed have a proper palindrome here. the start and end of both sequences of this
+                    # palindrome will be the same: TCGA (3:7) :: TCGA (3:7). In this case, we can't simply calculate
+                    # 'distance' by substracting the start of the second sequence from the end of the first, OR we
+                    # can't simply remove it from our consideration because p.second_start - p.first_end is a negative
+                    # value.
+                    #
+                    # In contrast, consider this as your genomic context for this 'distance palindrome':
+                    #
+                    #    >>> 0        1
+                    #    >>> 12345678901234567
+                    #    >>> ...ATCC...GGAT...
+                    #
+                    # This also is a proper palindrome. But the start and the end of each sequence will be different this
+                    # time in the BLAST results: ATCC (3:7) :: ATCC (10:14). And for such distant palindromes, BLAST results
+                    # will ALWAYS include the same result for its reverse complement, where p.second_start - p.first_end will
+                    # be negative, which we will want to remove. So the following few lines consider all these scenarios
+                    # to not always remove 'in-place' palindromes.
+
+                    if p.first_start == p.second_start:
+                        # this is an in-place palindrome. which means, the distance
+                        # between these sequences is 0 and we have to manually set it
+                        p.distance = 0
+                    else:
+                        # this is a distant palindrome, so we calculate the distance
+                        # from actual positions:
+                        p.distance = p.second_start - p.first_end
+
+                    # for each distant palindrome in the sequence, there will be a copy of the reverse complement of the first
+                    # hit. now we have set the distance properly, we can remove those from hits to be considered:
+                    if p.distance < 0:
+                        continue
+
+                    # time to check the remaining ones for minimum distance, if it is defined:
+                    if p.distance < self.min_distance:
                         continue
 
                     # before we continue, we will test for a special case: internal palindromes
