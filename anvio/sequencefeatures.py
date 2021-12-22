@@ -222,9 +222,13 @@ class Palindromes:
         sequence_length = len(sequence)
         if sequence_length < self.min_palindrome_length * 2 + self.min_distance:
             self.progress.reset()
-            self.run.warning(f"The sequence '{sequence_name}', which is only {sequence_length} nts long, is too short "
-                             f"to find palindromes that are at least {self.min_palindrome_length} nts, with "
-                             f"{self.min_distance} nucleoties in between :/ Anvi'o will skip it.")
+            if sequence_name == 'N/A':
+                friendly_sequence_name = "The sequence you have provided"
+            else:
+                friendly_sequence_name = f"The sequence '{sequence_name}'"
+            self.run.warning(f"{friendly_sequence_name} is only {sequence_length} nts long, and so it is too "
+                             f"short to find any palindromes in it that are at least {self.min_palindrome_length} nts with "
+                             f"{self.min_distance} nucleoties in between :/ Anvi'o will most likely skip it.")
 
         method = self.palindrome_methods.get(self.palindrome_method, self.decide_palindrome_method(sequence))
         palindromes = method(sequence, **kwargs)
