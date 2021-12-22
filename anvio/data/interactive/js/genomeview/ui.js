@@ -293,7 +293,7 @@ function showDeepDiveToolTip(event){
   <button type="button" id="gene-dna-sequence-button"class="btn btn-default btn-sm" >DNA</button>
   <button type="button" id="gene-aa-sequence-button" class="btn btn-default btn-sm" >AA</button>
   <button type="button" id="gene-blastx-at-nr-button"class="btn btn-default btn-sm" >blastx @ nr</button>
-  <button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(${event.target.geneID}, \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button>
+  <button type="button" id="gene-blastx-at-refseq-button" class="btn btn-default btn-sm">blastx @ refseq_genomic</button>
 
 
   <h2>Annotations</h2>;
@@ -331,6 +331,12 @@ function showDeepDiveToolTip(event){
     let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastx', 'nr', 'gene')
+  })
+
+  $('#gene-blastx-at-refseq-button').on('click', function(){
+    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
+    let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
+    fire_up_ncbi_blast(sequenceConcat, 'blastx', 'refseq_genomic', 'gene')
   })
 }
 
