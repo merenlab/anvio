@@ -250,7 +250,7 @@ function setEventListeners(){
   canvas.on('selection:created', (e) => {
     let selected_genes = e.selected.filter(obj => obj.id == 'arrow');
 
-    if(selected_genes.length > 0) {
+    if(selected_genes.length > 1) {
       showLassoMenu(selected_genes, e.e.clientX, e.e.clientY);
     }
 
