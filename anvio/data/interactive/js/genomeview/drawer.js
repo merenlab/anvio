@@ -47,7 +47,7 @@ GenomeDrawer.prototype.draw = function(){
 GenomeDrawer.prototype.addLayers = function(orderIndex){
   let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
 
-  yOffset = orderIndex * spacing;
+  yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
   let layerPos = 0
   let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
   let genome = this.settings['genomeData']['genomes'][orderIndex][1];
@@ -60,21 +60,47 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if(layer == 'Genome' && $('#Genome-show').is(':checked')){
       this.addGenome(orderIndex, dataLayerHeight, layerPos)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')){
       this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')){
       this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
       this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
-      layerPos += rulerHeight
+      layerPos += rulerHeight + groupLayerPadding
     }
   })
+
+  // this.addGroupBorder(yOffset)
+}
+
+/*
+ *  add a stylish and visually significant border around each group
+ */
+GenomeDrawer.prototype.addGroupBorder = function(yOffset){
+
+  let top = yOffset + marginTop - 20
+  let left = 0
+  let width = genomeMax
+  let height = spacing + 60
+
+  let rect = new fabric.Rect({
+    top : top,
+    left: left,
+    width: width,
+    height: height,
+    stroke: 'pink',
+    strokeWidth: 2,
+    fill: "pink",
+    selectable: false,
+  })
+
+  canvas.sendToBack(rect)
 }
 
 /*
@@ -292,7 +318,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layer
     }
       ruler.set({
         left: startingLeft,
-        top: startingTop,
+        top: startingTop + (layerHeight/2),
         lockMovementY: true,
         hasControls: false,
         hasBorders: false,
@@ -313,16 +339,29 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
+  let border = new fabric.Rect({
+    groupID: this.settings['genomeData']['genomes'][orderIndex][0],
+    top: top,
+    left: left,
+    width: width,
+    height: height,
+    stroke: 'black',
+    strokeWidth: 2,
+    fill: "rgba(0,0,0,0.0)",
+    selectable: false,
+    // opacity : .5
+  });
   let background = new fabric.Rect({
     groupID: this.settings['genomeData']['genomes'][orderIndex][0],
     top: top,
     left: left,
     width: width,
     height: height,
-    fill: backgroundShade,
+    fill: "#dbdbdb",
     selectable: false,
     opacity : .5
   });
+  canvas.sendToBack(border)
   canvas.sendToBack(background)
 }
 
