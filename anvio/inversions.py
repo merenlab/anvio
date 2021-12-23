@@ -76,7 +76,7 @@ class Inversions:
         self.num_nts_to_pad_a_stretch = A('num_nts_to_pad-a_stretch') or 100
 
         # palindrome search parameters
-        self.palindrome_method = A('palindrome_method')
+        self.palindrome_search_algorithm = A('palindrome_search_algorithm')
         self.min_palindrome_length = A('min_palindrome_length') or 10
         self.max_num_mismatches = A('max_num_mismatches') or 0
         self.min_distance_palindrome = A('min-distance') or 50
@@ -222,7 +222,7 @@ class Inversions:
         _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
                                    max_num_mismatches=self.max_num_mismatches,
                                    min_distance=self.min_distance_palindrome,
-                                   palindrome_method=self.palindrome_method,
+                                   palindrome_search_algorithm=self.palindrome_search_algorithm,
                                    min_mismatch_distance_to_first_base=self.min_mismatch_distance_to_first_base)
 
         P = Palindromes(_args,
