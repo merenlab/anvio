@@ -246,8 +246,15 @@ function setEventListeners(){
 
   // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
 
-  // disable group selection
+  // drag box selection
   canvas.on('selection:created', (e) => {
+    let selected_genes = e.selected.filter(obj => obj.id == 'arrow');
+
+    if(selected_genes.length > 0) {
+      showLassoMenu(selected_genes, e.e.clientX, e.e.clientY);
+    }
+
+    // disable group selection
     if (e.target.type === 'activeSelection') {
       canvas.discardActiveObject();
     }
@@ -403,6 +410,64 @@ function show_sequence_modal(title, content) {
   </div>');
   $('.modal-sequence').modal('show');
   $('.modal-sequence textarea').trigger('click');
+}
+
+function showLassoMenu(selected_genes, x, y) {
+  //x = 600;
+  //y = 200;
+
+  $('#lasso-menu-body').empty().show().append(
+    `<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
+    <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+        <tr><td>Position in split</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Position in contig</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Reference</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Sequence</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Type</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Length</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Count</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Corresponding gene call</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Codon order in gene</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Base position in codon</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Coverage</td><td>' + "FILLER" +'</td></tr> \
+      </table>';
+
+      <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
+      <br><br>
+
+      <button type="button" class="btn btn-default btn-sm" onClick="$('#lasso-menu-body').empty().hide()">Close</>
+      <button type="button" id="lasso-done" class="btn btn-default btn-sm" style="float:right" onClick="applyLasso()">Apply</button>
+      `
+    ).css({'position' : 'absolute', 'left' : x, 'top' : y});
+
+    $('#picker_lasso').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          if (!bySetColor) $(el).val(hex);
+
+          selected_genes.forEach(gene => {
+            gene.fill = '#' + hex;
+            gene.dirty = true;
+          });
+      }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+        selected_genes.forEach(gene => {
+          gene.fill = this.value;
+        });
+
+    });
+}
+
+function applyLasso() {
+  $('#lasso-menu-body').empty().hide();
+
+  // TODO: apply any relevant changes here.
+  // Alternatively, we could apply changes immediately and remove this button.
 }
 
 
