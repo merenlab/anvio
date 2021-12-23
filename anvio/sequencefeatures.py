@@ -572,6 +572,24 @@ class Palindromes:
 
                     break
 
+        # make sure none of the strecthes ends or starts with a mismatch:
+        L = []
+        for start, end in W:
+            while 1:
+                dirty = False
+                if s[end-1] == 'x':
+                    end -= 1
+                    dirty = True
+
+                if s[start] == 'x':
+                    start += 1
+                    dirty = True
+
+                if not dirty:
+                    L.append((start, end), )
+                    break
+        W = L
+
         # remove all the short ones:
         W = [(start, end) for (start, end) in W if end - start > min_palindrome_length]
 
