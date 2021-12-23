@@ -76,15 +76,15 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
     }
   })
 
-  // this.addGroupBorder(yOffset)
+  this.addGroupBorder(yOffset, orderIndex)
 }
 
 /*
  *  add a stylish and visually significant border around each group
  */
-GenomeDrawer.prototype.addGroupBorder = function(yOffset){
+GenomeDrawer.prototype.addGroupBorder = function(yOffset, orderIndex){
 
-  let top = yOffset + marginTop - 20
+  let top = yOffset + marginTop - 20  + (orderIndex * groupMargin)
   let left = 0
   let width = genomeMax
   let height = spacing + 60
@@ -97,6 +97,7 @@ GenomeDrawer.prototype.addGroupBorder = function(yOffset){
     stroke: 'pink',
     strokeWidth: 2,
     fill: "pink",
+    opacity: .2,
     selectable: false,
   })
 
@@ -119,7 +120,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
-  let y = marginTop + yOffset + layerPos + (layerHeight / 2) // render arrows in the center of genome layer's allotted vertical space
+  let y = marginTop + yOffset + layerPos + (layerHeight / 2)  + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
   if(showLabels) {
     canvas.add(new fabric.Text(genomeID, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
@@ -141,7 +142,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  this.addBackgroundShade((marginTop + yOffset + layerPos), start, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade((marginTop + yOffset + layerPos  + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
 
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
@@ -249,7 +250,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     }
 
     let maxDataLayerValue = 0
-    let startingTop = marginTop + yOffset + layerPos
+    let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
     let startingLeft = xDisps[genomeID]
     let pathDirective = [`M 0 0`]
 
@@ -290,7 +291,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
  *  Generate individual genome group rulers
  */
 GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layerHeight, orderIndex){
-  let startingTop = marginTop + yOffset + layerPos
+  let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
   let startingLeft = xDisps[genomeID]
   // let layerHeight = (spacing / maxGroupSize)
 
