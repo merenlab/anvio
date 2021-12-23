@@ -293,7 +293,7 @@ class Palindromes:
                                     -evalue 10 \
                                     -outfmt 5 \
                                     -num_threads {self.num_threads} \
-                                    -word_size 10 \
+                                    -word_size {self.blast_word_size} \
                                     -strand minus"""
 
         p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash')
