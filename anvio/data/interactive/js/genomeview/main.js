@@ -39,6 +39,7 @@ var scaleFactor = 1; // widths of all objects are scaled by this value to zoom i
 var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
 var genomeLabelSize = 15; // font size of genome labels
 var marginTop = 20; // vertical margin at the top of the genome display
+var groupLayerPadding = 10 // padding between each layer in a given genome group
 var labelSpacing = 30;  // spacing default for genomeLabel canvas
 var geneLabelSize = 40; // gene label font size
 var spacing = 50; // vertical spacing between genomes
