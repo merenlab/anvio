@@ -418,7 +418,7 @@ function showLassoMenu(selected_genes, x, y) {
 
   $('#lasso-menu-body').empty().show().append(
     `<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
-    <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
+    <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px; background: white"> \
         <tr><td>Position in split</td><td>' + "FILLER" +'</td></tr> \
         <tr><td>Position in contig</td><td>' + "FILLER" +'</td></tr> \
         <tr><td>Reference</td><td>' + "FILLER" +'</td></tr> \
