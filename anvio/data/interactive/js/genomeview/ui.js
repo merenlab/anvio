@@ -453,6 +453,7 @@ function showLassoMenu(selected_genes, x, y) {
             gene.fill = '#' + hex;
             gene.dirty = true;
           });
+          canvas.renderAll();
       }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
