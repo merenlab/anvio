@@ -742,6 +742,7 @@ class Palindromes:
                 # so we will not report the mirrored pair.
                 continue
 
+            split_p.method = p.method
             split_p.midline = p.midline[start:end]
             split_p.num_gaps = split_p.midline.count('-')
             split_p.num_mismatches = split_p.midline.count('x')
