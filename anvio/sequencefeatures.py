@@ -113,7 +113,8 @@ class Palindromes:
         self.run.info('Palindrome search algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
-        self.run.info('Minimum gap length', self.min_distance)
+        self.run.info('Min mismatch distance to the first base', self.min_mismatch_distance_to_first_base)
+        self.run.info('Minimum dist for each seq of a palindrome', self.min_distance)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
         self.run.info('Number of threads for BLAST', self.num_threads)
         self.run.info('Word size for BLAST', self.blast_word_size, nl_after=1)
@@ -482,7 +483,7 @@ class Palindromes:
         return palindromes
 
 
-    def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3):
+    def resolve_mismatch_map(self, s, min_palindrome_length=15, max_num_mismatches=3, min_mismatch_distance_to_first_base=1):
         """Takes a mismatch map, returns longest palindrome start/ends that satisfy all constraints
 
         If you would like to test this function, a palindrome mismatch map looks
@@ -490,11 +491,59 @@ class Palindromes:
 
             >>> s = 'ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo'
 
-        The rest of the code will document itself using the mismatch map `s` as an example :)
+        The rest of the code will document itself using the mismatch map `s` as an example. One could quickly test
+        how a mismatch map is resolved for a given `s` by running this function this way:
+
+            >>> from anvio.sequencefeatures import Palindromes
+            >>> resolution = Palindromes().resolve_mismatch_map(s)
+
+        Here is a more elaborate example:
+
+            >>> from anvio.sequencefeatures import Palindromes as P
+            >>> from anvio.terminal import Run
+            >>> 
+            >>> p = P(run=Run(verbose=False))
+            >>> 
+            >>> s = 'ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo'
+            >>> 
+            >>> RESOLUTION = lambda: [s[start:end] for start, end in p.resolve_mismatch_map(s, max_num_mismatches=max_num_mismatches, min_mismatch_distance_to_first_base=min_mismatch_distance_to_first_base, min_palindrome_length=min_palindrome_length)]
+            >>> 
+            >>> max_num_mismatches=1
+            >>> min_mismatch_distance_to_first_base=1
+            >>> min_palindrome_length=5
+            >>> print(RESOLUTION())
+            ['ooooooooooooooooxooo', 'oxooooooooo', 'oxooooooooo', 'oooxoooooooooooooooooo']
+            >>> 
+            >>> max_num_mismatches=1
+            >>> min_mismatch_distance_to_first_base=2
+            >>> min_palindrome_length=5
+            >>> print(RESOLUTION())
+            ['ooooooooooooooooxooo', 'ooooooooo', 'ooooooooo', 'oooxoooooooooooooooooo']
+            >>> 
+            >>> max_num_mismatches=1
+            >>> min_mismatch_distance_to_first_base=5
+            >>> min_palindrome_length=5
+            >>> print(RESOLUTION())
+            ['oooooooooooooooo', 'ooooooooo', 'ooooooooo', 'oooooooooooooooooo']
+            >>> 
+            >>> max_num_mismatches=5
+            >>> min_mismatch_distance_to_first_base=1
+            >>> min_palindrome_length=5
+            >>> print(RESOLUTION())
+            ['ooxooooooooooooooooxoooxoxxo', 'oxoooooooooxoxxoxooooooooo', 'oxoooxoooooooooooooooooo']
+            >>> 
+            >>> max_num_mismatches=5
+            >>> min_mismatch_distance_to_first_base=2
+            >>> min_palindrome_length=5
+            >>> print(RESOLUTION())
+            ['ooxooooooooooooooooxooo', 'oooooooooxoxxoxooooooooo', 'oooxoooooooooooooooooo']
         """
 
         if len(s) < min_palindrome_length:
             return []
+
+        # a helper function.
+        ADD = lambda _: _.add((start, end), ) if end - start > min_palindrome_length else None
 
         # The purpose here is to find the longest stretches of 'o'
         # characters in a given string of mismatch map `s` (which
@@ -541,8 +590,9 @@ class Palindromes:
         # >>> 71: ...................................................................... oooooooooooooooooo
         #
         # thus, the list `W` will contain start-end positions for every
-        # possible stretch that do not include gap characters.
-        W = []
+        # possible stretch that do not include gap characters and long
+        # enough to be worth considering.
+        W = set([])
         for start in starts:
             end = start
             num_mismatches = 0
@@ -558,44 +608,49 @@ class Palindromes:
                     num_mismatches += 1
 
                     if num_mismatches > max_num_mismatches:
-                        W.append((start, end), )
+                        ADD(W)
                         num_mismatches = 0
                         start = end + 1
                         end = start
                     else:
                         end += 1
                 else:
-                    W.append((start, end), )
+                    ADD(W)
                     num_mismatches = 0
                     start = end + 1
                     end = start
 
                 if end + 1 > len(s):
                     if end > start:
-                        W.append((start, end), )
+                        ADD(W)
 
                     break
 
-        # make sure none of the strecthes ends or starts with a mismatch:
-        L = []
+        W = sorted(W)
+
+        # make sure all stretches respect the `min_mismatch_distance_to_first_base` criterion.
+        L = set([])
         for start, end in W:
             while 1:
                 dirty = False
-                if s[end-1] == 'x':
-                    end -= 1
-                    dirty = True
+                for i in range(0, min_mismatch_distance_to_first_base):
+                    if s[end-i-1] == 'x':
+                        end = end - i - 1
+                        dirty = True
 
-                if s[start] == 'x':
-                    start += 1
-                    dirty = True
+                    if s[start + i] == 'x':
+                        start = start + i + 1
+                        dirty = True
+
+                    # if no mismatches left to work with, call it a day
+                    if 'x' not in s[start:end]:
+                        dirty = False
+                        break
 
                 if not dirty:
-                    L.append((start, end), )
+                    ADD(L)
                     break
         W = L
-
-        # remove all the short ones:
-        W = [(start, end) for (start, end) in W if end - start > min_palindrome_length]
 
         # sort all based on substring length
         W = sorted(W, key=lambda x: x[1] - x[0], reverse=True)
@@ -655,7 +710,8 @@ class Palindromes:
         # get all the best substrings by resolving the mismatch map
         substrings = self.resolve_mismatch_map(mismatch_map,
                                                min_palindrome_length=self.min_palindrome_length,
-                                               max_num_mismatches=self.max_num_mismatches)
+                                               max_num_mismatches=self.max_num_mismatches,
+                                               min_mismatch_distance_to_first_base=self.min_mismatch_distance_to_first_base)
         # if we don't get any substrings, it means it is time to go back
         if not len(substrings):
             return []
