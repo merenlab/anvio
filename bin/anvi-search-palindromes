@@ -32,10 +32,6 @@ def main(args):
 
     p = Palindromes(args)
 
-    # although there is numba-implemented faster alternative in the class for short 
-    # seqeunces (<5000 nts), here we enforce the use of BLAST for this program:
-    p.palindrome_search_algorithm = 'BLAST'
-
     if args.contigs_db or args.fasta_file:
         p.process()
     elif args.dna_sequence:
@@ -51,15 +47,22 @@ if __name__ == "__main__":
     groupA.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file'))
     groupA.add_argument(*anvio.A('dna-sequence'), **anvio.K('dna-sequence'))
 
-    groupB = parser.add_argument_group('PALINDROME BUT HOW?', "Some essential stuff here about your palindromes. Please also "
-                    "see the search sensitivity section below.")
-    groupB.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
-    groupB.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
-    groupB.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
-    groupB.add_argument(*anvio.A('min-mismatch-distance-to-first-base'), **anvio.K('min-mismatch-distance-to-first-base'))
+    groupB = parser.add_argument_group('SEARCH ALGORITHM', "If your purpose is to search for palindromes in general, you "
+                    "shouldn't change the default algorithm, which is based on BLAST. But there is an exceedingly faster "
+                    "numba-based sequence search algorithm as an alternative for shorter sequences. There will be some "
+                    "differences between BLAST and numba, and some of the parameters you will set for palindrome parameters "
+                    "below will only be taken into consideration by BLAST.")
+    groupB.add_argument(*anvio.A('palindrome-search-algorithm'), **anvio.K('palindrome-search-algorithm', {'default': 'BLAST'}))
 
-    groupC = parser.add_argument_group('SEARCH SENSITIVITY & PERFORMANCE', "Yes.")
-    groupC.add_argument('--blast-word-size', metavar="INT", type=int, default=10, help="This parameter is passed to "
+    groupC = parser.add_argument_group('PALINDROME PROPERTIES', "Some essential stuff here about your palindromes. Please also "
+                    "see the search sensitivity section below.")
+    groupC.add_argument(*anvio.A('min-palindrome-length'), **anvio.K('min-palindrome-length'))
+    groupC.add_argument(*anvio.A('max-num-mismatches'), **anvio.K('max-num-mismatches'))
+    groupC.add_argument(*anvio.A('min-distance'), **anvio.K('min-distance'))
+    groupC.add_argument(*anvio.A('min-mismatch-distance-to-first-base'), **anvio.K('min-mismatch-distance-to-first-base'))
+
+    groupD = parser.add_argument_group('BLAST SENSITIVITY & PERFORMANCE', "These parameters are only relevant for BLAST.")
+    groupD.add_argument('--blast-word-size', metavar="INT", type=int, default=10, help="This parameter is passed to "
                     "blastn as the `-word_size`, which literally means in the BLAST world the length of best perfect "
                     "among your alignments. The shorter the word size, the more short palindromes you will find, but it "
                     "will also influence your ability to find palindromes with mismatches. For instance, if the word size "
@@ -74,11 +77,11 @@ if __name__ == "__main__":
                     "program `anvi-search-palindromes` with `--dna` parameter and `--verbose` flag. As you play with the "
                     "word size, minimum number of mismatches, and the minimum palindrome length, the output messages will "
                     "help you determine your best parameters.")
-    groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
-    groupD = parser.add_argument_group('OUTPUT', "Output options.")
-    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupD.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupE = parser.add_argument_group('OUTPUT', "Output options.")
+    groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupE.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
     args, unknown = parser.parse_known_args()
 
