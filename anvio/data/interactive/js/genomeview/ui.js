@@ -274,6 +274,7 @@ function setEventListeners(){
     if(event.target && event.target.id === 'arrow'){
       showDeepDiveToolTip(event)
     }
+    $('#lasso-menu-body').empty().hide();
   })
 }
 function showDeepDiveToolTip(event){
