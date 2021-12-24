@@ -512,14 +512,16 @@ class Inversions:
         self.run.info("[General] Number of samples to process", len(self.profile_db_bam_file_pairs))
         self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
 
-        self.run.info("[Defining regions] Min coverage to define a stretch", self.min_coverage_to_define_stretches)
-        self.run.info("[Defining regions] Min stretch length", self.min_stretch_length)
-        self.run.info("[Defining regions] Min dist between independent stretches", self.min_distance_between_independent_stretches)
-        self.run.info("[Defining regions] Num nts to pad a ROI", self.num_nts_to_pad_a_stretch, nl_after=1)
+        self.run.info("[Defining stretches] Min FF/RR coverage to qualify", self.min_coverage_to_define_stretches)
+        self.run.info("[Defining stretches] Min length", self.min_stretch_length)
+        self.run.info("[Defining stretches] Min dist between independent stretches", self.min_distance_between_independent_stretches)
+        self.run.info("[Defining stretches] Num nts to pad a stretch", self.num_nts_to_pad_a_stretch, nl_after=1)
 
-        self.run.info("[Palindrome search] min palindrome length", self.min_palindrome_length)
-        self.run.info("[Palindrome search] max num mismatches", self.max_num_mismatches)
-        self.run.info("[Palindrome search] min distance between palindromes", self.min_distance_palindrome, nl_after=1)
+        self.run.info('[Palindrome search] Algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
+        self.run.info("[Palindrome search] Min palindrome length", self.min_palindrome_length)
+        self.run.info("[Palindrome search] Max num mismatches", self.max_num_mismatches)
+        self.run.info("[Palindrome search] Min mismatch distance to first base", self.min_mismatch_distance_to_first_base)
+        self.run.info("[Palindrome search] Min distance betwen each sequence", self.min_distance_palindrome, nl_after=1)
 
         self.run.info("[Inversion search] process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
 
