@@ -67,7 +67,7 @@ class Palindrome:
         self.run.verbose = True
 
         self.run.warning(None, header=f'{self.length} nts palindrome', lc='yellow')
-        self.run.info('Method', self.method, mc='green')
+        self.run.info('Method', self.method, mc='red')
         self.run.info('1st sequence [start:stop]', f"[{self.first_start}:{self.first_end}]", mc='green')
         self.run.info('2nd sequence [start:stop]', f"[{self.second_start}:{self.second_end}]", mc='green')
         self.run.info('Number of mismatches', f"{self.num_mismatches}", mc='red')
@@ -110,12 +110,13 @@ class Palindromes:
         self.sanity_check()
 
         self.run.warning(None, header="SEARCH SETTINGS", lc="green")
+        self.run.info('Palindrome search algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
         self.run.info('Minimum palindrome length', self.min_palindrome_length)
         self.run.info('Number of mismatches allowed', self.max_num_mismatches)
         self.run.info('Minimum gap length', self.min_distance)
         self.run.info('Be verbose?', 'No' if not self.verbose else 'Yes', nl_after=1)
         self.run.info('Number of threads for BLAST', self.num_threads)
-        self.run.info('BLAST word size', self.blast_word_size, nl_after=1)
+        self.run.info('Word size for BLAST', self.blast_word_size, nl_after=1)
 
         self.user_is_warned_for_potential_performance_issues = False
 
@@ -196,17 +197,11 @@ class Palindromes:
         self.report()
 
 
-    def set_palindrome_search_algorithm(self, sequence):
-        if len(sequence) >= 5000:
-            return self._find_BLAST
-        else:
-            return self._find_numba
-
-
     def find(self, sequence, sequence_name="N/A", display_palindromes=False, **kwargs):
         """Find palindromes in a single sequence, and populate `self.palindromes`
 
-        This method finds palindromes by delegating to either `_find_BLAST` and `_find_numba`.
+        This method finds palindromes by delegating to either `_find_BLAST` and `_find_numba`, unless the user
+        has explicitly defined which algorithm to use for search.
 
         Notes
         =====
@@ -230,7 +225,16 @@ class Palindromes:
                              f"short to find any palindromes in it that are at least {self.min_palindrome_length} nts with "
                              f"{self.min_distance} nucleoties in between :/ Anvi'o will most likely skip it.")
 
-        method = self.palindrome_search_algorithms.get(self.palindrome_search_algorithm, self.set_palindrome_search_algorithm(sequence))
+        # determine which palindrome search algorithm to use.
+        if self.palindrome_search_algorithm:
+            # which means the search algorithm is set by the user:
+            method = self.palindrome_search_algorithms[self.palindrome_search_algorithm]
+        else:
+            # which means we are going to dynamically determine which algorith to use
+            # as a function of the sequence length
+            method = self.palindrome_search_algorithms['numba'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['BLAST']
+
+        # get palindromes found in the sequence
         palindromes = method(sequence, **kwargs)
 
         for palindrome in palindromes:
