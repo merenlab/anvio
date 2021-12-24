@@ -2564,17 +2564,14 @@ D = {
                      "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
-        ['--export-gff3'],
-        {
-            'default': False,
-            'action': 'store_true',
-            'help': "If this is true, the output file will be in GFF3 format."
-        }
-    ),
+            ['--export-gff3'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If this is true, the output file will be in GFF3 format."}
+        ),
     'palindrome-search-algorithm': (
             ['--palindrome-search-algorithm'],
             {'default': None,
-             'metavar': 'STRING',
              'type': str,
              'choices': {'numba', 'BLAST'},
              'help': "There are two algorithms for calculating palindromes: 'BLAST' and 'numba'. By default, anvi'o will dynamically "
