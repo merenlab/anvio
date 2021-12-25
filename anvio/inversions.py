@@ -380,98 +380,98 @@ class Inversions:
 
 
     def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
-            """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
+        """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
     
-            A true inversion is one with evidence from short reads that it has activity.
-            """
+        A true inversion is one with evidence from short reads that it has activity.
+        """
     
-            true_inversions_in_stretch = []
+        true_inversions_in_stretch = []
     
-            if self.process_only_inverted_reads:
-                bam_file.fetch_filter = 'inversions'
-            else:
-                bam_file.fetch_filter = None
+        if self.process_only_inverted_reads:
+            bam_file.fetch_filter = 'inversions'
+        else:
+            bam_file.fetch_filter = None
 
-            if anvio.DEBUG or self.verbose:
-                self.progress.reset()
-                self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
+        if anvio.DEBUG or self.verbose:
+            self.progress.reset()
+            self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
 
-            # fetching reads first
-            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+        # fetching reads first
+        reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
 
-            total_num_inversions = len(inversion_candidates)
-            current_inversion = 0
-            for inversion_candidate in inversion_candidates:
-                current_inversion += 1
-                num_reads_considered = 0
-                match = False
-                evidence = ''
-                for read in reads:
-                    num_reads_considered += 1
-                    if inversion_candidate.v1_left in read:
-                        match = True
-                        evidence = 'v1_left'
-                        break
-                    elif inversion_candidate.v1_right in read:
-                        match = True
-                        evidence = 'v1_right'
-                        break
-                    elif inversion_candidate.v2_left in read:
-                        evidence = 'v2_left'
-                        match = True
-                        break
-                    elif inversion_candidate.v2_right in read:
-                        evidence = 'v2_right'
-                        match = True
-                        break
+        total_num_inversions = len(inversion_candidates)
+        current_inversion = 0
+        for inversion_candidate in inversion_candidates:
+            current_inversion += 1
+            num_reads_considered = 0
+            match = False
+            evidence = ''
+            for read in reads:
+                num_reads_considered += 1
+                if inversion_candidate.v1_left in read:
+                    match = True
+                    evidence = 'v1_left'
+                    break
+                elif inversion_candidate.v1_right in read:
+                    match = True
+                    evidence = 'v1_right'
+                    break
+                elif inversion_candidate.v2_left in read:
+                    evidence = 'v2_left'
+                    match = True
+                    break
+                elif inversion_candidate.v2_right in read:
+                    evidence = 'v2_right'
+                    match = True
+                    break
 
-                if match:
-                    # we found an inversion candidate that has at least one confirmed
-                    # construct. We add this one into the list of true inversions:
-                    true_inversions_in_stretch.append(inversion_candidate)
+            if match:
+                # we found an inversion candidate that has at least one confirmed
+                # construct. We add this one into the list of true inversions:
+                true_inversions_in_stretch.append(inversion_candidate)
     
-                    if anvio.DEBUG or self.verbose:
-                        self.progress.reset()
-                        self.run.info_single(f"👍 Candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
-                                             f"after {num_reads_considered} reads.", mc="yellow", level=2)
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+                    self.run.info_single(f"👍 Candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
+                                         f"after {num_reads_considered} reads.", mc="yellow", level=2)
 
-                    if not self.check_all_palindromes:
-                        # if the user is not interested in testing of every single palindrome
-                        # found in the stretch of interest to see whether there may be more
-                        # inversion candidates, we return the current list which includes only
-                        # one confirmed inversion
-                        return true_inversions_in_stretch
-                else:
-                    if anvio.DEBUG or self.verbose:
-                        self.progress.reset()
-                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                             f"after processing {num_reads_considered} reads.", mc="red", level=2)
-    
-            # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
-            # lines are for posterity:
-    
-            num_true_inversions_in_stretch = len(true_inversions_in_stretch)
-    
-            if self.check_all_palindromes:
-                if num_true_inversions_in_stretch == 1:
-                    # if we are here, we have gone through each read and inversion candidate
-                    # identified in this strecth, and our `true_inversions_in_stretch` contains
-                    # only one inversion. which means this loop could have taken a fraction of
-                    # what it did to search for additional inversions when there was none.
+                if not self.check_all_palindromes:
+                    # if the user is not interested in testing of every single palindrome
+                    # found in the stretch of interest to see whether there may be more
+                    # inversion candidates, we return the current list which includes only
+                    # one confirmed inversion
                     return true_inversions_in_stretch
-                elif num_true_inversions_in_stretch > 1:
-                    # if we are here, it means we actually did find more than one active inversion
-                    # in a single stretch, and `self.check_all_palindromes` worked well to discover
-                    # more
-                    return true_inversions_in_stretch
-                else:
-                    # if we are here, it means we did everything we can and there was nothing
-                    return []
             else:
-                # the user elected not to check all palindromes in the stretch, and if we are here
-                # there was no match for any of the constructs for any of the inversoin candidates
-                # for this strecth (because if there was one, it would have been already returned)
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                         f"after processing {num_reads_considered} reads.", mc="red", level=2)
+    
+        # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
+        # lines are for posterity:
+    
+        num_true_inversions_in_stretch = len(true_inversions_in_stretch)
+    
+        if self.check_all_palindromes:
+            if num_true_inversions_in_stretch == 1:
+                # if we are here, we have gone through each read and inversion candidate
+                # identified in this strecth, and our `true_inversions_in_stretch` contains
+                # only one inversion. which means this loop could have taken a fraction of
+                # what it did to search for additional inversions when there was none.
+                return true_inversions_in_stretch
+            elif num_true_inversions_in_stretch > 1:
+                # if we are here, it means we actually did find more than one active inversion
+                # in a single stretch, and `self.check_all_palindromes` worked well to discover
+                # more
+                return true_inversions_in_stretch
+            else:
+                # if we are here, it means we did everything we can and there was nothing
                 return []
+        else:
+            # the user elected not to check all palindromes in the stretch, and if we are here
+            # there was no match for any of the constructs for any of the inversoin candidates
+            # for this strecth (because if there was one, it would have been already returned)
+            return []
 
 
     def compute_consensus_inversions(self):
