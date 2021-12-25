@@ -84,7 +84,7 @@ class Inversions:
 
         # parameters to survey inversions
         self.process_only_inverted_reads = A('process_only_inverted_reads')
-        self.check_all_palindromes = False
+        self.check_all_palindromes = A('check_all_palindromes')
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -251,7 +251,7 @@ class Inversions:
                     self.progress.reset()
                     self.run.warning(None, header=f"Palindromes in {sequence_name}", lc='yellow', nl_before=3)
                     self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
-                    self.run.info_single("Coverage:", nl_before=1, nl_after=1)
+                    self.run.info_single(f"Coverage in {sample_id}:", nl_before=1, nl_after=1)
                     self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
 
                 # make a record of the stretch that is about to be considered for having
@@ -395,7 +395,6 @@ class Inversions:
             if anvio.DEBUG or self.verbose:
                 self.progress.reset()
                 self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
-                self.run.info_single(f"Of the 1 inversion candidate above, anvi'o found the following inversion(s) to", mc="green", nl_before=1, nl_after=1)
 
             # Q: would it be a good idea to first get all the reads from the bam file
             # since we may have to go through them multiple times? witch something like
@@ -460,7 +459,7 @@ class Inversions:
                                              f"after {num_reads_considered} reads.", mc="red")
     
             # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
-            # lines are for posterity
+            # lines are for posterity:
     
             num_true_inversions_in_stretch = len(true_inversions_in_stretch)
     
@@ -607,13 +606,14 @@ class Inversions:
         self.run.info("[Defining stretches] Min dist between independent stretches", self.min_distance_between_independent_stretches)
         self.run.info("[Defining stretches] Num nts to pad a stretch", self.num_nts_to_pad_a_stretch, nl_after=1)
 
-        self.run.info('[Palindrome search] Algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
-        self.run.info("[Palindrome search] Min palindrome length", self.min_palindrome_length)
-        self.run.info("[Palindrome search] Max num mismatches", self.max_num_mismatches)
-        self.run.info("[Palindrome search] Min mismatch distance to first base", self.min_mismatch_distance_to_first_base)
-        self.run.info("[Palindrome search] Min distance betwen each sequence", self.min_distance_palindrome, nl_after=1)
+        self.run.info('[Finding palindromes] Algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
+        self.run.info("[Finding palindromes] Min palindrome length", self.min_palindrome_length)
+        self.run.info("[Finding palindromes] Max num mismatches", self.max_num_mismatches)
+        self.run.info("[Finding palindromes] Min mismatch distance to first base", self.min_mismatch_distance_to_first_base)
+        self.run.info("[Finding palindromes] Min distance betwen each sequence", self.min_distance_palindrome, nl_after=1)
 
-        self.run.info("[Inversion search] process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
+        self.run.info("[Confirming inversions] Check all palindromes in a stretch?",  "True" if self.check_all_palindromes else "False")
+        self.run.info("[Confirming inversions] Process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
 
         if self.only_report_from:
             self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)
