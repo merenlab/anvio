@@ -443,8 +443,8 @@ class Inversions:
     
                     if anvio.DEBUG or self.verbose:
                         self.progress.reset()
-                        self.run.info_single(f"👍 Inversion candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
-                                             f"after {num_reads_considered} reads.", mc="yellow")
+                        self.run.info_single(f"👍 Candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
+                                             f"after {num_reads_considered} reads.", mc="yellow", level=2)
 
                     if not self.check_all_palindromes:
                         # if the user is not interested in testing of every single palindrome
@@ -455,8 +455,8 @@ class Inversions:
                 else:
                     if anvio.DEBUG or self.verbose:
                         self.progress.reset()
-                        self.run.info_single(f"👎 Inversion candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                             f"after {num_reads_considered} reads.", mc="red")
+                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after processing {num_reads_considered} reads.", mc="red", level=2)
     
             # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
             # lines are for posterity:
