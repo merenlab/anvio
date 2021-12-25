@@ -19,7 +19,7 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 
 If you also want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
-3. Define your own metabolic modules by following the formatting guidelines described on the %(anvi-setup-user-modules)s page, and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db),
+3. Define your own metabolic modules by following the formatting guidelines described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#how-do-i-format-the-module-files) and [here](https://merenlab.org/software/anvio/help/main/artifacts/user-modules-data/#a-step-by-step-guide-to-creating), and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db),
 4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s.
 
 ## Running metabolism estimation
@@ -419,6 +419,13 @@ This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has differen
 3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) have probably been using a non-default (or outdated) version of %(kegg-data)s. If they have the current default snapshot of KEGG data but you do not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
 
 Note that you can also get this sort of error with user-defined metabolic modules, but only if you are estimating from JSON data (in which case the JSON file was generated using a different user-defined %(modules-db)s).
+
+
+## What to do if estimation is not working as expected for user-defined metabolic modules?
+
+If you are estimating completeness of user-defined modules and find that the results are not as expected, you should double check your module files to make sure the pathway is defined properly. Are the enzyme accession numbers in the DEFINITION correct? Do you have the proper ANNOTATION_SOURCE for each enzyme, and are these lines spelled properly and matching to the annotation sources in your contigs database(s)? If you are using custom HMM profiles, did you remember to use the `--add-to-functions-table` parameter?
+
+If these things are correct but you are still not finding an annotation for one or more enzymes that you _know_ should be in your sequence data, consider why those annotations might not be there - perhaps the e-values are too low for the annotations to be kept in the database? Keep in mind that you can always try to add enzyme annotations (with the proper sources) to your database using %(anvi-import-functions)s before running %(anvi-estimate-metabolism)s again.
 
 ## Technical Details
 
