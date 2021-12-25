@@ -379,25 +379,15 @@ class Inversions:
         self.progress.end()
 
 
-    def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
-        """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
-    
-        A true inversion is one with evidence from short reads that it has activity.
-        """
-    
-        true_inversions_in_stretch = []
-    
-        if self.process_only_inverted_reads:
-            bam_file.fetch_filter = 'inversions'
-        else:
-            bam_file.fetch_filter = None
+    def test_inversion_candidates_using_short_reads(self, inversion_candidates, reads):
+        """Takes a set of inversion candidates and short reads to look for true inversions"""
+
+        true_inversions = []
 
         if anvio.DEBUG or self.verbose:
             self.progress.reset()
-            self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
-
-        # fetching reads first
-        reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+            self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} reads to find "
+                                 f"true inversions:", mc="green", nl_before=1, nl_after=1)
 
         total_num_inversions = len(inversion_candidates)
         current_inversion = 0
@@ -428,7 +418,7 @@ class Inversions:
             if match:
                 # we found an inversion candidate that has at least one confirmed
                 # construct. We add this one into the list of true inversions:
-                true_inversions_in_stretch.append(inversion_candidate)
+                true_inversions.append(inversion_candidate)
     
                 if anvio.DEBUG or self.verbose:
                     self.progress.reset()
@@ -440,13 +430,32 @@ class Inversions:
                     # found in the stretch of interest to see whether there may be more
                     # inversion candidates, we return the current list which includes only
                     # one confirmed inversion
-                    return true_inversions_in_stretch
+                    return true_inversions
             else:
                 if anvio.DEBUG or self.verbose:
                     self.progress.reset()
                     self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
                                          f"after processing {num_reads_considered} reads.", mc="red", level=2)
+
+        return true_inversions
+ 
+
+    def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
+        """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
     
+        A true inversion is one with evidence from short reads that it has activity.
+        """
+     
+        if self.process_only_inverted_reads:
+            bam_file.fetch_filter = 'inversions'
+        else:
+            bam_file.fetch_filter = None
+
+        # fetching reads first
+        reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+
+        true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+
         # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
         # lines are for posterity:
     
