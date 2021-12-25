@@ -84,6 +84,7 @@ class Inversions:
 
         # parameters to survey inversions
         self.process_only_inverted_reads = A('process_only_inverted_reads')
+        self.check_all_palindromes = False
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -142,11 +143,6 @@ class Inversions:
         # we will access to it later when it is time to get the FWD/FWD and
         # REV/REV reads.
         bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
-
-        if self.process_only_inverted_reads:
-            bam_file.fetch_filter = 'inversions'
-        else:
-            bam_file.fetch_filter = None
 
         ################################################################################
         self.progress.update("Computing coverage stretches")
@@ -333,36 +329,22 @@ class Inversions:
 
                     inversion_candidates.append(inversion_candidate)
 
-                # here we have, for a given `contig_name` and `start` and `stop` positions of a stretch in it, we have our inversion candidates,
+                # here we have, for a given `contig_name`, `start` and `stop` positions of a stretch in it,
+                # we have our inversion candidates,
                 ################################################################################
-                self.progress.update(f"{contig_name}[{start}:{stop}]: testing constructs")
+                self.progress.update(f"{contig_name}[{start}:{stop}]: true inv testing w/constructs")
                 ################################################################################
-                true_inversion = None
-
-                for read in bam_file.fetch_only(contig_name, start=start, end=stop):
-                    for inversion_candidate in inversion_candidates:
-                        if inversion_candidate.v1_left in read.query_sequence:
-                            true_inversion = inversion_candidate
-                            break
-                        elif inversion_candidate.v1_right in read.query_sequence:
-                            true_inversion = inversion_candidate
-                            break
-                        elif inversion_candidate.v2_left in read.query_sequence:
-                            true_inversion = inversion_candidate
-                            break
-                        elif inversion_candidate.v2_right in read.query_sequence:
-                            true_inversion = inversion_candidate
-                            break
-
+                true_inversions = self.get_true_inversions_in_stretch(inversion_candidates, bam_file, contig_name, start, stop)
 
                 if anvio.DEBUG or self.verbose:
-                    if true_inversion:
+                    if true_inversions:
                         self.progress.reset()
                         self.run.info_single(f"Of the {PL('inversion candidate', len(inversion_candidates))} above, "
-                                             f"the one below had at least one perfect matches to their constructs in REV/REV or "
-                                             f"FWD/FWD reads from the BAM file:", mc="green", nl_before=1)
+                                             f"anvi'o found the following inversion(s) to have at least one perfect match "
+                                             f"to their constructs in the BAM file:", mc="green", nl_before=1)
 
-                        true_inversion.display()
+                        for true_inversion in true_inversions:
+                            true_inversion.display()
                     else:
                         self.progress.reset()
                         self.run.info_single(f"No true inversions in this one: none of the REV/REV or FWD/FWD reads "
@@ -373,27 +355,110 @@ class Inversions:
                 # it is time to update our global data dictionaries with
                 # everything we know about this inversion, and the stretch
                 # it belongs:
-                if true_inversion:
-                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['true_inversions_found'] = True
+                if len(true_inversions):
+                    for true_inversion in true_inversions:
+                        self.stretches_considered[f"{entry_name}_{sequence_name}"]['true_inversions_found'] = True
 
-                    d = OrderedDict({'entry_id': true_inversion.sequence_name,
-                                     'sample_name': entry_name,
-                                     'contig_name': contig_name,
-                                     'first_seq': true_inversion.first_sequence,
-                                     'midline': true_inversion.midline,
-                                     'second_seq': utils.rev_comp(true_inversion.second_sequence),
-                                     'first_start': true_inversion.first_start + start,
-                                     'first_end': true_inversion.first_end + start,
-                                     'second_start': true_inversion.second_start + start,
-                                     'second_end': true_inversion.second_end + start,
-                                     'num_mismatches': true_inversion.num_mismatches,
-                                     'num_gaps': true_inversion.num_gaps,
-                                     'length': true_inversion.length,
-                                     'distance': true_inversion.distance})
+                        d = OrderedDict({'entry_id': true_inversion.sequence_name,
+                                         'sample_name': entry_name,
+                                         'contig_name': contig_name,
+                                         'first_seq': true_inversion.first_sequence,
+                                         'midline': true_inversion.midline,
+                                         'second_seq': utils.rev_comp(true_inversion.second_sequence),
+                                         'first_start': true_inversion.first_start + start,
+                                         'first_end': true_inversion.first_end + start,
+                                         'second_start': true_inversion.second_start + start,
+                                         'second_end': true_inversion.second_end + start,
+                                         'num_mismatches': true_inversion.num_mismatches,
+                                         'num_gaps': true_inversion.num_gaps,
+                                         'length': true_inversion.length,
+                                         'distance': true_inversion.distance})
 
-                    self.inversions[entry_name].append(d)
+                        self.inversions[entry_name].append(d)
 
         self.progress.end()
+
+
+    def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
+            """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
+    
+            A true inversion is one with evidence from short reads that it has activity.
+            """
+    
+            true_inversions_in_stretch = []
+    
+            if self.process_only_inverted_reads:
+                bam_file.fetch_filter = 'inversions'
+            else:
+                bam_file.fetch_filter = None
+
+            # Q: would it be a good idea to first get all the reads from the bam file
+            # since we may have to go through them multiple times? witch something like
+            # this?
+            #
+            #     >>> reads = [r for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+            #
+            # would it be beneficial to reduce the I/O in longer operations or would it make things
+            # even slower because the current implementation will stop the loop in the
+            # first match without going through the rest of the reads there?
+            #
+            # I guess it is a good idea to keep in mind reading all of them into `reads` will only be
+            # useful if we have more than one inversion candidate (which will be rare) and when
+            # `self.check_all_palindromes` is set to True.
+    
+            for inversion_candidate in inversion_candidates:
+                match = False
+                for read in bam_file.fetch_only(contig_name, start=start, end=stop):
+                    if inversion_candidate.v1_left in read.query_sequence:
+                        match = True
+                        break
+                    elif inversion_candidate.v1_right in read.query_sequence:
+                        match = True
+                        break
+                    elif inversion_candidate.v2_left in read.query_sequence:
+                        match = True
+                        break
+                    elif inversion_candidate.v2_right in read.query_sequence:
+                        match = True
+                        break
+
+                if match:
+                    # we found an inversion candidate that has at least one confirmed
+                    # construct. We add this one into the list of true inversions:
+                    true_inversions_in_stretch.append(inversion_candidate)
+    
+                    if not self.check_all_palindromes:
+                        # if the user is not interested in testing of every single palindrome
+                        # found in the stretch of interest to see whether there may be more
+                        # inversion candidates, we return the current list which includes only
+                        # one confirmed inversion
+                        return true_inversions_in_stretch
+    
+            # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
+            # lines are for posterity
+    
+            num_true_inversions_in_stretch = len(true_inversions_in_stretch)
+    
+            if self.check_all_palindromes:
+                if num_true_inversions_in_stretch == 1:
+                    # if we are here, we have gone through each read and inversion candidate
+                    # identified in this strecth, and our `true_inversions_in_stretch` contains
+                    # only one inversion. which means this loop could have taken a fraction of
+                    # what it did to search for additional inversions when there was none.
+                    return true_inversions_in_stretch
+                elif num_true_inversions_in_stretch > 1:
+                    # if we are here, it means we actually did find more than one active inversion
+                    # in a single stretch, and `self.check_all_palindromes` worked well to discover
+                    # more
+                    return true_inversions_in_stretch
+                else:
+                    # if we are here, it means we did everything we can and there was nothing
+                    return []
+            else:
+                # the user elected not to check all palindromes in the stretch, and if we are here
+                # there was no match for any of the constructs for any of the inversoin candidates
+                # for this strecth (because if there was one, it would have been already returned)
+                return []
 
 
     def compute_consensus_inversions(self):
