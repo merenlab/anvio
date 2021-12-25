@@ -14,6 +14,7 @@ __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
+__requires__ = ["user-modules-data"]
 __provides__ = ["modules-db"]
 __description__ = "Set up user-defined metabolic pathways into an anvi'o-compatible database"
 
