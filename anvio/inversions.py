@@ -392,6 +392,11 @@ class Inversions:
             else:
                 bam_file.fetch_filter = None
 
+            if anvio.DEBUG or self.verbose:
+                self.progress.reset()
+                self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
+                self.run.info_single(f"Of the 1 inversion candidate above, anvi'o found the following inversion(s) to", mc="green", nl_before=1, nl_after=1)
+
             # Q: would it be a good idea to first get all the reads from the bam file
             # since we may have to go through them multiple times? witch something like
             # this?
@@ -406,19 +411,29 @@ class Inversions:
             # useful if we have more than one inversion candidate (which will be rare) and when
             # `self.check_all_palindromes` is set to True.
     
+            total_num_inversions = len(inversion_candidates)
+            current_inversion = 0
             for inversion_candidate in inversion_candidates:
+                current_inversion += 1
+                num_reads_considered = 0
                 match = False
+                evidence = ''
                 for read in bam_file.fetch_only(contig_name, start=start, end=stop):
+                    num_reads_considered += 1
                     if inversion_candidate.v1_left in read.query_sequence:
                         match = True
+                        evidence = 'v1_left'
                         break
                     elif inversion_candidate.v1_right in read.query_sequence:
                         match = True
+                        evidence = 'v1_right'
                         break
                     elif inversion_candidate.v2_left in read.query_sequence:
+                        evidence = 'v2_left'
                         match = True
                         break
                     elif inversion_candidate.v2_right in read.query_sequence:
+                        evidence = 'v2_right'
                         match = True
                         break
 
@@ -427,12 +442,22 @@ class Inversions:
                     # construct. We add this one into the list of true inversions:
                     true_inversions_in_stretch.append(inversion_candidate)
     
+                    if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
+                        self.run.info_single(f"👍 Inversion candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
+                                             f"after {num_reads_considered} reads.", mc="yellow")
+
                     if not self.check_all_palindromes:
                         # if the user is not interested in testing of every single palindrome
                         # found in the stretch of interest to see whether there may be more
                         # inversion candidates, we return the current list which includes only
                         # one confirmed inversion
                         return true_inversions_in_stretch
+                else:
+                    if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
+                        self.run.info_single(f"👎 Inversion candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after {num_reads_considered} reads.", mc="red")
     
             # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
             # lines are for posterity
