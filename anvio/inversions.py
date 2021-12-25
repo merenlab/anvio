@@ -384,11 +384,6 @@ class Inversions:
 
         true_inversions = []
 
-        if anvio.DEBUG or self.verbose:
-            self.progress.reset()
-            self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} reads to find "
-                                 f"true inversions:", mc="green", nl_before=1, nl_after=1)
-
         total_num_inversions = len(inversion_candidates)
         current_inversion = 0
         for inversion_candidate in inversion_candidates:
@@ -446,19 +441,72 @@ class Inversions:
         A true inversion is one with evidence from short reads that it has activity.
         """
      
+        # here we will do something sneaky. if the user wants us to test inversions only using inverted reads,
+        # we will abide and move on. as inverted reads will be a fraction of all reads that cover a given
+        # region in the BAM file, it is not as costly as going through all of the regular reads. that said,
+        # inverted reads will often miss active inversions, and going through the costly route of using all
+        # reads will be necessary to be sure. the following if/else block covers that with the consideration
+        # of one more key parameter: `self.check_all_palindromes`. the code is intentionally redundant below
+        # to ensure maximum readability and to make it easier to follow this relatively complex logic.
         if self.process_only_inverted_reads:
+            # if we are here, we will only use the inverted reads and move on. this is the simple case.
             bam_file.fetch_filter = 'inversions'
+            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+
+            if anvio.DEBUG or self.verbose:
+                self.progress.reset()
+                self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
+                                     f"true inversions:", mc="green", nl_before=1, nl_after=1)
+
+            true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
         else:
-            bam_file.fetch_filter = None
+            # if we are here, we want to use the inverted reads first, and if we find nothing, we want to
+            # try all reads. BUT THERE IS ONE MORE CONSIDERATION: if we have multiple palindromes, and if
+            # the user asked for `self.check_all_palindromes`, it means we may have a match to one of them
+            # in inverted reads, and even thought we may have found more than one palindromes to be true
+            # inversions if we were to use all reads, we would not be checking them since
+            # `if not len(true_inversions_in_stretch)` would no longer be True. Which means, if the user
+            # is asking for `self.check_all_palindromes`, we can't do the sneaky thing we wished to do and
+            # must work with all reads from the get go :/ first, we will take care of the default case where
+            # the user did not ask to check all palindromes:
+            if not self.check_all_palindromes:
+                bam_file.fetch_filter = 'inversions'
+                reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+                    self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
+                                         f"true inversions:", mc="green", nl_before=1, nl_after=1)
 
-        # fetching reads first
-        reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
 
-        true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+                if not len(true_inversions_in_stretch):
+                    # if we are here, it means inverted reads did not match any of the constructs, and next
+                    # we will try all reads.
+                    bam_file.fetch_filter = None
+                    reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+
+                    if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
+                        self.run.info_single(f"REV/REV and FWD/FWD reads didn't work :( Now testing the same {len(inversion_candidates)} palindromes "
+                                             f"with {len(reads)} regular reads to look for true inversions:", mc="green", nl_before=1, nl_after=1)
+
+                    true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
+            else:
+                # so the user wants us to test test all palindromes. this is the case where we shouldn't use
+                # inverted reads to speed things up when possible, and simply use all reads.
+                bam_file.fetch_filter = None
+                reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+                    self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} regular reads to find "
+                                         f"true inversions:", mc="green", nl_before=1, nl_after=1)
+
+                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+
 
         # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
         # lines are for posterity:
-    
         num_true_inversions_in_stretch = len(true_inversions_in_stretch)
     
         if self.check_all_palindromes:
