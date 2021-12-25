@@ -396,20 +396,9 @@ class Inversions:
                 self.progress.reset()
                 self.run.info_single(f"Testing if any of the palindromes resolve to true inversions:", mc="green", nl_before=1, nl_after=1)
 
-            # Q: would it be a good idea to first get all the reads from the bam file
-            # since we may have to go through them multiple times? witch something like
-            # this?
-            #
-            #     >>> reads = [r for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
-            #
-            # would it be beneficial to reduce the I/O in longer operations or would it make things
-            # even slower because the current implementation will stop the loop in the
-            # first match without going through the rest of the reads there?
-            #
-            # I guess it is a good idea to keep in mind reading all of them into `reads` will only be
-            # useful if we have more than one inversion candidate (which will be rare) and when
-            # `self.check_all_palindromes` is set to True.
-    
+            # fetching reads first
+            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+
             total_num_inversions = len(inversion_candidates)
             current_inversion = 0
             for inversion_candidate in inversion_candidates:
@@ -417,21 +406,21 @@ class Inversions:
                 num_reads_considered = 0
                 match = False
                 evidence = ''
-                for read in bam_file.fetch_only(contig_name, start=start, end=stop):
+                for read in reads:
                     num_reads_considered += 1
-                    if inversion_candidate.v1_left in read.query_sequence:
+                    if inversion_candidate.v1_left in read:
                         match = True
                         evidence = 'v1_left'
                         break
-                    elif inversion_candidate.v1_right in read.query_sequence:
+                    elif inversion_candidate.v1_right in read:
                         match = True
                         evidence = 'v1_right'
                         break
-                    elif inversion_candidate.v2_left in read.query_sequence:
+                    elif inversion_candidate.v2_left in read:
                         evidence = 'v2_left'
                         match = True
                         break
-                    elif inversion_candidate.v2_right in read.query_sequence:
+                    elif inversion_candidate.v2_right in read:
                         evidence = 'v2_right'
                         match = True
                         break
