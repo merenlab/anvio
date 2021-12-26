@@ -119,7 +119,7 @@ Annotating PF06603.14 requires an extra step, because we first need to create a 
                --num-threads 4
 {{ codestop }}
 
-Please note that you _must_ use the `--add-to-functions-table` parameter when you use %(anvi-run-hmms)s, otherwise the annotations for PF06603.14 will not be stored in the proper database table and %(anvi-estimate-metabolism)s will not be able to find them later.
+Please note that you _must_ use the `--add-to-functions-table` parameter when you use %(anvi-run-hmms)s, otherwise the annotations for PF06603.14 will not be stored in the proper database table and %(anvi-estimate-metabolism)s will not be able to find them later. Also, if you use the %(anvi-script-pfam-accessions-to-hmms-directory)s program to create your custom HMM profiles, you should make sure that the accessions in the resulting `genes.txt` file are matching to the corresponding enzyme accessions in the module file, because those are the accessions that will be put into your contigs database.
 
 Finally, to annotate TIGR01709.2 we need to take our (hypothetical) Interproscan results and convert them into a %(functions-txt)s file. You can visit that page for a lengthier discussion of the file format, but let's say the TIGR01709.2 annotations in that file looked like this:
 
