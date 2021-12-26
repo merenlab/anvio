@@ -17,8 +17,8 @@ Enzyme comes from... | annotation program | ANNOTATION_SOURCE
 KEGG KOfam | %(anvi-run-kegg-kofams)s | Kofam
 NCBI COGs (2020) | %(anvi-run-ncbi-cogs)s | COG20_FUNCTION
 NCBI COGs (2014) | %(anvi-run-ncbi-cogs)s | COG14_FUNCTION
-Pfams | %(anvi-run-pfam)s | Pfam
-custom HMMs | %(anvi-run-hmm)s with `--hmm-source` and `--add-to-functions-table` parameters | name of directory given to `--hmm-source`
+Pfams | %(anvi-run-pfams)s | Pfam
+custom HMMs | %(anvi-run-hmms)s with `--hmm-source` and `--add-to-functions-table` parameters | name of directory given to `--hmm-source`
 other annotation strategy | %(anvi-import-functions)s | source defined in input file
 
 2. Define the module
@@ -37,7 +37,7 @@ Once you have created a module file for each metabolic pathway you are intereste
 
 Before you can estimate metabolism, you will need to annotate your contigs database(s) with each annotation source that you used to define your modules. This will require running one or more annotation programs, as described in the table given for step 1 above. If you want to quickly remind yourself of which annotation sources are required for your metabolic modules, you can run %(anvi-db-info)s on the `USER_MODULES.db`. But don't worry - if you forget one, you will get a helpful error message telling you what you missed when you try to run %(anvi-estimate-metabolism)s.
 
-Since estimation will always be run on KEGG data, too, you will have to make sure you also run %{anvi-run-kegg-kofams}s on your database(s), if you haven't already.
+Since estimation will always be run on KEGG data, too, you will have to make sure you also run %(anvi-run-kegg-kofams)s on your database(s), if you haven't already.
 
 6. Estimate the completeness of your pathways
 
