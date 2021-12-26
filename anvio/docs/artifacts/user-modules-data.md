@@ -47,9 +47,9 @@ The last step is to run %(anvi-estimate-metabolism)s and provide this directory 
 
 For this example, we will be creating a completely FAKE, biologically-nonsensical Frankenstein of a metabolic pathway. This is not anything you should be putting in your own `USER_MODULES.db`; it only exists for demonstrating the steps above, and particularly so you have a reference for how to handle the different annotation sources mentioned in step 1.
 
-First, let's select 5 different enzymes. Typically at this step you would use your biological knowledge of a real metabolic pathway to determine the specific set of enzymes catalyzing the reactions of the pathway - but this toy example, we're going to use random enzymes that come from a variety of annotation sources, not enzymes that actually work together biologically in a real cell. So we'll go with a couple of KOfams, a COG, a PFAM, and a TIGRFAM (to demonstrate the 'other' annotation strategy). Here is the list of accessions: K01657, K01658, COG1362, PF06603.14, and TIGR01709.2.
+First, let's select 5 different enzymes. Typically at this step you would use your biological knowledge of a real metabolic pathway to determine the specific set of enzymes catalyzing the reactions of the pathway - but for this toy example, we're going to use random enzymes that come from a variety of annotation sources, not enzymes that actually work together biologically in a real cell. So we'll go with a couple of KOfams, a COG, a PFAM, and a TIGRFAM (to demonstrate the 'other' annotation strategy). Here is the list of accessions: K01657, K01658, COG1362, PF06603.14, and TIGR01709.2.
 
-It doesn't matter what they are or what they do. What matters is that we will learn how to annotate each one. So let's talk about their annotation sources. K01657 and K01658 will both come from 'KOfam', and COG1362 will come from the 2020 distribution of the COGs database, so its source will be 'COG20_FUNCTION'. PF06603.14 is a PFAM, so it _could_ come from the 'PFAM' source. But let's suppose we don't want to waste our precious computational resources on running %(anvi-run-pfams)s when we are only interested in one enzyme from this database. Instead, we'll make a custom HMM profile for this particular enzyme by following the directions on [creating HMM sources from ad hoc PFAM accessions](https://merenlab.org/software/anvio/help/main/artifacts/hmm-source/#creating-anvio-hmm-sources-from-ad-hoc-pfam-accessions), and then we will annotate it using %(anvi-run-hmms)s. In this case, the annotation source will be the name of the directory we make using %(anvi-script-pfam-accessions-to-hmms-directory)s, so we need to pick a name for it - let's call it 'METABOLISM_HMM'. Last but not least, what about the TIGRFAM enzyme TIGR01709.2? Anvi'o doesn't have a program for annotating TIGRFAMs, but we can annotate our gene sequences with TIGRFAM using [Interproscan](https://www.ebi.ac.uk/interpro/search/sequence/), compile the results into a %(functions-txt)s, and import those annotations into our contigs database using %(anvi-import-functions)s. We'll make the source in the %(functions-txt)s 'TIGRFAM'.
+It doesn't matter what they are or what they do. What matters is that we will learn how to annotate each one. So let's talk about their annotation sources. K01657 and K01658 will both come from `KOfam`, and COG1362 will come from the 2020 distribution of the COGs database, so its source will be `COG20_FUNCTION`. PF06603.14 is a PFAM, so it _could_ come from the `Pfam` source. But let's suppose we don't want to waste our precious computational resources on running %(anvi-run-pfams)s when we are only interested in one enzyme from this database. Instead, we'll make a custom HMM profile for this particular enzyme by following the directions on [creating HMM sources from ad hoc PFAM accessions](https://merenlab.org/software/anvio/help/main/artifacts/hmm-source/#creating-anvio-hmm-sources-from-ad-hoc-pfam-accessions), and then we will annotate it using %(anvi-run-hmms)s. In this case, the annotation source will be the name of the directory we make using %(anvi-script-pfam-accessions-to-hmms-directory)s, so we need to pick a name for it - let's call it `METABOLISM_HMM`. Last but not least, what about the TIGRFAM enzyme TIGR01709.2? Anvi'o doesn't have a program for annotating TIGRFAMs, but we can annotate our gene sequences with TIGRFAM using [Interproscan](https://www.ebi.ac.uk/interpro/search/sequence/), compile the results into a %(functions-txt)s, and import those annotations into our contigs database using %(anvi-import-functions)s. We'll put the source `TIGRFAM` in the %(functions-txt)s file.
 
 Great, so now that we have our enzymes and we know how we will annotate them, it's time for step 2 - creating the module DEFINITION string. Again, this is not going to be a biologically-realistic metabolic pathway, but an example to demonstrate the different ways of representing steps in a pathway.
 
@@ -84,7 +84,7 @@ If you were actually going to use this pathway, this is how you could create the
 mkdir USER_METABOLISM
 mkdir USER_METABOLISM/modules
 vi USER_METABOLISM/modules/UD0042
-# copy the above into this file, save and quit
+\#copy the above into this file, save and quit
 anvi-setup-user-modules --input-dir USER_METABOLISM/
 {{ codestop }}
 
@@ -103,20 +103,20 @@ The first two annotation sources we discussed are easy, because we don't need to
 
 {{ codestart }}
 %(anvi-run-kegg-kofams)s -c CONTIGS.db \
-                        --num-threads 4
+                      --num-threads 4
 %(anvi-run-ncbi-cogs)s -c CONTIGS.db \
-                        --num-threads 4
+                    --num-threads 4
 {{ codestop }}
 
-Annotating PF06603.14 requires an extra step, because we first need to create a custom HMM for this enzyme. Luckily, there is another anvi'o program to do that:
+Annotating PF06603.14 requires an extra step, because we first need to create a custom HMM for this enzyme. Luckily, there is another anvi'o program to do that. We give the enzyme accession to %(anvi-script-pfam-accessions-to-hmms-directory)s, and we make sure to set the output directory name to be the same as the annotation source string that we put in the module file:
 
 {{ codestart }}
 %(anvi-script-pfam-accessions-to-hmms-directory)s --pfam-accessions-list PF06603.14 \
-                                                -O METABOLISM_HMM
+                                               -O METABOLISM_HMM
 %(anvi-run-hmms)s -c CONTIGS.db \
-                 -H METABOLISM_HMM \
-                 --add-to-functions-table \
-                 --num-threads 4
+               -H METABOLISM_HMM \
+               --add-to-functions-table \
+               --num-threads 4
 {{ codestop }}
 
 Please note that you _must_ use the `--add-to-functions-table` parameter when you use %(anvi-run-hmms)s, otherwise the annotations for PF06603.14 will not be stored in the proper database table and %(anvi-estimate-metabolism)s will not be able to find them later.
@@ -134,15 +134,15 @@ Suppose the file is called `TIGRFAM_annotations.txt`. Then you can import those 
 
 {{ codestart }}
 %(anvi-import-functions)s -c CONTIGS.db \
-                        -i TIGRFAM_annotations.txt
+                       -i TIGRFAM_annotations.txt
 {{ codestop }}
 
 Once this is done, you are ready to estimate the pathway's completeness! Here is the command:
 
 {{ codestart }}
 %(anvi-estimate-metabolism)s -c CONTIGS.db \
-                        --input-dir USER_METABOLISM/ \
-                        -O frankenstein
+                          --input-dir USER_METABOLISM/ \
+                          -O frankenstein
 {{ codestop }}
 
 If you did this, the results for module UD0042 would appear at the end of the resulting 'modules' output file, after the estimation results for KEGG modules.
