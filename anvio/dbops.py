@@ -1192,6 +1192,10 @@ class ContigsSuperclass(object):
                 # dict properly so the FASTA file and the external gene calls file correspond to each other
                 gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
                 gene_call['contig'] = gene_call['header']
+
+                if not flank_length:
+                    gene_call['start'] = 0
+                    gene_call['stop'] = gene_call['length']
             else:
                 if simple_headers:
                     gene_call['header'] = '%d' % (gene_callers_id)
@@ -3586,6 +3590,14 @@ class ProfileSuperclass(object):
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
+        # if SNVs are not profiled, we should not have a view for `variability`. See the issue #1845.
+        # FIXME for future generations: if SNVs are skipped, we should even have an entry in the views
+        # table for `variability` :/ but fixing that would require a migration script for profile dbs,
+        # and the person who is implementing this workaround is simply being lazy --do better, and
+        # address this the right way:
+        if not self.p_meta['SNVs_profiled']:
+            views_table.pop('variability')
+
         self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
             self.progress.update('for %s' % view)
@@ -4953,12 +4965,15 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
     matching_item_order_names = [item_order for item_order in item_orders_dict if item_order.lower().split(':')[0] == default_item_order_requested.lower()]
 
     if not len(matching_item_order_names):
-        default_item_order = list(item_orders_dict.keys())[0]
-        run.warning('`get_default_item_order_name` function is concerned, because nothing in the item_orders '
-                    'dict matched to the desired order class "%s". So the order literally set to "%s" '
-                    '(a class of "%s") randomly as the default order. Good luck :/' % (default_item_order_requested,
-                                                                                 default_item_order,
-                                                                                 default_item_order.split(':')[0]))
+        if 'mean_coverage:euclidean:ward' in item_orders_dict:
+            default_item_order = 'mean_coverage:euclidean:ward'
+        else:
+            default_item_order = list(item_orders_dict.keys())[0]
+            run.warning('`get_default_item_order_name` function is concerned, because nothing in the item_orders '
+                        'dict matched to the desired order class "%s". So the order literally set to "%s" '
+                        '(a class of "%s") randomly as the default order. Good luck :/' % (default_item_order_requested,
+                                                                                     default_item_order,
+                                                                                     default_item_order.split(':')[0]))
         return default_item_order
     elif len(matching_item_order_names) == 1:
         return matching_item_order_names[0]
