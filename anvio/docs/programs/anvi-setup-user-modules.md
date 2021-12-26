@@ -54,7 +54,7 @@ ANNOTATION_SOURCE  K02588  KOfam
                     K02585  KOfam
 ///
 ```
-As you can see, there are different data types in the file, named by the all-capital word at the beginning of the line (we call this the 'data name'). The second column of the file is the value corresponding to that type of information ('data value'). Some data names, like ORTHOLOGY and ANNOTATION_SOURCE, also have a 3rd column further defining the data value (which we call the 'data definition'). Each field in the file should be separated by _at least two spaces_.
+As you can see, there are different data types in the file, named by the all-capital word at the beginning of the line (we call this the 'data name'). The second column of the file is the value corresponding to that type of information ('data value'). Some data names, like ORTHOLOGY and ANNOTATION_SOURCE, also have a 3rd column further defining the data value (which we call the 'data definition'). Each field in the file should be separated by _at least two spaces_. And the file must end with '///' on the last line (don't ask us why).
 
 The data names you see in the example above are the minimum you should include to define the module. Here is a bit more information about each type of data:
 - ENTRY: this is the identifier for the module. It can be anything you want, but should be just one word (underscores and dashes allowed). It should also be the same as the name of the module file. Importantly, this identifier should not be the same as any KEGG module, or you will get an error during setup.
