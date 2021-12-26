@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["user-modules-data"]
-__provides__ = ["modules-db"]
+__provides__ = ["modules-db", "user-modules-data"]
 __description__ = "Set up user-defined metabolic pathways into an anvi'o-compatible database"
 
 @time_program
