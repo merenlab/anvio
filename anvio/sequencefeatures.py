@@ -233,7 +233,7 @@ class Palindromes:
         else:
             # which means we are going to dynamically determine which algorith to use
             # as a function of the sequence length
-            method = self.palindrome_search_algorithms['numba'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['BLAST']
+            method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
         # get palindromes found in the sequence
         palindromes = method(sequence, **kwargs)
