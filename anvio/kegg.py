@@ -4918,6 +4918,13 @@ class ModulesDatabase(KeggContext):
                                                   f"and 2) each enzyme with an ORTHOLOGY also has a corresponding ANNOTATION_SOURCE.")
                             orthology_to_annotation_source[val] = definition
 
+                        # sanity check for user-defined CLASS value
+                        if self.data_source != 'KEGG' and name == "CLASS":
+                            if len(val.split(";")) != 3:
+                                raise ConfigError(f"The module {mnum} appears to have an invalid CLASS value. That value should be "
+                                                  f"a string with a class, category, and sub-category separated by semi-colons (for a "
+                                                  f"total of two semi-colons in the string). Instead, it is this: {val}")
+
                 f.close()
 
             # every enzyme in the module definition needs an orthology line
