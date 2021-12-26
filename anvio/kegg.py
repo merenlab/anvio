@@ -4869,6 +4869,10 @@ class ModulesDatabase(KeggContext):
 
             prev_data_name_field = None
             module_has_annotation_source = False
+            orthology_to_annotation_source = {}  # for sanity check that each enzyme has an annotation source
+            # for sanity check that each enzyme in definition has an orthology line
+            mod_definition = []
+            orth_list = set()
             for line in f.readlines():
                 line = line.strip('\n')
                 line_number += 1
@@ -4896,12 +4900,39 @@ class ModulesDatabase(KeggContext):
                         else:
                             line -= 1
 
+                        # save definition for later sanity check
+                        if name == 'DEFINITION':
+                            mod_definition.append(val)
+                        if name == 'ORTHOLOGY':
+                            orth_list.add(val)
                         # keep track of distinct annotation sources for user modules
+                        if self.data_source != 'KEGG' and name == "ORTHOLOGY":
+                            orthology_to_annotation_source[val] = None
                         if self.data_source != 'KEGG' and name == "ANNOTATION_SOURCE":
                             self.annotation_sources.add(definition)
                             module_has_annotation_source = True
+                            if val not in orthology_to_annotation_source:
+                                raise ConfigError(f"Woah. While parsing module {mnum} we found an ANNOTATION_SOURCE for "
+                                                  f"an enzyme, {val}, that does not have an ORTHOLOGY line. Please check the "
+                                                  f"module file and make sure that 1) ORTHOLOGY comes before ANNOTATION_SOURCE, "
+                                                  f"and 2) each enzyme with an ORTHOLOGY also has a corresponding ANNOTATION_SOURCE.")
+                            orthology_to_annotation_source[val] = definition
 
                 f.close()
+
+            # every enzyme in the module definition needs an orthology line
+            mod_definition = " ".join(mod_definition)
+            # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
+            mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+            acc_list = re.split(r'\s+', mod_definition)
+            enzymes_in_def = set(acc_list)
+            enzymes_without_orth = enzymes_in_def.difference(orth_list)
+            if enzymes_without_orth:
+                bad_list = ", ".join(enzymes_without_orth)
+                n = len(enzymes_without_orth)
+                raise ConfigError(f"So, there is a thing. And that thing is that there {P('is an enzyme', n, alt='are some enzymes')} "
+                                  f"in the DEFINITION string for module {mnum} that {P('does', n, alt='do')} not have an ORTHOLOGY line, "
+                                  f"and {P('it', n, alt='they')} really should have one. Here {P('it is', n, alt='they are')}: {bad_list}")
 
             # every user module needs at least one annotation source
             if self.data_source != 'KEGG' and not module_has_annotation_source:
@@ -4912,6 +4943,15 @@ class ModulesDatabase(KeggContext):
                                   f"anvi'o where to find its gene annotations. So you should go and take a look at "
                                   f"the module file at {mod_file_path} and add one 'ANNOTATION_SOURCE' line for each "
                                   f"gene in the module definition, before re-trying this setup program. Thank you!")
+            # every enzyme needs an annotation source
+            if self.data_source != 'KEGG' and not all(orthology_to_annotation_source.values()):
+                nones = [k for k,v in orthology_to_annotation_source.items() if not v]
+                nones_str = ", ".join(nones)
+                n = len(nones)
+                raise ConfigError(f"*Dalek noises* EXTERMINATE! EXTERMINATE! It seems that your module {mnum} contains "
+                                  f"{P('an enzyme that is', n, alt='some enzymes that are')} missing an ANNOTATION_SOURCE line. "
+                                  f"Please go back in time and fix this. Here {P('is the enzyme', n, alt='are the enzymes')} in "
+                                  f"question here: {nones_str}")
 
             num_modules_parsed += 1
         # once we are done parsing all modules, we store whatever db entries remain in the db_entries list
