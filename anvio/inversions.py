@@ -504,31 +504,7 @@ class Inversions:
 
                 true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
 
-
-        # we can simply go with `return true_inversions_in_stretch` here, but the rest of the
-        # lines are for posterity:
-        num_true_inversions_in_stretch = len(true_inversions_in_stretch)
-    
-        if self.check_all_palindromes:
-            if num_true_inversions_in_stretch == 1:
-                # if we are here, we have gone through each read and inversion candidate
-                # identified in this strecth, and our `true_inversions_in_stretch` contains
-                # only one inversion. which means this loop could have taken a fraction of
-                # what it did to search for additional inversions when there was none.
-                return true_inversions_in_stretch
-            elif num_true_inversions_in_stretch > 1:
-                # if we are here, it means we actually did find more than one active inversion
-                # in a single stretch, and `self.check_all_palindromes` worked well to discover
-                # more
-                return true_inversions_in_stretch
-            else:
-                # if we are here, it means we did everything we can and there was nothing
-                return []
-        else:
-            # the user elected not to check all palindromes in the stretch, and if we are here
-            # there was no match for any of the constructs for any of the inversoin candidates
-            # for this strecth (because if there was one, it would have been already returned)
-            return []
+        return true_inversions_in_stretch
 
 
     def compute_consensus_inversions(self):
