@@ -161,6 +161,19 @@ function loadAll() {
                 total = contig_data.total;
                 genes = contig_data.genes;
 
+                // if the gene is in reverse direction, we here we will add
+                // a reversed copy of the amino acid sequence so we can show
+                // residuies in the right order when the user zooms in, but
+                // still return the correct amino acid sequence when they want
+                // to copy it through the interface.
+                for(gene_entry_id in genes){
+                    if(genes[gene_entry_id].call_type == 1 && typeof genes[gene_entry_id].aa_sequence != "undefined"){
+                        if(genes[gene_entry_id].direction == "r") {
+                            genes[gene_entry_id].aa_sequence_to_display = genes[gene_entry_id].aa_sequence.split('').reverse().join('');
+                        }
+                    }
+                }
+
                 if(layers.length == 0){
                     console.log('Warning: no layers returned')
                 }
@@ -1016,13 +1029,22 @@ function display_nucleotides() {
         offset_y = offset_y == 0 ? 5+dna_seq_height : 0;
         overlapping_genes = true;
       }
+
       if(gene.call_type == 1 && typeof gene.aa_sequence != "undefined") {
-        var aas_in_window = gene.aa_sequence.substring(aa_i, aa_f);
-        aa_string += "\xa0" + aas_in_window.split('').join('\xa0\xa0') + "\xa0";
-        if(aa_f == gene.aa_sequence.length+1) {
-          aa_string += "STP";
-          aas_in_window += "\xa0";
+        var aas_in_window = null
+
+        // determine in which order amino acids are shown based on the direction
+        // of the gene:
+        if(gene.direction == "r") {
+            aas_in_window = gene.aa_sequence_to_display.substring(aa_i, aa_f);
+            aa_string += "STP\xa0" + aas_in_window.split('').join('\xa0\xa0') + "\xa0";
+        } else {
+            aas_in_window = gene.aa_sequence.substring(aa_i, aa_f);
+            aa_string += "\xa0" + aas_in_window.split('').join('\xa0\xa0') + "\xa0STP";
         }
+
+        aas_in_window += "\xa0";
+
         for(var i = 0; i < aas_in_window.length; i++) {
           aa_sequence.append("rect")
                      .attr("id", "AA_" + i)
