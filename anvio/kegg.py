@@ -254,7 +254,7 @@ class KeggContext(object):
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
         self.user_input_dir = A('user_modules')
-        self.only_user_modules = A('only-user-modules')
+        self.only_user_modules = A('only_user_modules')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -1921,6 +1921,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
                               "flag, in which case you must provide a JSON-formatted file.")
+
+        if self.only_user_modules and not self.user_input_dir:
+            raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
