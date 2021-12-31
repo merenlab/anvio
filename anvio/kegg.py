@@ -3987,7 +3987,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         KeggEstimatorArgs.__init__(self, self.args)
 
         # This can be initialized later if necessary by setup_ko_dict()
-        self.ko_dict = None
+        self.ko_dict = {}
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
@@ -3999,7 +3999,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         self.databases = None
 
-        # input sanity checks
+        # INPUT SANITY CHECKS
         if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
             or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
             or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
@@ -4010,7 +4010,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
                               "work for input files with multiple contigs DBs. :( ")
 
-        # output sanity checks
+        # OUTPUT SANITY CHECKS
         if self.matrix_format and self.long_format_mode:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
                               "like this, anvi'o is confused. :) ")
@@ -4036,24 +4036,32 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
 
-        # citation output for KEGG data
-        if not self.quiet:
-            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
+        # LOAD KEGG DATA
+        if not self.only_user_modules:
+            # citation output for KEGG data
+            if not self.quiet:
+                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
-        # init the enzyme accession to function definition dictionary
-        # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-        self.setup_ko_dict()
-        annotation_source_set = set(['KOfam'])
+            # init the enzyme accession to function definition dictionary
+            # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
+            self.setup_ko_dict()
+            annotation_source_set = set(['KOfam'])
 
-        # check for kegg modules db
-        if not os.path.exists(self.kegg_modules_db_path):
-            raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
-                              f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                              f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
-                              f"But fine. Hopefully you now know what you need to do to make this message go away.")
+            # check for kegg modules db
+            if not os.path.exists(self.kegg_modules_db_path):
+                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
+                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
+                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
+        else: # USER data only
+            annotation_source_set = set([])
+            self.kegg_modules_db_path = None # we nullify this just in case
+
+
+        # LOAD USER DATA
         if self.user_input_dir:
             # check for user modules db
             if not os.path.exists(self.user_modules_db_path):
@@ -4073,11 +4081,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     self.ko_dict[k] = user_kos[k]
             user_modules_db.disconnect()
 
-            self.run.info('Metabolism data', "KEGG + USER-DEFINED")
+        self.annotation_sources_to_use = list(annotation_source_set)
+
+        # tell user what metabolism data we are using
+        if self.user_input_dir:
+            if self.only_user_modules:
+                self.run.info('Metabolism data', "USER only")
+            else:
+                self.run.info('Metabolism data', "KEGG + USER-DEFINED")
         else:
             self.run.info('Metabolism data', "KEGG only")
-
-        self.annotation_sources_to_use = list(annotation_source_set)
 
 
     def list_output_modes(self):
@@ -4260,8 +4273,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.database_name = db_name
         args.multi_mode = True
         args.include_metadata = self.matrix_include_metadata
-        args.input_dir = self.user_input_dir or None
-
+        args.user_modules = self.user_input_dir or None
+        args.only_user_modules = self.only_user_modules
+        
         self.update_available_headers_for_multi()
 
         if anvio.DEBUG:
