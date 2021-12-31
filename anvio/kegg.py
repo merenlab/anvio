@@ -1892,7 +1892,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = None
 
-        # init the base classes
+        # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
         KeggContext.__init__(self, self.args)
 
@@ -1917,7 +1917,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
 
-        # input options sanity checks
+        # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
                               "flag, in which case you must provide a JSON-formatted file.")
@@ -1963,7 +1963,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.add_gene_coverage_to_headers_list()
 
 
-        # output options sanity checks
+        # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
             run.info("Module completeness threshold", self.module_completion_threshold)
