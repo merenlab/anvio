@@ -31,17 +31,17 @@ Put all the information about your metabolic pathway into a text file. The file 
 
 ### 4. Set up the USER_MODULES.db
 
-Once you have created a module file for each metabolic pathway you are interested in, you should put these files within a folder called `modules`, within a parent directory (that can have any name you choose), as described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#input-directory-format). This parent directory is the %(user-modules-data)s directory. Then you should run the program %(anvi-setup-user-modules)s and provide this directory to the `--input-dir` parameter. If all goes well, you will end up with a database called `USER_MODULES.db` in this folder.
+Once you have created a module file for each metabolic pathway you are interested in, you should put these files within a folder called `modules`, within a parent directory (that can have any name you choose), as described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#input-directory-format). This parent directory is the %(user-modules-data)s directory. Then you should run the program %(anvi-setup-user-modules)s and provide this directory to the `--user-modules` parameter. If all goes well, you will end up with a database called `USER_MODULES.db` in this folder.
 
 ### 5. Annotate your contigs database(s)
 
 Before you can estimate metabolism, you will need to annotate your contigs database(s) with each annotation source that you used to define your modules. This will require running one or more annotation programs, as described in the table given for step 1 above. If you want to quickly remind yourself of which annotation sources are required for your metabolic modules, you can run %(anvi-db-info)s on the `USER_MODULES.db`. But don't worry - if you forget one, you will get a helpful error message telling you what you missed when you try to run %(anvi-estimate-metabolism)s.
 
-Since estimation will always be run on KEGG data, too, you will have to make sure you also run %(anvi-run-kegg-kofams)s on your database(s), if you haven't already.
+Since estimation will be run on KEGG data, too, you will have to make sure you also run %(anvi-run-kegg-kofams)s on your database(s), if you haven't already, _UNLESS_ you are choosing to skip KEGG estimation by using the `--only-user-modules` parameter for %(anvi-estimate-metabolism)s.
 
 ### 6. Estimate the completeness of your pathways
 
-The last step is to run %(anvi-estimate-metabolism)s and provide this directory to the `--input-dir` parameter. This program will estimate the completeness of the metabolic modules defined in the `USER_MODULES.db`, in addition to the KEGG modules from the %(kegg-data)s directory.
+The last step is to run %(anvi-estimate-metabolism)s and provide this directory to the `--user-modules` parameter. This program will estimate the completeness of the metabolic modules defined in the `USER_MODULES.db` (by default, this will be in addition to the KEGG modules from the %(kegg-data)s directory. But, as mentioned above, you can specify `--only-user-modules` to only estimate on your own data).
 
 ## A toy example
 
@@ -85,7 +85,7 @@ mkdir USER_METABOLISM
 mkdir USER_METABOLISM/modules
 vi USER_METABOLISM/modules/UD0042
 \#copy the above into this file, save and quit
-anvi-setup-user-modules --input-dir USER_METABOLISM/
+anvi-setup-user-modules --user-modules USER_METABOLISM/
 {{ codestop }}
 
 You would see the following output after %(anvi-setup-user-modules)s completed:
@@ -141,7 +141,7 @@ Once this is done, you are ready to estimate the pathway's completeness! Here is
 
 {{ codestart }}
 %(anvi-estimate-metabolism)s -c CONTIGS.db \
-                          --input-dir USER_METABOLISM/ \
+                          --user-modules USER_METABOLISM/ \
                           -O frankenstein
 {{ codestop }}
 
