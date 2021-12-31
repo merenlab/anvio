@@ -12,9 +12,9 @@ For a practical tutorial on how to use this program, visit [this link](https://m
 
 You have three options when it comes to estimating metabolism.
 
-1) KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-kofams)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
-2) KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
-3) USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
+1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-kofams)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
+2. KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
+3. USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
 
 ## Prerequisites to using this program
 
