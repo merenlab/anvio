@@ -928,7 +928,7 @@ D = {
              'action': 'store_true',
              'help': "If you use this flag in conjunction with --user-modules, anvi'o will ONLY "
                      "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
-                     "(The default is to run on both KEGG and user data when --user-modules is provided.)"}
+                     "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
     'kegg-archive': (
             ['--kegg-archive'],
