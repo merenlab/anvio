@@ -1707,8 +1707,8 @@ class KeggEstimatorArgs():
                 self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
                 self.all_modules_in_db[mod]['product_list'] = module_product_list
 
-            # initialize module paths into self.module_paths_dict
-            self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
+                # initialize module paths into self.module_paths_dict
+                self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
 
             self.kegg_modules_db.disconnect()
 
