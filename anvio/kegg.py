@@ -273,13 +273,14 @@ class KeggContext(object):
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
-        if A('reset') and A('kegg_data_dir'):
-            raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
-                              "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
-                              "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                              "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
-                              "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                              "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+        if self.__class__.__name__ in ['KeggSetup']:
+            if A('reset') and A('kegg_data_dir') and not self.user_input_dir:
+                raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
+                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
+                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                                  "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
+                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
     def setup_ko_dict(self):
