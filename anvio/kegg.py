@@ -1747,28 +1747,38 @@ class KeggEstimatorArgs():
             self.user_modules_db.disconnect()
 
 
-    def init_paths_for_modules(self):
-        """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
-        all downstream functions to access.
+    def init_paths_for_module(self, mnum, mod_db=None):
+        """This function unrolls the module DEFINITION for the module provided and returns a list of all paths through it.
 
         It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
         Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
+
+        PARAMETERS
+        ==========
+        mnum : str
+            The module to return paths for. Must be a key in the self.all_modules_in_db dictionary.
+        mod_db : ModulesDatabase
+            This must be a ModulesDatabase instance that we are connected to (ie, disconnect() has not yet been run on it)
+            so that we can use its functions and access its data
+
+        RETURNS
+        ==========
+        A list of all paths through the module
         """
 
-        self.module_paths_dict = {}
-        modules = self.all_modules_in_db.keys()
-        for m in modules:
-            module_definition = self.all_modules_in_db[m]["DEFINITION"]
-            # the below function expects a list
-            if not isinstance(module_definition, list):
-                module_definition = [module_definition]
+        if not mod_db:
+            raise ConfigError("Put yer hands in the air! You've tried to call init_paths_for_modules() without providing "
+                              "a database to the mod_db parameter, and this is ILLEGAL.")
 
-            if self.all_modules_in_db[m]['MODULES_DB_SOURCE'] == 'KEGG':
-                paths = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
-            else:
-                paths = self.user_modules_db.unroll_module_definition(m, def_lines=module_definition)
+        if mnum not in self.all_modules_in_db:
+            raise ConfigError(f"Something is wrong here. The function init_paths_for_modules() is trying to work on module "
+                              f"{mnum}, but it is not a key in the self.all_modules_in_db dictionary.")
+        module_definition = self.all_modules_in_db[mnum]["DEFINITION"]
+        # the below function expects a list
+        if not isinstance(module_definition, list):
+            module_definition = [module_definition]
 
-            self.module_paths_dict[m] = paths
+        return mod_db.unroll_module_definition(mnum, def_lines=module_definition)
 
 
     def get_enzymes_from_module_definition_in_order(self, mod_definition):
