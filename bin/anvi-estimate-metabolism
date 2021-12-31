@@ -47,6 +47,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('user-modules'), **anvio.K('user-modules', {'help': "Directory location where user-defined module "
                                                                       "files (and database) are kept. You must have previously run "
                                                                       "`anvi-setup-user-modules` on this directory for this to work."}))
+    groupD.add_argument(*anvio.A('only-user-modules'), **anvio.K('only-user-modules'))
 
     groupI = parser.add_argument_group('INPUT #1 - ESTIMATION ON SINGLE GENOMES OR METAGENOMES',
                                                    "The minimum you must provide this program is a contigs database. In which case "

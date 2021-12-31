@@ -922,6 +922,14 @@ D = {
              'help': "Directory location where your metabolic module files are kept. It is also "
                      "the output directory, since the modules database will be set up in this folder."}
                 ),
+    'only-user-modules': (
+            ['--only-user-modules'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you use this flag in conjunction with --user-modules, anvi'o will ONLY "
+                     "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
+                     "(The default is to run on both KEGG and user data when --user-modules is provided.)"}
+                ),
     'kegg-archive': (
             ['--kegg-archive'],
             {'default': None,
