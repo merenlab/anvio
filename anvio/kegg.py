@@ -1687,35 +1687,61 @@ class KeggEstimatorArgs():
 
         We do this once at the start so as to reduce the number of on-the-fly database queries
         that have to happen during the estimation process.
-
-        The KEGG MODULES.db is loaded first. If a user modules database is provided, its data is added to these dictionaries afterwards.
         """
 
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
-        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_as_dict()
-        # mark that these modules all came from KEGG
-        for mod in self.all_modules_in_db:
-            self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] = "KEGG"
+        self.all_modules_in_db = {}
+        self.all_kos_in_db = {}
+        self.module_paths_dict = {}
 
+        # LOAD KEGG DATA (MODULES)
+        if not self.only_user_modules:
+            self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+            self.all_modules_in_db = self.kegg_modules_db.get_modules_table_as_dict()
+            # mark that these modules all came from KEGG
+            for mod in self.all_modules_in_db:
+                self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] = "KEGG"
+
+                # add compound lists into self.all_modules_in_db
+                module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mod)
+                self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
+                self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
+                self.all_modules_in_db[mod]['product_list'] = module_product_list
+
+            # initialize module paths into self.module_paths_dict
+            self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
+
+            self.kegg_modules_db.disconnect()
+
+        # LOAD USER DATA (MODULES)
         if self.user_input_dir:
             self.user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
             user_db_mods = self.user_modules_db.get_modules_table_as_dict()
 
-            for m in user_db_mods:
+            for mod in user_db_mods:
                 # user modules cannot have the same name as a KEGG module
-                if m in self.all_modules_in_db:
-                    self.kegg_modules_db.disconnect()
+                if mod in self.all_modules_in_db:
                     self.user_modules_db.disconnect()
-                    raise ConfigError(f"No. Nononono. Stop right there. You see, there is a module called {m} in your user-defined "
+                    raise ConfigError(f"No. Nononono. Stop right there. You see, there is a module called {mod} in your user-defined "
                                       f"modules database (at {self.user_modules_db_path}) which has the same name as an existing KEGG "
                                       f"module. This is not allowed, for reasons. Please name that module differently. Append an "
                                       f"underscore and your best friend's name to it or something. Just make sure it's unique. OK? ok.")
 
-                self.all_modules_in_db[m] = user_db_mods[m]
+                self.all_modules_in_db[mod] = user_db_mods[mod]
                 # mark that this module came from the USER. it may be useful to know later.
-                self.all_modules_in_db[m]['MODULES_DB_SOURCE'] = "USER"
+                self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] = "USER"
 
-        self.all_kos_in_db = {}
+                # add compound lists into self.all_modules_in_db
+                module_substrate_list, module_intermediate_list, module_product_list = self.user_modules_db.get_human_readable_compound_lists_for_module(mod)
+                self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
+                self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
+                self.all_modules_in_db[mod]['product_list'] = module_product_list
+
+                # initialize module paths into self.module_paths_dict
+                self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.user_modules_db)
+
+            self.user_modules_db.disconnect()
+
+        # INIT ENZYMES
         for mod in self.all_modules_in_db:
             orthology = self.all_modules_in_db[mod]['ORTHOLOGY']
             if isinstance(orthology, str):
@@ -1727,24 +1753,6 @@ class KeggEstimatorArgs():
                     src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
                     self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src}
                 self.all_kos_in_db[k]['modules'].append(mod)
-
-        # initialize module paths into self.module_paths_dict
-        self.init_paths_for_modules()
-
-        # add compound lists into self.all_modules_in_db
-        for mod in self.all_modules_in_db:
-            if self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] == 'KEGG':
-                module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mod)
-            else:
-                module_substrate_list, module_intermediate_list, module_product_list = self.user_modules_db.get_human_readable_compound_lists_for_module(mod)
-
-            self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
-            self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
-            self.all_modules_in_db[mod]['product_list'] = module_product_list
-
-        self.kegg_modules_db.disconnect()
-        if self.user_input_dir:
-            self.user_modules_db.disconnect()
 
 
     def init_paths_for_module(self, mnum, mod_db=None):
