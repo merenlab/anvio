@@ -145,10 +145,10 @@ anvi-estimate-metabolism -c %(contigs-db)s --kegg-data-dir /path/to/directory/KE
 If you have defined your own set of metabolic modules and generated a %(modules-db)s for them using %(anvi-setup-user-modules)s, you can estimate the completeness of these pathways (in addition to the KEGG modules) by providing the path to the directory containing this data:
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --input-dir /path/to/USER/directory
+anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/directory
 {{ codestop }}
 
-The `--input-dir` parameter can be used in conjunction with the `--kegg-data-dir` parameter to control which KEGG data is being used at the same time.
+The `--user-modules` parameter can be used in conjunction with the `--kegg-data-dir` parameter to control which KEGG data is being used at the same time.
 
 ## Output options
 This program has two types of output files: long-format (tab-delimited) output files and matrices. The long-format output is the default. If you are using multi-mode to work with multiple samples, you can request matrix output by using the flag `--matrix-format`.

@@ -35,10 +35,8 @@ if __name__ == '__main__':
     groupU = parser.add_argument_group('USER DATA SETUP', "If you have defined your own set "
                                        "of metabolic modules, you can use this program to parse these "
                                        "files into the format required for metabolism estimation.")
-    groupU.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where your metabolic module "
-                                                                      "files are kept. It is also the output directory, since "
-                                                                      "the modules database will be set up in "
-                                                                      "this folder."}))
+    groupU.add_argument(*anvio.A('user-modules'), **anvio.K('user-modules'))
+    
     groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
     groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir', {'help': "You may need to provide the location of "
                                                                                "your existing KEGG data so that we can properly "

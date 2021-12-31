@@ -908,10 +908,19 @@ D = {
     'kegg-data-dir': (
             ['--kegg-data-dir'],
             {'default': None,
+             'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
                      "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'user-modules': (
+            ['-u', '--user-modules'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory location where your metabolic module files are kept. It is also "
+                     "the output directory, since the modules database will be set up in this folder."}
                 ),
     'kegg-archive': (
             ['--kegg-archive'],

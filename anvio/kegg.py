@@ -253,7 +253,7 @@ class KeggContext(object):
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = A('input_dir')
+        self.user_input_dir = A('user_modules')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -2070,7 +2070,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
                     raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
-                                      f"Perhaps you need to specify a different data directory using --input-dir. Or perhaps you didn't run "
+                                      f"Perhaps you need to specify a different data directory using --user-modules. Or perhaps you didn't run "
                                       f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
 
                 # sanity check that contigs db contains all necessary functional sources for user data
@@ -3168,10 +3168,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
         if (kegg_metabolism_superdict['data_sources'] == 'USER,KEGG' and not self.user_input_dir):
             raise ConfigError(f"You provided a JSON file generated from USER data, but you "
-                              f"did not specify which data directory to use with the `--input-dir` flag.")
+                              f"did not specify which data directory to use with the `--user-modules` flag.")
         if (kegg_metabolism_superdict['data_sources'] == 'KEGG' and self.user_input_dir):
             raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data only, but then "
-                              f"you provided us with a USER metabolism data directory. You should not use the `--input-dir` flag for this file.")
+                              f"you provided us with a USER metabolism data directory. You should not use the `--user-modules` flag for this file.")
 
         kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
         mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
@@ -3190,7 +3190,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             user_modules_db.disconnect()
 
             if mod_db_hash != kegg_metabolism_superdict['user_modules_db_hash']:
-                raise ConfigError(f"The modules database in the data directory you provided with --input-dir "
+                raise ConfigError(f"The modules database in the data directory you provided with --user-modules "
                                   f"has a different hash than the one used to generate this JSON input file. You probably need "
                                   f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
                                   f"the JSON file is {kegg_metabolism_superdict['user_modules_db_hash']} and the hash in the current modules DB "
@@ -4014,7 +4014,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             # check for user modules db
             if not os.path.exists(self.user_modules_db_path):
                 raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --input-dir. Or perhaps you didn't run "
+                                  f"Perhaps you need to specify a different data directory using --user-modules. Or perhaps you didn't run "
                                   f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
 
             # expand annotation source set to include those in user db

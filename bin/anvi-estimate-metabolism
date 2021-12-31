@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('METABOLISM DATA LOCATION', "What modules database(s) do you want to use?")
     groupD.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
-    groupD.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Directory location where user-defined module "
+    groupD.add_argument(*anvio.A('user-modules'), **anvio.K('user-modules', {'help': "Directory location where user-defined module "
                                                                       "files (and database) are kept. You must have previously run "
                                                                       "`anvi-setup-user-modules` on this directory for this to work."}))
 

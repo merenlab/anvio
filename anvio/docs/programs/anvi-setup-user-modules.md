@@ -9,14 +9,14 @@ This page will give a few details specific to running %(anvi-setup-user-modules)
 To run this program, you must provide an input directory containing your module definitions:
 
 {{ codestart }}
-anvi-setup-user-modules --input-dir /path/to/user/data/directory
+anvi-setup-user-modules --user-modules /path/to/user/data/directory
 {{ codestop }}
 
 This input directory must have a specific format (see section below). The `USER_MODULES.db` will be generated in this directory, so you can use the same path to provide your data to %(anvi-estimate-metabolism)s when you want to estimate completeness for these modules.
 
 ### Input directory format
 
-The directory you provide to the `--input-dir` parameter must have another folder inside of it, which must be called `modules`. Inside that `modules` folder, you should put text files containing the definitions of your metabolic modules - one file per module. The file should be named according to the identifier you want the module to have, and should not have any extension.
+The directory you provide to the `--user-modules` parameter must have another folder inside of it, which must be called `modules`. Inside that `modules` folder, you should put text files containing the definitions of your metabolic modules - one file per module. The file should be named according to the identifier you want the module to have, and should not have any extension.
 
 Here is an example schematic of a proper input directory:
 ```
@@ -28,7 +28,7 @@ MY_METABOLISM_DATA_DIR
         |- U00003
         |- U00004
 ```
-The `U0000x` files in the schematic above each contains a definition for one module. Running `anvi-setup-user-modules --input-dir MY_METABOLISM_DATA_DIR` will produce a `USER_MODULES.db` file in the `MY_METABOLISM_DATA_DIR` folder which contains 4 modules named U00001, U00002, U00003, and U00004 (assuming those files are formatted correctly).
+The `U0000x` files in the schematic above each contains a definition for one module. Running `anvi-setup-user-modules --user-modules MY_METABOLISM_DATA_DIR` will produce a `USER_MODULES.db` file in the `MY_METABOLISM_DATA_DIR` folder which contains 4 modules named U00001, U00002, U00003, and U00004 (assuming those files are formatted correctly).
 
 ### How do I format the module files?
 
@@ -75,7 +75,7 @@ If you haven't yet run %(anvi-setup-kegg-kofams)s on your computer, you will get
 By default, this program looks for the KEGG data in the default location, so if you have set up KEGG data in a non-default directory, you should specify the path to that directory using the `--kegg-data-dir` parameter:
 
 {{ codestart }}
-anvi-setup-user-modules --input-dir /path/to/user/data/directory --kegg-data-dir /path/to/KEGG/data/directory
+anvi-setup-user-modules --user-modules /path/to/user/data/directory --kegg-data-dir /path/to/KEGG/data/directory
 {{ codestop }}
 
 If you have multiple KEGG data directories on your computer, you should specify the one that you intend to use (along with this user-defined data) for %(anvi-estimate-metabolism)s downstream. It will not make a difference if all of your modules have identifiers unique from KEGG ones, but just in case they overlap, it is better to catch this during setup rather than later during metabolism estimation. :)
