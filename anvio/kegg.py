@@ -2115,6 +2115,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.annotation_sources_to_use = list(annotation_source_set)
 
+        # tell user what metabolism data we are using
+        if self.user_input_dir:
+            if self.only_user_modules:
+                self.run.info('Metabolism data', "USER only")
+            else:
+                self.run.info('Metabolism data', "KEGG + USER-DEFINED")
+        else:
+            self.run.info('Metabolism data', "KEGG only")
+
 
     def list_output_modes(self):
         """This function prints out the available output modes for the metabolism estimation script."""
