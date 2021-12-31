@@ -1890,7 +1890,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # This can be initialized later if necessary using init_gene_coverage()
         self.profile_db = None
         # This can be initialized later if necessary by setup_ko_dict()
-        self.ko_dict = None
+        self.ko_dict = {}
 
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
