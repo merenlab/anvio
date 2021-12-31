@@ -1,23 +1,31 @@
 %(anvi-estimate-metabolism)s predicts the metabolic capabilities of organisms based on their genetic content. It relies upon %(kegg-functions)s and metabolism information from [KEGG](https://www.genome.jp/kegg/) (%(kegg-data)s), which is stored in a %(modules-db)s. It can also use user-defined metabolic pathways, as described in %(user-modules-data)s.
 
-The metabolic pathways that this program considers are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
+The metabolic pathways that this program considers (by default) are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
 
-Additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
+Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
 Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
 For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
+## What metabolism data can I use?
+
+You have three options when it comes to estimating metabolism.
+
+1) KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-kofams)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
+2) KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
+3) USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
+
 ## Prerequisites to using this program
 
-Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program.
+Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program, unless you are using the `--only-user-modules` option to ONLY estimate on user-defined metabolic modules.
 
 Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-kofams)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-kofams)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
 
 1. Run %(anvi-setup-kegg-kofams)s to get data from KEGG onto your computer. This step only needs to be done once.
-2. Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
+2. [If not using `--only-user-modules`] Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
-If you also want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
+If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
 3. Define your own metabolic modules by following the formatting guidelines described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#how-do-i-format-the-module-files) and [here](https://merenlab.org/software/anvio/help/main/artifacts/user-modules-data/#a-step-by-step-guide-to-creating), and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db)s,
 4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s.
@@ -149,6 +157,14 @@ anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/director
 {{ codestop }}
 
 The `--user-modules` parameter can be used in conjunction with the `--kegg-data-dir` parameter to control which KEGG data is being used at the same time.
+
+### Skipping KEGG data (ie, only working with user-defined metabolism data)
+
+If you wish to only estimate for your own metabolic modules, you can skip estimating for KEGG modules by providing the `--only-user-modules` flag. The nice thing about doing this is that you can skip running %(anvi-run-kegg-kofams)s on your databases (which will save you lots of time and computational resources).
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/directory --only-user-modules
+{{ codestop }}
 
 ## Output options
 This program has two types of output files: long-format (tab-delimited) output files and matrices. The long-format output is the default. If you are using multi-mode to work with multiple samples, you can request matrix output by using the flag `--matrix-format`.
