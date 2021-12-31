@@ -273,6 +273,11 @@ class KeggContext(object):
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
             self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
 
+        # sanity check for incompatible arguments
+        if A('kegg_data_dir') and A('only_user_modules'):
+            raise ConfigError("The options --kegg-data-dir and --only-user-modules are incompatible. Please figure out which one you "
+                              "want and try again :)")
+
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if self.__class__.__name__ in ['KeggSetup']:
             if A('reset') and A('kegg_data_dir') and not self.user_input_dir:
