@@ -4010,6 +4010,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
                               "work for input files with multiple contigs DBs. :( ")
 
+        if self.only_user_modules and not self.user_input_dir:
+            raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
+
         # OUTPUT SANITY CHECKS
         if self.matrix_format and self.long_format_mode:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
@@ -4275,7 +4278,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.include_metadata = self.matrix_include_metadata
         args.user_modules = self.user_input_dir or None
         args.only_user_modules = self.only_user_modules
-        
+
         self.update_available_headers_for_multi()
 
         if anvio.DEBUG:
