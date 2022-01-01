@@ -91,35 +91,35 @@ anvi-estimate-metabolism -e external-genomes.txt \
 
 INFO "Generating long format output files on single database"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
-                         --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules,modules_custom \
-                         --custom-output-headers kegg_module,module_is_complete,module_name \
+                         --output-modes hits,modules,hits_in_modules,modules_custom \
+                         --custom-output-headers module,module_is_complete,module_name \
                          -O long_format_single
-SHOW_FILE long_format_single_kofam_hits.txt
+SHOW_FILE long_format_single_hits.txt
 SHOW_FILE long_format_single_modules.txt
-SHOW_FILE long_format_single_kofam_hits_in_modules.txt
+SHOW_FILE long_format_single_hits_in_modules.txt
 SHOW_FILE long_format_single_modules_custom.txt
 
 INFO "Generating long format output files in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
-                         --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules \
+                         --output-modes hits,modules,hits_in_modules \
                          -O long_format_multi
-SHOW_FILE long_format_multi_kofam_hits.txt
+SHOW_FILE long_format_multi_hits.txt
 SHOW_FILE long_format_multi_modules.txt
-SHOW_FILE long_format_multi_kofam_hits_in_modules.txt
+SHOW_FILE long_format_multi_hits_in_modules.txt
 
 # below we try every single header for modules_custom mode
 INFO "Generating modules custom output file on single database"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
-                         --kegg-output-modes modules_custom \
+                         --output-modes modules_custom \
                          -O modules_custom_single \
-                         --custom-output-headers kegg_module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,kofam_hits_in_module,kofam_hit,contig,path_id,path,path_completeness,genome_name
+                         --custom-output-headers module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings
 SHOW_FILE modules_custom_single_modules_custom.txt
 
 INFO "Generating modules custom output file in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
-                         --kegg-output-modes modules_custom \
+                         --output-modes modules_custom \
                          -O modules_custom_multi \
-                         --custom-output-headers kegg_module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,kofam_hits_in_module,kofam_hit,contig,path_id,path,path_completeness,genome_name,db_name
+                         --custom-output-headers module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings,db_name
 SHOW_FILE modules_custom_multi_modules_custom.txt
 
 INFO "Generating matrix output files in multi mode"
@@ -128,7 +128,7 @@ anvi-estimate-metabolism -e external-genomes.txt \
                          -O matrix_format_multi
 SHOW_FILE matrix_format_multi-completeness-MATRIX.txt
 SHOW_FILE matrix_format_multi-presence-MATRIX.txt
-SHOW_FILE matrix_format_multi-ko_hits-MATRIX.txt
+SHOW_FILE matrix_format_multi-enzyme_hits-MATRIX.txt
 
 INFO "Generating JSON output (debug option)"
 anvi-estimate-metabolism -c S_islandicus_LS215.db \
@@ -144,9 +144,9 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          -p PROFILE.db \
                          -O genome_coverage \
                          --add-coverage \
-                         --kegg-output-modes modules,kofam_hits_in_modules
+                         --output-modes modules,hits_in_modules
 SHOW_FILE genome_coverage_modules.txt
-SHOW_FILE genome_coverage_kofam_hits_in_modules.txt
+SHOW_FILE genome_coverage_hits_in_modules.txt
 
 INFO "Testing --add-coverage flag for a collection"
 anvi-estimate-metabolism -c CONTIGS.db \
@@ -154,7 +154,7 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          -C bins_for_testing \
                          -O collection_coverage \
                          --add-coverage \
-                         --kegg-output-modes modules,kofam_hits_in_modules
+                         --output-modes modules,hits_in_modules
 SHOW_FILE collection_coverage_modules.txt
 
 INFO "Testing --add-coverage for metagenome mode"
@@ -163,7 +163,7 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          --metagenome-mode \
                          -O metagenome_coverage \
                          --add-coverage \
-                         --kegg-output-modes modules,kofam_hits_in_modules
+                         --output-modes modules,hits_in_modules
 
 INFO "Listing custom output headers with --add-coverage enabled"
 anvi-estimate-metabolism -c CONTIGS.db \
@@ -175,6 +175,6 @@ INFO "Generating custom output with --add-coverage enabled"
 anvi-estimate-metabolism -c CONTIGS.db \
                          -p PROFILE.db \
                          --add-coverage \
-                         --kegg-output-modes modules_custom \
+                         --output-modes modules_custom \
                          -O modules_custom_coverage \
-                         --custom-output-headers kegg_module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection
+                         --custom-output-headers module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection

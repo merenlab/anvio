@@ -161,10 +161,16 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "kegg-data": {
-        "name": "KEGG DB",
+        "name": "KEGG MODULES DB",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "user-modules-data": {
+        "name": "USER MODULES DB",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",

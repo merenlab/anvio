@@ -908,10 +908,27 @@ D = {
     'kegg-data-dir': (
             ['--kegg-data-dir'],
             {'default': None,
+             'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
                      "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'user-modules': (
+            ['-u', '--user-modules'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory location where your metabolic module files are kept. It is also "
+                     "the output directory, since the modules database will be set up in this folder."}
+                ),
+    'only-user-modules': (
+            ['--only-user-modules'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you use this flag in conjunction with --user-modules, anvi'o will ONLY "
+                     "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
+                     "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
     'kegg-archive': (
             ['--kegg-archive'],
@@ -2348,6 +2365,13 @@ D = {
                      "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
                      "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
+    'add-to-functions-table': (
+            ['--add-to-functions-table'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want anvi'o to store your HMM hits as gene annotations in the 'gene_functions'"
+                     "table of the database, rather than in the 'hmm_hits' table."}
+                ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',
@@ -2804,16 +2828,15 @@ D = {
                      "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                      "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
-    'kegg-output-modes': (
-            ['--kegg-output-modes'],
+    'output-modes': (
+            ['--output-modes'],
             {'default': None,
              'metavar': 'MODES',
              'type': str,
-             'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
+             'help': "Use this flag to indicate what information you want in the metabolism output files, by "
                      "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
-                     "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
-                     "'complete_modules'. To see a list of available output modes, run this script with the flag "
-                     "--list-available-modes."}
+                     "different output file, all with the same prefix). To see a list of available output modes, "
+                     "run this script with the flag --list-available-modes."}
                 ),
     'list-available-modes': (
             ['--list-available-modes'],
@@ -2919,7 +2942,7 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
                     "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
-                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                    "--output-modes modules` on your samples of interest. Trust us."}
                 ),
     'groups-txt': (
             ['-G', '--groups-txt'],
