@@ -230,7 +230,7 @@ class FilterHmmHitsTable(object):
             all_genes_searched_against = sources[source]['genes']
             reference = self.sources[source]['ref']
 
-        hmm_tables.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+        hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
 
 @terminal.time_program
