@@ -40,7 +40,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
     groupB = parser.add_argument_group('GENOME VIEW DB', "This is a database to store the display settings, bookmarks, etc. If "
-                                "there is no database, it will be AUTOMATICALLY generated.")
+                                "there is no database at the path specified, it will be AUTOMATICALLY generated.")
     groupB.add_argument(*anvio.A('genome-view-db'), **anvio.K('genome-view-db', {'required': True}))
 
     groupC = parser.add_argument_group('GENE ASSOCIATIONS', "Tell anvi'o how genes in your genomes relate to one another.")
