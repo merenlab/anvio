@@ -250,7 +250,7 @@ function setEventListeners(){
   canvas.on('selection:created', (e) => {
     let selected_genes = e.selected.filter(obj => obj.id == 'arrow');
 
-    if(selected_genes.length > 0) {
+    if(selected_genes.length > 1) {
       showLassoMenu(selected_genes, e.e.clientX, e.e.clientY);
     }
 
@@ -274,6 +274,7 @@ function setEventListeners(){
     if(event.target && event.target.id === 'arrow'){
       showDeepDiveToolTip(event)
     }
+    $('#lasso-menu-body').empty().hide();
   })
 }
 function showDeepDiveToolTip(event){
@@ -428,20 +429,29 @@ function showLassoMenu(selected_genes, x, y) {
   //x = 600;
   //y = 200;
 
+  let start, stop, length;
+  if(selected_genes.every(obj => obj.genomeID == selected_genes[0].genomeID)) {
+    start = selected_genes[0].gene.start;
+    stop = selected_genes[selected_genes.length-1].gene.stop;
+    length = stop - start;
+  } else {
+    start = stop = length = "N/A";
+  }
+
   $('#lasso-menu-body').empty().show().append(
     `<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
     <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px; background: white"> \
-        <tr><td>Position in split</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Position in contig</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Reference</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Sequence</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Type</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Length</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Count</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Corresponding gene call</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Codon order in gene</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Base position in codon</td><td>' + "FILLER" +'</td></tr> \
-        <tr><td>Coverage</td><td>' + "FILLER" +'</td></tr> \
+        <tr><td>Position in split</td><td>FILLER</td></tr> \
+        <tr><td>Position in contig</td><td>FILLER'</td></tr> \
+        <tr><td>Reference</td><td>FILLER</td></tr> \
+        <tr><td>Sequence</td><td>FILLER</td></tr> \
+        <tr><td>Type</td><td>FILLER</td></tr> \
+        <tr><td>Start</td><td>${start}</td></tr> \
+        <tr><td>Stop</td><td>${stop}</td></tr> \
+        <tr><td>Length</td><td>${length}</td></tr> \
+        <tr><td>Gene count</td><td>${selected_genes.length}</td></tr> \
+        <tr><td>Corresponding gene call</td><td>FILLER</td></tr> \
+        <tr><td>Coverage</td><td>FILLER</td></tr> \
       </table>';
 
       <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
