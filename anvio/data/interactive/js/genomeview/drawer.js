@@ -252,7 +252,11 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     let maxDataLayerValue = 0
     let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
     let startingLeft = xDisps[genomeID]
-    let pathDirective = [`M 0 0`]
+
+    let globalPathDirective = [`L ${startingLeft} ${layerHeight}`]
+    let layer_end_final_coordinates
+
+    let pathDirective = [`M ${startingLeft} 0 L ${startingLeft} ${layerHeight}`]
 
     for(let i = 0; i < contigArr.length; i++){
       contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
@@ -260,30 +264,51 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
 
     let nGroups = 20
     let j = 0
+    let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
     let [l,r] = getRenderNTRange(genomeID);
     for(let i = 0; i < nGroups; i++) {
       for(; j < i*genomeMax/nGroups; j+=ptInterval){
         if(j < l) continue;
         if(j > r) break;
+
         let left = j * scaleFactor + startingLeft
         let top = [contigArr[j] / maxDataLayerValue] * layerHeight
         let segment = `L ${left} ${top}`
+        final_l = left // final_l is always last-seen x coordinate
         pathDirective.push(segment)
+        globalPathDirective.push(segment)
       }
-      let graphObj = new fabric.Path(pathDirective.join(' '))
-      graphObj.set({
-        top : startingTop,
-        stroke : stroke,
-        fill : '',
-        selectable: false,
-        objectCaching: false,
-        id : `${layer} graph`,
-        groupID : genomeID,
-        genome : genomeID
-      })
-      canvas.bringToFront(graphObj)
+      // TODO resolve performance-related aspects of the chunking done below
+
+      // let graphObj = new fabric.Path(pathDirective.join(' '))
+      // graphObj.set({
+      //   top : startingTop,
+      //   stroke : stroke,
+      //   fill : '',
+      //   selectable: false,
+      //   objectCaching: false,
+      //   id : `${layer} graph`,
+      //   groupID : genomeID,
+      //   genome : genomeID
+      // })
+      // canvas.bringToFront(graphObj)
       pathDirective = []
     }
+    layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight}`
+    globalPathDirective.push(layer_end_final_coordinates)
+
+    let shadedObj = new fabric.Path(globalPathDirective.join(' '))
+    shadedObj.set({
+      top : startingTop,
+      stroke : stroke,
+      fill : stroke,
+      selectable: false,
+      objectCaching: false,
+      id : `${layer}-graph-shaded`,
+      groupID : genomeID,
+      genome : genomeID
+    })
+    canvas.bringToFront(shadedObj)
     this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
