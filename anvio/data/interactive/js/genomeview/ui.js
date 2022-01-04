@@ -285,7 +285,7 @@ function showDeepDiveToolTip(event){
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
   <h2>Gene Call</h2>
   <table class="table table-striped" style="width: 100%; text-align: center;">
-  <thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th><th>% in split</th></thead>
+  <thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th></thead>
   <tbody>
   <tr><td>  ${event.target.geneID}
   </td><td> ${event.target.gene?.source}
@@ -295,7 +295,6 @@ function showDeepDiveToolTip(event){
   </td><td> ${event.target.gene.stop}
   </td><td> ${event.target.gene?.call_type}
   </td><td> ${event.target.gene?.complete_gene_call}
-  </td><td> ${event.target.gene?.percentage_in_split?.toFixed(2) + '%'}
   </td></tr></tbody></table>;
 
   <button type="button" id="gene-dna-sequence-button"class="btn btn-default btn-sm" >DNA</button>
