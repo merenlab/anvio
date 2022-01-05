@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: help
 title: Help pages for anvi'o programs and artifacts
 categories: [anvio]
 comments: false
