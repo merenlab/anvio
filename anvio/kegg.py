@@ -3869,7 +3869,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
 
-            file_obj.append(output_dict, headers=header_list, do_not_write_key_column=True)
+            file_obj.append(output_dict, headers=['key'] + header_list, do_not_write_key_column=True)
 
             if anvio.DEBUG:
                 self.run.warning(f"Appended metabolism dictionary to {file_obj.path}" ,
@@ -3904,7 +3904,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
-            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, headers=header_list, do_not_write_key_column=True)
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, headers=['key'] + header_list, do_not_write_key_column=True)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
