@@ -561,7 +561,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
     def init_anvio_markdown_variables_conversion_dict(self):
         for program_name in self.all_program_names:
-            self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-n">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
+            self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-p">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
 
         for artifact_name in ANVIO_ARTIFACTS:
             self.anvio_markdown_variables_conversion_dict[artifact_name] = """<span class="artifact-n">[%s](%s/artifacts/%s)</span>""" % (artifact_name, self.base_url, artifact_name)
