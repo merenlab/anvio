@@ -681,6 +681,7 @@ GenomeDrawer.prototype.queryFunctions = function(){
   let query = $('#function_search_query').val()
   let category = $('#function_search_category').val()
   let glowPayload = []
+  let foundInGenomes = {}
 
   if(!query || !category){
     alert('please provide values for function category and/or query')
@@ -696,6 +697,9 @@ GenomeDrawer.prototype.queryFunctions = function(){
             geneID : key
           }
           glowPayload.push(glowObject)
+          if(!(genome[0] in foundInGenomes)){
+            foundInGenomes[genome[0]] = true
+          }
         }
       }
     }
@@ -704,7 +708,7 @@ GenomeDrawer.prototype.queryFunctions = function(){
     alert(`No hits were found matching ${query} in ${category}`)
     return
   }
-  console.log(glowPayload)
+  $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
   zoomOut('fully')
   this.glowGenes(glowPayload)
 }
