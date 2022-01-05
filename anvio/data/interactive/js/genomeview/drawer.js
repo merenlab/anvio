@@ -538,7 +538,7 @@ GenomeDrawer.prototype.glowGenes = function(geneParams){
   for(arrow of arrows) {
     arrow.set('shadow', shadow);
     arrow.animate('shadow.blur', 0, {
-      duration: 3000,
+      duration: 5000,
       onChange: canvas.renderAll.bind(canvas),
       onComplete: function(){ arrow.shadow = null; },
       easing: fabric.util.ease['easeInQuad']
@@ -675,4 +675,32 @@ GenomeDrawer.prototype.adjustScaleInterval = function(){
   let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
   scaleInterval = newInterval;
   $('#genome_scale_interval').val(scaleInterval);
+}
+
+GenomeDrawer.prototype.queryFunctions = function(){
+  let query = $('#function_search_query').val()
+  let category = $('#function_search_category').val()
+  let glowPayload = []
+
+  if(!query || !category){
+    alert('please provide values for function category and/or query')
+    return
+  }
+
+  this.settings['genomeData']['genomes'].map(genome => {
+    for (const [key, value] of Object.entries(genome[1]['genes']['functions'])){
+      if(category == 'COG_FUNCTION'){
+        if (value[category]?.[1].includes(query)){
+          let glowObject = {
+            genomeID : genome[0],
+            geneID : key
+          }
+          glowPayload.push(glowObject)
+        }
+      }
+    }
+  })
+  console.log(glowPayload)
+  zoomOut('fully')
+  this.glowGenes(glowPayload)
 }
