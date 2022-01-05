@@ -689,7 +689,7 @@ GenomeDrawer.prototype.queryFunctions = function(){
 
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])){
-      if(category == 'COG_FUNCTION'){
+      if(category == 'COG_FUNCTION' || category == 'COG_CATEGORY' || category == 'EGGNOG_BACT'){ // functions where queried value lives array index 1
         if (value[category]?.[1].includes(query)){
           let glowObject = {
             genomeID : genome[0],
@@ -700,6 +700,10 @@ GenomeDrawer.prototype.queryFunctions = function(){
       }
     }
   })
+  if(glowPayload.length < 1){
+    alert(`No hits were found matching ${query} in ${category}`)
+    return
+  }
   console.log(glowPayload)
   zoomOut('fully')
   this.glowGenes(glowPayload)
