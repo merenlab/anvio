@@ -391,24 +391,41 @@ class Inversions:
             num_reads_considered = 0
             match = False
             evidence = ''
-            for read in reads:
-                num_reads_considered += 1
-                if inversion_candidate.v1_left in read:
-                    match = True
-                    evidence = 'v1_left'
-                    break
-                elif inversion_candidate.v1_right in read:
-                    match = True
-                    evidence = 'v1_right'
-                    break
-                elif inversion_candidate.v2_left in read:
-                    evidence = 'v2_left'
-                    match = True
-                    break
-                elif inversion_candidate.v2_right in read:
-                    evidence = 'v2_right'
-                    match = True
-                    break
+
+            if inversion_candidate.num_mismatches == 0:
+                # Here we take advantage of construct symmetry. If the inversion candidate has no
+                # mismatches, we only needs to test for the v1 constructs.
+                for read in reads:
+                    num_reads_considered += 1
+                    if inversion_candidate.v1_left in read:
+                        match = True
+                        evidence = 'v1_left'
+                        break
+                    elif inversion_candidate.v1_right in read:
+                        match = True
+                        evidence = 'v1_right'
+                        break
+            else:
+                # Unfortunately, the inversion candidate has some mismatches, which requires testing
+                # for v1 _and_ v2 constructs.
+                for read in reads:
+                    num_reads_considered += 1
+                    if inversion_candidate.v1_left in read:
+                        match = True
+                        evidence = 'v1_left'
+                        break
+                    elif inversion_candidate.v1_right in read:
+                        match = True
+                        evidence = 'v1_right'
+                        break
+                    elif inversion_candidate.v2_left in read:
+                        evidence = 'v2_left'
+                        match = True
+                        break
+                    elif inversion_candidate.v2_right in read:
+                        evidence = 'v2_right'
+                        match = True
+                        break
 
             if match:
                 # we found an inversion candidate that has at least one confirmed
@@ -437,10 +454,10 @@ class Inversions:
 
     def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
         """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
-    
+
         A true inversion is one with evidence from short reads that it has activity.
         """
-     
+
         # here we will do something sneaky. if the user wants us to test inversions only using inverted reads,
         # we will abide and move on. as inverted reads will be a fraction of all reads that cover a given
         # region in the BAM file, it is not as costly as going through all of the regular reads. that said,
