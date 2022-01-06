@@ -14,6 +14,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
+__provides__ = ['markdown-txt']
 __description__ = ("Markdownizides TAB-delmited data with headers in terminal: `cat table.txt | anvi-script-as-markdown`")
 
 
