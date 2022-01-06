@@ -442,7 +442,7 @@ class Palindromes:
         sequence_array = utils.nt_seq_to_nt_num_array(sequence)
         sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
 
-        palindrome_coords = _find_palindromes_test(
+        palindrome_coords = _find_palindromes(
             seq = sequence_array,
             rev = sequence_array_RC,
             m = self.min_palindrome_length,
