@@ -369,11 +369,29 @@ class TestFindPalindrome(unittest.TestCase):
             palindromes = p._find_numba(seq, coords_only=True)
 
             if d <= 9:
-                # the gap is 9, so this should produce palindrome
+                # the gap is 9, so this should produce 1 palindrome
                 self.assertEqual(len(palindromes), 1)
             else:
-                # the gap is 9, so this should produce palindrome
+                # the gap is 9, so this should not produce palindrome
                 self.assertEqual(len(palindromes), 0)
+
+
+    def test_triple_inversion(self):
+        seq = 'TTTCAGGTGAAACTGAA'
+
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 5,
+            min_distance = 3,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
+        self.assertEqual(palindromes, [(1,6,12,17)])
+
+        p = Palindromes(argparse.Namespace(
+            min_palindrome_length = 5,
+            min_distance = 2,
+        ))
+        palindromes = p._find_numba(seq, coords_only=True)
+        self.assertEqual(palindromes, [(0, 5, 7, 12), (1, 6, 12, 17)])
 
 
     def seq_with_palindromes(self, template, start_stops, palindrome_seqs):

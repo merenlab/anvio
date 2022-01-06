@@ -458,7 +458,7 @@ class Inversions:
                 self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
                                      f"true inversions:", mc="green", nl_before=1, nl_after=1)
 
-            true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+            true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
         else:
             # if we are here, we want to use the inverted reads first, and if we find nothing, we want to
             # try all reads. BUT THERE IS ONE MORE CONSIDERATION: if we have multiple palindromes, and if
@@ -477,7 +477,7 @@ class Inversions:
                     self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
                                          f"true inversions:", mc="green", nl_before=1, nl_after=1)
 
-                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
 
                 if not len(true_inversions_in_stretch):
                     # if we are here, it means inverted reads did not match any of the constructs, and next
@@ -502,7 +502,7 @@ class Inversions:
                     self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} regular reads to find "
                                          f"true inversions:", mc="green", nl_before=1, nl_after=1)
 
-                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)   
+                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
 
         return true_inversions_in_stretch
 

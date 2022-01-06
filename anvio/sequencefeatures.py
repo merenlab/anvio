@@ -9,6 +9,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 from numba import jit
+from numba.typed import List
 
 import anvio
 import anvio.utils as utils
@@ -441,12 +442,13 @@ class Palindromes:
         sequence_array = utils.nt_seq_to_nt_num_array(sequence)
         sequence_array_RC = utils.nt_seq_to_RC_nt_num_array(sequence)
 
-        palindrome_coords = _find_palindromes(
+        palindrome_coords = _find_palindromes_test(
             seq = sequence_array,
             rev = sequence_array_RC,
             m = self.min_palindrome_length,
             N = self.max_num_mismatches,
             D = self.min_distance,
+            Q = self.min_mismatch_distance_to_first_base,
         )
 
         # sort by longest palindrome first
@@ -799,15 +801,16 @@ class Palindromes:
             self.run.info('Output file', self.output_file_path, mc='green', nl_before=1, nl_after=1)
 
 
-@jit(nopython=True)
-def _find_palindromes(seq, rev, m, N, D):
+@jit(nopython=True, cache=True)
+def _find_palindromes(seq, rev, m, N, D, Q):
     L = len(seq)
-    palindrome_coords = []
+
+    palindrome_coords = List()
+    palindrome_coords.append((0,0,0,0))
 
     i = 0
     while i < L-m+1:
         j = 0
-        skip_i_amount = 0
         while j < L-i-m:
             skip_j_amount = 0
             if rev[j] != seq[i]:
@@ -821,9 +824,14 @@ def _find_palindromes(seq, rev, m, N, D):
                     if (i+k+1) > (L-j-k-1):
                         # Stop of left has exceeded start of right.
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                            skip_j_amount = last_match
-                            skip_i_amount = last_match if last_match > skip_i_amount else skip_i_amount
+                            candidate = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            candidate = trim_ends(candidate, seq, rev, Q)
+                            if candidate[1] - candidate[0] >= m:
+                                # After trimming, candidate still meets required length
+                                if not is_internal(candidate, palindrome_coords):
+                                    # candidate is internal to another palindrome.
+                                    palindrome_coords.append(candidate)
+                                    skip_j_amount = last_match
                         break
 
                     if rev[j+k] == seq[i+k]:
@@ -834,9 +842,14 @@ def _find_palindromes(seq, rev, m, N, D):
 
                     if n > N:
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                            skip_j_amount = last_match
-                            skip_i_amount = last_match if last_match > skip_i_amount else skip_i_amount
+                            candidate = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            candidate = trim_ends(candidate, seq, rev, Q)
+                            if candidate[1] - candidate[0] >= m:
+                                # After trimming, candidate still meets required length
+                                if not is_internal(candidate, palindrome_coords):
+                                    # candidate is internal to another palindrome.
+                                    palindrome_coords.append(candidate)
+                                    skip_j_amount = last_match
                         break
 
                     if last_match == m-1:
@@ -847,19 +860,54 @@ def _find_palindromes(seq, rev, m, N, D):
 
                     k += 1
             j += skip_j_amount + 1
-        i += skip_i_amount + 1
+        i += 1
 
-    return palindrome_coords
+    return palindrome_coords[1:]
 
 
-def _find_palindromes_test(seq, rev, m, N, D):
+@jit(nopython=True, cache=True)
+def trim_ends(candidate, seq, rev, Q):
+    left_start, left_end, right_start, right_end = candidate
+    seq_left = seq[left_start:left_end]
+    seq_right = rev[::-1][right_start:right_end][::-1]
+    L = len(seq_left)
+
+    clip_left = 0
+    for q in range(Q+1):
+        if seq_left[q] != seq_right[q]:
+            clip_left = q + 1
+
+    clip_right = 0
+    for q in range(Q+1):
+        if seq_left[L-1-q] != seq_right[L-1-q]:
+            clip_right = q + 1
+
+    left_start += clip_left
+    right_end -= clip_left
+
+    left_end -= clip_right
+    right_start += clip_right
+
+    return left_start, left_end, right_start, right_end
+
+
+@jit(nopython=True, cache=True)
+def is_internal(candidate, palindromes):
+    a, b, c, d = candidate
+    for left_start, left_end, right_start, right_end in palindromes:
+        if a >= left_start and b <= left_end and c >= right_start and d <= right_end:
+            return True
+    else:
+        return False
+
+
+def _find_palindromes_test(seq, rev, m, N, D, Q):
     L = len(seq)
-    palindrome_coords = []
+    palindrome_coords = [(0,0,0,0)]
 
     i = 0
     while i < L-m+1:
         j = 0
-        skip_i_amount = 0
         while j < L-i-m:
             skip_j_amount = 0
             if rev[j] != seq[i]:
@@ -877,10 +925,18 @@ def _find_palindromes_test(seq, rev, m, N, D):
                         print('Stop of left has exceeded start of right.')
                         # Stop of left has exceeded start of right.
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                            skip_j_amount = last_match
-                            skip_i_amount = last_match if last_match > skip_i_amount else skip_i_amount
-                            print(f'Palindrome {(i, i+last_match+1, L-j-last_match-1, L-j)}.')
+                            candidate = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            candidate = trim_ends(candidate, seq, rev, Q)
+                            if candidate[1] - candidate[0] >= m:
+                                print(candidate)
+                                # After trimming, candidate still meets required length
+                                if not is_internal(candidate, palindrome_coords):
+                                    print(candidate)
+                                    palindrome_coords.append(candidate)
+                                    skip_j_amount = last_match
+                                    print(f'Palindrome {candidate}.')
+                                else:
+                                    print(f'INTERNAL Palindrome {candidate}.')
                         break
 
                     if rev[j+k] == seq[i+k]:
@@ -892,10 +948,16 @@ def _find_palindromes_test(seq, rev, m, N, D):
                     if n > N:
                         print('Max # mismatches met. Calling quits')
                         if is_palindrome:
-                            palindrome_coords.append((i, i+last_match+1, L-j-last_match-1, L-j))
-                            skip_j_amount = last_match
-                            skip_i_amount = last_match if last_match > skip_i_amount else skip_i_amount
-                            print(f'Palindrome {(i, i+last_match+1, L-j-last_match-1, L-j)}.')
+                            candidate = (i, i+last_match+1, L-j-last_match-1, L-j)
+                            candidate = trim_ends(candidate, seq, rev, Q)
+                            if candidate[1] - candidate[0] >= m:
+                                # After trimming, candidate still meets required length
+                                if not is_internal(candidate, palindrome_coords):
+                                    palindrome_coords.append(candidate)
+                                    skip_j_amount = last_match
+                                    print(f'Palindrome {candidate}.')
+                                else:
+                                    print(f'INTERNAL Palindrome {candidate}.')
                         break
 
                     if last_match == m-1:
@@ -910,10 +972,9 @@ def _find_palindromes_test(seq, rev, m, N, D):
             print(f'skipping j ahead {skip_j_amount}')
             j += skip_j_amount + 1
 
-        print(f'skipping i ahead {skip_i_amount}')
-        i += skip_i_amount + 1
+        i += 1
 
-    return palindrome_coords
+    return palindrome_coords[1:]
 
 
 def get_state(seq, i, j, k):
