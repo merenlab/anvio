@@ -4,7 +4,7 @@ please add them into the relevant file, and put a photo of them
 into the `AVATARS` directory. Every person mentioned in either
 of these files must have a GitHub username.
 
-`AUTHORS.yaml` contains individuals who has made a literal contribution
+`DEVELOPERS.yaml` contains individuals who has made literal contributions
 to the anvi'o codebase. The information in this file can e used to
 tag people in `__authors__` directives in anvi'o programs under the
 `bin/` and `sandbox/` directories, which then can be used via the
