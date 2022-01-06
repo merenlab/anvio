@@ -709,7 +709,17 @@ GenomeDrawer.prototype.queryFunctions = function(){
     alert(`No hits were found matching ${query} in ${category}`)
     return
   }
+  let lowestStart, highestEnd = null
+  glowPayload.map(gene => {
+    let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+    let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+    let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+
+    if(start < lowestStart || lowestStart == null) lowestStart = start
+    if(end > highestEnd || highestEnd == null) highestEnd = end
+  })
+
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
-  zoomOut('fully')
+  zoomOut('partial', lowestStart, highestEnd)
   this.glowGenes(glowPayload)
 }
