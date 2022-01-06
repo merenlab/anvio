@@ -430,10 +430,12 @@ function showLassoMenu(selected_genes, x, y) {
   //y = 200;
 
   let start, stop, length;
+  let showSetLabel = false;
   if(selected_genes.every(obj => obj.genomeID == selected_genes[0].genomeID)) {
     start = selected_genes[0].gene.start;
     stop = selected_genes[selected_genes.length-1].gene.stop;
     length = stop - start;
+    showSetLabel = true;
   } else {
     start = stop = length = "N/A";
   }
@@ -451,6 +453,7 @@ function showLassoMenu(selected_genes, x, y) {
 
       <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
       <br><br>
+      <input id="create_gene_set_label" class="form-control input-sm" type="text" placeholder="New gene set label" style="margin-bottom: 15px; display:${showSetLabel?"block":"none"}" size="4">
 
       <button type="button" class="btn btn-default btn-sm" onClick="$('#lasso-menu-body').empty().hide()">Close</>
       <button type="button" id="lasso-done" class="btn btn-default btn-sm" style="float:right" onClick="applyLasso()">Apply</button>
@@ -477,7 +480,6 @@ function showLassoMenu(selected_genes, x, y) {
         selected_genes.forEach(gene => {
           gene.fill = this.value;
         });
-
     });
 }
 

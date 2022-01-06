@@ -119,6 +119,7 @@ function loadAdditionalDataLayers(){
       settings['display']['colors'] = {}
       settings['display']['layers'] = {}
       settings['display']['labels'] = {}
+      settings['display']['labels']['set-labels'] = {}
       settings['display']['layers']['Ruler'] = true
       settings['display']['layers']['Genome'] = true
 
@@ -270,6 +271,10 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('user-gene-labels')){
     settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
+  }
+
+  if(stateData.hasOwnProperty('gene-set-labels')){
+    settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
   }
 
   $('#tbody_additionalDataLayers').html('') // clear div before reprocess
