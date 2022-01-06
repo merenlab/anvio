@@ -42,12 +42,15 @@
     brush.event(d3.select(".brush").transition());
   }
 
-  function zoomOut(type) {
+  function zoomOut(type, start, end) {
     let newStart, newEnd
     if(type && type == 'fully'){
       newStart = 0
       newEnd = genomeMax
-    } else {
+    } else if(type && type == 'partial'){
+      newStart = start
+      newEnd = end
+    }else {
       let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
       newStart = start - genomeMax/50;
       newEnd = end + genomeMax/50;
