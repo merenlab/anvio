@@ -1,0 +1,75 @@
+- github: tdelmont
+  name: Tom O. Delmont
+  email: tom.o.delmont@gmail.com
+  twitter: tomodelmont
+  avatar: bio-tom.jpg
+  bio: "I am a microbial ecologist who seeks to understand small and large-scale ecological patterns in the microbial world. My most recent investigations focused on humans, pristine soils, and the Southern Ocean."
+  affiliations:
+     - title: CNRS
+       inst: Genoscope - Centre National de Séquençage
+       inst_link: https://www.genoscope.cns.fr
+
+- github: genomewalker
+  name: Antonio Fernandez-Guerra
+  email: antonio@metagenomics.eu
+  avatar: bio-antonio.png
+  orcid: 0000-0002-8679-490X
+  web: https://dark.metagenomics.eu
+  bio: "My group and I develop and apply new methodologies to analyze modern and ancient (meta)genomic data. We like to use ancient microbes to reconstruct past environments and make sense of the genes of unknown function in genomes and metagenomes."
+  affiliations:
+    - title: Assistant Professor
+      inst: Lundbeck Foundation GeoGenetics Centre, The GLOBE Institute, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/geogenetics/
+
+- github: jessika-fuessel
+  name: Jessika Fuessel
+  avatar: bio-jessika.jpg
+  email: ju.fuessel@gmail.com
+  twitter: FuesselJessika
+  orcid: 0000-0002-4210-2318
+  bio: "My aim is to understand the production and fate of microbial metabolites within the context of changing environmental conditions using a multi-omics approaches."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Department of Medicine, University of Chicago
+      inst_link: https://medicine.uchicago.edu/
+
+- github: ChiaraVanni
+  name: Chiara Vanni
+  avatar: bio-chiara.jpg
+  email: cvanni@mpi-bremen.de
+  orcid: 0000-0002-1124-1147
+  web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
+  twitter: ChiaraVanni5
+  affiliations:
+    - title: Graduate Student
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://mpi-bremen.de
+
+- github: karkman
+  name: Antti Karkman
+  email: antti.karkman@helsinki.fi
+  avatar: bio-antti.png
+  affiliations:
+    - title: Postdoctoral researcher
+      inst: University of Helsinki
+      inst_link: https://www.helsinki.fi/en
+
+- github: edgraham
+  name: Elaina Graham
+  avatar: bio-elaina.jpg
+  twitter: perilousUnknown
+  affiliations:
+    - title: Graduate Student
+      inst: University of Southern California
+      inst_link: https://www.usc.edu/
+
+- github: jarrodscott
+  name: Jarrod J. Scott
+  avatar: bio-jarrod_s.jpg
+  email: jarrod.jude.scott@gmail.com
+  web: https://istmobiome.rbind.io/
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Smithsonian Tropical Research Institute
+      inst_link: https://stri.si.edu/
+
