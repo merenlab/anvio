@@ -176,7 +176,7 @@ function setEventListeners(){
   });
   $('#gene_text_angle').on('change', function () {
     geneLabelAngle = $(this).val();
-    if (geneLabelPos != "inside" && settings['display']['arrow-style'] != 3) drawer.draw();
+    if (geneLabelPos != "inside") drawer.draw();
     $(this).blur();
   });
   $('#show_genome_labels_box').on('change', function () {
