@@ -431,7 +431,7 @@ class Inversions:
                 # we found an inversion candidate that has at least one confirmed
                 # construct. We add this one into the list of true inversions:
                 true_inversions.append(inversion_candidate)
-    
+
                 if anvio.DEBUG or self.verbose:
                     self.progress.reset()
                     self.run.info_single(f"👍 Candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
@@ -450,7 +450,7 @@ class Inversions:
                                          f"after processing {num_reads_considered} reads.", mc="red", level=2)
 
         return true_inversions
- 
+
 
     def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
         """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
@@ -480,12 +480,11 @@ class Inversions:
             # if we are here, we want to use the inverted reads first, and if we find nothing, we want to
             # try all reads. BUT THERE IS ONE MORE CONSIDERATION: if we have multiple palindromes, and if
             # the user asked for `self.check_all_palindromes`, it means we may have a match to one of them
-            # in inverted reads, and even thought we may have found more than one palindromes to be true
-            # inversions if we were to use all reads, we would not be checking them since
-            # `if not len(true_inversions_in_stretch)` would no longer be True. Which means, if the user
-            # is asking for `self.check_all_palindromes`, we can't do the sneaky thing we wished to do and
-            # must work with all reads from the get go :/ first, we will take care of the default case where
-            # the user did not ask to check all palindromes:
+            # in inverted reads, but even if we could have found more if we were to use all reads, we would
+            # not be checking them since `if not len(true_inversions_in_stretch)` would no longer be True.
+            # Which means, if the user is asking for `self.check_all_palindromes`, we can't do the sneaky
+            # thing we wished to do and must work with all reads from the get go :/ first, we will take
+            # care of the default case where the user did not ask to check all palindromes:
             if not self.check_all_palindromes:
                 bam_file.fetch_filter = 'inversions'
                 reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
