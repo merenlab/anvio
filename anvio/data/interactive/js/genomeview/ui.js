@@ -174,6 +174,11 @@ function setEventListeners(){
     if (!(geneLabelPos == "inside" && settings['display']['arrow-style'] != 3)) drawer.draw();
     $(this).blur();
   });
+  $('#gene_text_angle').on('change', function () {
+    geneLabelAngle = $(this).val();
+    if (geneLabelPos != "inside" && settings['display']['arrow-style'] != 3) drawer.draw();
+    $(this).blur();
+  });
   $('#show_genome_labels_box').on('change', function () {
     showLabels = !showLabels;
     xDisplacement = showLabels ? 120 : 0;
@@ -278,7 +283,7 @@ function setEventListeners(){
   })
 }
 function showDeepDiveToolTip(event){
-  $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances 
+  $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances
   $('#deepdive-tooltip-body').html('').hide()
 
   $('#deepdive-tooltip-body').show().append(`

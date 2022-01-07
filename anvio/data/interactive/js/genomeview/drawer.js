@@ -130,7 +130,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         id: 'geneLabel',
         groupID: genomeID,
         fontSize: geneLabelSize,
-        angle: geneLabelPos == "slanted" ? -10 : 0,
+        angle: geneLabelPos == "above" ? -1*geneLabelAngle : 0,
         left: xDisps[genomeID]+(gene.start+50)*scaleFactor,
         scaleX: 0.5,
         scaleY: 0.5,
