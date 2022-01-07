@@ -687,8 +687,7 @@ GenomeDrawer.prototype.queryFunctions = function(){
     alert('please provide values for function category and/or query')
     return
   }
-  //TODO  1 - capture lowest start position, highest stop position of queried genes
-  //      2 - zoomOut to show only the portion of the entire sequence that contains hits
+
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])){
       if(category == 'COG_FUNCTION' || category == 'COG_CATEGORY' || category == 'EGGNOG_BACT'){ // functions where queried value lives array index 1
