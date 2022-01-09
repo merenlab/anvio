@@ -163,7 +163,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
       // console.log(genomeOfInterest[0][1]['genes']['functions'][geneID])
 
       if($('#gene_label_source').val() == 'default'){
-        return `geneID: ${geneID}`
+        return `${geneID}`
       }
       if($('#gene_label_source').val() == 'COG_FUNCTION'){
         if(genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty('COG_FUNCTION') && genomeOfInterest[0][1]['genes']['functions'][geneID]['COG_FUNCTION']){
