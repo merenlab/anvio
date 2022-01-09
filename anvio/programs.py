@@ -501,7 +501,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
 
         self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
-        self.base_url = os.path.join("/software/anvio/help", anvio.anvio_version_for_help_docs)
+        self.base_url = os.path.join("/help", anvio.anvio_version_for_help_docs)
         self.anvio_markdown_variables_conversion_dict = {}
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
@@ -679,11 +679,11 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         d = ""
 
         for author in program.meta_info['authors']['value']:
-            d += '''<div class="page-author"><div class="page-author-info">'''
-            d += f'''<div class="page-person-photo"><img class="page-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
-            d += '''<div class="page-person-info-box">'''
-            d += f'''<span class="page-author-name">{self.authors[author]['name']}</span>'''
-            d += '''<div class="page-author-social-box">'''
+            d += '''<div class="anvio-person"><div class="anvio-person-info">'''
+            d += f'''<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
+            d += '''<div class="anvio-person-info-box">'''
+            d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><span class="anvio-person-name">{self.authors[author]['name']}</span></a>'''
+            d += '''<div class="anvio-person-social-box">'''
 
             if 'web' in self.authors[author]:
                 d += f'''<a href="{self.authors[author]['web']}" class="person-social" target="_blank"><i class="fa fa-fw fa-home"></i>Web</a>'''
@@ -713,8 +713,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             else:
                 author_link = f"http://github.com/{self.authors[author]['github']}"
 
-            d += '''<div class="page-author-mini"><div class="page-person-photo-mini">'''
-            d += f'''<a href="{author_link}" target="_blank"><img class="page-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
+            d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
+            d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
             d += '''</div></div>\n'''
 
         return d

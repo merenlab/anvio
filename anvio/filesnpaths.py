@@ -119,7 +119,7 @@ def is_proper_external_gene_calls_file(file_path):
                 call_type = int(fields[6])
             except ValueError:
                 raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
-                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
+                                       "http://anvio.org/help/main/artifacts/external-gene-calls/")
 
             if call_type not in call_types_allowed:
                 raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
