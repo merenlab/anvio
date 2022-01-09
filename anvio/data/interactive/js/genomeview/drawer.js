@@ -143,12 +143,12 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
       });
       if(this.settings['display']['arrow-style'] == 3) {
         label.set({
-          top: geneLabelPos == "inside" ? y-5 : y-30,
+          top: geneLabelPos == "inside" ? y+15-geneLabelSize/2 : y-10-geneLabelSize/2,
           selectionColor:'rgba(128,128,128,.5)'
         });
       } else {
         label.set({
-          top: y-30,
+          top: y-10-geneLabelSize/2,
           selectionColor:'rgba(128,128,128,.2)'
         });
       }
