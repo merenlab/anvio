@@ -137,6 +137,7 @@ class Inversions:
         ################################################################################
 
         profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
+        auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash'])
         sample_id = profile_db.p_meta['sample_id']
 
         # here we open our bam file with an inversions fetch filter.
@@ -159,7 +160,7 @@ class Inversions:
 
             for i in range(len(split_names)):
                 split_name = split_names[i]
-                split_coverages = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash']).get(split_name)
+                split_coverages = auxiliary_db.get(split_name)
                 contig_coverage = np.concatenate((contig_coverage, split_coverages[sample_id]), axis=None)
 
             # now we know the `contig_coverage`. it is time to break it into stretches
