@@ -4,6 +4,8 @@
   twitter: tomodelmont
   avatar: bio-tom.jpg
   bio: "Microbial ecologist who seeks to understand small and large-scale ecological patterns in the microbial world."
+  intellectual-contributions:
+    - contribution: "Initiated and supervised the development of anvi'o tools to reconstruct genomes from metagenomes"
   affiliations:
     - title: CNRS
       inst: Genoscope - Centre National de Séquençage
@@ -36,6 +38,8 @@
   twitter: FuesselJessika
   orcid: 0000-0002-4210-2318
   bio: "Biogeochemist and microbiologist intereted in understanding the production and fate of microbial metabolites within the context of changing environmental conditions using a multi-omics."
+  intellectual-contributions:
+    - contribution: "Initiated and supervised the development of anvi'o metabolism framework"
   affiliations:
     - title: Post-doctoral Scientist
       inst: Institute for Chemistry and Biology of the Marine Environment

@@ -95,6 +95,9 @@
   linkedin: iva-veseli
   avatar: ivagljiva.jpg
   bio: "Computer scientist and biologist who leverages computational methods to study microbial metabolism in environmental metagenomes."
+  intellectual-contributions:
+    - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-estimate-metabolism/>anvi'o metabolism framework</a>"
+    - contribution: "Spearheaded <a href=https://anvio.org/vocabulary>the 'omics vocabulary</a> effort"
   affiliations:
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
@@ -169,11 +172,16 @@
   avatar: Jessica-Pan.png
   orcid: 0000-0002-6743-6146
   bio: "Computer scientist interested in computational methods to investigate microbial ecosystems and making those techniques more accessible to others."
+  intellectual-contributions:
+    - contribution: "Populated the initial program and artifact descriptions used in <a href=https://anvio.org/help/main>help pages</a>"
   affiliations:
     - title: Undergraduate Student
       inst: Massachusetts Institute of Technology
       inst_link: http://web.mit.edu/
       current: true
+    - title: Intern
+      inst: The Department of Medicine at the University of Chicago
+      inst_link: http://medicine.uchicago.edu/
 
 - github: ShaiberAlon
   name: Alon Shaiber
@@ -184,6 +192,8 @@
   skype: alon.shaiber
   avatar: ShaiberAlon.jpg
   bio: "Biophysicist fascinated by the complexity of microbial ecology and interested in applying and developing computational tools to explore it."
+  intellectual-contributions:
+    - contribution: "Spearheaded the development of <a href=https://merenlab.org/2018/07/09/anvio-snakemake-workflows/>anvi'o snakemake workflows</a>" 
   affiliations:
     - title: Genomics Data Scientist
       inst: Weill Cornell Medicine
@@ -200,6 +210,9 @@
   avatar: ozcan.jpg
   web: http://blog.ozcanesen.com/
   bio: "Computer engineer interested in developing tools for the visualization of complex data."
+  intellectual-contributions:
+    - contribution: "Spearheaded the development of interactive interfaces of anvi'o"
+    - contribution: "Implemented the framework for seamless migration of anvi'o databases between versions"
   affiliations:
     - title: Programmer
       inst: The Department of Medicine at the University of Chicago
@@ -227,6 +240,8 @@
   twitter: ClayssenQ
   avatar: qclayssen.jpg
   bio: "Microbiologist and bioinformatician interested in metagenomics."
+  intellectual-contributions:
+    - contribution: "Contributed to the development of the SCG taxonomy framework"
   affiliations:
     - title: Graduate Student
       inst: ETH Zurich
