@@ -350,7 +350,8 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layer
         hasBorders: false,
         lockScaling: true,
         objectCaching: false,
-        groupID: genomeID
+        groupID: genomeID,
+        class: 'ruler'
       });
       ruler.addWithUpdate();
       canvas.add(ruler);

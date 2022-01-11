@@ -110,6 +110,11 @@ function setEventListeners(){
     $('#brush_start').val(newStart);
     $('#brush_end').val(newEnd);
   });
+  canvas.on('mouse:over', function(event) {
+    if(event.target.class == 'ruler'){
+      console.log(event.target)
+    }
+  })
 
   $('#alignClusterInput').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
