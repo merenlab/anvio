@@ -115,7 +115,7 @@ def main(args):
               orthology_lines + \
              [f"CLASS       {class_str}"] + \
               source_lines + \
-             ['\\\\\\\n']
+             ['///' + '\n']
 
     with open(entry, 'w') as f:
         f.write("\n".join(all_lines))
