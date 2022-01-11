@@ -66,6 +66,15 @@ def main(args):
     # if any orthology line is blank, access db
     enzyme_has_blank_orthology = [x for x in enzyme_dict if not enzyme_dict[x]['orthology']]
     if enzyme_has_blank_orthology:
+        annotations_sources_for_blank_orthology = set([enzyme_dict[x]['source'] for x in enzyme_has_blank_orthology])
+        acceptable_sources = set(['KOfam'])
+        unacceptable_sources = annotations_sources_for_blank_orthology.difference(acceptable_sources)
+        if unacceptable_sources:
+            ok_str = ", ".join(acceptable_sources)
+            bad_str = ", ".join(unacceptable_sources)
+            raise ConfigError(f"Some enzymes in your input file have an empty orthology field, but are not from an annotation source "
+                              f"that we can automatically fill in. Currently, we are only able to look up orthology for enzymes from "
+                              f"source(s): {ok_str}. But the enzymes with blank orthology are coming from source(s): {bad_str}")
         modules_db = kegg.ModulesDatabase(os.path.join(kegg_dir_path, "MODULES.db"), args)
 
 
