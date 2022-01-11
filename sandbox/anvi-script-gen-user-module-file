@@ -79,7 +79,15 @@ def main(args):
             raise ConfigError(f"Some enzymes in your input file have an empty orthology field, but are not from an annotation source "
                               f"that we can automatically fill in. Currently, we are only able to look up orthology for enzymes from "
                               f"source(s): {ok_str}. But the enzymes with blank orthology are coming from source(s): {bad_str}")
-        modules_db = kegg.ModulesDatabase(os.path.join(kegg_dir_path, "MODULES.db"), args)
+
+        ko_file_path = os.path.join(kegg_dir_path, "ko_list.txt")
+        if not os.path.exists(ko_file_path):
+            raise ConfigError(f"There does not appear to be a KO file in the KEGG data directory that you provided. This is "
+                              f"unfortunately an essential file for filling in orthology lines for KOfam enzymes, so anvi'o has "
+                              f"to fail now. You can fix this by either passing in a proper KEGG data directory, or filling in the "
+                              f"empty 'orthology' fields in the enzymes-txt file yourself. (Just a reminder, we were looking for the "
+                              f"KO file at this path: {ko_file_path})")
+        ko_dict = utils.get_TAB_delimited_file_as_dictionary(ko_file_path, expected_fields = ['definition'])
 
 
 if __name__ == '__main__':
