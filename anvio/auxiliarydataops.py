@@ -71,6 +71,13 @@ class AuxiliaryDataForSplitCoverages(object):
 
     def append(self, split_name, sample_name, coverage_array):
         if (coverage_array == 0).all():
+            # Oh my. This split has yielded 0 reads, resulting in a coverage array of strictly zeros.
+            # Instead of storing a gzipped byte representation of `coverage_array`, we save the
+            # space and instead store a simple integer value equal to the length of the split.
+            # Later, when downstream applications query the coverage of this split, the dedicated
+            # method self.get will know how to interpret this integer value and return the
+            # appropriate array of zeros. This saves some storage space, and also makes querying the
+            # coverage of this split faster
             stored_coverage = len(coverage_array)
         else:
             stored_coverage = utils.convert_numpy_array_to_binary_blob(coverage_array.astype(self.coverage_dtype))
@@ -129,6 +136,14 @@ class AuxiliaryDataForSplitCoverages(object):
             sample_name, blob = row # unpack sqlite row tuple
 
             if isinstance(blob, int):
+                # Look what we have here! Most typically, we store split coverage data as a gzipped
+                # byte representation of a numpy array, where each element in the numpy array
+                # denotes the coverage of a given nucleotide. However, an exception is made whenever
+                # a split has a numpy array of strictly zeros. In this case, we instead store `blob`
+                # as an integer representing the split length, which is used in the line below to
+                # construct an array of zeros on the fly. This saves us the requirement of storing
+                # these zeros, but it also makes querying faster, since no array has to be
+                # decompressed. So if you've ended up here, you're enjoying a 2X speed gain.
                 coverage_array = np.zeros(blob, dtype=self.coverage_dtype)
             else:
                 coverage_array = utils.convert_binary_blob_to_numpy_array(blob, dtype=self.coverage_dtype)
