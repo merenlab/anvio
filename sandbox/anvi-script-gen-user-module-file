@@ -41,9 +41,13 @@ def main(args):
     def_str =  A('module_definition')
     kegg_dir_path = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
 
+    # LOADING DATA AND SANITY CHECKS
     # sanity check entry is just one word
     if len(entry.split(' ')) > 1:
         raise ConfigError("You did not provide a valid ENTRY ID. It should be just one word.")
+    # sanity check module file does not yet exist
+    if os.path.exists("./" + entry):
+        raise ConfigError(f"A module file for {entry} already exists in this directory. Please delete that file first if you want to re-generate it.")
     # sanity check class format
     if len(class_str.split(";")) != 3:
         raise ConfigError("You did not provide a valid CLASS string. It should be three sections separated by semi-colons.")
