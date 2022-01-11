@@ -89,6 +89,37 @@ def main(args):
                               f"KO file at this path: {ko_file_path})")
         ko_dict = utils.get_TAB_delimited_file_as_dictionary(ko_file_path, expected_fields = ['definition'])
 
+    # WRITE MODULE FILE
+    orthology_lines = []
+    source_lines = []
+    for acc,d in enzyme_dict.items():
+        # first line gets the data name
+        if len(orthology_lines) == 0:
+            line_prefix = "ORTHOLOGY   "
+        else:
+            line_prefix = "            "
+
+        if acc in enzyme_has_blank_orthology:
+            ortho = ko_dict[acc]['definition']
+        else:
+            ortho = d['orthology']
+        src = d['source']
+
+        orthology_lines.append(line_prefix + acc + "  " + ortho)
+        source_lines.append(line_prefix + acc + "  " + src)
+
+
+    all_lines = [f"ENTRY       {entry}",
+              f"NAME        {name}",
+              f"DEFINITION  {def_str}"] + \
+              orthology_lines + \
+             [f"CLASS       {class_str}"] + \
+              source_lines + \
+             ['\\\\\\\n']
+
+    with open(entry, 'w') as f:
+        f.write("\n".join(all_lines))
+
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
