@@ -95,9 +95,11 @@ def main(args):
     for acc,d in enzyme_dict.items():
         # first line gets the data name
         if len(orthology_lines) == 0:
-            line_prefix = "ORTHOLOGY   "
+            o_line_prefix = "ORTHOLOGY   "
+            a_line_prefix = "ANNOTATION_SOURCE  "
         else:
-            line_prefix = "            "
+            o_line_prefix = a_line_prefix = "            "
+            a_line_prefix = "                   "
 
         if acc in enzyme_has_blank_orthology:
             ortho = ko_dict[acc]['definition']
@@ -105,8 +107,8 @@ def main(args):
             ortho = d['orthology']
         src = d['source']
 
-        orthology_lines.append(line_prefix + acc + "  " + ortho)
-        source_lines.append(line_prefix + acc + "  " + src)
+        orthology_lines.append(o_line_prefix + acc + "  " + ortho)
+        source_lines.append(a_line_prefix + acc + "  " + src)
 
 
     all_lines = [f"ENTRY       {entry}",
