@@ -33,6 +33,36 @@ progress = terminal.Progress()
 
 def main(args):
     pass
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    enzyme_txt_path = A('enzymes_txt')
+    entry = A('module_entry')
+    name = A('module_name')
+    class_str = A('module_class')
+    def_str =  A('module_definition')
+    kegg_dir_path = A('kegg_data_dir')
+
+    # sanity check entry is just one word
+    if len(entry.split(' ')) > 1:
+        raise ConfigError("You did not provide a valid ENTRY ID. It should be just one word.")
+    # sanity check class format
+    if len(class_str.split(";")) != 3:
+        raise ConfigError("You did not provide a valid CLASS string. It should be three sections separated by semi-colons.")
+
+    # load enzymes txt
+    enzyme_dict = utils.get_TAB_delimited_file_as_dictionary(enzyme_txt_path, expected_fields=['enzyme','source','orthology'])
+
+    if def_str:
+        #sanity check all enzymes from definition are in file
+        enzyme_set = set(kegg.module_definition_to_enzyme_accessions(def_str))
+        dict_set = set(enzyme_dict.keys())
+        missing_enzymes = enzyme_set.difference(dict_set)
+        if missing_enzymes:
+            missing_str = ", ".join(missing_enzymes)
+            raise ConfigError(f"Oh no... anvi'o found a discrepancy between the enzymes-txt and the module definition you provided. "
+                              f"All enzymes in the definition should be in the text file. Here are the one(s) that are not: {missing_str}")
+    else:   # we create definition from enzymes in file
+        def_str = " ".join(enzyme_dict.keys())
+
 
 
 if __name__ == '__main__':
