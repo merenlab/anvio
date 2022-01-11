@@ -34,11 +34,17 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt'))
-    parser.add_argument(*anvio.A('module-entry'), **anvio.K('module-entry'))
-    parser.add_argument(*anvio.A('module-name'), **anvio.K('module-name'))
-    parser.add_argument(*anvio.A('module-definition'), **anvio.K('module-definition'))
-    parser.add_argument(*anvio.A('module-class'), **anvio.K('module-class'))
+    groupR = parser.add_argument_group('REQUIRED INPUT', "Everything you NEED to make a module definition")
+    groupR.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt'))
+    groupR.add_argument(*anvio.A('module-entry'), **anvio.K('module-entry'))
+    groupR.add_argument(*anvio.A('module-name'), **anvio.K('module-name'))
+    groupR.add_argument(*anvio.A('module-definition'), **anvio.K('module-definition'))
+    groupR.add_argument(*anvio.A('module-class'), **anvio.K('module-class'))
+
+    groupO = parser.add_argument_group('OPTIONAL - KEGG DATA', "If you want anvi'o to fill in the ORTHOLOGY of "
+                                                               "enzymes from source 'KOfam', you might need to "
+                                                               "tell her where to find any non-default KEGG data. ")
+    groupO.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
 
     args = parser.get_args(parser)
 
