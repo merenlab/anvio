@@ -741,5 +741,11 @@ ANVIO_ARTIFACTS ={
         "type" : "DISPLAY",
         "provided_by_anvio" : True,
         "provided_by_user" : False
+    },
+    "enzymes-txt": {
+        "name": "ENZYMES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
     }
 }
