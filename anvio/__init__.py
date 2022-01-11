@@ -930,6 +930,47 @@ D = {
                      "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
                      "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
+    'enzymes-txt': (
+            ['-e', '--enzymes-txt'],
+            {'default': None,
+             'metavar': 'FILE_PATH',
+             'help': "A TAB-delimited flat text file that lists the enzymes in your module (one enzyme per line). "
+                     "There are three required columns: an 'enzyme' column that contains the identifier for the enzyme, "
+                     "a 'source' column that contains the annotation source of the enzyme, and an 'orthology' column "
+                     "that contains the functional annotation of the enzyme. Note that the orthology column can be left "
+                     "blank IIF the annotation source is 'KOfam'."}
+                ),
+    'module-entry': (
+            ['-I', '--module-entry'],
+            {'default': None,
+             'metavar': 'ENTRY_ID',
+             'type': str,
+             'help': "The entry ID for the module. Should be one 'word' (underscores and dashes allowed), and unique to the module."}
+                ),
+    'module-name': (
+            ['-n', '--module-name'],
+            {'default': None,
+             'metavar': 'NAME',
+             'type': str,
+             'help': "The name of the module (an arbitrary string - spaces allowed). "}
+                ),
+    'module-definition': (
+            ['-d', '--module-definition'],
+            {'default': None,
+             'metavar': 'DEFINITION',
+             'type': str,
+             'help': "The definition string of the module in terms of enzyme identifiers, formatted in the KEGG fashion. "
+                     "All enzymes in the definition should be present in the enzymes-txt file. See help pages "
+                     "for instructions on creating the definition."}
+                ),
+    'module-class': (
+            ['-c', '--module-class'],
+            {'default': None,
+             'metavar': 'CLASS',
+             'type': str,
+             'help': "The class of the module. Should be one string with three sections (class, category, subcategory) "
+                     "separated by semi-colons."}
+                ),
     'kegg-archive': (
             ['--kegg-archive'],
             {'default': None,
