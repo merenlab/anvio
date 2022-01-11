@@ -945,6 +945,7 @@ D = {
             {'default': None,
              'metavar': 'ENTRY_ID',
              'type': str,
+             'required': True,
              'help': "The entry ID for the module. Should be one 'word' (underscores and dashes allowed), and unique to the module."}
                 ),
     'module-name': (
@@ -952,6 +953,7 @@ D = {
             {'default': None,
              'metavar': 'NAME',
              'type': str,
+             'required': True,
              'help': "The name of the module (an arbitrary string - spaces allowed). "}
                 ),
     'module-definition': (
@@ -968,6 +970,7 @@ D = {
             {'default': None,
              'metavar': 'CLASS',
              'type': str,
+             'required': True,
              'help': "The class of the module. Should be one string with three sections (class, category, subcategory) "
                      "separated by semi-colons."}
                 ),
