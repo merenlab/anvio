@@ -69,9 +69,13 @@ class AuxiliaryDataForSplitCoverages(object):
                                       these files probaby belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
-    def append(self, split_name, sample_name, coverage_list):
-        coverage_list_blob = utils.convert_numpy_array_to_binary_blob(np.array(coverage_list, dtype=self.coverage_dtype))
-        self.coverage_entries.append((split_name, sample_name, coverage_list_blob, ))
+    def append(self, split_name, sample_name, coverage_array):
+        if (coverage_array == 0).all():
+            stored_coverage = len(coverage_array)
+        else:
+            stored_coverage = utils.convert_numpy_array_to_binary_blob(coverage_array.astype(self.coverage_dtype))
+
+        self.coverage_entries.append((split_name, sample_name, stored_coverage, ))
 
 
     def store(self):
@@ -122,9 +126,14 @@ class AuxiliaryDataForSplitCoverages(object):
 
         split_coverage = {}
         for row in rows:
-            sample_name, coverage_blob = row # unpack sqlite row tuple
+            sample_name, blob = row # unpack sqlite row tuple
 
-            split_coverage[sample_name] = utils.convert_binary_blob_to_numpy_array(coverage_blob, dtype=self.coverage_dtype)
+            if isinstance(blob, int):
+                coverage_array = np.zeros(blob, dtype=self.coverage_dtype)
+            else:
+                coverage_array = utils.convert_binary_blob_to_numpy_array(blob, dtype=self.coverage_dtype)
+
+            split_coverage[sample_name] = coverage_array
 
         return split_coverage
 
