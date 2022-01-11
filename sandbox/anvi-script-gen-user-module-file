@@ -9,6 +9,7 @@ Users can pass the ENTRY, NAME, DEFINITION, and CLASS lines as parameters.
 """
 
 import sys
+import os
 
 import anvio
 import anvio.utils as utils
@@ -32,14 +33,13 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-    pass
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     enzyme_txt_path = A('enzymes_txt')
     entry = A('module_entry')
     name = A('module_name')
     class_str = A('module_class')
     def_str =  A('module_definition')
-    kegg_dir_path = A('kegg_data_dir')
+    kegg_dir_path = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
 
     # sanity check entry is just one word
     if len(entry.split(' ')) > 1:
@@ -63,6 +63,10 @@ def main(args):
     else:   # we create definition from enzymes in file
         def_str = " ".join(enzyme_dict.keys())
 
+    # if any orthology line is blank, access db
+    enzyme_has_blank_orthology = [x for x in enzyme_dict if not enzyme_dict[x]['orthology']]
+    if enzyme_has_blank_orthology:
+        modules_db = kegg.ModulesDatabase(os.path.join(kegg_dir_path, "MODULES.db"), args)
 
 
 if __name__ == '__main__':
