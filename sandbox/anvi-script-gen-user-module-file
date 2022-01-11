@@ -11,8 +11,12 @@ Users can pass the ENTRY, NAME, DEFINITION, and CLASS lines as parameters.
 import sys
 
 import anvio
+import anvio.utils as utils
+import anvio.kegg as kegg
+import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
