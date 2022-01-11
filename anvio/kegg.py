@@ -1809,9 +1809,8 @@ class KeggEstimatorArgs():
         if isinstance(mod_definition, list):
             mod_definition = " ".join(mod_definition)
 
-        # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-        mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
-        acc_list = re.split(r'\s+', mod_definition)
+        acc_list = module_definition_to_enzyme_accessions(mod_definition)
+
         # remove anything that is not an enzyme and sanity check for weird characters
         mods_to_remove = set()
         for a in acc_list:
@@ -4995,9 +4994,7 @@ class ModulesDatabase(KeggContext):
 
             # every enzyme in the module definition needs an orthology line
             mod_definition = " ".join(mod_definition)
-            # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-            mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
-            acc_list = re.split(r'\s+', mod_definition)
+            acc_list = module_definition_to_enzyme_accessions(mod_definition)
             enzymes_in_def = set(acc_list)
             enzymes_without_orth = enzymes_in_def.difference(orth_list)
             if enzymes_without_orth:
@@ -6000,3 +5997,14 @@ class KeggModuleEnrichment(KeggContext):
                                                                  progress=self.progress)
 
         return enrichment_stats
+
+
+## STATIC FUNCTIONS
+def module_definition_to_enzyme_accessions(mod_definition):
+    """Parses a module definition string into a list of enzyme accessions."""
+
+    # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
+    mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+    acc_list = re.split(r'\s+', mod_definition)
+
+    return acc_list
