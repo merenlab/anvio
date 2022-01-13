@@ -201,6 +201,7 @@ function serializeSettings() {
   state['gc-step-size'] = $('#gc_step_size').val()
   state['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
   state['gene-color-order'] = $('#gene_color_order').val()
+  state['gene-label-source'] = $('#gene_label_source').val()
   state['annotation-color-dict'] = []
 
   $('.annotation_color').each((idx, row) => {
@@ -272,6 +273,10 @@ function processState(stateName, stateData) {
 
   if (stateData.hasOwnProperty('user-gene-labels')){
     settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
+  }
+
+  if (stateData.hasOwnProperty('gene-label-source')){
+    settings['display']['gene-label-source'] = stateData['gene-label-source']
   }
 
   $('#tbody_additionalDataLayers').html('') // clear div before reprocess
