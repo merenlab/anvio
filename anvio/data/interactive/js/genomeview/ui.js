@@ -309,6 +309,13 @@ function showDeepDiveToolTip(event){
   <button type="button" id="gene-blastx-at-nr-button"class="btn btn-default btn-sm" >blastx @ nr</button>
   <button type="button" id="gene-blastx-at-refseq-button" class="btn btn-default btn-sm">blastx @ refseq_genomic</button>
 
+  <br>
+  <h2>metadata<h2/>
+  <input type='text' placeholder='custom gene label'>
+  <button type='button' class="btn btn-default btn-sm">add gene label</button>
+  <br>
+  <textarea placeholder='gene description'></textarea>
+  <button type='button' class="btn btn-default btn-sm">add gene description</button>
 
   <h2>Annotations</h2>;
   <table class="table table-striped">;
