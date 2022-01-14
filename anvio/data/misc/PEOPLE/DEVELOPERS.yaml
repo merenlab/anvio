@@ -192,9 +192,9 @@
   linkedin: alon-shaiber
   skype: alon.shaiber
   avatar: ShaiberAlon.jpg
-  bio: "Biophysicist fascinated by the complexity of microbial ecology and interested in applying and developing computational tools to explore it."
+  bio: "Computational scientist previously studying microbial ecology, currently studying structural variation in cancer genomics, and what's next? Who knows?"
   intellectual-contributions:
-    - contribution: "Spearheaded the development of <a href=https://merenlab.org/2018/07/09/anvio-snakemake-workflows/>anvi'o snakemake workflows</a>" 
+    - contribution: "Spearheaded the development of <a href=https://merenlab.org/2018/07/09/anvio-snakemake-workflows/>anvi'o snakemake workflows</a>"
   affiliations:
     - title: Genomics Data Scientist
       inst: Weill Cornell Medicine
