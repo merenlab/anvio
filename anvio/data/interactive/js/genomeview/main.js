@@ -118,6 +118,7 @@ function loadAdditionalDataLayers(){
       settings['group-layer-order'] = ['Genome', 'Ruler']
       settings['display'] = {}
       settings['display']['colors'] = {}
+      settings['display']['colors']['genes'] = {}
       settings['display']['layers'] = {}
       settings['display']['labels'] = {}
       settings['display']['labels']['set-labels'] = {}

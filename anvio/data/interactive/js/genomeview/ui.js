@@ -474,9 +474,12 @@ function showLassoMenu(selected_genes, x, y) {
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
 
+          if(!settings['display']['colors']['genes'][selected_genes[0].genomeID])
+            settings['display']['colors']['genes'][selected_genes[0].genomeID] = {};
           selected_genes.forEach(gene => {
             gene.fill = '#' + hex;
             gene.dirty = true;
+            settings['display']['colors']['genes'][selected_genes[0].genomeID][gene.geneID] = '#' + hex;
           });
           canvas.renderAll();
       }

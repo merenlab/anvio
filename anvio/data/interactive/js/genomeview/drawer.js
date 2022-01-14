@@ -387,6 +387,11 @@ GenomeDrawer.prototype.geneArrow = function(gene, geneID, y, genomeID, style){
     }
   }
 
+  // check for set colors
+  if(settings['display']['colors']['genes'][genomeID] && settings['display']['colors']['genes'][genomeID][geneID]) {
+    color = settings['display']['colors']['genes'][genomeID][geneID];
+  }
+
   let length = (gene.stop-gene.start)*scaleFactor;
   let stemLength = length-25 > 0 ? length-25 : 0;
 
