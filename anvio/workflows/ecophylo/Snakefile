@@ -129,7 +129,16 @@ rule filter_hmm_hits_by_query_coverage:
 
 
 rule anvi_get_sequences_for_hmm_hits:
-    """Extract all AA and NT sequences that were recruited by the HMM"""
+    """
+    Extract all AA and NT sequences that were recruited by the HMM
+
+    Snakemake needs to pass through this rule regardless if it's able to extract a 
+    target protein from it e.g. I still want the workflow to cat all of the target proteins
+    even if a few of the MAGs DO NOT have the target protein. I think one solution would be 
+    to touch a done file immediately so that even if the rule fails the file will be there and the
+    workflow can move on. This is sketchy though because if the rule fails for another reason
+    then we wont know what happened unless the user checks the individual logs
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits-{sample_name}-{HMM}.log"),
@@ -149,21 +158,21 @@ rule anvi_get_sequences_for_hmm_hits:
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log}")
+                                                -o {output.faa} --just-do-it 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
-                                                -o {output.fna} 2> {log}")
+                                                -o {output.fna} --just-do-it 2> {log}")
         else:
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log}")
+                                                -o {output.faa} --just-do-it 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
-                                                -o {output.fna} 2> {log}")
+                                                -o {output.fna} --just-do-it 2> {log}")
 
 
 rule simplify_names_from_hmm_hits:
@@ -281,7 +290,7 @@ rule cluster_X_percent_sim_mmseqs:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}.log")
     input: rules.cat_sequences_to_one_fasta.output.NT_all
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
