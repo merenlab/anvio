@@ -1,0 +1,95 @@
+- github: tdelmont
+  name: Tom O. Delmont
+  email: tom.o.delmont@gmail.com
+  twitter: tomodelmont
+  avatar: bio-tom.jpg
+  bio: "Microbial ecologist who seeks to understand small and large-scale ecological patterns in the microbial world."
+  intellectual-contributions:
+    - contribution: "Initiated and supervised the development of anvi'o tools to reconstruct genomes from metagenomes"
+  affiliations:
+    - title: CNRS
+      inst: Genoscope - Centre National de Séquençage
+      inst_link: https://www.genoscope.cns.fr
+      current: true
+    - title: Post-doctoral Scientist
+      inst: University of Chicago
+      inst_link: https://uchicago.edu
+    - title: Post-doctoral Scientist
+      inst: Marine Biological Laboratory
+      inst_link: https://mbl.edu
+
+- github: genomewalker
+  name: Antonio Fernandez-Guerra
+  email: antonio@metagenomics.eu
+  avatar: bio-antonio.png
+  orcid: 0000-0002-8679-490X
+  web: https://dark.metagenomics.eu
+  bio: "Bioinformatician interested in development and application of new methodologies to analyze modern and ancient (meta)genomic data."
+  affiliations:
+    - title: Assistant Professor
+      inst: Lundbeck Foundation GeoGenetics Centre, The GLOBE Institute, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/geogenetics/
+      current: true
+
+- github: jessika-fuessel
+  name: Jessika Fuessel
+  avatar: bio-jessika.jpg
+  email: ju.fuessel@gmail.com
+  twitter: FuesselJessika
+  orcid: 0000-0002-4210-2318
+  bio: "Biogeochemist and microbiologist intereted in understanding the production and fate of microbial metabolites within the context of changing environmental conditions using a multi-omics."
+  intellectual-contributions:
+    - contribution: "Initiated and supervised the development of anvi'o metabolism framework"
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Institute for Chemistry and Biology of the Marine Environment
+      inst_link: https://uol.de/en/icbm
+      current: true
+    - title: Post-doctoral Scientist
+      inst: Department of Medicine, University of Chicago
+      inst_link: https://medicine.uchicago.edu/
+
+- github: ChiaraVanni
+  name: Chiara Vanni
+  avatar: bio-chiara.jpg
+  email: cvanni@mpi-bremen.de
+  orcid: 0000-0002-1124-1147
+  web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
+  twitter: ChiaraVanni5
+  affiliations:
+    - title: Graduate Student
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://mpi-bremen.de
+      current: true
+
+- github: karkman
+  name: Antti Karkman
+  email: antti.karkman@helsinki.fi
+  avatar: bio-antti.png
+  affiliations:
+    - title: Postdoctoral researcher
+      inst: University of Helsinki
+      inst_link: https://www.helsinki.fi/en
+      current: true
+
+- github: edgraham
+  name: Elaina Graham
+  avatar: bio-elaina.jpg
+  twitter: perilousUnknown
+  affiliations:
+    - title: Graduate Student
+      inst: University of Southern California
+      inst_link: https://www.usc.edu/
+      current: true
+
+- github: jarrodscott
+  name: Jarrod J. Scott
+  avatar: bio-jarrod_s.jpg
+  email: jarrod.jude.scott@gmail.com
+  web: https://istmobiome.rbind.io/
+  bio: "Microbiologist interested in understandng how bacteria and archaea coalesce into complex communities and how they affect host biology, biogeochemical cycles, and ecosystem-level processes in marine and terrestrial systems."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Smithsonian Tropical Research Institute
+      inst_link: https://stri.si.edu/
+      current: true
