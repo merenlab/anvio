@@ -121,6 +121,7 @@ function loadAdditionalDataLayers(){
       settings['display']['layers'] = {}
       settings['display']['labels'] = {}
       settings['display']['labels']['set-labels'] = {}
+      settings['display']['labels']['gene-sets'] = {}
       settings['display']['layers']['Ruler'] = true
       settings['display']['layers']['Genome'] = true
 

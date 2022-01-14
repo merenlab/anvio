@@ -486,6 +486,38 @@ function showLassoMenu(selected_genes, x, y) {
           gene.fill = this.value;
         });
     });
+
+    if(showSetLabel) {
+      $('#create_gene_set_label').on('change', function() {
+        createGeneSetLabel(selected_genes, $(this).val());
+      });
+    }
+}
+
+function createGeneSetLabel(selected_genes, title) {
+  // assume selected_genes are from the same genomeID
+  let genomeID = selected_genes[0].genomeID;
+  let geneIDs = selected_genes.map(gene => gene.geneID);
+
+  // if no set labels yet for this genome, initialize empty array
+  if(!settings['display']['labels']['set-labels'][genomeID]) {
+    let numGenes = Object.keys(settings['genomeData']['genomes'].find(genome => genome[0] == genomeID)[1].genes.gene_calls).length;
+    settings['display']['labels']['set-labels'][genomeID] = new Array(numGenes).fill(false);
+    settings['display']['labels']['gene-sets'][genomeID] = [];
+  } else {
+    // if a gene in this selection is already part of a set, do not create a new label
+    if(geneIDs.some(
+      geneID => settings['display']['labels']['set-labels'][genomeID][geneID]
+    )) return;
+  }
+
+  // save label to settings for redrawing
+  geneIDs.forEach(id => {
+    settings['display']['labels']['set-labels'][genomeID][id] = true
+  });
+  settings['display']['labels']['gene-sets'][genomeID].push([title, geneIDs]);
+
+  drawer.draw();
 }
 
 function applyLasso() {

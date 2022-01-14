@@ -117,6 +117,13 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
   canvas.add(lineObj);
   this.addBackgroundShade((marginTop + yOffset + layerPos), start, genomeMax, layerHeight, orderIndex)
 
+  // draw set labels
+  if(showGeneLabels && settings['display']['labels']['gene-sets'][genomeID]) {
+    settings['display']['labels']['gene-sets'][genomeID].forEach(obj => {
+      drawSetLabel(obj[0], genomeID, obj[1]);
+    });
+  }
+
   for(let geneID in gene_list) {
     let gene = gene_list[geneID];
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
@@ -205,7 +212,31 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
       }
     }
   }
+
+  function drawSetLabel(title, genomeID, geneIDs) {
+    // assume gene IDs form contiguous list
+    let geneObjs = geneIDs.map(geneID => settings['genomeData']['genomes'].find(obj => obj[0]==genomeID)[1].genes.gene_calls[geneID]);
+    let x_set_label = geneObjs[0].start + (geneObjs[geneObjs.length-1].stop - geneObjs[0].start) / 2;
+    let y_set_label = y-10-geneLabelSize;
+    var set_label = new fabric.IText(title, {
+      id: 'setLabel',
+      groupID: genomeID,
+      fontSize: geneLabelSize,
+      left: xDisps[genomeID]+x_set_label*scaleFactor,
+      top: y_set_label,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      editable : true,
+      hasControls: false,
+      lockMovementX: true,
+      lockMovementY: true,
+      lockScaling: true,
+      hoverCursor: 'text',
+    });
+    canvas.add(set_label);
+  }
 }
+
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
