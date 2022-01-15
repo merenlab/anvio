@@ -68,7 +68,7 @@ expand these entries to keep track of key contributions even for
 those who are no longer around the project. Here are a few right-hand
 rules to add more:
 
-* Keep each contributons statement as concise and accruate as possible.
+* Keep each contributions statement as concise and accurate as possible.
 HTML notation is supported, but please limit the use of HTML to `a`
 tags to link relevant documentation, PRs, help pages, or articles from
 within the contrib statement.

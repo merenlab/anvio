@@ -62,12 +62,19 @@
 
 - github: ekiefl
   name: Evan Kiefl
+  web: http://ekiefl.github.io
   twitter: evankiefl
-  linkedin: evan-kiefl-825985b7
+  linkedin: ekiefl
   orcid: 0000-0002-6473-0921
   email: kiefl.evan@gmail.com
   avatar: ekiefl.jpg
-  bio: "Computational biologist interested in uncovering how within-population variation maps to functional variation in naturally-occuring microbial systems."
+  bio: "I'm a computational biologist and software developer. My research focus has been on developing analysis and visualization strategies for complex multi-'omics data, particularly at the intersection of structural biology and metagenomics. If you want to learn more about me, check out my website."
+  intellectual-contributions:
+    - contribution: "Spearheaded the development of protein structure prediction, analysis, and visualization capabilities within anvi'o."
+    - contribution: "Redesigned mission-critical code related to metagenomic workflows, decreasing compute times from >100 hours to <1 hour for terabyte-scale analyses."
+    - contribution: "Made significant contributions to the overall health and maintenance of the codebase through code reviews, performance refactoring, feature implementation, and issue diagnosis."
+    - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)."
+    - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows."
   affiliations:
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
