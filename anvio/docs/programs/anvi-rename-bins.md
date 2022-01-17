@@ -33,7 +33,7 @@ anvi-rename-bins -c %(contigs-db)s \
                  --collection-to-write SURFACE_OCEAN_MAGS \
                  --report-file rename.txt \
                  --call-MAGs \
-                 --min-completition-for-MAG 70
+                 --min-completion-for-MAG 70
 {{ codestop }}
 
 Now, the collection `SURFACE_OCEAN_MAGS` will include  `SURFACE_OCEAN_MAG_00001`, `SURFACE_OCEAN_MAG_00002`, `SURFACE_OCEAN_MAG_00003`, and `SURFACE_OCEAN_Bin_00004`. These are exactly the same bins that the collection contained before, but now the names differenciate the wheat from the chaff.
@@ -47,7 +47,7 @@ anvi-rename-bins -c %(contigs-db)s \
                  --collection-to-read MY_COLLECTION \
                  --collection-to-write SURFACE_OCEAN_MAGS \
                  --report-file rename.txt \
-                 --min-completition-for-MAG 70 \
+                 --min-completion-for-MAG 70 \
                  --max-redundancy-for-MAG 30 \
                  --call-MAGs
 {{ codestop }}
