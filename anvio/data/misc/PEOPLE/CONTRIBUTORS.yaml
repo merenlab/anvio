@@ -96,3 +96,17 @@
       inst: Smithsonian Tropical Research Institute
       inst_link: https://stri.si.edu/
       current: true
+
+- github: dspeth
+  name: Daan R. Speth
+  avatar: bio-daan.jpg
+  twitter: daanspeth
+  email: dspeth@mpi-bremen.de
+  web: https://www.micro-explorer.net
+  orcid: 0000-0002-2361-5935
+  bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
+  affiliations:
+    - title: Post-Doctoral Scientist
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://mpi-bremen.de
+      current: true
