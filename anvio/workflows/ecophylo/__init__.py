@@ -228,9 +228,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.HMM_source_dict = dict(zip(HMM_df.name, HMM_df.source))
                 self.HMM_path_dict = dict(zip(HMM_df.name, HMM_df.path))
 
-            except IndexError as e:
+            except AttributeError as e:
                 raise ConfigError("The hmm_list.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.hmm_list_path, e))
+                                  "This is the error from trying to load it: %s" % (self.hmm_list_path, e))
 
             if any("-" in s for s in self.HMM_source_dict.keys()):
                 raise ConfigError(f"Please do not use "-" in your external HMM names in: "
