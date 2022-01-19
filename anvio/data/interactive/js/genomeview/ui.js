@@ -297,7 +297,7 @@ function showDeepDiveToolTip(event){
       totalAnnotationsString += `
       <tr>
       <td>${func[0]}</td>
-      <td>${func[1][0]}</td>
+      <td>${func[1] ? func[1][0] : 'n/a'}</td>
       <td>${func?.[1]?.[1]}</td>
       </tr>
       `
@@ -384,7 +384,7 @@ function showToolTip(event){
       totalAnnotationsString += `
       <tr>
       <td>${func[0]}</td>
-      <td>${func[1][0]}</td>
+      <td>${func[1] ? func[1][0] : 'n/a'}</td>
       <td>${func?.[1]?.[1]}</td>
       </tr>
       `
