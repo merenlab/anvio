@@ -282,7 +282,7 @@ function processState(stateName, stateData) {
 
   if(stateData.hasOwnProperty('gene-set-labels')){
     settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
-
+  }
   if (stateData.hasOwnProperty('gene-label-source')){
     settings['display']['gene-label-source'] = stateData['gene-label-source']
   }
