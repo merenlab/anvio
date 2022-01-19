@@ -36,12 +36,14 @@ var genomeMax = 0;
 var yOffset = 0 // vertical space between additional data layers
 var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
-var maxGroupSize = 2 // used to calculate group height. base of 1 as each group will contain at minimum a genome layer + group ruler.
+var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
 var genomeLabelSize = 15; // font size of genome labels
 var marginTop = 20; // vertical margin at the top of the genome display
+var groupLayerPadding = 10 // padding between each layer in a given genome group
+var groupMargin = 100 // space between each genome group
 var labelSpacing = 30;  // spacing default for genomeLabel canvas
 var geneLabelSize = 40; // gene label font size
-var spacing = 50; // vertical spacing between genomes
+var spacing = 50; // multiplied by maxGroupSize to determine group height allocation
 var scaleInterval = 100; // nt scale intervals
 var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
 var showLabels = true; // show genome labels?
@@ -203,6 +205,8 @@ function serializeSettings() {
   state['gc-step-size'] = $('#gc_step_size').val()
   state['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
   state['gene-color-order'] = $('#gene_color_order').val()
+  state['gene-label-source'] = $('#gene_label_source').val()
+  state['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
   state['annotation-color-dict'] = []
 
   $('.annotation_color').each((idx, row) => {
@@ -278,6 +282,14 @@ function processState(stateName, stateData) {
 
   if(stateData.hasOwnProperty('gene-set-labels')){
     settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
+
+  if (stateData.hasOwnProperty('gene-label-source')){
+    settings['display']['gene-label-source'] = stateData['gene-label-source']
+  }
+
+  if (stateData.hasOwnProperty('link-gene-label-color-source')){
+    settings['display']['link-gene-label-color-source'] = stateData['link-gene-label-color-source']
+    $('#link_gene_label_color_source').prop('checked', settings['display']['link-gene-label-color-source'])
   }
 
   $('#tbody_additionalDataLayers').html('') // clear div before reprocess

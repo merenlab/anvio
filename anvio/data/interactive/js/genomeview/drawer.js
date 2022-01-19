@@ -47,7 +47,7 @@ GenomeDrawer.prototype.draw = function(){
 GenomeDrawer.prototype.addLayers = function(orderIndex){
   let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
 
-  yOffset = orderIndex * spacing;
+  yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
   let layerPos = 0
   let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
   let genome = this.settings['genomeData']['genomes'][orderIndex][1];
@@ -60,21 +60,48 @@ GenomeDrawer.prototype.addLayers = function(orderIndex){
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if(layer == 'Genome' && $('#Genome-show').is(':checked')){
       this.addGenome(orderIndex, dataLayerHeight, layerPos)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')){
       this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')){
       this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
-      layerPos += dataLayerHeight
+      layerPos += dataLayerHeight + groupLayerPadding
     }
     if(layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
       this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
-      layerPos += rulerHeight
+      layerPos += rulerHeight + groupLayerPadding
     }
   })
+
+  this.addGroupBorder(yOffset, orderIndex)
+}
+
+/*
+ *  add a stylish and visually significant border around each group
+ */
+GenomeDrawer.prototype.addGroupBorder = function(yOffset, orderIndex){
+
+  let top = yOffset + marginTop - 20  + (orderIndex * groupMargin)
+  let left = 0
+  let width = genomeMax
+  let height = spacing + 60
+
+  let rect = new fabric.Rect({
+    top : top,
+    left: left,
+    width: width,
+    height: height,
+    stroke: 'pink',
+    strokeWidth: 2,
+    fill: "pink",
+    opacity: .2,
+    selectable: false,
+  })
+
+  canvas.sendToBack(rect)
 }
 
 /*
@@ -93,7 +120,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
   let genome = this.settings['genomeData']['genomes'][orderIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
-  let y = marginTop + yOffset + layerPos + (layerHeight / 2) // render arrows in the center of genome layer's allotted vertical space
+  let y = marginTop + yOffset + layerPos + (layerHeight / 2)  + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
   if(showLabels) {
     canvas.add(new fabric.Text(genomeID, {top: y-5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold'}));
@@ -115,7 +142,7 @@ GenomeDrawer.prototype.addGenome = function(orderIndex, layerHeight, layerPos){
         hasBorders: false,
         lockScaling: true});
   canvas.add(lineObj);
-  this.addBackgroundShade((marginTop + yOffset + layerPos), start, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade((marginTop + yOffset + layerPos  + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
 
   // draw set labels
   if(showGeneLabels && settings['display']['labels']['gene-sets'][genomeID]) {
@@ -254,9 +281,13 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
     }
 
     let maxDataLayerValue = 0
-    let startingTop = marginTop + yOffset + layerPos
+    let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
     let startingLeft = xDisps[genomeID]
-    let pathDirective = [`M 0 0`]
+
+    let globalPathDirective = [`L ${startingLeft} ${layerHeight}`]
+    let layer_end_final_coordinates
+
+    let pathDirective = [`M ${startingLeft} 0 L ${startingLeft} ${layerHeight}`]
 
     for(let i = 0; i < contigArr.length; i++){
       contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
@@ -264,30 +295,51 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
 
     let nGroups = 20
     let j = 0
+    let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
     let [l,r] = getRenderNTRange(genomeID);
     for(let i = 0; i < nGroups; i++) {
       for(; j < i*genomeMax/nGroups; j+=ptInterval){
         if(j < l) continue;
         if(j > r) break;
+
         let left = j * scaleFactor + startingLeft
         let top = [contigArr[j] / maxDataLayerValue] * layerHeight
         let segment = `L ${left} ${top}`
+        final_l = left // final_l is always last-seen x coordinate
         pathDirective.push(segment)
+        globalPathDirective.push(segment)
       }
-      let graphObj = new fabric.Path(pathDirective.join(' '))
-      graphObj.set({
-        top : startingTop,
-        stroke : stroke,
-        fill : '',
-        selectable: false,
-        objectCaching: false,
-        id : `${layer} graph`,
-        groupID : genomeID,
-        genome : genomeID
-      })
-      canvas.bringToFront(graphObj)
+      // TODO resolve performance-related aspects of the chunking done below
+
+      // let graphObj = new fabric.Path(pathDirective.join(' '))
+      // graphObj.set({
+      //   top : startingTop,
+      //   stroke : stroke,
+      //   fill : '',
+      //   selectable: false,
+      //   objectCaching: false,
+      //   id : `${layer} graph`,
+      //   groupID : genomeID,
+      //   genome : genomeID
+      // })
+      // canvas.bringToFront(graphObj)
       pathDirective = []
     }
+    layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight}`
+    globalPathDirective.push(layer_end_final_coordinates)
+
+    let shadedObj = new fabric.Path(globalPathDirective.join(' '))
+    shadedObj.set({
+      top : startingTop,
+      stroke : stroke,
+      fill : stroke,
+      selectable: false,
+      objectCaching: false,
+      id : `${layer}-graph-shaded`,
+      groupID : genomeID,
+      genome : genomeID
+    })
+    canvas.bringToFront(shadedObj)
     this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
 }
 
@@ -295,7 +347,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function(layer, layerPos, genom
  *  Generate individual genome group rulers
  */
 GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layerHeight, orderIndex){
-  let startingTop = marginTop + yOffset + layerPos
+  let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
   let startingLeft = xDisps[genomeID]
   // let layerHeight = (spacing / maxGroupSize)
 
@@ -323,13 +375,14 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function(genomeID, layerPos, layer
     }
       ruler.set({
         left: startingLeft,
-        top: startingTop,
+        top: startingTop + (layerHeight/2),
         lockMovementY: true,
         hasControls: false,
         hasBorders: false,
         lockScaling: true,
         objectCaching: false,
-        groupID: genomeID
+        groupID: genomeID,
+        class: 'ruler'
       });
       ruler.addWithUpdate();
       canvas.add(ruler);
@@ -344,16 +397,29 @@ GenomeDrawer.prototype.addBackgroundShade = function(top, left, width, height, o
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
+  let border = new fabric.Rect({
+    groupID: this.settings['genomeData']['genomes'][orderIndex][0],
+    top: top,
+    left: left,
+    width: width,
+    height: height,
+    stroke: 'black',
+    strokeWidth: 2,
+    fill: "rgba(0,0,0,0.0)",
+    selectable: false,
+    // opacity : .5
+  });
   let background = new fabric.Rect({
     groupID: this.settings['genomeData']['genomes'][orderIndex][0],
     top: top,
     left: left,
     width: width,
     height: height,
-    fill: backgroundShade,
+    fill: "#dbdbdb",
     selectable: false,
     opacity : .5
   });
+  canvas.sendToBack(border)
   canvas.sendToBack(background)
 }
 
@@ -509,7 +575,7 @@ GenomeDrawer.prototype.glowGenes = function(geneParams){
   for(arrow of arrows) {
     arrow.set('shadow', shadow);
     arrow.animate('shadow.blur', 0, {
-      duration: 3000,
+      duration: 5000,
       onChange: canvas.renderAll.bind(canvas),
       onComplete: function(){ arrow.shadow = null; },
       easing: fabric.util.ease['easeInQuad']
@@ -646,4 +712,50 @@ GenomeDrawer.prototype.adjustScaleInterval = function(){
   let newInterval = Math.floor(val/(10**roundToDigits)) * (10**roundToDigits);
   scaleInterval = newInterval;
   $('#genome_scale_interval').val(scaleInterval);
+}
+
+GenomeDrawer.prototype.queryFunctions = function(){
+  let query = $('#function_search_query').val()
+  let category = $('#function_search_category').val()
+  let glowPayload = []
+  let foundInGenomes = {}
+
+  if(!query || !category){
+    alert('please provide values for function category and/or query')
+    return
+  }
+
+  this.settings['genomeData']['genomes'].map(genome => {
+    for (const [key, value] of Object.entries(genome[1]['genes']['functions'])){
+      if(category == 'COG_FUNCTION' || category == 'COG_CATEGORY' || category == 'EGGNOG_BACT'){ // functions where queried value lives array index 1
+        if (value[category]?.[1].includes(query)){
+          let glowObject = {
+            genomeID : genome[0],
+            geneID : key
+          }
+          glowPayload.push(glowObject)
+          if(!(genome[0] in foundInGenomes)){
+            foundInGenomes[genome[0]] = true
+          }
+        }
+      }
+    }
+  })
+  if(glowPayload.length < 1){
+    alert(`No hits were found matching ${query} in ${category}`)
+    return
+  }
+  let lowestStart, highestEnd = null
+  glowPayload.map(gene => {
+    let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+    let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+    let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+
+    if(start < lowestStart || lowestStart == null) lowestStart = start
+    if(end > highestEnd || highestEnd == null) highestEnd = end
+  })
+
+  $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
+  zoomOut('partial', lowestStart, highestEnd)
+  this.glowGenes(glowPayload)
 }

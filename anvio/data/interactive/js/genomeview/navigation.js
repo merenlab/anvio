@@ -42,18 +42,27 @@
     brush.event(d3.select(".brush").transition());
   }
 
-  function zoomOut() {
-    let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
-
-    let newStart = start - genomeMax/50, newEnd = end + genomeMax/50;
-    if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
-      scaleFactor = 0.01;
-      if(dynamicScaleInterval) adjustScaleInterval();
-    drawer.draw()
-      return;
+  function zoomOut(type, start, end) {
+    let newStart, newEnd
+    if(type && type == 'fully'){
+      newStart = 0
+      newEnd = genomeMax
+    } else if(type && type == 'partial'){
+      newStart = start
+      newEnd = end
+    }else {
+      let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
+      newStart = start - genomeMax/50;
+      newEnd = end + genomeMax/50;
+      if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
+        scaleFactor = 0.01;
+        if(dynamicScaleInterval) adjustScaleInterval();
+      drawer.draw()
+        return;
+      }
+      if(newStart < 0) newStart = 0;
+      if(newEnd > genomeMax) newEnd = genomeMax;
     }
-    if(newStart < 0) newStart = 0;
-    if(newEnd > genomeMax) newEnd = genomeMax;
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition());

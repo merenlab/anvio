@@ -106,6 +106,33 @@
                             </tr>
                           </tbody>
                         </table>
+                        <span class="settings-header">Search!</span>
+                        <table style="margin-bottom: 20px;">
+                          <tbody>
+                            <tr>
+                              <td>Category: </td>
+                              <td>
+                                <select class="type_multiple" id='function_search_category' style="width: 100px;" class="type">
+                                  <option value="">Function Category</option>
+                                  <option value='COG_FUNCTION'>COG Function</option>
+                                  <option value='COG_CATEGORY'>COG Category</option>
+                                  <option value='kegg'>Kegg</option>
+                                  <option value='EGGNOG_BACT'>Eggnog</option>
+                                </select>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Function Name:</td>
+                              <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="IE 'borp'"></td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <button onclick='drawer.queryFunctions()'>Let's Go!</button>
+                              </td>
+                              <td><p id='function-query-results-statement'></p></td>
+                            </tr>
+                          </tbody>
+                        </table>
 
                         <span class="settings-header">Genomes</span>
 
