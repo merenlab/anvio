@@ -377,6 +377,18 @@ function showDeepDiveToolTip(event){
 }
 
 function showToolTip(event){
+  let totalAnnotationsString = ''
+  if(event.target.functions){
+    Object.entries(event.target.functions).map(func => {
+      totalAnnotationsString += `
+      <tr>
+      <td>${func[0]}</td>
+      <td>accession?</td>
+      <td>${func?.[1]?.[1]}</td>
+      </tr>
+      `
+    })
+  }
   $('#tooltip-body').show().append(`
     <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
     <h2>Gene Call</h2>
@@ -393,27 +405,16 @@ function showToolTip(event){
     </td><td> ${event.target.gene?.complete_gene_call}
     </td><td> ${event.target.gene?.percentage_in_split?.toFixed(2) + '%'}
     </td></tr></tbody></table>;
-
     <h2>Annotations</h2>;
     <table class="table table-striped">;
     <thead><th>Source</th>;
     <th>Accession</th>;
     <th>Annotation</th></thead>;
     <tbody>;
-    <tr>
-    <td>COG-Category</td>
-    <td>idk</td>
-    <td>${event.target.functions?.COG_CATEGORY?.[1]}<td/>
-    </tr>
-    <tr>
-    <td>COG-Function</td>
-    <td>idk</td>
-    <td>${event.target.functions?.COG_FUNCTION?.[1]}<td/>
-    </tr>
-    <td>EGGNOG</td>
-    <td>idk</td>
-    <td>${event.target.functions?.EGGNOG_BACT?.[1]}<td/>
-  `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
+    ${totalAnnotationsString}
+    </tbody>
+
+    `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
 
 function show_sequence_modal(title, content) {
