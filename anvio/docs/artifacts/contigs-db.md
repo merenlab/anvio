@@ -38,3 +38,40 @@ If you wish to run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metab
 ## Variants
 
 Contigs databases, like %(profile-db)ss, are allowed have different variants, though the only currently implemented variant, the %(trnaseq-contigs-db)s, is for tRNA transcripts from tRNA-seq experiments. The default variant stored for "standard" contigs databases is `unknown`. Variants should indicate that substantially different information is stored in the database. For instance, open reading frames are applicable to protein-coding genes but not tRNA transcripts, so ORF data is not recorded for the `trnaseq` variant. The $(trnaseq-workflow)s generates %(trnaseq-contigs-db)ss using a very different approach to %(anvi-gen-contigs-database)s.
+
+## For programmers
+
+Tips and use cases for programmers. Send us your questions so we can extend this section with useful examples.
+
+### Get number of approximate number of genomes
+
+You can get the number of genomes once %(anvi-run-hmms)s is run on an contigs database. Here are some examples:
+
+``` python
+from anvio.hmmops import NumGenomesEstimator
+
+# the raw data, where each key is one of the HMM collections
+# of type `singlecopy` run on the contigs-db
+NumGenomesEstimator('CONTIGS.db').estimates_dict
+>>> {'Bacteria_71': {'num_genomes': 9, 'domain': 'bacteria'},
+     'Archaea_76': {'num_genomes': 1, 'domain': 'archaea'},
+     'Protista_83': {'num_genomes': 1, 'domain': 'eukarya'}}
+
+# slightly fancier output with a single integer for
+# estimated number of genomes summarized, along with
+# domains used
+num_genomes, domains_included = NumGenomesEstimator('CONTIGS.db').num_genomes()
+print(num_genomes)
+>>> 11
+
+print(domains_included)
+>>> ['bacteria', 'archaea', 'eukarya']
+
+# limiting the domains
+num_genomes, domains_included = NumGenomesEstimator('CONTIGS.db').num_genomes(for_domains=['archaea', 'eukarya'])
+print(num_genomes)
+>>> 2
+
+print(domains_included)
+>>> ['archaea', 'eukarya']
+```
