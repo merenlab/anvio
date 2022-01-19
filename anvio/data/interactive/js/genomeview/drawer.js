@@ -727,16 +727,14 @@ GenomeDrawer.prototype.queryFunctions = function(){
 
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])){
-      if(category == 'COG_FUNCTION' || category == 'COG_CATEGORY' || category == 'EGGNOG_BACT'){ // functions where queried value lives array index 1
-        if (value[category]?.[1].includes(query)){
-          let glowObject = {
-            genomeID : genome[0],
-            geneID : key
-          }
-          glowPayload.push(glowObject)
-          if(!(genome[0] in foundInGenomes)){
-            foundInGenomes[genome[0]] = true
-          }
+      if (value[category]?.[1].includes(query)){
+        let glowObject = {
+          genomeID : genome[0],
+          geneID : key
+        }
+        glowPayload.push(glowObject)
+        if(!(genome[0] in foundInGenomes)){
+          foundInGenomes[genome[0]] = true
         }
       }
     }
