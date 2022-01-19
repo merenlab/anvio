@@ -885,3 +885,21 @@ function resetFunctionColors(fn_colors=null) {
 
      drawer.draw();
  }
+
+function buildGeneLabelsSelect(){
+  let sourcesObj = {}
+  settings['genomeData']['genomes'].map(genome => {
+    Object.values(genome[1]['genes']['functions']).map(func => {
+      Object.keys(func).forEach(source => {
+        if(sourcesObj[source]){
+          return
+        } else {
+          sourcesObj[source] = true
+        }
+      })
+    })
+  })
+  Object.keys(sourcesObj).forEach(source => {
+    $("#gene_label_source").append(new Option(source, source));
+  })
+}
