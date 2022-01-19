@@ -111,9 +111,9 @@ function setEventListeners(){
     $('#brush_end').val(newEnd);
   });
   canvas.on('mouse:over', function(event) {
-    if(event.target.class == 'ruler'){
-      console.log(event.target)
-    }
+    // if(event.target.class == 'ruler'){
+    //   console.log(event.target)
+    // }
   })
 
   $('#alignClusterInput').on('keydown', function (e) {
@@ -331,16 +331,16 @@ function showDeepDiveToolTip(event){
   <tr>
   <td>COG-Category</td>
   <td>idk</td>
-  <td>${event.target.functions?.COG_CATEGORY[1]}<td/>
+  <td>${event.target?.functions?.COG_CATEGORY?.[1]}<td/>
   </tr>
   <tr>
   <td>COG-Function</td>
   <td>idk</td>
-  <td>${event.target.functions?.COG_FUNCTION[1]}<td/>
+  <td>${event.target?.functions?.COG_FUNCTION?.[1]}<td/>
   </tr>
   <td>EGGNOG</td>
   <td>idk</td>
-  <>${event.target.functions?.EGGNOG_BACT[1]}<td/>
+  <>${event.target?.functions?.EGGNOG_BACT?.[1]}<td/>
   </tr></tbody></table>;
   <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
@@ -403,16 +403,16 @@ function showToolTip(event){
     <tr>
     <td>COG-Category</td>
     <td>idk</td>
-    <td>${event.target.functions?.COG_CATEGORY[1]}<td/>
+    <td>${event.target.functions?.COG_CATEGORY?.[1]}<td/>
     </tr>
     <tr>
     <td>COG-Function</td>
     <td>idk</td>
-    <td>${event.target.functions?.COG_FUNCTION[1]}<td/>
+    <td>${event.target.functions?.COG_FUNCTION?.[1]}<td/>
     </tr>
     <td>EGGNOG</td>
     <td>idk</td>
-    <td>${event.target.functions?.EGGNOG_BACT[1]}<td/>
+    <td>${event.target.functions?.EGGNOG_BACT?.[1]}<td/>
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
 
