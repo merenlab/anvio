@@ -291,6 +291,19 @@ function showDeepDiveToolTip(event){
   $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances
   $('#deepdive-tooltip-body').html('').hide()
 
+  let totalAnnotationsString = ''
+  if(event.target.functions){
+    Object.entries(event.target.functions).map(func => {
+      totalAnnotationsString += `
+      <tr>
+      <td>${func[0]}</td>
+      <td>accession?</td>
+      <td>${func?.[1]?.[1]}</td>
+      </tr>
+      `
+    })
+  }
+
   $('#deepdive-tooltip-body').show().append(`
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
   <h2>Gene Call</h2>
@@ -328,20 +341,8 @@ function showDeepDiveToolTip(event){
   <th>Accession</th>;
   <th>Annotation</th></thead>;
   <tbody>;
-  <tr>
-  <td>COG-Category</td>
-  <td>idk</td>
-  <td>${event.target?.functions?.COG_CATEGORY?.[1]}<td/>
-  </tr>
-  <tr>
-  <td>COG-Function</td>
-  <td>idk</td>
-  <td>${event.target?.functions?.COG_FUNCTION?.[1]}<td/>
-  </tr>
-  <td>EGGNOG</td>
-  <td>idk</td>
-  <>${event.target?.functions?.EGGNOG_BACT?.[1]}<td/>
-  </tr></tbody></table>;
+  ${totalAnnotationsString}
+  </tbody></table>;
   <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
   `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 
@@ -412,7 +413,7 @@ function showToolTip(event){
     <th>Annotation</th></thead>;
     <tbody>;
     ${totalAnnotationsString}
-    </tbody>
+    </tbody></table>
 
     `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
 }
@@ -901,5 +902,7 @@ function buildGeneLabelsSelect(){
   })
   Object.keys(sourcesObj).forEach(source => {
     $("#gene_label_source").append(new Option(source, source));
+    // we can also build the dropdown UI element for source-selection in functional querying
+    $("#function_search_category").append(new Option(source, source))
   })
 }
