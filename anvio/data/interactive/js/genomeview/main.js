@@ -337,6 +337,7 @@ function loadAll(loadType) {
     generateColorTable(fn_colors = null, fn_type = color_db);
   }
 
+  buildGeneLabelsSelect()
   brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
   brush(d3.select(".brush"));
   updateRenderWindow();
