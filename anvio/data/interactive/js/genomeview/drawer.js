@@ -196,7 +196,6 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     function setGeneLabelFromSource(geneID, genomeID) {
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)
       let source = $('#gene_label_source').val()
-      // console.log(genomeOfInterest[0][1]['genes']['functions'][geneID])
 
       if (source == 'default') {
         return `${geneID}`
@@ -208,6 +207,10 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
           return 'None'
         }
       } else {
+        // operating under the assumption that
+        // A) the relevant source value lives at index 1 of the source array
+        // B) the selected value from the #gene_label_source dropdown === the source object itself (and it should, since we build the dropdown programmatically!)
+        // this below logic should retrieve the correct annotation value, regardless of source
         if (genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty(source) && genomeOfInterest[0][1]['genes']['functions'][geneID][source]) {
           return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID][source][1])
         } else {
