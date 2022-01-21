@@ -357,35 +357,35 @@ class Inversions:
                 # everything we know about this inversion, and the stretch
                 # it belongs:
                 if len(true_inversions):
-                    for true_inversion in true_inversions:
-                        self.stretches_considered[f"{entry_name}_{sequence_name}"]['true_inversions_found'] = True
+                    for inv in true_inversions:
+                        self.stretches_considered[f"{entry_name}_{sequence_name}"]['invs_found'] = True
 
                         # FIXME: this needs to be elsewhere (where we consider true inversion, add
                         #        these primers into it, and the ratio of primer matches from the raw
                         #        r1/r2 files):
-                        first_genomic_region = contig_sequence[true_inversion.first_start + start - 12:true_inversion.first_start + start]
-                        second_genomic_region = contig_sequence[true_inversion.second_end + start:true_inversion.second_end + start + 13]
-                        first_with_mismatches = ''.join(['.' if true_inversion.midline[i] == 'x' else true_inversion.first_sequence[i] for i in range(0, true_inversion.length)])
-                        second_with_mismatches = ''.join(['.' if true_inversion.midline[i] == 'x' else true_inversion.second_sequence[i] for i in range(0, true_inversion.length)])
+                        first_genomic_region = contig_sequence[inv.first_start + start - 12:inv.first_start + start]
+                        second_genomic_region = contig_sequence[inv.second_end + start:inv.second_end + start + 13]
+                        first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
+                        second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
                         first_oligo_primer = first_genomic_region + first_with_mismatches
                         second_oligo_primer = second_with_mismatches + second_genomic_region
 
-                        d = OrderedDict({'entry_id': true_inversion.sequence_name,
+                        d = OrderedDict({'entry_id': inv.sequence_name,
                                          'sample_name': entry_name,
                                          'contig_name': contig_name,
-                                         'first_seq': true_inversion.first_sequence,
-                                         'midline': true_inversion.midline,
-                                         'second_seq': utils.rev_comp(true_inversion.second_sequence),
-                                         'first_start': true_inversion.first_start + start,
-                                         'first_end': true_inversion.first_end + start,
+                                         'first_seq': inv.first_sequence,
+                                         'midline': inv.midline,
+                                         'second_seq': utils.rev_comp(inv.second_sequence),
+                                         'first_start': inv.first_start + start,
+                                         'first_end': inv.first_end + start,
                                          'first_oligo_primer': first_oligo_primer,
-                                         'second_start': true_inversion.second_start + start,
-                                         'second_end': true_inversion.second_end + start,
+                                         'second_start': inv.second_start + start,
+                                         'second_end': inv.second_end + start,
                                          'second_oligo_primer': second_oligo_primer,
-                                         'num_mismatches': true_inversion.num_mismatches,
-                                         'num_gaps': true_inversion.num_gaps,
-                                         'length': true_inversion.length,
-                                         'distance': true_inversion.distance})
+                                         'num_mismatches': inv.num_mismatches,
+                                         'num_gaps': inv.num_gaps,
+                                         'length': inv.length,
+                                         'distance': inv.distance})
 
                         self.inversions[entry_name].append(d)
 
