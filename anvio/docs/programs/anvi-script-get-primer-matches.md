@@ -17,10 +17,11 @@ The %(samples-txt)s file is to list all the samples one is interested in, and th
 
 This will output all of the matching sequences into three %(fasta)s files in the directory `OUTPUT`. These %(fasta)s files differ in their format and will include those that describe,
 
-* **Raw sequences**: sequences from the FASTQ files that matched to a primer where each sequence reported as is with no processing.
+* **Raw sequences**: Sequences from the FASTQ files that matched to a primer where each sequence reported as is with no processing.
+* **Remainders**: Only downstream of the sequences after the primer match.
 * **Trimmed sequences**: Raw sequences where the upstream of the primer sequence trimmed, as a result all matching sequences will start at the same position, and
 * **Gapped sequences**: Trimmed sequences padded with gap characters to eliminate length variation artificially.
 
 The last two formats provide downstream possibilities to generate %(oligotypes)s and cluster short reads from an hypervariable region to estimate their diversity and oligotype proportion.
 
-There will only be a single FASTA file in the output directory for raw sequences if the user asked only the primer matches to be reported with the flag `--only-report-primer-matches`.
+There will only be a single FASTA file in the output directory for raw sequences if the user asked only the primer matches to be reported with the flag `--only-report-primer-matches` or `--only-report-remainders`.
