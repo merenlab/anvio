@@ -43,6 +43,11 @@ def main(args):
     min_remainder_length = A('min_remainder_length') or 60
     stop_after = A('stop_after')
     only_report_primer_matches = A('only_report_primer_matches')
+    only_report_remainders = A('only_report_remainders')
+
+    if only_report_primer_matches and only_report_remainders:
+        raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
+                          "at the same time. Please take a look at the help menu.")
 
     if only_report_primer_matches:
         min_remainder_length = 0
@@ -58,8 +63,10 @@ def main(args):
     run.info('Min remainder length', min_remainder_length)
     if stop_after:
         run.info('Only report primer matches', only_report_primer_matches)
+        run.info('Only report remainders', only_report_remainders)
         run.info('Stop after', stop_after, mc='red', nl_after=1)
     else:
+        run.info('Only report remainders', only_report_remainders)
         run.info('Only report primer matches', only_report_primer_matches, nl_after=1)
 
     filesnpaths.gen_output_directory(output_directory_path)
@@ -170,6 +177,29 @@ def main(args):
         run.info_single('No hits were found :/', mc='red', nl_before=1)
         sys.exit()
 
+    if only_report_remainders:
+        progress.new("Generating the raw hits files")
+        progress.update('...')
+        for sample_name in samples_dict:
+            for primer_sequence in primers_dict:
+                matching_sequence_hits = primers_dict[primer_sequence]['matching_sequences'][sample_name]
+                primer_length = primers_dict[primer_sequence]['primer_length']
+
+                output_file_path = os.path.join(output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_sequence))
+                with open(output_file_path, 'w') as output:
+                    counter = 1
+                    for start, end, sequence in matching_sequence_hits:
+                        if min_remainder_length:
+                            output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence[end:end + min_remainder_length]}\n')
+                        else:
+                            output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence[end:]}\n')
+                        counter += 1
+        progress.end()
+
+    if only_report_remainders:
+        run.info_single("Someone asked anvi'o to only report remainders. So we are done here.")
+        sys.exit()
+
     progress.new("Generating the raw hits files")
     progress.update('...')
     for sample_name in samples_dict:
@@ -185,7 +215,7 @@ def main(args):
     progress.end()
 
     if only_report_primer_matches:
-        run.info_single(f"Someone asked anvi'o to only report primer matches. And they are ready in your output directory.")
+        run.info_single("Someone asked anvi'o to only report primer matches. And they are ready in your output directory.")
         sys.exit()
 
     progress.new("Generating the fancy hits files")
@@ -241,11 +271,18 @@ if __name__ == '__main__':
                              "sequence that matches to the primer, setting this flag will remove all Xs and Ys. Setting "
                              "this flag will automatically set the `--min-remainder-length` to 0. If you have a problem with "
                              "that, let us know.")
-    groupB.add_argument('--stop-after', metavar='INT', type=int, default=0, help="Stop after X number of hits because "
+    groupB.add_argument('-R', '--only-report-remainders', default=False, action="store_true",
+                        help="For a given sequence with a primer match, report only the part that follows the primer. "
+                             "In other words, if your short read is XXXMMMMMMYYYYYYYYYYYYYY, where Ms indicate part of your "
+                             "sequence that matches to the primer, setting this flag will only report Ys. This flag "
+                             "is obviously incompatible with `--only-report-primer-matches` flag.")
+
+    groupC = parser.add_argument_group('TESTING?', "Be our guest.")
+    groupC.add_argument('--stop-after', metavar='INT', type=int, default=0, help="Stop after X number of hits because "
                                "who needs data.")
 
-    groupC = parser.add_argument_group('OUTPUT', "Tell anvi'o where to put your thingies")
-    groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupD = parser.add_argument_group('OUTPUT', "Tell anvi'o where to put your thingies")
+    groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
     args = parser.get_args(parser)
 
