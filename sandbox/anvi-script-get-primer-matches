@@ -178,12 +178,11 @@ def main(args):
         sys.exit()
 
     if only_report_remainders:
-        progress.new("Generating the raw hits files")
+        progress.new("Generating the remainders file")
         progress.update('...')
         for sample_name in samples_dict:
             for primer_sequence in primers_dict:
                 matching_sequence_hits = primers_dict[primer_sequence]['matching_sequences'][sample_name]
-                primer_length = primers_dict[primer_sequence]['primer_length']
 
                 output_file_path = os.path.join(output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_sequence))
                 with open(output_file_path, 'w') as output:
@@ -196,8 +195,7 @@ def main(args):
                         counter += 1
         progress.end()
 
-    if only_report_remainders:
-        run.info_single("Someone asked anvi'o to only report remainders. So we are done here.")
+        run.info_single("Someone asked anvi'o to only report remainders. YOU HAVE THEM.")
         sys.exit()
 
     progress.new("Generating the raw hits files")
