@@ -368,8 +368,10 @@ class Inversions:
                                          'second_seq': utils.rev_comp(true_inversion.second_sequence),
                                          'first_start': true_inversion.first_start + start,
                                          'first_end': true_inversion.first_end + start,
+                                         'first_oligo_primer': contig_sequence[true_inversion.first_start + start - 12:true_inversion.first_end + start],
                                          'second_start': true_inversion.second_start + start,
                                          'second_end': true_inversion.second_end + start,
+                                         'second_oligo_primer': contig_sequence[true_inversion.second_start + start:true_inversion.second_end + start + 13],
                                          'num_mismatches': true_inversion.num_mismatches,
                                          'num_gaps': true_inversion.num_gaps,
                                          'length': true_inversion.length,
@@ -722,7 +724,7 @@ class Inversions:
 
         # report consensus inversions
         output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
-        headers = ['contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names']
+        headers = ['contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names', 'first_oligo_primer', 'second_oligo_primer']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
             for v in self.consensus_inversions:
