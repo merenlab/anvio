@@ -3286,10 +3286,17 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     filesnpaths.is_file_tab_delimited(file_path)
 
-    expected_columns = ['sample', 'r1', 'r2']
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if columns_found[0] == 'sample':
+        expected_columns = ['sample', 'r1', 'r2']
+    elif columns_found[0] == 'name':
+        expected_columns = ['name', 'r1', 'r2']
+    else:
+        raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
+
     possible_columns = expected_columns + ['group']
 
-    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
     extra_columns = set(columns_found).difference(set(possible_columns))
 
     if not set(expected_columns).issubset(set(columns_found)):
