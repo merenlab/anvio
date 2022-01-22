@@ -3304,9 +3304,10 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     if len(extra_columns):
         run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
-                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
-                    f"business, but we wanted you to be aware of the fact that your input file does not "
-                    f"fully match anvi'o expectations from this file type.")
+                    f"{', '.join(extra_columns)} compared to what is expected of a `samples-txt` file, "
+                    f"which is absolutely fine. You're reading this message becasue anvi'o wanted to "
+                    f"make sure you know that it knows that it is the case. Classic anvi'o virtue "
+                    f"signaling.", lc="yellow")
 
     samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
 
