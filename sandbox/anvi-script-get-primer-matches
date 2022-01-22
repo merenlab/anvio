@@ -169,7 +169,10 @@ def main(args):
             seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in matching_sequence_hits]
 
             if len(seq_lengths_after_match):
-                run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / SAM: {min(seq_lengths_after_match)} / LAM: {max(seq_lengths_after_match)} / ALAM: {sum(seq_lengths_after_match) / len(primers_dict[primer_sequence]['matching_sequences']):.2f}")
+                run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / "
+                                                   f"SAM: {min(seq_lengths_after_match)} / "
+                                                   f"LAM: {max(seq_lengths_after_match)} / "
+                                                   f"ALAM: {sum(seq_lengths_after_match) / len(seq_lengths_after_match):.2f}")
             else:
                 run.info(f"    {primer_sequence}", f"{pp(samples_dict[sample_name]['hits'][primer_sequence])} hits / SAM: -- / LAM: -- / ALAM: --")
 
