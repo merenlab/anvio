@@ -86,6 +86,14 @@ class Inversions:
         self.process_only_inverted_reads = A('process_only_inverted_reads')
         self.check_all_palindromes = A('check_all_palindromes')
 
+        # the purpose of this variable is to determine how much of the palindrome for a
+        # given inversion should be used to build a primer to search for short reads. the
+        # longer it is, the more specific the primers will be when surveying ALL FASTQ READS
+        # in a (meta)genome sequencing dataset. but if it is too long, then there will
+        # not be enough reads to keep depending on the minimum short read length of the
+        # sequencing.
+        self.oligo_primer_base_length = A('oligo_primer_base_length') or 12
+
         # be talkative or not
         self.verbose = A('verbose')
 
@@ -352,6 +360,19 @@ class Inversions:
                                              f"had any of the constructs in {PL('inversion candidate', len(inversion_candidates))}.",
                                              mc="red", nl_before=1)
 
+                # if there are no true inversions, go back.
+                if not len(true_inversions):
+                    continue
+
+                # here we have, for a given `contig_name`, `start` and `stop` positions of a stretch in it,
+                # and one or more ture inversions. the next step will require us to count them in the original
+                # FASTQ files to see their ratio across samples, but for that we need primers to get oligos
+                ################################################################################
+                self.progress.update(f"{contig_name}[{start}:{stop}]: oligo determination")
+                ################################################################################
+                self.update_inversions_with_primer_sequences(true_inversions, contig_sequence, start)
+
+
                 # if we are here, it means we took care of one region.
                 # it is time to update our global data dictionaries with
                 # everything we know about this inversion, and the stretch
@@ -359,16 +380,6 @@ class Inversions:
                 if len(true_inversions):
                     for inv in true_inversions:
                         self.stretches_considered[f"{entry_name}_{sequence_name}"]['invs_found'] = True
-
-                        # FIXME: this needs to be elsewhere (where we consider true inversion, add
-                        #        these primers into it, and the ratio of primer matches from the raw
-                        #        r1/r2 files):
-                        first_genomic_region = contig_sequence[inv.first_start + start - 12:inv.first_start + start]
-                        second_genomic_region = contig_sequence[inv.second_end + start:inv.second_end + start + 13]
-                        first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
-                        second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
-                        first_oligo_primer = first_genomic_region + first_with_mismatches
-                        second_oligo_primer = second_with_mismatches + second_genomic_region
 
                         d = OrderedDict({'entry_id': inv.sequence_name,
                                          'sample_name': entry_name,
@@ -378,10 +389,10 @@ class Inversions:
                                          'second_seq': utils.rev_comp(inv.second_sequence),
                                          'first_start': inv.first_start + start,
                                          'first_end': inv.first_end + start,
-                                         'first_oligo_primer': first_oligo_primer,
+                                         'first_oligo_primer': inv.first_oligo_primer,
                                          'second_start': inv.second_start + start,
                                          'second_end': inv.second_end + start,
-                                         'second_oligo_primer': second_oligo_primer,
+                                         'second_oligo_primer': inv.second_oligo_primer,
                                          'num_mismatches': inv.num_mismatches,
                                          'num_gaps': inv.num_gaps,
                                          'length': inv.length,
@@ -390,6 +401,49 @@ class Inversions:
                         self.inversions[entry_name].append(d)
 
         self.progress.end()
+
+
+    def update_inversions_with_primer_sequences(self, inversions, contig_sequence, start):
+        """Takes a set of true inversions and updates them with oligo primers.
+
+        What happens here is this. For true inversions, we want to go back to original
+        raw reads (not only mapped reads) and find out the proportion of the inversion
+        states for each true inversion across all samples. For this, we need a primer
+        that guides our search through short reads.
+
+        Parameters
+        ==========
+        inversions : list
+            List of inversion objects.
+        contig_sequence : str
+            The contig sequence in which the inversion is found.
+        start : int
+            The start position of the coverage stretch in which the inversion is found.
+            This value is important to normalize relative start stop positions to the
+            contig sequence so upstream and downstream genomic context can be recovered.
+
+        Returns
+        =======
+        None
+            But it updates the inversion data structure with `first_oligo_primer` and `second_oligo_primer`.
+        """
+
+        for inv in inversions:
+            # we will first identify upstream and downstream genomic regions that are before the first palindrome
+            # in the inversion and after the second palindrome in the inversion
+            first_genomic_region = contig_sequence[inv.first_start + start - self.oligo_primer_base_length:inv.first_start + start]
+            second_genomic_region = contig_sequence[inv.second_end + start:inv.second_end + start + self.oligo_primer_base_length + 1]
+
+            # then, we will replace nucleotides found on the contig with `.` character where
+            # there are mismatches in the palindrome sequence
+            first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
+            second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
+
+            # here we update the inversion object
+            inv.first_oligo_primer = first_genomic_region + first_with_mismatches
+            inv.second_oligo_primer = second_with_mismatches + second_genomic_region
+
+        return
 
 
     def test_inversion_candidates_using_short_reads(self, inversion_candidates, reads):
