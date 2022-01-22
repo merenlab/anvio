@@ -3249,7 +3249,8 @@ def get_bams_and_profiles_txt_as_data(file_path):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
-        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
+                          f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
