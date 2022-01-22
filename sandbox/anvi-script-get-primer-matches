@@ -198,7 +198,7 @@ def main(args):
                         counter += 1
         progress.end()
 
-        run.info_single("Someone asked anvi'o to only report remainders. YOU HAVE THEM.")
+        run.info_single("Someone asked anvi'o to only report remainders. YOU HAVE THEM.", nl_after=1, nl_before=1)
         sys.exit()
 
     progress.new("Generating the raw hits files")
@@ -216,7 +216,7 @@ def main(args):
     progress.end()
 
     if only_report_primer_matches:
-        run.info_single("Someone asked anvi'o to only report primer matches. And they are ready in your output directory.")
+        run.info_single("Someone asked anvi'o to only report primer matches. And they are ready in your output directory.", nl_after=1, nl_before=1)
         sys.exit()
 
     progress.new("Generating the fancy hits files")
