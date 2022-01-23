@@ -88,16 +88,36 @@ if __name__ == '__main__':
                     "paired-end reads and assert your authority. You do you and turn on the flag, you rebellious "
                     "scientist who will likely miss a lot of additoinal inversions like a boss.")
 
-    groupE = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
-    groupE.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
-    groupE.add_argument('--only-report-from', default=None, type=str, help="This is more of a debugging flag more than anything, and can be "
+    groupE = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 04: CALCULATING INVERSION RATIOS', "What is the proportion of ON/OFF states across "
+                    "samples? A two million dollars question that anvi'o will answer for you IF you have `r1` and `r2` "
+                    "columns in your `bams-and-profiles-txt` file that points to raw FASTQ reads you have used to "
+                    "generate your BAM files for each sample. Truly cray stuff.")
+    groupE.add_argument('--oligo-primer-base-length', default=12, type=int, help="Calculating inversion ratios "
+                    "require anvi'o to 'design' an in silico primer based on palindromes associated with inersions "
+                    "and the upstream/downstream genomic context to search for short reads in raw sequenicng data"
+                    "to find the ratio of inversion activity per sample. This variable is to control how much of "
+                    "the palindrome for a given inversion should be used to build a primer to search for short "
+                    "reads. The longer it is, the more specific the primers will be to survey short reads. But if "
+                    "if it is too long, then there will not be enough reads to 'keep' depending on the minimum "
+                    "short read length of the sequencing. The default value will probably good for the vast "
+                    "majority of cases.", metavar="INT")
+    groupE.add_argument('--skip-calculate-inversion-ratios', default=False, action="store_true", help="This flag "
+                    "will help you skip calculating inversion ratios, which is an extremely costly step, even if "
+                    "your `bams-and-profiles-txt` contains `r1` and `r2` entries. It may be a good idea to first "
+                    "run the workflow without calculating ratios, take a look at the CONSENSUS file to make sure "
+                    "everything looks alright, and then run it without this flag.")
+
+
+    groupF = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
+    groupF.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+    groupF.add_argument('--only-report-from', default=None, type=str, help="This is more of a debugging flag more than anything, and can be "
                     "helpful to work on problematic cases over and over again. To engage this mode, you need to mention a region mentioned in "
                     "in your output file or printouts you see when you use the `--verbose` flag. It will be different from project to project, "
                     "but it should look something like this: CONTIG_NAME_5364768_5365139. When declared, anvi'o will only report data from this "
                     "particular region, and nothing at all if it does not find it in your while processing palindromes.", metavar="REGION_STRING")
 
-    groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
-    groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupG = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
+    groupG.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
 
     args = parser.get_args(parser)
 
