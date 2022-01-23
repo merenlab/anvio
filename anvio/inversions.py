@@ -67,6 +67,7 @@ class Inversions:
         # get these filled in immediately
         self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
         self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values()]
+        self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r1' in v) for v in self.profile_db_bam_file_pairs.values()])
 
         # params to identify regions of interest. if you are studying the code, don't forget to read
         # the information stored in the help menu of the program about these parameters
@@ -93,6 +94,9 @@ class Inversions:
         # not be enough reads to keep depending on the minimum short read length of the
         # sequencing.
         self.oligo_primer_base_length = A('oligo_primer_base_length') or 12
+
+        # calculate inversion ratios across samples?
+        self.skip_calculate_inversion_ratios = A('skip_calculate_inversion_ratios') or False
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -667,6 +671,16 @@ class Inversions:
         self.progress.end()
 
 
+    def calculate_inversion_ratios(self):
+        """Go back to the raw metagenomic reads to calculate ACTUAL ratios of inversions"""
+
+        if self.skip_calculate_inversion_ratios or not self.raw_r1_r2_reads_are_present:
+            return
+
+        # FIXME: this is what we need to do next.
+        pass
+
+
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
         try:
             import plotext as plt
@@ -707,6 +721,7 @@ class Inversions:
         self.run.width += 15
         self.run.info("[General] Input BAMs and profiles file", os.path.abspath(self.bams_and_profiles_file_path))
         self.run.info("[General] Number of samples to process", len(self.profile_db_bam_file_pairs))
+        self.run.info("[General] R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
         self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
 
         self.run.info("[Defining stretches] Min FF/RR coverage to qualify", self.min_coverage_to_define_stretches)
@@ -722,6 +737,19 @@ class Inversions:
 
         self.run.info("[Confirming inversions] Check all palindromes in a stretch?",  "True" if self.check_all_palindromes else "False")
         self.run.info("[Confirming inversions] Process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
+
+        # are we to calculate inversion ratios by going through raw reads?
+        inversion_ratios_will_be_calculated = self.raw_r1_r2_reads_are_present and not self.skip_calculate_inversion_ratios
+        self.run.info("[Inversion ratios] Calculate inversion ratios?",  "True" if inversion_ratios_will_be_calculated else "False", mc=("green" if inversion_ratios_will_be_calculated else "red"))
+        if not inversion_ratios_will_be_calculated:
+            if not self.raw_r1_r2_reads_are_present:
+                self.run.info("[Inversion ratios] Not calculating because",  "`bams-and-profiles-txt` does not contain raw reads for r1/r2", nl_after=1)
+            elif self.skip_calculate_inversion_ratios:
+                self.run.info("[Inversion ratios] Not calculating because",  "The user asked not to do it :/", nl_after=1)
+            else:
+                self.run.info("[Inversion ratios] Not calculating because",  "Anvi'o has no idea what it is doing", nl_after=1)
+        else:
+            self.run.info("[Inversion ratios] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
         if self.only_report_from:
             self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)
@@ -740,6 +768,11 @@ class Inversions:
         # includes more than one sample. To avoid redundancy, we wish to report
         # a concensus file that describes only unique inversions.
         self.compute_consensus_inversions()
+
+        # here we have our consensus inversions in `self.consensus_inversions`. It is time
+        # to go back to the raw reads and calculate their proportions IF r1/r2 files are provided
+        # AND the user didn't ask this step to be skipped.
+        self.calculate_inversion_ratios()
 
 
     def sanity_check(self):
