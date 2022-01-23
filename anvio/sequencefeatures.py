@@ -4,6 +4,8 @@
 """Classes to deal with sequence features"""
 
 import os
+import re
+import copy
 import argparse
 import subprocess
 import xml.etree.ElementTree as ET
@@ -18,6 +20,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+import IlluminaUtils.lib.fastqlib as u
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -33,6 +36,382 @@ P = terminal.pluralize
 pp = terminal.pretty_print
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+
+
+class PrimerSearch:
+    """A class designed to search primers in (meta)genomic short-reads"""
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.samples_txt = A('samples_txt')
+        self.primers_file_path = A('primers_txt')
+        self.output_directory_path = A('output_dir')
+        self.min_remainder_length = A('min_remainder_length') or 60
+        self.stop_after = A('stop_after')
+        self.only_report_primer_matches = A('only_report_primer_matches')
+        self.only_report_remainders = A('only_report_remainders')
+
+        if self.only_report_primer_matches and self.only_report_remainders:
+            raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
+                              "at the same time. Please take a look at the help menu.")
+
+        if not (A('samples_dict') or A('samples_txt')):
+            raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
+                              "path for a `samples-txt` file through `samples_txt` parameter, or a dictionary for "
+                              "a samples dictionary through `samples_dict` parameter. See online help for more.")
+
+        if not (A('primers_txt') or A('primers_dict')):
+            raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
+                              "path for a `primers-txt` file through `primers_txt` parameter, or a dictionary for "
+                              "a primers dictionary through `primers_dict` parameter. See online help for more.")
+
+        if self.samples_txt:
+            self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
+        else:
+            self.samples_dict = A('samples_dict')
+            if not isinstance(self.samples_dict, dict):
+                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+
+        if self.primers_file_path:
+            self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
+        else:
+            self.primers_dict = A('primers_dict')
+            if not isinstance(self.primers_dict, dict):
+                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+
+        if self.only_report_primer_matches:
+            self.min_remainder_length = 0
+
+        if self.output_directory_path:
+            filesnpaths.check_output_directory(self.output_directory_path)
+
+
+        self.reads_are_processed = False
+
+        # dictionary to keep track of some global counts for summary purposes
+        self.stats = {'total_read_counter': 0,
+                      'total_hits': 0,
+                      'sample_counter': 0,
+                      'samples': {}}
+
+        # fill in default values
+        for sample_name in self.samples_dict:
+            self.stats['samples'][sample_name] = {'reads': 0,
+                                                  'hits': 0,
+                                                  'hits_in_rc': 0,
+                                                  'primers': {}}
+
+            for primer in self.primers_dict:
+                self.stats['samples'][sample_name]['primers'][primer] = {'raw_hits': 0,
+                                                                         'final_hits': 0,
+                                                                         'shortest_seq_length_after_match': 0,
+                                                                         'longest_remainder_length': 0,
+                                                                         'avg_remainder_length': 0}
+
+        self.sanity_check()
+        self.print_class_setup()
+
+
+    def sanity_check(self):
+        if not self.samples_dict:
+            raise ConfigError("The `self.samples_dict` object is empty :/ This class is initialized incorrectly. You either must ")
+
+
+    def print_class_setup(self):
+        """Display what's up"""
+
+        self.run.info("Samples found", f"({len(self.samples_dict)}) {' '.join(self.samples_dict.keys())}")
+        self.run.info("Primers found", f"({len(self.primers_dict)}) {'; '.join(self.primers_dict.keys())}")
+        self.run.info('Output directory set', self.output_directory_path, nl_after=1)
+        self.run.info('Min remainder length', self.min_remainder_length)
+        if self.stop_after:
+            self.run.info('Only report primer matches', self.only_report_primer_matches)
+            self.run.info('Only report remainders', self.only_report_remainders)
+            self.run.info('Stop after', self.stop_after, mc='red', nl_after=1)
+        else:
+            self.run.info('Only report remainders', self.only_report_remainders)
+            self.run.info('Only report primer matches', self.only_report_primer_matches, nl_after=1)
+
+
+    def process_sample(self, sample_name):
+        """Process a single sample"""
+
+        if sample_name not in self.samples_dict:
+            raise ConfigError(f"Someone is calling `process_sample` with a sample name ('{sample_name}') that "
+                              f"does not occur in `self.samples_dict`. What kind of black magic is this?")
+
+        self.stats['sample_counter'] += 1
+
+        self.progress.new("Tick tock")
+        self.progress.update('...')
+
+        sample_dict = copy.deepcopy(self.samples_dict[sample_name])
+        sample_dict['hits'] = {}
+
+        sample_stats = self.stats['samples'][sample_name]
+
+        primers_dict = copy.deepcopy(self.primers_dict)
+
+        for primer_name in primers_dict:
+            primers_dict[primer_name]['matching_sequences'] = {}
+            primers_dict[primer_name]['primer_length'] = len(primers_dict[primer_name]['primer_sequence'])
+
+            sample_dict['hits'][primer_name] = 0
+            primers_dict[primer_name]['matching_sequences'] = []
+
+
+        # go through
+        removed_due_to_remainder_length = 0
+        for pair in ['r1', 'r2']:
+            input_fastq_file_path = sample_dict[pair]
+            input_fastq = u.FastQSource(input_fastq_file_path, compressed=input_fastq_file_path.endswith('.gz'))
+
+            while input_fastq.next(raw=True) and (sample_stats['hits'] < self.stop_after if self.stop_after else True):
+                sample_stats['reads'] += 1
+
+                if sample_stats['reads'] % 10000 == 0:
+                    self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {pair} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
+
+                found_in_RC = False
+
+                for primer_name in primers_dict:
+                    v = primers_dict[primer_name]
+                    seq = input_fastq.entry.sequence
+                    primer_sequence = v['primer_sequence']
+                    match = re.search(primer_sequence, seq)
+
+                    if not match:
+                        # no match here. but how about the the reverse complement of it?
+                        seq = utils.rev_comp(seq)
+
+                        match = re.search(primer_sequence, seq)
+
+                        if match:
+                            # aha. the reverse complement sequence that carries our match found.
+                            # will continue as if nothing happened
+                            sample_stats['hits_in_rc'] += 1
+                            found_in_RC = True
+
+                    if not match:
+                        continue
+
+                    sample_stats['primers'][primer_name]['raw_hits'] += 1
+
+                    if len(seq) - match.end() < self.min_remainder_length:
+                        removed_due_to_remainder_length += 1
+                        continue
+
+                    v['matching_sequences'].append((match.start(), match.end(), seq), )
+
+                    sample_stats['hits'] += 1
+                    sample_stats['primers'][primer_name]['final_hits'] += 1
+
+                    if anvio.DEBUG:
+                        self.progress.end()
+                        print("\n%s -- %s -- %s| %s [%s] %s" % (sample_name, pair, 'RC ' if found_in_RC else '   ', seq[:match.start()], primer_sequence, seq[match.end():]))
+                        self.progress.new("Tick tock")
+                        self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {pair} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
+
+            self.stats['total_read_counter'] += sample_stats['reads']
+            self.stats['total_hits'] += sample_stats['hits']
+
+            # calculate and store stats for primer hits
+            for primer_name in primers_dict:
+                matching_sequence_hits = primers_dict[primer_name]['matching_sequences']
+                seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in matching_sequence_hits]
+
+                if len(seq_lengths_after_match):
+                    sample_stats['primers'][primer_name]['shortest_seq_length_after_match'] = min(seq_lengths_after_match)
+                    sample_stats['primers'][primer_name]['longest_remainder_length'] = max(seq_lengths_after_match)
+                    sample_stats['primers'][primer_name]['avg_remainder_length'] = sum(seq_lengths_after_match) / len(seq_lengths_after_match)
+
+        self.progress.end()
+
+        return sample_dict, primers_dict
+
+
+    def process(self):
+        """Processes everything."""
+
+
+        for sample_name in self.samples_dict:
+            sample_dict, primers_dict = self.process_sample(sample_name)
+
+            if self.output_directory_path:
+                self.store_sequences(sample_name, sample_dict, primers_dict)
+
+            # call Batman
+            del sample_dict
+            del primers_dict
+
+        self.reads_are_processed = True
+
+
+    def print_summary(self):
+        """Prints a fancy summary of the results"""
+
+        if not self.reads_are_processed:
+            raise ConfigError("You first need to call the member function `process`.")
+
+        self.run.warning(None, header="FINAL SUMMARY", lc='yellow')
+        self.run.info_single(f"After processing {pp(self.stats['total_read_counter'])} individual reads in {P('sample', len(self.samples_dict))}, "
+                             f"anvi'o found {P('hit', self.stats['total_hits'])} for your {P('sequence', len(self.primers_dict), pfs='only')} "
+                             f"in the primer sequences file. What is shown below breaks these numbers down per sample because that's how "
+                             f"anvi'o rolls. There are some acronyms below, and they are very creatively named. RH: number of raw hits (the actual "
+                             f"number of times a primer matched to a sequence). FH: number of final hits (after testing whether the remainder length "
+                             f"was longer than the user-set or default minimum value). SRL: shortest remainder length. LRL: Longest remainder length. "
+                             f"ARL: Average remainder length after match).", level=0)
+
+        for sample_name in self.samples_dict:
+            self.run.info(f"{sample_name}", f"{pp(self.stats['samples'][sample_name]['reads'])} total reads", nl_before=1, lc="green", mc="green")
+            for primer_sequence in self.primers_dict:
+                s = self.stats['samples'][sample_name]['primers'][primer_sequence]
+                self.run.info(f"    {primer_sequence}", f"RH: {pp(s['raw_hits']) if s['raw_hits'] else '--'} / "
+                                                        f"FH: {pp(s['final_hits']) if s['final_hits'] else '--'} / "
+                                                        f"SRL: {s['shortest_seq_length_after_match'] if s['shortest_seq_length_after_match'] else '--'} / "
+                                                        f"LRL: {s['longest_remainder_length'] if s['longest_remainder_length'] else '--'} / "
+                                                        f"ARL: {s['avg_remainder_length']:.2f}", mc=('yellow' if s['final_hits'] else 'red'))
+
+        if not self.stats['total_read_counter']:
+            self.run.info_single('No hits were found :/', mc='red', nl_before=1)
+
+
+    def get_sequences(self, primer, sequences, target):
+        """For a given list of `matching_sequences`, recover sequences of various nature from matches.
+
+        Parameters
+        ==========
+        sequences : list of tuples
+            This is essentially `primers_dict[primer]['matching_sequences']`, which is a list that contains tuples, where
+            each tuple has three variables that describe `(start, end, matching_sequence)`.
+        target : string
+            It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream sequnces after
+            primer match, excluding the primer sequence. Primer matches are the primer-matching part of the sequences
+            (useful if one is working with degenerate primers and wishes to see the diversity of matching seqeunces).
+
+        Returns
+        =======
+        sequences : list
+            Where each item is the remainder nucleotides after a primer match
+        """
+
+        valid_targets = ['remainders', 'primer_match', 'trimmed', 'gapped']
+
+        if target not in valid_targets:
+            raise ConfigError("Oi, '{target}' is not a known target :/ Try one of these: \"{', '.join(valid_targets)}\"")
+
+        l = []
+
+        primer_length = len(primer)
+
+        if target in ['trimmed', 'gapped']:
+            seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in sequences]
+            max_seq_length = (max(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
+            min_seq_length = (min(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
+        else:
+            seq_lengths_after_match = None
+            max_seq_length = None
+            min_seq_length = None
+
+        if target == 'remainders':
+            for start, end, sequence in sequences:
+                if self.min_remainder_length:
+                    l.append(sequence[end:end + self.min_remainder_length])
+                else:
+                    l.append(sequence[end:])
+        elif target == 'primer_match':
+            for start, end, sequence in sequences:
+                l.append(sequence[start:end])
+        elif target == 'trimmed':
+            for start, end, sequence in sequences:
+                l.append(sequence[start:min_seq_length])
+        elif target == 'gapped':
+            for start, end, sequence in sequences:
+                sequence = sequence[start:]
+                l.append(sequence + '-' * (max_seq_length - len(sequence)))
+        else:
+            self.progress.reset()
+            raise ConfigError("You gon to the wrong neighborhood (the way Tom Hanks did it in Berlin and lost his jacket).")
+
+        return l
+
+
+    def store_sequences(self, sample_name, sample_dict, primers_dict):
+        """Store sequence files for a given sample under `self.output_directory_path`"""
+
+        if not self.output_directory_path:
+            return
+
+        if not os.path.exists(self.output_directory_path):
+            filesnpaths.gen_output_directory(self.output_directory_path)
+
+        self.run.info_single(f"Output files for {sample_name}:", nl_before=1, mc="green")
+
+        if self.only_report_remainders:
+            self.progress.new("Generating the remainders file")
+            self.progress.update('...')
+            for primer_sequence in primers_dict:
+                remainder_sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='remainders')
+                output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_sequence))
+                with open(output_file_path, 'w') as output:
+                    counter = 1
+                    for sequence in remainder_sequences:
+                        output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                        counter += 1
+            self.progress.end()
+
+            self.run.info(f'    Remainders sequences', os.path.join(self.output_directory_path, f'{sample_name}-*-REMAINDERS.fa'))
+
+            return
+
+        self.progress.new("Generating the primer matches files")
+        self.progress.update('...')
+        for primer_sequence in primers_dict:
+            primer_matching_sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='primer_match')
+
+            output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_sequence))
+            with open(output_file_path, 'w') as output:
+                counter = 1
+                for sequence in primer_matching_sequences:
+                    output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    counter += 1
+        self.progress.end()
+
+        self.run.info(f'    Primer matches', os.path.join(self.output_directory_path, f'{sample_name}-*-PRIMER-MATCHES.fa'))
+
+        if self.only_report_primer_matches:
+            return
+
+        self.progress.new("Generating the fancy hits files")
+        self.progress.update('...')
+        for primer_sequence in self.primers_dict:
+            trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_sequence))
+            sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='trimmed')
+            with open(trimmed_output_file_path, 'w') as trimmed:
+                counter = 1
+                for sequence in sequences:
+                    trimmed.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    counter += 1
+
+            gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_sequence))
+            sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='gapped')
+            with open(gapped_output_file_path, 'w') as gapped:
+                counter = 1
+                for sequence in sequences:
+                    gapped.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    counter += 1
+
+        self.progress.end()
+
+        self.run.info(f'    Trimmed hits', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
+        self.run.info(f'    Hits with gaps', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
+
+        return
+
 
 
 class Palindrome:
