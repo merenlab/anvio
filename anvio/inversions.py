@@ -642,6 +642,7 @@ class Inversions:
         # that match to them to have a final list of consensus
         # inversions that occur in at least one sample.
         self.progress.update('Selecting representatives')
+        inversion_counter = 0
         for cluster in clusters:
             num_samples = len(cluster)
             sample_names = ','.join(sorted([x[0] for x in cluster]))
@@ -654,7 +655,9 @@ class Inversions:
 
                 for inv in self.inversions[sample_name]:
                     if inv['contig_name'] == contig_name and inv['first_start'] == start:
-                        consensus_inversion = copy.deepcopy(inv)
+                        inversion_counter += 1
+                        consensus_inversion = OrderedDict({'inversion_id': f'INV_{inversion_counter:04}' })
+                        consensus_inversion.update(copy.deepcopy(inv))
                         consensus_inversion['num_samples'] = num_samples
                         consensus_inversion['sample_names'] = sample_names
                         self.consensus_inversions.append(consensus_inversion)
@@ -788,7 +791,7 @@ class Inversions:
 
         # report consensus inversions
         output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
-        headers = ['contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names', 'first_oligo_primer', 'second_oligo_primer']
+        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names', 'first_oligo_primer', 'second_oligo_primer']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
             for v in self.consensus_inversions:
