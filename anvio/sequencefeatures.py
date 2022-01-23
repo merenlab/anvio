@@ -305,12 +305,14 @@ class PrimerSearch:
         valid_targets = ['remainders', 'primer_match', 'trimmed', 'gapped']
 
         if target not in valid_targets:
-            raise ConfigError("Oi, '{target}' is not a known target :/ Try one of these: \"{', '.join(valid_targets)}\"")
+            raise ConfigError(f"You gon to the wrong neighborhood (like the way Tom Hanks did it in Berlin and lost his jacket). "
+                              f"Try one of these targets: \"{', '.join(valid_targets)}\".")
 
         l = []
 
         primer_length = len(self.primers_dict[primer_name]['primer_sequence'])
         match_sequences = primers_dict[primer_name]['matching_sequences']
+        print(len(match_sequences))
 
         if target in ['trimmed', 'gapped']:
             seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in match_sequences]
@@ -338,8 +340,7 @@ class PrimerSearch:
                 sequence = sequence[start:]
                 l.append(sequence + '-' * (max_seq_length - len(sequence)))
         else:
-            self.progress.reset()
-            raise ConfigError("You gon to the wrong neighborhood (like the way Tom Hanks did it in Berlin and lost his jacket).")
+            pass
 
         return l
 
@@ -368,7 +369,7 @@ class PrimerSearch:
                         counter += 1
             self.progress.end()
 
-            self.run.info(f'    Remainders sequences', os.path.join(self.output_directory_path, f'{sample_name}-*-REMAINDERS.fa'))
+            self.run.info('    Remainders sequences', os.path.join(self.output_directory_path, f'{sample_name}-*-REMAINDERS.fa'))
 
             return
 
@@ -385,7 +386,7 @@ class PrimerSearch:
                     counter += 1
         self.progress.end()
 
-        self.run.info(f'    Primer matches', os.path.join(self.output_directory_path, f'{sample_name}-*-PRIMER-MATCHES.fa'))
+        self.run.info('    Primer matches', os.path.join(self.output_directory_path, f'{sample_name}-*-PRIMER-MATCHES.fa'))
 
         if self.only_report_primer_matches:
             return
@@ -411,8 +412,8 @@ class PrimerSearch:
 
         self.progress.end()
 
-        self.run.info(f'    Trimmed hits', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
-        self.run.info(f'    Hits with gaps', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
+        self.run.info('    Trimmed hits', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
+        self.run.info('    Hits with gaps', os.path.join(self.output_directory_path, f'{sample_name}-*-HITS.fa'))
 
         return
 
