@@ -33,6 +33,7 @@ __description__ = ("You provide this program with FASTQ files for one or more sa
 pp = terminal.pretty_print
 P = terminal.pluralize
 
+
 class PrimerSearch:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
@@ -57,20 +58,29 @@ class PrimerSearch:
 
         filesnpaths.check_output_directory(self.output_directory_path)
 
-        self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
-        self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
+        if not (A('samples_dict') or A('samples_txt')):
+            raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
+                              "path for a `samples-txt` file through `samples_txt` parameter, or a dictionary for "
+                              "a samples dictionary through `samples_dict` parameter. See online help for more.")
 
-        self.run.info("Samples found", f"({len(self.samples_dict)}) {' '.join(self.samples_dict.keys())}")
-        self.run.info("Primers found", f"({len(self.primers_dict)}) {'; '.join(self.primers_dict.keys())}")
-        self.run.info('Output directory set', self.output_directory_path, nl_after=1)
-        self.run.info('Min remainder length', self.min_remainder_length)
-        if self.stop_after:
-            self.run.info('Only report primer matches', self.only_report_primer_matches)
-            self.run.info('Only report remainders', self.only_report_remainders)
-            self.run.info('Stop after', self.stop_after, mc='red', nl_after=1)
+        if not (A('primers_txt') or A('primers_dict')):
+            raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
+                              "path for a `primers-txt` file through `primers_txt` parameter, or a dictionary for "
+                              "a primers dictionary through `primers_dict` parameter. See online help for more.")
+
+        if self.samples_txt:
+            self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
         else:
-            self.run.info('Only report remainders', self.only_report_remainders)
-            self.run.info('Only report primer matches', self.only_report_primer_matches, nl_after=1)
+            self.samples_dict = A('samples_dict')
+            if not isinstance(self.samples_dict, dict):
+                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+
+        if self.primers_file_path:
+            self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
+        else:
+            self.primers_dict = A('primers_dict')
+            if not isinstance(self.primers_dict, dict):
+                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
 
         self.reads_are_processed = False
 
@@ -93,6 +103,30 @@ class PrimerSearch:
                                                                          'shortest_seq_length_after_match': 0,
                                                                          'longest_remainder_length': 0,
                                                                          'avg_remainder_length': 0}
+
+        self.sanity_check()
+        self.print_class_setup()
+
+
+    def sanity_check(self):
+        if not self.samples_dict:
+            raise ConfigError("The `self.samples_dict` object is empty :/ This class is initialized incorrectly. You either must ")
+
+
+    def print_class_setup(self):
+        """Display what's up"""
+
+        self.run.info("Samples found", f"({len(self.samples_dict)}) {' '.join(self.samples_dict.keys())}")
+        self.run.info("Primers found", f"({len(self.primers_dict)}) {'; '.join(self.primers_dict.keys())}")
+        self.run.info('Output directory set', self.output_directory_path, nl_after=1)
+        self.run.info('Min remainder length', self.min_remainder_length)
+        if self.stop_after:
+            self.run.info('Only report primer matches', self.only_report_primer_matches)
+            self.run.info('Only report remainders', self.only_report_remainders)
+            self.run.info('Stop after', self.stop_after, mc='red', nl_after=1)
+        else:
+            self.run.info('Only report remainders', self.only_report_remainders)
+            self.run.info('Only report primer matches', self.only_report_primer_matches, nl_after=1)
 
 
     def process_sample(self, sample_name):
