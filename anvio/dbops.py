@@ -2796,7 +2796,20 @@ class ProfileSuperclass(object):
             # if self.split_names_of_interest is defined upstream somewhere,
             # but if we ALSO have a collection name here, we want to recover those
             # split names relevant to the collection name later. so in this case,
-            # we will OVERWRITE this variable, which is kind of dangerous.
+            # we will OVERWRITE this variable, which is kind of dangerous. IF this is
+            # causing you headache and sets your split names of interest to null, the
+            # best way to avoid this is to set the collection_name in your args to None,
+            # initialize the ProfileSuper, and then set it back to its original value
+            # after (which has been the case in the refine mode in anvio/interactive.py).
+            if hasattr(self, 'split_names_of_interest'):
+                self.run.warning("Note for programmers: even though the ProfileSuper was initialized with "
+                                 "`self.split_names_of_interest`, the contents of that variable just got "
+                                 "set to `set([])` becasue the context also had `self.collection_name` in "
+                                 "it. If you are concerned about this, read the comments in the code where "
+                                 "this warning is shown. If you are a user, there probably is nothing for "
+                                 "you to be concerned about (unless things go haywire downstream, in which "
+                                 "case our sincere condolences).")
+
             self.split_names_of_interest = set([])
 
         if A('split_names_of_interest'):

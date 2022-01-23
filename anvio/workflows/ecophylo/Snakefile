@@ -129,7 +129,16 @@ rule filter_hmm_hits_by_query_coverage:
 
 
 rule anvi_get_sequences_for_hmm_hits:
-    """Extract all AA and NT sequences that were recruited by the HMM"""
+    """
+    Extract all AA and NT sequences that were recruited by the HMM
+
+    Snakemake needs to pass through this rule regardless if it's able to extract a 
+    target protein from it e.g. I still want the workflow to cat all of the target proteins
+    even if a few of the MAGs DO NOT have the target protein. I think one solution would be 
+    to touch a done file immediately so that even if the rule fails the file will be there and the
+    workflow can move on. This is sketchy though because if the rule fails for another reason
+    then we wont know what happened unless the user checks the individual logs
+    """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_get_sequences_for_hmm_hits-{sample_name}-{HMM}.log"),
@@ -149,21 +158,21 @@ rule anvi_get_sequences_for_hmm_hits:
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log}")
+                                                -o {output.faa} --just-do-it 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
-                                                -o {output.fna} 2> {log}")
+                                                -o {output.fna} --just-do-it 2> {log}")
         else:
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} 2> {log}")
+                                                -o {output.faa} --just-do-it 2> {log}")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
-                                                -o {output.fna} 2> {log}")
+                                                -o {output.fna} --just-do-it 2> {log}")
 
 
 rule simplify_names_from_hmm_hits:
@@ -281,7 +290,7 @@ rule cluster_X_percent_sim_mmseqs:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_90_mmseqs_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}.log")
     input: rules.cat_sequences_to_one_fasta.output.NT_all
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
@@ -637,6 +646,7 @@ rule make_metagenomics_config_file:
         config_dict['anvi_profile']['--min-contig-length'] = 0
         config_dict['bowtie']['threads'] = 5
         config_dict['bowtie_build']['threads'] = 5
+        config_dict['anvi_gen_contigs_database']['threads'] = 5
 
         if M.clusterize_metagenomics_workflow == True:
             config_dict['bowtie']['threads'] = 10
@@ -653,7 +663,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile HMM_hits"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "run_metagenomics_workflow.log")
+    log: "ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
@@ -670,13 +680,16 @@ rule run_metagenomics_workflow:
         samples_txt_new['r2'] = samples_txt_new['r2'].apply(lambda x: os.path.abspath(str(x)))
         samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
 
+        shell("mkdir -p METAGENOMICS_WORKFLOW/00_LOGS && touch {log}")
+
         if M.clusterize_metagenomics_workflow == True:
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             HPC_string = params.HPC_string
-            shell(f'cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete && cd -')
+            shell(f'cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         else:
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -')
+            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -")
+        
 
 rule add_default_collection:
     """"""

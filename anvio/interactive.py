@@ -969,6 +969,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Number of bins', len(self.bin_names_of_interest))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
+        if not len(self.split_names_of_interest):
+            raise ConfigError("Something must have gone wrong :/ You are knee deep in refine mode, and have "
+                              "zero split names to work with. You have to go back, Kate. Like, ALL the way "
+                              "back to complaining to the developers on Slack or something :(")
+
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
 
@@ -1215,7 +1220,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.skip_init_functions:
             self.init_functions()
 
-        ProfileSuperclass.__init__(self, self.args)
+        if self.mode == 'refine':
+            # the refine trick: initialize profile super without a collection
+            # name since we already know our split names:
+            collection_name = self.collection_name
+            self.collection_name = None
+            self.args.collection_name = None
+            ProfileSuperclass.__init__(self, self.args)
+            self.collection_name = collection_name
+            self.args.collection_name = collection_name
+        else:
+            ProfileSuperclass.__init__(self, self.args)
 
         # init item additional data
         ProfileSuperclass.init_items_additional_data(self)

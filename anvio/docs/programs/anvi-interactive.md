@@ -8,7 +8,7 @@ Here, we'll go through *some* things that the anvi'o interactive interface is ca
 
 Please makes sure you are familiar with the terminology that describes various parts of a given display, which are **explained in the %(interactive)s artifact**:
 
-![an anvi'o display](../../images/anvio_display_template.png){:.center-img}
+![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
 
 
 ## Running anvi-interactive on a profile database
@@ -22,7 +22,7 @@ anvi-interactive -p %(profile-db)s \
 
 For the central tree to display correctly, you'll need to have run hierarchical clustering at some point while making your profile database (either during %(anvi-merge)s, or, if this is a %(single-profile-db)s, while running %(anvi-profile)s). It is also possible to provide a phylogenetic tree or a clustering dendrogram from the command line using the `--tree` parameter.
 
-If you do not have a %(state)s stored in your profile database named `default`, you will need to click the "Draw" button for anvi'o to provide you with an %(interactive)s display of your data. 
+If you do not have a %(state)s stored in your profile database named `default`, you will need to click the "Draw" button for anvi'o to provide you with an %(interactive)s display of your data.
 
 ### How to visualize things when you don't have a hierarchical clustering of your contigs?
 

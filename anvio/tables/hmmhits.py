@@ -21,6 +21,7 @@ from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, StupidHMMError
 from anvio.tables.genecalls import TablesForGeneCalls
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -40,13 +41,14 @@ pp = terminal.pretty_print
 
 class TablesForHMMHits(Table):
     def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False,
-                 hmm_program_to_use='hmmscan', hmmer_output_directory=None, get_domain_table_output=False):
+                 hmm_program_to_use='hmmscan', hmmer_output_directory=None, get_domain_table_output=False, add_to_functions_table=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
         self.just_do_it = just_do_it
         self.hmm_program = hmm_program_to_use or 'hmmscan'
         self.hmmer_output_dir = hmmer_output_directory
         self.hmmer_desired_output = ('table', 'domtable') if get_domain_table_output else 'table'
+        self.add_to_functions_table = add_to_functions_table
 
         utils.is_contigs_db(self.db_path)
         filesnpaths.is_program_exists(self.hmm_program)
@@ -77,28 +79,42 @@ class TablesForHMMHits(Table):
 
 
     def check_sources(self, sources):
-        sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
 
-        if 'Ribosomal_RNAs' in sources_in_db and len([s for s in sources if s.startswith('Ribosomal_RNA_')]):
-            raise ConfigError("Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
-                              "already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
-                              "its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
-                              "database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
-                              "as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
-                              "model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
-                              "sword. Here it is for your grace: \"anvi-delete-hmms -c CONTIGS.db --hmm-source Ribosomal_RNAs\".")
+        if self.add_to_functions_table: # check that source is not already in gene_functions table
+            gene_function_sources_in_db = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('gene_function_sources')
+            sources_in_db = set(gene_function_sources_in_db.split(',') if gene_function_sources_in_db else [])
+            sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
 
-        sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
+            if len(sources_need_to_be_removed):
+                source_string = ', '.join(sources_need_to_be_removed)
+                raise ConfigError("Some of the HMM sources are already in the gene functions table in the database and anvi'o "
+                                  "doesn't want to overwrite them. If YOU want to overwrite them, however, (because you do you, "
+                                  "friend) you can do that by "
+                                  "running `anvi-delete-functions` first, and then re-running this program. Here are the sources "
+                                  f"that you would need to delete: {source_string}")
+        else: # default checks for hmm_hits table
+            sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
 
-        if len(sources_need_to_be_removed):
-            if self.just_do_it:
-                for source_name in sources_need_to_be_removed:
-                    self.remove_source(source_name)
-            else:
-                raise ConfigError("Some of the HMM sources you wish to run on this database are already in the database and anvi'o "
-                                  "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
-                                  "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
-                                  "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
+            if 'Ribosomal_RNAs' in sources_in_db and len([s for s in sources if s.startswith('Ribosomal_RNA_')]):
+                raise ConfigError("Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
+                                  "already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
+                                  "its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
+                                  "database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
+                                  "as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
+                                  "model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
+                                  "sword. Here it is for your grace: \"anvi-delete-hmms -c CONTIGS.db --hmm-source Ribosomal_RNAs\".")
+
+            sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
+
+            if len(sources_need_to_be_removed):
+                if self.just_do_it:
+                    for source_name in sources_need_to_be_removed:
+                        self.remove_source(source_name)
+                else:
+                    raise ConfigError("Some of the HMM sources you wish to run on this database are already in the database and anvi'o "
+                                      "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
+                                      "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
+                                      "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
 
 
     def hmmpress_sources(self, sources, tmp_dir):
@@ -288,7 +304,10 @@ class TablesForHMMHits(Table):
                                                                                                            search_results_dict,
                                                                                                            skip_amino_acid_sequences=True)
 
-            self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+            if self.add_to_functions_table: # add to gene_functions table (upon request)
+                self.append_to_gene_functions_table(source, search_results_dict)
+            else:                           # add to hmm_hits table (default)
+                self.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
 
         # FIXME: I have no clue why importing the anvio module is necessary at this point,
@@ -405,7 +424,28 @@ class TablesForHMMHits(Table):
                         % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
-    def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
+    def append_to_gene_functions_table(self, source, search_results_dict):
+        """Append custom HMM hits to the gene functions table in the contigs database."""
+
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.db_path, self.run, self.progress)
+
+        # first we massage the hmm_hits dictionary to match expected input for the gene_functions table
+        if search_results_dict:
+            for entry_id in search_results_dict:
+                hit = search_results_dict[entry_id]
+                hit['source'] = source
+                hit['accession'] = hit['gene_hmm_id']
+                hit['function'] = hit['gene_name']
+
+            gene_function_calls_table.create(search_results_dict)
+        else:
+            self.run.warning("There are no hits to add to the database. Returning empty handed, "
+                             f"but still adding {source} as a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({source})
+
+
+    def append_to_hmm_hits_table(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
         """Append a new HMM source in the contigs database."""
 
         # just to make 100% sure.
