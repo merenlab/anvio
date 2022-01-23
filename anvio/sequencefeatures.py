@@ -280,23 +280,25 @@ class PrimerSearch:
             self.run.info_single('No hits were found :/', mc='red', nl_before=1)
 
 
-    def get_sequences(self, primer, sequences, target):
+    def get_sequences(self, primer_sequence, match_sequences, target):
         """For a given list of `matching_sequences`, recover sequences of various nature from matches.
 
         Parameters
         ==========
-        sequences : list of tuples
+        match_sequences : list of tuples
             This is essentially `primers_dict[primer]['matching_sequences']`, which is a list that contains tuples, where
             each tuple has three variables that describe `(start, end, matching_sequence)`.
         target : string
-            It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream sequnces after
-            primer match, excluding the primer sequence. Primer matches are the primer-matching part of the sequences
-            (useful if one is working with degenerate primers and wishes to see the diversity of matching seqeunces).
+            It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream
+            sequences after primer match, excluding the primer sequence. Primer matches are the primer-matching part of the
+            match sequences (useful if one is working with degenerate primers and wishes to see the diversity of matching
+            seqeunces). Trimmed sequences are trimmed to the shortest length (and include primer match). Gapped sequences
+            are not trimmed, but shorter ones are padded with gaps.
 
         Returns
         =======
         sequences : list
-            Where each item is the remainder nucleotides after a primer match
+            Where each item is the desired part of the match sequences.
         """
 
         valid_targets = ['remainders', 'primer_match', 'trimmed', 'gapped']
@@ -306,10 +308,10 @@ class PrimerSearch:
 
         l = []
 
-        primer_length = len(primer)
+        primer_length = len(primer_sequence)
 
         if target in ['trimmed', 'gapped']:
-            seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in sequences]
+            seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in match_sequences]
             max_seq_length = (max(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
             min_seq_length = (min(seq_lengths_after_match) + primer_length) if len(seq_lengths_after_match) else 0
         else:
@@ -318,24 +320,24 @@ class PrimerSearch:
             min_seq_length = None
 
         if target == 'remainders':
-            for start, end, sequence in sequences:
+            for start, end, sequence in match_sequences:
                 if self.min_remainder_length:
                     l.append(sequence[end:end + self.min_remainder_length])
                 else:
                     l.append(sequence[end:])
         elif target == 'primer_match':
-            for start, end, sequence in sequences:
+            for start, end, sequence in match_sequences:
                 l.append(sequence[start:end])
         elif target == 'trimmed':
-            for start, end, sequence in sequences:
-                l.append(sequence[start:min_seq_length])
+            for start, end, sequence in match_sequences:
+                l.append(sequence[:min_seq_length])
         elif target == 'gapped':
-            for start, end, sequence in sequences:
+            for start, end, sequence in match_sequences:
                 sequence = sequence[start:]
                 l.append(sequence + '-' * (max_seq_length - len(sequence)))
         else:
             self.progress.reset()
-            raise ConfigError("You gon to the wrong neighborhood (the way Tom Hanks did it in Berlin and lost his jacket).")
+            raise ConfigError("You gon to the wrong neighborhood (like the way Tom Hanks did it in Berlin and lost his jacket).")
 
         return l
 
@@ -354,13 +356,13 @@ class PrimerSearch:
         if self.only_report_remainders:
             self.progress.new("Generating the remainders file")
             self.progress.update('...')
-            for primer_sequence in primers_dict:
-                remainder_sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='remainders')
-                output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_sequence))
+            for primer_name in primers_dict:
+                remainder_sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='remainders')
+                output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_name))
                 with open(output_file_path, 'w') as output:
                     counter = 1
                     for sequence in remainder_sequences:
-                        output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                        output.write(f'>{sample_name}_{primer_name}_{counter:05d}\n{sequence}\n')
                         counter += 1
             self.progress.end()
 
@@ -370,14 +372,14 @@ class PrimerSearch:
 
         self.progress.new("Generating the primer matches files")
         self.progress.update('...')
-        for primer_sequence in primers_dict:
-            primer_matching_sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='primer_match')
+        for primer_name in primers_dict:
+            primer_matching_sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='primer_match')
 
-            output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_sequence))
+            output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_name))
             with open(output_file_path, 'w') as output:
                 counter = 1
                 for sequence in primer_matching_sequences:
-                    output.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    output.write(f'>{sample_name}_{primer_name}_{counter:05d}\n{sequence}\n')
                     counter += 1
         self.progress.end()
 
@@ -388,21 +390,21 @@ class PrimerSearch:
 
         self.progress.new("Generating the fancy hits files")
         self.progress.update('...')
-        for primer_sequence in self.primers_dict:
-            trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_sequence))
-            sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='trimmed')
+        for primer_name in self.primers_dict:
+            trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_name))
+            sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='trimmed')
             with open(trimmed_output_file_path, 'w') as trimmed:
                 counter = 1
                 for sequence in sequences:
-                    trimmed.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    trimmed.write(f'>{sample_name}_{primer_name}_{counter:05d}\n{sequence}\n')
                     counter += 1
 
-            gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_sequence))
-            sequences = self.get_sequences(primer_sequence, primers_dict[primer_sequence]['matching_sequences'], target='gapped')
+            gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_name))
+            sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='gapped')
             with open(gapped_output_file_path, 'w') as gapped:
                 counter = 1
                 for sequence in sequences:
-                    gapped.write(f'>{sample_name}_{primer_sequence}_{counter:05d}\n{sequence}\n')
+                    gapped.write(f'>{sample_name}_{primer_name}_{counter:05d}\n{sequence}\n')
                     counter += 1
 
         self.progress.end()
