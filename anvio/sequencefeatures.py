@@ -280,14 +280,15 @@ class PrimerSearch:
             self.run.info_single('No hits were found :/', mc='red', nl_before=1)
 
 
-    def get_sequences(self, primer_sequence, match_sequences, target):
+    def get_sequences(self, primer_name, primers_dict, target):
         """For a given list of `matching_sequences`, recover sequences of various nature from matches.
 
         Parameters
         ==========
-        match_sequences : list of tuples
-            This is essentially `primers_dict[primer]['matching_sequences']`, which is a list that contains tuples, where
-            each tuple has three variables that describe `(start, end, matching_sequence)`.
+        primer_name : string
+            This is essentially a key that exists in `primers_dict`.
+        primers_dict : dict
+            The sample-specific primers dictionary (recovered from `self.process_sample`).
         target : string
             It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream
             sequences after primer match, excluding the primer sequence. Primer matches are the primer-matching part of the
@@ -308,7 +309,8 @@ class PrimerSearch:
 
         l = []
 
-        primer_length = len(primer_sequence)
+        primer_length = len(self.primers_dict[primer_name]['primer_sequence'])
+        match_sequences = primers_dict[primer_name]['matching_sequences']
 
         if target in ['trimmed', 'gapped']:
             seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in match_sequences]
@@ -357,7 +359,7 @@ class PrimerSearch:
             self.progress.new("Generating the remainders file")
             self.progress.update('...')
             for primer_name in primers_dict:
-                remainder_sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='remainders')
+                remainder_sequences = self.get_sequences(primer_name, primers_dict, target='remainders')
                 output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_name))
                 with open(output_file_path, 'w') as output:
                     counter = 1
@@ -373,7 +375,7 @@ class PrimerSearch:
         self.progress.new("Generating the primer matches files")
         self.progress.update('...')
         for primer_name in primers_dict:
-            primer_matching_sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='primer_match')
+            primer_matching_sequences = self.get_sequences(primer_name, primers_dict, target='primer_match')
 
             output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_name))
             with open(output_file_path, 'w') as output:
@@ -392,7 +394,7 @@ class PrimerSearch:
         self.progress.update('...')
         for primer_name in self.primers_dict:
             trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_name))
-            sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='trimmed')
+            sequences = self.get_sequences(primer_name, primers_dict, target='trimmed')
             with open(trimmed_output_file_path, 'w') as trimmed:
                 counter = 1
                 for sequence in sequences:
@@ -400,7 +402,7 @@ class PrimerSearch:
                     counter += 1
 
             gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_name))
-            sequences = self.get_sequences(primers_dict[primer_name]['primer_sequence'], primers_dict[primer_name]['matching_sequences'], target='gapped')
+            sequences = self.get_sequences(primer_name, primers_dict, target='gapped')
             with open(gapped_output_file_path, 'w') as gapped:
                 counter = 1
                 for sequence in sequences:
