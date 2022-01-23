@@ -3278,6 +3278,20 @@ def get_bams_and_profiles_txt_as_data(file_path):
         filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
         is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
+    # this file can optionally contain `r1` and `r2` for short reads
+    for raw_reads in ['r1', 'r2']:
+        if raw_reads in columns_found:
+            file_paths = COLUMN_DATA(raw_reads)
+            if '' in file_paths:
+                raise ConfigError("If you are using r1/r2 columns in your `bams-and-profiles-txt` file, then you "
+                                  "must have a valid file path for every single sample. In your current file there "
+                                  "are some blank ones. Sorry.")
+            missing_files = [f for f in file_paths if not os.path.exists(f)]
+            if len(missing_files):
+                raise ConfigError(f"Anvi'o could not find some of the {raw_reads.upper()} files listed in your "
+                                  f"`bams-and-profiles-txt` at {file_path} where they were supposed to be: "
+                                  f"{missing_files}.")
+
     return contigs_db_path, profiles_and_bams
 
 
