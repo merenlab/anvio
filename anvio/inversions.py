@@ -675,14 +675,82 @@ class Inversions:
         self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
+    def calculate_inversion_ratios_for_sample(self, sample_name, primers_dict):
+        """Go back to the raw metagenomic reads to calculate ACTUAL ratios of inversions for a single sample"""
+
+        args = argparse.Namespace(samples_dict=self.profile_db_bam_file_pairs,
+                                  primers_dict=primers_dict,
+                                  min_remainder_length=6,
+                                  only_keep_remainder=True,
+                                  stop_after=10)
+
+        s = PrimerSearch(args, run=run_quiet, progress=progress_quiet)
+
+        sample_dict, primer_hits = s.process_sample(sample_name)
+
+        for primer_name in primers_dict:
+            oligo_sequences = s.get_sequences(primer_name, primer_hits, target='remainders')
+            pass
+
+
     def calculate_inversion_ratios(self):
         """Go back to the raw metagenomic reads to calculate ACTUAL ratios of inversions"""
 
         if self.skip_calculate_inversion_ratios or not self.raw_r1_r2_reads_are_present:
             return
 
-        # FIXME: this is what we need to do next.
-        pass
+        if not len(self.consensus_inversions):
+            self.run.info_single("Calculate inversions speaking: There are no consensus inversions to "
+                                 "calculate ratios :/", mc="red")
+
+        self.run.warning(None, header="CALCULATING INVERSION RATIOS", lc="yellow")
+        self.run.info_single(f"Now anvi'o will calculate ratios for consensus {PL('inversion', len(self.consensus_inversions))} "
+                             f"across {PL('sample', len(self.profile_db_bam_file_pairs))}. This can take a very long time since "
+                             f"for each sample, anvi'o will go through each short read to search for two sequences per inversion "
+                             f"and sadly this part of the code cannot make use of multiple threads. IF IT COMES TO A POINT WHERE "
+                             f"you (or your job on your HPC) can't continue running it, this process can be killed without any "
+                             f"loss of data from the previous steps, as your primary output files must have already been reported. "
+                             f"You can always run the program `anvi-search-primers` manually using the oligo primers listed in the "
+                             f"consensus output file. It is of course not as much fun, but that's what happens when you work with "
+                             f"anvi'o, whose lazy programmers didn't give you a `--num-threads` option here :(", level=0, nl_after=1)
+
+        # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
+        # `PrimerSearch`. for this we first need to generate a list of primers. for each
+        # consensus inversion, which at this point are described in a list like this,
+        #
+        #    >>> [OrderedDict([('inversion_id', 'INV_0001'),
+        #    >>>               ('first_oligo_primer', 'GAGCAAAGATCATGTTTCAAAA.ACGTTC'),
+        #    >>>               ('second_oligo_primer', 'TGTTTCAAAA.ACGTTCCCATTGTGTATTC'),
+        #    >>>               (...)
+        #    >>>               ('num_samples', 1),
+        #    >>>               ('sample_names', 'xP3')]),
+        #    >>>  OrderedDict([('inversion_id', 'INV_0002'),
+        #    >>>               ('first_oligo_primer', 'GGCAGAAATGCCAAGT.CTATCAGAACTT'),
+        #    >>>               ('second_oligo_primer', 'AAGT.CTATCAGAACTTAGAGTAGAGCACT'),
+        #    >>>               (...)
+        #    >>>               ('num_samples', 2),
+        #    >>>               ('sample_names', 'xP3,xP2')]),
+        #    >>>  OrderedDict([('inversion_id', 'INV_0003'),
+        #    >>>               ('first_oligo_primer', 'AGATGTTTCAAAAAACGTTCGTCTATTTGAAC'),
+        #    >>>               ('second_oligo_primer', 'AAACGTTCGTCTATTTGAACAAAAACACGTTTT'),
+        #    >>>               (...)
+        #    >>>               ('num_samples', 1),
+        #    >>>               ('sample_names', 'xP3')]),
+        #    >>>  (...)]
+        #
+        # there will have to be two primers, one for `first_oligo_primer` and one for `second_oligo_primer`.
+        # so our data structure for primers will include two entries for one consensus inversions that
+        # will need to be decomposed later.
+        primers_dict = {}
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+            primers_dict[inversion_id + '-FIRST'] = {'primer_sequence': entry['first_oligo_primer']}
+            primers_dict[inversion_id + '-SECOND'] = {'primer_sequence': entry['second_oligo_primer']}
+
+        # so now our primers_dict is ready, we can call PrimerSearch per sample
+        # in a for loop (FIXME: wink wink parallellize this wink wink)
+        for sample_name in self.profile_db_bam_file_pairs:
+            self.calculate_inversion_ratios_for_sample(sample_name, primers_dict)
 
 
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
