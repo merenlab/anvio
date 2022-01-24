@@ -24,7 +24,6 @@ run = Run()
 def main(args):
     I = inversions.Inversions(args)
     I.process()
-    I.report()
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser

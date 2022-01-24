@@ -19,7 +19,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.sequencefeatures import Palindromes
+from anvio.sequencefeatures import Palindromes, PrimerSearch
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -840,6 +840,10 @@ class Inversions:
         # includes more than one sample. To avoid redundancy, we wish to report
         # a concensus file that describes only unique inversions.
         self.compute_consensus_inversions()
+
+        # we want to report now because the very last step can take a long time, and
+        # if the user kills the process, we don't want them to go home empty handed.
+        self.report()
 
         # here we have our consensus inversions in `self.consensus_inversions`. It is time
         # to go back to the raw reads and calculate their proportions IF r1/r2 files are provided
