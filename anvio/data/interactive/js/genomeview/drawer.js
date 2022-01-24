@@ -50,7 +50,7 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
   yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
   let layerPos = 0
   let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
-  let genome = this.settings['genomeData']['genomes'][orderIndex][1];
+  // let genome = this.settings['genomeData']['genomes'][orderIndex][1];
   // let label = genome.genes.gene_calls[0].contig;
 
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
