@@ -6,7 +6,7 @@ import os
 import copy
 import argparse
 import numpy as np
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 import anvio
 import anvio.tables as t
@@ -676,21 +676,55 @@ class Inversions:
 
 
     def compute_inversion_activity_for_sample(self, sample_name, primers_dict):
-        """Go back to the raw metagenomic reads to compute activity of inversions for a single sample"""
+        """Go back to the raw metagenomic reads to compute activity of inversions for a single sample.
 
+        Returns
+        =======
+        sample_counts : list of tuples
+            A list that summarizes frequencies of all oligos for each primer within the sample. Each
+            tuple in the list holds information for a single oligo and follows the order,
+
+                >>> (sample_name, inversion_id, oligo_primer, oligo, frequency, relative_abundance)
+
+            where,
+
+                - sample_name: sample name as written in the first column of bams-and-profiles-txt
+                - inversion_id: the simplified name (i.e, INV_0001) that matches entries in consensus output file
+                - oligo_primer: frequencies reported whether for the first or second palindrome
+                - oligo: the actual oligonucleotides of 6 bases
+                - frequency: the frequency of oligo in sample
+                - relative_abundance: witin-sample relative abundance of the frequency
+        """
+
+        # setup args object, we are going for `min_remainder_length=6` because we don't need
+        # any longer than that to compute ratios.
         args = argparse.Namespace(samples_dict=self.profile_db_bam_file_pairs,
                                   primers_dict=primers_dict,
                                   min_remainder_length=6,
-                                  only_keep_remainder=True,
-                                  stop_after=10)
+                                  only_keep_remainder=True)
 
-        s = PrimerSearch(args, run=run_quiet, progress=progress_quiet)
+        # get an instance
+        if anvio.DEBUG or self.verbose:
+            # be vocal
+            s = PrimerSearch(args, run=self.run, progress=self.progress)
+        else:
+            # be quiet
+            s = PrimerSearch(args, run=run_quiet, progress=self.progress)
 
+        # remember, `samples_dict` contains all samples, but we will be focusing on a single
+        # sample by calling the member`.process_sample`
         sample_dict, primer_hits = s.process_sample(sample_name)
 
+        # we now have results for a single sample. prepare for return.
+        sample_counts = []
         for primer_name in primers_dict:
-            oligo_sequences = s.get_sequences(primer_name, primer_hits, target='remainders')
-            pass
+            oligos = s.get_sequences(primer_name, primer_hits, target='remainders')
+            num_oligos = len(oligos)
+            oligos_frequency_dict = Counter(oligos)
+            for oligo, frequency in oligos_frequency_dict.items():
+                sample_counts.append((sample_name, primer_name, oligo, frequency, frequency / num_oligos))
+
+        return sample_counts
 
 
     def compute_inversion_activity(self):
@@ -744,13 +778,26 @@ class Inversions:
         primers_dict = {}
         for entry in self.consensus_inversions:
             inversion_id = entry['inversion_id']
-            primers_dict[inversion_id + '-FIRST'] = {'primer_sequence': entry['first_oligo_primer']}
-            primers_dict[inversion_id + '-SECOND'] = {'primer_sequence': entry['second_oligo_primer']}
+            primers_dict[inversion_id + '-first_oligo_primer'] = {'primer_sequence': entry['first_oligo_primer']}
+            primers_dict[inversion_id + '-second_oligo_primer'] = {'primer_sequence': entry['second_oligo_primer']}
 
+        oligo_frequencies = []
         # so now our primers_dict is ready, we can call PrimerSearch per sample
         # in a for loop (FIXME: wink wink parallellize this wink wink)
         for sample_name in self.profile_db_bam_file_pairs:
-            self.compute_inversion_activity_for_sample(sample_name, primers_dict)
+            oligo_frequencies.extend(self.compute_inversion_activity_for_sample(sample_name, primers_dict))
+
+        # it is time to report this. A quick-and-dirty reporting first:
+        # report consensus inversions
+        output_path = os.path.join(self.output_directory, 'INVERSION-ACTIVITY.txt')
+        headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'frequency_count', 'relative_abundance']
+        with open(output_path, 'w') as output:
+            output.write('\t'.join(headers) + '\n')
+            for e in oligo_frequencies:
+                inversion_id, oligo_primer = '-'.join(e[1].split('-')[:-1]), e[1].split('-')[-1]
+                output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]}\t{e[4]:.3f}\n")
+
+        self.run.info('Long-format reporting file for inversion activity', os.path.abspath(output_path), mc='green')
 
 
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
