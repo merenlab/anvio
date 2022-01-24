@@ -320,7 +320,6 @@ class PrimerSearch:
 
         primer_length = len(self.primers_dict[primer_name]['primer_sequence'])
         match_sequences = primers_dict[primer_name]['matching_sequences']
-        print(len(match_sequences))
 
         if target in ['trimmed', 'gapped']:
             seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in match_sequences]
