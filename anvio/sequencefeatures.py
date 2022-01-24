@@ -217,6 +217,7 @@ class PrimerSearch:
 
                     sample_stats['hits'] += 1
                     sample_stats['primers'][primer_name]['final_hits'] += 1
+                    sample_dict['hits'][primer_name] += 1
 
                     if anvio.DEBUG:
                         self.progress.end()
