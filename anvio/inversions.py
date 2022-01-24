@@ -447,7 +447,7 @@ class Inversions:
 
             # here we update the inversion object
             inv.first_oligo_primer = first_genomic_region + first_with_mismatches
-            inv.second_oligo_primer = second_with_mismatches + second_genomic_region
+            inv.second_oligo_primer = utils.rev_comp(second_genomic_region) + second_with_mismatches
 
         return
 
