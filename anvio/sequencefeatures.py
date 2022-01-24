@@ -138,7 +138,15 @@ class PrimerSearch:
 
 
     def process_sample(self, sample_name):
-        """Process a single sample"""
+        """Process a single sample.
+
+        Returns
+        =======
+        sample_dict : dict
+            A dictionary that holds `hits` for each primer.
+        primers_dict : dict
+            A dictionary that holds `matching_seqeunces` for each primer
+        """
 
         if sample_name not in self.samples_dict:
             raise ConfigError(f"Someone is calling `process_sample` with a sample name ('{sample_name}') that "
