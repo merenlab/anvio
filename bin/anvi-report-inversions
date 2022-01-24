@@ -100,11 +100,11 @@ if __name__ == '__main__':
                     "if it is too long, then there will not be enough reads to 'keep' depending on the minimum "
                     "short read length of the sequencing. The default value will probably good for the vast "
                     "majority of cases.", metavar="INT")
-    groupE.add_argument('--skip-calculate-inversion-ratios', default=False, action="store_true", help="This flag "
-                    "will help you skip calculating inversion ratios, which is an extremely costly step, even if "
+    groupE.add_argument('--skip-compute-inversion-activity', default=False, action="store_true", help="This flag "
+                    "will help you skip computing inversion activity, which is an extremely costly step, even if "
                     "your `bams-and-profiles-txt` contains `r1` and `r2` entries. It may be a good idea to first "
-                    "run the workflow without calculating ratios, take a look at the CONSENSUS file to make sure "
-                    "everything looks alright, and then run it without this flag.")
+                    "run the workflow without computing activity, take a look at the CONSENSUS file to make sure "
+                    "everything looks alright, and then run the workflow without this flag.")
 
 
     groupF = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")

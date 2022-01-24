@@ -95,8 +95,8 @@ class Inversions:
         # sequencing.
         self.oligo_primer_base_length = A('oligo_primer_base_length') or 12
 
-        # calculate inversion ratios across samples?
-        self.skip_calculate_inversion_ratios = A('skip_calculate_inversion_ratios') or False
+        # compute inversion activity across samples?
+        self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -675,8 +675,8 @@ class Inversions:
         self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
-    def calculate_inversion_ratios_for_sample(self, sample_name, primers_dict):
-        """Go back to the raw metagenomic reads to calculate ACTUAL ratios of inversions for a single sample"""
+    def compute_inversion_activity_for_sample(self, sample_name, primers_dict):
+        """Go back to the raw metagenomic reads to compute activity of inversions for a single sample"""
 
         args = argparse.Namespace(samples_dict=self.profile_db_bam_file_pairs,
                                   primers_dict=primers_dict,
@@ -693,18 +693,18 @@ class Inversions:
             pass
 
 
-    def calculate_inversion_ratios(self):
-        """Go back to the raw metagenomic reads to calculate ACTUAL ratios of inversions"""
+    def compute_inversion_activity(self):
+        """Go back to the raw metagenomic reads to compute activity of inversions"""
 
-        if self.skip_calculate_inversion_ratios or not self.raw_r1_r2_reads_are_present:
+        if self.skip_compute_inversion_activity or not self.raw_r1_r2_reads_are_present:
             return
 
         if not len(self.consensus_inversions):
-            self.run.info_single("Calculate inversions speaking: There are no consensus inversions to "
-                                 "calculate ratios :/", mc="red")
+            self.run.info_single("Compute inversion activity function is speaking: There are no consensus inversions to "
+                                 "compute in-sample activity :/", mc="red")
 
         self.run.warning(None, header="CALCULATING INVERSION RATIOS", lc="yellow")
-        self.run.info_single(f"Now anvi'o will calculate ratios for consensus {PL('inversion', len(self.consensus_inversions))} "
+        self.run.info_single(f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
                              f"across {PL('sample', len(self.profile_db_bam_file_pairs))}. This can take a very long time since "
                              f"for each sample, anvi'o will go through each short read to search for two sequences per inversion "
                              f"and sadly this part of the code cannot make use of multiple threads. IF IT COMES TO A POINT WHERE "
@@ -750,7 +750,7 @@ class Inversions:
         # so now our primers_dict is ready, we can call PrimerSearch per sample
         # in a for loop (FIXME: wink wink parallellize this wink wink)
         for sample_name in self.profile_db_bam_file_pairs:
-            self.calculate_inversion_ratios_for_sample(sample_name, primers_dict)
+            self.compute_inversion_activity_for_sample(sample_name, primers_dict)
 
 
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
@@ -810,18 +810,18 @@ class Inversions:
         self.run.info("[Confirming inversions] Check all palindromes in a stretch?",  "True" if self.check_all_palindromes else "False")
         self.run.info("[Confirming inversions] Process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
 
-        # are we to calculate inversion ratios by going through raw reads?
-        inversion_ratios_will_be_calculated = self.raw_r1_r2_reads_are_present and not self.skip_calculate_inversion_ratios
-        self.run.info("[Inversion ratios] Calculate inversion ratios?",  "True" if inversion_ratios_will_be_calculated else "False", mc=("green" if inversion_ratios_will_be_calculated else "red"))
-        if not inversion_ratios_will_be_calculated:
+        # are we to compute inversion activity by going through raw reads?
+        inversion_activity_will_be_computed = self.raw_r1_r2_reads_are_present and not self.skip_compute_inversion_activity
+        self.run.info("[Inversion activity] Compute inversion activity?",  "True" if inversion_activity_will_be_computed else "False", mc=("green" if inversion_activity_will_be_computed else "red"))
+        if not inversion_activity_will_be_computed:
             if not self.raw_r1_r2_reads_are_present:
-                self.run.info("[Inversion ratios] Not calculating because",  "`bams-and-profiles-txt` does not contain raw reads for r1/r2", nl_after=1)
-            elif self.skip_calculate_inversion_ratios:
-                self.run.info("[Inversion ratios] Not calculating because",  "The user asked not to do it :/", nl_after=1)
+                self.run.info("[Inversion activity] Not computing because",  "`bams-and-profiles-txt` does not contain raw reads for r1/r2", nl_after=1)
+            elif self.skip_compute_inversion_activity:
+                self.run.info("[Inversion activity] Not computing because",  "The user asked not to do it :/", nl_after=1)
             else:
-                self.run.info("[Inversion ratios] Not calculating because",  "Anvi'o has no idea what it is doing", nl_after=1)
+                self.run.info("[Inversion activity] Not computing because",  "Anvi'o has no idea what it is doing", nl_after=1)
         else:
-            self.run.info("[Inversion ratios] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
+            self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
         if self.only_report_from:
             self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)
@@ -846,9 +846,9 @@ class Inversions:
         self.report()
 
         # here we have our consensus inversions in `self.consensus_inversions`. It is time
-        # to go back to the raw reads and calculate their proportions IF r1/r2 files are provided
+        # to go back to the raw reads and compute their activity IF r1/r2 files are provided
         # AND the user didn't ask this step to be skipped.
-        self.calculate_inversion_ratios()
+        self.compute_inversion_activity()
 
 
     def sanity_check(self):
