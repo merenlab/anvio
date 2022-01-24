@@ -737,7 +737,7 @@ class Inversions:
             self.run.info_single("Compute inversion activity function is speaking: There are no consensus inversions to "
                                  "compute in-sample activity :/", mc="red")
 
-        self.run.warning(None, header="CALCULATING INVERSION RATIOS", lc="yellow")
+        self.run.warning(None, header="COMPUTING INVERSION ACTIVITY DATA", lc="yellow")
         self.run.info_single(f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
                              f"across {PL('sample', len(self.profile_db_bam_file_pairs))}. This can take a very long time since "
                              f"for each sample, anvi'o will go through each short read to search for two sequences per inversion "
@@ -797,7 +797,7 @@ class Inversions:
                 inversion_id, oligo_primer = '-'.join(e[1].split('-')[:-1]), e[1].split('-')[-1]
                 output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]}\t{e[4]:.3f}\n")
 
-        self.run.info('Long-format reporting file for inversion activity', os.path.abspath(output_path), mc='green')
+        self.run.info('Long-format reporting file for inversion activity', output_path, mc='green')
 
 
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
@@ -838,7 +838,7 @@ class Inversions:
 
         w = self.run.width
         self.run.width += 15
-        self.run.info("[General] Input BAMs and profiles file", os.path.abspath(self.bams_and_profiles_file_path))
+        self.run.info("[General] Input BAMs and profiles file", self.bams_and_profiles_file_path)
         self.run.info("[General] Number of samples to process", len(self.profile_db_bam_file_pairs))
         self.run.info("[General] R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
         self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
@@ -941,7 +941,7 @@ class Inversions:
                     output.write('\t'.join(headers) + '\n')
                     for v in self.inversions[entry_name]:
                         output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
-                self.run.info(f'Inversions in {entry_name}', os.path.abspath(output_path), mc='green')
+                self.run.info(f'Inversions in {entry_name}', output_path, mc='green')
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
@@ -952,10 +952,10 @@ class Inversions:
             output.write('\t'.join(headers) + '\n')
             for v in self.consensus_inversions:
                 output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
-        self.run.info('Reporting file for consensus inversions', os.path.abspath(output_path), mc='green')
+        self.run.info('Reporting file for consensus inversions', output_path, mc='green')
 
         # report all stretches
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
-        self.run.info('Reporting file on all stretches considered', os.path.abspath(output_path), nl_before=1, nl_after=1)
+        self.run.info('Reporting file on all stretches considered', output_path, nl_before=1, nl_after=1)
