@@ -406,6 +406,8 @@ class Inversions:
 
         self.progress.end()
 
+        self.run.info(f"[Inversions found] In sample {entry_name}", f"{len(self.inversions[entry_name])}", lc="yellow")
+
 
     def update_inversions_with_primer_sequences(self, inversions, contig_sequence, start):
         """Takes a set of true inversions and updates them with oligo primers.
@@ -669,6 +671,8 @@ class Inversions:
                         break
 
         self.progress.end()
+
+        self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
     def calculate_inversion_ratios(self):
