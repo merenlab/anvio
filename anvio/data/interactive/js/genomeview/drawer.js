@@ -39,6 +39,11 @@ GenomeDrawer.prototype.draw = function () {
   checkGeneLabels();
   drawTestShades();
   $('.loading-screen').hide();
+
+  if(firstDraw){
+    this.setInitialZoom()
+    firstDraw = false
+  }
 }
 
 /*
@@ -748,4 +753,10 @@ GenomeDrawer.prototype.queryFunctions = function () {
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
   zoomOut('partial', lowestStart, highestEnd)
   this.glowGenes(glowPayload)
+}
+
+GenomeDrawer.prototype.setInitialZoom = function(){
+    let start = 0
+    let stop = genomeMax > 35000 ? 35000 : genomeMax
+    zoomOut('partial', start, stop)
 }
