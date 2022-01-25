@@ -4,7 +4,6 @@ source 00.sh
 # Setup #############################
 SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
-
 INFO "Setting up the ecophylo workflow test directory"
 mkdir $output_dir/workflow_test
 cp -r $files/workflows/ecophylo/*                                       $output_dir/workflow_test/
@@ -57,3 +56,20 @@ INFO "Running ecophylo workflow interactive"
 HMM="Ribosomal_L16"
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
+
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
+
+INFO "Saving a workflow graph - no samples.txt"
+anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-graph
+
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt"
+anvi-run-workflow -w ecophylo -c no-samples-txt-config.json -A --dry-run
+
+INFO "Running ecophylo workflow - no samples.txt"
+anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
+
+INFO "Running ecophylo workflow interactive"
+HMM="Ribosomal_L16"
+anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
+                 -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
+                 --manual

@@ -1,5 +1,5 @@
 {
-    "metagenomes": "",
+    "metagenomes": "metagenomes.txt",
     "external_genomes": "external-genomes.txt",
     "hmm_list": "hmm_list.txt",
     "cluster_representative_method": {
@@ -100,7 +100,7 @@
     "anvi_import_everything": {
         "threads": 5
     },
-    "samples_txt": "samples.txt",
+    "samples_txt": "",
     "output_dirs": {
         "EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA",
         "RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS",
