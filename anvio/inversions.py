@@ -98,6 +98,9 @@ class Inversions:
         # compute inversion activity across samples?
         self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
 
+        # stop inversion activity computation early for testing?
+        self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
+
         # be talkative or not
         self.verbose = A('verbose')
 
@@ -703,6 +706,10 @@ class Inversions:
                                   min_remainder_length=6,
                                   only_keep_remainder=True)
 
+        # if the user is testing:
+        if self.end_primer_search_after_x_hits:
+            args.stop_after = self.end_primer_search_after_x_hits
+
         # get an instance
         if anvio.DEBUG or self.verbose:
             # be vocal
@@ -868,7 +875,11 @@ class Inversions:
             else:
                 self.run.info("[Inversion activity] Not computing because",  "Anvi'o has no idea what it is doing", nl_after=1)
         else:
-            self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
+            if self.end_primer_search_after_x_hits:
+                self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length)
+                self.run.info("[Inversion activity Debug] Num hits to end primer search",  self.end_primer_search_after_x_hits, mc="red", nl_after=1)
+            else:
+                self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
         if self.only_report_from:
             self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)

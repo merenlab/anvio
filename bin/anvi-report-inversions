@@ -87,10 +87,11 @@ if __name__ == '__main__':
                     "paired-end reads and assert your authority. You do you and turn on the flag, you rebellious "
                     "scientist who will likely miss a lot of additoinal inversions like a boss.")
 
-    groupE = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 04: CALCULATING INVERSION RATIOS', "What is the proportion of ON/OFF states across "
-                    "samples? A two million dollars question that anvi'o will answer for you IF you have `r1` and `r2` "
-                    "columns in your `bams-and-profiles-txt` file that points to raw FASTQ reads you have used to "
-                    "generate your BAM files for each sample. Truly cray stuff.")
+    groupE = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 04: COMPUTING INVERSION ACTIVITY', "What is the "
+                    "proportion of invertible repeat orientation across samples? A two million dollars question "
+                    "that anvi'o WILL answer for you IF you have `r1` and `r2` columns in your `bams-and-profiles-txt` "
+                    "file that points to raw FASTQ reads you have used to generate your BAM files for each sample. "
+                    "Truly cray stuff.")
     groupE.add_argument('--oligo-primer-base-length', default=12, type=int, help="Calculating inversion ratios "
                     "require anvi'o to 'design' an in silico primer based on palindromes associated with inersions "
                     "and the upstream/downstream genomic context to search for short reads in raw sequenicng data"
@@ -105,7 +106,12 @@ if __name__ == '__main__':
                     "your `bams-and-profiles-txt` contains `r1` and `r2` entries. It may be a good idea to first "
                     "run the workflow without computing activity, take a look at the CONSENSUS file to make sure "
                     "everything looks alright, and then run the workflow without this flag.")
-
+    groupE.add_argument('--end-primer-search-after-x-hits', default=None, type=int, help="For very large "
+                    "datasets, primer search can take a very long time. By setting a small integer here, you can ask "
+                    "anvi'o to stop searching primers after a few hits. Once the total number of primer hits reach to "
+                    "number for a given sample, anvi'o will stop searching further and continue with the next sample. "
+                    "This flag is only good for testing, since it will prematurely end the search without testting "
+                    "all primers")
 
     groupF = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
     groupF.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
