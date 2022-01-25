@@ -401,9 +401,11 @@ class Inversions:
                                          'first_start': inv.first_start + start,
                                          'first_end': inv.first_end + start,
                                          'first_oligo_primer': inv.first_oligo_primer,
+                                         'first_oligo_reference': inv.first_oligo_reference,
                                          'second_start': inv.second_start + start,
                                          'second_end': inv.second_end + start,
                                          'second_oligo_primer': inv.second_oligo_primer,
+                                         'second_oligo_reference': inv.second_oligo_reference,
                                          'num_mismatches': inv.num_mismatches,
                                          'num_gaps': inv.num_gaps,
                                          'length': inv.length,
@@ -444,17 +446,27 @@ class Inversions:
         for inv in inversions:
             # we will first identify upstream and downstream genomic regions that are before the first palindrome
             # in the inversion and after the second palindrome in the inversion
-            first_genomic_region = contig_sequence[inv.first_start + start - self.oligo_primer_base_length:inv.first_start + start]
-            second_genomic_region = contig_sequence[inv.second_end + start:inv.second_end + start + self.oligo_primer_base_length + 1]
+            first_genomic_region_start = inv.first_start + start - self.oligo_primer_base_length
+            first_genomic_region_end = inv.first_start + start
+            first_genomic_region = contig_sequence[first_genomic_region_start:first_genomic_region_end]
+
+            second_genomic_region_start = inv.second_end + start
+            second_genomic_region_end = inv.second_end + start + self.oligo_primer_base_length + 1
+            second_genomic_region = contig_sequence[second_genomic_region_start:second_genomic_region_end]
 
             # then, we will replace nucleotides found on the contig with `.` character where
             # there are mismatches in the palindrome sequence
             first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
             second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
 
-            # here we update the inversion object
+            # here we first update the inversion object with primers
             inv.first_oligo_primer = first_genomic_region + first_with_mismatches
             inv.second_oligo_primer = utils.rev_comp(second_genomic_region) + second_with_mismatches
+
+            # and finally we update the inversion object with reference oligos
+            # found in the original contig
+            inv.first_oligo_reference = contig_sequence[first_genomic_region_end + inv.length:first_genomic_region_end + inv.length + self.oligo_length]
+            inv.second_oligo_reference = utils.rev_comp(contig_sequence[second_genomic_region_start - inv.length - self.oligo_length:second_genomic_region_start - inv.length])
 
         return
 
@@ -732,7 +744,7 @@ class Inversions:
             num_oligos = len(oligos)
             oligos_frequency_dict = Counter(oligos)
             for oligo, frequency in oligos_frequency_dict.items():
-                sample_counts.append((sample_name, primer_name, oligo, frequency, frequency / num_oligos))
+                sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
 
         return sample_counts
 
@@ -788,8 +800,10 @@ class Inversions:
         primers_dict = {}
         for entry in self.consensus_inversions:
             inversion_id = entry['inversion_id']
-            primers_dict[inversion_id + '-first_oligo_primer'] = {'primer_sequence': entry['first_oligo_primer']}
-            primers_dict[inversion_id + '-second_oligo_primer'] = {'primer_sequence': entry['second_oligo_primer']}
+            primers_dict[inversion_id + '-first_oligo_primer'] = {'primer_sequence': entry['first_oligo_primer'],
+                                                                  'oligo_reference': entry['first_oligo_reference']}
+            primers_dict[inversion_id + '-second_oligo_primer'] = {'primer_sequence': entry['second_oligo_primer'],
+                                                                   'oligo_reference': entry['second_oligo_reference']}
 
         oligo_frequencies = []
         # so now our primers_dict is ready, we can call PrimerSearch per sample
@@ -800,12 +814,12 @@ class Inversions:
         # it is time to report this. A quick-and-dirty reporting first:
         # report consensus inversions
         output_path = os.path.join(self.output_directory, 'INVERSION-ACTIVITY.txt')
-        headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'frequency_count', 'relative_abundance']
+        headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'reference', 'frequency_count', 'relative_abundance']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
             for e in oligo_frequencies:
                 inversion_id, oligo_primer = '-'.join(e[1].split('-')[:-1]), e[1].split('-')[-1]
-                output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]}\t{e[4]:.3f}\n")
+                output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]!s}\t{e[4]}\t{e[5]:.3f}\n")
 
         self.run.info('Long-format reporting file for inversion activity', output_path, mc='green')
 
