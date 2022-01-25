@@ -95,6 +95,10 @@ class Inversions:
         # sequencing.
         self.oligo_primer_base_length = A('oligo_primer_base_length') or 12
 
+        # this variable tells us how long is the oligonucleotide we should be focusing on
+        # to measure proportions of activity
+        self.oligo_length = 6
+
         # compute inversion activity across samples?
         self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
 
@@ -694,16 +698,15 @@ class Inversions:
                 - sample_name: sample name as written in the first column of bams-and-profiles-txt
                 - inversion_id: the simplified name (i.e, INV_0001) that matches entries in consensus output file
                 - oligo_primer: frequencies reported whether for the first or second palindrome
-                - oligo: the actual oligonucleotides of 6 bases
+                - oligo: the actual oligonucleotides of `self.oligo_length` bases
                 - frequency: the frequency of oligo in sample
                 - relative_abundance: witin-sample relative abundance of the frequency
         """
 
-        # setup args object, we are going for `min_remainder_length=6` because we don't need
-        # any longer than that to compute ratios.
+        # setup the args object
         args = argparse.Namespace(samples_dict=self.profile_db_bam_file_pairs,
                                   primers_dict=primers_dict,
-                                  min_remainder_length=6,
+                                  min_remainder_length=self.oligo_length,
                                   only_keep_remainder=True)
 
         # if the user is testing:
