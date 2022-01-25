@@ -1928,7 +1928,7 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg(dontDownload) {
+async function exportSvg(dontDownload) {
     if (!drawer)
         return;
 
@@ -1985,7 +1985,7 @@ function exportSvg(dontDownload) {
         return;
     }
 
-    svgCrowbar();
+    await svgCrowbar();
 
     svg.removeAttribute('viewBox');
     $('#tree').prepend(detached);
@@ -1994,6 +1994,8 @@ function exportSvg(dontDownload) {
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
+
+    await svgCrowbar()
 }
 
 
