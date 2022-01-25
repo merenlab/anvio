@@ -2,6 +2,8 @@ Output text files produced by %(anvi-estimate-metabolism)s that describe the pre
 
 Depending on the output options used when running %(anvi-estimate-metabolism)s, these files will have different formats. This page describes and provides examples of the various output file types.
 
+Please note that the examples below show only KEGG data, but user-defined metabolic pathways (%(user-metabolism)s) can also be included in this output!
+
 ### How to get to this output
 ![A beautiful workflow of metabolism reconstruction in anvi'o](../../images/metabolism_reconstruction.png)
 

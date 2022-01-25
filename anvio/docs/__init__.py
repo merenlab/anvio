@@ -628,6 +628,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "user-metabolism": {
+        "name": "USER METABOLISM ESTIMATES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "augustus-gene-calls": {
         "name": "AUGUSTUS GENE CALLS",
         "type": "TXT",
