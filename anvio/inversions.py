@@ -973,9 +973,13 @@ class Inversions:
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
+        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start',
+                   'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length',
+                   'distance', 'num_samples', 'sample_names', 'first_oligo_primer',  'first_oligo_reference',
+                   'second_oligo_primer', 'second_oligo_reference']
+
         # report consensus inversions
         output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
-        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start', 'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length', 'distance', 'num_samples', 'sample_names', 'first_oligo_primer', 'second_oligo_primer']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
             for v in self.consensus_inversions:
