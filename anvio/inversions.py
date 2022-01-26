@@ -6,6 +6,7 @@ import os
 import copy
 import argparse
 import numpy as np
+import multiprocessing
 from collections import OrderedDict, Counter
 
 import anvio
@@ -107,6 +108,9 @@ class Inversions:
 
         # be talkative or not
         self.verbose = A('verbose')
+
+        # performance
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
         # debugging mode:
         self.only_report_from = A('only_report_from')
@@ -694,7 +698,8 @@ class Inversions:
         self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
-    def compute_inversion_activity_for_sample(self, sample_name, primers_dict):
+    @staticmethod
+    def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
         """Go back to the raw metagenomic reads to compute activity of inversions for a single sample.
 
         Returns
@@ -715,38 +720,38 @@ class Inversions:
                 - relative_abundance: witin-sample relative abundance of the frequency
         """
 
-        # setup the args object
-        args = argparse.Namespace(samples_dict=self.profile_db_bam_file_pairs,
-                                  primers_dict=primers_dict,
-                                  min_remainder_length=self.oligo_length,
-                                  only_keep_remainder=True)
+        while True:
+            sample_name = input_queue.get(True)
 
-        # if the user is testing:
-        if self.end_primer_search_after_x_hits:
-            args.stop_after = self.end_primer_search_after_x_hits
+            # the `samples_dict` knows all samples, `sample_name` knows the sample we are
+            # interested in in this thread. we will subsample the `samples_dict` first
+            # because otherwise PrimerSearch will search primers for every sample in
+            # `samples_dict`
+            samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
 
-        # get an instance
-        if anvio.DEBUG or self.verbose:
-            # be vocal
-            s = PrimerSearch(args, run=self.run, progress=self.progress)
-        else:
-            # be quiet
-            s = PrimerSearch(args, run=run_quiet, progress=self.progress)
+            # setup the args object
+            args = argparse.Namespace(samples_dict=samples_dict_for_sample,
+                                      primers_dict=primers_dict,
+                                      min_remainder_length=oligo_length,
+                                      only_keep_remainder=True)
 
-        # remember, `samples_dict` contains all samples, but we will be focusing on a single
-        # sample by calling the member`.process_sample`
-        sample_dict, primer_hits = s.process_sample(sample_name)
+            # if the user is testing:
+            if end_primer_search_after_x_hits:
+                args.stop_after = end_primer_search_after_x_hits
 
-        # we now have results for a single sample. prepare for return.
-        sample_counts = []
-        for primer_name in primers_dict:
-            oligos = s.get_sequences(primer_name, primer_hits, target='remainders')
-            num_oligos = len(oligos)
-            oligos_frequency_dict = Counter(oligos)
-            for oligo, frequency in oligos_frequency_dict.items():
-                sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
+            s = PrimerSearch(args, run=run, progress=progress)
+            sample_dict, primer_hits = s.process_sample(sample_name)
 
-        return sample_counts
+            # we now have results for a single sample. prepare for return.
+            sample_counts = []
+            for primer_name in primers_dict:
+                oligos = s.get_sequences(primer_name, primer_hits, target='remainders')
+                num_oligos = len(oligos)
+                oligos_frequency_dict = Counter(oligos)
+                for oligo, frequency in oligos_frequency_dict.items():
+                    sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
+
+            output_queue.put(sample_counts)
 
 
     def compute_inversion_activity(self):
@@ -759,16 +764,30 @@ class Inversions:
             self.run.info_single("Compute inversion activity function is speaking: There are no consensus inversions to "
                                  "compute in-sample activity :/", mc="red")
 
-        self.run.warning(None, header="COMPUTING INVERSION ACTIVITY DATA", lc="yellow")
-        self.run.info_single(f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
-                             f"across {PL('sample', len(self.profile_db_bam_file_pairs))}. This can take a very long time since "
-                             f"for each sample, anvi'o will go through each short read to search for two sequences per inversion "
-                             f"and sadly this part of the code cannot make use of multiple threads. IF IT COMES TO A POINT WHERE "
-                             f"you (or your job on your HPC) can't continue running it, this process can be killed without any "
-                             f"loss of data from the previous steps, as your primary output files must have already been reported. "
-                             f"You can always run the program `anvi-search-primers` manually using the oligo primers listed in the "
-                             f"consensus output file. It is of course not as much fun, but that's what happens when you work with "
-                             f"anvi'o, whose lazy programmers didn't give you a `--num-threads` option here :(", level=0, nl_after=1)
+        sample_names = list(self.profile_db_bam_file_pairs.keys())
+        num_samples = len(sample_names)
+
+        # let the user know what is going on
+        msg = (f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
+              f"across {PL('sample', num_samples)}. Brace yourself and please not that this can "
+              f"take a very long time since for each sample, anvi'o will go through each short read to search for two "
+              f"sequences per inversion. IF IT COMES TO A POINT WHERE you (or your job on your HPC) can't continue running "
+              f"it, this process can be killed without any loss of data from the previous steps, as your primary output "
+              f"files must have already been reported. You can always skip this step and search for individual primers "
+              f"listed in the consensus output file using the program `anvi-search-primers` with the parameter "
+              f"`--min-remainder-length 6` and the flag `--only-report-remainders` to explore inversion activity "
+              f"manually")
+        self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
+        if num_samples > self.num_threads:
+            self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Not all samples will be processed "
+                                 f"in parallel. Just FYI. {msg}.", level=0, nl_after=1)
+        elif self.num_threads > num_samples:
+            self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Since only samples are run in "
+                                 f"parallel, the additional {PL('thread', self.num_threads - num_samples)} you have there is not really "
+                                 f"useful for anything. So anvi'o will set your number of threads to {num_samples}. So. {msg}.", level=0, nl_after=1)
+            self.num_threads = num_samples
+        else:
+            self.run.info_single(f"{msg}.", level=0, nl_after=1)
 
         # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
         # `PrimerSearch`. for this we first need to generate a list of primers. for each
@@ -805,14 +824,80 @@ class Inversions:
             primers_dict[inversion_id + '-second_oligo_primer'] = {'primer_sequence': entry['second_oligo_primer'],
                                                                    'oligo_reference': entry['second_oligo_reference']}
 
-        oligo_frequencies = []
-        # so now our primers_dict is ready, we can call PrimerSearch per sample
-        # in a for loop (FIXME: wink wink parallellize this wink wink)
-        for sample_name in self.profile_db_bam_file_pairs:
-            oligo_frequencies.extend(self.compute_inversion_activity_for_sample(sample_name, primers_dict))
+        ##########################################################################################
+        # MULTITHREADING
+        ##########################################################################################
 
-        # it is time to report this. A quick-and-dirty reporting first:
-        # report consensus inversions
+        # setup the input/output queues
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        # put all the sample names in our input queue
+        for sample_name in sample_names:
+            input_queue.put(sample_name)
+
+        # engage the proletariat, our hard-working wage-earner class
+        workers = []
+        for i in range(self.num_threads):
+            worker = multiprocessing.Process(target=Inversions.compute_inversion_activity_for_sample,
+                                             args=(input_queue,
+                                                   output_queue,
+                                                   self.profile_db_bam_file_pairs,
+                                                   primers_dict,
+                                                   self.oligo_length,
+                                                   self.end_primer_search_after_x_hits),
+                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
+            workers.append(worker)
+            worker.start()
+
+
+        # these if blocks for progress is an ugly hack, but they are serving a very useful purpose.
+        # if the user is working with a single thread, we would like them to see th eactual PrimerSearch
+        # activity that comes from `compute_inversion_activity_for_sample`. But when that function is run
+        # in multiple threads, we don't want any progress report from that guy, and report an overall
+        # progress from this main function. So if there is a single thread, we pass our own progress
+        # object to `compute_inversion_activity_for_sample`, which passes it to `PrimerSearch`, which
+        # tells us what it is up to on our terminal. If we have multiple threads, we pass a `progress_quiet`
+        # to `compute_inversion_activity_for_sample`, which omits `PrimerSearch` progress messages, and
+        # instead here we give user an overall idea about how their process is going. Thus, we need to
+        # keep track of thread numbers here :/
+        if self.num_threads > 1:
+            self.progress.new('Inversion activity', progress_total_items=num_samples)
+            self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
+
+        oligo_frequencies = []
+        num_samples_processed = 0
+        while num_samples_processed < num_samples:
+            try:
+                oligo_frequencies_for_one_sample = output_queue.get()
+                if oligo_frequencies_for_one_sample:
+                    oligo_frequencies.extend(oligo_frequencies_for_one_sample)
+
+                num_samples_processed += 1
+                self.progress.increment(increment_to=num_samples_processed)
+                if self.num_threads > 1:
+                    if num_samples_processed < num_samples:
+                        self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
+                    else:
+                        self.progress.update(f"All done!")
+            except KeyboardInterrupt:
+                self.run.info_single("Recieved SIGINT, terminating all processes... Don't believe anything you see "
+                                     "below this and sanitize all the output files with fire.", nl_before=1, nl_after=1)
+                break
+
+        if self.num_threads > 1:
+            self.progress.end()
+
+        # always double-tap?
+        for worker in workers:
+            worker.terminate()
+
+        ##########################################################################################
+        # /MULTITHREADING
+        ##########################################################################################
+
+        # we must be ready with all the oligo frequencies by now. it is time to report this
         output_path = os.path.join(self.output_directory, 'INVERSION-ACTIVITY.txt')
         headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'reference', 'frequency_count', 'relative_abundance']
         with open(output_path, 'w') as output:
@@ -892,6 +977,7 @@ class Inversions:
             else:
                 self.run.info("[Inversion activity] Not computing because",  "Anvi'o has no idea what it is doing", nl_after=1)
         else:
+            self.run.info("[Inversion activity] Number of threads", self.num_threads, mc=("green" if self.num_threads > 1 else "red"))
             if self.end_primer_search_after_x_hits:
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length)
                 self.run.info("[Inversion activity Debug] Num hits to end primer search",  self.end_primer_search_after_x_hits, mc="red", nl_after=1)
@@ -947,6 +1033,9 @@ class Inversions:
 
         filesnpaths.check_output_directory(self.output_directory)
         filesnpaths.gen_output_directory(self.output_directory)
+
+        if self.num_threads < 0:
+            raise ConfigError("{self.num_threads} for number of threads? You must be joking, Mr. Feynman.")
 
 
     def report(self):
