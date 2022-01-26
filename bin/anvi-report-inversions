@@ -92,6 +92,7 @@ if __name__ == '__main__':
                     "that anvi'o WILL answer for you IF you have `r1` and `r2` columns in your `bams-and-profiles-txt` "
                     "file that points to raw FASTQ reads you have used to generate your BAM files for each sample. "
                     "Truly cray stuff.")
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupE.add_argument('--oligo-primer-base-length', default=12, type=int, help="Calculating inversion ratios "
                     "require anvi'o to 'design' an in silico primer based on palindromes associated with inersions "
                     "and the upstream/downstream genomic context to search for short reads in raw sequenicng data"
