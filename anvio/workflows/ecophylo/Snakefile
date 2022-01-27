@@ -44,9 +44,7 @@ rule anvi_run_hmms_hmmsearch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
     input:
     output:
-        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/contigs-hmmsearch.done")),
-        domtable = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.domtable"),
-        hmm_table = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.table")
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/contigs-hmmsearch.done"),
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
@@ -54,39 +52,45 @@ rule anvi_run_hmms_hmmsearch:
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
-        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch")
         HMM_source = M.HMM_source_dict[wildcards.HMM]
+        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch")
 
         # Run different HMM search depending on whether a HMM is internal or external because anvio
         if HMM_source in M.internal_HMM_sources:
-            print(f"Running internal HMM dataset: {HMM_source}")
-            HMM_source = M.HMM_source_dict[wildcards.HMM]
-            shell("anvi-run-hmms -c {contigsDB} \
-                                 --hmmer-program hmmsearch \
-                                 --hmmer-output-dir {hmmer_output_dir} \
-                                 -I {HMM_source} \
-                                 --domain-hits-table \
-                                 --just-do-it \
-                                 -T {threads} 2> {log}")
+            if not os.path.exists(hmmer_output_dir):
+                print(f"Running internal HMM dataset: {HMM_source}")
+                shell("anvi-run-hmms -c {contigsDB} \
+                                    --hmmer-program hmmsearch \
+                                    --hmmer-output-dir {hmmer_output_dir} \
+                                    -I {HMM_source} \
+                                    --domain-hits-table \
+                                    --just-do-it \
+                                    -T {threads} 2> {log}")
+            else:
+                pass
 
-            # Load contigsDB
-            contigs_db = ContigsDatabase(contigsDB)
-            # Check if anvi-run-scg-taxonomy has been run
-            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
+                # Load contigsDB
+                contigs_db = ContigsDatabase(contigsDB)
+                # Check if anvi-run-scg-taxonomy has been run
+                scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
 
-            if scg_taxonomy_was_run_value != 1:
-                print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
-                shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
+                if scg_taxonomy_was_run_value != 1:
+                    print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
+                    shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
         else:
-            HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
-            print(f"Running external HMM dataset: {wildcards.HMM}")
-            shell("anvi-run-hmms -c {contigsDB} \
-                                 --hmmer-program hmmsearch \
-                                 --hmm-profile-dir {HMM_dir} \
-                                 --hmmer-output-dir {hmmer_output_dir} \
-                                 --domain-hits-table \
-                                 --just-do-it \
-                                 -T {threads} 2> {log}")
+            if not os.path.exists(hmmer_output_dir):
+                print(f"Running external HMM dataset: {wildcards.HMM}")
+                shell("anvi-run-hmms -c {contigsDB} \
+                                    --hmmer-program hmmsearch \
+                                    --hmm-profile-dir {HMM_dir} \
+                                    --hmmer-output-dir {hmmer_output_dir} \
+                                    --domain-hits-table \
+                                    --just-do-it \
+                                    -T {threads} 2> {log}")
+            else:
+                pass
+        
+        shell("touch {output.done}")
 
 
 rule filter_hmm_hits_by_query_coverage:
@@ -99,19 +103,18 @@ rule filter_hmm_hits_by_query_coverage:
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_query_coverage-{sample_name}-{HMM}.log")
     input:
         done = rules.anvi_run_hmms_hmmsearch.output.done,
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/hmm.domtable")
     output:
-        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-DB_filtered.done"))
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-DB_filtered.done")
     params:
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_query_coverage')
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch/hmm.domtable")
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch/hmm.domtable")
 
         if HMM_source in M.internal_HMM_sources:
             shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
@@ -126,6 +129,7 @@ rule filter_hmm_hits_by_query_coverage:
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
                                                     {params.additional_params} 2> {log}")
+        shell('touch {output.done}')
 
 
 rule anvi_get_sequences_for_hmm_hits:
