@@ -1928,6 +1928,10 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
+function handleExportSvgModal(){
+    $('#modExportSvg').modal('show')
+}
+
 async function exportSvg(dontDownload) {
     if (!drawer)
         return;
