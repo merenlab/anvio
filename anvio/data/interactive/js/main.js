@@ -1933,15 +1933,30 @@ function handleExportSvgModal(){
 }
 
 function handleSvgExport(){
-    let svgExportEverything = $('#svg-export-everything').is(':checked')
-    let svgExportDendrogram = $('#svg-export-dendrogram').is(':checked')
-    let svgExportDrawing = $('#svg-export-drawing').is(':checked')
-    let svgExportLegends = $('#svg-export-legends').is(':checked')
-    let svgExportLayers = $('#svg-export-layers').is(':checked')
+    let exportArr = []
 
+    if($('#svg-export-everything').is(':checked')){
+        exportArr.push('everything')
+    }
+    if($('#svg-export-dendrogram').is(':checked')){
+        exportArr.push('dendrogram')
+    }
+    if($('#svg-export-composite-drawing').is(':checked')){
+        exportArr.push('drawing')
+    }
+    if($('#svg-export-legends').is(':checked')){
+        exportArr.push('legends')
+    }
+    if($('#svg-export-layers').is(':checked')){
+        exportArr.push('layers')
+    }
+
+    exportArr.forEach(item => {
+        exportSvg(false, item)
+    })
 }
 
-async function exportSvg(dontDownload) {
+async function exportSvg(dontDownload, svgItem) {
     if (!drawer)
         return;
 
@@ -1998,17 +2013,85 @@ async function exportSvg(dontDownload) {
         return;
     }
 
-    await svgCrowbar();
+    let replacementTreeBin = $('#tree_bin').clone()
+    let replacementSamples = $('#samples').clone()
+    switch (svgItem) {
+        case 'everything':
+            svgCrowbar();
+            break;
+        case 'drawing':
+            window.document.title += '_drawing'
+            svg.removeAttribute('viewBox');
+            $('#title_group').remove();
+            $('#tree_bin').remove()
+            $('#samples').remove()
+            $('#bin_legend').remove();
+            $('#layer_legend').remove();
+            $('#legend_group').remove();
+            $('#viewport').append(replacementSamples)
+            $('#viewport').append(replacementTreeBin)
+            svgCrowbar()
+            window.document.title = window.document.title.replace('_drawing', '')
+            break;
+        case 'dendrogram':
+            window.document.title += '_dendrogram'
+            let tree = $('#tree').clone()
+            $('#viewport').prepend(tree)
+            $('#tree_bin').remove()
+            $('#samples').remove()
+            $('#bin_legend').remove();
+            $('#layer_legend').remove();
+            $('#title_group').remove();
+            $('#legend_group').remove();
+            svgCrowbar();
+            $('#viewport').append(replacementSamples)
+            $('#viewport').append(replacementTreeBin)
+            window.document.title = window.document.title.replace('_dendrogram', '')
+            break;
+        case 'legends':
+            window.document.title += '_legends'
+            svg.removeAttribute('viewBox');
+            $('#tree').remove()
+            $('#tree_bin').remove()
+            $('#samples').remove()
+            $('#samples_tree').remove()
+            $('#bin_legend').remove();
+            $('#layer_legend').remove();
+            $('#title_group').remove();
+            svgCrowbar();
+            $('#viewport').append(replacementSamples)
+            $('#viewport').append(replacementTreeBin)
+            window.document.title = window.document.title.replace('_legends', '')
+            break;
+        case 'layers':
+            window.document.title += '_layers'
+            svg.removeAttribute('viewBox');
+            $('#tree').remove()
+            $('#tree_bin').remove()
+            $('#samples').remove()
+            $('#samples_tree').remove()
+            $('#legend_group').remove();
+            $('#title_group').remove();
+            svgCrowbar();
+            $('#viewport').append(replacementSamples)
+            $('#viewport').append(replacementTreeBin)
+            window.document.title = window.document.title.replace('_layers', '')
+            break;
+        default:
+            console.log('nothing to export :(');
+            break;
+    }
 
-    svg.removeAttribute('viewBox');
     $('#tree').prepend(detached);
     $('#samples_tree').prepend(detachedSamples);
+    //globally remove these items if not removed in above switch
+    svg.removeAttribute('viewBox');
     $('#bin_legend').remove();
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
 
-    await svgCrowbar()
+    $('#modExportSvg').modal('hide')
 }
 
 
