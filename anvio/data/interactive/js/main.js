@@ -1932,6 +1932,15 @@ function handleExportSvgModal(){
     $('#modExportSvg').modal('show')
 }
 
+function handleSvgExport(){
+    let svgExportEverything = $('#svg-export-everything').is(':checked')
+    let svgExportDendrogram = $('#svg-export-dendrogram').is(':checked')
+    let svgExportDrawing = $('#svg-export-drawing').is(':checked')
+    let svgExportLegends = $('#svg-export-legends').is(':checked')
+    let svgExportLayers = $('#svg-export-layers').is(':checked')
+
+}
+
 async function exportSvg(dontDownload) {
     if (!drawer)
         return;
