@@ -2018,6 +2018,7 @@ async function exportSvg(dontDownload, svgItem) {
     switch (svgItem) {
         case 'everything':
             svgCrowbar();
+            $('#svg-export-everything').prop('checked', false)
             break;
         case 'drawing':
             window.document.title += '_drawing'
@@ -2032,6 +2033,7 @@ async function exportSvg(dontDownload, svgItem) {
             $('#viewport').append(replacementTreeBin)
             svgCrowbar()
             window.document.title = window.document.title.replace('_drawing', '')
+            $('#svg-export-composite-drawing').prop('checked', false)
             break;
         case 'dendrogram':
             window.document.title += '_dendrogram'
@@ -2047,6 +2049,7 @@ async function exportSvg(dontDownload, svgItem) {
             $('#viewport').append(replacementSamples)
             $('#viewport').append(replacementTreeBin)
             window.document.title = window.document.title.replace('_dendrogram', '')
+            $('#svg-export-dendrogram').prop('checked', false)
             break;
         case 'legends':
             window.document.title += '_legends'
@@ -2062,6 +2065,7 @@ async function exportSvg(dontDownload, svgItem) {
             $('#viewport').append(replacementSamples)
             $('#viewport').append(replacementTreeBin)
             window.document.title = window.document.title.replace('_legends', '')
+            $('#svg-export-legends').prop('checked', false)
             break;
         case 'layers':
             window.document.title += '_layers'
@@ -2076,6 +2080,7 @@ async function exportSvg(dontDownload, svgItem) {
             $('#viewport').append(replacementSamples)
             $('#viewport').append(replacementTreeBin)
             window.document.title = window.document.title.replace('_layers', '')
+            $('#svg-export-layers').prop('checked', false)
             break;
         default:
             console.log('nothing to export :(');
