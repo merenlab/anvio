@@ -1215,11 +1215,24 @@
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <p>beepboop</p>
+                        <label class="col-md-4 settings-label">Select Elements for SVG Export:</label>
+                        <div class="col-md-8">
+                            <input type='checkbox' id='svg-export-everything' name='everything' value='everything'>
+                            <label for="everything">Everything</label><br>
+                            <input type='checkbox' id='svg-export-dendrogram' name='dendrogram' value='dendrogram'>
+                            <label for="dendrogram">Dendrogram</label><br>
+                            <input type='checkbox' id='svg-export-composite-drawing' name='drawing' value='drawing'>
+                            <label for="drawing">Composite Drawing</label><br>
+                            <input type='checkbox' id='svg-export-legends' name='legends' value='legends'>
+                            <label for="legends">Legends</label><br>
+                            <input type='checkbox' id='svg-export-layers' name='layers' value='layers'>
+                            <label for="layers">Layers</label><br>
+                        </div>
                     </div>
                 </div>
 
                 <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="handleSvgExport();" type="button">Export SVG(s)</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
