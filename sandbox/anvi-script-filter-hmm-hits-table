@@ -232,6 +232,20 @@ class FilterHmmHitsTable(object):
 
         hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
+        # Add meta value to show which HMM_source was filtered
+        self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
+        sources_that_have_been_filtered = [self.db.get_meta_value('HMM_hits_domain_table_was_filtered', return_none_if_not_in_table=True)]
+
+        if sources_that_have_been_filtered == None:
+            sources_that_have_been_filtered = [source]
+            self.db.set_meta_value('HMM_hits_domain_table_was_filtered', sources_that_have_been_filtered)
+
+        if source not in sources_that_have_been_filtered:
+            sources_that_have_been_filtered.append(source)
+        
+        self.db.update_meta_value('HMM_hits_domain_table_was_filtered', str(sources_that_have_been_filtered))
+        self.db.disconnect()
+
 
 @terminal.time_program
 def main(args):

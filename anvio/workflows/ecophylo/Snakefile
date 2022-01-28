@@ -44,7 +44,7 @@ rule anvi_run_hmms_hmmsearch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
     input:
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/contigs-hmmsearch.done"),
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-contigs-hmmsearch.done"),
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
@@ -69,14 +69,14 @@ rule anvi_run_hmms_hmmsearch:
             else:
                 pass
 
-                # Load contigsDB
-                contigs_db = ContigsDatabase(contigsDB)
-                # Check if anvi-run-scg-taxonomy has been run
-                scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
+            # Load contigsDB
+            contigs_db = ContigsDatabase(contigsDB)
+            # Check if anvi-run-scg-taxonomy has been run
+            scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
 
-                if scg_taxonomy_was_run_value != 1:
-                    print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
-                    shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
+            if scg_taxonomy_was_run_value != 1:
+                print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
+                shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
         else:
             if not os.path.exists(hmmer_output_dir):
                 print(f"Running external HMM dataset: {wildcards.HMM}")
@@ -115,20 +115,38 @@ rule filter_hmm_hits_by_query_coverage:
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch/hmm.domtable")
+        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch")
+
+        # Check if anvi-run-scg-taxonomy and/or anvi-script-filter-hmm-hits-table has been run already
+        contigs_db = ContigsDatabase(contigsDB)
+        try:
+            HMM_source_domain_table_was_filtered = contigs_db.meta['HMM_source_domain_table_was_filtered']
+            HMM_source_domain_table_was_filtered_list = ','.split(HMM_source_domain_table_was_filtered)
+        except:
+            HMM_source_domain_table_was_filtered_list = []
+
+        contigs_db.disconnect()
 
         if HMM_source in M.internal_HMM_sources:
-            shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
-                                                    --domain-hits-table {domtblout} \
-                                                    --hmm-source {HMM_source} \
-                                                    --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+            if HMM_source not in HMM_source_domain_table_was_filtered_list:
+                shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
+                                                        --domain-hits-table {domtblout} \
+                                                        --hmm-source {HMM_source} \
+                                                        --query-coverage {params.query_coverage} \
+                                                        {params.additional_params} 2> {log}")
+            else:
+                pass
         else:
-            shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
-                                                    --domain-hits-table {domtblout} \
-                                                    --hmm-profile-dir {HMM_dir} \
-                                                    --hmm-source {HMM_source} \
-                                                    --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+            if HMM_source not in HMM_source_domain_table_was_filtered_list:
+                shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
+                                                        --domain-hits-table {domtblout} \
+                                                        --hmm-profile-dir {HMM_dir} \
+                                                        --hmm-source {HMM_source} \
+                                                        --query-coverage {params.query_coverage} \
+                                                        {params.additional_params} 2> {log}")
+            else:
+                pass
+                
         shell('touch {output.done}')
 
 
@@ -967,7 +985,7 @@ if M.samples_txt_file:
             # basics
             state_dict['version'] = '3'
             state_dict['tree-type'] = 'phylogram'
-            state_dict['current-view'] = 'single'
+            state_dict['current-view'] = 'mean_coverage'
 
             # height and width
             # FIXME: It's unclear to me how the interactive interface determines
@@ -1065,22 +1083,23 @@ if M.samples_txt_file:
             # views
             views_dict = {}
 
-            single_dict = {}
+            mean_coverage_dict = {}
 
+            false = False
             percent_identity = {
                 "normalization": "none",
                 "min": {
                     "value": "90",
-                    "disabled": "false"
+                    "disabled": false 
                     },
                 "max": {
                     "value": "100",
-                    "disabled": "false"
+                    "disabled": false
                     }
             }
 
-            single_dict['percent_identity'] = percent_identity 
-            views_dict['single'] = single_dict
+            mean_coverage_dict['percent_identity'] = percent_identity 
+            views_dict['mean_coverage'] = mean_coverage_dict
             state_dict['views'] = views_dict
 
             with open(output.state_file, "w") as outfile:
@@ -1176,40 +1195,17 @@ else:
 
 
             # layer-orders
-            first_layers = ["__parent__", "length", "gc_content"]
-
-            layer_order = first_layers + misc_layers_list 
+            if HMM_source in M.internal_HMM_sources:
+                layer_order = misc_layers_list + scg_taxonomy_layers_list 
+            else:
+                layer_order = misc_layers_list 
 
             state_dict['layer-order'] = layer_order
 
             # layers
             layers_dict = {}
 
-            layer_attributes_parent = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
             length = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            gc_content = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            identifier = {
                 "color": "#000000",
                 "height": "0",
                 "margin": "15",
@@ -1233,12 +1229,7 @@ else:
                 "color-start": "#FFFFFF"
                 }
                 
-            layers_dict['__parent__'] = layer_attributes_parent
-            layers_dict['length'] = length
-            layers_dict['gc_content'] = gc_content
-            layers_dict['identifier'] = identifier
             layers_dict['percent_identity'] = percent_identity
-
             state_dict['layers'] = layers_dict
 
             # views
