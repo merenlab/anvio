@@ -880,7 +880,7 @@ class Inversions:
                     if num_samples_processed < num_samples:
                         self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
                     else:
-                        self.progress.update(f"All done!")
+                        self.progress.update("All done!")
             except KeyboardInterrupt:
                 self.run.info_single("Recieved SIGINT, terminating all processes... Don't believe anything you see "
                                      "below this and sanitize all the output files with fire.", nl_before=1, nl_after=1)
@@ -1073,7 +1073,7 @@ class Inversions:
             output.write('\t'.join(headers) + '\n')
             for v in self.consensus_inversions:
                 output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
-        self.run.info('Reporting file for consensus inversions', output_path, mc='green')
+        self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
 
         # report all stretches
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
