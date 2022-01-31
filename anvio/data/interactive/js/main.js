@@ -2037,7 +2037,8 @@ async function exportSvg(dontDownload, svgItem) {
             break;
         case 'dendrogram':
             window.document.title += '_dendrogram'
-            let tree = $('#tree').clone()
+            svg.removeAttribute('viewBox');
+            let tree = $('#tree').css({}).clone()
             $('#viewport').prepend(tree)
             $('#tree_bin').remove()
             $('#samples').remove()
