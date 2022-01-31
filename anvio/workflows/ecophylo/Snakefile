@@ -54,10 +54,11 @@ rule anvi_run_hmms_hmmsearch:
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch/hmm.domtable")
 
         # Run different HMM search depending on whether a HMM is internal or external because anvio
         if HMM_source in M.internal_HMM_sources:
-            if not os.path.exists(hmmer_output_dir):
+            if not os.path.exists(domtblout):
                 print(f"Running internal HMM dataset: {HMM_source}")
                 shell("anvi-run-hmms -c {contigsDB} \
                                     --hmmer-program hmmsearch \
@@ -78,7 +79,7 @@ rule anvi_run_hmms_hmmsearch:
                 print(f"Running anvi-run-scg-taxonomy on {contigsDB} since the {wildcards.HMM} is in anvio's collection of SCGs")
                 shell("anvi-run-scg-taxonomy -c {contigsDB} --num-threads {threads} {params.additional_params}")
         else:
-            if not os.path.exists(hmmer_output_dir):
+            if not os.path.exists(domtblout):
                 print(f"Running external HMM dataset: {wildcards.HMM}")
                 shell("anvi-run-hmms -c {contigsDB} \
                                     --hmmer-program hmmsearch \
