@@ -135,6 +135,7 @@ rule filter_hmm_hits_by_query_coverage:
                                                         --query-coverage {params.query_coverage} \
                                                         {params.additional_params} 2> {log}")
             else:
+                print(f"HMM source {HMM_source} has already been filtered, skipping!")
                 pass
         else:
             if HMM_source not in HMM_source_domain_table_was_filtered_list:
@@ -145,6 +146,7 @@ rule filter_hmm_hits_by_query_coverage:
                                                         --query-coverage {params.query_coverage} \
                                                         {params.additional_params} 2> {log}")
             else:
+                print(f"HMM source {HMM_source} has already been filtered, skipping!")
                 pass
                 
         shell('touch {output.done}')
