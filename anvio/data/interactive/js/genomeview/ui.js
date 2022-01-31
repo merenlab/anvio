@@ -27,6 +27,15 @@
  *  set event listeners for DOM elements, user input, default jquery values
  */
 function setEventListeners(){
+  canvas.on('mouse:over', (event) => {
+    if (event.target && event.target.id === 'arrow') {
+      showToolTip(event)
+    }
+  })
+
+  canvas.on('mouse:out', (event) => {
+    $('#tooltip-body').html('').hide()
+  })
   // panning
   canvas.on('mouse:down', function (opt) {
     var evt = opt.e;
@@ -268,16 +277,6 @@ function setEventListeners(){
     if (e.target.type === 'activeSelection') {
       canvas.discardActiveObject();
     }
-  })
-
-  canvas.on('mouse:over', (event) => {
-    if (event.target && event.target.id === 'arrow') {
-      showToolTip(event)
-    }
-  })
-
-  canvas.on('mouse:out', (event) => {
-    $('#tooltip-body').html('').hide()
   })
 
   canvas.on('mouse:down', (event) => {
