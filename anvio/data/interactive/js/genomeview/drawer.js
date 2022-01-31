@@ -142,6 +142,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     top: y + 4,
     stroke: 'black',
     strokeWidth: 2,
+    selectable: false,
     lockMovementY: true,
     hasControls: false,
     hasBorders: false,
@@ -163,7 +164,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     if (gene.start < ntStart) continue;
     if (gene.stop > ntStop) return;
     var geneObj = this.geneArrow(gene, geneID, y, genomeID, this.settings['display']['arrow-style']);
-    canvas.add(geneObj);
+    canvas.bringToFront(geneObj);
 
     if (showGeneLabels) {
       var label = new fabric.IText(setGeneLabelFromSource(geneID, genomeID), {
@@ -412,11 +413,11 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     left: left,
     width: width,
     height: height,
-    fill: "#dbdbdb",
+    fill: "#b0b0b0",
     selectable: false,
     opacity: .5
   });
-  canvas.sendToBack(border)
+  // canvas.sendToBack(border)
   canvas.sendToBack(background)
 }
 
@@ -479,6 +480,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
     id: 'arrow',
     groupID: genomeID,
     lockMovementY: true,
+    selectable: false,
     hasControls: false,
     hasBorders: false,
     lockScaling: true,
