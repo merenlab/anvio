@@ -121,34 +121,34 @@ rule filter_hmm_hits_by_query_coverage:
         # Check if anvi-run-scg-taxonomy and/or anvi-script-filter-hmm-hits-table has been run already
         contigs_db = ContigsDatabase(contigsDB)
         try:
-            HMM_source_domain_table_was_filtered = contigs_db.meta['HMM_source_domain_table_was_filtered']
-            HMM_source_domain_table_was_filtered_list = ','.split(HMM_source_domain_table_was_filtered)
+            HMM_source_domain_table_was_filtered = contigs_db.meta['HMM_hits_domain_table_was_filtered']
+            HMM_source_domain_table_was_filtered_list = HMM_source_domain_table_was_filtered.split(",")
         except:
             HMM_source_domain_table_was_filtered_list = []
 
         contigs_db.disconnect()
 
         if HMM_source in M.internal_HMM_sources:
-            if HMM_source not in HMM_source_domain_table_was_filtered_list:
+            if HMM_source in HMM_source_domain_table_was_filtered_list:
+                print(f"The HMM source {HMM_source} has already been filtered, skipping filter_hmm_hits_by_query_coverage!")
+                pass
+            else:
                 shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {HMM_source} \
                                                         --query-coverage {params.query_coverage} \
                                                         {params.additional_params} 2> {log}")
-            else:
-                print(f"HMM source {HMM_source} has already been filtered, skipping!")
-                pass
         else:
-            if HMM_source not in HMM_source_domain_table_was_filtered_list:
+            if HMM_source in HMM_source_domain_table_was_filtered_list:
+                print(f"The HMM source {HMM_source} has already been filtered, skipping filter_hmm_hits_by_query_coverage!")
+                pass
+            else:
                 shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-profile-dir {HMM_dir} \
                                                         --hmm-source {HMM_source} \
                                                         --query-coverage {params.query_coverage} \
                                                         {params.additional_params} 2> {log}")
-            else:
-                print(f"HMM source {HMM_source} has already been filtered, skipping!")
-                pass
                 
         shell('touch {output.done}')
 
