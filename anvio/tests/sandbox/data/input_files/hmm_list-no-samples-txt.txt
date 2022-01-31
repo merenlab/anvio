@@ -1,0 +1,3 @@
+name	source	path
+Ribosomal_L16	Bacteria_71	INTERNAL
+Ribosomal_L2	Bacteria_71	INTERNAL
