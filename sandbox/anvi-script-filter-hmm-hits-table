@@ -233,19 +233,55 @@ class FilterHmmHitsTable(object):
         hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
         # Add meta value to show which HMM_source was filtered
-        self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
-        sources_that_have_been_filtered = self.db.get_meta_value('HMM_hits_domain_table_was_filtered', return_none_if_not_in_table=True)
+        # Self attributes that need to be added:
+        # - HMM_dom_filter_sources
+        # - HMM_dom_filter_target_coverage
+        # - HMM_dom_filter_query_coverage
 
-        if sources_that_have_been_filtered == None:
-            self.db.set_meta_value('HMM_hits_domain_table_was_filtered', source)
+        self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
+
+        HMM_dom_filter_sources = self.db.get_meta_value('HMM_dom_filter_sources', return_none_if_not_in_table=True)
+        HMM_dom_filter_target_coverage = self.db.get_meta_value('HMM_dom_filter_target_coverage', return_none_if_not_in_table=True)
+        HMM_dom_filter_query_coverage = self.db.get_meta_value('HMM_dom_filter_query_coverage', return_none_if_not_in_table=True)
+
+        if HMM_dom_filter_sources == None:
+            self.db.set_meta_value('HMM_dom_filter_sources', source)
+            if self.target_coverage == None:
+                self.db.set_meta_value('HMM_dom_filter_target_coverage', 0.00)
+            else:
+                self.db.set_meta_value('HMM_dom_filter_target_coverage', self.target_coverage)
+            if self.query_coverage == None:
+                self.db.set_meta_value('HMM_dom_filter_query_coverage', 0.00)
+            else:
+                self.db.set_meta_value('HMM_dom_filter_query_coverage', self.query_coverage)
         else:
-            sources_that_have_been_filtered_list = sources_that_have_been_filtered.split(",")
-            sources_that_have_been_filtered_set = set(sources_that_have_been_filtered_list)
-            sources_that_have_been_filtered_set.add(source)
-            updated_sources = ",".join(list(sources_that_have_been_filtered_set))
-            self.db.update_meta_value('HMM_hits_domain_table_was_filtered', str(updated_sources))
-        
-        # self.db.update_meta_value('HMM_hits_domain_table_was_filtered', str(sources_that_have_been_filtered))
+            HMM_dom_filter_sources_list = HMM_dom_filter_sources.split(",")
+            HMM_dom_filter_target_coverage_list = str(HMM_dom_filter_target_coverage).split(",")
+            HMM_dom_filter_query_coverage_list = str(HMM_dom_filter_query_coverage).split(",")
+
+            source_domain_filter_values = list(zip(HMM_dom_filter_sources_list, HMM_dom_filter_target_coverage_list, HMM_dom_filter_query_coverage_list))
+
+            if self.target_coverage == None:
+                self.target_coverage = 0.00
+            if self.query_coverage == None:
+                self.query_coverage = 0.00
+
+            new_filtering_parameters = (source, self.target_coverage, self.query_coverage)
+
+            for i, item in enumerate(source_domain_filter_values):
+                if new_filtering_parameters[0] == item[0]:
+                    if float(item[1]) < float(new_filtering_parameters[1]) or float(item[2]) < float(new_filtering_parameters[2]):
+                        source_domain_filter_values[i] = new_filtering_parameters
+
+            if new_filtering_parameters[0] not in HMM_dom_filter_sources_list:
+                source_domain_filter_values.append(new_filtering_parameters)
+            
+            updated_HMM_dom_filter_attributes = list(zip(*source_domain_filter_values))
+
+            self.db.set_meta_value('HMM_dom_filter_sources', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[0]))
+            self.db.set_meta_value('HMM_dom_filter_target_coverage', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[1]))
+            self.db.set_meta_value('HMM_dom_filter_query_coverage', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[2]))
+
         self.db.disconnect()
 
 
