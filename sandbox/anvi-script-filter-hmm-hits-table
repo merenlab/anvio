@@ -213,7 +213,6 @@ class FilterHmmHitsTable(object):
         hmm_tables.remove_source(self.hmm_source)
 
         # Re-write hmm_hits table to contigsDB
-
         internal_sources = list(anvio.data.hmm.sources.keys())
         source = self.hmm_source
 
