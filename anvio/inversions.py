@@ -58,6 +58,10 @@ class Inversions:
         # the purpose of this is to report all the consensus inversions
         self.consensus_inversions = []
 
+        # in which we will store the genomic context that surrounds
+        # consensus inversions for downstream fun
+        self.genomic_context_surrounding_consensus_inversions = {}
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
         self.output_directory = A('output_dir') or 'INVERSIONS-OUTPUT'
@@ -106,6 +110,10 @@ class Inversions:
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
 
+        # skip learning about the genomic context that surrounds inversions?
+        self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
+        self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
+
         # be talkative or not
         self.verbose = A('verbose')
 
@@ -121,11 +129,14 @@ class Inversions:
         if not skip_sanity_check:
             self.sanity_check()
 
-        # we will generate our splits info and contigs to splits dicts here.
+        # we will generate our splits info, contigs to splits dicts, and check a few things to learn more about the
+        # contigs db.
         split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        self.genes_are_called_in_contigs_db = contigs_db.meta['genes_are_called']
+        self.genes_annotated_with_functions_in_contigs_db = contigs_db.meta['gene_function_sources'] is not None and len(contigs_db.meta['gene_function_sources']) > 0
         contigs_db.disconnect()
 
         # next, we will generate a dictionary to convert contig names to split names
@@ -619,6 +630,129 @@ class Inversions:
         return true_inversions_in_stretch
 
 
+
+    def recover_genomic_context_surrounding_inversions(self):
+        """Learn about what surrounds the consensus inversion sites"""
+
+        # we are not wanted
+        if self.skip_recovering_genomic_context:
+            return
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+
+        # are there genes?
+        if not contigs_db.meta['genes_are_called']:
+            self.run.warning("There are no gene calls in your contigs database, therefore there is context to "
+                             "learn about :/ Your reports will not include a file to study the genomic context "
+                             "that surrounds consensus inversions.")
+
+            contigs_db.disconnect()
+
+            return
+
+        # are there functions?
+        function_sources_found = contigs_db.meta['gene_function_sources'] or []
+        if not len(function_sources_found):
+            self.run.warning("There are no functions for genes in your contigs database :/ Your reports on the "
+                             "genomic context that surrounds consensus inversions will not have any functions "
+                             "for gnes. PITY.")
+
+
+        self.progress.new('Recovering genomic context surrounding inversions', progress_total_items=len(self.consensus_inversions))
+        self.progress.update('...')
+
+        # now we will go through each consensus inversion to populate `self.genomic_context_surrounding_consensus_inversions`
+        # with gene calls and functions
+        gene_calls_per_contig = {}
+        inversions_with_no_gene_calls_around = set([])
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+
+            self.progress.update(f"{inversion_id}", increment=True)
+            print()
+
+            contig_name = entry['contig_name']
+            first_start = entry['first_start']
+            second_end = entry['second_end']
+
+            # lazy recovery of gene calls in contigs of relevance. should be useful for
+            # metagenomes, but useless for isolate genomes with a single contig.
+            if contig_name not in gene_calls_per_contig:
+                gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name,
+                                                                                                    where_clause=f'''contig="{contig_name}"''')
+
+            gene_calls_in_contig = gene_calls_per_contig[contig_name]
+
+            if not len(gene_calls_in_contig):
+                # well, we don't have anything to work with here. let's keep this rebel in mind and
+                # move on to the next inversion
+                inversions_with_no_gene_calls_around.add(inversion_id)
+                continue
+
+            # here we will find out what is hte closes genes to the beginning of the first palindrome
+            # inversion and end of the second palindrome
+            min_distance_to_first_start, min_distance_to_second_end = float('inf'), float('inf')
+            closest_gene_call_to_first_start, closest_gene_call_to_second_end = None, None
+            for gene_callers_id, gene_call in gene_calls_in_contig.items():
+                if abs(gene_call['start'] - first_start) < min_distance_to_first_start:
+                    closest_gene_call_to_first_start = gene_callers_id
+                    min_distance_to_first_start = abs(gene_call['start'] - first_start)
+
+                if abs(gene_call['start'] - second_end) < min_distance_to_second_end:
+                    closest_gene_call_to_second_end = gene_callers_id
+                    min_distance_to_second_end = abs(gene_call['start'] - second_end)
+
+            # now we can recover gene calls of interest for our inversions:
+            _range = range(closest_gene_call_to_first_start - self.num_genes_to_consider_in_context,
+                           closest_gene_call_to_second_end + self.num_genes_to_consider_in_context)
+            gene_caller_ids_of_interest = [c for c in _range if c in gene_calls_in_contig]
+
+            # if there are funtion sources, let's recover them for our genes of interest
+            if function_sources_found:
+                where_clause = '''gene_callers_id IN (%s)''' % (', '.join([f"{str(g)}" for g in gene_caller_ids_of_interest]))
+                hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+            else:
+                # so none of these genes have any functions? WELL FINE.
+                hits = None
+
+            # we are now ready
+            c = []
+            for gene_callers_id in gene_caller_ids_of_interest:
+                gene_call = gene_calls_in_contig[gene_callers_id]
+                gene_call['gene_callers_id'] = gene_callers_id
+
+                # if there are any functions at all, add that to the dict
+                if hits:
+                    gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+
+                c.append(gene_call)
+
+            # done! `c` now goes to live its best life as a part of the main class
+            self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
+
+        contigs_db.disconnect()
+
+        self.progress.end()
+
+        self.run.info(f"[Genomic Context] Searched for {PL('inversion', len(self.consensus_inversions))}",
+                      f"Recovered for {len(self.genomic_context_surrounding_consensus_inversions)}",
+                      nl_before=1,
+                      lc="yellow")
+
+        if len(inversions_with_no_gene_calls_around):
+            self.run.warning(f"There were one or more inversions that did not have any valid gene calls around them. "
+                             f"This may happen if an inversion is occurring in a contig that happens to have no gene "
+                             f"calls (either due to its too short, or because you need a Nobel prize). So results from "
+                             f"these weird inversions will not appear in your final reports. Here is the list in case "
+                             f"you would like to track them down: {', '.join(inversions_with_no_gene_calls_around)}.")
+
+        if not len(self.genomic_context_surrounding_consensus_inversions):
+            self.run.warning("Even though anvi'o went through all {PL('inversion', len(self.consensus_inversions))} "
+                             "it was unable to recover any genomic context for any of them. So your final reports will "
+                             "not include any insights into the surrounding genomic context of inversions (but otherwise "
+                             "you will be fine).")
+
+
     def compute_consensus_inversions(self):
         """Compute a final, consensus list of unique inversions.
 
@@ -966,6 +1100,12 @@ class Inversions:
         self.run.info("[Confirming inversions] Check all palindromes in a stretch?",  "True" if self.check_all_palindromes else "False")
         self.run.info("[Confirming inversions] Process only inverted reads?",  "True" if self.process_only_inverted_reads else "False", nl_after=1)
 
+        if not self.skip_recovering_genomic_context:
+            self.run.info("[Genomic context] Recover and report genomic context?",  "True", mc="green")
+            self.run.info("[Genomic context] Number of genes to consider",  self.num_genes_to_consider_in_context, nl_after=1)
+        else:
+            self.run.info("[Genomic context] Recover and report genomic context?",  "False", mc="red", nl_after=1)
+
         # are we to compute inversion activity by going through raw reads?
         inversion_activity_will_be_computed = self.raw_r1_r2_reads_are_present and not self.skip_compute_inversion_activity
         self.run.info("[Inversion activity] Compute inversion activity?",  "True" if inversion_activity_will_be_computed else "False", mc=("green" if inversion_activity_will_be_computed else "red"))
@@ -1002,6 +1142,10 @@ class Inversions:
         # a concensus file that describes only unique inversions.
         self.compute_consensus_inversions()
 
+        # here we will try to generate some insights into the genomic context that
+        # surround inversions, so this data can be reported along with other files.
+        self.recover_genomic_context_surrounding_inversions()
+
         # we want to report now because the very last step can take a long time, and
         # if the user kills the process, we don't want them to go home empty handed.
         self.report()
@@ -1013,6 +1157,14 @@ class Inversions:
 
 
     def sanity_check(self):
+        """Basic checks for a smooth operation"""
+
+        if not dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['genes_are_called'] and not self.skip_recovering_genomic_context:
+            raise ConfigError("Your parameter setup asks anvi'o to recover genomic context of active inversions at the end "
+                              "but the contigs database does not have any genes called :/ For the sake of being explicit "
+                              "about it anvi'o requests you to use the flag `--skip-recovering-genomic-context` so it is clear "
+                              "to everyone that this step is meant to be skipped.")
+
         bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] != 'inversions']
         if len(bad_profile_dbs):
             if len(bad_profile_dbs) == len(self.profile_db_paths):
@@ -1036,6 +1188,11 @@ class Inversions:
 
         if self.num_threads < 0:
             raise ConfigError("{self.num_threads} for number of threads? You must be joking, Mr. Feynman.")
+
+        if self.num_genes_to_consider_in_context < 1:
+            raise ConfigError("The number of genes to consider when recovering genomic context around active inversions can't be less than "
+                              "one :/ If you need to consider less than 1 gene around your inversions, you should use the flag "
+                              "`--skip-recovering-genomic-context` instead of confusing anvi'o :(")
 
 
     def report(self):
