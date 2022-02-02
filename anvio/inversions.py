@@ -1237,3 +1237,58 @@ class Inversions:
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
         self.run.info('Reporting file on all stretches considered', output_path, nl_before=1, nl_after=1)
+
+
+    def report_genomic_context_surrounding_inversions(self):
+        """Reports two long-format output files for genes and functions around inversion"""
+
+        if self.skip_recovering_genomic_context:
+            return
+
+        if not len(self.genomic_context_surrounding_consensus_inversions):
+            return
+
+        # we are in business
+        genes_output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt')
+        functions_output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt')
+
+        genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
+        functions_output_headers = ["gene_callers_id", "source", 'accession', 'function']
+
+        with open(genes_output_path, 'w') as genes_output, open(functions_output_path, 'w') as functions_output:
+            genes_output.write("inversion_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
+            functions_output.write("inversion_id\t%s\n" % '\t'.join(functions_output_headers))
+
+            for v in self.consensus_inversions:
+
+                # this is the inversion id we are working with here:
+                inversion_id = v['inversion_id']
+
+                # but we will first create fake gene call entries for inversions:
+                d = dict([(h, '') for h in genes_output_headers])
+
+                # fill in non-empty data for the first palindrome in inversion and insert it:
+                d['contig'] = v['contig_name']
+                d['start'] = v['first_start']
+                d['stop'] = v['first_end']
+                genes_output.write(f"{inversion_id}\tFIRST_PALINDROME\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
+
+                # fill in non-empty data for the second palindrome in inversion and insert it:
+                d['contig'] = v['contig_name']
+                d['start'] = v['second_start']
+                d['stop'] = v['second_end']
+                genes_output.write(f"{inversion_id}\tSECOND_PALINDROME\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
+
+                if inversion_id not in self.genomic_context_surrounding_consensus_inversions:
+                    # we don't have anything else to report on this one :/
+                    continue
+
+                for gene_call in self.genomic_context_surrounding_consensus_inversions[inversion_id]:
+                    genes_output.write(f"{inversion_id}\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
+
+                    for hit in gene_call['functions']:
+                        functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+
+
+        self.run.info('Reporting file on gene context', genes_output_path)
+        self.run.info('Reporting file on functional context', functions_output_path, nl_after=1)
