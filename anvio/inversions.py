@@ -1296,8 +1296,11 @@ class Inversions:
                 for gene_call in self.genomic_context_surrounding_consensus_inversions[inversion_id]:
                     genes_output.write(f"{inversion_id}\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
 
-                    for hit in gene_call['functions']:
-                        functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                    if functions in gene_call:
+                        for hit in gene_call['functions']:
+                            functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
+                    else:
+                            functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t\t\t\n")
 
 
         self.run.info('Reporting file on gene context', genes_output_path)
