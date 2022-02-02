@@ -1207,7 +1207,9 @@ class Inversions:
 
         self.run.warning(None, header="REPORTING OUTPUTS", lc="green")
 
-        # report inversions per sample
+        ################################################################################################
+        # Per sample inversions
+        ################################################################################################
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
                 output_path = os.path.join(self.output_directory, f'INVERSIONS-IN-{entry_name}.txt')
@@ -1224,7 +1226,9 @@ class Inversions:
                    'distance', 'num_samples', 'sample_names', 'first_oligo_primer',  'first_oligo_reference',
                    'second_oligo_primer', 'second_oligo_reference']
 
-        # report consensus inversions
+        ################################################################################################
+        # Consensus inversions
+        ################################################################################################
         output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
@@ -1232,11 +1236,18 @@ class Inversions:
                 output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
         self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
 
-        # report all stretches
+        ################################################################################################
+        # All stretches considered
+        ################################################################################################
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
         headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
         self.run.info('Reporting file on all stretches considered', output_path, nl_before=1, nl_after=1)
+
+        ################################################################################################
+        # Genomic context
+        ################################################################################################
+        self.report_genomic_context_surrounding_inversions()
 
 
     def report_genomic_context_surrounding_inversions(self):
