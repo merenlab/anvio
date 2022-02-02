@@ -669,7 +669,6 @@ class Inversions:
             inversion_id = entry['inversion_id']
 
             self.progress.update(f"{inversion_id}", increment=True)
-            print()
 
             contig_name = entry['contig_name']
             first_start = entry['first_start']
