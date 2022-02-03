@@ -11,12 +11,14 @@ import os
 import pandas as pd
 
 import anvio
-import anvio.data.hmm
 import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+with terminal.SuppressAllOutput():
+    import anvio.data.hmm as hmm_data
 
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
@@ -61,7 +63,7 @@ class FilterHmmHitsTable(object):
         if self.hmm_profile_dir:
             self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
         else:
-            self.sources = anvio.data.hmm.sources
+            self.sources = hmm_data.sources
 
     def sanity_checks(self):
         """Sanity checks for program inputs."""
@@ -210,7 +212,7 @@ class FilterHmmHitsTable(object):
         hmm_tables.remove_source(self.hmm_source)
 
         # Re-write hmm_hits table to contigsDB
-        internal_sources = list(anvio.data.hmm.sources.keys())
+        internal_sources = list(hmm_data.sources.keys())
         source = self.hmm_source
 
         if self.sources not in internal_sources:
@@ -219,7 +221,7 @@ class FilterHmmHitsTable(object):
             all_genes_searched_against = self.sources[source]['genes']
             reference = self.sources[source]['ref']
         else:
-            sources = anvio.data.hmm.sources
+            sources = hmm_data.sources
             source = self.hmm_source
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
