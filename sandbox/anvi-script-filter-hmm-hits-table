@@ -75,7 +75,7 @@ class FilterHmmHitsTable(object):
         self.run.info("Domtblout Path", self.domtblout)
 
         if not self.hmm_source:
-            raise ConfigError("Please provide a hmm-source :)")
+            raise ConfigError("Please provide an hmm-source :)")
 
         info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
 
@@ -155,7 +155,6 @@ class FilterHmmHitsTable(object):
                             header=None,
                             index_col=False)
         except Exception as e:
-            print(e)
             raise ConfigError(f"Doesn't look like a --domtblout... anvi'o can't even... "
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
