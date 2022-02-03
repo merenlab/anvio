@@ -231,6 +231,7 @@ class FilterHmmHitsTable(object):
 
         hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
+        # add contigsDB self attributes for HMM_source, target_coverage, and query_coverage 
         self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
 
         HMM_dom_filter_sources = self.db.get_meta_value('HMM_dom_filter_sources', return_none_if_not_in_table=True)
