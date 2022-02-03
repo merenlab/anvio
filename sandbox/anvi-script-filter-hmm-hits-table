@@ -80,8 +80,8 @@ class FilterHmmHitsTable(object):
         info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
 
         if self.hmm_source not in info_table:
-            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
-                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
+            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigs-db: "
+                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigs-db??"
                               f"Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
                               f"need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
 
@@ -205,13 +205,13 @@ class FilterHmmHitsTable(object):
 
 
     def append_search_results_dict_to_hmm_tables(self, search_results_dict=None):
-        """Put in the new filtered hmm_hits table to the contigsDB"""
+        """Put in the new filtered hmm_hits table to the contigs-db"""
 
         # Remove old hmm_hits contigs_db_path
         hmm_tables = TablesForHMMHits(self.contigs_db_path)
         hmm_tables.remove_source(self.hmm_source)
 
-        # Re-write hmm_hits table to contigsDB
+        # Re-write hmm_hits table to contigs-db
         internal_sources = list(hmm_data.sources.keys())
         source = self.hmm_source
 
@@ -230,7 +230,7 @@ class FilterHmmHitsTable(object):
 
         hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
-        # add contigsDB self attributes for HMM_source, target_coverage, and query_coverage 
+        # add contigs-db self attributes for HMM_source, target_coverage, and query_coverage 
         self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
 
         HMM_dom_filter_sources = self.db.get_meta_value('HMM_dom_filter_sources', return_none_if_not_in_table=True)
