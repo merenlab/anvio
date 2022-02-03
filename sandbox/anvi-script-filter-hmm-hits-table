@@ -8,7 +8,6 @@ is done using query and/or target coverage
 
 import sys
 import os
-import numpy as np
 import pandas as pd
 
 import anvio
@@ -16,13 +15,11 @@ import anvio.data.hmm
 import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
-import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
-from anvio.argparse import ArgumentParser
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -269,7 +266,7 @@ class FilterHmmHitsTable(object):
 
             if new_filtering_parameters[0] not in HMM_dom_filter_sources_list:
                 source_domain_filter_values.append(new_filtering_parameters)
-            
+
             updated_HMM_dom_filter_attributes = list(zip(*source_domain_filter_values))
 
             self.db.set_meta_value('HMM_dom_filter_sources', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[0]))
