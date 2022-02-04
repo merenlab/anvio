@@ -863,7 +863,7 @@ if M.samples_txt_file:
         """Run metagenomics workflow to profile HMM_hits"""
 
         version: 1.0
-        log: "ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/run_metagenomics_workflow.log"
+        log: "00_LOGS/run_metagenomics_workflow.log"
         input:
             config = rules.make_metagenomics_config_file.output.config,
         output:
