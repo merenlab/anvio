@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+  <title>manual tests</title>
+  <style>
+    iframe {
+      width: 610px;
+      height: 200px;
+    }
+    #wrapper {
+      background-color: lightcoral;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <svg
+      id="pipeline-graph"
+      class="pipeline-flowchart__graph sample-svg"
+      width="728"
+      height="70"
+    >
+      <g
+        id="zoom-wrapper"
+        class="pipeline-zoom-wrapper"
+        transform="translate(400,261.3181818181818) scale(0.9318181818181818)"
+      >
+        <defs>
+          <marker
+            id="pipeline-arrowhead"
+            class="pipeline-flowchart__arrowhead"
+            viewBox="0 0 10 10"
+            refX="7"
+            refY="5"
+            markerUnits="strokeWidth"
+            markerWidth="8"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 L 4 5 z"></path>
+          </marker>
+        </defs>
+        <g class="pipeline-flowchart__layers">
+          <rect
+            class="pipeline-layer"
+            x="-704"
+            y="40"
+            height="120"
+            width="1760"
+          ></rect>
+        </g>
+        <g class="pipeline-flowchart__edges"></g>
+        <g id="nodes" class="pipeline-flowchart__nodes">
+          <g
+            tabindex="0"
+            class="pipeline-node pipeline-node--parameters"
+            transform="translate(100, 100)"
+            data-id="1b3afcba"
+            opacity="1"
+          >
+            <rect width="55" height="55" x="-27.5" y="-27.5" rx="30"></rect>
+            <path
+              class="pipeline-node__icon"
+              d="M8 14v1.5h13v2H8V19H6v-1.5H4v-2h2V14zM18.5 5v1.5H21v2h-2.5V10h-2V8.5H4v-2h12.5V5z"
+              style="
+                transition-delay: 200ms;
+                transform: translate(-14px, -14px) scale(1.16667);
+              "
+            ></path>
+            <text
+              class="pipeline-node__text"
+              text-anchor="middle"
+              dy="5"
+              dx="13"
+              style="transition-delay: 0ms; opacity: 0;"
+            >
+              params: Sales Model ✓
+            </text>
+          </g>
+          <g
+            tabindex="0"
+            class="pipeline-node pipeline-node--parameters"
+            transform="translate(176, 100)"
+            data-id="3a60b3a4"
+            opacity="1"
+          >
+            <rect width="55" height="55" x="-27.5" y="-27.5" rx="30"></rect>
+            <path
+              class="pipeline-node__icon"
+              d="M8 14v1.5h13v2H8V19H6v-1.5H4v-2h2V14zM18.5 5v1.5H21v2h-2.5V10h-2V8.5H4v-2h12.5V5z"
+              style="
+                transition-delay: 200ms;
+                transform: translate(-14px, -14px) scale(1.16667);
+              "
+            ></path>
+            <text
+              class="pipeline-node__text"
+              text-anchor="middle"
+              dy="5"
+              dx="13"
+              style="transition-delay: 0ms; opacity: 0;"
+            >
+              params: Engagement Model
+            </text>
+          </g>
+          <g
+            tabindex="0"
+            class="pipeline-node pipeline-node--parameters"
+            transform="translate(252, 100)"
+            data-id="dff067eb"
+            opacity="1"
+          >
+            <rect width="55" height="55" x="-27.5" y="-27.5" rx="30"></rect>
+            <path
+              class="pipeline-node__icon"
+              d="M8 14v1.5h13v2H8V19H6v-1.5H4v-2h2V14zM18.5 5v1.5H21v2h-2.5V10h-2V8.5H4v-2h12.5V5z"
+              style="
+                transition-delay: 200ms;
+                transform: translate(-14px, -14px) scale(1.16667);
+              "
+            ></path>
+            <text
+              class="pipeline-node__text"
+              text-anchor="middle"
+              dy="5"
+              dx="13"
+              style="transition-delay: 0ms; opacity: 0;"
+            >
+              params: Optimisation
+            </text>
+          </g>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="buttons">
+    <button class="sample-svg-svg">SVG</button>
+    <button class="sample-svg-png">PNG</button>
+  </div>
+  <script src="main.js"></script>
+  <script>
+    document.querySelector('.sample-svg-svg').addEventListener('click', () => downloadSvg(document.querySelector('.sample-svg')))
+    document.querySelector('.sample-svg-png').addEventListener('click', () => downloadPng(document.querySelector('.sample-svg')))
+    // downloadPng(document.querySelector('.sample-svg'), 'viewBox-500-300', {debug: true})
+  </script>
+</body>

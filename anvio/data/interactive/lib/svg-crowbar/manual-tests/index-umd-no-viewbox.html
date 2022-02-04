@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+  <title>Smanual tests</title>
+  <link rel="stylesheet" type="text/css" href="assets/linked.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
+  </style>
+  <style>
+    @import url("assets/imported.css");
+
+    #wrapper, .sample-svg {
+      width: 500px;
+      height: 300px;
+    }
+
+    svg {
+      border: solid 1px #dedede;
+    }
+
+    .internal {
+      fill: indigo;
+    }
+
+    #wrapper .selector {
+      fill: seagreen;
+    }
+
+    svg text {
+      text-anchor: middle;
+      font-size: 16px;
+      font-family: Helvetica;
+    }
+
+    .controls-wrapper {
+      display: flex;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h3>no viewBox</h3>
+  <div id="wrapper">
+    <svg class="sample-svg">
+      <text class="internal" x="250" y="60">Internal CSS, this text should be indigo ☸☹☺☻☼☾☿✓</text>
+      <text class="imported" x="250" y="120">Imported CSS, this text should be indianred.</text>
+      <text class="linked" x="250" y="180">Linked CSS, this text should be lightsalmon.</text>
+      <text class="selector" x="250" y="240">An HTML dependency, this text should be seagreen.</text>
+    </svg>
+  </div>
+  <div class="controls-wrapper">
+    <div class="buttons">
+      <button class="sample-svg-svg">SVG</button>
+      <button class="sample-svg-png">PNG</button>
+    </div>
+    <div class="debug-switch-wrapper">
+      <label for="debug-switch"><input type="checkbox" id="debug-switch"/>Debug</label>
+    </div>
+  </div>
+  <script src="main.js"></script>
+  <script>
+    document.querySelector('.sample-svg-svg').addEventListener('click', () => downloadSvg(document.querySelector('.sample-svg')))
+    document.querySelector('.sample-svg-png').addEventListener('click', () => 
+      downloadPng(
+        document.querySelector('.sample-svg'),
+        undefined,
+        {downloadPNGOptions: {debug: document.querySelector("#debug-switch").checked}}
+      )
+    )
+  </script>
+</body>

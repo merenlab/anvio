@@ -37,3 +37,6 @@
 [submodule "anvio/data/interactive/lib/JavaScript-MD5"]
 	path = anvio/data/interactive/lib/JavaScript-MD5
 	url = https://github.com/blueimp/JavaScript-MD5.git
+[submodule "svg-crowbar"]
+	path = anvio/data/interactive/lib/svg-crowbar
+	url = git@github.com:cy6erskunk/svg-crowbar.git

@@ -1,0 +1,58 @@
+{
+  "name": "svg-crowbar",
+  "version": "0.7.0",
+  "description": "A library based on a Chrome-specific bookmarklet that extracts SVG nodes and accompanying styles from an HTML document and downloads them as an SVG file",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "BABEL_ENV=commonjs jest --forceExit",
+    "test-ci": "BABEL_ENV=commonjs jest --runInBand --forceExit",
+    "lint": "eslint ./src ./test",
+    "lint-fix": "eslint --fix ./src",
+    "clean": "rm -fr dist manual-tests/main.js",
+    "build": "npm run clean && npm run build-umd && npm run build-cjs && npm run build-esm",
+    "build-umd": "webpack --entry ./src/index.js --mode=production",
+    "build-umd-dev": "webpack --entry ./src/index.js --mode=development",
+    "build-cjs": "BABEL_ENV=commonjs babel src/* --out-dir dist/cjs --copy-files",
+    "build-esm": "BABEL_ENV=esmodules babel src/* --out-dir dist/esm --copy-files",
+    "prepublishOnly": "npm run test-ci && npm run build",
+    "prepare-mtests": "npm run build-umd && cp ./dist/main.js ./manual-tests"
+  },
+  "repository": "git+https://github.com/cy6erskunk/svg-crowbar.git",
+  "keywords": [
+    "svg-crowbar",
+    "png-crowbar"
+  ],
+  "author": "Igor Shevchenko <cyberskunk@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cy6erskunk/svg-crowbar/issues"
+  },
+  "homepage": "https://svg-crowbar.js.org/",
+  "devDependencies": {
+    "@babel/cli": "7.17.0",
+    "@babel/core": "7.17.0",
+    "@babel/preset-env": "7.16.11",
+    "@cyberskunk/eslint-config": "1.0.0",
+    "@jest-runner/electron": "3.0.1",
+    "babel-core": "7.0.0-bridge.0",
+    "babel-eslint": "10.1.0",
+    "babel-jest": "26.6.3",
+    "electron": "15.3.6",
+    "eslint": "7.32.0",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-plugin-prettier": "4.0.0",
+    "jest": "26.6.3",
+    "prettier": "2.5.1",
+    "webpack": "5.68.0",
+    "webpack-cli": "4.9.2"
+  },
+  "jest": {
+    "setupFiles": [
+      "<rootDir>/test/setup.js"
+    ]
+  }
+}

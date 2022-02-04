@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+  <title>manual tests</title>
+  <style>
+    iframe {
+      width: 610px;
+      height: 200px;
+    }
+    .wrapper {
+      border: 1px solid #3c3c3c;
+      width: 300px; height: 300px;
+    }
+    .wrapper.wrapper-tall {
+      height: 600px;
+    }
+    .wrapper.wrapper-large {
+      width: 600px;
+      height: 600px;
+    }
+
+
+    svg {
+        width: 100%;
+        height: 100%;
+      }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <svg width="500" height="500" viewBox="0 0 500 500" class="first-svg">
+      <rect width="500" height="500" fill="#c1a5a9"></rect>
+      <g transform="translate(250, 250)">
+        <circle fill="#f08cae" r="240"></circle>
+        <circle fill="#9a4c95" r="180"></circle>
+        <circle fill="#4d2d52" r="120"></circle>
+        <circle fill="#1d1a31" r="60"></circle>
+      </g>
+    </svg>
+  </div>
+  <button class="first-button">
+    save PNG
+  </button>
+  <div class="wrapper wrapper-large">
+    <svg width="500" height="500" viewBox="0 0 500 500" class="second-svg">
+      <rect width="500" height="500" fill="#c1a5a9"></rect>
+      <g transform="translate(250, 250)">
+        <circle fill="#f08cae" r="240"></circle>
+        <circle fill="#9a4c95" r="180"></circle>
+        <circle fill="#4d2d52" r="120"></circle>
+        <circle fill="#1d1a31" r="60"></circle>
+      </g>
+    </svg>
+  </div>
+  <button class="second-button">
+    save PNG
+  </button>
+  <div class="wrapper wrapper-tall">
+    <svg width="500" height="500" viewBox="0 0 500 500" class="third-svg">
+      <rect width="500" height="500" fill="#c1a5a9"></rect>
+      <g transform="translate(250, 250)">
+        <circle fill="#f08cae" r="240"></circle>
+        <circle fill="#9a4c95" r="180"></circle>
+        <circle fill="#4d2d52" r="120"></circle>
+        <circle fill="#1d1a31" r="60"></circle>
+      </g>
+    </svg>
+  </div>
+  <button class="third-button">
+    save PNG
+  </button>
+  <script src="main.js"></script>
+  <script>
+    function savePNG(ordinalNumber) {
+      downloadPng(document.querySelector(`.${ordinalNumber}-svg`), "my_svg", {
+        css: "internal"
+      });
+    }
+
+    ['first', 'second', 'third'].forEach(elem => 
+      document.querySelector(`.${elem}-button`).addEventListener("click", () => savePNG(elem)))
+
+  </script>
+</body>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<head>
+  <meta charset='utf-8'>
+  <title>Smanual tests</title>
+  <link rel="stylesheet" type="text/css" href="assets/linked.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    }
+  </style>
+  <style>
+    @import url("assets/imported.css");
+
+    #wrapper, .sample-svg {
+      width: 500px;
+      height: 300px;
+    }
+
+    svg {
+      border: solid 1px #dedede;
+    }
+
+    .internal {
+      fill: indigo;
+    }
+
+    #wrapper .selector {
+      fill: seagreen;
+    }
+
+    svg text {
+      text-anchor: middle;
+      font-size: 16px;
+      font-family: Helvetica;
+    }
+
+
+  </style>
+</head>
+
+<body>
+
+  <h3>viewBox="0 0 500 300"</h3>
+  <div id="wrapper">
+    <svg viewBox="0 0 500 300" class="sample-svg">
+      <text class="internal" x="250" y="60">Internal CSS, this text should be indigo ☸☹☺☻☼☾☿✓</text>
+      <text class="imported" x="250" y="120">Imported CSS, this text should be indianred.</text>
+      <text class="linked" x="250" y="180">Linked CSS, this text should be lightsalmon.</text>
+      <text class="selector" x="250" y="240">An HTML dependency, this text should be seagreen.</text>
+    </svg>
+  </div>
+  <div class="buttons">
+    <button class="sample-svg-svg">SVG</button>
+    <button class="sample-svg-png">PNG</button>
+  </div>
+  <script src="main.js"></script>
+  <script>
+    document.querySelector('.sample-svg-svg').addEventListener('click', () => downloadSvg(document.querySelector('.sample-svg')))
+    document.querySelector('.sample-svg-png').addEventListener('click', () => downloadPng(document.querySelector('.sample-svg')))
+    // downloadPng(document.querySelector('.sample-svg'), 'viewBox-500-300', {debug: true})
+  </script>
+</body>

@@ -1,0 +1,10 @@
+{
+  "env": {
+    "commonjs": {
+      "presets": [["@babel/preset-env", { "modules": "cjs" }]]
+    },
+    "esmodules": {
+      "presets": [["@babel/preset-env", { "modules": false }]]
+    }
+  }
+}
