@@ -7,14 +7,15 @@ import sys
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
 
 available_hmm_sources = list(hmm_data.sources.keys())
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.tables.trnahits import TablesForTransferRNAs
 
@@ -90,6 +91,12 @@ def main(args):
         raise ConfigError("We can see that you have requested --domain-hits-table but you haven't asked us to store "
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
+
+    domtable_path = os.path.join(args.hmmer_output_dir + "/hmm.domtable")
+    if filesnpaths.is_file_exists(domtable_path, dont_raise=True):
+        raise ConfigError(f"The file {file_path} already exists, and anvi'o does not like to "
+                            "to overwrite things. Please either remove the file or rename your "
+                            "desired output.")
 
     search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
                                      hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
