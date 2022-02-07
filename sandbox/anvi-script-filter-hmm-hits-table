@@ -216,6 +216,7 @@ class FilterHmmHitsTable(object):
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
         hmm_hits_dict = contigs_db.db.get_table_as_dict("hmm_hits")
+        contigs_db.disconnect()
 
         gene_list = []
         for key,value in hmm_hits_dict.items():
