@@ -142,9 +142,6 @@ rule filter_hmm_hits_by_query_coverage:
         if HMM_source in M.internal_HMM_sources:
             if HMM_source in domain_filter_values_dict.keys():
                 if float(params.query_coverage) > float(domain_filter_values_dict[HMM_source][2]):
-                    print(params.query_coverage)
-                    print(domain_filter_values_dict[HMM_source][2])
-                    print("shit")
                     shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                             --domain-hits-table {domtblout} \
                                                             --hmm-source {HMM_source} \
@@ -154,7 +151,6 @@ rule filter_hmm_hits_by_query_coverage:
                     print(f"The HMM source {HMM_source} has already been filtered with more stringent query coverage value: {domain_filter_values_dict[HMM_source][2]}, skipping filter_hmm_hits_by_query_coverage!")
                     pass
             else:
-                print("fuck")
                 shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {HMM_source} \
@@ -163,7 +159,6 @@ rule filter_hmm_hits_by_query_coverage:
         else:
             if HMM_source in domain_filter_values_dict.keys():
                 if float(params.query_coverage) > float(domain_filter_values_dict[HMM_source][2]):
-                    print("fuckkkkkk")
                     shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                             --domain-hits-table {domtblout} \
                                                             --hmm-profile-dir {HMM_dir} \

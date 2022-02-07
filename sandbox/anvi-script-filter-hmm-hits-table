@@ -93,11 +93,13 @@ class FilterHmmHitsTable(object):
                               f"anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
                               f"from protein sequences.")
         
-        if 0.0 < self.target_coverage > 1.0:
-            raise ConfigError(f"Target coverage needs to be between 0 and 1")
+        if self.target_coverage:
+            if 0.0 < float(self.target_coverage) > 1.0:
+                raise ConfigError(f"Target coverage needs to be between 0 and 1")
 
-        if 0.0 < self.query_coverage > 1.0:
-            raise ConfigError(f"Query coverage needs to be between 0 and 1")
+        if self.query_coverage:
+            if 0.0 < float(self.query_coverage) > 1.0:
+                raise ConfigError(f"Query coverage needs to be between 0 and 1")
 
 
     def process(self):
