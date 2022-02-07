@@ -91,6 +91,11 @@ def main(args):
         raise ConfigError("We can see that you have requested --domain-hits-table but you haven't asked us to store "
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
+    
+    if args.domain_hits_table and args.hmmer_program != "hmmsearch":
+        run.warning(f"You requested to save the --domtblout without using hmmsearch. We wanted to kindly warn you that if you "
+                    f"that if you plan on using anvi-script-filter-hmm-hits-table that anvi'o needs the --domtblout from hmmsearch "
+                    f"instead of hmmscan for example. You can switch to hmmsearch by using the --hmmer-program parameter :)")
 
     domtable_path = os.path.join(args.hmmer_output_dir + "/hmm.table")
     if filesnpaths.is_file_exists(domtable_path, dont_raise=True):
