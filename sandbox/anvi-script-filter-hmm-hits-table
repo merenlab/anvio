@@ -228,7 +228,7 @@ class FilterHmmHitsTable(object):
             raise ConfigError(f"The genes in {self.domtblout} don't seem to be in the hmm_hits table "
                               f"from your contigsDB: {self.contigs_db_path}. "
                               f"Please double check you are filtering with the same HMM_source that you used "
-                              f"with anvi-run-hmms")
+                              f"to create {self.domtblout} when you ran anvi-run-hmms.")
 
         # Remove old hmm_hits contigs_db_path
         hmm_tables = TablesForHMMHits(self.contigs_db_path)
