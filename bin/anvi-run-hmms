@@ -92,9 +92,9 @@ def main(args):
                           "this output in a directory with --hmmer-output-dir. There is no point to requesting this output "
                           "if you are never going to see it, so we figured we'd stop you right there. :)")
 
-    domtable_path = os.path.join(args.hmmer_output_dir + "/hmm.domtable")
+    domtable_path = os.path.join(args.hmmer_output_dir + "/hmm.table")
     if filesnpaths.is_file_exists(domtable_path, dont_raise=True):
-        raise ConfigError(f"The file {file_path} already exists, and anvi'o does not like to "
+        raise ConfigError(f"The file {domtable_path} already exists, and anvi'o does not like to "
                             "to overwrite things. Please either remove the file or rename your "
                             "desired output.")
 
