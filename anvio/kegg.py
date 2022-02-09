@@ -1613,6 +1613,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
+        self.enzymes_txt = A('enzymes_txt') or None
         self.output_modes = A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
