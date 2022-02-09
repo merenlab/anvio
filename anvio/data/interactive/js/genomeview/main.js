@@ -277,6 +277,12 @@ function processState(stateName, stateData) {
     respondToBookmarkSelect() // set listener for user bookmark selection
   }
 
+  if (stateData.hasOwnProperty('metadata')) {
+    settings['display']['metadata'] = stateData['display']
+  } else {
+    settings['display']['metadata'] = []
+  }
+
   if (stateData.hasOwnProperty('user-gene-labels')){
     settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
   }
