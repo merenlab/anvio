@@ -3345,7 +3345,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.output_file_dict = self.setup_output_for_appending()
 
         if self.estimate_from_json:
-            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data() ## TODO: fix this for user data
+            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
             # we either get the modules DB info from the previous class, or we have to initialize it here
             if all_modules_in_db:
