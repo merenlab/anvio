@@ -3303,6 +3303,65 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
+    def load_data_from_enzymes_txt(self):
+        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
+
+        RETURNS
+        =======
+        enzyme_df : Pandas DataFrame
+            contains the information in the enzymes txt file
+        """
+
+        self.progress.new("Loading enzymes-txt file...")
+        expected_fields = ['gene_id', 'enzyme_accession', 'source']
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        self.progress.end()
+
+        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
+
+        # sanity check for required columns
+        missing = []
+        for f in expected_fields:
+            if f not in enzyme_df.columns:
+                missing.append(f)
+        if missing:
+            miss_str = ", ".join(missing)
+            exp_str = ", ".join(expected_fields)
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
+                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        # warning about extra columns
+        used_cols = expected_fields + ['coverage', 'detection']
+        extra_cols = []
+        for c in enzyme_df.columns:
+            if c not in used_cols:
+                extra_cols.append(c)
+        if extra_cols:
+            e_str = ", ".join(extra_cols)
+            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+
+        # sanity check for unique gene ids
+        duplicates = list(enzyme_df[enzyme_df.duplicated(subset=['gene_id'])]['gene_id'].unique())
+        if duplicates:
+            if len(duplicates) > 5:
+                num = len(duplicates) - 1
+                dup_str = f"Here is one example (there are {num} others, but we didn't want to show them all): {duplicates[0]}"
+            else:
+                dup_str = f"Here are the duplicates: {', '.join(duplicates)}"
+            raise ConfigError(f"There are duplicate entries in the `gene_id` column of your enzymes-txt file. We require the values "
+                              f"in this column to be unique, so you'll have to modify (or remove) the duplicates. {dup_str} ")
+
+        # check and warning for enzymes not in self.all_kos_in_db
+        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if enzymes_not_in_modules:
+            example = enzymes_not_in_modules[0]
+            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                             f"curious, here is one example: {example}")
+
+        return enzyme_df
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
@@ -3381,8 +3440,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
             elif self.metagenome_mode:
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+            if self.enzymes_txt:
+                self.enzymes_txt_data = self.load_data_from_enzymes_txt()
             else:
-                raise ConfigError("This class doesn't know how to deal with that yet :/")
+                kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
+
+                if self.add_coverage:
+                    self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+
+                if self.profile_db_path and self.collection_name and not self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+                elif not self.collection_name and not self.metagenome_mode:
+                    self.genome_mode = True
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
+                elif self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                else:
+                    raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
