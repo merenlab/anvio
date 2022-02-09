@@ -290,6 +290,14 @@ function showDeepDiveToolTip(event){
   $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances
   $('#deepdive-tooltip-body').html('').hide()
 
+  function getAndShowMetadata(){
+    console.log(settings['display']['metadata'])
+    let metadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
+    console.log(metadata)
+  }
+
+  getAndShowMetadata()
+
   let totalAnnotationsString = ''
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
@@ -378,7 +386,7 @@ function showDeepDiveToolTip(event){
   $('#metadata-gene-label-add').on('click', function(){
     let metadataObj = {
       label  : $('#metadata-gene-label').val(),
-      genome : event.target.genomeId,
+      genome : event.target.genomeID,
       gene   : event.target.geneID
     }
     settings['display']['metadata'].push(metadataObj)
@@ -387,7 +395,7 @@ function showDeepDiveToolTip(event){
   $('#metadata-gene-description-add').on('click', function(){
     let metadataObj = {
       label  : $('#metadata-gene-description').val(),
-      genome : event.target.genomeId,
+      genome : event.target.genomeID,
       gene   : event.target.geneID
     }
     settings['display']['metadata'].push(metadataObj)
