@@ -1977,16 +1977,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        if self.add_coverage and not self.enzymes_txt:
-            if not self.profile_db_path:
-                raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-            if utils.is_blank_profile(self.profile_db_path):
-                raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                                  "values, so the --add-coverage flag will not work.")
+        if self.add_coverage:
+            if not self.enzymes_txt:
+                if not self.profile_db_path:
+                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+                if utils.is_blank_profile(self.profile_db_path):
+                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                      "values, so the --add-coverage flag will not work.")
 
             self.add_gene_coverage_to_headers_list()
-        elif self.add_coverage and self.enzymes_txt:
-            pass # FIXME add mock sample to headers list
 
 
         # OUTPUT OPTIONS SANITY CHECKS
@@ -2317,23 +2316,30 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
 
-        The profile DB is initialized in this function in order to get access to the sample names that will
+        If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
         """
 
-        if not self.profile_db:
-            self.args.skip_consider_gene_dbs = True
-            self.profile_db = ProfileSuperclass(self.args)
+        # obtain list of sample names
+        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
+            input_file_name = basename(self.enzymes_txt).replace(".", "_")
+            samples_list.append(input_file_name)
 
-        # first we get lists of all the headers we will need to add.
+        else:
+            if not self.profile_db:
+                self.args.skip_consider_gene_dbs = True
+                self.profile_db = ProfileSuperclass(self.args)
+
+            samples_list = self.profile_db.p_meta['samples']
+
+        # obtain lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
         kofam_hits_coverage_headers = []
         kofam_hits_detection_headers = []
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        samples_in_profile_db = self.profile_db.p_meta['samples']
-        for s in samples_in_profile_db:
+        for s in samples_list:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
