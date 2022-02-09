@@ -1942,9 +1942,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         }
 
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path:
-            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
-                              "flag, in which case you must provide a JSON-formatted file.")
+        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
+            raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -1978,13 +1977,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        if self.add_coverage and not self.profile_db_path:
-            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
-            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                              "values, so the --add-coverage flag will not work.")
-        elif self.add_coverage:
+        if self.add_coverage and not self.enzymes_txt:
+            if not self.profile_db_path:
+                raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+            if utils.is_blank_profile(self.profile_db_path):
+                raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                  "values, so the --add-coverage flag will not work.")
+
             self.add_gene_coverage_to_headers_list()
+        elif self.add_coverage and self.enzymes_txt:
+            pass # FIXME add mock sample to headers list
 
 
         # OUTPUT OPTIONS SANITY CHECKS
@@ -2036,15 +2038,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # let user know what they told anvi'o to work on
-        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
-        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
-        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.contigs_db_path:
+            self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        if self.profile_db_path:
+            self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         if self.collection_name:
-            self.run.info('Collection', self.collection_name)
+            self.run.info('Collection', self.collection_name, quiet=self.quiet)
         if self.bin_id:
-            self.run.info('Bin ID', self.bin_id)
+            self.run.info('Bin ID', self.bin_id, quiet=self.quiet)
         elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file)
+            self.run.info('Bin IDs file', self.bin_ids_file, quiet=self.quiet)
+        if self.enzymes_txt:
+            self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
+
+        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
 
 
         if not self.estimate_from_json:
