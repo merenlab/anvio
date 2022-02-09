@@ -1951,12 +1951,12 @@ function handleSvgExport(){
         exportArr.push('layers')
     }
 
-    exportArr.forEach(item => {
-        exportSvg(false, item)
-    })
+    // exportArr.forEach(item => {
+    // })
+    exportSvg(false, exportArr)
 }
 
-async function exportSvg(dontDownload, svgItem) {
+async function exportSvg(dontDownload, svgArr) {
     if (!drawer)
         return;
 
@@ -2015,81 +2015,77 @@ async function exportSvg(dontDownload, svgItem) {
 
     let replacementTreeBin = $('#tree_bin').clone()
     let replacementSamples = $('#samples').clone()
-    switch (svgItem) {
-        case 'everything':
-            svgCrowbar();
-            $('#svg-export-everything').prop('checked', false)
-            break;
-        case 'drawing':
-            window.document.title += '_drawing'
-            svg.removeAttribute('viewBox');
-            $('#title_group').remove();
-            $('#tree_bin').remove()
-            $('#samples').remove()
-            $('#bin_legend').remove();
-            $('#layer_legend').remove();
-            $('#legend_group').remove();
-            $('#viewport').append(replacementSamples)
-            $('#viewport').append(replacementTreeBin)
-            svgCrowbar()
-            window.document.title = window.document.title.replace('_drawing', '')
-            $('#svg-export-composite-drawing').prop('checked', false)
-            break;
-        case 'dendrogram':
-            window.document.title += '_dendrogram'
-            svg.removeAttribute('viewBox');
-            let tree = $('#tree').css({}).clone()
-            $('#viewport').prepend(tree)
-            $('#tree_bin').remove()
-            $('#samples').remove()
-            $('#bin_legend').remove();
-            $('#layer_legend').remove();
-            $('#title_group').remove();
-            $('#legend_group').remove();
-            svgCrowbar();
-            $('#viewport').append(replacementSamples)
-            $('#viewport').append(replacementTreeBin)
-            window.document.title = window.document.title.replace('_dendrogram', '')
-            $('#svg-export-dendrogram').prop('checked', false)
-            break;
-        case 'legends':
-            window.document.title += '_legends'
-            svg.removeAttribute('viewBox');
-            $('#tree').remove()
-            $('#tree_bin').remove()
-            $('#samples').remove()
-            $('#samples_tree').remove()
-            $('#bin_legend').remove();
-            $('#layer_legend').remove();
-            $('#title_group').remove();
-            svgCrowbar();
-            $('#viewport').append(replacementSamples)
-            $('#viewport').append(replacementTreeBin)
-            window.document.title = window.document.title.replace('_legends', '')
-            $('#svg-export-legends').prop('checked', false)
-            break;
-        case 'layers':
-            window.document.title += '_layers'
-            svg.removeAttribute('viewBox');
-            $('#tree').remove()
-            $('#tree_bin').remove()
-            $('#samples').remove()
-            $('#samples_tree').remove()
-            $('#legend_group').remove();
-            $('#title_group').remove();
-            svgCrowbar();
-            $('#viewport').append(replacementSamples)
-            $('#viewport').append(replacementTreeBin)
-            window.document.title = window.document.title.replace('_layers', '')
-            $('#svg-export-layers').prop('checked', false)
-            break;
-        default:
-            console.log('nothing to export :(');
-            break;
-    }
 
-    $('#tree').prepend(detached);
-    $('#samples_tree').prepend(detachedSamples);
+    svgArr.forEach(svgItem => {
+        switch (svgItem) {
+            case 'everything': // working great!
+                downloadSvg(document.querySelector('svg'), window.document.title + '_everything');
+                $('#svg-export-everything').prop('checked', false)
+                break;
+            case 'drawing': // working great!
+                svg.removeAttribute('viewBox');
+                $('#title_group').remove();
+                $('#tree_bin').remove()
+                $('#samples').remove()
+                $('#bin_legend').remove();
+                $('#layer_legend').remove();
+                $('#legend_group').remove();
+                $('#viewport').append(replacementSamples)
+                $('#viewport').append(replacementTreeBin)
+                downloadSvg(document.querySelector('svg'), window.document.title +'_drawing')
+                $('#svg-export-composite-drawing').prop('checked', false)
+                break;
+            case 'dendrogram':
+                // svg.removeAttribute('viewBox');
+                // let tree = $('#tree').css({}).clone()
+                // $('#viewport').prepend(tree)
+                // $('#tree_bin').remove()
+                // $('#samples').remove()
+                // $('#bin_legend').remove();
+                // $('#layer_legend').remove();
+                // $('#title_group').remove();
+                // $('#legend_group').remove();
+                downloadSvg(document.querySelector('#tree'), window.document.title + '_dendrogram')
+                $('#viewport').append(replacementSamples)
+                $('#viewport').append(replacementTreeBin)
+                $('#svg-export-dendrogram').prop('checked', false)
+                break;
+            case 'legends':
+                // svg.removeAttribute('viewBox');
+                // $('#tree').remove()
+                // $('#tree_bin').remove()
+                // $('#samples').remove()
+                // $('#samples_tree').remove()
+                // $('#bin_legend').remove();
+                // $('#layer_legend').remove();
+                // $('#title_group').remove();
+                downloadSvg(document.querySelector('#legend_group'), 'legends')
+                // $('#viewport').append(replacementSamples)
+                // $('#viewport').append(replacementTreeBin)
+                $('#svg-export-legends').prop('checked', false)
+                break;
+            case 'layers':
+                svg.removeAttribute('viewBox');
+                $('#tree').remove()
+                $('#tree_bin').remove()
+                $('#samples').remove()
+                $('#samples_tree').remove()
+                $('#legend_group').remove();
+                $('#title_group').remove();
+                downloadSvg(document.querySelector('#layer_legend'), 'layers')
+                $('#viewport').append(replacementSamples)
+                $('#viewport').append(replacementTreeBin)
+                $('#svg-export-layers').prop('checked', false)
+                break;
+            default:
+                console.log('nothing to export :(');
+                break;
+        }
+    })
+
+
+    // $('#tree').prepend(detached);
+    // $('#samples_tree').prepend(detachedSamples);
     //globally remove these items if not removed in above switch
     svg.removeAttribute('viewBox');
     $('#bin_legend').remove();
