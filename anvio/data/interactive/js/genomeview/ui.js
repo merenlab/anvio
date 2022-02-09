@@ -328,11 +328,11 @@ function showDeepDiveToolTip(event){
 
   <br>
   <h2>metadata<h2/>
-  <input type='text' placeholder='custom gene label'>
-  <button type='button' class="btn btn-default btn-sm">add gene label</button>
+  <input    id='metadata-gene-label' type='text' placeholder='custom gene label'>
+  <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add gene label</button>
   <br>
-  <textarea placeholder='gene description'></textarea>
-  <button type='button' class="btn btn-default btn-sm">add gene description</button>
+  <textarea id='metadata-gene-description' placeholder='gene description'></textarea>
+  <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add gene description</button>
 
   <h2>Annotations</h2>;
   <table class="table table-striped">;
@@ -373,6 +373,25 @@ function showDeepDiveToolTip(event){
     let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastn', 'refseq_genomic', 'gene')
+  })
+
+  $('#metadata-gene-label-add').on('click', function(){
+    let metadataObj = {
+      label  : $('#metadata-gene-label').val(),
+      genome : event.target.genomeId,
+      gene   : event.target.geneID
+    }
+    settings['display']['metadata'].push(metadataObj)
+    $('#metadata-gene-label').val('')
+  })
+  $('#metadata-gene-description-add').on('click', function(){
+    let metadataObj = {
+      label  : $('#metadata-gene-description').val(),
+      genome : event.target.genomeId,
+      gene   : event.target.geneID
+    }
+    settings['display']['metadata'].push(metadataObj)
+    $('#metadata-gene-description').val('')
   })
 }
 
