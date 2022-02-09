@@ -15,7 +15,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
-                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data"]
+                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data",
+                "enzymes-txt"]
 __provides__ = ["kegg-metabolism","user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
