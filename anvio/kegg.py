@@ -3383,7 +3383,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              f"curious, here is one example: {example}")
 
         # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
-        if self.add_coverage and 'coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns:
+        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
             self.run.warning("You requested coverage/detection values to be added to the output files, but your "
                              "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
                              "Since we don't have this data,/874 --add-coverage will not work, so we are turning this "
