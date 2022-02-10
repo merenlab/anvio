@@ -3385,6 +3385,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
                              f"curious, here is one example: {example}")
 
+        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
+        if self.add_coverage and 'coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns:
+            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
+                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
+                             "Since we don't have this data,/874 --add-coverage will not work, so we are turning this "
+                             "flag off. Sorry ¯\_(ツ)_/¯")
+            self.add_coverage = False
+            # remove coverage headers from the list so we don't try to access them later
+            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
+            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
+                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
+            for h in kofam_hits_coverage_headers:
+                self.available_modes["hits_in_modules"]["headers"].remove(h)
+                self.available_modes["hits"]["headers"].remove(h)
+            for h in modules_coverage_headers:
+                self.available_modes["modules"]["headers"].remove(h)
+
         return enzyme_df
 
 
