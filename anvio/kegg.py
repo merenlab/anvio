@@ -1942,7 +1942,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         }
 
         if self.enzymes_txt:
-            self.contigs_db_project_name = basename(self.enzymes_txt).replace(".", "_")
+            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
 
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
