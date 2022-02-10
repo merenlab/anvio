@@ -2835,7 +2835,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.coverage_sample_list = list(sample_set)
         else:
             if self.enzymes_txt:
-                self.coverage_sample_list = self.contigs_db_project_name
+                self.coverage_sample_list = [self.contigs_db_project_name]
             else:
                 self.coverage_sample_list = self.profile_db.p_meta['samples']
 
