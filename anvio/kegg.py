@@ -1941,6 +1941,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
 
+        if self.enzymes_txt:
+            self.contigs_db_project_name = basename(self.enzymes_txt).replace(".", "_")
+
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
@@ -2322,8 +2325,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # obtain list of sample names
         if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
-            input_file_name = basename(self.enzymes_txt).replace(".", "_")
-            samples_list.append(input_file_name)
+            samples_list.append(self.contigs_db_project_name)
 
         else:
             if not self.profile_db:
