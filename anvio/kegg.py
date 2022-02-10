@@ -3862,8 +3862,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             gene_coverages_in_mod = []
                             gene_detection_in_mod = []
                             for gc in gcids_in_mod:
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][int(gc)])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][int(gc)])
+                                if self.enzymes_txt:
+                                    gc_idx = gc
+                                else:
+                                    gc_idx = int(gc)
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
 
                             d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
