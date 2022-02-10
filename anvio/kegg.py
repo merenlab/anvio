@@ -3362,6 +3362,50 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              f"curious, here is one example: {example}")
 
         return enzyme_df
+
+
+    def estimate_metabolism_from_enzymes_txt(self):
+        """Estimates metabolism on a set of enzymes provided in a text file.
+
+        This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
+        same as the estimate_for_genome() function.
+
+        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
+        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
+        attribute has been set (previously) to the name of the enzyme txt file
+
+        RETURNS
+        =======
+        enzyme_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping the name of the enzyme txt file to its metabolism completeness dictionary
+        enzyme_ko_superdict : dictionary of dictionary of dictionaries
+            maps the name of the enzyme txt file to its KOfam hit dictionary
+        """
+
+        kofam_gene_split_contig = []
+        # the splits and contigs here are fake
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.xfilter_data["enzyme_accession"]):
+            kofam_gene_split_contig.append((ko,gene_call_id,"s_000000000000","c_000000000000",))
+
+        enzyme_metabolism_superdict = {}
+        enzyme_ko_superdict = {}
+
+        metabolism_dict_for_genome,ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig,
+                                                                                                 bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome,
+                                                                                                         bin_name=self.contigs_db_project_name)
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+        else:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+
+        # append to file
+        self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
+
+        return enzyme_metabolism_superdict, enzyme_ko_superdict
+
+
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
@@ -3428,20 +3472,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 self.init_data_from_modules_db()
 
-            kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-
-            if self.add_coverage:
-                self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
-
-            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-            elif not self.collection_name and not self.metagenome_mode:
-                self.genome_mode = True
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
-            elif self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
             if self.enzymes_txt:
                 self.enzymes_txt_data = self.load_data_from_enzymes_txt()
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
