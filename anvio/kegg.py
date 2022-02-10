@@ -2440,7 +2440,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
-            self.run.info("Number of splits", len(split_list))
+            if split_list:
+                num_splits = len(split_list)
+            else:
+                num_splits = "None"
+            self.run.info("Number of splits", num_splits)
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.all_modules_in_db.keys()
