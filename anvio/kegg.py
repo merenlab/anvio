@@ -1857,7 +1857,7 @@ class KeggEstimatorArgs():
         return metadata_dict
 
 
-    def get_ko_metadata_dictionary(self, knum):
+    def get_ko_metadata_dictionary(self, knum, dont_fail_if_not_found=False):
         """Returns a dictionary of metadata for the given KO.
 
         The dictionary must include all the metadata from KO_METADATA_HEADERS,
@@ -1877,14 +1877,22 @@ class KeggEstimatorArgs():
         else:
             mod_list_str = "None"
 
-        if knum not in self.ko_dict:
-            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                              f"for enzyme {knum} but this enzyme is not in "
-                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
-
         metadata_dict = {}
-        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
         metadata_dict["modules_with_enzyme"] = mod_list_str
+
+        if knum not in self.ko_dict:
+            if dont_fail_if_not_found:
+                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
+                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
+                                 f"its function.")
+                metadata_dict["enzyme_definition"] = "UNKNOWN"
+            else:
+                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                                  f"for enzyme {knum} but this enzyme is not in "
+                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
+        else:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+
         return metadata_dict
 
 
@@ -3900,7 +3908,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for KO", ko)
 
-                metadata_dict = self.get_ko_metadata_dictionary(ko)
+                metadata_dict = self.get_ko_metadata_dictionary(ko, dont_fail_if_not_found=True)
 
                 for gc_id in k_dict["gene_caller_ids"]:
                     d[self.ko_unique_id] = {}
@@ -4567,7 +4575,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     if stat_header == 'module':
                         metadata_dict = self.get_module_metadata_dictionary(m)
                     elif stat_header == 'enzyme':
-                        metadata_dict = self.get_ko_metadata_dictionary(m)
+                        metadata_dict = self.get_ko_metadata_dictionary(m, dont_fail_if_not_found=True)
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
                                           "statistics but there is no function defined for this.")
