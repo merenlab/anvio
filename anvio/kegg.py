@@ -3961,16 +3961,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
 
                     if self.add_coverage:
-                        if not self.profile_db:
-                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
-                                              "not been initialized, therefore we cannot add coverage values to your output. "
-                                              "This is likely a bug or developer mistake. It is a sad day :(")
+                        if self.enzymes_txt:
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["coverage"].values[0]
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["detection"].values[0]
+                        else:
+                            if not self.profile_db:
+                                raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                                  "not been initialized, therefore we cannot add coverage values to your output. "
+                                                  "This is likely a bug or developer mistake. It is a sad day :(")
 
-                        for s in self.coverage_sample_list:
-                            sample_cov_header = s + "_coverage"
-                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
-                            sample_det_header = s + "_detection"
-                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
