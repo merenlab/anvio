@@ -3394,10 +3394,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
                                         self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
             for h in kofam_hits_coverage_headers:
-                self.available_modes["hits_in_modules"]["headers"].remove(h)
-                self.available_modes["hits"]["headers"].remove(h)
+                for mode in ["hits_in_modules", "hits"]:
+                    if h in self.available_modes[mode]["headers"]:
+                        self.available_modes[mode]["headers"].remove(h)
             for h in modules_coverage_headers:
-                self.available_modes["modules"]["headers"].remove(h)
+                if h in self.available_modes["modules"]["headers"]:
+                    self.available_modes["modules"]["headers"].remove(h)
 
         return enzyme_df
 
