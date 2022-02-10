@@ -3386,7 +3386,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kofam_gene_split_contig = []
         # the splits and contigs here are fake
-        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.xfilter_data["enzyme_accession"]):
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
             kofam_gene_split_contig.append((ko,gene_call_id,"s_000000000000","c_000000000000",))
 
         enzyme_metabolism_superdict = {}
