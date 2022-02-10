@@ -2805,9 +2805,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
         """
 
-        if not self.profile_db:
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+
+        if not self.enzymes_txt and not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
+        if self.enzymes_txt and not self.enzymes_txt_data:
+            raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
+                              "self.enzymes_txt_data attribute.")
 
         if self.custom_output_headers:
             # determine the specific set of samples we are interested in so we don't make the dictionary huge
@@ -2825,12 +2833,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            self.coverage_sample_list = self.profile_db.p_meta['samples']
-
-        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
-        meta_dict_for_bin[mod]["genes_to_detection"] = {}
-        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
-        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+            if self.enzymes_txt:
+                self.coverage_sample_list = self.contigs_db_project_name
+            else:
+                self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -2839,8 +2845,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             coverage_sum = 0
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
-                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
-                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                if self.enzymes_txt:
+                    cov = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['coverage'].values[0]
+                    det = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['detection'].values[0]
+                else:
+                    cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                    det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
                 coverage_sum += cov
                 detection_sum += det
                 meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
