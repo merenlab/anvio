@@ -2817,9 +2817,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.enzymes_txt and not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
-        if self.enzymes_txt and not self.enzymes_txt_data:
-            raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
-                              "self.enzymes_txt_data attribute.")
 
         if self.custom_output_headers:
             # determine the specific set of samples we are interested in so we don't make the dictionary huge
