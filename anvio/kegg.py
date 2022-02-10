@@ -2333,7 +2333,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # obtain list of sample names
         if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
-            samples_list.append(self.contigs_db_project_name)
+            samples_list = [self.contigs_db_project_name]
 
         else:
             if not self.profile_db:
