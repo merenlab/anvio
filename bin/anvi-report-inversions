@@ -126,6 +126,8 @@ if __name__ == '__main__':
                     "first palindrome of the inversion and 3 genes downstream from the second. If there are not "
                     "enough genes in the contig given the position of either of the palindromes, anvio' will "
                     "report whatever it can.", metavar="INT")
+    groupF.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls "
+                    "from."}))
 
 
     groupG = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")

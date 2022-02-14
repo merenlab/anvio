@@ -112,6 +112,7 @@ class Inversions:
 
         # skip learning about the genomic context that surrounds inversions?
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
+        self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
 
         # be talkative or not
@@ -677,8 +678,8 @@ class Inversions:
             # lazy recovery of gene calls in contigs of relevance. should be useful for
             # metagenomes, but useless for isolate genomes with a single contig.
             if contig_name not in gene_calls_per_contig:
-                gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name,
-                                                                                                    where_clause=f'''contig="{contig_name}"''')
+                where_clause = f'''contig="{contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
+                gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause)
 
             gene_calls_in_contig = gene_calls_per_contig[contig_name]
 
@@ -739,11 +740,12 @@ class Inversions:
                       lc="yellow")
 
         if len(inversions_with_no_gene_calls_around):
-            self.run.warning(f"There were one or more inversions that did not have any valid gene calls around them. "
-                             f"This may happen if an inversion is occurring in a contig that happens to have no gene "
-                             f"calls (either due to its too short, or because you need a Nobel prize). So results from "
-                             f"these weird inversions will not appear in your final reports. Here is the list in case "
-                             f"you would like to track them down: {', '.join(inversions_with_no_gene_calls_around)}.")
+            self.run.warning(f"There were one or more inversions that did not have any valid "
+                             f"{self.gene_caller_to_consider_in_context} gene calls around them. This may happen if an inversion "
+                             f"is occurring in a contig that happens to have no gene calls (either due to its too short, "
+                             f"or because you need a Nobel prize). So results from these weird inversions will not appear "
+                             f"in your final reports. Here is the list in case you would like to track them down: "
+                             f"{', '.join(inversions_with_no_gene_calls_around)}.")
 
         if not len(self.genomic_context_surrounding_consensus_inversions):
             self.run.warning("Even though anvi'o went through all {PL('inversion', len(self.consensus_inversions))} "
@@ -1101,6 +1103,7 @@ class Inversions:
 
         if not self.skip_recovering_genomic_context:
             self.run.info("[Genomic context] Recover and report genomic context?",  "True", mc="green")
+            self.run.info("[Genomic context] Gene caller to use", self.gene_caller_to_consider_in_context)
             self.run.info("[Genomic context] Number of genes to consider",  self.num_genes_to_consider_in_context, nl_after=1)
         else:
             self.run.info("[Genomic context] Recover and report genomic context?",  "False", mc="red", nl_after=1)
@@ -1158,11 +1161,23 @@ class Inversions:
     def sanity_check(self):
         """Basic checks for a smooth operation"""
 
-        if not dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['genes_are_called'] and not self.skip_recovering_genomic_context:
-            raise ConfigError("Your parameter setup asks anvi'o to recover genomic context of active inversions at the end "
-                              "but the contigs database does not have any genes called :/ For the sake of being explicit "
-                              "about it anvi'o requests you to use the flag `--skip-recovering-genomic-context` so it is clear "
-                              "to everyone that this step is meant to be skipped.")
+        if not self.skip_recovering_genomic_context:
+            if not dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['genes_are_called']:
+                raise ConfigError("Your parameter setup asks anvi'o to recover genomic context of active inversions at the end "
+                                  "but the contigs database does not have any genes called :/ For the sake of being explicit "
+                                  "about it anvi'o requests you to use the flag `--skip-recovering-genomic-context` so it is clear "
+                                  "to everyone that this step is meant to be skipped.")
+
+            if 'RNA' in self.gene_caller_to_consider_in_context:
+                raise ConfigError(f"Anvi'o truly hates to do this, but '{self.gene_caller_to_consider_in_context}' is really not a "
+                                  f"very good source for gene calls to consider to understand genomic context for inversions :/ Please "
+                                  f"write to anvi'o developers if you think they're wrong.")
+
+            gene_callers = [g[0] for g in dbops.ContigsDatabase(self.contigs_db_path).meta['gene_callers'] if 'RNA' not in g[0]]
+            if self.gene_caller_to_consider_in_context not in gene_callers:
+                raise ConfigError(f"The gene caller '{self.gene_caller_to_consider_in_context}' is not one of the gene callers "
+                                  f"your contigs database knows about :/ Please use the `--gene-caller` parameter to select one "
+                                  f"that fits .. such as {PL('this one', len(gene_callers), alt='one of these')}: {', '.join(gene_callers)}.")
 
         bad_profile_dbs = [p for p in self.profile_db_paths if dbi.DBInfo(self.profile_db_paths[0]).get_self_table()['fetch_filter'] != 'inversions']
         if len(bad_profile_dbs):
@@ -1300,7 +1315,7 @@ class Inversions:
                         for hit in gene_call['functions']:
                             functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
                     else:
-                        functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t\t\t\n")
+                        functions_output.write(f"{inversion_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
 
 
         self.run.info('Reporting file on gene context', genes_output_path)
