@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
-import sys
 import csv
 import pandas as pd
 
 import anvio
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
 
 
@@ -75,7 +71,7 @@ class signalp6(Parser):
         df = df.rename(columns={'ID': 'gene_callers_id'})
         df = df.drop_duplicates(subset=["gene_callers_id"])
 
-        # remove "Other" annotations which means no signal peptide  
+        # remove "Other" annotations which means no signal peptide
         df = df[df['Prediction'] != "OTHER"]
 
         df.to_csv(temp_file_path, sep = '\t', index = False, na_rep = 'NA')
