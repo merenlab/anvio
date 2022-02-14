@@ -289,16 +289,22 @@ function setEventListeners(){
 function showDeepDiveToolTip(event){
   $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances
   $('#deepdive-tooltip-body').html('').hide()
+  let totalMetadataString = String()
+  let totalAnnotationsString = String()
 
   function getAndShowMetadata(){
-    console.log(settings['display']['metadata'])
-    let metadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
-    console.log(metadata)
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
+    let totalMetadataString = String()
+    for (metadata in geneMetadata){
+      totalMetadataString += `
+      <tr>
+      <td>${metadata.label}</td>
+      </tr>
+      `
+    }
   }
 
   getAndShowMetadata()
-
-  let totalAnnotationsString = ''
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
       totalAnnotationsString += `
@@ -336,11 +342,13 @@ function showDeepDiveToolTip(event){
 
   <br>
   <h2>metadata<h2/>
-  <input    id='metadata-gene-label' type='text' placeholder='custom gene label'>
-  <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add gene label</button>
-  <br>
-  <textarea id='metadata-gene-description' placeholder='gene description'></textarea>
-  <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add gene description</button>
+  <div id='metadata-container'>
+      <input    id='metadata-gene-label' type='text' placeholder='metadata tag'>
+      <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add tag</button>
+      <br>
+      <textarea id='metadata-gene-description' placeholder='metadata description'></textarea>
+      <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
+  </div>
 
   <h2>Annotations</h2>;
   <table class="table table-striped">;
