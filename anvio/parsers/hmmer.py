@@ -534,7 +534,7 @@ class HMMERTableOutput(Parser):
         Which HMMER program was used to generate the output we are parsing? Pick from {'hmmscan', 'hmmsearch'}
     """
 
-    def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', run=terminal.Run()):
+    def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', no_header=True, run=terminal.Run()):
         self.alphabet = alphabet
         self.context = context
         self.program = program
