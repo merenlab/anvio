@@ -216,7 +216,7 @@ class FilterHmmHitsTable(object):
         context= 'DOMAIN'
         hmm_program = 'hmmsearch'
 
-        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program, no_header=False)
         search_results_dict = parser.get_search_results()
 
         return search_results_dict

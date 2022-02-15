@@ -562,7 +562,7 @@ class HMMERTableOutput(Parser):
                 'col_names': col_names,
                 'col_mapping': col_mapping,
                 'indexing_field': -1,
-                'no_header': True,
+                'no_header': no_header,
             },
         }
 
