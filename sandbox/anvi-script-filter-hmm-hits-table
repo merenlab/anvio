@@ -153,6 +153,15 @@ class FilterHmmHitsTable(object):
         ]
 
         try:
+            [int(l.split()[0]) for l in open(self.domtblout)][1:]
+        except ValueError as e:
+            raise ConfigError(f"The data in the first column of your DOM table output ('{self.domtblout}') "
+                              f"do not look like anv'o gene caller ids (we know that because Python complained "
+                              f"saying '{e}', which should never be the case with proper anvi'o gene caller ids). "
+                              f"This outcome is only possible if you run `anvi-run-hmms` without the parameter "
+                              f"`--hmmer-program hmmsearch`. No filters for you.")
+
+        try:
             colnames_coltypes_list = list(zip(*col_info))
             colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
