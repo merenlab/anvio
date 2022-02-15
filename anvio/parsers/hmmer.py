@@ -233,7 +233,6 @@ class HMMERStandardOutput(object):
 
     def read_lines_until(self, condition, include_last=False, store=True):
         lines = []
-        return_value = lines if store else True
 
         for line in self.query_lines[self.line_no:]:
             self.line_no += 1
