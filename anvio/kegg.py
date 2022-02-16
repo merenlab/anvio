@@ -1882,7 +1882,10 @@ class KeggEstimatorArgs():
         metadata_dict["modules_with_enzyme"] = mod_list_str
 
         if knum not in self.ko_dict:
-            if dont_fail_if_not_found:
+            # if we can't find the enzyme in the KO dictionary, try to find it in the database
+            if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
+                metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
+            elif dont_fail_if_not_found:
                 self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
                                  f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
                                  f"its function.")
