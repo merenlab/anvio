@@ -339,10 +339,10 @@ function loadAll(loadType) {
 
   buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
   if(loadType == 'init'){
-    drawScale();
-    setEventListeners()
     generateColorTable(fn_colors = null, fn_type = color_db);
   }
+  drawScale();
+  setEventListeners()
 
   buildGeneLabelsSelect()
   brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
@@ -351,5 +351,5 @@ function loadAll(loadType) {
 
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
-  drawer.draw()
+  drawer.draw('draw from loadAll')
 }
