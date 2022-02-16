@@ -3383,7 +3383,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
                              f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example: {example}")
+                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
 
         # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
         if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
