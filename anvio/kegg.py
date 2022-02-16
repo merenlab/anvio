@@ -3389,7 +3389,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
             self.run.warning("You requested coverage/detection values to be added to the output files, but your "
                              "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
-                             "Since we don't have this data,/874 --add-coverage will not work, so we are turning this "
+                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
                              "flag off. Sorry ¯\_(ツ)_/¯")
             self.add_coverage = False
             # remove coverage headers from the list so we don't try to access them later
