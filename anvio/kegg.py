@@ -2463,8 +2463,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             have a way to know if profiles are missing. But for KOfams with missing profiles, this step is necessary
             so that we don't add the enzyme to the bin_level_ko_dict, because later this will cause problems since
             the enzyme is not in self.ko_dict
+
+            Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
+            because we need access to the self.ko_dict
             """
-            if self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
