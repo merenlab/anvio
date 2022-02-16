@@ -1757,7 +1757,8 @@ class KeggEstimatorArgs():
             for k in ko_list:
                 if k not in self.all_kos_in_db:
                     src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
-                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src}
+                    func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else 'UNKNOWN'
+                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
 
 
