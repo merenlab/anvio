@@ -38,7 +38,10 @@ You can run metabolism estimation on any set of annotated sequences, but these s
 - Bins, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
 - Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
 
-As you can see, %(anvi-estimate-metabolism)s always takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+As you can see, %(anvi-estimate-metabolism)s takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+
+If you don't have any sequences, there is an additional input option for you:
+- A list of enzymes, as described in an %(enzymes-txt)s file. For the purposes of metabolism estimation, the enzymes in this file will be interpreted as all coming from the same 'genome'.
 
 Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
@@ -93,6 +96,17 @@ anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 
 {: .notice}
 In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+
+### Estimation for a set of enzymes
+
+Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %{enzymes-txt}s file, and give that input file to this program, like so:
+
+{{ codestart }}
+anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s
+{{ codestop }}
+
+The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
+
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
 
@@ -271,6 +285,12 @@ If you have a profile database associated with your contigs database and you wou
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
+{{ codestop }}
+
+This option also works for the `--enzymes-txt` input option, provided that you include _both_ a `coverage` column and a `detection` column in the %{enzymes-txt}s input file.
+
+{{ codestart }}
+anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s --add-coverage
 {{ codestop }}
 
 For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
