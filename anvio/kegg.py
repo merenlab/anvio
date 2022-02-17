@@ -5335,9 +5335,10 @@ class ModulesDatabase(KeggContext):
                 module_dictionary[mod] = {}
 
             if data_name not in module_dictionary[mod]:
-                module_dictionary[mod][data_name] = data_value
-                # BUG FIXME: if there is only one occurrence of a data_name like ORTHOLOGY, that is meant to be a dict with data_definition values,
-                # we will lose the data_definition information because that data name never appears again, so this is never converted to a dict
+                if not data_definition:
+                    module_dictionary[mod][data_name] = data_value
+                else:
+                    module_dictionary[mod][data_name] = {data_value : data_definition}
             else:
                 # place multiple definition lines into list
                 if data_name == "DEFINITION":
