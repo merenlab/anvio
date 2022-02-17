@@ -99,10 +99,10 @@ In metagenome mode, this program will estimate metabolism for each contig in the
 
 ### Estimation for a set of enzymes
 
-Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %{enzymes-txt}s file, and give that input file to this program, like so:
+Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %(enzymes-txt)s file, and give that input file to this program, like so:
 
 {{ codestart }}
-anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s
+anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s
 {{ codestop }}
 
 The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
@@ -287,10 +287,10 @@ If you have a profile database associated with your contigs database and you wou
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
 {{ codestop }}
 
-This option also works for the `--enzymes-txt` input option, provided that you include _both_ a `coverage` column and a `detection` column in the %{enzymes-txt}s input file.
+This option also works for the `--enzymes-txt` input option, provided that you include _both_ a `coverage` column and a `detection` column in the %(enzymes-txt)s input file.
 
 {{ codestart }}
-anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s --add-coverage
+anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s --add-coverage
 {{ codestop }}
 
 For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
