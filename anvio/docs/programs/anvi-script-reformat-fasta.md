@@ -53,7 +53,7 @@ WHAT WAS ASKED
 Simplify deflines? ...........................: Yes
 Add prefix to sequence names? ................: Yes, add 'YYY'
 Minimum length of contigs to keep ............: 1,000
-Max % gaps allowed ...........................: 100.00%
+Max %% gaps allowed ...........................: 100.00%%
 Max num gaps allowed .........................: 1,000,000
 Exclude specific sequences? ..................: No
 Keep specific sequences? .....................: No
@@ -61,9 +61,9 @@ Enforce sequence type? .......................: Yes, enforce 'NT'
 
 WHAT HAPPENED
 ===============================================
-Contigs removed ..............................: 3,156 (75.34% of all)
-Nucleotides removed ..........................: 6,121,239 (17.11% of all)
-Nucleotides modified .........................: 161 (0.00045% of all)
+Contigs removed ..............................: 3,156 (75.34%% of all)
+Nucleotides removed ..........................: 6,121,239 (17.11%% of all)
+Nucleotides modified .........................: 161 (0.00045%% of all)
 Deflines simplified ..........................: True
 
 
