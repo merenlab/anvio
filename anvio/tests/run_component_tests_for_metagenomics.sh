@@ -337,6 +337,10 @@ anvi-get-split-coverages -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                          --flank-length 20
 SHOW_FILE $output_dir/gene_caller_id_5_coverages.txt
 
+INFO "Cluster matrix with missing data"
+anvi-matrix-to-newick $files/example_matrix_with_missing_data.txt \
+                      -o $output_dir/newick_tree_for_matrix_with_missing_data.txt
+
 INFO "Cluster contigs in the newly generated coverages file"
 anvi-matrix-to-newick $output_dir/SAMPLES-MERGED/SAMPLES_MERGED-COVs.txt
 

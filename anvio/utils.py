@@ -1121,9 +1121,9 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 
         try:
             if fields_of_interest:
-                vector = [float(fields[i]) for i in fields_of_interest]
+                vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
-                vector = [float(f) for f in fields]
+                vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
 
