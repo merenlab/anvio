@@ -197,52 +197,64 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument('contigs_fasta', metavar='FASTA FILE')
-    parser.add_argument('-l', '--min-len', type=int, default=0, metavar='INT',
+    groupA = parser.add_argument_group('INPUT', 'The input file you wish to work with.')
+    groupA.add_argument('contigs_fasta', metavar='FASTA FILE')
+
+    groupB = parser.add_argument_group('OUTPUT', 'Dealing with the output.')
+    groupB.add_argument('-o', '--output-file', required=False, metavar='FASTA FILE PATH',
+                        help="Output file path for a NEW FASTA file. If you want all changes to be "
+                             "stored in the same file, see the `--overwrite` flag.")
+    groupB.add_argument('--overwrite-input', default=False, action="store_true",
+                        help="Instead of reporting a new file, overwrite the input file. For those of "
+                             "us who loves to live life at the very edge of it. A case of we can't go "
+                             "back, Kate.")
+    groupB.add_argument('-r', '--report-file', required=False, metavar='TXT FILE PATH',
+                        help="When you run this program with `--simplify-names` flag, all changes to "
+                             "deflines will be reported in this file in case you need to go back to this "
+                             "information later. It is not mandatory to declare one, but it is a very good "
+                             "idea to have it.")
+
+    groupC = parser.add_argument_group('OPERATIONS: RENAME YOUR DEFLINES')
+    groupC.add_argument('--simplify-names', default=False, action="store_true",
+                        help="Edit deflines to make sure they contigs have simple names.")
+    groupC.add_argument('--prefix', default=None, metavar="PREFIX",
+                        help="Use this parameter if you would like to add a prefix to your contig\
+                              names while simplifying them. The prefix must be a single word (you\
+                              can use underscor character, but nothing more!).")
+
+    groupD = parser.add_argument_group('OPERATIONS: TAME YOUR SEQUENCES')
+    groupD.add_argument('-l', '--min-len', type=int, default=0, metavar='INT',
                         help="Minimum length of contigs to keep (contigs shorter than this value\
                               will not be included in the output file). The default is %(default)d,\
                               so nothing will be removed if you do not declare a minimum size.")
-    parser.add_argument('--exact-length', type=int, default=None, metavar='INT',
+    groupD.add_argument('--exact-length', type=int, default=None, metavar='INT',
                         help="Exact lenght of the sequences you wish to keep from a FASTA fille. Why \
                               would anyone need that? Anvi'o does not know. But there you have it. This \
                               parameter is indeed incompatible with a lot of others, such as `--min-len`.")
-    parser.add_argument('--max-percentage-gaps', type=float, default=100, metavar='PERCENTAGE',
+    groupD.add_argument('--max-percentage-gaps', type=float, default=100, metavar='PERCENTAGE',
                         help="Maximum fraction of gaps in a sequence (any sequence with \
                               more gaps will be removed from the output FASTA file). The \
                               default is %(default)f.")
-    parser.add_argument('-M','--max-gaps', type=float, default=1000000,
+    groupD.add_argument('-M','--max-gaps', type=float, default=1000000,
                         help="Maximum amount of gaps allowed per sequence in the alignment. \
                               Don't know which threshold to pick? Use --export-gap-counts-table \
                               to explore the gap counts per sequence distribution!")
-    parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
+    groupD.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")
-    parser.add_argument('--export-gap-counts-table', required=False, metavar='TSV FILE',
+    groupD.add_argument('--export-gap-counts-table', required=False, metavar='TSV FILE',
                         help="Export a table with the number of gaps per sequence. \
                               Please provide a prefix to name the file.")
-    parser.add_argument('-I', '--keep-ids', type=str, required=False, metavar='TXT FILE',
+    groupD.add_argument('-I', '--keep-ids', type=str, required=False, metavar='TXT FILE',
                         help="If provided, all IDs not in this file will be excluded from the\
                               reformatted FASTA file. Any additional filters (such as --min-len)\
                               will still be applied to the IDs in this file. You cannot provide both\
                               --exclude-ids and --keep-ids.")
-    parser.add_argument('-o', '--output-file', required=True, metavar='FASTA FILE',
-                        help="Output file path.")
-    parser.add_argument('--simplify-names', default=False, action="store_true",
-                        help="Edit deflines to make sure they contigs have simple names.")
-    parser.add_argument('--prefix', default=None, metavar="PREFIX",
-                        help="Use this parameter if you would like to add a prefix to your contig\
-                              names while simplifying them. The prefix must be a single word (you\
-                              can use underscor character, but nothing more!).")
-    parser.add_argument('--seq-type', default=None, metavar="SEQ TYPE", choices={'AA', 'NT'},
+    groupD.add_argument('--seq-type', default=None, metavar="SEQ TYPE", choices={'AA', 'NT'},
                         help=("Supply either 'NT' or 'AA' (if you want). If 'NT', any characters besides {A,C,T,G} will "
                               "by replaced with 'N'. If 'AA', any characters that are not 1-letter amino acid "
                               "characters will be replaced with 'X'. If you don't supply anything, no charaters will be "
                               "modified."))
-    parser.add_argument('-r', '--report-file', required=False, metavar='REPORT FILE',
-                        help="Report file path. When you run this program with `--simplify-names`\
-                              flag, all changes to deflines will be reported in this file\
-                              in case you need to go back to this information later. It is not\
-                              mandatory to declare one, but it is a very good idea to have it.")
 
     args = parser.get_args(parser)
 
