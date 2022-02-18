@@ -1613,6 +1613,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
+        self.enzymes_txt = A('enzymes_txt') or None
         self.output_modes = A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
@@ -1756,7 +1757,8 @@ class KeggEstimatorArgs():
             for k in ko_list:
                 if k not in self.all_kos_in_db:
                     src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
-                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src}
+                    func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else 'UNKNOWN'
+                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
 
 
@@ -1856,7 +1858,7 @@ class KeggEstimatorArgs():
         return metadata_dict
 
 
-    def get_ko_metadata_dictionary(self, knum):
+    def get_ko_metadata_dictionary(self, knum, dont_fail_if_not_found=False):
         """Returns a dictionary of metadata for the given KO.
 
         The dictionary must include all the metadata from KO_METADATA_HEADERS,
@@ -1876,14 +1878,25 @@ class KeggEstimatorArgs():
         else:
             mod_list_str = "None"
 
-        if knum not in self.ko_dict:
-            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                              f"for enzyme {knum} but this enzyme is not in "
-                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
-
         metadata_dict = {}
-        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
         metadata_dict["modules_with_enzyme"] = mod_list_str
+
+        if knum not in self.ko_dict:
+            # if we can't find the enzyme in the KO dictionary, try to find it in the database
+            if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
+                metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
+            elif dont_fail_if_not_found:
+                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
+                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
+                                 f"its function.")
+                metadata_dict["enzyme_definition"] = "UNKNOWN"
+            else:
+                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                                  f"for enzyme {knum} but this enzyme is not in "
+                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
+        else:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+
         return metadata_dict
 
 
@@ -1940,10 +1953,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
 
+        if self.enzymes_txt:
+            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
+
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path:
-            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
-                              "flag, in which case you must provide a JSON-formatted file.")
+        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
+            raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -1977,12 +1992,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        if self.add_coverage and not self.profile_db_path:
-            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
-            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                              "values, so the --add-coverage flag will not work.")
-        elif self.add_coverage:
+        if self.add_coverage:
+            if not self.enzymes_txt:
+                if not self.profile_db_path:
+                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+                if utils.is_blank_profile(self.profile_db_path):
+                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                      "values, so the --add-coverage flag will not work.")
+
             self.add_gene_coverage_to_headers_list()
 
 
@@ -2035,18 +2052,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # let user know what they told anvi'o to work on
-        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
-        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
-        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.contigs_db_path:
+            self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        if self.profile_db_path:
+            self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         if self.collection_name:
-            self.run.info('Collection', self.collection_name)
+            self.run.info('Collection', self.collection_name, quiet=self.quiet)
         if self.bin_id:
-            self.run.info('Bin ID', self.bin_id)
+            self.run.info('Bin ID', self.bin_id, quiet=self.quiet)
         elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file)
+            self.run.info('Bin IDs file', self.bin_ids_file, quiet=self.quiet)
+        if self.enzymes_txt:
+            self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
+
+        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
 
 
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -2074,7 +2096,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
-            if not self.estimate_from_json:
+            if not self.estimate_from_json and not self.enzymes_txt:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
                 if 'modules_db_hash' not in contigs_db.meta:
                     raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
@@ -2101,7 +2123,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # LOAD USER DATA
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             if self.user_input_dir:
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
@@ -2133,7 +2155,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         self.ko_dict[k] = user_kos[k]
                 user_modules_db.disconnect()
 
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             contigs_db.disconnect()
 
         self.annotation_sources_to_use = list(annotation_source_set)
@@ -2309,23 +2331,29 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
 
-        The profile DB is initialized in this function in order to get access to the sample names that will
+        If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
         """
 
-        if not self.profile_db:
-            self.args.skip_consider_gene_dbs = True
-            self.profile_db = ProfileSuperclass(self.args)
+        # obtain list of sample names
+        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
+            samples_list = [self.contigs_db_project_name]
 
-        # first we get lists of all the headers we will need to add.
+        else:
+            if not self.profile_db:
+                self.args.skip_consider_gene_dbs = True
+                self.profile_db = ProfileSuperclass(self.args)
+
+            samples_list = self.profile_db.p_meta['samples']
+
+        # obtain lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
         kofam_hits_coverage_headers = []
         kofam_hits_detection_headers = []
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        samples_in_profile_db = self.profile_db.p_meta['samples']
-        for s in samples_in_profile_db:
+        for s in samples_list:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
@@ -2416,7 +2444,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
-            self.run.info("Number of splits", len(split_list))
+            if split_list:
+                num_splits = len(split_list)
+            else:
+                num_splits = "None"
+            self.run.info("Number of splits", num_splits)
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.all_modules_in_db.keys()
@@ -2435,8 +2467,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             have a way to know if profiles are missing. But for KOfams with missing profiles, this step is necessary
             so that we don't add the enzyme to the bin_level_ko_dict, because later this will cause problems since
             the enzyme is not in self.ko_dict
+
+            Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
+            because we need access to the self.ko_dict
             """
-            if self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -2781,7 +2816,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
         """
 
-        if not self.profile_db:
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+
+        if not self.enzymes_txt and not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
@@ -2801,12 +2841,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            self.coverage_sample_list = self.profile_db.p_meta['samples']
-
-        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
-        meta_dict_for_bin[mod]["genes_to_detection"] = {}
-        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
-        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+            if self.enzymes_txt:
+                self.coverage_sample_list = [self.contigs_db_project_name]
+            else:
+                self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -2815,8 +2853,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             coverage_sum = 0
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
-                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
-                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                if self.enzymes_txt:
+                    cov = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['coverage'].values[0]
+                    det = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['detection'].values[0]
+                else:
+                    cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                    det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
                 coverage_sum += cov
                 detection_sum += det
                 meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
@@ -3289,6 +3331,128 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
+    def load_data_from_enzymes_txt(self):
+        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
+
+        RETURNS
+        =======
+        enzyme_df : Pandas DataFrame
+            contains the information in the enzymes txt file
+        """
+
+        self.progress.new("Loading enzymes-txt file...")
+        expected_fields = ['gene_id', 'enzyme_accession', 'source']
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        self.progress.end()
+
+        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
+
+        # sanity check for required columns
+        missing = []
+        for f in expected_fields:
+            if f not in enzyme_df.columns:
+                missing.append(f)
+        if missing:
+            miss_str = ", ".join(missing)
+            exp_str = ", ".join(expected_fields)
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
+                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        # warning about extra columns
+        used_cols = expected_fields + ['coverage', 'detection']
+        extra_cols = []
+        for c in enzyme_df.columns:
+            if c not in used_cols:
+                extra_cols.append(c)
+        if extra_cols:
+            e_str = ", ".join(extra_cols)
+            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+
+        # sanity check for unique gene ids
+        duplicates = list(enzyme_df[enzyme_df.duplicated(subset=['gene_id'])]['gene_id'].unique())
+        if duplicates:
+            if len(duplicates) > 5:
+                num = len(duplicates) - 1
+                dup_str = f"Here is one example (there are {num} others, but we didn't want to show them all): {duplicates[0]}"
+            else:
+                dup_str = f"Here are the duplicates: {', '.join(duplicates)}"
+            raise ConfigError(f"There are duplicate entries in the `gene_id` column of your enzymes-txt file. We require the values "
+                              f"in this column to be unique, so you'll have to modify (or remove) the duplicates. {dup_str} ")
+
+        # check and warning for enzymes not in self.all_kos_in_db
+        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if enzymes_not_in_modules:
+            example = enzymes_not_in_modules[0]
+            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+
+        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
+        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
+            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
+                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
+                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
+                             "flag off. Sorry ¯\_(ツ)_/¯")
+            self.add_coverage = False
+            # remove coverage headers from the list so we don't try to access them later
+            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
+            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
+                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
+            for h in kofam_hits_coverage_headers:
+                for mode in ["hits_in_modules", "hits"]:
+                    if h in self.available_modes[mode]["headers"]:
+                        self.available_modes[mode]["headers"].remove(h)
+            for h in modules_coverage_headers:
+                if h in self.available_modes["modules"]["headers"]:
+                    self.available_modes["modules"]["headers"].remove(h)
+
+        return enzyme_df
+
+
+    def estimate_metabolism_from_enzymes_txt(self):
+        """Estimates metabolism on a set of enzymes provided in a text file.
+
+        This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
+        same as the estimate_for_genome() function.
+
+        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
+        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
+        attribute has been set (previously) to the name of the enzyme txt file
+
+        RETURNS
+        =======
+        enzyme_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping the name of the enzyme txt file to its metabolism completeness dictionary
+        enzyme_ko_superdict : dictionary of dictionary of dictionaries
+            maps the name of the enzyme txt file to its KOfam hit dictionary
+        """
+
+        kofam_gene_split_contig = []
+        # no splits or contigs here
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
+            kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
+
+        enzyme_metabolism_superdict = {}
+        enzyme_ko_superdict = {}
+
+        metabolism_dict_for_genome,ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig,
+                                                                                                 bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome,
+                                                                                                         bin_name=self.contigs_db_project_name)
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+        else:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+
+        # append to file
+        self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
+
+        return enzyme_metabolism_superdict, enzyme_ko_superdict
+
+
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
@@ -3345,7 +3509,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.output_file_dict = self.setup_output_for_appending()
 
         if self.estimate_from_json:
-            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data() ## TODO: fix this for user data
+            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
             # we either get the modules DB info from the previous class, or we have to initialize it here
             if all_modules_in_db:
@@ -3355,20 +3519,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 self.init_data_from_modules_db()
 
-            kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-
-            if self.add_coverage:
-                self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
-
-            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-            elif not self.collection_name and not self.metagenome_mode:
-                self.genome_mode = True
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
-            elif self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+            if self.enzymes_txt:
+                self.enzymes_txt_data = self.load_data_from_enzymes_txt()
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
             else:
-                raise ConfigError("This class doesn't know how to deal with that yet :/")
+                kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
+
+                if self.add_coverage:
+                    self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+
+                if self.profile_db_path and self.collection_name and not self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+                elif not self.collection_name and not self.metagenome_mode:
+                    self.genome_mode = True
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
+                elif self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                else:
+                    raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
@@ -3703,8 +3871,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             gene_coverages_in_mod = []
                             gene_detection_in_mod = []
                             for gc in gcids_in_mod:
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][int(gc)])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][int(gc)])
+                                if self.enzymes_txt:
+                                    gc_idx = gc
+                                else:
+                                    gc_idx = int(gc)
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
 
                             d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
@@ -3777,7 +3949,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for KO", ko)
 
-                metadata_dict = self.get_ko_metadata_dictionary(ko)
+                metadata_dict = self.get_ko_metadata_dictionary(ko, dont_fail_if_not_found=True)
 
                 for gc_id in k_dict["gene_caller_ids"]:
                     d[self.ko_unique_id] = {}
@@ -3798,16 +3970,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
 
                     if self.add_coverage:
-                        if not self.profile_db:
-                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
-                                              "not been initialized, therefore we cannot add coverage values to your output. "
-                                              "This is likely a bug or developer mistake. It is a sad day :(")
+                        if self.enzymes_txt:
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["coverage"].values[0]
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["detection"].values[0]
+                        else:
+                            if not self.profile_db:
+                                raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                                  "not been initialized, therefore we cannot add coverage values to your output. "
+                                                  "This is likely a bug or developer mistake. It is a sad day :(")
 
-                        for s in self.coverage_sample_list:
-                            sample_cov_header = s + "_coverage"
-                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
-                            sample_det_header = s + "_detection"
-                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
@@ -4444,7 +4623,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     if stat_header == 'module':
                         metadata_dict = self.get_module_metadata_dictionary(m)
                     elif stat_header == 'enzyme':
-                        metadata_dict = self.get_ko_metadata_dictionary(m)
+                        metadata_dict = self.get_ko_metadata_dictionary(m, dont_fail_if_not_found=True)
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
                                           "statistics but there is no function defined for this.")
@@ -5156,7 +5335,10 @@ class ModulesDatabase(KeggContext):
                 module_dictionary[mod] = {}
 
             if data_name not in module_dictionary[mod]:
-                module_dictionary[mod][data_name] = data_value
+                if not data_definition:
+                    module_dictionary[mod][data_name] = data_value
+                else:
+                    module_dictionary[mod][data_name] = {data_value : data_definition}
             else:
                 # place multiple definition lines into list
                 if data_name == "DEFINITION":
