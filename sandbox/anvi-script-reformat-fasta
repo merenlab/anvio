@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 
 import sys
+import shutil
 
 import pandas as pd
 
@@ -28,6 +29,7 @@ __description__ =  ("Reformat FASTA file (remove contigs based on length, or bas
 
 run = terminal.Run()
 progress = terminal.Progress()
+pp = terminal.pretty_print
 
 
 def reformat_FASTA(args):
@@ -185,12 +187,30 @@ def reformat_FASTA(args):
 
     if args.overwrite_input:
         shutil.move(args.output_file, args.contigs_fasta)
+
+    run.warning(None, header='WHAT WAS THERE', lc="cyan")
     run.info('Total num contigs', total_num_contigs)
     run.info('Total num nucleotides', total_num_nucleotides)
-    run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
-    run.info('Nucleotides removed', '%d (%.2f%% of all)' % (total_num_nucleotides_removed, total_num_nucleotides_removed * 100.0 / total_num_nucleotides), mc='green')
-    run.info('Nucleotides modified', '%d (%.2f%% of all)' % (total_num_nucleotides_modified, total_num_nucleotides_modified * 100.0 / total_num_nucleotides), mc='green')
+
+    run.warning(None, header='WHAT WAS ASKED', lc="cyan")
+    run.info('Simplify deflines?', "Yes" if args.simplify_names else "No")
+    run.info('Add prefix to sequence names?', f"Yes, add '{args.prefix}'" if args.prefix else "No")
+    run.info('Exact length of contigs to keep', args.exact_length, mc="red") if args.exact_length else run.info("Minimum length of contigs to keep", args.min_len)
+    run.info('Max % gaps allowed', '%.2f%%' % args.max_percentage_gaps)
+    run.info('Max num gaps allowed', args.max_gaps)
+    run.info('Exclude specific sequences?', f"Yes, those listed in {args.exclude_ids}" if args.exclude_ids else "No")
+    run.info('Keep specific sequences?', f"Yes, those listed in {args.keep_ids}" if args.keep_ids else "No")
+    run.info('Enforce sequence type?', f"Yes, enforce '{args.seq_type}'" if args.seq_type else "No")
+
+    run.warning(None, header='WHAT HAPPENED', lc="cyan")
+    run.info('Contigs removed', f'{pp(total_num_contigs_removed)} ({total_num_contigs_removed * 100.0 / total_num_contigs:.2f}% of all)', mc='green')
+    run.info('Nucleotides removed', f'{pp(total_num_nucleotides_removed)} ({total_num_nucleotides_removed * 100.0 / total_num_nucleotides:.2f}% of all)', mc='green')
+    run.info('Nucleotides modified', f'{pp(total_num_nucleotides_modified)} ({total_num_nucleotides_modified * 100.0 / total_num_nucleotides:.5f}% of all)', mc='green')
     run.info('Deflines simplified', args.simplify_names, mc='green')
+
+    if args.overwrite_input:
+        run.info_single("The contents of your input file have changed because you used "
+                        "the flag `--overwrite-input`.", nl_before=1, nl_after=1)
 
 
 if __name__ == '__main__':
