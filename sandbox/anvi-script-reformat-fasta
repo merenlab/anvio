@@ -39,8 +39,23 @@ def reformat_FASTA(args):
                           f"and longer than {args.min_len} at the same time. It just doesn't make "
                           f"any sense and that's why.")
 
-    filesnpaths.is_output_file_writable(args.output_file)
+    if args.output_file and args.overwrite_input:
+        raise ConfigError("You can't ask anvi'o to overwrite your input file, and also provide an "
+                          "output file name at the same time.")
+
+    if not args.overwrite_input and not args.output_file:
+        raise ConfigError("You have not provided an output file name. If you are feeling extra "
+                          "adventurous today and would like anvi'o to overwrite your input file "
+                          "you must use the `--overwrite` flag.")
+
+    # if the user wants to overwrite the input file, we will do it by first
+    # setting the output file path to a temp file, and then moving it on
+    # top of the input file, overwriting it forever.
+    if args.overwrite_input:
+       args.output_file = filesnpaths.get_temp_file_path()
+
     filesnpaths.is_file_exists(args.contigs_fasta)
+    filesnpaths.is_output_file_writable(args.output_file)
 
     report_file = open(args.report_file, 'w') if args.report_file and args.simplify_names else None
     prefix = args.prefix if args.prefix else None
@@ -76,22 +91,22 @@ def reformat_FASTA(args):
     if args.export_gap_counts_table:
         gaps_info_list = []
 
-    output = u.FastaOutput(args.output_file)
-    fasta = u.SequenceSource(args.contigs_fasta)
-
+    # summary of where we are
     run.info('Input', args.contigs_fasta)
-    run.info('Output', args.output_file)
-    if args.exact_length:
-        run.info('Exact length', args.exact_length, mc="red")
+
+    if args.overwrite_input:
+        run.info('Output', "(anvi'o will overwrite your input file)", mc='red')
     else:
-        run.info('Minimum length', args.min_len)
-    run.info('Max % gaps allowed', '%.2f%%' % args.max_percentage_gaps)
+        run.info('Output', args.output_file)
 
     total_num_nucleotides = 0
     total_num_contigs = 0
     total_num_nucleotides_removed = 0
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
+
+    output = u.FastaOutput(args.output_file)
+    fasta = u.SequenceSource(args.contigs_fasta)
 
     while next(fasta):
         l = len(fasta.seq)
@@ -168,6 +183,8 @@ def reformat_FASTA(args):
     fasta.close()
     output.close()
 
+    if args.overwrite_input:
+        shutil.move(args.output_file, args.contigs_fasta)
     run.info('Total num contigs', total_num_contigs)
     run.info('Total num nucleotides', total_num_nucleotides)
     run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
