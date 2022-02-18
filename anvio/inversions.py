@@ -500,19 +500,33 @@ class Inversions:
             match = False
             evidence = ''
 
+            # we are going to be using these to variables to ensure ..FIXME..
+            evidence_right = None
+            evidence_left = None
+
             if inversion_candidate.num_mismatches == 0:
                 # Here we take advantage of construct symmetry. If the inversion candidate has no
                 # mismatches, we only needs to test for the v1 constructs.
                 for read in reads:
                     num_reads_considered += 1
                     if inversion_candidate.v1_left in read:
-                        match = True
                         evidence = 'v1_left'
-                        break
+                        evidence_left = True
+
+                        if evidence_right:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
                     elif inversion_candidate.v1_right in read:
-                        match = True
                         evidence = 'v1_right'
-                        break
+                        evidence_rigth = True
+
+                        if evidence_left:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
             else:
                 # Unfortunately, the inversion candidate has some mismatches, which requires testing
                 # for v1 _and_ v2 constructs.
