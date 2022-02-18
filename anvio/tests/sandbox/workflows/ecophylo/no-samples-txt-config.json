@@ -20,7 +20,7 @@
     "simplify_names_from_hmm_hits": {
         "threads": 2
     },
-    "cat_sequences_to_one_fasta": {
+    "combine_sequence_data": {
         "threads": 2
     },
     "anvi_get_external_gene_calls_file": {
