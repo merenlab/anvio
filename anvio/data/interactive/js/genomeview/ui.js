@@ -390,7 +390,7 @@ function showDeepDiveToolTip(event){
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastn', 'refseq_genomic', 'gene')
   })
-
+  // TODO consider metadata option to include 'author' field
   $('#metadata-gene-label-add').on('click', function(){
     let metadataObj = {
       label  : $('#metadata-gene-label').val(),
@@ -725,11 +725,16 @@ function respondToBookmarkSelect(){
     let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
     $('#brush_start').val(start);
     $('#brush_end').val(stop);
-    brush.extent([start, stop]);
-        brush(d3.select(".brush").transition());
-        brush.event(d3.select(".brush").transition());
-    let selectedBookmark = settings['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
-    $('#bookmark-description').text(selectedBookmark['description'])
+    try {
+      brush.extent([start, stop]);
+          brush(d3.select(".brush").transition());
+          brush.event(d3.select(".brush").transition());
+      let selectedBookmark = settings['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
+      $('#bookmark-description').text(selectedBookmark['description'])
+      toastr.success("Bookmark successfully loaded")
+    } catch (error) {
+      toastr.warn(`Unable to load bookmark because of an error ${error}`)
+    }
   })
 }
 
