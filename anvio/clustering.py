@@ -131,8 +131,13 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
     if transpose:
         vectors = vectors.transpose()
 
-    # normalize vectors:
-    vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
+    # if there are missing values in data, we will assume that
+    # it was normalized by the user.
+    if None in vectors:
+        vectors = get_vectors_for_vectors_with_missing_data(vectors)
+    else:
+        # normalize vectors:
+        vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
 
     tree = get_clustering_as_tree(vectors, linkage, distance, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
@@ -162,7 +167,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
 
     if items_order_file_path:
         open(items_order_file_path, 'w').write('\n'.join(utils.get_names_order_from_newick_tree(newick)) + '\n')
-        
+
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):
     if user_seed:
