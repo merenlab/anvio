@@ -92,6 +92,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'hmm_list': 'hmm_list.txt',
+            'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
@@ -250,29 +251,23 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Load samples.txt
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        if self.samples_txt_file:
+            filesnpaths.is_file_tab_delimited(self.samples_txt_file)
 
-        if not self.samples_txt_file:
-            if os.path.exists('samples.txt'):
-                self.samples_txt_file = 'samples.txt'
-            else:
-                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
-                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
-                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
-                                  "around either. So please add a `samples.txt` directive.")
+            try:
+                # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
+                self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+            except IndexError as e:
+                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                                "This is what we know: '%s'" % (self.samples_txt_file, e))
+            if 'sample' not in list(self.samples_information.columns):
+                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                                "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
 
-        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-
-        try:
-            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except IndexError as e:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "This is what we know: '%s'" % (self.samples_txt_file, e))
-        if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
-
-        self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+            self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+        else:
+            self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
+                             f"to profile the ecology and will just be making trees for now!")
         
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
@@ -303,19 +298,32 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         for HMM in self.HMM_source_dict.keys():
 
-            target_file = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
-            target_files.append(target_file)
+            if not self.samples_txt_file:
+                # Just making trees
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_files.append(target_file)
+                
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_files.append(target_file)
+                
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_files.append(target_file)
 
-            target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
-            target_files.append(target_file)
-
-            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
-            target_files.append(target_file)
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_files.append(target_file)
             
-            target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
-            target_files.append(target_file)
+            else:
+                # Making trees AND profiling SCGs
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
-            target_files.append(target_file)
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_files.append(target_file)
+                
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_files.append(target_file)
         
         return target_files

@@ -178,3 +178,18 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          --output-modes modules_custom \
                          -O modules_custom_coverage \
                          --custom-output-headers module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection
+
+INFO "Testing enzymes txt input (no coverage/detection)"
+anvi-estimate-metabolism --enzymes-txt minimal_enzymes_input.txt \
+                         -O enzymes_txt \
+                         --output-modes hits,hits_in_modules,modules
+SHOW_FILE enzymes_txt_modules.txt
+SHOW_FILE enzymes_txt_hits.txt
+
+INFO "Testing enzymes txt input (--add-coverage enabled)"
+anvi-estimate-metabolism --enzymes-txt cov_det_enzymes_input.txt \
+                          -O enzymes_txt_cov \
+                          --add-coverage \
+                          --output-modes hits,hits_in_modules,modules
+SHOW_FILE enzymes_txt_cov_modules.txt
+SHOW_FILE enzymes_txt_cov_hits.txt

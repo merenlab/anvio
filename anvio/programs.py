@@ -706,13 +706,6 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         d = ""
 
         for author in program.meta_info['authors']['value']:
-            if 'twitter' in self.authors[author]:
-                author_link = f"http://twitter.com/{self.authors[author]['twitter']}"
-            elif 'linkedin' in self.authors[author]:
-                author_link = f"http://linkedin.com/in/{self.authors[author]['linkedin']}"
-            else:
-                author_link = f"http://github.com/{self.authors[author]['github']}"
-
             d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
             d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
             d += '''</div></div>\n'''
