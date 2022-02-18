@@ -8,21 +8,20 @@ is done using query and/or target coverage
 
 import sys
 import os
-import numpy as np
 import pandas as pd
 
 import anvio
-import anvio.data.hmm
 import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
-import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+with terminal.SuppressAllOutput():
+    import anvio.data.hmm as hmm_data
+
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
-from anvio.argparse import ArgumentParser
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -35,7 +34,7 @@ __authors__ = ['mschecht']
 __provides__ = ["hmm-hits"]
 __requires__ = ["contigs-db","hmm-source", "hmm-hits"]
 __description__ = ("Filter weak HMM hits from a given contigs database using a domain hits table "
-                   "reported by `anvi-run-hmms`.")
+                   "reported by hmmsearch in `anvi-run-hmms`.")
 
 pp = terminal.pretty_print
 
@@ -64,7 +63,8 @@ class FilterHmmHitsTable(object):
         if self.hmm_profile_dir:
             self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
         else:
-            self.sources = anvio.data.hmm.sources
+            self.sources = hmm_data.sources
+
 
     def sanity_checks(self):
         """Sanity checks for program inputs."""
@@ -76,13 +76,13 @@ class FilterHmmHitsTable(object):
         self.run.info("Domtblout Path", self.domtblout)
 
         if not self.hmm_source:
-            raise ConfigError("Please provide a hmm-source :)")
+            raise ConfigError("Please provide an hmm-source :)")
 
         info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
 
         if self.hmm_source not in info_table:
-            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
-                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
+            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigs-db: "
+                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigs-db??"
                               f"Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
                               f"need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
 
@@ -92,6 +92,14 @@ class FilterHmmHitsTable(object):
             raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
                               f"anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
                               f"from protein sequences.")
+
+        if self.target_coverage:
+            if 0.0 < float(self.target_coverage) > 1.0:
+                raise ConfigError("Target coverage needs to be between 0 and 1")
+
+        if self.query_coverage:
+            if 0.0 < float(self.query_coverage) > 1.0:
+                raise ConfigError("Query coverage needs to be between 0 and 1")
 
 
     def process(self):
@@ -145,6 +153,15 @@ class FilterHmmHitsTable(object):
         ]
 
         try:
+            [int(l.split()[0]) for l in open(self.domtblout)][1:]
+        except ValueError as e:
+            raise ConfigError(f"The data in the first column of your DOM table output ('{self.domtblout}') "
+                              f"do not look like anv'o gene caller ids (we know that because Python complained "
+                              f"saying '{e}', which should never be the case with proper anvi'o gene caller ids). "
+                              f"This outcome is only possible if you run `anvi-run-hmms` without the parameter "
+                              f"`--hmmer-program hmmsearch`. No filters for you.")
+
+        try:
             colnames_coltypes_list = list(zip(*col_info))
             colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
@@ -156,7 +173,6 @@ class FilterHmmHitsTable(object):
                             header=None,
                             index_col=False)
         except Exception as e:
-            print(e)
             raise ConfigError(f"Doesn't look like a --domtblout... anvi'o can't even... "
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
@@ -164,6 +180,7 @@ class FilterHmmHitsTable(object):
         self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
         self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
+        self.hmm_names_set = set(self.df.hmm_name.to_list())
 
     def filter_domtblout(self):
         """Filter the hmm_hits table based on query and/or target coverage"""
@@ -199,22 +216,38 @@ class FilterHmmHitsTable(object):
         context= 'DOMAIN'
         hmm_program = 'hmmsearch'
 
-        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program, no_header=False)
         search_results_dict = parser.get_search_results()
 
         return search_results_dict
 
 
     def append_search_results_dict_to_hmm_tables(self, search_results_dict=None):
-        """Put in the new filtered hmm_hits table to the contigsDB"""
+        """Put in the new filtered hmm_hits table to the contigs-db"""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        hmm_hits_dict = contigs_db.db.get_table_as_dict("hmm_hits")
+        contigs_db.disconnect()
+
+        gene_list = []
+        for key,value in hmm_hits_dict.items():
+            if value['source'] == self.hmm_source:
+                gene_list.append(value['gene_name'])
+
+        gene_set = set(gene_list)
+
+        if not gene_set.issubset(self.hmm_names_set):
+            raise ConfigError(f"The genes in {self.domtblout} don't seem to be in the hmm_hits table "
+                              f"from your contigs-db: {self.contigs_db_path}. "
+                              f"Please double check you are filtering with the same HMM_source that you used "
+                              f"to create {self.domtblout} when you ran anvi-run-hmms.")
 
         # Remove old hmm_hits contigs_db_path
         hmm_tables = TablesForHMMHits(self.contigs_db_path)
         hmm_tables.remove_source(self.hmm_source)
 
-        # Re-write hmm_hits table to contigsDB
-
-        internal_sources = list(anvio.data.hmm.sources.keys())
+        # Re-write hmm_hits table to contigs-db
+        internal_sources = list(hmm_data.sources.keys())
         source = self.hmm_source
 
         if self.sources not in internal_sources:
@@ -223,7 +256,7 @@ class FilterHmmHitsTable(object):
             all_genes_searched_against = self.sources[source]['genes']
             reference = self.sources[source]['ref']
         else:
-            sources = anvio.data.hmm.sources
+            sources = hmm_data.sources
             source = self.hmm_source
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
@@ -231,6 +264,53 @@ class FilterHmmHitsTable(object):
             reference = self.sources[source]['ref']
 
         hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+
+        # add contigs-db self attributes for HMM_source, target_coverage, and query_coverage
+        self.db = db.DB(self.contigs_db_path, anvio.__contigs__version__, new_database=False)
+
+        HMM_dom_filter_sources = self.db.get_meta_value('HMM_dom_filter_sources', return_none_if_not_in_table=True)
+        HMM_dom_filter_target_coverage = self.db.get_meta_value('HMM_dom_filter_target_coverage', return_none_if_not_in_table=True)
+        HMM_dom_filter_query_coverage = self.db.get_meta_value('HMM_dom_filter_query_coverage', return_none_if_not_in_table=True)
+
+        if HMM_dom_filter_sources == None:
+            self.db.set_meta_value('HMM_dom_filter_sources', source)
+            if self.target_coverage == None:
+                self.db.set_meta_value('HMM_dom_filter_target_coverage', 0.00)
+            else:
+                self.db.set_meta_value('HMM_dom_filter_target_coverage', self.target_coverage)
+            if self.query_coverage == None:
+                self.db.set_meta_value('HMM_dom_filter_query_coverage', 0.00)
+            else:
+                self.db.set_meta_value('HMM_dom_filter_query_coverage', self.query_coverage)
+        else:
+            HMM_dom_filter_sources_list = HMM_dom_filter_sources.split(",")
+            HMM_dom_filter_target_coverage_list = str(HMM_dom_filter_target_coverage).split(",")
+            HMM_dom_filter_query_coverage_list = str(HMM_dom_filter_query_coverage).split(",")
+
+            source_domain_filter_values = list(zip(HMM_dom_filter_sources_list, HMM_dom_filter_target_coverage_list, HMM_dom_filter_query_coverage_list))
+
+            if self.target_coverage == None:
+                self.target_coverage = 0.00
+            if self.query_coverage == None:
+                self.query_coverage = 0.00
+
+            new_filtering_parameters = (source, self.target_coverage, self.query_coverage)
+
+            for i, item in enumerate(source_domain_filter_values):
+                if new_filtering_parameters[0] == item[0]:
+                    if float(item[1]) < float(new_filtering_parameters[1]) or float(item[2]) < float(new_filtering_parameters[2]):
+                        source_domain_filter_values[i] = new_filtering_parameters
+
+            if new_filtering_parameters[0] not in HMM_dom_filter_sources_list:
+                source_domain_filter_values.append(new_filtering_parameters)
+
+            updated_HMM_dom_filter_attributes = list(zip(*source_domain_filter_values))
+
+            self.db.set_meta_value('HMM_dom_filter_sources', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[0]))
+            self.db.set_meta_value('HMM_dom_filter_target_coverage', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[1]))
+            self.db.set_meta_value('HMM_dom_filter_query_coverage', ','.join(str(s) for s in updated_HMM_dom_filter_attributes[2]))
+
+        self.db.disconnect()
 
 
 @terminal.time_program
@@ -248,10 +328,12 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
     parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
-    parser.add_argument('--target-coverage',
-                        help=" (ali_coord_to - ali_coord_from)/target_length")
-    parser.add_argument('--query-coverage',
-                        help=" (hmm_coord_to - hmm_coord_from)/hmm_length")
+    parser.add_argument('--target-coverage', type=float,
+                        help="The percent length (0.0-1.0) of the query sequence that must be aligned to the HMM model. "
+                              "Here's the formula using columns from --domain-hits-table:  (ali_coord_to - ali_coord_from)/target_length")
+    parser.add_argument('--query-coverage', type=float,
+                        help="The percent length (0.0-1.0) of the target HMM model that is aligned query genes in the contigs-db. "
+                             "Here's the formula using columns from --domain-hits-table: (hmm_coord_to - hmm_coord_from)/hmm_length")
 
     args, unknown = parser.parse_known_args()
 

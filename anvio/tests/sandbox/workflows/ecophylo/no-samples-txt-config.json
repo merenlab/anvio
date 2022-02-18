@@ -1,7 +1,7 @@
 {
     "metagenomes": "metagenomes.txt",
     "external_genomes": "external-genomes.txt",
-    "hmm_list": "hmm_list.txt",
+    "hmm_list": "hmm_list-no-samples-txt.txt",
     "cluster_representative_method": {
         "method": "mmseqs"
     },

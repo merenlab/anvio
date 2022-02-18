@@ -233,7 +233,6 @@ class HMMERStandardOutput(object):
 
     def read_lines_until(self, condition, include_last=False, store=True):
         lines = []
-        return_value = lines if store else True
 
         for line in self.query_lines[self.line_no:]:
             self.line_no += 1
@@ -535,7 +534,7 @@ class HMMERTableOutput(Parser):
         Which HMMER program was used to generate the output we are parsing? Pick from {'hmmscan', 'hmmsearch'}
     """
 
-    def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', run=terminal.Run()):
+    def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', no_header=True, run=terminal.Run()):
         self.alphabet = alphabet
         self.context = context
         self.program = program
@@ -563,7 +562,7 @@ class HMMERTableOutput(Parser):
                 'col_names': col_names,
                 'col_mapping': col_mapping,
                 'indexing_field': -1,
-                'no_header': True,
+                'no_header': no_header,
             },
         }
 

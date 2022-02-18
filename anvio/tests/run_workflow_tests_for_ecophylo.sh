@@ -12,8 +12,7 @@ cp $files/data/genomes/bacteria/*.db                                    $output_
 cp $files/data/genomes/archaea/*.db                                     $output_dir/workflow_test
 cp $files/data/input_files/metagenomes.txt                              $output_dir/workflow_test
 cp $files/data/input_files/external-genomes.txt                         $output_dir/workflow_test
-cp $files/data/input_files/hmm_list.txt                                 $output_dir/workflow_test
-cp $files/data/input_files/hmm_list_external.txt                        $output_dir/workflow_test
+cp $files/data/input_files/hmm_list*                                    $output_dir/workflow_test
 cd $output_dir/workflow_test
 
 INFO "Creating a default config for ecophylo workflow"
@@ -50,7 +49,7 @@ anvi-run-workflow -w ecophylo -c only-metagenomes-txt-config.json -A --dry-run
 INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txt"
 anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow"
+INFO "EcoPhylo: profiling evolution AND ecology with Ribosomal_L16 on metagenomes and genomes"
 anvi-run-workflow -w ecophylo -c default-config.json
 
 INFO "Running ecophylo workflow interactive"
@@ -63,11 +62,11 @@ rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 INFO "Saving a workflow graph - no samples.txt"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-graph
 
-INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt"
+INFO "EcoPhylo: profiling just evolution with Ribosomal_L16 and Ribosomal_L2 on metagenomes and genomes - no samples.txt (dry-run)"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow - no samples.txt"
-anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
+INFO "EcoPhylo: profiling just evolution with Ribosomal_L16 and Ribosomal_L2 on metagenomes and genomes - no samples.txt"
+anvi-run-workflow -w ecophylo -c no-samples-txt-config.json 
 
 INFO "Running ecophylo workflow interactive"
 HMM="Ribosomal_L16"
@@ -82,6 +81,5 @@ anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json
 
 INFO "Running ecophylo workflow interactive from external HMM"
 HMM="Ribosomal_L16"
-anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
-                 -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
-                 --manual
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
+                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
