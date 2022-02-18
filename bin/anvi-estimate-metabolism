@@ -15,7 +15,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
-                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data"]
+                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data",
+                "enzymes-txt"]
 __provides__ = ["kegg-metabolism","user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
@@ -73,6 +74,15 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupM.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
+
+    groupX = parser.add_argument_group('INPUT #4 - ESTIMATION ON A LIST OF ENZYMES',
+                                                   "If all you have is a list of enzymes, you can use them to estimate metabolism "
+                                                   "by creating an enzymes-txt file which describes at least 1) some sort of unique identifier "
+                                                   "for the associated gene (gene name, gene caller id, etc), 2) the enzyme accession, and 3) "
+                                                   "the annotation source. Provide this file as input, and this program will pretend that "
+                                                   "all enzymes in the file come from a single genome and will give back to you a summary of the "
+                                                   "metabolic capabilities encoded by this list of enzymes.")
+    groupX.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt', {'required': False}))
 
     groupC = parser.add_argument_group('OUTPUT - GENERAL OPTIONS', "Parameters for controlling estimation output of any type. The output will be "
                                                  "TAB-delimited files which by default are prefixed with 'kegg-metabolism', but you can of course "
