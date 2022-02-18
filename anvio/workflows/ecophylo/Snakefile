@@ -213,13 +213,13 @@ rule simplify_names_from_hmm_hits:
                               -o {output.fasta_AA} >> {log} 2>&1")
 
 
-rule cat_sequences_to_one_fasta:
+rule combine_sequence_data:
     """
     Cat all sequences and reformat_files from seperate metagenomes, genomes, SAGs, or MAGs into one fasta
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "cat_sequences_to_one_fasta_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "combine_sequence_data_{HMM}.log")
     input:
         NT = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}-{{HMM}}-hmm_hits_renamed.fna"), sample_names = M.names_list),
         AA = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_names}", "{sample_names}-{{HMM}}-hmm_hits_renamed.faa"), sample_names = M.names_list),
@@ -227,15 +227,18 @@ rule cat_sequences_to_one_fasta:
     output:
         NT_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.fna"),
         AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.faa"),
-        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
-    threads: M.T('cat_sequences_to_one_fasta')
+        reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt")
+    threads: M.T('combine_sequence_data')
     run:
-        shell(f"cat {input.NT} >> {output.NT_all}")
-
-        shell(f"cat {input.AA} >> {output.AA_all}")
-
-        shell(f"cat {input.reformat_report_list} >> {output.reformat_report_all}")
-
+        with open(output.NT_all, "a") as NT_output:
+            for f in input.NT:
+                NT_output.write(open(f).read())
+        with open(output.AA_all, "a") as AA_all:
+            for f in input.AA:
+                AA_all.write(open(f).read())
+        with open(output.reformat_report_all, "a") as reformat_report_all:
+            for f in input.reformat_report_list:
+                reformat_report_all.write(open(f).read())
 
 rule anvi_get_external_gene_calls_file:
     """Extract external_gene_calls table from all samples"""
@@ -285,7 +288,9 @@ rule cat_external_gene_calls_file:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_all.tsv"),
     threads: M.T('cat_external_gene_calls_file')
     run:
-        shell(f"cat {input.external_gene_calls_renamed} >> {output.external_gene_calls_all} 2> {log}")
+        with open(output.external_gene_calls_all, "a") as external_gene_calls_all:
+                for f in input.external_gene_calls_renamed:
+                    external_gene_calls_all.write(open(f).read())
 
 
 rule cluster_X_percent_sim_mmseqs:
@@ -296,7 +301,7 @@ rule cluster_X_percent_sim_mmseqs:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}.log")
-    input: rules.cat_sequences_to_one_fasta.output.NT_all
+    input: rules.combine_sequence_data.output.NT_all
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv")
@@ -311,6 +316,7 @@ rule cluster_X_percent_sim_mmseqs:
                                     {params.mmseqs_tmp} \
                                     --threads {threads} \
                                     --min-seq-id {params.min_seq_id} >> {log} 2>&1")
+
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
     rule anvi_profile_blitz:
@@ -410,7 +416,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
         version: 1.0
         log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_coverage_reps_{HMM}.log")
         input:
-            fa = rules.cat_sequences_to_one_fasta.output.AA_all,
+            fa = rules.combine_sequence_data.output.AA_all,
             coverage_reps = rules.pick_cluster_rep_with_coverage.output.coverage_reps,
         output:
             fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
@@ -426,7 +432,7 @@ if M.cluster_representative_method == "mmseqs":
         version: 1.0
         log: os.path.join(dirs_dict['LOGS_DIR'], "subset_AA_seqs_with_mmseqs_reps_{HMM}.log")
         input:
-            fa = rules.cat_sequences_to_one_fasta.output.AA_all,
+            fa = rules.combine_sequence_data.output.AA_all,
             mmseqs_reps = rules.cluster_X_percent_sim_mmseqs.output.fasta,
         output:
             fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
@@ -493,7 +499,7 @@ rule count_num_sequences_filtered:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{HMM}.log")
     input:
-        step1 = rules.cat_sequences_to_one_fasta.output.NT_all,
+        step1 = rules.combine_sequence_data.output.NT_all,
         step2 = rules.cluster_X_percent_sim_mmseqs.output,
         step3 = rules.remove_sequences_with_X_percent_gaps.output
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
@@ -523,7 +529,7 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{HMM}.log")
     input:
-        fasta = rules.cat_sequences_to_one_fasta.output.NT_all,
+        fasta = rules.combine_sequence_data.output.NT_all,
         reps = rules.remove_sequences_with_X_percent_gaps.output
     output:
         NT_for_mapping = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-references_for_mapping_NT.fa"),
@@ -752,7 +758,7 @@ rule anvi_scg_taxonomy:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_scg_taxonomy_{HMM}.log")
     input:
         misc_data = rules.make_misc_data.output.misc_data_final,
-        reformat_file = rules.cat_sequences_to_one_fasta.output.reformat_report_all,
+        reformat_file = rules.combine_sequence_data.output.reformat_report_all,
     params:
         combined_genomes_txt = "combined_genomes.txt",
         taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_estimate_scg_taxonomy_results"),
