@@ -352,4 +352,5 @@ function loadAll(loadType) {
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
   drawer.draw('draw from loadAll')
+  toastr.success(`Successfully loaded from ${settings['state-name']} state`)
 }
