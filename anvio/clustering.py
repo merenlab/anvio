@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
+from scipy.spatial import distance as scipy_distance
 
 import anvio
 import anvio.utils as utils
@@ -100,6 +101,28 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
 
     return newick
+
+
+def get_vectors_for_vectors_with_missing_data(vectors):
+    """Get a distance matrix for vectors with missing data.
+
+    Modified from the solution at https://stackoverflow.com/questions/31420912/python-hierarchical-clustering-with-missing-values
+    """
+
+    vectors[vectors == None] = np.nan
+
+    Npat = vectors.shape[0]
+    dist = np.ndarray(shape=(Npat,Npat))
+    dist.fill(0)
+    for ix in range(0,Npat):
+        x = vectors[ix,]
+        if ix >0:
+            for iy in range(0,ix):
+                y = vectors[iy,]
+                dist[ix,iy] = np.nanmean((x - y) ** 2, dtype='float32')
+                dist[iy,ix] = dist[ix,iy]
+
+    return scipy_distance.squareform(dist)
 
 
 def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=False):
