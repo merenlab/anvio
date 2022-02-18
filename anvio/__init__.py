@@ -2828,6 +2828,14 @@ D = {
                      "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                      "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
+    'enzymes-txt': (
+            ['--enzymes-txt'],
+            {'default': None,
+             'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "A tab-delimited file describing gene id, enzyme accession, functional annotation source for the enzyme, "
+                     "and (optionally) coverage and detection values for the gene."}
+                ),
     'output-modes': (
             ['--output-modes'],
             {'default': None,
