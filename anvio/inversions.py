@@ -500,7 +500,8 @@ class Inversions:
             match = False
             evidence = ''
 
-            # we are going to be using these to variables to ensure ..FIXME..
+            # we are going to be using these to variables to ensure both left and right
+            # construct are supported by short reads
             evidence_right = None
             evidence_left = None
 
@@ -509,45 +510,69 @@ class Inversions:
                 # mismatches, we only needs to test for the v1 constructs.
                 for read in reads:
                     num_reads_considered += 1
-                    if inversion_candidate.v1_left in read:
-                        evidence = 'v1_left'
-                        evidence_left = True
+                    if not evidence_left:
+                        if inversion_candidate.v1_left in read:
+                            evidence += 'v1_left and '
+                            evidence_left = True
 
-                        if evidence_right:
-                            match = True
-                            evidence_right = False
-                            evidence_left = False
-                            break
-                    elif inversion_candidate.v1_right in read:
-                        evidence = 'v1_right'
-                        evidence_rigth = True
+                            if evidence_right:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
+                    elif not evidence_right:
+                        if inversion_candidate.v1_right in read:
+                            evidence += 'v1_right'
+                            evidence_rigth = True
 
-                        if evidence_left:
-                            match = True
-                            evidence_right = False
-                            evidence_left = False
-                            break
+                            if evidence_left:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
             else:
                 # Unfortunately, the inversion candidate has some mismatches, which requires testing
                 # for v1 _and_ v2 constructs.
                 for read in reads:
                     num_reads_considered += 1
-                    if inversion_candidate.v1_left in read:
-                        match = True
-                        evidence = 'v1_left'
-                        break
-                    elif inversion_candidate.v1_right in read:
-                        match = True
-                        evidence = 'v1_right'
-                        break
-                    elif inversion_candidate.v2_left in read:
-                        evidence = 'v2_left'
-                        match = True
-                        break
-                    elif inversion_candidate.v2_right in read:
-                        evidence = 'v2_right'
-                        match = True
-                        break
+                    if not evidence_left:
+                        if inversion_candidate.v1_left in read:
+                            evidence += 'v1_left and '
+                            evidence_left = True
+
+                            if evidence_right:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
+                        elif inversion_candidate.v2_left in read:
+                            evidence += 'v2_left and'
+                            evidence_left = True
+
+                            if evidence_right:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
+                    if not evidence_right:
+                        if inversion_candidate.v1_right in read:
+                            evidence += 'v1_right'
+                            evidence_right = True
+
+                            if evidence_left:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
+                        elif inversion_candidate.v2_right in read:
+                            evidence += 'v2_right'
+                            evidence_right = True
+
+                            if evidence_left:
+                                match = True
+                                evidence_right = False
+                                evidence_left = False
+                                break
 
             if match:
                 # we found an inversion candidate that has at least one confirmed
