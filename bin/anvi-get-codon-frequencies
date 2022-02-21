@@ -191,7 +191,9 @@ if __name__ == '__main__':
     groupC.add_argument('--codon-usage-bias', choices=['cai', 'delta'], help="Report a single codon usage bias metric instead of absolute or relative codon frequencies.\
                                                                               The chosen metric may require a reference sequence set, which by default is the set of\
                                                                               ribosomal proteins predicted by KEGG KOfams. So don't be surprised by an angry error\
-                                                                              that you need to run `anvi-run-kegg-kofams` on your contigs database.")
+                                                                              that you need to run `anvi-run-kegg-kofams` on your contigs database.\
+                                                                              CAI is the codon adaptation index of Sharp and Li (1987).\
+                                                                              Delta is the likelihood ratio of Ran and Higgs (2012).")
     groupC.add_argument('--kofam-groups', help="Rather than reporting a codon usage metric per gene, report CUB from sets of genes defined by KEGG KOfams.\
                                                 For example, you may wish to compare the overall CUB of genes in different KEGG modules to the ribosomal protein reference.\
                                                 Provide a tab-delimited text file with two columns (no header). In the first column is a list of KOfam IDs\
