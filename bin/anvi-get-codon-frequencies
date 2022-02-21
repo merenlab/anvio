@@ -43,6 +43,9 @@ class ReportCodonFrequencies:
         self.percent_normalize = A('percent_normalize')
         self.merens_codon_normalization = A('merens_codon_normalization')
         self.collapse_genes = A('collapse_genes')
+        self.codon_usage_bias = A('codon_usage_bias')
+        self.kofam_groups = A('kofam_groups')
+        self.omnibias = A('omnibias')
         self.output_file_path = A('output_file')
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -55,6 +58,16 @@ class ReportCodonFrequencies:
         if self.merens_codon_normalization and self.return_AA_frequencies_instead:
             raise ConfigError("The flag `--merens-codon-normalization` is only relevant if you are working with codon "
                               "frequencies :/")
+
+        if self.codon_usage_bias and (self.return_AA_frequencies_instead or self.percent_normalize
+                                      or self.merens_codon_normalization or self.collapse_genes
+                                      or self.gene_caller_id):
+                raise ConfigError("You can't use `--codon-usage-bias` with codon/AA frequency options "
+                                  "or a single gene caller ID:/")
+
+        if (self.kofam_groups or self.omnibias) and not self.codon_usage_bias:
+            raise ConfigError("The options `kofam-groups` and `omnibias` are only relevant "
+                              "if you are working with codon usage bias :/")
 
         self.c = ContigsSuperclass(args)
 
@@ -77,7 +90,10 @@ class ReportCodonFrequencies:
 
         self.item_name_conversion_dict = None
 
-        self.process()
+        if self.codon_usage_bias:
+            pass
+        else:
+            self.process()
 
 
     def process(self):
@@ -171,6 +187,21 @@ if __name__ == '__main__':
                                                                 does not percent normalize frequencies of codons within a gene based on all codon frequencies. Clearly\
                                                                 this flag is not applicable if you wish to work with boring amino acids. WHO WORKS WITH AMINO ACIDS\
                                                                 ANYWAYS.")
+
+    groupC.add_argument('--codon-usage-bias', choices=['cai', 'delta'], help="Report a single codon usage bias metric instead of absolute or relative codon frequencies.\
+                                                                              The chosen metric may require a reference sequence set, which by default is the set of\
+                                                                              ribosomal proteins predicted by KEGG KOfams. So don't be surprised by an angry error\
+                                                                              that you need to run `anvi-run-kegg-kofams` on your contigs database.")
+    groupC.add_argument('--kofam-groups', help="Rather than reporting a codon usage metric per gene, report CUB from sets of genes defined by KEGG KOfams.\
+                                                For example, you may wish to compare the overall CUB of genes in different KEGG modules to the ribosomal protein reference.\
+                                                Provide a tab-delimited text file with two columns (no header). In the first column is a list of KOfam IDs\
+                                                and in the second is a list of group names, e.g., KEGG module IDs or group names/IDs that you invent.\
+                                                A KOfam ID may be in more than one row, since a gene may be part of multiple groups.")
+    groupC.add_argument('--omnibias', default=False, action="store_true", help="Rather than calculating codon usage bias against the default reference of ribosomal proteins,\
+                                                                                calculate CUB of every gene or group of genes against every other reference,\
+                                                                                producing a diagonal matrix of CUB values for every combination. A warning will be raised\
+                                                                                suggesting that you abort mission if you have not used `--kofam-groups`,\
+                                                                                since comparing the codon usage of every gene seems pretty weird.")
 
     args = parser.get_args(parser)
 
