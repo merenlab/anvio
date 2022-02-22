@@ -132,12 +132,18 @@ class ReportCodonFrequencies:
             elif self.codon_usage_bias:
                 if self.kofam_groups:
                     for kofam in self.gene_kofams[gene_callers_id]:
-                        residue_frequencies[self.kofam_groups[kofam]] += gene_counts
+                        try:
+                            residue_frequencies[self.kofam_groups[kofam]] += gene_counts
+                        except KeyError:
+                            residue_frequencies = gene_counts
                 elif self.omnibias: # all genes compared
                     residue_frequencies[gene_callers_id] = gene_counts
                 else:
                     if gene_callers_id in gene_kofams: # ref ribosomal protein
-                        residue_frequencies[-1] += gene_counts
+                        try:
+                            residue_frequencies[-1] += gene_counts
+                        except KeyError:
+                            residue_frequencies[-1] = gene_counts
                     residue_frequencies[gene_callers_id] = gene_counts
             else:
                 residue_frequencies[gene_callers_id] = gene_counts
