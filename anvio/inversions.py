@@ -922,9 +922,19 @@ class Inversions:
                 oligos = s.get_sequences(primer_name, primer_hits, target='remainders')
                 num_oligos = len(oligos)
                 oligos_frequency_dict = Counter(oligos)
+                reads_found = False
+
                 for oligo, frequency in oligos_frequency_dict.items():
                     sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
+                    if frequency:
+                        reads_found = True
 
+                # if the reference oligo has no frequency but reads were found for other oligo
+                # then add reference oligo with a frequency of 0
+                oligo_reference = primers_dict[primer_name]['oligo_reference']
+                if oligo_reference not in oligos_frequency_dict and reads_found:
+                    sample_counts.append((sample_name, primer_name, oligo_reference, 'True', 0, 0))
+                    
             output_queue.put(sample_counts)
 
 
