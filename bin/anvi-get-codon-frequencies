@@ -6,17 +6,21 @@
    AA linkmer frequencies"""
 
 import sys
+import pandas as pd
 
 from collections import Counter
 
 import anvio
+import anvio.tables as t
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
+from anvio.constants import ribosomal_protein_kofams
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -91,14 +95,20 @@ class ReportCodonFrequencies:
         self.item_name_conversion_dict = None
 
         if self.codon_usage_bias:
-            pass
-        else:
-            self.process()
+            module_hash = contigs_db.db.get_meta_value('modules_db_hash', return_none_if_not_in_table=True)
+            if not module_hash:
+                raise ConfigError("Your contigs database named '%s' has not been annotated by KEGG KOfams. "
+                                  "Please run anvi-run-kegg-kofams on it :/" % self.c.a_meta['project_name'])
+
+        self.process()
 
 
     def process(self):
         if self.gene_caller_id:
             self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
+        elif self.codon_usage_bias:
+            self.select_kofam_data()
+            self.c.init_contig_sequences(gene_caller_ids_of_interest = list(self.gene_kofams))
         else:
             self.c.init_contig_sequences()
 
@@ -119,6 +129,16 @@ class ReportCodonFrequencies:
             gene_counts = Counter(F(gene_call, self.c.contig_sequences))
             if self.collapse_genes:
                 residue_frequencies['all'] += gene_counts
+            elif self.codon_usage_bias:
+                if self.kofam_groups:
+                    for kofam in self.gene_kofams[gene_callers_id]:
+                        residue_frequencies[self.kofam_groups[kofam]] += gene_counts
+                elif self.omnibias: # all genes compared
+                    residue_frequencies[gene_callers_id] = gene_counts
+                else:
+                    if gene_callers_id in gene_kofams: # ref ribosomal protein
+                        residue_frequencies[-1] += gene_counts
+                    residue_frequencies[gene_callers_id] = gene_counts
             else:
                 residue_frequencies[gene_callers_id] = gene_counts
 
@@ -156,6 +176,54 @@ class ReportCodonFrequencies:
                                                header_item_conversion_dict=self.item_name_conversion_dict)
 
         self.run.info('Output file', self.output_file_path)
+
+
+    def select_kofam_data(self):
+        """
+        Gather info on KOfam annotated genes used in CUB calculations.
+        If KOfam groups were supplied, select genes assigned to these KOfams.
+        If not in omnibias mode, select genes assigned to ribosomal protein KOfams.
+        """
+
+        kegg_df = dbops.db.get_table_as_dataframe(t.gene_function_calls_table_name)
+        kegg_df = kegg_df[kegg_df['source'] == 'KOfam']
+
+        self.gene_kofams = gene_kofams = {}
+        self.kofam_groups = kofam_groups = {}
+
+        gene_ids = []
+        kofams = []
+
+        if self.kofam_groups:
+            try:
+                filesnpaths.is_file_exists(self.kofam_groups)
+            except:
+                raise ConfigError("The file of KOfam group definitions named '%s' does not exist :/" % self.kofam_groups)
+
+            kofam_group_df = pd.read_csv(self.kofam_groups, sep='\t', header=None, names=['kofam', 'funcgroup'], dtype=str)
+            for kofam, funcgroup in zip(kofam_group_df['kofam'], kofam_group_df['funcgroup']):
+                try:
+                    kofam_groups[kofam].append(funcgroup)
+                except KeyError:
+                    kofam_groups[kofam] = [funcgroup]
+
+            kegg_select_df = kegg_df[kegg_df['accession'].isin(kofam_groups)]
+            gene_ids.extend(kegg_select_df['gene_callers_id'])
+            kofams.extend(kegg_select_df['accession'])
+
+        if not self.omnibias:
+            for kofam in ribosomal_protein_kofams:
+                kofam_groups[kofam] = -1
+
+            kegg_select_df = kegg_df[kegg_df['accession'].isin(ribosomal_protein_kofams)]
+            gene_ids.extend(kegg_select_df['gene_callers_id'])
+            kofams.extend(kegg_select_df['accession'])
+
+        for gene_id, kofam in zip(gene_ids, kofams):
+            try:
+                gene_kofams[gene_id].append(kofam)
+            except KeyError:
+                gene_kofams[gene_id] = [kofam]
 
 
 if __name__ == '__main__':
