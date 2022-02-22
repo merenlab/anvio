@@ -8,9 +8,9 @@
 import sys
 import pandas as pd
 
-from collections import Counter
 from itertools import combinations
 from numpy import exp, log as natural_log
+from collections import Counter, OrderedDict
 
 import anvio
 import anvio.tables as t
@@ -173,7 +173,7 @@ class ReportCodonFrequencies:
         elif self.codon_usage_bias:
             synonymous_codon_groups = {aa: codons for aa, codons in constants.AA_to_codons.items() if len(codons) > 1} # exclude Met and Trp
 
-            relative_frequencies = {}
+            relative_frequencies = OrderedDict()
             short_codon_sets = []
             for codon_set_id, codon_counts in residue_frequencies.items():
                 if sum(codon_counts) < self.min_codon_count:
@@ -185,12 +185,12 @@ class ReportCodonFrequencies:
                     for codon in synonymous_codons:
                         synonymous_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
 
-            cub_dict = {}
+            cub_dict = OrderedDict()
             if self.omnibias:
                 missing_amino_acids = Counter()
                 comparisons = combinations(relative_frequencies, 2)
                 for codon_set_id in relative_frequencies:
-                    cub_dict[codon_set_id] = {}
+                    cub_dict[codon_set_id] = OrderedDict()
 
                 if self.codon_usage_bias == 'cai':
                     all_ref_weights = {}
@@ -272,11 +272,21 @@ class ReportCodonFrequencies:
                     self.run.warning("The following amino acids were not observed "
                                      f"in the given numbers of {'gene groups' if self.kofam_groups else 'genes'}: "}
                                      f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
-
+                row_count = len(cub_dict)
+                cub_rows = []
+                for cub_subdict in cub_dict.values():
+                    cub_rows.append([None for _ in range(row_count - len(cub_subdict))]
+                                    + [cub for cub in cub_subdict.values()])
+                cub_df = pd.DataFrame(cub_rows, index=cub_dict, columns=cub_dict)
+                cub_df.to_csv(self.output_file_path, sep='\t')
             else: # ribosomal protein ref
                 if missing_amino_acids:
                     self.run.warning("The following amino acids were not observed "
                                      f"in ribosomal proteins annotated by KOfams: {', '.join(missing_amino_acids)}")
+                first_col_header = 'kofam_group' if self.kofam_groups else 'gene_id'
+                cub_df = pd.DataFrame(zip(cub_dict, cub_dict.values()),
+                                      columns=[first_col_header, self.codon_usage_bias])
+                cub_df.to_csv(self.output_file_path, sep='\t', index=False)
         else:
             utils.store_dict_as_TAB_delimited_file(residue_frequencies,
                                                    self.output_file_path,
@@ -296,8 +306,8 @@ class ReportCodonFrequencies:
         kegg_df = dbops.db.get_table_as_dataframe(t.gene_function_calls_table_name)
         kegg_df = kegg_df[kegg_df['source'] == 'KOfam']
 
-        self.gene_kofams = gene_kofams = {}
-        self.kofam_groups = kofam_groups = {}
+        self.gene_kofams = gene_kofams = OrderedDict()
+        self.kofam_groups = kofam_groups = OrderedDict()
 
         gene_ids = []
         kofams = []
