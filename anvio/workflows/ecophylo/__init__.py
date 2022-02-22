@@ -79,6 +79,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
@@ -103,7 +104,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'cat_external_gene_calls_file': {'threads': 2},
             'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
-            'align_sequences': {'threads': 5},
+            'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'count_num_sequences_filtered': {'threads': 5},
