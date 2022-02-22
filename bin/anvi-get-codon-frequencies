@@ -8,9 +8,9 @@
 import sys
 import pandas as pd
 
-from numpy import exp
 from collections import Counter
-from numpy import log as natural_log
+from itertools import combinations
+from numpy import exp, log as natural_log
 
 import anvio
 import anvio.tables as t
@@ -185,10 +185,45 @@ class ReportCodonFrequencies:
                     for codon in synonymous_codons:
                         synonymous_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
 
+            cub_dict = {}
             if self.omnibias:
-                pass
+                missing_amino_acids = Counter()
+                comparisons = combinations(relative_frequencies, 2)
+                for codon_set_id in relative_frequencies:
+                    cub_dict[codon_set_id] = {}
+
+                if self.codon_usage_bias == 'cai':
+                    all_ref_weights = {}
+                    for codon_set_id, ref_synonymous_frequencies in relative_frequencies:
+                        all_ref_weights[codon_set_id] = ref_weights = {}
+                        for amino_acid, synonymous_codons in synonymous_codon_groups:
+                            max_synonymous_frequency = max([ref_synonymous_frequencies[codon] for codon in synonymous_codons])
+                            if max_synonymous_frequency == -1: # no codons for AA in ribosomal proteins
+                                missing_amino_acids[amino_acid] += 1
+                                continue
+
+                            for codon in synonymous_codon_groups[amino_acid]:
+                                ref_weights[codon] = natural_log(ref_synonymous_frequencies[codon] / max_synonymous_frequency)
+
+                    for codon_set_id, ref_codon_set_id in comparisons:
+                        cub_subdict = cub_dict[codon_set_id]
+                        codon_counts = residue_frequencies[codon_set_id]
+                        sum_weighted_counts = 0
+                        for amino_acid, log_weight in all_ref_weights[ref_codon_set_id].items():
+                            for codon in synonymous_codon_groups[amino_acid]:
+                                sum_weighted_counts += codon_counts[codon] * log_weight
+                        cub_subdict[ref_codon_set_id] = exp(sum_weighted_counts / sum(codon_counts))
+                elif self.codon_usage_bias == 'delta':
+                    for codon_set_id, ref_codon_set_id in comparisons:
+                        cub_subdict = cub_dict[codon_set_id]
+                        codon_counts = residue_frequencies[codon_set_id]
+                        synonymous_frequencies = relative_frequencies[codon_set_id]
+                        ref_synonymous_frequencies = relative_frequencies[ref_codon_set_id]
+                        sum_weighted_counts = 0
+                        for codon, codon_count in codon_counts:
+                            sum_weighted_counts += codon_count * natural_log(synonymous_frequencies[codon] / ref_synonymous_frequencies[codon])
+                        cub_subdict[codon_set_id] = sum_weighted_counts / sum(codon_counts)
             else: # ribosomal protein ref
-                cub_dict = {}
                 ref_synonymous_frequencies = relative_frequencies[-1]
                 missing_amino_acids = [] # in the ref set
 
@@ -217,10 +252,6 @@ class ReportCodonFrequencies:
                             sum_weighted_counts += codon_count * natural_log(synonymous_frequencies[codon] / ref_synonymous_frequencies[codon])
                         cub_dict[codon_set_id] = sum_weighted_counts / sum(codon_counts)
 
-                if missing_amino_acids:
-                    self.run.warning("The following amino acids were not observed "
-                                     f"in ribosomal proteins annotated by KOfams: {', '.join(missing_amino_acids)}")
-
 
         if len(noncoding_genes_skipped):
             self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
@@ -229,10 +260,22 @@ class ReportCodonFrequencies:
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
 
-        utils.store_dict_as_TAB_delimited_file(residue_frequencies,
-                                               self.output_file_path,
-                                               headers=['gene_callers_id'] + self.items,
-                                               header_item_conversion_dict=self.item_name_conversion_dict)
+        if codon_usage_bias:
+            if self.omnibias:
+                if missing_amino_acids:
+                    self.run.warning("The following amino acids were not observed "
+                                     f"in the given numbers of {'gene groups' if self.kofam_groups else 'genes'}: "}
+                                     f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
+
+            else: # ribosomal protein ref
+                if missing_amino_acids:
+                    self.run.warning("The following amino acids were not observed "
+                                     f"in ribosomal proteins annotated by KOfams: {', '.join(missing_amino_acids)}")
+        else:
+            utils.store_dict_as_TAB_delimited_file(residue_frequencies,
+                                                   self.output_file_path,
+                                                   headers=['gene_callers_id'] + self.items,
+                                                   header_item_conversion_dict=self.item_name_conversion_dict)
 
         self.run.info('Output file', self.output_file_path)
 
