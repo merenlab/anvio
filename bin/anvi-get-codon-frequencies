@@ -98,7 +98,7 @@ class ReportCodonFrequencies:
         self.item_name_conversion_dict = None
 
         if self.codon_usage_bias:
-            module_hash = contigs_db.db.get_meta_value('modules_db_hash', return_none_if_not_in_table=True)
+            module_hash = self.c.a_meta['modules_db_hash']
             if not module_hash:
                 raise ConfigError("Your contigs database named '%s' has not been annotated by KEGG KOfams. "
                                   "Please run anvi-run-kegg-kofams on it :/" % self.c.a_meta['project_name'])
@@ -111,7 +111,7 @@ class ReportCodonFrequencies:
             self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
         elif self.codon_usage_bias:
             self.select_kofam_data()
-            self.c.init_contig_sequences(gene_caller_ids_of_interest = list(self.gene_kofams))
+            self.c.init_contig_sequences(gene_caller_ids_of_interest = list(self.gene_kofam_dict))
         else:
             self.c.init_contig_sequences()
 
@@ -134,15 +134,15 @@ class ReportCodonFrequencies:
                 residue_frequencies['all'] += gene_counts
             elif self.codon_usage_bias:
                 if self.kofam_groups:
-                    for kofam in self.gene_kofams[gene_callers_id]:
+                    for kofam in self.gene_kofam_dict[gene_callers_id]:
                         try:
-                            residue_frequencies[self.kofam_groups[kofam]] += gene_counts
+                            residue_frequencies[self.kofam_group_dict[kofam]] += gene_counts
                         except KeyError:
                             residue_frequencies = gene_counts
                 elif self.omnibias: # all genes compared
                     residue_frequencies[gene_callers_id] = gene_counts
                 else:
-                    if gene_callers_id in self.gene_kofams: # ref ribosomal protein
+                    if gene_callers_id in self.gene_kofam_dict: # ref ribosomal protein
                         try:
                             residue_frequencies[-1] += gene_counts
                         except KeyError:
@@ -270,7 +270,7 @@ class ReportCodonFrequencies:
             if self.omnibias:
                 if missing_amino_acids:
                     self.run.warning("The following amino acids were not observed "
-                                     f"in the given numbers of {'gene groups' if self.kofam_groups else 'genes'}: "}
+                                     f"in the given numbers of {'gene groups' if self.kofam_groups else 'genes'}: "
                                      f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
                 row_count = len(cub_dict)
                 cub_rows = []
@@ -303,11 +303,13 @@ class ReportCodonFrequencies:
         If not in omnibias mode, select genes assigned to ribosomal protein KOfams.
         """
 
-        kegg_df = dbops.db.get_table_as_dataframe(t.gene_function_calls_table_name)
+        contigs_db = dbops.ContigsDatabase(self.c.contigs_db_path)
+        kegg_df = contigs_db.db.get_table_as_dataframe(t.gene_function_calls_table_name)
+        contigs_db.disconnect()
         kegg_df = kegg_df[kegg_df['source'] == 'KOfam']
 
-        self.gene_kofams = gene_kofams = OrderedDict()
-        self.kofam_groups = kofam_groups = OrderedDict()
+        self.gene_kofam_dict = gene_kofam_dict = OrderedDict()
+        self.kofam_group_dict = kofam_group_dict = OrderedDict()
 
         gene_ids = []
         kofams = []
@@ -321,17 +323,17 @@ class ReportCodonFrequencies:
             kofam_group_df = pd.read_csv(self.kofam_groups, sep='\t', header=None, names=['kofam', 'funcgroup'], dtype=str)
             for kofam, funcgroup in zip(kofam_group_df['kofam'], kofam_group_df['funcgroup']):
                 try:
-                    kofam_groups[kofam].append(funcgroup)
+                    kofam_group_dict[kofam].append(funcgroup)
                 except KeyError:
-                    kofam_groups[kofam] = [funcgroup]
+                    kofam_group_dict[kofam] = [funcgroup]
 
-            kegg_select_df = kegg_df[kegg_df['accession'].isin(kofam_groups)]
+            kegg_select_df = kegg_df[kegg_df['accession'].isin(kofam_group_dict)]
             gene_ids.extend(kegg_select_df['gene_callers_id'])
             kofams.extend(kegg_select_df['accession'])
 
         if not self.omnibias:
             for kofam in ribosomal_protein_kofams:
-                kofam_groups[kofam] = -1
+                kofam_group_dict[kofam] = -1
 
             kegg_select_df = kegg_df[kegg_df['accession'].isin(ribosomal_protein_kofams)]
             gene_ids.extend(kegg_select_df['gene_callers_id'])
@@ -339,9 +341,9 @@ class ReportCodonFrequencies:
 
         for gene_id, kofam in zip(gene_ids, kofams):
             try:
-                gene_kofams[gene_id].append(kofam)
+                gene_kofam_dict[gene_id].append(kofam)
             except KeyError:
-                gene_kofams[gene_id] = [kofam]
+                gene_kofam_dict[gene_id] = [kofam]
 
 
 if __name__ == '__main__':
