@@ -274,7 +274,7 @@ if __name__ == '__main__':
                                                 and in the second is a list of group names, e.g., KEGG module IDs or group names/IDs that you invent.\
                                                 A KOfam ID may be in more than one row, since a gene may be part of multiple groups.")
     groupC.add_argument('--omnibias', default=False, action="store_true", help="Rather than calculating codon usage bias against the default reference of ribosomal proteins,\
-                                                                                calculate CUB of every gene or group of genes against every other reference,\
+                                                                                calculate CUB of every gene or group of genes against every other gene or group of genes,\
                                                                                 producing a diagonal matrix of CUB values for every combination. A warning will be raised\
                                                                                 suggesting that you abort mission if you have not used `--kofam-groups`,\
                                                                                 since comparing the codon usage of every gene seems pretty weird.")
