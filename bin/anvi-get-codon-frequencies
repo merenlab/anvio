@@ -8,7 +8,9 @@
 import sys
 import pandas as pd
 
+from numpy import exp
 from collections import Counter
+from numpy import log as natural_log
 
 import anvio
 import anvio.tables as t
@@ -177,16 +179,52 @@ class ReportCodonFrequencies:
                 if sum(codon_counts) < self.min_codon_count:
                     short_codon_sets.append(codon_set_id)
                     continue
-                relative_frequencies[codon_set_id] = {}
-                for aa, synonymous_codons in synonymous_codon_groups.items():
+                relative_frequencies[codon_set_id] = synonymous_frequencies = {}
+                for amino_acid, synonymous_codons in synonymous_codon_groups.items():
                     total_aa_codon_count = sum([codon_counts[codon] for codon in synonymous_codons])
                     for codon in synonymous_codons:
-                        relative_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
+                        synonymous_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
+
+            if self.omnibias:
+                pass
+            else: # ribosomal protein ref
+                cub_dict = {}
+                ref_synonymous_frequencies = relative_frequencies[-1]
+                missing_amino_acids = [] # in the ref set
+
+                if self.codon_usage_bias == 'cai':
+                    ref_weights = {}
+                    for amino_acid, synonymous_codons in synonymous_codon_groups:
+                        max_synonymous_frequency = max([ref_synonymous_frequencies[codon] for codon in synonymous_codons])
+                        if max_synonymous_frequency == -1: # no codons for AA in ribosomal proteins
+                            missing_amino_acids.append(amino_acid)
+                            continue
+
+                        for codon in synonymous_codon_groups[amino_acid]:
+                            ref_weights[codon] = natural_log(ref_synonymous_frequencies[codon] / max_synonymous_frequency)
+
+                    for codon_set_id, codon_counts in residue_frequencies.items():
+                        sum_weighted_counts = 0
+                        for amino_acid, log_weight in ref_weights.items():
+                            for codon in synonymous_codon_groups[amino_acid]:
+                                sum_weighted_counts += codon_counts[codon] * log_weight
+                        cub_dict[codon_set_id] = exp(sum_weighted_counts / sum(codon_counts))
+                elif self.codon_usage_bias == 'delta':
+                    for codon_set_id, codon_counts in residue_frequencies.items():
+                        synonymous_frequencies = relative_frequencies[codon_set_id]
+                        sum_weighted_counts = 0
+                        for codon, codon_count in codon_counts:
+                            sum_weighted_counts += codon_count * natural_log(synonymous_frequencies[codon] / ref_synonymous_frequencies[codon])
+                        cub_dict[codon_set_id] = sum_weighted_counts / sum(codon_counts)
+
+                if missing_amino_acids:
+                    self.run.warning("The following amino acids were not observed "
+                                     f"in ribosomal proteins annotated by KOfams: {', '.join(missing_amino_acids)}")
 
 
         if len(noncoding_genes_skipped):
             self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
-                            "'noncoding' gene calls." % (len(noncoding_genes_skipped), len(self.gene_caller_ids)))
+                             "'noncoding' gene calls." % (len(noncoding_genes_skipped), len(self.gene_caller_ids)))
 
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
@@ -282,7 +320,9 @@ if __name__ == '__main__':
                                                                               ribosomal proteins predicted by KEGG KOfams. So don't be surprised by an angry error\
                                                                               that you need to run `anvi-run-kegg-kofams` on your contigs database.\
                                                                               CAI is the codon adaptation index of Sharp and Li (1987).\
-                                                                              Delta is the likelihood ratio of Ran and Higgs (2012).")
+                                                                              Delta is the likelihood ratio of Ran and Higgs (2012) Eq. (5),\
+                                                                              with the null reference codon set being the ribosomal proteins by default\
+                                                                              or each other codon set when the `--omnibias` flag is used.")
     groupC.add_argument('--kofam-groups', help="Rather than reporting a codon usage metric per gene, report CUB from sets of genes defined by KEGG KOfams.\
                                                 For example, you may wish to compare the overall CUB of genes in different KEGG modules to the ribosomal protein reference.\
                                                 Provide a tab-delimited text file with two columns (no header). In the first column is a list of KOfam IDs\
