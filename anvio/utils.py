@@ -1081,7 +1081,7 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -1117,7 +1117,11 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         if rows_to_return and row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
-        fields = line.strip().split('\t')[1:]
+        fields = line.strip('\n').split('\t')[1:]
+
+        # long story.
+        if pad_with_zeros:
+            fields = [0] + fields + [0]
 
         try:
             if fields_of_interest:
