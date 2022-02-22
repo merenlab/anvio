@@ -1632,30 +1632,32 @@ class PanSuperclass(object):
 
         while True:
             gene_cluster_name = input_queue.get(True)
+
             funct_index = {}
             geo_index = {}
-            indices_dict = {}
-            gene_cluster = {}
-            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            gene_cluster = {gene_cluster_name: gene_clusters_dict[gene_cluster_name]}
+            indices_dict = {'gene cluster': gene_cluster_name}
 
             try:
                 funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
-            except:
-                run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: "
-                            "(1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input "
-                            "dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all genes are aligned "
-                            "to be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As you can see, this "
-                            "is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to `-1` so things can "
-                            "move on, but we highly recommend you to take a look at your data to make sure you are satisfied with your "
-                            "analysis." % gene_cluster_name)
-                funct_index[gene_cluster_name] = -1
-                geo_index[gene_cluster_name] = -1
-                combined_index[gene_cluster_name] = -1
 
-            indices_dict['gene cluster'] = gene_cluster_name
-            indices_dict['functional'] = funct_index[gene_cluster_name]
-            indices_dict['geometric'] = geo_index[gene_cluster_name]
-            indices_dict['combined'] = combined_index[gene_cluster_name]
+                indices_dict['functional'] = funct_index[gene_cluster_name]
+                indices_dict['geometric'] = geo_index[gene_cluster_name]
+                indices_dict['combined'] = combined_index[gene_cluster_name]
+            except:
+                progress.reset()
+                run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
+                            f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
+                            f"into the input dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all "
+                            f" genes are alignedto be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As "
+                            f"you can see, this is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to "
+                            f"`-1` so things can move on, but we highly recommend you to take a look at your data to make sure you are "
+                            f"satisfied with your analysis.", overwrite_verbose=True)
+
+                indices_dict['functional'] = -1
+                indices_dict['geometric'] = -1
+                indices_dict['combined'] = -1
 
             output_queue.put(indices_dict)
 
