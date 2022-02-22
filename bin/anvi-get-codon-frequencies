@@ -220,9 +220,15 @@ class ReportCodonFrequencies:
                         synonymous_frequencies = relative_frequencies[codon_set_id]
                         ref_synonymous_frequencies = relative_frequencies[ref_codon_set_id]
                         sum_weighted_counts = 0
+                        skipped_codon_count = 0
                         for codon, codon_count in codon_counts:
-                            sum_weighted_counts += codon_count * natural_log(synonymous_frequencies[codon] / ref_synonymous_frequencies[codon])
-                        cub_subdict[codon_set_id] = sum_weighted_counts / sum(codon_counts)
+                            synonymous_frequency = synonymous_frequencies[codon]
+                            ref_synonymous_frequency = ref_synonymous_frequencies[codon]
+                            if synonymous_frequency == -1 or ref_synonymous_frequency == -1: # missing amino acid in one codon set of the other
+                                skipped_codon_count += codon_count
+                                continue
+                            sum_weighted_counts += codon_count * natural_log(synonymous_frequency / ref_synonymous_frequency)
+                        cub_subdict[codon_set_id] = sum_weighted_counts / (sum(codon_counts) - skipped_codon_count)
             else: # ribosomal protein ref
                 ref_synonymous_frequencies = relative_frequencies[-1]
                 missing_amino_acids = [] # in the ref set
@@ -376,7 +382,9 @@ if __name__ == '__main__':
                                                                                 producing a diagonal matrix of CUB values for every combination. A warning will be raised\
                                                                                 suggesting that you abort mission if you have not used `--kofam-groups`,\
                                                                                 since comparing the codon usage of every gene seems pretty weird.")
-    groupC.add_argument('--min-codon-count', default=100, help="Do not calculate codon usage bias for genes or groups of genes with fewer than this number of codons.")
+    groupC.add_argument('--min-codon-count', default=100, help="Do not calculate codon usage bias for genes (or groups of genes) with fewer than this number of codons\
+                                                                in the gene after also subtracting the number of codons in the gene that cannot be compared to the reference\
+                                                                due to the reference's lack of any codons for the corresponding amino acid.")
 
     args = parser.get_args(parser)
 
