@@ -52,7 +52,7 @@ class ReportCodonFrequencies:
         self.codon_usage_bias = A('codon_usage_bias')
         self.kofam_groups = A('kofam_groups')
         self.omnibias = A('omnibias')
-        self.min_codon_count = A('min-codon-count')
+        self.min_codon_count = A('min_codon_count')
         self.output_file_path = A('output_file')
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -111,7 +111,9 @@ class ReportCodonFrequencies:
             self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
         elif self.codon_usage_bias:
             self.select_kofam_data()
-            self.c.init_contig_sequences(gene_caller_ids_of_interest = list(self.gene_kofam_dict))
+            if self.kofam_groups:
+                self.gene_caller_ids = list(self.kofam_group_dict)
+            self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
         else:
             self.c.init_contig_sequences()
 
@@ -133,24 +135,33 @@ class ReportCodonFrequencies:
             if self.collapse_genes:
                 residue_frequencies['all'] += gene_counts
             elif self.codon_usage_bias:
-                if self.kofam_groups:
+                if self.kofam_groups: # gene groups compared to each other or ribosomal protein ref
                     for kofam in self.gene_kofam_dict[gene_callers_id]:
                         try:
                             residue_frequencies[self.kofam_group_dict[kofam]] += gene_counts
                         except KeyError:
-                            residue_frequencies = gene_counts
+                            residue_frequencies[self.kofam_group_dict[kofam]] = gene_counts
                 elif self.omnibias: # all genes compared
                     residue_frequencies[gene_callers_id] = gene_counts
-                else:
-                    if gene_callers_id in self.gene_kofam_dict: # ref ribosomal protein
+                else: # genes compared to ribosomal protein ref
+                    if gene_callers_id in self.gene_kofam_dict: # ref ribosomal proteins
                         try:
                             residue_frequencies[-1] += gene_counts
                         except KeyError:
                             residue_frequencies[-1] = gene_counts
+                        continue
                     residue_frequencies[gene_callers_id] = gene_counts
             else:
                 residue_frequencies[gene_callers_id] = gene_counts
 
+        # Remove single codon amino acids for CUB
+        ignored_codons_in_cub = constants.AA_to_codons['Met'] + constants.AA_to_codons['Trp'] + constants.AA_to_codons['STP']
+        for gene_counts in residue_frequencies.values():
+            for ignored_codon in ignored_codons_in_cub:
+                try:
+                    gene_counts.pop(ignored_codon)
+                except KeyError:
+                    pass
 
         if self.percent_normalize:
             for gene_callers_id in residue_frequencies:
@@ -175,15 +186,22 @@ class ReportCodonFrequencies:
 
             relative_frequencies = OrderedDict()
             short_codon_sets = []
+            codon_set_ids_to_remove = []
             for codon_set_id, codon_counts in residue_frequencies.items():
-                if sum(codon_counts) < self.min_codon_count:
+                if sum(codon_counts.values()) < self.min_codon_count:
                     short_codon_sets.append(codon_set_id)
+                    codon_set_ids_to_remove.append(codon_set_id)
                     continue
                 relative_frequencies[codon_set_id] = synonymous_frequencies = {}
                 for amino_acid, synonymous_codons in synonymous_codon_groups.items():
                     total_aa_codon_count = sum([codon_counts[codon] for codon in synonymous_codons])
                     for codon in synonymous_codons:
-                        synonymous_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
+                        if total_aa_codon_count:
+                            synonymous_frequencies[codon] = codon_counts[codon] / total_aa_codon_count
+                        else:
+                            synonymous_frequencies[codon] = -1
+            for codon_set_id in codon_set_ids_to_remove:
+                residue_frequencies.pop(codon_set_id)
 
             cub_dict = OrderedDict()
             if self.omnibias:
@@ -212,7 +230,7 @@ class ReportCodonFrequencies:
                         for amino_acid, log_weight in all_ref_weights[ref_codon_set_id].items():
                             for codon in synonymous_codon_groups[amino_acid]:
                                 sum_weighted_counts += codon_counts[codon] * log_weight
-                        cub_subdict[ref_codon_set_id] = exp(sum_weighted_counts / sum(codon_counts))
+                        cub_subdict[ref_codon_set_id] = exp(sum_weighted_counts / sum(codon_counts.values()))
                 elif self.codon_usage_bias == 'delta':
                     for codon_set_id, ref_codon_set_id in comparisons:
                         cub_subdict = cub_dict[codon_set_id]
@@ -221,14 +239,16 @@ class ReportCodonFrequencies:
                         ref_synonymous_frequencies = relative_frequencies[ref_codon_set_id]
                         sum_weighted_counts = 0
                         skipped_codon_count = 0
-                        for codon, codon_count in codon_counts:
+                        for codon, codon_count in codon_counts.items():
                             synonymous_frequency = synonymous_frequencies[codon]
                             ref_synonymous_frequency = ref_synonymous_frequencies[codon]
-                            if synonymous_frequency == -1 or ref_synonymous_frequency == -1: # missing amino acid in one codon set of the other
+                            if synonymous_frequency == -1 or ref_synonymous_frequency <= 0:
+                                # A value of -1 means a missing amino acid in one codon set of the other
+                                # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
                             sum_weighted_counts += codon_count * natural_log(synonymous_frequency / ref_synonymous_frequency)
-                        cub_subdict[codon_set_id] = sum_weighted_counts / (sum(codon_counts) - skipped_codon_count)
+                        cub_subdict[codon_set_id] = sum_weighted_counts / (sum(codon_counts.values()) - skipped_codon_count)
             else: # ribosomal protein ref
                 ref_synonymous_frequencies = relative_frequencies[-1]
                 missing_amino_acids = [] # in the ref set
@@ -244,19 +264,29 @@ class ReportCodonFrequencies:
                         for codon in synonymous_codon_groups[amino_acid]:
                             ref_weights[codon] = natural_log(ref_synonymous_frequencies[codon] / max_synonymous_frequency)
 
+                    residue_frequencies.pop(-1) # remove ribosomal protein ref from "queries"
                     for codon_set_id, codon_counts in residue_frequencies.items():
                         sum_weighted_counts = 0
                         for amino_acid, log_weight in ref_weights.items():
                             for codon in synonymous_codon_groups[amino_acid]:
                                 sum_weighted_counts += codon_counts[codon] * log_weight
-                        cub_dict[codon_set_id] = exp(sum_weighted_counts / sum(codon_counts))
+                        cub_dict[codon_set_id] = exp(sum_weighted_counts / sum(codon_counts.values()))
                 elif self.codon_usage_bias == 'delta':
+                    residue_frequencies.pop(-1) # remove ribosomal protein ref from "queries"
                     for codon_set_id, codon_counts in residue_frequencies.items():
                         synonymous_frequencies = relative_frequencies[codon_set_id]
                         sum_weighted_counts = 0
-                        for codon, codon_count in codon_counts:
-                            sum_weighted_counts += codon_count * natural_log(synonymous_frequencies[codon] / ref_synonymous_frequencies[codon])
-                        cub_dict[codon_set_id] = sum_weighted_counts / sum(codon_counts)
+                        skipped_codon_count = 0
+                        for codon, codon_count in codon_counts.items():
+                            synonymous_frequency = synonymous_frequencies[codon]
+                            ref_synonymous_frequency = ref_synonymous_frequencies[codon]
+                            if synonymous_frequency == -1 or ref_synonymous_frequency <= 0: # missing amino acid in one codon set of the other
+                                # A value of -1 means a missing amino acid in one codon set of the other
+                                # A value of 0 in the reference means a missing codon
+                                skipped_codon_count += codon_count
+                                continue
+                            sum_weighted_counts += codon_count * natural_log(synonymous_frequency / ref_synonymous_frequency)
+                        cub_dict[codon_set_id] = sum_weighted_counts / (sum(codon_counts.values()) - skipped_codon_count)
 
 
         if len(noncoding_genes_skipped):
@@ -266,7 +296,7 @@ class ReportCodonFrequencies:
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
 
-        if codon_usage_bias:
+        if self.codon_usage_bias:
             if self.omnibias:
                 if missing_amino_acids:
                     self.run.warning("The following amino acids were not observed "
@@ -286,6 +316,7 @@ class ReportCodonFrequencies:
                 first_col_header = 'kofam_group' if self.kofam_groups else 'gene_id'
                 cub_df = pd.DataFrame(zip(cub_dict, cub_dict.values()),
                                       columns=[first_col_header, self.codon_usage_bias])
+                cub_df[self.codon_usage_bias] = cub_df[self.codon_usage_bias].round(5)
                 cub_df.to_csv(self.output_file_path, sep='\t', index=False)
         else:
             utils.store_dict_as_TAB_delimited_file(residue_frequencies,
@@ -331,7 +362,7 @@ class ReportCodonFrequencies:
             gene_ids.extend(kegg_select_df['gene_callers_id'])
             kofams.extend(kegg_select_df['accession'])
 
-        if not self.omnibias:
+        if not self.omnibias: # ribosomal protein ref
             for kofam in ribosomal_protein_kofams:
                 kofam_group_dict[kofam] = -1
 
@@ -394,9 +425,9 @@ if __name__ == '__main__':
                                                                                 producing a diagonal matrix of CUB values for every combination. A warning will be raised\
                                                                                 suggesting that you abort mission if you have not used `--kofam-groups`,\
                                                                                 since comparing the codon usage of every gene seems pretty weird.")
-    groupC.add_argument('--min-codon-count', default=100, help="Do not calculate codon usage bias for genes (or groups of genes) with fewer than this number of codons\
-                                                                in the gene after also subtracting the number of codons in the gene that cannot be compared to the reference\
-                                                                due to the reference's lack of any codons for the corresponding amino acid.")
+    groupC.add_argument('--min-codon-count', default=100, type=int, help="Do not calculate codon usage bias for genes (or groups of genes) with fewer than this number of codons\
+                                                                          in the gene after also subtracting the number of codons in the gene that cannot be compared to the reference\
+                                                                          due to the reference's lack of any codons for the corresponding amino acid.")
 
     args = parser.get_args(parser)
 
