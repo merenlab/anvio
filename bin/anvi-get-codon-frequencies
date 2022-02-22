@@ -50,6 +50,7 @@ class ReportCodonFrequencies:
         self.codon_usage_bias = A('codon_usage_bias')
         self.kofam_groups = A('kofam_groups')
         self.omnibias = A('omnibias')
+        self.min_codon_count = A('min-codon-count')
         self.output_file_path = A('output_file')
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -167,6 +168,20 @@ class ReportCodonFrequencies:
                             residue_frequencies[gene_callers_id][codon] = round(residue_frequencies[gene_callers_id][codon] * 100.0 / codons_of_interest_total, 3)
 
             self.item_name_conversion_dict = dict([(codon, '%s-%s' % (constants.codon_to_AA[codon], codon)) for codon in codons_used])
+        elif self.codon_usage_bias:
+            synonymous_codon_groups = {aa: codons for aa, codons in constants.AA_to_codons.items() if len(codons) > 1} # exclude Met and Trp
+
+            relative_frequencies = {}
+            short_codon_sets = []
+            for codon_set_id, codon_counts in residue_frequencies.items():
+                if sum(codon_counts) < self.min_codon_count:
+                    short_codon_sets.append(codon_set_id)
+                    continue
+                relative_frequencies[codon_set_id] = {}
+                for aa, synonymous_codons in synonymous_codon_groups.items():
+                    total_aa_codon_count = sum([codon_counts[codon] for codon in synonymous_codons])
+                    for codon in synonymous_codons:
+                        relative_frequencies[codon] = codon / total_aa_codon_count if total_aa_codon_count else -1
 
 
         if len(noncoding_genes_skipped):
@@ -278,6 +293,7 @@ if __name__ == '__main__':
                                                                                 producing a diagonal matrix of CUB values for every combination. A warning will be raised\
                                                                                 suggesting that you abort mission if you have not used `--kofam-groups`,\
                                                                                 since comparing the codon usage of every gene seems pretty weird.")
+    groupC.add_argument('--min-codon-count', default=100, help="Do not calculate codon usage bias for genes or groups of genes with fewer than this number of codons.")
 
     args = parser.get_args(parser)
 
