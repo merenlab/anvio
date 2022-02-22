@@ -142,7 +142,7 @@ class ReportCodonFrequencies:
                 elif self.omnibias: # all genes compared
                     residue_frequencies[gene_callers_id] = gene_counts
                 else:
-                    if gene_callers_id in gene_kofams: # ref ribosomal protein
+                    if gene_callers_id in self.gene_kofams: # ref ribosomal protein
                         try:
                             residue_frequencies[-1] += gene_counts
                         except KeyError:
