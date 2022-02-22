@@ -77,7 +77,7 @@ default_anticodons_for_taxonomy = ['AAA', 'AAC', 'AAG', 'AAT', 'ACA', 'ACC', 'AC
                                    'TTT']
 default_hmm_source_for_trna_genes = set(["Transfer_RNAs"])
 
-# The following block of constants are used in the tRNA-seq workflow.
+# The following block of constants is used in the tRNA-seq workflow.
 TRNA_FEATURE_NAMES = ['trna_his_position_0',
                       'acceptor_stem',
                       'fiveprime_acceptor_stem_sequence',
