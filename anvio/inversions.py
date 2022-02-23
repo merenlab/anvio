@@ -121,10 +121,12 @@ class Inversions:
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
-        # debugging mode:
-        self.only_report_from = A('only_report_from')
+        # focus mode:
+        self.target_contig = A('target_contig')
+        self.target_region_start = A('target_region_start')
+        self.target_region_end = A('target_region_end')
 
-        if self.only_report_from:
+        if self.target_contig:
             self.verbose = True
 
         if not skip_sanity_check:
@@ -152,6 +154,13 @@ class Inversions:
 
         # let's have a variable of convenience:
         self.contig_names = sorted(list(self.contig_name_to_split_names.keys()))
+
+        if self.target_contig:
+            if self.target_contig not in self.contig_names:
+                raise ConfigError(f"You asked anvi'o to focus on a single contig, named {self.target_contig}, "
+                                  f"but there doesn't seem to be a contig in this database with that name :/")
+            else:
+                self.contig_names = [self.target_contig]
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
@@ -197,6 +206,15 @@ class Inversions:
                 split_name = split_names[i]
                 split_coverages = auxiliary_db.get(split_name)
                 contig_coverage = np.concatenate((contig_coverage, split_coverages[sample_id]), axis=None)
+
+            # if the user is asking us to focus only a particular stretch in the contig
+            # we are going to grant their wish by setting the values in `contig_coverage`
+            # to zero that are outside of those regions
+            if self.target_region_start or self.target_region_end:
+                if self.target_region_start:
+                    contig_coverage[0:self.target_region_start] = 0.0
+                if self.target_region_end:
+                    contig_coverage[self.target_region_end:] = 0.0
 
             # now we know the `contig_coverage`. it is time to break it into stretches
             # of 'high coverage' regions (as in coverage > `self.min_coverage_to_define_stretches`), and store that
@@ -274,12 +292,6 @@ class Inversions:
                 stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
-
-                # if the user wants to learn about only a single sequence, we only
-                # focus on that one and prematurely go to the next stretch unless
-                # there is a match
-                if self.only_report_from and sequence_name != self.only_report_from:
-                    continue
 
                 # before we go any further, let's print out the sequence in consideration
                 # for the user if they used `--verbose`
@@ -934,7 +946,7 @@ class Inversions:
                 oligo_reference = primers_dict[primer_name]['oligo_reference']
                 if oligo_reference not in oligos_frequency_dict and reads_found:
                     sample_counts.append((sample_name, primer_name, oligo_reference, 'True', 0, 0))
-                    
+
             output_queue.put(sample_counts)
 
 
@@ -1175,8 +1187,12 @@ class Inversions:
             else:
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
-        if self.only_report_from:
-            self.run.info("[Debug] Anvi'o will only report data for:",  self.only_report_from, mc="red", nl_after=1)
+        if self.target_contig:
+            self.run.info("[Targetly] Only focus on the contig:",  self.target_contig, mc="red")
+        if self.target_region_start:
+            self.run.info("[Targetly] START of the region of interest:",  self.target_region_start, mc="red")
+        if self.target_region_end:
+            self.run.info("[Targetly] END of the region of interest:",  self.target_region_end, mc="red")
 
         self.run.width = w
 
@@ -1256,6 +1272,16 @@ class Inversions:
             raise ConfigError("The number of genes to consider when recovering genomic context around active inversions can't be less than "
                               "one :/ If you need to consider less than 1 gene around your inversions, you should use the flag "
                               "`--skip-recovering-genomic-context` instead of confusing anvi'o :(")
+
+        if self.target_region_start and self.target_region_end:
+            if self.target_region_end <= self.target_region_start:
+                raise ConfigError(f"The end position of the target region you wish to focus on must be larger "
+                                  f"than the start poisition of the same region .. for obvious reasons. But "
+                                  f"{pp(self.target_region_end)} is not larger than {pp(self.target_region_start)}.")
+
+        if (self.target_region_start and self.target_region_start < 0) or (self.target_region_end and self.target_region_end < 0):
+            raise ConfigError("Anvi'o kindly advices you to check yourself before you wreck yourself. BUT, it leaves "
+                              "HOW you should check yourself completely up to you as a mystery for you to solve.")
 
 
     def report(self):
@@ -1365,7 +1391,6 @@ class Inversions:
                             functions_output.write(f"{inversion_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
                     else:
                         functions_output.write(f"{inversion_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
-
 
         self.run.info('Reporting file on gene context', genes_output_path)
         self.run.info('Reporting file on functional context', functions_output_path, nl_after=1)
