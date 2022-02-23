@@ -112,8 +112,14 @@ class ReportCodonFrequencies:
         elif self.codon_usage_bias:
             self.select_kofam_data()
             if self.kofam_groups:
-                self.gene_caller_ids = list(self.kofam_group_dict)
-            self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
+                self.gene_caller_ids = set(self.gene_kofam_dict)
+            try:
+                self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
+            except ConfigError as err:
+                if self.kofam_groups:
+                    raise ConfigError("No genes annotated with the requested KOfams were found in the contigs database :(")
+                else:
+                    raise err
         else:
             self.c.init_contig_sequences()
 
@@ -124,11 +130,11 @@ class ReportCodonFrequencies:
 
         F = utils.get_list_of_AAs_for_gene_call if self.return_AA_frequencies_instead else utils.get_list_of_codons_for_gene_call
 
-        for gene_callers_id in self.gene_caller_ids:
-            gene_call = self.c.genes_in_contigs_dict[gene_callers_id]
+        for gene_caller_id in self.gene_caller_ids:
+            gene_call = self.c.genes_in_contigs_dict[gene_caller_id]
 
             if gene_call['call_type'] != constants.gene_call_types['CODING']:
-                noncoding_genes_skipped.add(gene_callers_id)
+                noncoding_genes_skipped.add(gene_caller_id)
                 continue
 
             gene_counts = Counter(F(gene_call, self.c.contig_sequences))
@@ -136,23 +142,24 @@ class ReportCodonFrequencies:
                 residue_frequencies['all'] += gene_counts
             elif self.codon_usage_bias:
                 if self.kofam_groups: # gene groups compared to each other or ribosomal protein ref
-                    for kofam in self.gene_kofam_dict[gene_callers_id]:
-                        try:
-                            residue_frequencies[self.kofam_group_dict[kofam]] += gene_counts
-                        except KeyError:
-                            residue_frequencies[self.kofam_group_dict[kofam]] = gene_counts
+                    for kofam in self.gene_kofam_dict[gene_caller_id]:
+                        for group in self.kofam_group_dict[kofam]:
+                            try:
+                                residue_frequencies[group] += gene_counts
+                            except KeyError:
+                                residue_frequencies[group] = gene_counts
                 elif self.omnibias: # all genes compared
-                    residue_frequencies[gene_callers_id] = gene_counts
+                    residue_frequencies[gene_caller_id] = gene_counts
                 else: # genes compared to ribosomal protein ref
-                    if gene_callers_id in self.gene_kofam_dict: # ref ribosomal proteins
+                    if gene_caller_id in self.gene_kofam_dict: # ref ribosomal proteins
                         try:
                             residue_frequencies[-1] += gene_counts
                         except KeyError:
                             residue_frequencies[-1] = gene_counts
                         continue
-                    residue_frequencies[gene_callers_id] = gene_counts
+                    residue_frequencies[gene_caller_id] = gene_counts
             else:
-                residue_frequencies[gene_callers_id] = gene_counts
+                residue_frequencies[gene_caller_id] = gene_counts
 
         # Remove single codon amino acids for CUB
         ignored_codons_in_cub = constants.AA_to_codons['Met'] + constants.AA_to_codons['Trp'] + constants.AA_to_codons['STP']
@@ -164,21 +171,21 @@ class ReportCodonFrequencies:
                     pass
 
         if self.percent_normalize:
-            for gene_callers_id in residue_frequencies:
-                total = sum(residue_frequencies[gene_callers_id].values())
-                residue_frequencies[gene_callers_id] = Counter(dict([(r, round(residue_frequencies[gene_callers_id][r] * 100.0 / total, 3)) \
-                                                                                    for r in residue_frequencies[gene_callers_id]]))
+            for gene_caller_id in residue_frequencies:
+                total = sum(residue_frequencies[gene_caller_id].values())
+                residue_frequencies[gene_caller_id] = Counter(dict([(r, round(residue_frequencies[gene_caller_id][r] * 100.0 / total, 3)) \
+                                                                                    for r in residue_frequencies[gene_caller_id]]))
         elif self.merens_codon_normalization:
             codons_used = set([])
-            for gene_callers_id in residue_frequencies:
+            for gene_caller_id in residue_frequencies:
                 for amino_acid in constants.AA_to_codons:
                     codons_of_interest = constants.AA_to_codons[amino_acid]
-                    codons_of_interest_total = sum([residue_frequencies[gene_callers_id][r] for r in constants.AA_to_codons[amino_acid]])
+                    codons_of_interest_total = sum([residue_frequencies[gene_caller_id][r] for r in constants.AA_to_codons[amino_acid]])
 
                     for codon in codons_of_interest:
                         codons_used.add(codon)
                         if codons_of_interest_total:
-                            residue_frequencies[gene_callers_id][codon] = round(residue_frequencies[gene_callers_id][codon] * 100.0 / codons_of_interest_total, 3)
+                            residue_frequencies[gene_caller_id][codon] = round(residue_frequencies[gene_caller_id][codon] * 100.0 / codons_of_interest_total, 3)
 
             self.item_name_conversion_dict = dict([(codon, '%s-%s' % (constants.codon_to_AA[codon], codon)) for codon in codons_used])
         elif self.codon_usage_bias:
@@ -364,17 +371,24 @@ class ReportCodonFrequencies:
 
         if not self.omnibias: # ribosomal protein ref
             for kofam in ribosomal_protein_kofams:
-                kofam_group_dict[kofam] = -1
+                try:
+                    kofam_group_dict[kofam].append(-1)
+                except KeyError:
+                    kofam_group_dict[kofam] = [-1]
 
             kegg_select_df = kegg_df[kegg_df['accession'].isin(ribosomal_protein_kofams)]
+
+            if len(kegg_select_df) == 0:
+                raise ConfigError("No genes annotated by reference ribosomal protein KOfams were found in the contigs database :/")
+
             gene_ids.extend(kegg_select_df['gene_callers_id'])
             kofams.extend(kegg_select_df['accession'])
 
         for gene_id, kofam in zip(gene_ids, kofams):
             try:
-                gene_kofam_dict[gene_id].append(kofam)
+                gene_kofam_dict[gene_id].add(kofam)
             except KeyError:
-                gene_kofam_dict[gene_id] = [kofam]
+                gene_kofam_dict[gene_id] = set([kofam])
 
 
 if __name__ == '__main__':
