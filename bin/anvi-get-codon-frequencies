@@ -234,18 +234,18 @@ class ReportCodonFrequencies:
                     for codon_set_id, ref_codon_set_id in comparisons:
                         cub_subdict = cub_dict[codon_set_id]
                         codon_counts = residue_frequencies[codon_set_id]
-                        sum_weighted_counts = 0
+                        weighted_count_sum = 0
                         for amino_acid, log_weight in all_ref_weights[ref_codon_set_id].items():
                             for codon in synonymous_codon_groups[amino_acid]:
-                                sum_weighted_counts += codon_counts[codon] * log_weight
-                        cub_subdict[ref_codon_set_id] = exp(sum_weighted_counts / sum(codon_counts.values()))
+                                weighted_count_sum += codon_counts[codon] * log_weight
+                        cub_subdict[ref_codon_set_id] = exp(weighted_count_sum / sum(codon_counts.values()))
                 elif self.codon_usage_bias == 'delta':
                     for codon_set_id, ref_codon_set_id in comparisons:
                         cub_subdict = cub_dict[codon_set_id]
                         codon_counts = residue_frequencies[codon_set_id]
                         query_synonymous_frequencies = relative_frequencies[codon_set_id]
                         ref_synonymous_frequencies = relative_frequencies[ref_codon_set_id]
-                        sum_weighted_counts = 0
+                        weighted_count_sum = 0
                         skipped_codon_count = 0
                         for codon, codon_count in codon_counts.items():
                             query_synonymous_frequency = query_synonymous_frequencies[codon]
@@ -255,12 +255,12 @@ class ReportCodonFrequencies:
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
-                            sum_weighted_counts += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
+                            weighted_count_sum += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
                         retained_codon_count = (sum(codon_counts.values()) - skipped_codon_count)
                         if retained_codon_count < self.min_codon_count:
                             short_codon_sets.append(codon_set_id)
                             continue
-                        cub_subdict[codon_set_id] = sum_weighted_counts / retained_codon_count
+                        cub_subdict[codon_set_id] = weighted_count_sum / retained_codon_count
             else: # ribosomal protein ref
                 ref_synonymous_frequencies = relative_frequencies[-1]
                 missing_amino_acids = [] # in the ref set
@@ -278,16 +278,16 @@ class ReportCodonFrequencies:
 
                     residue_frequencies.pop(-1) # remove ribosomal protein ref from "queries"
                     for codon_set_id, codon_counts in residue_frequencies.items():
-                        sum_weighted_counts = 0
+                        weighted_count_sum = 0
                         for amino_acid, log_weight in ref_weights.items():
                             for codon in synonymous_codon_groups[amino_acid]:
-                                sum_weighted_counts += codon_counts[codon] * log_weight
-                        cub_dict[codon_set_id] = exp(sum_weighted_counts / sum(codon_counts.values()))
+                                weighted_count_sum += codon_counts[codon] * log_weight
+                        cub_dict[codon_set_id] = exp(weighted_count_sum / sum(codon_counts.values()))
                 elif self.codon_usage_bias == 'delta':
                     residue_frequencies.pop(-1) # remove ribosomal protein ref from "queries"
                     for codon_set_id, codon_counts in residue_frequencies.items():
                         query_synonymous_frequencies = relative_frequencies[codon_set_id]
-                        sum_weighted_counts = 0
+                        weighted_count_sum = 0
                         skipped_codon_count = 0
                         for codon, codon_count in codon_counts.items():
                             query_synonymous_frequency = query_synonymous_frequencies[codon]
@@ -297,12 +297,12 @@ class ReportCodonFrequencies:
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
-                            sum_weighted_counts += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
+                            weighted_count_sum += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
                         retained_codon_count = (sum(codon_counts.values()) - skipped_codon_count)
                         if retained_codon_count < self.min_codon_count:
                             short_codon_sets.append(codon_set_id)
                             continue
-                        cub_dict[codon_set_id] = sum_weighted_counts / retained_codon_count
+                        cub_dict[codon_set_id] = weighted_count_sum / retained_codon_count
 
 
         if len(noncoding_genes_skipped):
