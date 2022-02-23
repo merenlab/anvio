@@ -143,7 +143,9 @@ class ReportCodonFrequencies:
             elif self.codon_usage_bias:
                 if self.kofam_groups: # gene groups compared to each other or ribosomal protein ref
                     for kofam in self.gene_kofam_dict[gene_caller_id]:
-                        for group in self.kofam_group_dict[kofam]:
+                        for group_index, group in enumerate(self.kofam_group_dict[kofam]):
+                            if group_index > 0:
+                                gene_counts = Counter(F(gene_call, self.c.contig_sequences))
                             try:
                                 residue_frequencies[group] += gene_counts
                             except KeyError:
@@ -156,7 +158,6 @@ class ReportCodonFrequencies:
                             residue_frequencies[-1] += gene_counts
                         except KeyError:
                             residue_frequencies[-1] = gene_counts
-                        continue
                     residue_frequencies[gene_caller_id] = gene_counts
             else:
                 residue_frequencies[gene_caller_id] = gene_counts
