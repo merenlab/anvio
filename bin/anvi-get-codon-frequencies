@@ -243,20 +243,24 @@ class ReportCodonFrequencies:
                     for codon_set_id, ref_codon_set_id in comparisons:
                         cub_subdict = cub_dict[codon_set_id]
                         codon_counts = residue_frequencies[codon_set_id]
-                        synonymous_frequencies = relative_frequencies[codon_set_id]
+                        query_synonymous_frequencies = relative_frequencies[codon_set_id]
                         ref_synonymous_frequencies = relative_frequencies[ref_codon_set_id]
                         sum_weighted_counts = 0
                         skipped_codon_count = 0
                         for codon, codon_count in codon_counts.items():
-                            synonymous_frequency = synonymous_frequencies[codon]
+                            query_synonymous_frequency = query_synonymous_frequencies[codon]
                             ref_synonymous_frequency = ref_synonymous_frequencies[codon]
-                            if synonymous_frequency == -1 or ref_synonymous_frequency <= 0:
+                            if query_synonymous_frequency == -1 or ref_synonymous_frequency <= 0:
                                 # A value of -1 means a missing amino acid in one codon set of the other
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
-                            sum_weighted_counts += codon_count * natural_log(synonymous_frequency / ref_synonymous_frequency)
-                        cub_subdict[codon_set_id] = sum_weighted_counts / (sum(codon_counts.values()) - skipped_codon_count)
+                            sum_weighted_counts += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
+                        retained_codon_count = (sum(codon_counts.values()) - skipped_codon_count)
+                        if retained_codon_count < self.min_codon_count:
+                            short_codon_sets.append(codon_set_id)
+                            continue
+                        cub_subdict[codon_set_id] = sum_weighted_counts / retained_codon_count
             else: # ribosomal protein ref
                 ref_synonymous_frequencies = relative_frequencies[-1]
                 missing_amino_acids = [] # in the ref set
@@ -282,33 +286,42 @@ class ReportCodonFrequencies:
                 elif self.codon_usage_bias == 'delta':
                     residue_frequencies.pop(-1) # remove ribosomal protein ref from "queries"
                     for codon_set_id, codon_counts in residue_frequencies.items():
-                        synonymous_frequencies = relative_frequencies[codon_set_id]
+                        query_synonymous_frequencies = relative_frequencies[codon_set_id]
                         sum_weighted_counts = 0
                         skipped_codon_count = 0
                         for codon, codon_count in codon_counts.items():
-                            synonymous_frequency = synonymous_frequencies[codon]
+                            query_synonymous_frequency = query_synonymous_frequencies[codon]
                             ref_synonymous_frequency = ref_synonymous_frequencies[codon]
-                            if synonymous_frequency == -1 or ref_synonymous_frequency <= 0: # missing amino acid in one codon set of the other
+                            if query_synonymous_frequency == -1 or ref_synonymous_frequency <= 0: # missing amino acid in one codon set of the other
                                 # A value of -1 means a missing amino acid in one codon set of the other
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
-                            sum_weighted_counts += codon_count * natural_log(synonymous_frequency / ref_synonymous_frequency)
-                        cub_dict[codon_set_id] = sum_weighted_counts / (sum(codon_counts.values()) - skipped_codon_count)
+                            sum_weighted_counts += codon_count * natural_log(query_synonymous_frequency / ref_synonymous_frequency)
+                        retained_codon_count = (sum(codon_counts.values()) - skipped_codon_count)
+                        if retained_codon_count < self.min_codon_count:
+                            short_codon_sets.append(codon_set_id)
+                            continue
+                        cub_dict[codon_set_id] = sum_weighted_counts / retained_codon_count
 
 
         if len(noncoding_genes_skipped):
-            self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
-                             "'noncoding' gene calls." % (len(noncoding_genes_skipped), len(self.gene_caller_ids)))
+            self.run.warning(f"{len(noncoding_genes_skipped)} of {len(self.gene_caller_ids)} "
+                             f"{'gene_groups' if self.kofam_groups else 'genes'} were skipped "
+                             "and will not be in the final report since they were 'noncoding' gene calls.")
 
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
 
         if self.codon_usage_bias:
+            if short_codon_sets:
+                self.run.warning(f"{len(short_codon_sets)} of {len(self.gene_caller_ids)} "
+                                 f"{'gene_groups' if self.kofam_groups else 'genes'} did not have "
+                                 f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
             if self.omnibias:
                 if missing_amino_acids:
-                    self.run.warning("The following amino acids were not observed "
-                                     f"in the given numbers of {'gene groups' if self.kofam_groups else 'genes'}: "
+                    self.run.warning("The following amino acids were not observed in the given numbers of"
+                                     f"{'gene groups' if self.kofam_groups else 'genes'}: "
                                      f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
                 row_count = len(cub_dict)
                 cub_rows = []
@@ -319,8 +332,8 @@ class ReportCodonFrequencies:
                 cub_df.to_csv(self.output_file_path, sep='\t')
             else: # ribosomal protein ref
                 if missing_amino_acids:
-                    self.run.warning("The following amino acids were not observed "
-                                     f"in ribosomal proteins annotated by KOfams: {', '.join(missing_amino_acids)}")
+                    self.run.warning("The following amino acids were not observed in ribosomal proteins annotated by KOfams: "
+                                     f"{', '.join(missing_amino_acids)}")
                 first_col_header = 'kofam_group' if self.kofam_groups else 'gene_id'
                 cub_df = pd.DataFrame(zip(cub_dict, cub_dict.values()),
                                       columns=[first_col_header, self.codon_usage_bias])
@@ -441,8 +454,8 @@ if __name__ == '__main__':
                                                                                 suggesting that you abort mission if you have not used `--kofam-groups`,\
                                                                                 since comparing the codon usage of every gene seems pretty weird.")
     groupC.add_argument('--min-codon-count', default=100, type=int, help="Do not calculate codon usage bias for genes (or groups of genes) with fewer than this number of codons\
-                                                                          in the gene after also subtracting the number of codons in the gene that cannot be compared to the reference\
-                                                                          due to the reference's lack of any codons for the corresponding amino acid.")
+                                                                          in the gene after also subtracting the number of ignored codons. Ignored codons cannot be compared\
+                                                                          to the reference as it would involve dividing by or taking the log of zero in the statistic.")
 
     args = parser.get_args(parser)
 
