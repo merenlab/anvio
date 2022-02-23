@@ -523,7 +523,7 @@ class Inversions:
                     elif not evidence_right:
                         if inversion_candidate.v1_right in read:
                             evidence += 'v1_right'
-                            evidence_rigth = True
+                            evidence_right = True
 
                             if evidence_left:
                                 match = True
