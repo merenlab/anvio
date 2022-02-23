@@ -130,13 +130,15 @@ if __name__ == '__main__':
                     "from."}))
 
 
-    groupG = parser.add_argument_group('OTHER PARAMETERS OF CONVENIENCE', "For the never satisfied.")
+    groupG = parser.add_argument_group('TARGETED SEARCH & PROCESSING', "By default anvi'o process every region of every "
+                    "contig it is given. Using the following three parameters, you can limit your search to a particular "
+                    "contig, start position, or end position. You can use ANY COMBINATION of these three. For instance, "
+                    "if you focus on a particular contig only, all regions identified in it by FWD/FWD or REV/REV reads. "
+                    "You can limit the search space on that contig using target region start and end parameters.")
     groupG.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
-    groupG.add_argument('--only-report-from', default=None, type=str, help="This is more of a debugging flag more than anything, and can be "
-                    "helpful to work on problematic cases over and over again. To engage this mode, you need to mention a region mentioned in "
-                    "in your output file or printouts you see when you use the `--verbose` flag. It will be different from project to project, "
-                    "but it should look something like this: CONTIG_NAME_5364768_5365139. When declared, anvi'o will only report data from this "
-                    "particular region, and nothing at all if it does not find it in your while processing palindromes.", metavar="REGION_STRING")
+    groupG.add_argument('--target-contig', default=None, type=str, help="Contig name of interest.", metavar="CONTIG_NAME")
+    groupG.add_argument('--target-region-start', default=None, type=int, help="The start position of the region of interest.", metavar="START")
+    groupG.add_argument('--target-region-end', default=None, type=int, help="The end position of the region of interest.", metavar="END")
 
     groupG = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupG.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
