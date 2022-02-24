@@ -341,13 +341,13 @@ class ReportCodonFrequencies:
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
 
         if self.codon_usage_bias:
-            if short_codon_sets:
-                self.run.warning(f"{len(short_codon_sets)} of {len(self.gene_caller_ids)} "
-                                 f"{'gene_groups' if self.kofam_groups else 'genes'} did not have "
-                                 f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
             if self.omnibias:
+                if short_codon_sets:
+                    self.run.warning(f"{len(short_codon_sets)} of {int((len(self.gene_caller_ids) ** 2 - len(self.gene_caller_ids)) / 2)} "
+                                     f"{'gene_group' if self.kofam_groups else 'gene'} comparisons did not have "
+                                     f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
                 if missing_amino_acids:
-                    self.run.warning("The following amino acids were not observed in the given numbers of"
+                    self.run.warning("The following amino acids were not observed in the given numbers of "
                                      f"{'gene groups' if self.kofam_groups else 'genes'}: "
                                      f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
                 row_count = len(cub_dict)
@@ -364,6 +364,10 @@ class ReportCodonFrequencies:
                 cub_df = pd.DataFrame(cub_rows, index=cub_dict, columns=cub_dict)
                 cub_df.to_csv(self.output_file_path, sep='\t')
             else: # ribosomal protein ref
+                if short_codon_sets:
+                    self.run.warning(f"{len(short_codon_sets)} of {len(self.gene_caller_ids)} "
+                                     f"{'gene_groups' if self.kofam_groups else 'genes'} did not have "
+                                     f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
                 if missing_amino_acids:
                     self.run.warning("The following amino acids were not observed in ribosomal proteins annotated by KOfams: "
                                      f"{', '.join(missing_amino_acids)}")
