@@ -366,7 +366,7 @@ class ReportCodonFrequencies:
             else: # ribosomal protein ref
                 if short_codon_sets:
                     self.run.warning(f"{len(short_codon_sets)} of {len(self.gene_caller_ids)} "
-                                     f"{'gene_groups' if self.kofam_groups else 'genes'} did not have "
+                                     f"{'gene groups' if self.kofam_groups else 'genes'} did not have "
                                      f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
                 if missing_amino_acids:
                     self.run.warning("The following amino acids were not observed in ribosomal proteins annotated by KOfams: "
