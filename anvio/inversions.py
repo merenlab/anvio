@@ -730,7 +730,7 @@ class Inversions:
             # metagenomes, but useless for isolate genomes with a single contig.
             if contig_name not in gene_calls_per_contig:
                 where_clause = f'''contig="{contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
-                gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause)
+                gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
 
             gene_calls_in_contig = gene_calls_per_contig[contig_name]
 
