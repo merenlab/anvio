@@ -162,8 +162,8 @@ class ReportCodonFrequencies:
             else:
                 residue_frequencies[gene_caller_id] = gene_counts
 
-        # Remove single codon amino acids for CUB
-        ignored_codons_in_cub = constants.AA_to_codons['Met'] + constants.AA_to_codons['Trp'] + constants.AA_to_codons['STP']
+        # For CUB, remove single codon amino acids and codons with "N" nucleotide which were recorded as "None"
+        ignored_codons_in_cub = constants.AA_to_codons['Met'] + constants.AA_to_codons['Trp'] + constants.AA_to_codons['STP'] + [None]
         for gene_counts in residue_frequencies.values():
             for ignored_codon in ignored_codons_in_cub:
                 try:
