@@ -196,6 +196,7 @@ class ReportCodonFrequencies:
             relative_frequencies = OrderedDict()
             short_codon_sets = []
             codon_set_ids_to_remove = []
+            missing_amino_acids = Counter()
             for codon_set_id, codon_counts in residue_frequencies.items():
                 if sum(codon_counts.values()) < self.min_codon_count:
                     short_codon_sets.append(codon_set_id)
@@ -204,17 +205,18 @@ class ReportCodonFrequencies:
                 relative_frequencies[codon_set_id] = synonymous_frequencies = {}
                 for amino_acid, synonymous_codons in synonymous_codon_groups.items():
                     total_aa_codon_count = sum([codon_counts[codon] for codon in synonymous_codons])
-                    for codon in synonymous_codons:
-                        if total_aa_codon_count:
+                    if total_aa_codon_count:
+                        for codon in synonymous_codons:
                             synonymous_frequencies[codon] = codon_counts[codon] / total_aa_codon_count
-                        else:
+                    else:
+                        missing_amino_acids[amino_acid] += 1
+                        for codon in synonymous_codons:
                             synonymous_frequencies[codon] = -1
             for codon_set_id in codon_set_ids_to_remove:
                 residue_frequencies.pop(codon_set_id)
 
             cub_dict = OrderedDict()
             if self.omnibias:
-                missing_amino_acids = Counter()
                 comparisons = combinations(relative_frequencies, 2)
                 for codon_set_id in relative_frequencies:
                     cub_dict[codon_set_id] = OrderedDict()
@@ -225,8 +227,7 @@ class ReportCodonFrequencies:
                         all_ref_weights[codon_set_id] = ref_weights = {}
                         for amino_acid, synonymous_codons in synonymous_codon_groups.items():
                             max_synonymous_frequency = max([ref_synonymous_frequencies[codon] for codon in synonymous_codons])
-                            if max_synonymous_frequency == -1: # no codons for AA in ribosomal proteins
-                                missing_amino_acids[amino_acid] += 1
+                            if max_synonymous_frequency == -1:
                                 continue
 
                             for codon in synonymous_codon_groups[amino_acid]:
@@ -265,7 +266,7 @@ class ReportCodonFrequencies:
                             query_synonymous_frequency = query_synonymous_frequencies[codon]
                             ref_synonymous_frequency = ref_synonymous_frequencies[codon]
                             if query_synonymous_frequency == -1 or ref_synonymous_frequency <= 0:
-                                # A value of -1 means a missing amino acid in one codon set of the other
+                                # A value of -1 means a missing amino acid in one codon set or the other
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
@@ -278,14 +279,14 @@ class ReportCodonFrequencies:
                             cub_subdict[ref_codon_set_id] = weighted_count_sum / retained_codon_count
             else: # ribosomal protein ref
                 ref_synonymous_frequencies = relative_frequencies[-1]
-                missing_amino_acids = [] # in the ref set
+                ref_missing_amino_acids = [] # in the ref set
 
                 if self.codon_usage_bias == 'cai':
                     ref_weights = {}
                     for amino_acid, synonymous_codons in synonymous_codon_groups.items():
                         max_synonymous_frequency = max([ref_synonymous_frequencies[codon] for codon in synonymous_codons])
                         if max_synonymous_frequency == -1: # no codons for AA in ribosomal proteins
-                            missing_amino_acids.append(amino_acid)
+                            ref_missing_amino_acids.append(amino_acid)
                             continue
 
                         for codon in synonymous_codon_groups[amino_acid]:
@@ -320,7 +321,7 @@ class ReportCodonFrequencies:
                             query_synonymous_frequency = query_synonymous_frequencies[codon]
                             ref_synonymous_frequency = ref_synonymous_frequencies[codon]
                             if query_synonymous_frequency == -1 or ref_synonymous_frequency <= 0: # missing amino acid in one codon set of the other
-                                # A value of -1 means a missing amino acid in one codon set of the other
+                                # A value of -1 means a missing amino acid in one codon set or the other
                                 # A value of 0 in the reference means a missing codon
                                 skipped_codon_count += codon_count
                                 continue
@@ -369,8 +370,12 @@ class ReportCodonFrequencies:
                                      f"{'gene groups' if self.kofam_groups else 'genes'} did not have "
                                      f"more than the minimum {self.min_codon_count} codons required to calculate CUB.")
                 if missing_amino_acids:
+                    self.run.warning("The following amino acids were not observed in the given numbers of "
+                                     f"{'gene groups' if self.kofam_groups else 'genes'}: "
+                                     f"{', '.join(sorted([amino_acid + ' ' + str(count) for amino_acid, count in missing_amino_acids.items()]))}")
+                if ref_missing_amino_acids:
                     self.run.warning("The following amino acids were not observed in ribosomal proteins annotated by KOfams: "
-                                     f"{', '.join(missing_amino_acids)}")
+                                     f"{', '.join(ref_missing_amino_acids)}")
                 first_col_header = 'kofam_group' if self.kofam_groups else 'gene_id'
                 cub_df = pd.DataFrame(zip(cub_dict, cub_dict.values()),
                                       columns=[first_col_header, self.codon_usage_bias])
