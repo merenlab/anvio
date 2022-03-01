@@ -197,7 +197,7 @@ class ReportCodonFrequencies:
             short_codon_sets = []
             codon_set_ids_to_remove = []
             missing_amino_acids = Counter()
-            for codon_set_id, codon_counts in residue_frequencies.items():
+            for codon_set_id, codon_counts in sorted(residue_frequencies.items()):
                 if sum(codon_counts.values()) < self.min_codon_count:
                     short_codon_sets.append(codon_set_id)
                     codon_set_ids_to_remove.append(codon_set_id)
