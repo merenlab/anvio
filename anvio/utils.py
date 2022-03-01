@@ -425,7 +425,10 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
 
 
 class CoverageStats:
-    """This class should replace `coverage_c` function in bamops"""
+    """A class to return coverage stats for an array of nucleotide level coverages.
+
+    FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+    """
 
     def __init__(self, coverage, skip_outliers=False):
         self.min = np.amin(coverage)
@@ -446,7 +449,7 @@ class CoverageStats:
         if skip_outliers:
             self.is_outlier = None
         else:
-            self.is_outlier = utils.get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+            self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
 
 class RunInDirectory(object):
@@ -655,7 +658,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -677,6 +681,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
         If True, file object will not be closed after writing the dictionary to the file
+    do_not_write_key_column: boolean
+        If True, the first column (keys of the dictionary) will not be written to the file. For use in
+        instances when the key is meaningless or arbitrary.
 
     Returns
     =======
@@ -702,9 +709,15 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             raise ConfigError("Your header item conversion dict is missing keys for one or "
                               "more headers :/ Here is a list of those that do not have any "
                               "entry in the dictionary you sent: '%s'." % (', '.join(missing_headers)))
-        header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
+        if do_not_write_key_column:
+            header_text = '\t'.join([header_item_conversion_dict[h] for h in headers[1:]])
+        else:
+            header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
-        header_text = '\t'.join(headers)
+        if do_not_write_key_column:
+            header_text = '\t'.join(headers[1:])
+        else:
+            header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
         tab = '\t'
@@ -730,7 +743,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                   "missing.")
 
     for k in keys_order:
-        line = [str(k)]
+        if do_not_write_key_column:
+            line = []
+        else:
+            line = [str(k)]
         for header in headers[1:]:
             try:
                 val = d[k][header]
@@ -1105,9 +1121,9 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
 
         try:
             if fields_of_interest:
-                vector = [float(fields[i]) for i in fields_of_interest]
+                vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
-                vector = [float(f) for f in fields]
+                vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
 
@@ -1777,6 +1793,60 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
             os.remove(f)
 
     return dest_file
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches):
+    """A function to merge stretches of indices in an array.
+
+    It takes an array, `stretches`, that looks like this:
+
+        >>> [(3, 9), (14, 27), (32, 36), (38, 42)]
+
+    And returns an array like this, if `min_distance_between_independent_stretches`, say, 3:
+
+        >>> [(3, 9), (14, 27), (32, 42)]
+
+    """
+    stretches_to_merge = []
+
+    # The following state machine determines which entries in a given array
+    # should be merged
+    CURRENT = 0
+    START, END = 0, 1
+    while 1:
+        if not len(stretches):
+            break
+
+        NEXT = CURRENT + 1
+
+        if NEXT == len(stretches):
+            stretches_to_merge.append([stretches[CURRENT]])
+            break
+
+        while 1:
+            if NEXT > len(stretches):
+                break
+
+            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
+                NEXT = NEXT + 1
+
+                if NEXT == len(stretches):
+                    break
+            else:
+                break
+
+        if NEXT > len(stretches):
+            break
+        elif NEXT - CURRENT == 1:
+            stretches_to_merge.append([stretches[CURRENT]])
+            CURRENT += 1
+        else:
+            stretches_to_merge.append(stretches[CURRENT:NEXT])
+            CURRENT = NEXT + 1
+
+    # here the array `stretches_to_merge` contains all the lists of
+    # stretches that need to be merged.
+    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -3202,6 +3272,54 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
+def get_bams_and_profiles_txt_as_data(file_path):
+    """bams-and-profiles.txt is an anvi'o artifact with four columns.
+
+    This function will sanity check one, process it, and return data.
+    """
+
+    COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
+
+    if not filesnpaths.is_file_tab_delimited(file_path, dont_raise=True):
+        raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
+                          f"The file you have at '{file_path}' is nothing of that sorts.")
+
+    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if not set(expected_columns).issubset(set(columns_found)):
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+
+    names = COLUMN_DATA('name')
+    if len(set(names)) != len(names):
+        raise ConfigError("Every name listed in the `names` column in a bams and profiles txt must be unique :/ "
+                          "You have some redundant names in yours.")
+
+    contigs_db_paths = COLUMN_DATA('contigs_db_path')
+    if len(set(contigs_db_paths)) != 1:
+        raise ConfigError("All single profiles in bams and profiles file must be associated with the same "
+                          "contigs database. Meaning, you have to use the same contigs database path for "
+                          "every entry. Confusing? Yes. Still a rule? Yes.")
+
+    profile_db_paths = COLUMN_DATA('profile_db_path')
+    if len(set(profile_db_paths)) != len(profile_db_paths):
+        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+
+    bam_file_paths = COLUMN_DATA('bam_file_path')
+    if len(set(bam_file_paths)) != len(bam_file_paths):
+        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+
+    contigs_db_path = contigs_db_paths[0]
+    profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
+    for sample_name in profiles_and_bams:
+        profiles_and_bams[sample_name].pop('contigs_db_path')
+        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+
+    return contigs_db_path, profiles_and_bams
+
+
 def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
 
@@ -3246,6 +3364,36 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
 
     return samples_txt
+
+
+def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
+    """Primers-txt is an anvi'o artifact for primer sequencs."""
+
+    filesnpaths.is_file_tab_delimited(file_path)
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if 'name' not in columns_found:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have a column that is called `name` for the primer name.")
+
+    if 'primer_sequence' not in columns_found:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have a column that is called `primer_sequence` for the primer sequence.")
+
+    if len(columns_found) < 2:
+        progress.reset()
+        raise ConfigError("A primers-txt file should have at least two columns - one for primer names, and one for primer sequences.")
+
+    item_column = columns_found[0]
+    if item_column != 'name':
+        progress.reset()
+        raise ConfigError("The first column in your primers-txt file does not seem to be `name`. Anvi'o expects the first "
+                          "column to have sequence names.")
+
+    primers_txt = get_TAB_delimited_file_as_dictionary(file_path)
+
+    return primers_txt
 
 
 def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
@@ -3971,11 +4119,10 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     cdb = dbi(contigs_db_path)
 
     if cdb.hash != pdb.hash:
-        raise ConfigError('The contigs database and the profile database does not '
-                          'seem to be compatible. More specifically, this contigs '
-                          'database is not the one that was used when %s generated '
-                          'this profile database (%s != %s).'\
-                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
+        raise ConfigError(f"The contigs database and the profile database at '{profile_db_path}' "
+                          f"does not seem to be compatible. More specifically, this contigs "
+                          f"database is not the one that was used when %s generated this profile "
+                          f"database (%s != %s)." % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
     return True
 
 
@@ -4441,3 +4588,54 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+def split_by_delim_not_within_parens(d, delims, return_delims=False):
+    """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+    This function exists because regular expressions don't handle nested parentheses very well.
+
+    The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
+    instead of the list of splits in this situation)
+
+    PARAMETERS
+    ==========
+    d : str
+        string to split
+    delims : str or list of str
+        a single delimiter, or a list of delimiters, to split on
+    return_delims : boolean
+        if this is true then the list of delimiters found between each split is also returned
+
+    RETURNS
+    =======
+    If parentheses are unbalanced in the string, this function returns False. Otherwise:
+    splits : list
+        strings that were split from d
+    delim_list : list
+        delimiters that were found between each split (only returned if return_delims is True)
+    """
+
+    parens_level = 0
+    last_split_index = 0
+    splits = []
+    delim_list = []
+    for i in range(len(d)):
+        # only split if not within parentheses
+        if d[i] in delims and parens_level == 0:
+            splits.append(d[last_split_index:i])
+            delim_list.append(d[i])
+            last_split_index = i + 1 # we add 1 here to skip the space
+        elif d[i] == "(":
+            parens_level += 1
+        elif d[i] == ")":
+            parens_level -= 1
+
+        # if parentheses become unbalanced, return False to indicate this
+        if parens_level < 0:
+            return False
+    splits.append(d[last_split_index:len(d)])
+
+    if return_delims:
+        return splits, delim_list
+    return splits

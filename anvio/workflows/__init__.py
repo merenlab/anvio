@@ -70,7 +70,7 @@ class WorkflowSuperClass:
 
         # if this class is being inherited from a snakefile that was 'included' from
         # within another snakefile.
-        self.slave_mode = A('slave_mode')
+        self.this_workflow_is_inherited_by_another = A('this_workflow_is_inherited_by_another')
 
         if self.config_file:
             filesnpaths.is_file_json_formatted(self.config_file)
@@ -134,7 +134,7 @@ class WorkflowSuperClass:
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
 
         # lets check everything
-        if not self.slave_mode:
+        if not self.this_workflow_is_inherited_by_another:
             self.check_config()
             self.check_rule_params()
 
@@ -211,7 +211,7 @@ class WorkflowSuperClass:
            snake file `get_workflow_snake_file_path(self.name)`, it can be called with
            a compiled snakemake `workflow` instance."""
 
-        if self.slave_mode:
+        if self.this_workflow_is_inherited_by_another:
             return
 
         self.progress.new('Bleep bloop')
@@ -244,11 +244,11 @@ class WorkflowSuperClass:
 
             if u.is_program_exists('dot', dont_raise=True):
                 dot_log_file = filesnpaths.get_temp_file_path()
-                u.run_command(['dot', '-Tpng', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.png'], dot_log_file)
+                u.run_command(['dot', '-Tpdf', workflow_graph_output_file_path_prefix + '.dot', '-o', workflow_graph_output_file_path_prefix + '.pdf'], dot_log_file)
                 os.remove(dot_log_file)
-                self.run.info('Workflow PNG file', workflow_graph_output_file_path_prefix + '.png')
+                self.run.info('Workflow PDF file', workflow_graph_output_file_path_prefix + '.pdf')
             else:
-                self.run.warning("Well, anvi'o was going to try to save a nice PNG file for your workflow "
+                self.run.warning("Well, anvi'o was going to try to save a nice PDF file for your workflow "
                                  "graph, but clearly you don't have `dot` installed on your system. That's OK. You "
                                  "have your dot file now, and you can Google 'how to view dot file on [your operating "
                                  "system goes here]', and install necessary programs (like .. `dot`).")
@@ -273,7 +273,7 @@ class WorkflowSuperClass:
           See https://github.com/merenlab/anvio/issues/1316 for discussion.
         """
 
-        if self.slave_mode:
+        if self.this_workflow_is_inherited_by_another:
             return
 
         shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
@@ -633,7 +633,7 @@ def get_workflow_snake_file_path(workflow):
     workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
 
     if not os.path.isdir(workflow_dir):
-        raise ConfigError("Anvi'o does not know about the workflow '%s' :/")
+        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
 
     snakefile_path = os.path.join(workflow_dir, 'Snakefile')
 
@@ -665,18 +665,19 @@ def get_fields_for_fasta_information():
 
 
 def get_workflow_module_dict():
-
     from anvio.workflows.contigs import ContigsDBWorkflow
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
     from anvio.workflows.trnaseq import TRNASeqWorkflow
+    from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
-                      'trnaseq': TRNASeqWorkflow}
+                      'trnaseq': TRNASeqWorkflow,
+                      'ecophylo': EcoPhyloWorkflow}
 
     return workflows_dict
 

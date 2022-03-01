@@ -5,6 +5,7 @@
 
 ## Original Author: Amy Willis, March 2020
 ## Generalized by: Iva Veseli, Sept 2020
+## Last updated: Amy Willis, November 2021
 
 ## Usage:
 #         anvi-script-enrichment-stats --input=input.txt --output=output.txt
@@ -115,7 +116,7 @@ if (file.access(opts$input) == -1) {
 df_in <- readr::read_tsv(file = opts$input, col_types = cols())
 
 if (nrow(df_in) < 2) {
-    stop(sprintf("Your input file contains less than two lines :/ Not OK."))
+  stop(sprintf("Your input file contains less than two lines :/ Not OK."))
 }
 
 # Find number of groups
@@ -130,13 +131,13 @@ if (num_groups %% 1 != 0) {
 
 # make sure the input file contains expected columns
 for (column_name in c("accession", "associated_groups")) {
-    if (not (column_name %in% colnames(df_in)))
-        stop(sprintf("The input file '%s' does not contain an essential column ('%s').", opts$input, column_name))
+  if (not (column_name %in% colnames(df_in)))
+    stop(sprintf("The input file '%s' does not contain an essential column ('%s').", opts$input, column_name))
 }
 
 # make sure associated_groups column includes group names.
 if (nrow(drop_na(distinct(df_in, associated_groups))) == 0) {
-    stop(sprintf("You have no group associations in your data. Which means, nothing is differentially occurring across your groups :/"))
+  stop(sprintf("You have no group associations in your data. Which means, nothing is differentially occurring across your groups :/"))
 }
 
 # Set up functions to run
@@ -159,32 +160,87 @@ get_unadjusted_p_value <- function(anova_output) {
                 stop("glm gave you a not-small test statistic but a missing p-value. This shouldn't happen! But it has, please submit an issue on our GitHub and tag @adw96 :)")))
 }
 
+# multiple functions have the same data, so get only unique data rows
+df_unique <- df_in %>%
+  select(names(df_in)[n_columns_before_data + (1 : (num_groups * 2))]) %>%
+  distinct %>%
+  add_column("data_structure_index" = 1:nrow(.), .before=1)
+
 # fit the GLMs in a nifty way using nest()
-w_models <- df_in %>%
-  gather(key = "type", value = "value", -c(1:n_columns_before_data)) %>%
+w_models_unique <- df_unique %>%
+  pivot_longer(cols = -1, names_to="type", values_to="value") %>%
   separate(type, into = c("type", "group"), sep = "_", extra = "merge") %>%
-  spread(type, value) %>%
-  mutate(x = N * p) %>%
+  pivot_wider(names_from="type", values_from="value") %>%
+  mutate(x = round(N * p)) %>%
   select(-p) %>%
-  group_by(accession) %>%
+  group_by(data_structure_index) %>%
   nest %>%
   mutate(model = map(data, run_test_no_spread))
 
 # get the p-values & enrichment_scores
-pvalues_df <- w_models %>%
-  transmute(accession,
+pvalues_df_unique <- w_models_unique %>%
+  transmute(data_structure_index,
             "unadjusted_p_value" = map_dbl(model, get_unadjusted_p_value),
             "enrichment_score" = map_dbl(model, get_enrichment_score))
+
+# Rao test statistic should always be positive. However,
+# it happens that Rao test statistics are numerically negative
+# but close to zero. If they are large and negative (say, smaller than
+# 0.00001), we should throw an error:
+if (min(pvalues_df_unique$enrichment_score) < -1e-5) {
+  message("A Rao test statistic is large and negative, oh my!")
+  message("Here are the rows where the test statistic was negative:")
+
+  pvalues_df_unique %>%
+    filter(enrichment_score < -1e-5) %>%
+    arrange(desc(enrichment_score)) %>%
+    print(n = Inf)
+
+  stop("Something has gone terribly wrong, and it's Amy's fault. Please let her know ASAP so she can fix it!")
+}
+
+pvalues_df <- df_unique %>%
+  inner_join(pvalues_df_unique, by = "data_structure_index") %>%
+  select(-data_structure_index) %>%
+  inner_join(df_in, .,
+             by = names(df_in)[n_columns_before_data + (1 : (num_groups * 2))])
 
 # find the maximum lambda for qvalue
 # reasons for this change documented at https://github.com/merenlab/anvio/issues/1383
 max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+lambdas <- seq(0.05, max_lambda, 0.05)
+
+# obtain an estimate of the proportion of features that are truly null
+pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
+                              lambda = lambdas, pi0.method="smoother")$pi0,
+               silent=T)
+
+
+if ("try-error" %in% class(pi0_est)) {
+
+  # Sometimes, especially when there are many of p-values near 0.5 and fewer near 1
+  # (documented at https://github.com/merenlab/anvio/issues/1828),
+  # we can't reliably do the extrapolation we want. Let's instead just say
+  # that features with p-values above 0.2 are likely null, and use that to estimate
+  # the proportion of features that are truly null.
+  lambdas <- 0.2
+  pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
+                                lambda = lambdas, pi0.method="smoother")$pi0,
+                 silent=T)
+
+  if ("try-error" %in% class(pi0_est)) {
+
+    stop("Doh! We still can't estimate the proportion of features that are truly null. It's Amy's fault, so please let her know ASAP so she can fix it!")
+
+  }
+
+}
 
 # get the q-values, then format the data and save
-enrichment_output <- pvalues_df %>%
-  mutate("adjusted_q_value" = qvalue::qvalue(unadjusted_p_value,
-                                             lambda = seq(0.05, max_lambda, 0.05))$qvalues) %>%
-  left_join(df_in, by = "accession") %>%
+qvalues_df <- pvalues_df %>%
+  mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+
+enrichment_output <- qvalues_df %>%
   select(names(df_in)[1],  # e.g. COG_FUNCTION
          enrichment_score,
          unadjusted_p_value,
@@ -194,23 +250,7 @@ enrichment_output <- pvalues_df %>%
          names(df_in)[3],
          names(df_in)[n_columns_before_data + (1 : (num_groups * 2))])
 
-# Rao test statistic should always be positive. However,
-# it happens that Rao test statistics are numerically negative
-# but close to zero. If they are large and negative (say, smaller than
-# 0.00001), we should throw an error:
-if (min(enrichment_output$enrichment_score) < -1e-5) {
-  message("A Rao test statistic is large and negative, oh my!")
-  message("Here are the rows where the test statistic was negative:")
-
-  enrichment_output %>%
-    filter(enrichment_score < 0) %>%
-    arrange(desc(enrichment_score)) %>%
-    print(n = Inf)
-
-  stop("Something has gone terribly wrong, and it's Amy's fault. Please let her know ASAP so she can fix it!")
-}
-
-# If they are small and negative, just set them to zero. Then,
+# If they are small and negative (checked earlier), just set them to zero. Then,
 # order the columns from largest to smallest enrichment score:
 enrichment_output %<>%
   mutate("enrichment_score" = pmax(0, enrichment_score)) %>%

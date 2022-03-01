@@ -64,6 +64,7 @@ var layer_order;
 var sample_names;
 
 var current_state_name = "";
+var a_default_state_is_found = false;
 
 var collapsedNodes = [];
 
@@ -214,6 +215,9 @@ function initData() {
             switchUserInterfaceMode(response.project, response.title);
             setupDescriptionPanel(response.description);
 
+            if (response.state[0] && response.state[0] == 'default')
+                a_default_state_is_found = true;
+
             document.title = response.title;
             $('#title-panel-first-line').text(response.title);
 
@@ -253,7 +257,6 @@ function initData() {
             }
 
             loadOrderingAdditionalData(default_order);
-
 
             var default_view = response.views[0];
             var available_views = response.views[2];
@@ -1222,12 +1225,12 @@ function buildLayersTable(order, settings)
                         if (_unique_items.indexOf(layerdata[_pos][layer_id]) === -1)
                             _unique_items.push(layerdata[_pos][layer_id]);
 
-                        if (_unique_items.length > 20) {
-                            toastr.info("Too many categorical values for the layer '" + layer_name + "' to be shown in colors, switching to text.");
+                        if (_unique_items.length > 250 && !a_default_state_is_found) {
+                            toastr.warning("The layer '" + layer_name + "' has TOO MANY unique categorical values " +
+                                           "to be shown as colors (precisely " + _unique_items.length + " of them) :/ " +
+                                           "So, anvi'o set the `height` value of this layer to 0. You can change it " +
+                                           "from the 'Main' panel, and tame your colors through the 'Legends' panel.");
                             height = '0';
-                            type = 'text';
-                            // we have at least one text layer, we can show max font size input
-                            $('.max-font-size-input').show();
                             break;
                         }
                     }
@@ -2669,7 +2672,7 @@ function processState(state_name, state) {
     }
 
     if (state.hasOwnProperty('begins-from-branch')) {
-        $('#begins_from_branch').val(state['begins-from-branch'])
+        $('#begins_from_branch').prop('checked', state['begins-from-branch'])
     }
 
     // bootstrap values

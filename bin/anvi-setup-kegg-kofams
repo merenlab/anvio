@@ -26,15 +26,18 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
-    groupI = parser.add_argument_group('POSSIBLE INPUT', "Not required for this program to run, but could be useful. Note "
-                                       "that if you provide no parameters, this program will download the frozen "
-                                       "snapshot of the KEGG databases that is associated with the latest release of anvi'o.")
+    groupI = parser.add_argument_group('KEGG DATA SETUP', "This program will set up metabolism "
+                                       "data from the KEGG resource of databases. Note that if you provide no "
+                                       "parameters at all, this program will download the snapshot of KEGG "
+                                       "that is associated with the latest release of anvi'o.")
     groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupI.add_argument(*anvio.A('kegg-archive'), **anvio.K('kegg-archive'))
     groupI.add_argument(*anvio.A('download-from-kegg'), **anvio.K('download-from-kegg'))
     groupI.add_argument(*anvio.A('kegg-snapshot'), **anvio.K('kegg-snapshot'))
-    groupI.add_argument(*anvio.A('reset'), **anvio.K('reset'))
-    groupI.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
 

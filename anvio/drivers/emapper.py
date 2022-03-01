@@ -102,7 +102,8 @@ class EggNOGMapper:
         self.available_parsers = {'2.0.0': self.__parser_3,
                                   '2.0.1': self.__parser_3,
                                   '2.0.5': self.__parser_4,
-                                  '2.1.4': self.__parser_5}
+                                  '2.1.4': self.__parser_5,
+                                  '2.1.6': self.__parser_5}
 
         self.check_version()
 
@@ -320,8 +321,6 @@ class EggNOGMapper:
         F = lambda x: fields[x] and fields[x] != '-'
         A = lambda x, y: self.add_entry(gene_callers_id, y, fields[1], ', '.join(fields[x].split(',')), fields[2]) if (fields[x] and fields[x] != '-') else None
 
-        A(9, 'EGGNOG_GO_TERMS')
-
         if (F(7) and not fields[7].startswith('Protein of unknown function')):
             if F(8):
                 self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[8], fields[7]), fields[2])
@@ -340,15 +339,19 @@ class EggNOGMapper:
                 pass
 
         A(8, 'EGGNOG_GENE_FUNCTION_NAME')
-        A(6, 'EGGNOG_GO_TERMS')
+        A(9, 'EGGNOG_GO_TERMS')
+        A(6, 'EGGNOG_COG_CATEGORY')
         A(10, 'EGGNOG_EC_NUMBER')
         A(11, 'EGGNOG_KEGG_KO')
         A(12, 'EGGNOG_KEGG_PATHWAYS')
         A(13, 'EGGNOG_KEGG_MODULE')
+        A(13, 'EGGNOG_KEGG_REACTION')
+        A(15, 'EGGNOG_KEGG_RCLASS')
         A(16, 'EGGNOG_BRITE')
         A(17, 'EGGNOG_KEGG_TC')
         A(18, 'EGGNOG_CAZy')
         A(19, 'EGGNOG_BiGG_REACTIONS')
+        A(20, 'EGGNOG_PFAMs')
 
 
     def store_annotations_in_db(self, drop_previous_annotations=False):

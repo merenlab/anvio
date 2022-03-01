@@ -6,6 +6,8 @@
  *
  *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
+ * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either
@@ -654,9 +656,13 @@ Bins.prototype.MigrateCollection = function() {
     // we need to migrate exist collection and bind them to newly created objects.
 
     let collection = this.ExportCollection(use_bin_id=true);
-
-    for (let bin_id of Object.keys(collection['data']).sort()) {
-        this.selections[bin_id] = new Set(collection['data'][bin_id].map((node_label) => drawer.tree.GetLeafByName(node_label)));
+    if (collection){
+        for (let bin_id of Object.keys(collection?.['data']).sort() || undefined) {
+            if (typeof bin_id === undefined){
+                return
+            }
+            this.selections[bin_id] = new Set(collection['data'][bin_id].map((node_label) => drawer.tree.GetLeafByName(node_label)));
+        }
     }
 }
 
@@ -724,6 +730,7 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
         let items = [];
 
         for (let node of this.selections[bin_id].values()) {
+            if (node === null) return;
             if (node.IsLeaf()) {
                 items.push(node.label);
             }
@@ -797,6 +804,7 @@ Bins.prototype.RedrawLineColors = function() {
         if (this.selections[bin_id].size) {
             let bin_color = this.GetBinColor(bin_id);
             for (let node of this.selections[bin_id].values()) {
+                if (node === null) return;
                 node.SetColor(bin_color);
             }
         }
@@ -807,7 +815,6 @@ Bins.prototype.DrawInvertedNodes = function(leaf_list, rect_width){
 
     var inverse_fill_opacity = $('#inverse_fill_opacity').val();
     var inverse_color = document.getElementById('inverse_color').getAttribute('color');
-
     let nodes_for_inversion = []
     let calculatedRectX = 0
 
@@ -888,6 +895,7 @@ Bins.prototype.RedrawBins = function() {
 
     for (let bin_id in this.selections) {
         for (let node of this.selections[bin_id].values()) {
+            if (node === null) return;
             if (typeof node === 'undefined')
             {
                 this.selections[bin_id].delete(node);
@@ -1158,6 +1166,7 @@ Bins.prototype.RebuildIntersections = function() {
             removed = false;
 
             for (let node of this.selections[bin_id].values()) {
+                if (node === null) return;
                 if (node.IsLeaf()) {
                     continue;
                 }

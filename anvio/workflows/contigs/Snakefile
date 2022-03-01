@@ -21,11 +21,11 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-slave_mode = False if 'workflows/contigs' in workflow.included[0] else True
-if not slave_mode:
+this_workflow_is_inherited_by_another = False if 'workflows/contigs' in workflow.included[0] else True
+if not this_workflow_is_inherited_by_another:
     # don't be confused, child. when things come to this point, the variable `config`
     # is already magically filled in by snakemake:
-    M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
+    M = ContigsDBWorkflow(argparse.Namespace(config=config, this_workflow_is_inherited_by_another=this_workflow_is_inherited_by_another))
     M.init()
     dirs_dict = M.dirs_dict
 
