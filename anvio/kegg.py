@@ -2267,9 +2267,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         be part of the available coverage/detection headers.
         """
 
-        if not self.profile_db:
-            self.args.skip_consider_gene_dbs = True
-            self.profile_db = ProfileSuperclass(self.args)
+        # obtain list of sample names
+        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
+            samples_list.append(self.contigs_db_project_name)
+
+        else:
+            if not self.profile_db:
+                self.args.skip_consider_gene_dbs = True
+                self.profile_db = ProfileSuperclass(self.args)
+
+            samples_list = self.profile_db.p_meta['samples']
 
         # first we get lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
@@ -2709,10 +2716,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            if self.enzymes_txt:
-                self.coverage_sample_list = self.contigs_db_project_name
-            else:
-                self.coverage_sample_list = self.profile_db.p_meta['samples']
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
+
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -3217,23 +3226,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
                              f"curious, here is one example: {example}")
-
-        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
-        if self.add_coverage and 'coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns:
-            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
-                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
-                             "Since we don't have this data,/874 --add-coverage will not work, so we are turning this "
-                             "flag off. Sorry ¯\_(ツ)_/¯")
-            self.add_coverage = False
-            # remove coverage headers from the list so we don't try to access them later
-            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
-            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
-                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
-            for h in kofam_hits_coverage_headers:
-                self.available_modes["hits_in_modules"]["headers"].remove(h)
-                self.available_modes["hits"]["headers"].remove(h)
-            for h in modules_coverage_headers:
-                self.available_modes["modules"]["headers"].remove(h)
 
         return enzyme_df
 
