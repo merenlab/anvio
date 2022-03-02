@@ -251,7 +251,11 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
+<<<<<<< HEAD
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --kegg-output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
+=======
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
+>>>>>>> parent of 8f39ed479 (Merge branch 'master' of github.com:merenlab/anvio)
 {{ codestop }}
 
 For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
