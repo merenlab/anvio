@@ -79,6 +79,17 @@ anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 {: .notice}
 In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
+### Estimation for a set of enzymes
+
+Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %{enzymes-txt}s file, and give that input file to this program, like so:
+
+{{ codestart }}
+anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s
+{{ codestop }}
+
+The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
+
+
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
 
 If you have a set of contigs databases of the same type (i.e., all of them are single genomes or all are binned metagenomes), you can analyze them all at once. What you need to do is put the relevant information for each %(contigs-db)s into a text file and pass that text file to %(anvi-estimate-metabolism)s. The program will then run estimation individually on each contigs database in the file. The estimation results for each database will be aggregated and printed to the same output file(s).
@@ -251,14 +262,13 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
-<<<<<<< HEAD
-anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --kegg-output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
-=======
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
-<<<<<<< HEAD
->>>>>>> parent of 8f39ed479 (Merge branch 'master' of github.com:merenlab/anvio)
-=======
->>>>>>> parent of 48985e434 (Merge pull request #1890 from merenlab/generalize_xfilter_input)
+{{ codestop }}
+
+This option also works for the `--enzymes-txt` input option, provided that you include _both_ a `coverage` column and a `detection` column in the %{enzymes-txt}s input file.
+
+{{ codestart }}
+anvi-estimate-metabolism --enzymes-txt %{enzymes-txt}s --add-coverage
 {{ codestop }}
 
 For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
