@@ -1791,17 +1791,9 @@ class KeggEstimatorArgs():
             mod_list_str = "None"
 
         if knum not in self.ko_dict:
-            if dont_fail_if_not_found:
-                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
-                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
-                                 f"its function.")
-                metadata_dict["enzyme_definition"] = "UNKNOWN"
-            else:
-                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                                  f"for enzyme {knum} but this enzyme is not in "
-                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
-        else:
-            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                              f"for enzyme {knum} but this enzyme is not in "
+                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
 
         metadata_dict = {}
         metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
@@ -1857,6 +1849,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'mode_type' : 'all',
                                         'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
                                         }
+
+        if self.enzymes_txt:
+            self.contigs_db_project_name = basename(self.enzymes_txt).replace(".", "_")
 
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path:
@@ -3249,9 +3244,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         kofam_gene_split_contig = []
-        # no splits or contigs here
-        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
-            kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
+        # the splits and contigs here are fake
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.xfilter_data["enzyme_accession"]):
+            kofam_gene_split_contig.append((ko,gene_call_id,"s_000000000000","c_000000000000",))
 
         enzyme_metabolism_superdict = {}
         enzyme_ko_superdict = {}
