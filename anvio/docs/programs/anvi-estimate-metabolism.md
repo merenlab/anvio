@@ -255,7 +255,10 @@ If you have a profile database associated with your contigs database and you wou
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --kegg-output-modes modules,kofam_hits_in_modules,kofam_hits --add-coverage
 =======
 anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
+<<<<<<< HEAD
 >>>>>>> parent of 8f39ed479 (Merge branch 'master' of github.com:merenlab/anvio)
+=======
+>>>>>>> parent of 48985e434 (Merge pull request #1890 from merenlab/generalize_xfilter_input)
 {{ codestop }}
 
 For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
