@@ -173,7 +173,7 @@ function loadState() {
       }
     },
     error: function(resp){
-      toastr.error(resp)
+      console.log(resp)
     }
   })
 }

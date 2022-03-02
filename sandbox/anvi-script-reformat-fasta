@@ -163,6 +163,8 @@ def reformat_FASTA(args):
     fasta.close()
     output.close()
 
+    if args.overwrite_input:
+        shutil.move(args.output_file, args.contigs_fasta)
     run.info('Total num contigs', total_num_contigs)
     run.info('Total num nucleotides', total_num_nucleotides)
     run.info('Contigs removed', '%d (%.2f%% of all)' % (total_num_contigs_removed, total_num_contigs_removed * 100.0 / total_num_contigs), mc='green')
