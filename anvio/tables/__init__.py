@@ -15,7 +15,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "20"
-profile_db_version = "38"
+profile_db_version = "37"
 genes_db_version = "6"
 pan_db_version = "15"
 auxiliary_data_version = "2"
@@ -23,7 +23,8 @@ structure_db_version = "2"
 genomes_storage_vesion = "7"
 trnaseq_db_version = "2"
 workflow_config_version = "2"
-metabolic_modules_db_version = "3"
+metabolic_modules_db_version = "2"
+genome_view_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -138,18 +139,6 @@ gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,  
 gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
-
-
-####################################################################################################
-#
-#     ADDITIONAL TABLE DESCRIPTIONS FOR THE TRNASEQ VARIANT OF THE CONTIGS DATABASE
-#
-####################################################################################################
-
-trna_seed_feature_table_name            = 'trna_feature'
-trna_seed_feature_table_structure       = ['gene_callers_id'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]], [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
-trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TRNA_FEATURE_NAMES[: -1]) * 2                                                                                    + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
-
 
 ####################################################################################################
 #
@@ -280,7 +269,7 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 #
 ####################################################################################################
 
-module_table_name = "modules"
+module_table_name = "kegg_modules"
 module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
 module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
@@ -383,7 +372,6 @@ table_requires_unique_entry_id = {'self': False,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
-                                  trna_seed_feature_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
                                   variable_codons_table_name: True,
@@ -416,7 +404,6 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,
                                   pdb_data_table_name: False,
-                                  'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,
                                   trnaseq_sequences_table_name: False,

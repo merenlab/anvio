@@ -54,7 +54,7 @@ if __name__ == '__main__':
                                     anvi'o, and want to see the distribution of your bins across samples. In these cases\
                                     anvi'o will cluster your bins and based on multiple metrics. Because this particular\
                                     clustering will be done on the fly within anvi'o interactive class, you get to define\
-                                    a distance metric and a linkage method using --linkage and --distance parameters if\
+                                    a disntance metric and a linkage method using --linkage and --distance parameters if\
                                     you want!"}))
 
     groupB = parser.add_argument_group('MANUAL INPUTS', "Mandatory input parameters to start the interactive interface\

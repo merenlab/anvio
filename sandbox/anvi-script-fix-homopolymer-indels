@@ -250,7 +250,7 @@ class RefBasedHomopolymerINDELCorrector:
         blast.makedb(dbtype='nucl')
         blast.num_threads = self.num_threads
         blast.max_target_seqs = 1
-        blast.blast(outputfmt='5')
+        blast.blast(outputfmt=5)
 
 
     def parse_blast_output(self):

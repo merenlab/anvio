@@ -1,4 +1,4 @@
-{% set version = "7.1_dev" %}
+{% set version = "7" %}
 
 package:
   name: anvio

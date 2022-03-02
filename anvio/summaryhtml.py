@@ -128,13 +128,6 @@ class SummaryHTMLOutput:
 
         return rendered
 
-@register.filter(name='get_first_line')
-def get_first_line(string):
-    return string.split('\n')[0]
-
-@register.filter(name='get_first_sentence')
-def get_first_line(string):
-    return string.split('.')[0]
 
 @register.filter(name='lookup')
 def lookup(d, index):

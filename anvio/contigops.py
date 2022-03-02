@@ -105,14 +105,14 @@ class Contig:
                 bam,
                 self,
                 read_iterator='fetch',
-                max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
+                max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE,
             )
         else:
             self.coverage.run(
                 bam,
                 self,
                 read_iterator='fetch_filter_and_trim',
-                max_coverage=anvio.auxiliarydataops.DEFAULT_COVERAGE_MAX_VALUE,
+                max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE,
                 percent_id_cutoff=min_percent_identity,
             )
 

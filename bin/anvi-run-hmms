@@ -93,7 +93,7 @@ def main(args):
 
     search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it,
                                      hmm_program_to_use=args.hmmer_program, hmmer_output_directory=args.hmmer_output_dir,
-                                     get_domain_table_output=args.domain_hits_table, add_to_functions_table=args.add_to_functions_table)
+                                     get_domain_table_output=args.domain_hits_table)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
 
-    groupA = parser.add_argument_group("DB", "An anvi'o contigs database to populate with HMM hits")
+    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
     groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
@@ -134,7 +134,6 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 
     groupE = parser.add_argument_group("AUTHORITY", "Because you are the boss.")
-    groupE.add_argument(*anvio.A('add-to-functions-table'), **anvio.K('add-to-functions-table'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)

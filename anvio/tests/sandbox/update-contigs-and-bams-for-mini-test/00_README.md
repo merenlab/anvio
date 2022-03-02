@@ -17,7 +17,7 @@ for this to run. If you don't have reads-for-assembly, you can get it this way:
 
 Only contigs in `_orig.fa` files are going to be used for read recruitment. Which
 means, you can copy a contig into a new file that does not end with `_orig.fa`,
-create a variant of it by modifying it with nucleotide-level or structural changes,
+create a variant of it by modifying it wiht nucleotide-level or structural changes,
 and set the desired coverage of this new variant in a given sample by mentioning
 it in an `.ini` file.
 

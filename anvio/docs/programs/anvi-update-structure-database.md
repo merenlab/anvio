@@ -26,5 +26,4 @@ anvi-update-structure-database -c %(contigs-db)s \
 Now, the program will rerun the analysis for gene 1 and will still add genes 4 and 5 to the %(structure-db)s. 
 
 Both of these runs will have the same MODELLER parameters as your run of %(anvi-gen-structure-database)s. However, to get the raw outputs, you will need to use the parameter `--dump-dir`. You can also set a specific MODELLER program with `--modeller-executable`. Parameters for multi-threading would also have to be given again.
-{:.notice}
-Like %(anvi-gen-structure-database)s, this program also accepts %(external-structures)s.
+

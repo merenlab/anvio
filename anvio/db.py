@@ -157,11 +157,11 @@ class DB:
         while(check_counter < check_limit and filesnpaths.is_file_exists(journal_path, dont_raise=True)):
             if check_counter == 0:
                 # print only once
-                self.run.info_single("It seems the database at '%s' currently used by another process "
+                self.run.info_single("It seems the database at '%s' currently used by another proccess "
                               "for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. "
                               "If you think this is a mistake, you may stop this process and delete the lock file at '%s' after making sure "
-                              "no other active process is using it for writing. In case this program is run by an automatic workflow manager like snakemake "
-                              "Anvi'o will periodically check if the journal file still exists for total of %d minutes. If the database is still not writable "
+                              "no other active process using it for writing. In case this program is ran by automatic workflow manager like snakemake "
+                              "Anvi'o will periodically check if the journal file still exists for total of %d minutes. If database is still not writable "
                               "after that time, Anvi'o will stop running. " % (os.path.abspath(self.db_path), os.path.abspath(journal_path), int(check_limit/60)))
 
             time.sleep(check_interval)

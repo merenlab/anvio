@@ -119,7 +119,7 @@ def is_proper_external_gene_calls_file(file_path):
                 call_type = int(fields[6])
             except ValueError:
                 raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
-                                       "http://anvio.org/help/main/artifacts/external-gene-calls/")
+                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
 
             if call_type not in call_types_allowed:
                 raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
@@ -184,7 +184,7 @@ def is_file_empty(file_path):
     return os.stat(file_path).st_size == 0
 
 
-def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, dont_raise=False):
+def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
@@ -196,34 +196,22 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
             else:
                 break
     except UnicodeDecodeError:
-        if dont_raise:
-            return False
-        else:
-            raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
+        raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
-        if dont_raise:
-            return False
-        else:
-            raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                                   "Did you export this file on MAC using EXCEL? :(" % file_path)
+        raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
+                               "Did you export this file on MAC using EXCEL? :(" % file_path)
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
     if len(num_fields_set) != 1:
-        if dont_raise:
-            return False
-        else:
-            raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
+        raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
 
     if expected_number_of_fields:
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
-            if dont_raise:
-                return False
-            else:
-                raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
-                                       "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
+            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
+                                   "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
     return True
@@ -505,7 +493,7 @@ class AppendableFile:
         if self.append_type and (not isinstance(data, self.append_type)):
             raise FilesNPathsError(f"A programmer promised to send data of type '{self.append_type}' to {self.path} for "
                                    f"appending, but instead sent data of type '{type(data)}'. Since the data type for this "
-                                   "file was explicitly declared and the actual data does not match this type, anvi'o will "
+                                   "file was explicitly declared and the actual data does not match this type, Anvi'o will "
                                    "put a stop to this whole operation.")
 
         if isinstance(data, dict):
@@ -513,7 +501,6 @@ class AppendableFile:
             self.key_header = kwargs['key_header'] if 'key_header' in kwargs else None
             self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
             self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
-            self.do_not_write_key_column = kwargs['do_not_write_key_column'] if 'do_not_write_key_column' in kwargs else False
 
             self.append_dict_to_file(data, self.file_handle)
         elif isinstance(data, str):
@@ -539,13 +526,13 @@ class AppendableFile:
             Pointer to the file, opened in append mode. The calling function should take care of the
             open() and pass the handle here
         """
-        
+
         import anvio.utils as utils
         if is_file_empty(self.path):
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
                                                     key_header=self.key_header, keys_order=self.keys_order, \
                                                     header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column)
+                                                    do_not_close_file_obj=True)
         else:
             # if dictionary is empty, just return
             if not dict_to_append:

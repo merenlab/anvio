@@ -211,7 +211,7 @@ class TablesForTransferRNAs:
         search_results_dict = tables_for_hmm_hits.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self.kind_of_search,
                                                                                                                   search_results_dict,
                                                                                                                   skip_amino_acid_sequences=True)
-        tables_for_hmm_hits.append_to_hmm_hits_table(self.source_name, self.reference, self.kind_of_search, self.domain, self.all_genes_searched_against, search_results_dict)
+        tables_for_hmm_hits.append(self.source_name, self.reference, self.kind_of_search, self.domain, self.all_genes_searched_against, search_results_dict)
 
 
         # when the code comes all the way here, the entries in the search results dict already look like

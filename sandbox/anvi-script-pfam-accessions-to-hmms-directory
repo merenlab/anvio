@@ -86,7 +86,7 @@ def main(args):
         data_dict[pfam_accession] = {}
         data_dict[pfam_accession]['ga'] = get_attribute_from_hmm_file(fp, 'GA ')
         data_dict[pfam_accession]['gene'] = get_attribute_from_hmm_file(fp, 'NAME')
-        data_dict[pfam_accession]['accession'] = get_attribute_from_hmm_file(fp, 'ACC')
+        data_dict[pfam_accession]['accession'] = pfam_accession
         data_dict[pfam_accession]['temp_file_path'] = fp
     progress.end()
 

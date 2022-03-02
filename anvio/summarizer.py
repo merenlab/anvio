@@ -316,10 +316,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         '''
             Compute functional enrichment.
 
-            To learn more refer to the documentation:
-                anvi-compute-functional-enrichment-in-pan -h
-                anvi-compute-functional-enrichment-across-genomes -h
-                anvi-compute-metabolic-enrichment -h
+            To learn more refer to the docummentation:
+                anvi-compute-functional-enrichment -h
         '''
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')

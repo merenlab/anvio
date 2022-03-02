@@ -86,7 +86,6 @@ if __name__ == '__main__':
 
     groupE = parser.add_argument_group('AUTHORITY', "Assert your dominance.")
     groupE.add_argument(*anvio.A('scg-name-for-metagenome-mode'), **anvio.K('scg-name-for-metagenome-mode'))
-    groupE.add_argument(*anvio.A('report-scg-sequences-file-prefix'), **anvio.K('report-scg-sequences-file-prefix'))
     groupE.add_argument(*anvio.A('report-scg-frequencies'), **anvio.K('report-scg-frequencies'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 

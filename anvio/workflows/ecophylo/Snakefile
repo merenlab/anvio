@@ -456,7 +456,6 @@ rule align_sequences:
     run:
         shell("muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}")
 
-
 rule trim_alignment:
     """Trim MSA alignment"""
 
@@ -469,8 +468,11 @@ rule trim_alignment:
         gappyout = M.get_rule_param('trim_alignment', '-gappyout'),
         additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
     threads: M.T('trim_alignment')
-    run:
-        shell('trimal -in {input} -out {output} {params.gappyout} {params.additional_params} 2> {log}')
+    shell:
+        'trimal -in {input} \
+                -out {output} \
+                {params.gappyout} \
+                {params.additional_params} 2> {log}'
 
 
 rule remove_sequences_with_X_percent_gaps:
@@ -484,10 +486,11 @@ rule remove_sequences_with_X_percent_gaps:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
-	run:
-		shell("anvi-script-reformat-fasta {input} -o {output} \
-									              --max-percentage-gaps {params.max_percentage_gaps} \
-									              --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
+	shell:
+		"anvi-script-reformat-fasta {input} \
+									-o {output} \
+									--max-percentage-gaps {params.max_percentage_gaps} \
+									--export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
 
 rule count_num_sequences_filtered:
@@ -595,8 +598,13 @@ if M.run_iqtree == True:
           model = M.get_param_value_from_config(['iqtree', '-m']),
           additional_params = M.get_param_value_from_config(['iqtree', 'additional_params'])
       threads: M.T('iqtree')
-      run:
-          shell('iqtree -s {input} -nt AUTO -m {params.model} -pre {params.outfile}  -T AUTO {params.additional_params} >> {log} 2>&1')
+      shell:
+          "iqtree -s {input} \
+                  -nt AUTO \
+                  -m {params.model} \
+                  -pre {params.outfile} \
+                  -T AUTO \
+                  {params.additional_params} >> {log} 2>&1"
 
 elif M.run_fasttree == True:
   rule fasttree:
@@ -900,9 +908,11 @@ if M.samples_txt_file:
             profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db")
         output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done"))
         threads: M.T('add_default_collection')
-        run:
-            shell('anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}')
-
+        shell:
+            """
+            anvi-script-add-default-collection -c {params.contigsDB} \
+                                            -p {params.profileDB}
+            """
 
     rule anvi_summarize:
         """
@@ -919,10 +929,16 @@ if M.samples_txt_file:
             output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}")
         output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"))
         threads: M.T('anvi_summarize')
-        run: 
-            shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it;')
+        shell:
+            """
+            anvi-summarize -c {params.contigsDB} \
+                        -p {params.profileDB} \
+                        -o {params.output_dir} \
+                        -C DEFAULT \
+                        --init-gene-coverages \
+                        --just-do-it;
+            """
             
-
     rule make_anvio_state_file:
         """Make a state file customized for EcoPhylo workflow interactive interface"""
 
@@ -1229,7 +1245,6 @@ else:
             layers_dict['gc_content'] = gc_content
             layers_dict['identifier'] = identifier
             layers_dict['percent_identity'] = percent_identity
-            layers_dict['names'] = names
 
             state_dict['layers'] = layers_dict
 

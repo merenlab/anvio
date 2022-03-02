@@ -15,7 +15,7 @@ illumina-utils
 tabulate
 numba
 paste
-pyani
-psutil
+pyani==0.2.10
+psutil==5.4.3
 pandas==0.25.1
 snakemake==5.10.0

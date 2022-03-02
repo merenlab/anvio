@@ -1,7 +1,6 @@
 ---
-layout: program
-title: {{ program.name }}
-{% if program.description %}excerpt: An anvi'o program. {{ program.description | striptags | get_first_sentence | slice:250 }}.{% endif %}
+layout: page
+title: {{ program.name }} [program]
 categories: [anvio]
 comments: false
 redirect_from: /{{ meta.version_short_identifier }}/{{ program.name }}

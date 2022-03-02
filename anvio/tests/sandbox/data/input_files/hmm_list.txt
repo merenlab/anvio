@@ -1,2 +1,0 @@
-name	source	path
-Ribosomal_L16	Bacteria_71	INTERNAL

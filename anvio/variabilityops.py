@@ -881,11 +881,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
-                self.progress.reset()
                 raise ConfigError('When you declare a collection name, you must also declare a bin id '
                                   '(from which the split names of interest will be acquired).')
             if self.bin_id and not self.collection_name:
-                self.progress.reset()
                 raise ConfigError("You declared a bin id but anvi'o doesn't know which collection "
                                   "it comes from. Please provide a collection name.")
             splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
@@ -895,7 +893,6 @@ class VariabilitySuper(VariabilityFilter, object):
             splits_of_interest = set([c.strip().replace('\r', '') for c in open(splits_of_interest_path).readlines()])
 
         else:
-            self.progress.reset()
             raise ConfigError("Invalid split source '%s'. Expected 'split_names', 'bin_id', or "
                               "'gene_caller_ids'." % split_source)
 

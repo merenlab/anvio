@@ -97,44 +97,22 @@ anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
                                 -o %(genes-fasta)s
 {{ codestop }}
 
-## Tips
 
-### Get amino acid seqeunces for each gene in a model individually
-
-If you are interested in recovering HMM hits for each gene in a model anvi'o knows about as a separate FASTA file, you can do it with a `for` loop easily. After learning your genes of interest, first run this to make sure your terminal environment knows about them (this is an example with a few genes from the HMM source `Bacteria_71`, but you can add as many genes as you like and use any HMM source anvi'o recognizes, of course):
-
-``` bash
-export genes="Ribosomal_L22 Ribosomal_L23 Ribosomal_L27 Ribosomal_L27A Ribosomal_L28"
-export hmm_source="Bacteria_71"
-```
-
-Then, you can run the program in a loop to have your FASTA files:
-
-``` bash
-for gene in $genes
-do
-    anvi-get-sequences-for-hmm-hits -c CONTIGS.db \
-                                    --hmm-source $hmm_source \
-                                    --gene-name $gene \
-                                    -o ${hmm_source}-${gene}.fa
-done
-```
-
-Voila!
-
-### Exercise with the program or test scenarios
+### Want to play?
 
 You can play with this program using the anvi'o data pack for the [infant gut data](/tutorials/infant-gut) and by replacing the parameters above with appropriate ones in the following commands.
 
-Download the latest version of the data from here: [doi:10.6084/m9.figshare.3502445](https://doi.org/10.6084/m9.figshare.3502445)
+Download the latest version of the data from here:
 
-Then, unpack it:
+[doi:10.6084/m9.figshare.3502445](https://doi.org/10.6084/m9.figshare.3502445)
+
+Unpack it:
 
 {{ codestart }}
 tar -zxvf INFANTGUTTUTORIAL.tar.gz && cd INFANT-GUT-TUTORIAL
 {{ codestop }}
 
-Finally, import the collection `merens`:
+Import the collection `merens`:
 
 {{ codestart }}
 %(anvi-import-collection)s additional-files/collections/merens.txt \
@@ -143,4 +121,18 @@ Finally, import the collection `merens`:
                        -C merens
 {{ codestop }}
 
-Then run the program using the `PROFILE.db`, `CONTIGS.db`, and optionally the %(collection)s `merens` to try some of the commands shown on this page.
+Then run the program to
+
+### Learn available HMM sources
+
+{{ codestart }}
+anvi-get-sequences-for-hmm-hits -p PROFILE.db \
+                                -c CONTIGS.db \
+                                -C merens \
+                                -o OUTPUT.fa \
+                                --hmm-source Campbell_et_al \
+                                --gene-names Ribosomal_L27,Ribosomal_L28,Ribosomal_L3 \
+                                --return-best-hit \
+                                --get-aa-sequences \
+                                --concatenate
+{{ codestop }}

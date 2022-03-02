@@ -1,4 +1,4 @@
-{% set version = "7.1_dev" %}
+{% set version = "7" %}
 
 package:
   name: anvio-minimal
@@ -6,7 +6,7 @@ package:
 
 source:
   git_url: https://github.com/merenlab/anvio
-  git_tag: master
+  git_tag: release-candidate
 
 build:
   number: 0
@@ -24,10 +24,13 @@ requirements:
     - pysam
     - ete3
     - scipy
-    - scikit-learn
+    # the following prevents an openmp error first reported in
+    # merenlab/anvio#1489 that also occurs during conda bulid:
+    # https://github.com/bioconda/bioconda-recipes/pull/26014#issuecomment-753693842
+    - scikit-learn >=0.23.2
     - django
     - requests
-    - psutil
+    - psutil ==5.4.3
     - mistune
     - six
     - pandas ==0.25.1

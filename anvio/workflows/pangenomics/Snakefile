@@ -20,9 +20,9 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-this_workflow_is_inherited_by_another= False if 'workflows/pangenomics' in workflow.included[0] else True
+slave_mode= False if 'workflows/pangenomics' in workflow.included[0] else True
 
-if not this_workflow_is_inherited_by_another:
+if not slave_mode:
     M = PangenomicsWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict

@@ -548,11 +548,9 @@ class BottleApplication(Bottle):
 
         data['state'] = state
 
-        db_variant = str(self.interactive.contigs_db_variant)
         try:
             auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                     self.interactive.p_meta['contigs_db_hash'],
-                                                                                     db_variant=db_variant)
+                                                                                     self.interactive.p_meta['contigs_db_hash'])
             coverages = auxiliary_coverages_db.get(split_name)
             auxiliary_coverages_db.close()
 
@@ -736,10 +734,8 @@ class BottleApplication(Bottle):
 
         layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
-        db_variant = str(self.interactive.contigs_db_variant)
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                 self.interactive.p_meta['contigs_db_hash'],
-                                                                                 db_variant=db_variant)
+                                                                                 self.interactive.p_meta['contigs_db_hash'])
         coverages = auxiliary_coverages_db.get(split_name)
         auxiliary_coverages_db.close()
 

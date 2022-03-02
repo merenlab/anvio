@@ -195,7 +195,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             progress.end()
         elif self.inspect_split_name:
             self.split_names_of_interest = set([self.inspect_split_name])
-            self.skip_check_names = True
 
         if self.contigs_db_path:
             self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
@@ -898,13 +897,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                         distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
                                         check_names_consistency=False)
 
-            # if there are more than one genome in the analysis (which should almost always be the case),
             # let's get a layer's order, too, and immediately add it to the database:
-            if num_genomes > 1:
-                layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-                args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-                TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
-                self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+            layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
+            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+            self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
             TablesForViews(self.profile_db_path).create_new_view(
@@ -929,9 +926,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # AND in here in the interactive class to visualize the information.
         self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
-        # everything we need is in the database now. time to add a mini state (note that we
-        # replace the function layer name template with the annotation source on the fly):
-        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read().replace('__FUNCTIONS_LAYER_NAME__', facc.function_annotation_source)
+        # everything we need is in the database now. time to add a mini state:
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-functions.json')).read()
         TablesForStates(self.profile_db_path).store_state('default', mini_state)
 
         # create an instance of states table
@@ -968,11 +964,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Collection ID', self.collection_name)
         self.run.info('Number of bins', len(self.bin_names_of_interest))
         self.run.info('Number of splits', len(self.split_names_of_interest))
-
-        if not len(self.split_names_of_interest):
-            raise ConfigError("Something must have gone wrong :/ You are knee deep in refine mode, and have "
-                              "zero split names to work with. You have to go back, Kate. Like, ALL the way "
-                              "back to complaining to the developers on Slack or something :(")
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
@@ -1125,7 +1116,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_for_collection[view] = d
 
         default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
-        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['item_orders'])
+        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['available_item_orders'])
 
         # replace self.views with the new view:
         self.views = views_for_collection
@@ -1220,17 +1211,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.skip_init_functions:
             self.init_functions()
 
-        if self.mode == 'refine':
-            # the refine trick: initialize profile super without a collection
-            # name since we already know our split names:
-            collection_name = self.collection_name
-            self.collection_name = None
-            self.args.collection_name = None
-            ProfileSuperclass.__init__(self, self.args)
-            self.collection_name = collection_name
-            self.args.collection_name = collection_name
-        else:
-            ProfileSuperclass.__init__(self, self.args)
+        ProfileSuperclass.__init__(self, self.args)
 
         # init item additional data
         ProfileSuperclass.init_items_additional_data(self)
@@ -1320,9 +1301,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['item_orders'] = self.item_orders
 
-        # add user tree if there is one (but skip the collection mode as it adds its own trees)
-        if not self.mode == 'collection':
-            self.add_user_tree()
+        # add user tree if there is one
+        self.add_user_tree()
 
         # set title
         if self.title:
@@ -1479,7 +1459,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
     def add_user_tree(self):
         if self.tree:
             clustering_id = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(self.tree)
-
             if not self.p_meta['item_orders']:
                 self.p_meta['default_item_order'] = clustering_id
                 self.p_meta['available_item_orders'] = [clustering_id]
@@ -1494,21 +1473,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 item_names_in_collection = set(self.collection.keys())
                 item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
                 if not item_names_in_collection == item_names_in_user_tree:
-                    if anvio.FORCE_USE_MY_TREE:
-                        run.warning(f"Anvi'o told you that the tree file you provided had {len(item_names_in_user_tree)} names, which "
-                                    f"the {len(item_names_in_collection)} names in the collection '{self.collection_name}', but you said "
-                                    f"--force-use-my-tree. So that's what will happen now (and you will thank Obama if things go wrong)",
-                                    header="YOU USED YOUR AUTHORITY ◔_◔")
-                    else:
-                        raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
-                                          f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
-                                          f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
-                                          f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
-                                          f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
-                                          f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
-                                          f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
-                                          f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
-                                          f"to one match between the two.")
+                    raise ConfigError(f"You are attempting to run the anvi'o interactive in collection mode, and you ALSO provide a "
+                                      f"tree file to organize your items. Which is all great and this is exactly what anvi'o is for. "
+                                      f"But it seems the {len(item_names_in_user_tree)} items in your tree file do not match to the "
+                                      f"{len(item_names_in_collection)} item names the '{self.collection_name}' collection  describes :/ "
+                                      f"In case it helps you solve this puzzle, here is a name that appears in your tree file: "
+                                      f"'{item_names_in_user_tree.pop()}'. And here is a name that appears in your collection: "
+                                      f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
+                                      f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
+                                      f"to one match between the two.")
 
 
     def update_items_additional_data_with_functions_per_split_summary(self):

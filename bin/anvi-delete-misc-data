@@ -17,7 +17,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'ekiefl']
+__authors__ = ['meren']
 __requires__ = ["pan-db", "profile-db", "misc-data-items", "misc-data-layers", "misc-data-layer-orders", "misc-data-nucleotides", "misc-data-amino-acids"]
 __description__ = ("Remove stuff from 'additional data' or 'order' tables for either items or layers in either "
                    "pan or profile databases. OR, remove stuff from the 'additional data' tables for nucleotides "

@@ -39,7 +39,6 @@ def main(args):
     utils.is_profile_db(args.profile_db)
 
     profile_db = dbops.ProfileSuperclass(args)
-    profile_db_variant = utils.get_db_variant(args.profile_db)
 
     if args.list_splits:
         print('\n'.join(sorted(list(profile_db.split_names))))
@@ -184,7 +183,7 @@ def main(args):
                 previous_split_name = split_names[i-1]
                 prior_nucleotides_in_contig += target_splits_dict[previous_split_name]['stop']
 
-            split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash'], db_variant=profile_db_variant).get(split_name)
+            split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash']).get(split_name)
 
             num_nucleotides = len(list(split_coverage_values.values())[0])
 

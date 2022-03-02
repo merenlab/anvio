@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""De novo prediction of tRNAs and their properties from a single tRNA-seq library"""
+"""tRNA-seq data analysis workflow"""
 
 import sys
 
@@ -13,14 +13,15 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['semiller10']
 __requires__ = ['trnaseq-fasta']
 __provides__ = ['trnaseq-db']
-__description__ = "A program to process reads from a tRNA-seq dataset to generate an anvi'o tRNA-seq database"
+__description__ = ("A program to process raw tRNA-seq dataset, which is the sequencing of tRNA transcripts "
+                   "in a given sample, to generate an anvi'o tRNA-seq database")
 
 
 if __name__ == '__main__':

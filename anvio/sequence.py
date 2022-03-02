@@ -33,7 +33,6 @@ __status__ = "Development"
 
 pp = terminal.pretty_print
 
-
 class Codon:
     def __init__(self):
         pass

@@ -158,8 +158,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.initialized = False
 
         self.run.info('Contigs DB', self.contigs_db_path)
-        if self.profile_db_path:
-            self.run.info('Profile DB', self.profile_db_path, mc="green")
+        self.run.info('Profile DB', self.profile_db_path)
         self.run.info('Metagenome mode', self.metagenome_mode)
         if self.metagenome_mode:
             self.run.info(f'{self._ITEM} for metagenome', self.item_name_for_metagenome_mode)
@@ -414,11 +413,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.progress.reset()
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
 
-        target = 'gene_name' if self.scgs_focus else 'anticodon'
-
-        if len(hits) == 1 and hits[0][target] == 'CONSENSUS':
-            self.run.info_single("No hits :/")
-        else:
+        if not (len(hits) == 1 and hits[0]['anticodon'] == 'CONSENSUS'):
             if self.scgs_focus:
                 header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
                 field_names = [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']
@@ -448,6 +443,8 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                     table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['amino_acid']), str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
             anvio.TABULATE(table, header)
+        else:
+            self.run.info_single("No hits :/")
 
 
     def get_taxonomy_dict(self, gene_caller_ids, bin_name=None):
@@ -667,14 +664,8 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         if self.per_item_output_file:
             self.store_taxonomy_per_item(items_taxonomy_super_dict)
 
-        if self.sequences_file_path_prefix:
-            self.store_sequences_for_items(items_taxonomy_super_dict)
-
 
     def print_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
-        if anvio.QUIET:
-            return
-
         self.progress.reset()
 
         if self.collection_name:
@@ -782,47 +773,6 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
-    def store_sequences_for_items(self, items_taxonomy_super_dict):
-        """Report sequences for items if possible"""
-
-        if self.ctx.focus != 'scgs':
-            raise ConfigError("This function is only tested in SCGs mode. If you need to report "
-                              "sequences for taxonomy items reported in other foci, please get in "
-                              "touch with anvi'o developers.")
-
-        if not self.scg_name_for_metagenome_mode:
-            raise ConfigError("You can't ask anvi'o to store seqeunces for SCGs unless you are "
-                              "working with a specific SCG name :(")
-
-        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
-
-        c = ContigsSuperclass(self.args, r=run_quiet)
-
-        gene_caller_ids = [v['gene_callers_id'] for v in d.values()]
-
-        gene_caller_ids_list, sequences_dict = c.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
-        if not len(gene_caller_ids_list):
-            raise ConfigError("Something that should have never happened, happened :/ Please re-run the same command with "
-                              "`--debug` and send the Traceback to an anvi'o developer.")
-
-        dna_sequences_output_file_path = self.sequences_file_path_prefix + '_DNA.fa'
-        amino_acid_sequences_output_file_path = self.sequences_file_path_prefix + '_AA.fa'
-
-        contigs_db_name = c.a_meta['project_name']
-
-        with open(amino_acid_sequences_output_file_path, 'w') as aa_sequences_output, open(dna_sequences_output_file_path, 'w') as dna_sequences_output:
-            for entry in d.values():
-                header = f"{contigs_db_name}_{entry['gene_name']}_{entry['gene_callers_id']}"
-                dna_sequence = sequences_dict[entry['gene_callers_id']]['sequence']
-                amino_acid_sequence = sequences_dict[entry['gene_callers_id']]['aa_sequence']
-
-                aa_sequences_output.write(f">{header}\n{amino_acid_sequence}\n")
-                dna_sequences_output.write(f">{header}\n{dna_sequence}\n")
-
-        self.run.info("DNA sequences for SCGs", dna_sequences_output_file_path, nl_before=1)
-        self.run.info("AA sequences for SCGs", amino_acid_sequences_output_file_path)
-
-
     def store_taxonomy_per_item(self, items_taxonomy_super_dict):
         if self.scgs_focus:
             headers = ['bin_name', 'gene_name', 'percent_identity']
@@ -852,14 +802,11 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
 
     def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
-        contigs_db_name = anvio.dbops.ContigsDatabase(self.contigs_db_path).meta['project_name_str']
-
         d = {}
 
         if self.metagenome_mode:
             for item_hit in items_taxonomy_super_dict['taxonomy'][self.contigs_db_project_name][self._ITEMS.lower()].values():
-                item_hit_name = '%s_%s_%d' % (contigs_db_name, item_hit[self._VARIABLE_NAME_IN_TABLE], item_hit['gene_callers_id'])
-
+                item_hit_name = '%s_%d' % (item_hit[self._VARIABLE_NAME_IN_TABLE], item_hit['gene_callers_id'])
                 d[item_hit_name] = item_hit
 
                 if self.compute_item_coverages:

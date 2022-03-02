@@ -53,34 +53,33 @@ P = terminal.pluralize
 # data_dict indicates which data dictionary is used for generating the output (modules or kofams)
 # headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
 # description is what is printed when --list-available-modes parameter is used
-OUTPUT_MODES = {'hits_in_modules': {
-                    'output_suffix': "hits_in_modules.txt",
+OUTPUT_MODES = {'kofam_hits_in_modules': {
+                    'output_suffix': "kofam_hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["module", "module_is_complete",
+                    'headers': ["unique_id", "kegg_module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
-                                "enzyme_hit", "gene_caller_id", "contig"],
-                    'description': "Information on each enzyme (gene annotation) that belongs to a module"
+                                "kofam_hit", "gene_caller_id", "contig"],
+                    'description': "Information on each KOfam hit that belongs to a KEGG module"
                     },
                 'modules': {
                     'output_suffix': "modules.txt",
                     'data_dict': "modules",
-                    'headers': ["module", "module_name", "module_class", "module_category",
+                    'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
-                                "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
-                                "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
-                    'description': "Information on metabolic modules"
+                                "kofam_hits_in_module", "gene_caller_ids_in_module", "warnings"],
+                    'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
                     'output_suffix': "modules_custom.txt",
                     'data_dict': "modules",
                     'headers': None,
-                    'description': "A custom tab-delimited output file where you choose the included modules data using --custom-output-headers"
+                    'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
                     },
-                'hits': {
-                    'output_suffix': "hits.txt",
+                'kofam_hits': {
+                    'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
-                    'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
+                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko", "ko_definition"],
+                    'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
                 }
 # dict containing matrix headers of information that we can output in custom mode
@@ -88,66 +87,51 @@ OUTPUT_MODES = {'hits_in_modules': {
 # cdict_key is the header's key in modules or kofams data dictionary (if any)
 # mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
 # description is printed when --list-available-output-headers parameter is used
-OUTPUT_HEADERS = {'module' : {
+OUTPUT_HEADERS = {'unique_id' : {
+                        'cdict_key': None,
+                        'mode_type': 'all',
+                        'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
+                        },
+                  'kegg_module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Module number"
+                        'description': "KEGG module number"
                         },
                   'module_is_complete' : {
                         'cdict_key': 'complete',
                         'mode_type': 'modules',
-                        'description': "Whether a module is considered complete or not based on its percent completeness and the completeness threshold"
+                        'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
                         },
                   'module_completeness' : {
                         'cdict_key': 'percent_complete',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a module"
-                        },
-                  'enzymes_unique_to_module' : {
-                        'cdict_key': None,
-                        'mode_type': 'modules',
-                        'description': "A list of enzymes that only belong to this module (ie, they are not members of multiple modules)"
-                        },
-                  'unique_enzymes_hit_counts' : {
-                        'cdict_key': None,
-                        'mode_type': 'modules',
-                        'description': "How many times each unique enzyme appears in the sample (order of counts corresponds to list in `enzymes_unique_to_module` field)"
-                        },
-                  'proportion_unique_enzymes_present' : {
-                        'cdict_key': 'proportion_unique_enzymes_present',
-                        'mode_type': 'modules',
-                        'description': "Proportion of enzymes unique to this one module that are present in the sample"
-                        },
-                  'unique_enzymes_context_string' : {
-                        'cdict_key': 'unique_enzymes_context_string',
-                        'mode_type': 'modules',
-                        'description': "Describes the unique enzymes contributing to the `proportion_unique_enzymes_present` field"
+                        'description': "Percent completeness of a KEGG module"
                         },
                   'module_name' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Name/description of a module"
+                        'description': "English name/description of a KEGG module"
                         },
                   'module_class' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism class of a module"
+                        'description': "Metabolism class of a KEGG module"
                         },
                   'module_category' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism category of a module"
+                        'description': "Metabolism category of a KEGG module"
                         },
                   'module_subcategory' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Metabolism subcategory of a module"
+                        'description': "Metabolism subcategory of a KEGG module"
                         },
                   'module_definition' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Definition string of a module. Describes the metabolic pathway "
-                                       "in terms of the enzymes (KOs, COGs, etc) that belong to the module."
+                        'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
+                                       "in terms of the KOS that belong to the module"
                         },
                   'module_substrates' : {
                         'cdict_key': None,
@@ -164,76 +148,75 @@ OUTPUT_HEADERS = {'module' : {
                   'module_intermediates' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of compounds that are intermediates in the metabolic pathway "
+                        'description': "Comma-separated list of compounds that are intermediates the metabolic pathway "
                                        "(compounds that are both outputs and inputs of reaction(s) in the pathway)"
                         },
                   'gene_caller_ids_in_module': {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of gene caller IDs of enzymes that contribute to a module"
+                        'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
                         'mode_type': 'all',
-                        'description': "Gene caller ID of a single enzyme in the contigs DB. If you choose this header, each "
-                                       "line in the output file will be an enzyme annotation"
+                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
+                                       "line in the output file will be a KOfam hit"
                         },
-                  'enzyme_hits_in_module' : {
+                  'kofam_hits_in_module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Comma-separated list of enzyme annotations that contribute to a module"
+                        'description': "Comma-separated list of KOfam hits in a module"
                         },
-                  'enzyme_hit' : {
+                  'kofam_hit' : {
                         'cdict_key': 'kofam_hits',
                         'mode_type': 'modules',
-                        'description': "Enzyme identifier for a single annotation (KO, COG, etc). If you choose this header, each line in the output file "
-                                       "will be an enzyme annotation"
+                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file "
+                                       "will be a KOfam hit"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
                         'mode_type': 'all',
-                        'description': "Contig that an enzyme annotation is found on. If you choose this header, each line in the output "
-                                       "file will be an enzyme annotation"
+                        'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
+                                       "file will be a KOfam hit"
                         },
                   'path_id' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Integer ID for a path through a module. No real meaning and just for data organization. "
-                                       "If you choose this header, each line in the output file will be an enzyme annotation"
+                        'description': "Integer ID for a path through a KEGG module. No real meaning and just for data organization. "
+                                       "If you choose this header, each line in the output file will be a KOfam hit"
                         },
                   'path' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "A path through a module (a linear sequence of enzymes that together represent each metabolic step "
-                                       "in the module. Most modules have several of these due to enzyme redundancy). If you choose this header, "
-                                       "each line in the output file will be an enzyme annotation"
+                        'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
+                                       "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
+                                       "each line in the output file will be a KOfam hit"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a particular path through a module. If you choose this header, each line "
-                                       "in the output file will be an enzyme annotation"
+                        'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
+                                       "in the output file will be a KOfam hit"
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
                         'mode_type': 'modules',
-                        'description': "This column holds a comma-separated list of notes about things that might affect completeness "
-                                       "estimates for a module, such as missing enzyme profiles."
+                        'description': "If we are missing a KOfam profile for one of the KOs in a module, there will be a note in this column. "
                         },
-                  'enzyme' : {
+                  'ko' : {
                         'cdict_key': None,
                         'mode_type': 'kofams',
-                        'description': 'Identifier for an enzyme that is annotated in your database(s), ie a KO or COG number'
+                        'description': 'KEGG Orthology (KO) number of a KOfam hit'
                         },
-                  'modules_with_enzyme': {
+                  'modules_with_ko': {
                         'cdict_key': 'modules',
                         'mode_type': 'kofams',
-                        'description': 'A comma-separated list of modules that the enzyme belongs to'
+                        'description': 'A comma-separated list of modules that the KO belongs to'
                         },
-                  'enzyme_definition': {
+                  'ko_definition': {
                         'cdict_key': None,
                         'mode_type': 'kofams',
-                        'description': 'The functional annotation associated with the enzyme'
+                        'description': 'The functional annotation associated with the KO number'
                         },
                   }
 
@@ -241,7 +224,7 @@ OUTPUT_HEADERS = {'module' : {
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
 # get_XXX_metadata_dictionary() function
 MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
-KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
+KO_METADATA_HEADERS = ["ko_definition", "modules_with_ko"]
 
 
 
@@ -253,40 +236,28 @@ class KeggContext(object):
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = A('user_modules')
-        self.only_user_modules = A('only_user_modules')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
-        self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
-        self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
+        self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
+        self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
         # shared variables for all KEGG subclasses
-        self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.kofam_hmm_file_path = os.path.join(self.hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
-        if self.user_input_dir:
-            self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
-            self.user_modules_db_path = os.path.join(self.user_input_dir, "USER_MODULES.db")
-
-        # sanity check for incompatible arguments
-        if A('kegg_data_dir') and A('only_user_modules'):
-            raise ConfigError("The options --kegg-data-dir and --only-user-modules are incompatible. Please figure out which one you "
-                              "want and try again :)")
-
         # sanity check to prevent automatic overwriting of non-default kegg data dir
-        if self.__class__.__name__ in ['KeggSetup']:
-            if A('reset') and A('kegg_data_dir') and not self.user_input_dir:
-                raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
-                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
-                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                                  "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
-                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+        if A('reset') and A('kegg_data_dir'):
+            raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
+                              "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
+                              "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                              "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
+                              "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                              "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
     def setup_ko_dict(self):
@@ -372,6 +343,47 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
+    def get_module_metadata_dictionary(self, mnum):
+        """Returns a dictionary of metadata for the given module.
+
+        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum, class_value=self.all_modules_in_db[mnum]['CLASS'])
+
+        metadata_dict = {}
+        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
+        metadata_dict["module_class"] = mnum_class_dict["class"]
+        metadata_dict["module_category"] = mnum_class_dict["category"]
+        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
+        return metadata_dict
+
+
+    def get_ko_metadata_dictionary(self, knum):
+        """Returns a dictionary of metadata for the given KO.
+
+        The dictionary must include all the metadata from KO_METADATA_HEADERS,
+        using those headers as keys.
+        """
+
+        mod_list = self.all_kos_in_db[knum] if knum in self.all_kos_in_db else None
+        if mod_list:
+            mod_list_str = ",".join(mod_list)
+        else:
+            mod_list_str = "None"
+
+        if knum not in self.ko_dict:
+            raise ConfigError("Something is mysteriously wrong. Your contigs database "
+                              f"has an annotation for KO {knum} but this KO is not in "
+                              "the KO dictionary. This should never have happened.")
+
+        metadata_dict = {}
+        metadata_dict["ko_definition"] = self.ko_dict[knum]['definition']
+        metadata_dict["modules_with_ko"] = mod_list_str
+        return metadata_dict
+
+
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
@@ -407,77 +419,52 @@ class KeggSetup(KeggContext):
         # init the base class
         KeggContext.__init__(self, self.args)
 
-        if self.user_input_dir:
-            self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
-                             f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
-                             f"followed our formatting guidelines, so keep an eye out for errors below.")
-
         filesnpaths.is_program_exists('hmmpress')
 
-        if not self.user_input_dir:
-            # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
-            if '/' not in self.kegg_data_dir:
-                self.kegg_data_dir += '/'
-            filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
+        # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
+        if '/' not in self.kegg_data_dir:
+            self.kegg_data_dir += '/'
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
-            if not args.reset and not anvio.DEBUG and not skip_init:
-                self.is_database_exists()
+        if not args.reset and not anvio.DEBUG and not skip_init:
+            self.is_database_exists()
 
-            if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
-                filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+        if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
+            filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
-            # get KEGG snapshot info for default setup
-            self.target_snapshot = self.kegg_snapshot or 'v2021-12-18'
-            self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-            self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2020-12-23'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
-            if self.target_snapshot not in self.snapshot_dict.keys():
-                self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
-                available_snapshots = sorted(list(self.snapshot_dict.keys()))
-                for snapshot_name in available_snapshots:
-                    self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+            available_snapshots = sorted(list(self.snapshot_dict.keys()))
+            for snapshot_name in available_snapshots:
+                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
 
-                raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                                  "this time pick from the list shown above.")
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                              "this time pick from the list shown above.")
 
-            # default download path for KEGG snapshot
-            self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
-            self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
 
-            # download from KEGG option: ftp path for HMM profiles and KO list
-                # for ko list, add /ko_list.gz to end of url
-                # for profiles, add /profiles.tar.gz  to end of url
-            self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-            # dictionary mapping downloaded file name to final decompressed file name or folder location
-            self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
+        # download from KEGG option: ftp path for HMM profiles and KO list
+            # for ko list, add /ko_list.gz to end of url
+            # for profiles, add /profiles.tar.gz  to end of url
+        self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+        # dictionary mapping downloaded file name to final decompressed file name or folder location
+        self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-            # download from KEGG option: module/pathway map htext files and API link
-            self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
-            self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
-            self.kegg_rest_api_get = "http://rest.kegg.jp/get"
-
-        else: # user input setup
-            if '/' not in self.user_input_dir:
-                self.user_input_dir += '/'
-            filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
-
-            self.check_user_input_dir_format()
-
-            if not args.reset and not skip_init:
-                self.is_user_database_exists()
-
-            if args.reset:
-                self.run.warning("Since you used the --reset flag, anvi'o will get rid of any existing user modules database. "
-                                 "Now ye be warned.")
-                paths_to_remove = [self.user_modules_db_path]
-                for path in paths_to_remove:
-                    if os.path.exists(path):
-                        os.remove(path)
-                        self.run.info("Successfully removed", path)
+        # download from KEGG option: module/pathway map htext files and API link
+        self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+        self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
 
 
     def is_database_exists(self):
@@ -499,46 +486,17 @@ class KeggSetup(KeggContext):
                               "delete this directory manually to let this script re-download everything from scratch."
                               % self.kegg_data_dir)
 
-        if os.path.exists(self.kegg_module_data_dir):
+        if os.path.exists(self.module_data_dir):
             raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.kegg_module_data_dir, self.kegg_data_dir))
+                              % (self.module_data_dir, self.kegg_data_dir))
 
         if os.path.exists(self.pathway_data_dir):
             raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
                               % (self.pathway_data_dir, self.kegg_data_dir))
-
-
-    def check_user_input_dir_format(self):
-        """This function checks whether the user input directory exists and contains the required subfolders
-
-        The required subfolders are:
-            modules : directory containing the user's metabolic pathway definitions (as text files)
-        """
-
-        for path in [self.user_input_dir, self.user_module_data_dir]:
-            if not os.path.exists(path):
-                raise ConfigError(f"There is a problem with the input directory you provided. The following path does not "
-                                  f"exist: '{path}'. Please make sure that your input folder exists and that it follows the "
-                                  f"formatting requirements. We're sorry for asking this of you, but it really helps us make "
-                                  f"sure everything will go smoothly.")
-
-            file_list = [f for f in glob.glob(os.path.join(path, '*'))]
-            if not file_list:
-                raise ConfigError(f"The folder '{path}' appears to be empty, so we have no data to work with. Please make "
-                                  f"sure that you have provided the correct input directory and formatted it correctly so "
-                                  f"that anvi'o can find your data.")
-
-
-    def is_user_database_exists(self):
-        """This function checks whether user data has already been set up in the provided input directory."""
-
-        if os.path.exists(self.user_modules_db_path):
-            raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
-                              f"please use the --reset flag or delete this file manually if you want to re-generate it.")
 
 
     def download_profiles(self):
@@ -730,7 +688,7 @@ class KeggSetup(KeggContext):
 
         # download all modules
         for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            file_path = os.path.join(self.module_data_dir, mnum)
             utils.download_file(self.kegg_rest_api_get + '/' + mnum,
                 file_path, progress=self.progress, run=self.run)
             # verify entire file has been downloaded
@@ -903,7 +861,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Running hmmpress...')
         cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.hmm_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
@@ -916,55 +874,19 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
-    def create_user_modules_dict(self):
-        """This function establishes the self.module_dict parameter for user modules.
-
-        It is essentially a replacement for the process_module_file() function.
-        Since users will not have a modules file to process, we simply create the dictionary from the
-        file names they provide for their module definitions. We don't add any dictionary values,
-        but we won't need them (we hope).
-        """
-
-        user_module_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
-        self.module_dict = {key: {} for key in user_module_list}
-
-        # sanity check that they also have KEGG data since we need to compare module names
-        if not os.path.exists(self.kegg_modules_db_path):
-            raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
-                              f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
-                              f"Well, one reason is that we always use KEGG data first when estimating metabolism. And "
-                              f"the other reason is that we need to make sure none of your module names overlap with those "
-                              f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
-                              f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
-                              f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "
-                              f"to find it.")
-
-        # sanity check that user module names are distinct
-        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
-        kegg_mods = set(kegg_modules_db.get_all_modules_as_list())
-        user_mods = set(user_module_list)
-        bad_user_mods = kegg_mods.intersection(user_mods)
-        if bad_user_mods:
-            bad_mods_str = ", ".join(bad_user_mods)
-            n = len(bad_user_mods)
-            raise ConfigError(f"Hol'up a minute. You see, there {P('is a module', n, alt='are some modules')} "
-                              f"in your user-defined modules data (at {self.user_module_data_dir}) which {P('has', n, alt='have')} "
-                              f"the same name as an existing KEGG module. This is not allowed, for reasons. Please name {P('that module', n, alt='those modules')} "
-                              f"differently. Append an underscore and your best friend's name to {P('it', n, alt='them')} or something. Just make sure it's "
-                              f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
-
-
-    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
-        """This function creates a Modules DB at the specified path."""
+    def setup_modules_db(self):
+        """This function creates the Modules DB from the KEGG Module files."""
 
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
             raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
                               "If you look at that error and it seems like something you cannot handle, please contact the developers "
-                              "for assistance. :) ")
+                              "for assistance, as it may be possible that a recent update to KEGG has broken our setup process. If that "
+                              "is the case, we may be able to provide you with a legacy KEGG data archive that you can use to set up "
+                              "KEGG with the --kegg-archive flag, while we try to fix things. :) ")
 
 
     def kegg_archive_is_ok(self, unpacked_archive_path):
@@ -986,8 +908,8 @@ class KeggSetup(KeggContext):
         # check top-level files and folders
         path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
         expected_directories_and_files = [self.orphan_data_dir,
-                                          self.kegg_module_data_dir,
-                                          self.kegg_hmm_data_dir,
+                                          self.module_data_dir,
+                                          self.hmm_data_dir,
                                           #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
                                           self.ko_list_file_path,
                                           self.kegg_module_file,
@@ -1002,7 +924,7 @@ class KeggSetup(KeggContext):
                                      % (path_to_f_in_archive))
 
         # check hmm files
-        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.hmm_data_dir))
         kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
         expected_hmm_files = [kofam_hmm_basename]
         for h in expected_hmm_files:
@@ -1116,34 +1038,24 @@ class KeggSetup(KeggContext):
                              "has been kept. You may want to remove it later.")
 
 
-    def setup_user_data(self):
-        """This function sets up user metabolism data from the provided input directory.
-
-        It processes the user's module files into the USER_MODULES.db.
-        """
-
-        self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER')
-
-
     def setup_data(self):
-        """This is a driver function which executes the KEGG setup process."""
+        """This is a driver function which executes the KEGG setup process.
+
+        It downloads, decompresses, and hmmpresses the KOfam profiles.
+        It also downloads and processes the KEGG Module files into the MODULES.db.
+        """
 
         if self.kegg_archive_path:
             self.setup_from_archive()
         elif self.download_from_kegg:
             # mostly for developers and the adventurous
-            # this downloads, decompresses, and hmmpresses the KOfam profiles
-            # it also downloads and processes the KEGG Module files into the MODULES.db
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir)
-        elif self.user_input_dir:
-            self.setup_user_data()
+            self.setup_modules_db()
         else:
             # the default, set up from frozen KEGG release
             self.setup_kegg_snapshot()
@@ -1184,14 +1096,14 @@ class RunKOfams(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
                               "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
                               "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_hmm_data_dir)
+                              "to fix this problem. :) " % self.hmm_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, args=self.args)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1613,8 +1525,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
-        self.enzymes_txt = A('enzymes_txt') or None
-        self.output_modes = A('output_modes') or "modules"
+        self.output_modes = A('kegg_output_modes') or A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
@@ -1635,10 +1546,6 @@ class KeggEstimatorArgs():
         if A('module_completion_threshold') == 0:
             self.module_completion_threshold = 0.0
 
-        # we use the below flag to find out if long format output was explicitly requested
-        # this gets around the fact that we always assign 'modules' as the default output mode
-        self.long_format_mode = True if args.output_modes else False
-
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
         self.available_headers = OUTPUT_HEADERS
@@ -1657,6 +1564,12 @@ class KeggEstimatorArgs():
         # parse requested output headers if necessary
         if self.custom_output_headers and isinstance(self.custom_output_headers, str):
             self.custom_output_headers = self.custom_output_headers.split(",")
+
+            if "unique_id" not in self.custom_output_headers:
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            elif self.custom_output_headers.index("unique_id") != 0:
+                self.custom_output_headers.remove("unique_id")
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
             self.available_modes['modules_custom']['headers'] = self.custom_output_headers
 
         # parse specific matrix modules if necessary
@@ -1680,224 +1593,6 @@ class KeggEstimatorArgs():
             self.run.info(f"Output file for {mode} mode", output_path)
 
         return output_dict
-
-
-    def init_data_from_modules_db(self):
-        """This function reads mucho data from the modules database(s) into dictionaries for later access.
-
-        It generates the self.all_modules_in_db dictionary, which contains all data for all modules
-        in the db, keyed by module number.
-        It also generates the self.all_kos_in_db dictionary, which maps each enzyme in the db to its list of modules.
-        Note that self.all_kos_in_db can contain module numbers, in cases when the module is a component of another module.
-        It also generates the self.module_paths_dict dictionary by calling the appropriate function.
-
-        We do this once at the start so as to reduce the number of on-the-fly database queries
-        that have to happen during the estimation process.
-        """
-
-        self.all_modules_in_db = {}
-        self.all_kos_in_db = {}
-        self.module_paths_dict = {}
-
-        # LOAD KEGG DATA (MODULES)
-        if not self.only_user_modules:
-            self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
-            self.all_modules_in_db = self.kegg_modules_db.get_modules_table_as_dict()
-            # mark that these modules all came from KEGG
-            for mod in self.all_modules_in_db:
-                self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] = "KEGG"
-
-                # add compound lists into self.all_modules_in_db
-                module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mod)
-                self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
-                self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
-                self.all_modules_in_db[mod]['product_list'] = module_product_list
-
-                # initialize module paths into self.module_paths_dict
-                self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
-
-            self.kegg_modules_db.disconnect()
-
-        # LOAD USER DATA (MODULES)
-        if self.user_input_dir:
-            self.user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
-            user_db_mods = self.user_modules_db.get_modules_table_as_dict()
-
-            for mod in user_db_mods:
-                # user modules cannot have the same name as a KEGG module
-                if mod in self.all_modules_in_db:
-                    self.user_modules_db.disconnect()
-                    raise ConfigError(f"No. Nononono. Stop right there. You see, there is a module called {mod} in your user-defined "
-                                      f"modules database (at {self.user_modules_db_path}) which has the same name as an existing KEGG "
-                                      f"module. This is not allowed, for reasons. Please name that module differently. Append an "
-                                      f"underscore and your best friend's name to it or something. Just make sure it's unique. OK? ok.")
-
-                self.all_modules_in_db[mod] = user_db_mods[mod]
-                # mark that this module came from the USER. it may be useful to know later.
-                self.all_modules_in_db[mod]['MODULES_DB_SOURCE'] = "USER"
-
-                # add compound lists into self.all_modules_in_db
-                module_substrate_list, module_intermediate_list, module_product_list = self.user_modules_db.get_human_readable_compound_lists_for_module(mod)
-                self.all_modules_in_db[mod]['substrate_list'] = module_substrate_list
-                self.all_modules_in_db[mod]['intermediate_list'] = module_intermediate_list
-                self.all_modules_in_db[mod]['product_list'] = module_product_list
-
-                # initialize module paths into self.module_paths_dict
-                self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.user_modules_db)
-
-            self.user_modules_db.disconnect()
-
-        # INIT ENZYMES
-        for mod in self.all_modules_in_db:
-            orthology = self.all_modules_in_db[mod]['ORTHOLOGY']
-            if isinstance(orthology, str):
-                ko_list = [orthology]
-            else:
-                ko_list = list(orthology.keys())
-            for k in ko_list:
-                if k not in self.all_kos_in_db:
-                    src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
-                    func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else 'UNKNOWN'
-                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
-                self.all_kos_in_db[k]['modules'].append(mod)
-
-
-    def init_paths_for_module(self, mnum, mod_db=None):
-        """This function unrolls the module DEFINITION for the module provided and returns a list of all paths through it.
-
-        It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
-        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
-
-        PARAMETERS
-        ==========
-        mnum : str
-            The module to return paths for. Must be a key in the self.all_modules_in_db dictionary.
-        mod_db : ModulesDatabase
-            This must be a ModulesDatabase instance that we are connected to (ie, disconnect() has not yet been run on it)
-            so that we can use its functions and access its data
-
-        RETURNS
-        ==========
-        A list of all paths through the module
-        """
-
-        if not mod_db:
-            raise ConfigError("Put yer hands in the air! You've tried to call init_paths_for_modules() without providing "
-                              "a database to the mod_db parameter, and this is ILLEGAL.")
-
-        if mnum not in self.all_modules_in_db:
-            raise ConfigError(f"Something is wrong here. The function init_paths_for_modules() is trying to work on module "
-                              f"{mnum}, but it is not a key in the self.all_modules_in_db dictionary.")
-        module_definition = self.all_modules_in_db[mnum]["DEFINITION"]
-        # the below function expects a list
-        if not isinstance(module_definition, list):
-            module_definition = [module_definition]
-
-        return mod_db.unroll_module_definition(mnum, def_lines=module_definition)
-
-
-    def get_enzymes_from_module_definition_in_order(self, mod_definition):
-        """Given a module DEFINITION string, this function parses out the enzyme accessions in order of appearance.
-
-        PARAMETERS
-        ==========
-        mod_definition : a string or list of strings containing the module DEFINITION lines
-
-        RETURNS
-        ==========
-
-        """
-
-        if isinstance(mod_definition, list):
-            mod_definition = " ".join(mod_definition)
-
-        # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-        mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
-        acc_list = re.split(r'\s+', mod_definition)
-        # remove anything that is not an enzyme and sanity check for weird characters
-        mods_to_remove = set()
-        for a in acc_list:
-            if a in self.all_modules_in_db:
-                mods_to_remove.add(a)
-            if re.match('[^a-zA-Z0-9_\.]', a):
-                raise ConfigError(f"The get_enzymes_from_module_definition_in_order() function found an enzyme accession that looks a bit funny. "
-                                  f"Possibly this is a failure of our parsing strategy, or maybe the enzyme accession just has unexpected characters "
-                                  f"in it. We don't know what module it is, but the weird enzyme is {a}. If you think that accession looks perfectly "
-                                  f"fine, you should reach out to the developers and have them fix this function to accomodate the accession. Or, you "
-                                  f"could just rename the enzyme?")
-        if mods_to_remove:
-            for m in mods_to_remove:
-                acc_list.remove(m)
-
-        return acc_list
-
-
-    def get_module_metadata_dictionary(self, mnum):
-        """Returns a dictionary of metadata for the given module.
-
-        The dictionary must include all the metadata from MODULE_METADATA_HEADERS,
-        using those headers as keys.
-
-        Requires self.all_modules_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
-        before this function.
-        """
-
-        if not self.all_modules_in_db:
-            raise ConfigError("The function get_module_metadata_dictionary() requires the self.all_modules_in_db attribute to "
-                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
-
-        class_data_val = self.all_modules_in_db[mnum]['CLASS']
-        fields = class_data_val.split("; ")
-        mnum_class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
-
-        metadata_dict = {}
-        metadata_dict["module_name"] = self.all_modules_in_db[mnum]['NAME']
-        metadata_dict["module_class"] = mnum_class_dict["class"]
-        metadata_dict["module_category"] = mnum_class_dict["category"]
-        metadata_dict["module_subcategory"] = mnum_class_dict["subcategory"]
-        return metadata_dict
-
-
-    def get_ko_metadata_dictionary(self, knum, dont_fail_if_not_found=False):
-        """Returns a dictionary of metadata for the given KO.
-
-        The dictionary must include all the metadata from KO_METADATA_HEADERS,
-        using those headers as keys.
-
-        Requires self.all_kos_in_db attribute to exist - subclasses will have to call init_data_from_modules_db()
-        before this function.
-        """
-
-        if not self.all_kos_in_db:
-            raise ConfigError("The function get_ko_metadata_dictionary() requires the self.all_kos_in_db attribute to "
-                              "be initialized. You need to make sure init_data_from_modules_db() is called before this function. ")
-
-        mod_list = self.all_kos_in_db[knum]['modules'] if knum in self.all_kos_in_db else None
-        if mod_list:
-            mod_list_str = ",".join(mod_list)
-        else:
-            mod_list_str = "None"
-
-        metadata_dict = {}
-        metadata_dict["modules_with_enzyme"] = mod_list_str
-
-        if knum not in self.ko_dict:
-            # if we can't find the enzyme in the KO dictionary, try to find it in the database
-            if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
-                metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
-            elif dont_fail_if_not_found:
-                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
-                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
-                                 f"its function.")
-                metadata_dict["enzyme_definition"] = "UNKNOWN"
-            else:
-                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                                  f"for enzyme {knum} but this enzyme is not in "
-                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
-        else:
-            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-
-        return metadata_dict
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
@@ -1925,12 +1620,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # This can be initialized later if necessary using init_gene_coverage()
         self.profile_db = None
-        # This can be initialized later if necessary by setup_ko_dict()
-        self.ko_dict = {}
 
-        # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
-        KeggContext.__init__(self, self.args)
 
         self.name_header = None
         if self.metagenome_mode:
@@ -1950,18 +1641,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
                                         'mode_type' : 'all',
-                                        'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
+                                        'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
                                         }
 
-        if self.enzymes_txt:
-            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
-
-        # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
-            raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
-
-        if self.only_user_modules and not self.user_input_dir:
-            raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
+        # input options sanity checks
+        if not self.estimate_from_json and not self.contigs_db_path:
+            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
+                              "flag, in which case you must provide a JSON-formatted file.")
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
@@ -1972,6 +1658,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         elif self.bin_ids_file:
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
+
 
         if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
@@ -1992,18 +1679,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        if self.add_coverage:
-            if not self.enzymes_txt:
-                if not self.profile_db_path:
-                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-                if utils.is_blank_profile(self.profile_db_path):
-                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                                      "values, so the --add-coverage flag will not work.")
-
+        if self.add_coverage and not self.profile_db_path:
+            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
+            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                              "values, so the --add-coverage flag will not work.")
+        elif self.add_coverage:
             self.add_gene_coverage_to_headers_list()
 
-
-        # OUTPUT OPTIONS SANITY CHECKS
+        # output options sanity checks
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
             run.info("Module completeness threshold", self.module_completion_threshold)
@@ -2051,123 +1735,64 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                              "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
 
-        # let user know what they told anvi'o to work on
-        if self.contigs_db_path:
-            self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
-        if self.profile_db_path:
-            self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        # init the base class
+        KeggContext.__init__(self, self.args)
+
+        # let user know what they told anvi'o to work
+        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        self.run.info('Metagenome mode', self.metagenome_mode)
         if self.collection_name:
-            self.run.info('Collection', self.collection_name, quiet=self.quiet)
+            self.run.info('Collection', self.collection_name)
         if self.bin_id:
-            self.run.info('Bin ID', self.bin_id, quiet=self.quiet)
+            self.run.info('Bin ID', self.bin_id)
         elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file, quiet=self.quiet)
-        if self.enzymes_txt:
-            self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
+            self.run.info('Bin IDs file', self.bin_ids_file)
 
-        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
+        # init the KO dictionary
+        self.setup_ko_dict()
 
-
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if not self.estimate_from_json:
             utils.is_contigs_db(self.contigs_db_path)
+
+        # load existing kegg modules db
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError("It appears that a modules database (%s) does not exist in the KEGG data directory %s. "
+                              "Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run "
+                              "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
+                              "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
+                              "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
+        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+
+        if not self.estimate_from_json:
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
 
-
-        # LOAD KEGG DATA
-        if not self.only_user_modules:
-            # citation output for KEGG data
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
-
-            # init the enzyme accession to function definition dictionary
-            # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            self.setup_ko_dict()
-            annotation_source_set = set(['KOfam'])
-
-            # check for kegg modules db
-            if not os.path.exists(self.kegg_modules_db_path):
-                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
-                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
-
-            if not self.estimate_from_json and not self.enzymes_txt:
-                # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
-                if 'modules_db_hash' not in contigs_db.meta:
-                    raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
-                                      "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
-                                      "before you attempt to run this script again.")
-                contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
-
-                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
-                mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
-                kegg_modules_db.disconnect()
-
-                if contigs_db_mod_hash != mod_db_hash:
-                    raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
-                                      "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
-                                      "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
-                                      "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
-                                      "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
-                                      "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
-                                      "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
-                                      "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
-        else: # USER data only
-            annotation_source_set = set([])
-            self.kegg_modules_db_path = None # we nullify this just in case
-
-
-        # LOAD USER DATA
-        if not self.estimate_from_json and not self.enzymes_txt:
-            if self.user_input_dir:
-                # check for user modules db
-                if not os.path.exists(self.user_modules_db_path):
-                    raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
-                                      f"Perhaps you need to specify a different data directory using --user-modules. Or perhaps you didn't run "
-                                      f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
-
-                # sanity check that contigs db contains all necessary functional sources for user data
-                user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
-                modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
-
-                contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
-                source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
-
-                if source_in_modules_not_contigs:
-                    missing_sources = ", ".join(source_in_modules_not_contigs)
-                    raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
-                                      f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
-                                      f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
-                                      f"before running this program again. Here are the missing sources: {missing_sources}")
-
-                # expand annotation source set to include those in user db
-                annotation_source_set.update(modules_db_sources)
-
-                # we now have to add any enzymes from the user's modules db to the ko dict
-                user_kos = user_modules_db.get_ko_function_dict()
-                for k in user_kos:
-                    if k not in self.ko_dict:
-                        self.ko_dict[k] = user_kos[k]
-                user_modules_db.disconnect()
-
-        if not self.estimate_from_json and not self.enzymes_txt:
+            # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
+            if 'modules_db_hash' not in contigs_db.meta:
+                raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
+                                  "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
+                                  "before you attempt to run this script again.")
+            contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+            mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
+            if contigs_db_mod_hash != mod_db_hash:
+                raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
+                                  "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
+                                  "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
+                                  "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
+                                  "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
+                                  "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
+                                  "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
+                                  "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
             contigs_db.disconnect()
+        kegg_modules_db.disconnect()
 
-        self.annotation_sources_to_use = list(annotation_source_set)
-
-        # tell user what metabolism data we are using
-        if self.user_input_dir:
-            if self.only_user_modules:
-                self.run.info('Metabolism data', "USER only")
-            else:
-                self.run.info('Metabolism data', "KEGG + USER-DEFINED")
-        else:
-            self.run.info('Metabolism data', "KEGG only")
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
@@ -2260,7 +1885,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         source_list = ','.join(["'%s'" % src for src in annotation_sources])
         hits_where_clause = f'''source IN ({source_list}) AND gene_callers_id IN ({gene_list})'''
-        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession, function",
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                                where_clause=hits_where_clause)
 
         contigs_db.disconnect()
@@ -2268,40 +1893,70 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
         # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
-        self.progress.update("Organizing gene call data")
+        self.progress.update("Organizing KOfam hit data")
         gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
         gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
         assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
 
         kofam_gene_split_contig = []
-        for gene_call_id, ko, func in kofam_hits:
-            # some genes have multiple annotations that we need to split
-            for annotation in ko.split('!!!'):
-                kofam_gene_split_contig.append((annotation, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
-
-                # for user data, the enzymes in some loaded gene calls may not yet be in the ko dict, so we add them in here.
-                if self.user_input_dir:
-                    if not self.ko_dict:
-                        raise ConfigError("Uh oh. The code is currently trying to add gene annotations to self.ko_dict, but this attribute does not "
-                                          "exist! You need to fix this.")
-                    if annotation not in self.ko_dict:
-                        self.ko_dict[annotation] = {'definition': func}
+        for gene_call_id, ko in kofam_hits:
+            kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
 
         self.progress.update("Done")
         self.progress.end()
 
-        sources_str = ", ".join(annotation_sources)
-        self.run.info("Annotation sources used", sources_str)
-        self.run.info("Gene calls from these sources", "%d found" % len(kofam_hits), quiet=self.quiet)
+        self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
 
         if not self.quiet and not len(kofam_hits):
-            self.run.warning(f"Hmmm. No gene calls from any of the following annotation sources were found in this contigs DB: {sources_str}. "
-                             f"The consequence is that all metabolism estimate outputs will be empty. This is fine, and could even be biologically "
-                             f"correct. But we thought we'd mention it just in case you thought it was weird. Other, technical reasons that this could "
-                             f"have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` or another annotation program, or "
-                             "2) you imported functional annotations but the 'source' did not match those in the list above.")
+            self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
+                             "could even be biologically correct. But we thought we'd mention it just in case you thought it was weird. "
+                             "Other, technical reasons that this could have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` "
+                             "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
 
         return kofam_gene_split_contig
+
+
+    def init_data_from_modules_db(self):
+        """This function reads mucho data from the MODULES.db into dictionaries for later access.
+
+        It generates the self.all_modules_in_db dictionary, which contains all data values for all modules
+        in the db, keyed by module number.
+        It also generates the self.all_kos_in_db dictionary, which maps each KO in the db to its list of modules.
+
+        We do this once at the start so as to reduce the number of on-the-fly database queries
+        that have to happen during the estimation process.
+        """
+
+        self.all_modules_in_db = self.kegg_modules_db.get_modules_table_data_values_as_dict()
+
+        self.all_kos_in_db = {}
+        for mod in self.all_modules_in_db:
+            ko_list = self.all_modules_in_db[mod]['ORTHOLOGY']
+            if not isinstance(ko_list, list):
+                ko_list = [ko_list]
+            # we convert to a set because some modules have duplicate orthology lines for the same KO
+            for k in set(ko_list):
+                if k not in self.all_kos_in_db:
+                    self.all_kos_in_db[k] = []
+                self.all_kos_in_db[k].append(mod)
+
+
+    def init_paths_for_modules(self):
+        """This function unrolls the module DEFINITION for each module and places it in an attribute variable for
+        all downstream functions to access.
+
+        It unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
+        """
+
+        self.module_paths_dict = {}
+        modules = self.all_modules_in_db.keys()
+        for m in modules:
+            module_definition = self.all_modules_in_db[m]["DEFINITION"]
+            # the below function expects a list
+            if not isinstance(module_definition, list):
+                module_definition = [module_definition]
+            self.module_paths_dict[m] = self.kegg_modules_db.unroll_module_definition(m, def_lines=module_definition)
 
 
     def init_gene_coverage(self, gcids_for_kofam_hits):
@@ -2331,43 +1986,37 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
 
-        If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
+        The profile DB is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
         """
 
-        # obtain list of sample names
-        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
-            samples_list = [self.contigs_db_project_name]
+        if not self.profile_db:
+            self.args.skip_consider_gene_dbs = True
+            self.profile_db = ProfileSuperclass(self.args)
 
-        else:
-            if not self.profile_db:
-                self.args.skip_consider_gene_dbs = True
-                self.profile_db = ProfileSuperclass(self.args)
-
-            samples_list = self.profile_db.p_meta['samples']
-
-        # obtain lists of all the headers we will need to add.
+        # first we get lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
         kofam_hits_coverage_headers = []
         kofam_hits_detection_headers = []
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        for s in samples_list:
+        samples_in_profile_db = self.profile_db.p_meta['samples']
+        for s in samples_in_profile_db:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofam_hits_in_modules',
-                                                       'description': f"Mean coverage of gene in sample {s}"
+                                                       'mode_type': 'kofam_hits_in_modules', 'kofam_hits'
+                                                       'description': f"Mean coverage of gene with KOfam hit in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
                                                         'mode_type': 'kofam_hits_in_modules',
-                                                        'description': f"Detection of gene in sample {s}"
+                                                        'description': f"Detection of gene with KOfam hit in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
-                                                             'mode_type': 'all',
+                                                             'mode_type': 'modules', 'kofam_hits'
                                                              'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
@@ -2385,8 +2034,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                             }
 
         # we update the header list for the affected modes
-        self.available_modes["hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
-        self.available_modes["hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["kofam_hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
+        self.available_modes["kofam_hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
 
@@ -2444,11 +2093,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
-            if split_list:
-                num_splits = len(split_list)
-            else:
-                num_splits = "None"
-            self.run.info("Number of splits", num_splits)
+            self.run.info("Number of splits", len(split_list))
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.all_modules_in_db.keys()
@@ -2458,21 +2103,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "kofam_hits" : {},
                                            "genes_to_contigs" : {},
                                            "contigs_to_genes" : {},
-                                           "unique_to_this_module": set(),
-                                           "warnings" : set()
+                                           "warnings" : []
                                           }
         for knum in all_kos:
-            """
-            We can only add warnings about missing KOfam profiles because for other annotation sources, we don't
-            have a way to know if profiles are missing. But for KOfams with missing profiles, this step is necessary
-            so that we don't add the enzyme to the bin_level_ko_dict, because later this will cause problems since
-            the enzyme is not in self.ko_dict
-
-            Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
-            because we need access to the self.ko_dict
-            """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
-                mods_it_is_in = self.all_kos_in_db[knum]['modules']
+            if knum not in self.ko_dict:
+                mods_it_is_in = self.all_kos_in_db[knum]
                 if mods_it_is_in:
                     if anvio.DEBUG:
                         mods_str = ", ".join(mods_it_is_in)
@@ -2481,7 +2116,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         f"{mods_str}). ")
                     for m in mods_it_is_in:
                         if knum[0] != 'M':
-                            bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+                            bin_level_module_dict[m]["warnings"].append(f"No KOfam profile for {knum}")
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
@@ -2502,13 +2137,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
-                present_in_mods = self.all_kos_in_db[ko]['modules']
+                present_in_mods = self.all_kos_in_db[ko]
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
-
-                # keep track of enzymes unique to this module
-                is_unique = False
-                if len(present_in_mods) == 1:
-                    is_unique = True
 
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
@@ -2522,14 +2152,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
-                    # make a special list for the enzymes that are unique
-                    if is_unique:
-                        bin_level_module_dict[m]["unique_to_this_module"].add(ko)
-                    # warn the user if this enzyme is shared between multiple modules
-                    else:
-                        mod_str = "/".join(present_in_mods)
-                        bin_level_module_dict[m]["warnings"].add(f"{ko} is present in multiple modules: {mod_str}")
-
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
             if contig in bin_level_ko_dict[ko]["contigs_to_genes"]:
@@ -2538,9 +2160,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 bin_level_ko_dict[ko]["contigs_to_genes"][contig] = set([gene_call_id])
 
         if anvio.DEBUG:
-            self.run.info("Gene calls processed", "%d in bin" % len(kofam_hits_in_splits))
+            self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
             if kos_not_in_modules:
-                self.run.warning("Just so you know, the following enzymes did not belong to any modules in the MODULES.db: %s"
+                self.run.warning("Just so you know, the following KOfam hits did not belong to any KEGG modules in the MODULES.db: %s"
                 % ", ".join(kos_not_in_modules))
 
         return bin_level_module_dict, bin_level_ko_dict
@@ -2616,91 +2238,70 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for p in self.module_paths_dict[mnum]:
             num_complete_steps_in_path = 0
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
-
             for atomic_step in p:
                 # there are 5 types of atomic steps to take care of
-                if any(x in atomic_step for x in ['-','+']):
-                    # 1) steps without associated enzymes, ie --
-                    if atomic_step == "--":
-                        # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated enzyme.
-                        # we assume that such steps are not complete
-                        has_no_ko_step = True
-                        warning_str = "'--' steps are assumed incomplete"
-                        meta_dict_for_bin[mnum]["warnings"].add(warning_str)
-                    # 2) non-essential KOs, ie -Kxxxxx
-                    elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
-                        """
-                        OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
-                        Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
-                        ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
-                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
-                        For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
-                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
-                        the module completeness estimate.
-                        """
-                        ko = atomic_step[1:]
-                        if ko not in module_nonessential_kos:
-                            module_nonessential_kos.append(ko)
-                        num_nonessential_steps_in_path += 1
-                        has_nonessential_step = True
+                # 1) regular old single KOs, ie Kxxxxx
+                if atomic_step[0] == "K" and len(atomic_step) == 6:
+                    if atomic_step in present_list_for_mnum:
+                        num_complete_steps_in_path += 1
+                # 2) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
+                elif atomic_step[0] == "K" and (atomic_step[6] == "+" or atomic_step[6] == "-"):
+                    idx = 6
+                    essential_components = [atomic_step[0:idx]]
+                    while idx < len(atomic_step):
+                        component_ko = atomic_step[idx+1:idx+7]
+                        if atomic_step[idx] == "+":
+                            essential_components.append(component_ko)
+                        else:
+                            has_nonessential_step = True
+                            if component_ko not in module_nonessential_kos:
+                                module_nonessential_kos.append(component_ko)
+                        idx += 7
 
-                    # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
-                    else:
-                        # split on '+' or '-'
-                        pattern = re.compile('\+|\-')
-                        match_idxs = []
-                        for match in re.finditer(pattern, atomic_step):
-                            match_idxs.append(match.start())
+                    num_present_components = 0
+                    for c in essential_components:
+                        if c in present_list_for_mnum:
+                            num_present_components += 1
+                    component_completeness = num_present_components / len(essential_components)
+                    num_complete_steps_in_path += component_completeness
+                # 3) non-essential KOs, ie -Kxxxxx
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
+                    """
+                    OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+                    Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+                    ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+                    It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
+                    For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+                    But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
+                    the module completeness estimate.
+                    """
+                    if atomic_step[1:] not in module_nonessential_kos:
+                        module_nonessential_kos.append(atomic_step[1:])
+                    num_nonessential_steps_in_path += 1
+                    has_nonessential_step = True
+                # 4) steps without associated KOs, ie --
+                elif atomic_step == "--":
+                    # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
+                    # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+                    has_no_ko_step = True
+                    warning_str = "'--' steps are assumed incomplete"
+                    if warning_str not in meta_dict_for_bin[mnum]["warnings"]:
+                        meta_dict_for_bin[mnum]["warnings"].append(warning_str)
+                # 5) Module numbers, ie Mxxxxx
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
+                    """
+                    This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
+                    (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
 
-                        essential_components = []
-                        num_matches_processed = 0
-                        for i, match_idx in enumerate(match_idxs):
-                            # if this is the first match, we need to handle the initial component in the complex
-                            if num_matches_processed == 0:
-                                essential_components.append(atomic_step[0:match_idx])
-
-                            # handle the component after the match character
-                            if i < len(match_idxs)-1:
-                                next_idx = match_idxs[i+1]
-                            else:
-                                next_idx = len(atomic_step)
-                            component_ko = atomic_step[match_idx+1:next_idx]
-
-                            # essential component after  +
-                            if atomic_step[match_idx] == '+':
-                                essential_components.append(component_ko)
-                            # non-essential component after '-'
-                            else:
-                                has_nonessential_step = True
-                                if component_ko not in module_nonessential_kos:
-                                    module_nonessential_kos.append(component_ko)
-
-                            num_matches_processed += 1
-
-                        # after processing all components of the enzyme complex, we compute the complex completeness
-                        num_present_components = 0
-                        for c in essential_components:
-                            if c in present_list_for_mnum:
-                                num_present_components += 1
-                        component_completeness = num_present_components / len(essential_components)
-                        num_complete_steps_in_path += component_completeness
+                    We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
+                    So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
+                    in a list so we can go back and evaluate completeness of steps with module numbers later.
+                    """
+                    defined_by_modules = True
                 else:
-                    # atomic step is a single enzyme or module
-                    # 4) Module numbers, ie Mxxxxx
-                    if atomic_step in self.all_modules_in_db:
-                        """
-                        This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
-                        (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+                    raise ConfigError("Well. While estimating completeness for module %s, we found an atomic step in the pathway that we "
+                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
-                        We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
-                        So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
-                        in a list so we can go back and evaluate completeness of steps with module numbers later.
-                        """
-                        defined_by_modules = True
-                    # 5) regular old single enzymes, ie Kxxxxx (for KOs), COGyyyyy (for COGs), etc
-                    else:
-                        if atomic_step in present_list_for_mnum:
-                            num_complete_steps_in_path += 1
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
             meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
@@ -2712,20 +2313,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
-
-        # compute proportion of unique enzymes in the module (regardless of which path(s) enzyme is in or whether enzyme is essential)
-        if meta_dict_for_bin[mnum]["unique_to_this_module"]:
-            num_unique_enzymes_present = 0
-            num_unique_enzymes_in_mod = len(meta_dict_for_bin[mnum]["unique_to_this_module"])
-            for ko in present_list_for_mnum:
-                if ko in meta_dict_for_bin[mnum]["unique_to_this_module"]:
-                    num_unique_enzymes_present += 1
-
-            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = num_unique_enzymes_present / num_unique_enzymes_in_mod
-            meta_dict_for_bin[mnum]["unique_enzymes_context_string"] = f"{num_unique_enzymes_present} of {num_unique_enzymes_in_mod} unique enzymes in module"
-        else:
-            meta_dict_for_bin[mnum]["proportion_unique_enzymes_present"] = "NA"
-            meta_dict_for_bin[mnum]["unique_enzymes_context_string"] = "NA"
 
 
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
@@ -2766,16 +2353,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             num_complete_module_steps = 0
 
             for atomic_step in p:
-                # module step; we need to count these based on previously computed module completeness
-                if atomic_step in self.all_modules_in_db:
-                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
+                if atomic_step[0] == "K" or atomic_step == "--":
                     num_essential_steps_in_path += 1
                 # non-essential KO, don't count as a step in the path
-                elif atomic_step[0] == '-' and not atomic_step == "--":
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
                     pass
-                # single enzymes, protein complexes and '--' steps; were already counted as complete by previous function
-                else:
+                # module step; we need to count these based on previously computed module completeness
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
                     num_essential_steps_in_path += 1
+                else:
+                    raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
+                                      "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
 
             # now we adjust the previous pathway completeness
             old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
@@ -2816,12 +2406,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
         """
 
-        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
-        meta_dict_for_bin[mod]["genes_to_detection"] = {}
-        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
-        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
-
-        if not self.enzymes_txt and not self.profile_db:
+        if not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
@@ -2841,10 +2426,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            if self.enzymes_txt:
-                self.coverage_sample_list = [self.contigs_db_project_name]
-            else:
-                self.coverage_sample_list = self.profile_db.p_meta['samples']
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
+
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -2853,12 +2440,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             coverage_sum = 0
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
-                if self.enzymes_txt:
-                    cov = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['coverage'].values[0]
-                    det = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['detection'].values[0]
-                else:
-                    cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
-                    det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
                 coverage_sum += cov
                 detection_sum += det
                 meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
@@ -2938,14 +2521,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # notify user of the modules that gave some fishy results -- but only for genome mode because it's too wordy otherwise
         if not self.quiet and self.genome_mode:
             if mods_with_nonessential_steps:
-                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following modules: %s.   "
+                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
                                  "At this time, we are not counting these steps in our percent completion estimates."
                                  % (", ".join(mods_with_nonessential_steps)))
 
             if mods_with_unassociated_ko:
-                self.run.warning("Just so you know, while estimating the completeness of some modules, anvi'o saw "
+                self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
                                  "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                 "associated enzyme. So we really cannot know just based on gene annotations whether or not this "
+                                 "associated KO. So we really cannot know just based on KOfam hits whether or not this "
                                  "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
                                  "and as a result their modules may be falsely considered incomplete. So it may be in your "
                                  "interest to go back and take a look at these individual modules to see if you can find the "
@@ -3250,37 +2833,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
-        if ('USER' in kegg_metabolism_superdict['data_sources'] and not self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from USER data, but you "
-                              f"did not specify which data directory to use with the `--user-modules` flag.")
-        if (kegg_metabolism_superdict['data_sources'] == 'KEGG' and self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data only, but then "
-                              f"you provided us with a USER metabolism data directory. You should not use the `--user-modules` flag for this file.")
-
-        if 'KEGG' in kegg_metabolism_superdict['data_sources']:
-            kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
-            mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
-            kegg_modules_db.disconnect()
-
-            if mod_db_hash != kegg_metabolism_superdict['kegg_modules_db_hash']:
-                raise ConfigError(f"The modules database in the data directory you provided (or the default KEGG data directory, if you didn't "
-                                  f"provide anything) has a different hash than the one used to generate this JSON input file. You probably need "
-                                  f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
-                                  f"the JSON file is {kegg_metabolism_superdict['kegg_modules_db_hash']} and the hash in the current modules DB "
-                                  f"(at path `{self.kegg_modules_db_path}`) is {mod_db_hash}.")
-
-        if self.user_input_dir:
-            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
-            mod_db_hash = user_modules_db.db.get_meta_value('hash')
-            user_modules_db.disconnect()
-
-            if mod_db_hash != kegg_metabolism_superdict['user_modules_db_hash']:
-                raise ConfigError(f"The modules database in the data directory you provided with --user-modules "
-                                  f"has a different hash than the one used to generate this JSON input file. You probably need "
-                                  f"to specify a different data directory so that we can use the modules DB with a matching hash. FYI, the hash in "
-                                  f"the JSON file is {kegg_metabolism_superdict['user_modules_db_hash']} and the hash in the current modules DB "
-                                  f"(at path `{self.user_modules_db_path}`) is {mod_db_hash}.")
-
         new_kegg_metabolism_superdict = {}
 
         expected_keys_for_module = {"gene_caller_ids", "kofam_hits", "genes_to_contigs", "contigs_to_genes"}
@@ -3288,13 +2840,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         additional_keys = set([])
 
         self.init_data_from_modules_db()
+        self.init_paths_for_modules()
 
         for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
-            if bin_name in ['data_sources', 'kegg_modules_db_hash', 'user_modules_db_hash']:
-                continue
-            else:
-                bins_found.append(bin_name)
-
+            bins_found.append(bin_name)
             for mod, mod_dict in meta_dict_for_bin.items():
                 if mod == "num_complete_modules":
                     self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
@@ -3311,12 +2860,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 additional_keys = additional_keys.union(set(mod_dict.keys()).difference(expected_keys_for_module))
 
-                # convert certain lists to sets
+                # convert gene_caller_ids and contigs_to_genes lists to sets
                 mod_dict['gene_caller_ids'] = set(mod_dict['gene_caller_ids'])
                 for contig, gene_list in mod_dict['contigs_to_genes'].items():
                     mod_dict['contigs_to_genes'][contig] = set(gene_list)
                 mod_dict['genes_to_contigs'] = {int(g):c for g,c in mod_dict['genes_to_contigs'].items()}
-                mod_dict['warnings'] = set(mod_dict['warnings'])
 
             new_kegg_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(meta_dict_for_bin, bin_name=bin_name)
             single_bin_module_superdict = {bin_name: new_kegg_metabolism_superdict[bin_name]}
@@ -3331,130 +2879,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def load_data_from_enzymes_txt(self):
-        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
-
-        RETURNS
-        =======
-        enzyme_df : Pandas DataFrame
-            contains the information in the enzymes txt file
-        """
-
-        self.progress.new("Loading enzymes-txt file...")
-        expected_fields = ['gene_id', 'enzyme_accession', 'source']
-        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
-        self.progress.end()
-
-        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
-
-        # sanity check for required columns
-        missing = []
-        for f in expected_fields:
-            if f not in enzyme_df.columns:
-                missing.append(f)
-        if missing:
-            miss_str = ", ".join(missing)
-            exp_str = ", ".join(expected_fields)
-            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
-                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
-
-        # warning about extra columns
-        used_cols = expected_fields + ['coverage', 'detection']
-        extra_cols = []
-        for c in enzyme_df.columns:
-            if c not in used_cols:
-                extra_cols.append(c)
-        if extra_cols:
-            e_str = ", ".join(extra_cols)
-            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
-                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
-
-        # sanity check for unique gene ids
-        duplicates = list(enzyme_df[enzyme_df.duplicated(subset=['gene_id'])]['gene_id'].unique())
-        if duplicates:
-            if len(duplicates) > 5:
-                num = len(duplicates) - 1
-                dup_str = f"Here is one example (there are {num} others, but we didn't want to show them all): {duplicates[0]}"
-            else:
-                dup_str = f"Here are the duplicates: {', '.join(duplicates)}"
-            raise ConfigError(f"There are duplicate entries in the `gene_id` column of your enzymes-txt file. We require the values "
-                              f"in this column to be unique, so you'll have to modify (or remove) the duplicates. {dup_str} ")
-
-        # check and warning for enzymes not in self.all_kos_in_db
-        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
-        if enzymes_not_in_modules:
-            example = enzymes_not_in_modules[0]
-            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
-                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
-                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
-
-        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
-        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
-            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
-                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
-                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
-                             "flag off. Sorry ¯\_(ツ)_/¯")
-            self.add_coverage = False
-            # remove coverage headers from the list so we don't try to access them later
-            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
-            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
-                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
-            for h in kofam_hits_coverage_headers:
-                for mode in ["hits_in_modules", "hits"]:
-                    if h in self.available_modes[mode]["headers"]:
-                        self.available_modes[mode]["headers"].remove(h)
-            for h in modules_coverage_headers:
-                if h in self.available_modes["modules"]["headers"]:
-                    self.available_modes["modules"]["headers"].remove(h)
-
-        return enzyme_df
-
-
-    def estimate_metabolism_from_enzymes_txt(self):
-        """Estimates metabolism on a set of enzymes provided in a text file.
-
-        This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
-        same as the estimate_for_genome() function.
-
-        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
-        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
-        attribute has been set (previously) to the name of the enzyme txt file
-
-        RETURNS
-        =======
-        enzyme_metabolism_superdict : dictionary of dictionary of dictionaries
-            dictionary mapping the name of the enzyme txt file to its metabolism completeness dictionary
-        enzyme_ko_superdict : dictionary of dictionary of dictionaries
-            maps the name of the enzyme txt file to its KOfam hit dictionary
-        """
-
-        kofam_gene_split_contig = []
-        # no splits or contigs here
-        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
-            kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
-
-        enzyme_metabolism_superdict = {}
-        enzyme_ko_superdict = {}
-
-        metabolism_dict_for_genome,ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig,
-                                                                                                 bin_name=self.contigs_db_project_name)
-        if not self.store_json_without_estimation:
-            enzyme_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome,
-                                                                                                         bin_name=self.contigs_db_project_name)
-            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
-        else:
-            enzyme_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
-            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
-
-        # append to file
-        self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
-
-        return enzyme_metabolism_superdict, enzyme_ko_superdict
-
-
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
-                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
+                            return_subset_for_matrix_format=False):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -3477,15 +2903,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return_subset_for_matrix_format : boolean
             set to True if you want subsets of the superdicts to be returned: one subdict for module completeness scores, one
             subdict for module presence/absence, and one subdict for KO hits. Used for matrix format output.
-        all_modules_in_db : dictionary
-            if this function is called from the KeggMetabolismEstimatorMulti class, this parameter contains the module information
-            loaded from the MODULES.db in init_data_from_modules_db(). Otherwise, it is None and this function will have to call
-            init_data_from_modules_db()
-        all_kos_in_db : dictionary
-            This is the same deal as the all_modules_in_db param - it should only have a value if passed from the
-            KeggMetabolismEstimatorMulti class
-        module_paths_dict : dictionary
-            Again, same thing as all_modules_in_db param - only provided if passed from KeggMetabolismEstimatorMulti
 
         RETURNS
         =======
@@ -3500,6 +2917,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kegg_metabolism_superdict = {}
         kofam_hits_superdict = {}
 
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+
         if skip_storing_data or self.write_dict_to_json:
             self.output_file_dict = {}
         else:
@@ -3511,36 +2930,28 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
-            # we either get the modules DB info from the previous class, or we have to initialize it here
-            if all_modules_in_db:
-                self.all_modules_in_db = all_modules_in_db
-                self.all_kos_in_db = all_kos_in_db
-                self.module_paths_dict = module_paths_dict
+            self.init_data_from_modules_db()
+
+            kofam_hits_info = self.init_hits_and_splits()
+            self.init_paths_for_modules()
+
+            if self.add_coverage:
+                self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+
+            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+            elif not self.collection_name and not self.metagenome_mode:
+                self.genome_mode = True
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
+            elif self.metagenome_mode:
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
             else:
-                self.init_data_from_modules_db()
-
-            if self.enzymes_txt:
-                self.enzymes_txt_data = self.load_data_from_enzymes_txt()
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
-            else:
-                kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-
-                if self.add_coverage:
-                    self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
-
-                if self.profile_db_path and self.collection_name and not self.metagenome_mode:
-                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-                elif not self.collection_name and not self.metagenome_mode:
-                    self.genome_mode = True
-                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
-                elif self.metagenome_mode:
-                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
-                else:
-                    raise ConfigError("This class doesn't know how to deal with that yet :/")
+                raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
+        self.kegg_modules_db.disconnect()
         if not self.multi_mode:
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
@@ -3619,9 +3030,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
-                                    "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
-                                    "unique_enzymes_hit_counts"])
-        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
+                                    "module_substrates", "module_products", "module_intermediates"])
+        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
@@ -3631,6 +3041,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         d = {}
         if not self.modules_unique_id:
              self.modules_unique_id = 0
+        """
+        ### FIXME ###
+        The unique_id problematic to deal with when we are generating multiple output files because this self.modules_unique_id
+        variable is shared between all output files. Since we append to each output file in turn, this means that within an
+        output file the unique_id column will have 'jumps' in value (such that a row's unique_id is not always 1 greater than the
+        previous row's unique_id). This does not really cause problems and is not an urgent fix, per se, but it looks weird.
+        ### FIXME ###
+        """
 
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
@@ -3645,12 +3063,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if exclude_zero_completeness and c_dict["percent_complete"] == 0:
                     continue
 
-                # fetch module info
+                # fetch module info from db
                 metadata_dict = self.get_module_metadata_dictionary(mnum)
                 definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
                 if not isinstance(definition_list, list):
                     definition_list = [definition_list]
                 module_def = '"' + " ".join(definition_list) + '"'
+                module_substrate_list, module_intermediate_list, module_product_list = self.kegg_modules_db.get_human_readable_compound_lists_for_module(mnum)
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):
@@ -3672,8 +3091,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 d[self.modules_unique_id] = {}
 
                                 # kofam hit specific info
-                                if "enzyme_hit" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hit"] = ko
+                                if "kofam_hit" in headers_to_include:
+                                    d[self.modules_unique_id]["kofam_hit"] = ko
                                 if "gene_caller_id" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_id"] = gc_id
                                 if "contig" in headers_to_include:
@@ -3701,8 +3120,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     d[self.modules_unique_id][self.name_header] = bin
                                 if "db_name" in headers_to_include:
                                     d[self.modules_unique_id]["db_name"] = self.database_name
-                                if 'module' in headers_to_include:
-                                    d[self.modules_unique_id]['module'] = mnum
+                                if "kegg_module" in headers_to_include:
+                                    d[self.modules_unique_id]["kegg_module"] = mnum
 
                                 # module specific info
                                 if "module_name" in headers_to_include:
@@ -3716,18 +3135,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "module_definition" in headers_to_include:
                                     d[self.modules_unique_id]["module_definition"] = module_def
                                 if "module_substrates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['substrate_list']:
-                                        d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
+                                    if module_substrate_list:
+                                        d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
                                     else:
                                         d[self.modules_unique_id]["module_substrates"] = "None"
                                 if "module_products" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['product_list']:
-                                        d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
+                                    if module_product_list:
+                                        d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
                                     else:
                                         d[self.modules_unique_id]["module_products"] = "None"
                                 if "module_intermediates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['intermediate_list']:
-                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
+                                    if module_intermediate_list:
+                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
                                     else:
                                         d[self.modules_unique_id]["module_intermediates"] = "None"
 
@@ -3740,33 +3159,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     for ko in kos_in_mod:
                                         gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                                         kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                                if "enzyme_hits_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+                                if "kofam_hits_in_module" in headers_to_include:
+                                    d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
                                 if "gene_caller_ids_in_module" in headers_to_include:
                                     d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                                # comma-separated list of warnings
-                                if "warnings" in headers_to_include:
-                                    if not c_dict["warnings"]:
-                                        d[self.modules_unique_id]["warnings"] = "None"
-                                    else:
-                                        d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                                # list of enzymes unique to module
-                                unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                                if "enzymes_unique_to_module" in headers_to_include:
-                                    if unique_enzymes:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                                    else:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                                if "unique_enzymes_hit_counts" in headers_to_include:
-                                    if unique_enzymes:
-                                        hit_count_list = []
-                                        for e in unique_enzymes:
-                                            hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                                    else:
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
 
                                 # everything else at c_dict level
                                 for h in remaining_headers:
@@ -3793,8 +3189,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.modules_unique_id][self.name_header] = bin
                     if "db_name" in headers_to_include:
                         d[self.modules_unique_id]["db_name"] = self.database_name
-                    if 'module' in headers_to_include:
-                        d[self.modules_unique_id]['module'] = mnum
+                    if "kegg_module" in headers_to_include:
+                        d[self.modules_unique_id]["kegg_module"] = mnum
 
                     # module specific info
                     if "module_name" in headers_to_include:
@@ -3808,18 +3204,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if "module_definition" in headers_to_include:
                         d[self.modules_unique_id]["module_definition"] = module_def
                     if "module_substrates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['substrate_list']:
-                            d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
+                        if module_substrate_list:
+                            d[self.modules_unique_id]["module_substrates"] = ",".join(module_substrate_list)
                         else:
                             d[self.modules_unique_id]["module_substrates"] = "None"
                     if "module_products" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['product_list']:
-                            d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
+                        if module_product_list:
+                            d[self.modules_unique_id]["module_products"] = ",".join(module_product_list)
                         else:
                             d[self.modules_unique_id]["module_products"] = "None"
                     if "module_intermediates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['intermediate_list']:
-                            d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
+                        if module_intermediate_list:
+                            d[self.modules_unique_id]["module_intermediates"] = ",".join(module_intermediate_list)
                         else:
                             d[self.modules_unique_id]["module_intermediates"] = "None"
 
@@ -3832,33 +3228,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         for ko in kos_in_mod:
                             gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
                             kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                    if "enzyme_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+                    if "kofam_hits_in_module" in headers_to_include:
+                        d[self.modules_unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod_list)
                     if "gene_caller_ids_in_module" in headers_to_include:
                         d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                    # comma-separated list of warnings
-                    if "warnings" in headers_to_include:
-                        if not c_dict["warnings"]:
-                            d[self.modules_unique_id]["warnings"] = "None"
-                        else:
-                            d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                    # list of enzymes unique to module
-                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                    if "enzymes_unique_to_module" in headers_to_include:
-                        if unique_enzymes:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                        else:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                    if "unique_enzymes_hit_counts" in headers_to_include:
-                        if unique_enzymes:
-                            hit_count_list = []
-                            for e in unique_enzymes:
-                                hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                        else:
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
 
                     # add coverage if requested
                     if self.add_coverage:
@@ -3871,12 +3244,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             gene_coverages_in_mod = []
                             gene_detection_in_mod = []
                             for gc in gcids_in_mod:
-                                if self.enzymes_txt:
-                                    gc_idx = gc
-                                else:
-                                    gc_idx = int(gc)
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
+                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][int(gc)])
+                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][int(gc)])
 
                             d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
@@ -3936,20 +3305,25 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
-            headers_to_include = set(OUTPUT_MODES["hits"]["headers"])
+            headers_to_include = set(OUTPUT_MODES["kofam_hits"]["headers"])
         else:
             headers_to_include = set(headers_to_include)
 
         d = {}
         if not self.ko_unique_id:
             self.ko_unique_id = 0
+        """
+        ### FIXME ###
+        See note in previous function about the weirdness of the unique_id with multiple output files.
+        ### FIXME ###
+        """
 
         for bin, ko_dict in ko_superdict.items():
             for ko, k_dict in ko_dict.items():
                 if anvio.DEBUG:
                     self.run.info("Generating output for KO", ko)
 
-                metadata_dict = self.get_ko_metadata_dictionary(ko, dont_fail_if_not_found=True)
+                metadata_dict = self.get_ko_metadata_dictionary(ko)
 
                 for gc_id in k_dict["gene_caller_ids"]:
                     d[self.ko_unique_id] = {}
@@ -3958,35 +3332,28 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id][self.name_header] = bin
                     if "db_name" in headers_to_include:
                         d[self.ko_unique_id]["db_name"] = self.database_name
-                    if "enzyme" in headers_to_include:
-                        d[self.ko_unique_id]["enzyme"] = ko
+                    if "ko" in headers_to_include:
+                        d[self.ko_unique_id]["ko"] = ko
                     if "gene_caller_id" in headers_to_include:
                         d[self.ko_unique_id]["gene_caller_id"] = gc_id
                     if "contig" in headers_to_include:
                         d[self.ko_unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
-                    if "modules_with_enzyme" in headers_to_include:
-                        d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_enzyme"]
-                    if "enzyme_definition" in headers_to_include:
-                        d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
+                    if "modules_with_ko" in headers_to_include:
+                        d[self.ko_unique_id]["modules_with_ko"] = metadata_dict["modules_with_ko"]
+                    if "ko_definition" in headers_to_include:
+                        d[self.ko_unique_id]["ko_definition"] = metadata_dict["ko_definition"]
 
                     if self.add_coverage:
-                        if self.enzymes_txt:
-                            for s in self.coverage_sample_list:
-                                sample_cov_header = s + "_coverage"
-                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["coverage"].values[0]
-                                sample_det_header = s + "_detection"
-                                d[self.ko_unique_id][sample_det_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["detection"].values[0]
-                        else:
-                            if not self.profile_db:
-                                raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
-                                                  "not been initialized, therefore we cannot add coverage values to your output. "
-                                                  "This is likely a bug or developer mistake. It is a sad day :(")
+                        if not self.profile_db:
+                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                              "not been initialized, therefore we cannot add coverage values to your output. "
+                                              "This is likely a bug or developer mistake. It is a sad day :(")
 
-                            for s in self.coverage_sample_list:
-                                sample_cov_header = s + "_coverage"
-                                d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
-                                sample_det_header = s + "_detection"
-                                d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
+                        for s in self.coverage_sample_list:
+                            sample_cov_header = s + "_coverage"
+                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                            sample_det_header = s + "_detection"
+                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
@@ -4048,7 +3415,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
 
-            file_obj.append(output_dict, headers=['key'] + header_list, do_not_write_key_column=True)
+            file_obj.append(output_dict, key_header="unique_id", headers=header_list)
 
             if anvio.DEBUG:
                 self.run.warning(f"Appended metabolism dictionary to {file_obj.path}" ,
@@ -4083,7 +3450,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
                                   "data dictionary, but we don't know about that one.")
-            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, headers=['key'] + header_list, do_not_write_key_column=True)
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
@@ -4093,25 +3460,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         def set_to_list(obj):
             if isinstance(obj, set):
                 return list(obj)
-
-        if self.user_input_dir:
-            if self.only_user_modules:
-                kegg_superdict['data_sources'] = 'USER'
-            else:
-                kegg_superdict['data_sources'] = 'USER,KEGG'
-            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
-            kegg_superdict['user_modules_db_hash'] = user_modules_db.db.get_meta_value('hash')
-            user_modules_db.disconnect()
-        else:
-            kegg_superdict['data_sources'] = 'KEGG'
-            kegg_superdict['user_modules_db_hash'] = ''
-
-        if self.only_user_modules:
-            kegg_superdict['kegg_modules_db_hash'] = ''
-        else:
-            kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
-            kegg_superdict['kegg_modules_db_hash'] = kegg_modules_db.db.get_meta_value('hash')
-            kegg_modules_db.disconnect()
 
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
@@ -4166,12 +3514,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
                               "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
 
-        # init the base classes for access to shared paths and such
+        # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
-        KeggEstimatorArgs.__init__(self, self.args)
 
-        # This can be initialized later if necessary by setup_ko_dict()
-        self.ko_dict = {}
+        KeggEstimatorArgs.__init__(self, self.args)
 
         if anvio.DEBUG:
             self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
@@ -4183,7 +3529,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         self.databases = None
 
-        # INPUT SANITY CHECKS
+        # input sanity checks
         if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
             or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
             or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
@@ -4194,11 +3540,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
                               "work for input files with multiple contigs DBs. :( ")
 
-        if self.only_user_modules and not self.user_input_dir:
-            raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
-
-        # OUTPUT SANITY CHECKS
-        if self.matrix_format and self.long_format_mode:
+        # output sanity checks
+        if self.matrix_format and args.kegg_output_modes:
             raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
                               "like this, anvi'o is confused. :) ")
         if self.matrix_include_metadata and not self.matrix_format:
@@ -4223,61 +3566,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         elif self.internal_genomes_file:
             self.name_header = 'bin_name'
 
-        # LOAD KEGG DATA
-        if not self.only_user_modules:
-            # citation output for KEGG data
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
-
-            # init the enzyme accession to function definition dictionary
-            # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            self.setup_ko_dict()
-            annotation_source_set = set(['KOfam'])
-
-            # check for kegg modules db
-            if not os.path.exists(self.kegg_modules_db_path):
-                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
-                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
-
-        else: # USER data only
-            annotation_source_set = set([])
-            self.kegg_modules_db_path = None # we nullify this just in case
-
-
-        # LOAD USER DATA
-        if self.user_input_dir:
-            # check for user modules db
-            if not os.path.exists(self.user_modules_db_path):
-                raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --user-modules. Or perhaps you didn't run "
-                                  f"`anvi-setup-user-modules`. Either way, you're still awesome. Have a great day ;)")
-
-            # expand annotation source set to include those in user db
-            user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
-            modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
-            annotation_source_set.update(modules_db_sources)
-
-            # we now have to add any enzymes from the user's modules db to the ko dict
-            user_kos = user_modules_db.get_ko_function_dict()
-            for k in user_kos:
-                if k not in self.ko_dict:
-                    self.ko_dict[k] = user_kos[k]
-            user_modules_db.disconnect()
-
-        self.annotation_sources_to_use = list(annotation_source_set)
-
-        # tell user what metabolism data we are using
-        if self.user_input_dir:
-            if self.only_user_modules:
-                self.run.info('Metabolism data', "USER only")
-            else:
-                self.run.info('Metabolism data', "KEGG + USER-DEFINED")
-        else:
-            self.run.info('Metabolism data', "KEGG only")
+        if not self.quiet:
+            self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                             "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                             "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
 
     def list_output_modes(self):
@@ -4301,19 +3593,19 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.available_headers["genome_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of genome in which we find gene annotations (hits) and/or modules"
+                                            'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
                                             }
         elif self.name_header == 'bin_name':
             self.available_headers["bin_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of bin in which we find gene annotations (hits) and/or modules"
+                                            'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
                                             }
         elif self.name_header == 'contig_name':
             self.available_headers["contig_name"] = {
                                             'cdict_key': None,
                                             'mode_type': 'all',
-                                            'description': "Name of contig (in a metagenome) in which we find gene annotations (hits) and/or modules"
+                                            'description': "Name of contig (in a metagenome) in which we find KOfam hits and/or KEGG modules"
                                             }
 
         # here we make sure db_name is always included in the multi-mode output
@@ -4343,36 +3635,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input metagenomes file and adjusts class attributes as needed"""
 
         g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
-        g.load_metagenome_descriptions(skip_functions=(not self.matrix_format))
-
-        # sanity check that all dbs are properly annotated with required sources
-        for src in self.annotation_sources_to_use:
-            bad_metagenomes = [v['name'] for v in g.metagenomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
-            if len(bad_metagenomes):
-                bad_metagenomes_txt = [f"'{bad}'" for bad in bad_metagenomes]
-                n = len(bad_metagenomes)
-                it_or_them = P('it', n, alt='them')
-                raise ConfigError(f"Bad news :/ It seems {n} of your {P('metagenome', len(g.metagenomes))} "
-                                  f"{P('is', n, alt='are')} lacking any function annotations for "
-                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
-                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
-                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
-                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
-                                  f"{', '.join(bad_metagenomes_txt)}.")
-
-        if self.matrix_format:
-            for name in g.metagenomes:
-                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
-                # reminder, an entry in gene_functions_in_genome_dict looks like this:
-                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                #print(gene_functions_in_genome_dict)
-                for gcid, func_dict in gene_functions_in_genome_dict.items():
-                    for source, func_tuple in func_dict.items():
-                        if func_tuple:
-                            acc_string, func_def, eval = func_tuple
-                            for acc in acc_string.split('!!!'):
-                                if acc not in self.ko_dict:
-                                    self.ko_dict[acc] = {'definition': func_def}
+        g.load_metagenome_descriptions()
 
         # enforce metagenome mode
         if not self.metagenome_mode:
@@ -4386,35 +3649,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
         g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
-        g.load_genomes_descriptions(skip_functions=(not self.matrix_format), init=False)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
 
-        # sanity check that all dbs are properly annotated with required sources
-        for src in self.annotation_sources_to_use:
-            bad_genomes = [v['name'] for v in g.genomes.values() if not v['gene_function_sources'] or src not in v['gene_function_sources']]
-            if len(bad_genomes):
-                bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
-                it_or_them = P('it', len(bad_genomes), alt='them')
-                raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your {P('genome', len(g.genomes))} "
-                                  f"{P('is', len(bad_genomes), alt='are')} lacking any function annotations for "
-                                  f"`{src}`. This means you either need to annotate {it_or_them} by running the appropriate "
-                                  f"annotation program on {it_or_them}, import functional annotations into {it_or_them} from this source using "
-                                  f"`anvi-import-functions`, or remove {it_or_them} from your internal and/or external genomes files "
-                                  f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
-                                  f"{', '.join(bad_genomes_txt)}.")
-
-        if self.matrix_format:
-            for genome_name in g.genomes:
-                gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
-                # reminder, an entry in gene_functions_in_genome_dict looks like this:
-                # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                #print(gene_functions_in_genome_dict)
-                for gcid, func_dict in gene_functions_in_genome_dict.items():
-                    for source, func_tuple in func_dict.items():
-                        if func_tuple:
-                            acc_string, func_def, eval = func_tuple
-                            for acc in acc_string.split('!!!'):
-                                if acc not in self.ko_dict:
-                                    self.ko_dict[acc] = {'definition': func_def}
+        bad_genomes = [v['name'] for v in g.genomes.values() if not v['gene_function_sources'] or 'KOfam' not in v['gene_function_sources']]
+        if len(bad_genomes):
+            bad_genomes_txt = [f"'{bad_genome}'" for bad_genome in bad_genomes]
+            raise ConfigError(f"Bad news :/ It seems {len(bad_genomes)} of your {P('genome', len(g.genomes))} "
+                              f"{P('are', len(bad_genomes), alt='is')} lacking any function annotations for "
+                              f"`KOfam`. This means you either need to run the program `anvi-run-kegg-kofams` "
+                              f"on them, or remove them from your internal and/or external genomes files "
+                              f"before re-running `anvi-estimate-metabolism. Here is the list of offenders: "
+                              f"{', '.join(bad_genomes_txt)}.")
 
         # metagenome mode must be off
         if self.metagenome_mode:
@@ -4460,8 +3705,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.database_name = db_name
         args.multi_mode = True
         args.include_metadata = self.matrix_include_metadata
-        args.user_modules = self.user_input_dir or None
-        args.only_user_modules = self.only_user_modules
 
         self.update_available_headers_for_multi()
 
@@ -4469,7 +3712,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
             self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
-            self.run.info("User data directory: single estimator", args.input_dir)
 
         return args
 
@@ -4496,13 +3738,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
-                                                                                                    progress=progress_quiet, \
-                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True, \
-                                                                                                    return_subset_for_matrix_format=True, \
-                                                                                                    all_modules_in_db=self.all_modules_in_db, \
-                                                                                                    all_kos_in_db=self.all_kos_in_db, \
-                                                                                                    module_paths_dict=self.module_paths_dict)
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True, return_subset_for_matrix_format=True)
 
             self.progress.increment()
             self.progress.reset()
@@ -4543,14 +3779,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
-        self.init_data_from_modules_db()
-
         # these will be empty dictionaries unless matrix format
         kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
 
         if self.matrix_format:
             self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
-
 
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
 
@@ -4622,8 +3855,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 if self.matrix_include_metadata:
                     if stat_header == 'module':
                         metadata_dict = self.get_module_metadata_dictionary(m)
-                    elif stat_header == 'enzyme':
-                        metadata_dict = self.get_ko_metadata_dictionary(m, dont_fail_if_not_found=True)
+                    elif stat_header == 'KO':
+                        metadata_dict = self.get_ko_metadata_dictionary(m)
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
                                           "statistics but there is no function defined for this.")
@@ -4679,6 +3912,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
 
+        # we need this for metadata
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
         include_zeros = not self.exclude_zero_modules
 
         # module stats that each will be put in separate matrix file
@@ -4696,49 +3931,45 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
+        self.setup_ko_dict()
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
-        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
+        self.write_stat_to_matrix(stat_name='ko_hits', stat_header='KO', stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                   item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
                                   write_rows_with_all_zeros=include_zeros)
 
         # if necessary, make module specific KO matrices
         if self.module_specific_matrices:
             skipped_mods = []
-            mods_defined_by_mods = []
             for mod in self.module_specific_matrices:
                 if mod not in module_list:
                     skipped_mods.append(mod)
                     continue
 
-                mod_def = self.all_modules_in_db[mod]['DEFINITION']
-                if isinstance(mod_def, list):
-                    mod_def = " ".join(mod_def)
-                kos_in_mod = self.get_enzymes_from_module_definition_in_order(mod_def)
-                mod_big_steps = utils.split_by_delim_not_within_parens(mod_def, " ")
-
-                if not kos_in_mod:
-                    mods_defined_by_mods.append(mod)
-                    continue
+                kos_in_mod = self.kegg_modules_db.get_kos_from_module_definition(mod)
+                mod_big_steps = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
                 if not self.no_comments:
                     # determine where to place comments containing module steps
                     step_comments = {}
                     lines_with_comment = []
                     for s in mod_big_steps:
-                        split_s = re.sub("[\(\)\+\-,]", " ", s).strip()
-                        split_s = split_s.split(" ")
+                        # what is the first KO in this step?
+                        first_k = s.find("K")
 
                         # we skip making comments on steps without KOs like '--'
-                        if not split_s:
+                        if first_k < 0:
                             continue
-                        # what is the first KO in this step?
-                        first_ko = split_s[0]
 
-                        # figure out where this KO is in the list (it could be there multiple times)
+                        # figure out where this KO is in the list
+                        first_ko = s[first_k:first_k+6]
                         first_ko_indices = [i for i, x in enumerate(kos_in_mod) if x == first_ko]
+                        if not first_ko_indices:
+                            raise ConfigError(f"Something went wrong while writing a comment for step '{s}' in the "
+                                              f"matrix for {mod}. We couldn't find the first KO, {first_ko}, in the "
+                                              "KO list for this module.")
 
-                        # if there are multiple instances of this KO, where should we put the step comment?
+                        # where should we put the step comment?
                         idx = first_ko_indices[0]
                         if len(first_ko_indices) > 1:
                             next_index = 0
@@ -4748,12 +3979,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
                         step_comments[idx] = s
                         lines_with_comment.append(idx)
-
                 else:
                     step_comments = None
 
-                stat = f"{mod}_enzyme_hits"
-                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi, \
+                stat = f"{mod}_ko_hits"
+                self.write_stat_to_matrix(stat_name=stat, stat_header="KO", stat_key='num_hits', stat_dict=ko_superdict_multi, \
                                           item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
                                           write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
@@ -4762,13 +3992,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 self.run.warning(f"We couldn't recognize the following module(s): {skipped_list}. So we didn't generate "
                                  "output matrices for them. Maybe you made a typo? Or put an extra comma in somewhere?")
 
-            if mods_defined_by_mods:
-                skipped_list = ", ".join(mods_defined_by_mods)
-                self.run.warning(f"The following modules were completely defined by other modules and therefore we didn't "
-                                 f"generate enzyme hit matrices for them: {skipped_list}.")
+        self.kegg_modules_db.disconnect()
 
 
-class ModulesDatabase(KeggContext):
+class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
     This DB should be created in the Kegg Data folder during KEGG setup, and will be populated with information from the
@@ -4781,25 +4008,18 @@ class ModulesDatabase(KeggContext):
     >>> from anvio import kegg
     >>> path_to_db = "YOUR/PATH/HERE/MODULES.db"
     >>> args = argparse.Namespace()
-    >>> kegg.ModulesDatabase(path_to_db, args)
+    >>> kegg.KeggModulesDatabase(path_to_db, args)
     ```
     """
 
-    def __init__(self, db_path, args, module_data_directory=None, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
-        self.module_data_directory = module_data_directory # only required for create()
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
-        self.data_source = data_source
         self.run = run
         self.progress = progress
         self.quiet = quiet
-
-        # keep track of functional annotation sources needed for the modules in this db
-        self.annotation_sources = set()
-        if self.data_source == 'KEGG':
-            self.annotation_sources.add('KOfam')
 
         if anvio.DEBUG:
             self.run.info("Modules DB quiet param", self.quiet)
@@ -4823,16 +4043,16 @@ class ModulesDatabase(KeggContext):
 
             if not self.quiet:
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-                self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+                self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
-                raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
             # This is commented out because we are not yet using pathways. But it should be uncommented when we get to the point of using them :)
             # if not self.pathway_dict:
-            #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
+            #     raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
             #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
@@ -5036,13 +4256,8 @@ class ModulesDatabase(KeggContext):
         # the only exception is that sometimes there is nothing in the data definition field (REFERENCE lines sometimes do this)
         if len(fields) > 1:
             data_vals = fields[1]
-
-            if self.data_source == 'KEGG':
-                # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-                vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
-            else:
-                # TODO: USER data sanity check
-                vals_are_okay = True # for now we always assume USER data is formatted properly
+            # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
+            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
 
             if vals_are_okay and len(fields) > 2: # not all lines have a definition field
                 data_def = fields[2]
@@ -5079,18 +4294,14 @@ class ModulesDatabase(KeggContext):
     def create(self):
         """Creates the Modules DB"""
 
-        if not self.module_data_directory:
-            raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
-                              "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
-
         self.touch()
 
-        self.progress.new("Loading %s modules into Modules DB..." % len(self.module_dict.keys()))
+        self.progress.new("Loading %s KEGG modules into Modules DB..." % len(self.module_dict.keys()))
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-        if not os.path.exists(self.module_data_directory) or len(self.module_dict.keys()) == 0:
-            raise ConfigError("Appparently, the module data files were not correctly setup and now all sorts of things are broken. The "
+        if not os.path.exists(self.module_data_dir) or len(self.module_dict.keys()) == 0:
+            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
                               "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
@@ -5098,7 +4309,7 @@ class ModulesDatabase(KeggContext):
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
-        mod_table = ModulesTable(self.module_table_name)
+        mod_table = KeggModulesTable(self.module_table_name)
 
         # keep track of errors encountered while parsing
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
@@ -5108,16 +4319,11 @@ class ModulesDatabase(KeggContext):
         num_modules_parsed = 0
         line_number = 0
         for mnum in self.module_dict.keys():
-            self.progress.update("Parsing Module %s" % mnum)
-            mod_file_path = os.path.join(self.module_data_directory, mnum)
+            self.progress.update("Parsing KEGG Module %s" % mnum)
+            mod_file_path = os.path.join(self.module_data_dir, mnum)
             f = open(mod_file_path, 'rU')
 
             prev_data_name_field = None
-            module_has_annotation_source = False
-            orthology_to_annotation_source = {}  # for sanity check that each enzyme has an annotation source
-            # for sanity check that each enzyme in definition has an orthology line
-            mod_definition = []
-            orth_list = set()
             for line in f.readlines():
                 line = line.strip('\n')
                 line_number += 1
@@ -5145,65 +4351,7 @@ class ModulesDatabase(KeggContext):
                         else:
                             line -= 1
 
-                        # save definition for later sanity check
-                        if name == 'DEFINITION':
-                            mod_definition.append(val)
-                        if name == 'ORTHOLOGY':
-                            orth_list.add(val)
-                        # keep track of distinct annotation sources for user modules
-                        if self.data_source != 'KEGG' and name == "ORTHOLOGY":
-                            orthology_to_annotation_source[val] = None
-                        if self.data_source != 'KEGG' and name == "ANNOTATION_SOURCE":
-                            self.annotation_sources.add(definition)
-                            module_has_annotation_source = True
-                            if val not in orthology_to_annotation_source:
-                                raise ConfigError(f"Woah. While parsing module {mnum} we found an ANNOTATION_SOURCE for "
-                                                  f"an enzyme, {val}, that does not have an ORTHOLOGY line. Please check the "
-                                                  f"module file and make sure that 1) ORTHOLOGY comes before ANNOTATION_SOURCE, "
-                                                  f"and 2) each enzyme with an ORTHOLOGY also has a corresponding ANNOTATION_SOURCE.")
-                            orthology_to_annotation_source[val] = definition
-
-                        # sanity check for user-defined CLASS value
-                        if self.data_source != 'KEGG' and name == "CLASS":
-                            if len(val.split(";")) != 3:
-                                raise ConfigError(f"The module {mnum} appears to have an invalid CLASS value. That value should be "
-                                                  f"a string with a class, category, and sub-category separated by semi-colons (for a "
-                                                  f"total of two semi-colons in the string). Instead, it is this: {val}")
-
                 f.close()
-
-            # every enzyme in the module definition needs an orthology line
-            mod_definition = " ".join(mod_definition)
-            # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-            mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
-            acc_list = re.split(r'\s+', mod_definition)
-            enzymes_in_def = set(acc_list)
-            enzymes_without_orth = enzymes_in_def.difference(orth_list)
-            if enzymes_without_orth:
-                bad_list = ", ".join(enzymes_without_orth)
-                n = len(enzymes_without_orth)
-                raise ConfigError(f"So, there is a thing. And that thing is that there {P('is an enzyme', n, alt='are some enzymes')} "
-                                  f"in the DEFINITION string for module {mnum} that {P('does', n, alt='do')} not have an ORTHOLOGY line, "
-                                  f"and {P('it', n, alt='they')} really should have one. Here {P('it is', n, alt='they are')}: {bad_list}")
-
-            # every user module needs at least one annotation source
-            if self.data_source != 'KEGG' and not module_has_annotation_source:
-                os.remove(self.db_path)
-                raise ConfigError(f"While parsing user module {mnum}, we noticed that it does not have a single "
-                                  f"'ANNOTATION_SOURCE' field. We are sorry to tell you that this is not okay, "
-                                  f"because every user-defined module requires at least one of those fields to tell "
-                                  f"anvi'o where to find its gene annotations. So you should go and take a look at "
-                                  f"the module file at {mod_file_path} and add one 'ANNOTATION_SOURCE' line for each "
-                                  f"gene in the module definition, before re-trying this setup program. Thank you!")
-            # every enzyme needs an annotation source
-            if self.data_source != 'KEGG' and not all(orthology_to_annotation_source.values()):
-                nones = [k for k,v in orthology_to_annotation_source.items() if not v]
-                nones_str = ", ".join(nones)
-                n = len(nones)
-                raise ConfigError(f"*Dalek noises* EXTERMINATE! EXTERMINATE! It seems that your module {mnum} contains "
-                                  f"{P('an enzyme that is', n, alt='some enzymes that are')} missing an ANNOTATION_SOURCE line. "
-                                  f"Please go back in time and fix this. Here {P('is the enzyme', n, alt='are the enzymes')} in "
-                                  f"question here: {nones_str}")
 
             num_modules_parsed += 1
         # once we are done parsing all modules, we store whatever db entries remain in the db_entries list
@@ -5214,45 +4362,34 @@ class ModulesDatabase(KeggContext):
         self.progress.end()
 
         # warn user about parsing errors
-        if self.num_corrected_errors > 0 or self.num_uncorrected_errors > 0:
-            if anvio.DEBUG:
-                self.run.warning("Several parsing errors were encountered while building the Modules DB. "
-                                 "Below you will see which modules threw each type of parsing error. Note that modules which "
-                                 "threw multiple errors will occur in the list as many times as it threw each error.")
-                self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
-                self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
-            else: # less verbose
-                self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the Modules DB. "
-                                 "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
-                                 "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                                 "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
-                                 "will also probably need the `--reset` flag). When doing so, you will also see which lines caused issues; this "
-                                 "can be a lot of output, so you can suppress the line-specific output with the `--quiet` flag if that makes things "
-                                 "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
-                                 "with `--reset --debug --quiet` to see exactly which modules had issues, or run with `--reset --debug` to see exactly "
-                                 "which lines in which modules had issues. Anvi'o developers thank you for your attention and patience 😇")
-                self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
-                self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
-
-        if not self.annotation_sources:
-            os.remove(self.db_path)
-            raise ConfigError("We're not sure how you made it this far without having any annotation sources defined in your module files, "
-                              "because we should have noticed this while parsing them. But it happened, and here we are. You need to go add "
-                              "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
-        annotation_source_list = ",".join(list(self.annotation_sources))
+        if anvio.DEBUG:
+            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. "
+                             "Below you will see which modules threw each type of parsing error. Note that modules which "
+                             "threw multiple errors will occur in the list as many times as it threw each error.")
+            self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
+            self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
+        else: # less verbose
+            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
+                             "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
+                             "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
+                             "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
+                             "will also probably need the `--reset` flag). When doing so, you will also see which lines caused issues; this "
+                             "can be a lot of output, so you can suppress the line-specific output with the `--quiet` flag if that makes things "
+                             "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
+                             "with `--reset --debug --quiet` to see exactly which modules had issues, or run with `--reset --debug` to see exactly "
+                             "which lines in which modules had issues. Anvi'o developers thank you for your attention and patience 😇")
+            self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
+            self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-        self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
+        self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
-        self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
-        self.db.set_meta_value('data_source', self.data_source)
-        self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
@@ -5289,16 +4426,8 @@ class ModulesDatabase(KeggContext):
 
 ######### MODULES TABLE ACCESS FUNCTIONS #########
 
-    def get_modules_table_as_dict(self, data_names_of_interest=[]):
-        """This function loads the modules table and returns it as a dictionary keyed by module.
-
-        Every data_name for the module (NAME, DEFINITION, ORTHOLOGY, etc) will become a key in the
-        inner dictionary, and the corresponding data_value will become its value. For data_names that
-        have multiple values (ORTHOLOGY, COMPOUND, REACTION, etc), the value becomes yet another dictionary
-        of data_value -> data_definition key-value pairs.
-
-        The one exception is DEFINITION lines - there are occasionally multiple of these for one module but
-        these must be returned as a list, not as a dictionary.
+    def get_modules_table_data_values_as_dict(self, data_names_of_interest=[]):
+        """This function loads the modules table and returns it as a dictionary (of data values only) keyed by module.
 
         PARAMETERS
         ==========
@@ -5329,35 +4458,19 @@ class ModulesDatabase(KeggContext):
             mod = dict_from_mod_table[entry]['module']
             data_name = dict_from_mod_table[entry]['data_name']
             data_value = dict_from_mod_table[entry]['data_value']
-            data_definition = dict_from_mod_table[entry]['data_definition']
 
             if mod not in module_dictionary:
                 module_dictionary[mod] = {}
 
             if data_name not in module_dictionary[mod]:
-                if not data_definition:
-                    module_dictionary[mod][data_name] = data_value
-                else:
-                    module_dictionary[mod][data_name] = {data_value : data_definition}
+                module_dictionary[mod][data_name] = data_value
             else:
-                # place multiple definition lines into list
-                if data_name == "DEFINITION":
-                    if isinstance(module_dictionary[mod][data_name], list):
-                        module_dictionary[mod][data_name].append(data_value)
-                    else:
-                        existing_val = module_dictionary[mod][data_name]
-                        module_dictionary[mod][data_name] = [existing_val, data_value]
+                if isinstance(module_dictionary[mod][data_name], list):
+                    module_dictionary[mod][data_name].append(data_value)
                 else:
-                    # data_value -> data_definition dictionary
-                    if isinstance(module_dictionary[mod][data_name], dict):
-                        if data_value in module_dictionary[mod][data_name]:
-                            module_dictionary[mod][data_name][data_value] += " / " + data_definition
-                        else:
-                            module_dictionary[mod][data_name][data_value] = data_definition
-                    else:
-                        existing_val = module_dictionary[mod][data_name]
-                        existing_val_data_def = dict_from_mod_table[entry-1]['data_definition']
-                        module_dictionary[mod][data_name] = {existing_val: existing_val_data_def, data_value: data_definition}
+                    # this is a data name that has multiple values, so we need to convert it to a list
+                    existing_val = module_dictionary[mod][data_name]
+                    module_dictionary[mod][data_name] = [existing_val, data_value]
 
         return module_dictionary
 
@@ -5392,8 +4505,8 @@ class ModulesDatabase(KeggContext):
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
         if not data_values_to_ret:
-            self.run.warning("Just so you know, we tried to fetch data from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
+            self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s "
+                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
                              "cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
@@ -5428,8 +4541,8 @@ class ModulesDatabase(KeggContext):
                 data_defs_to_ret.append(dict_from_mod_table[key]['data_definition'])
 
         if not data_defs_to_ret and anvio.DEBUG:
-            self.run.warning("Just so you know, we tried to fetch data definitions from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
+            self.run.warning("Just so you know, we tried to fetch data definitions from the KEGG Modules database for the data_name field %s "
+                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
                              "cause errors down the line, and if so we're very sorry for that.")
 
         return data_defs_to_ret
@@ -5444,23 +4557,6 @@ class ModulesDatabase(KeggContext):
         """This function returns a list of all KO numbers in the DB."""
         where_clause_string = "data_name = 'ORTHOLOGY'"
         return self.db.get_single_column_from_table(self.module_table_name, 'data_value', unique=True, where_clause=where_clause_string)
-
-
-    def get_ko_function_dict(self):
-        """This function returns a 2-level dictionary keyed by KO number. The inner dict contains a 'definition' field
-           that stores the KO's functional annotation.
-
-           This method effectively builds a partial KO dict similar to the one produced by the setup_ko_dict() function,
-           but containing only the KOs/gene annotations from the modules DB. When being used for user-defined metabolism,
-           it should be expanded later with gene annotations from the contigs database(s) being worked on.
-        """
-        where_clause_string = "data_name = 'ORTHOLOGY'"
-        kos_and_functions = self.db.get_some_columns_from_table(self.module_table_name, "data_value,data_definition", unique=True, where_clause=where_clause_string)
-        ko_func_dict = {}
-        for k,f in kos_and_functions:
-            if k not in ko_func_dict:
-                ko_func_dict[k] = {'definition': f }
-        return ko_func_dict
 
 
     def get_modules_for_knum(self, knum):
@@ -5705,7 +4801,7 @@ class ModulesDatabase(KeggContext):
         """
 
         def_string = self.get_kegg_module_definition(mnum)
-        return utils.split_by_delim_not_within_parens(def_string, " ")
+        return self.split_by_delim_not_within_parens(def_string, " ")
 
 
     def unroll_module_definition(self, mnum, def_lines = None):
@@ -5735,6 +4831,59 @@ class ModulesDatabase(KeggContext):
         return def_line_paths
 
 
+    def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
+        """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+        This function exists because regular expressions don't handle nested parentheses very well. It is used in the
+        recursive module definition unrolling functions to split module steps, but it is generically written in case
+        it could have other uses in the future.
+
+        The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
+        instead of the list of splits in this situation)
+
+        PARAMETERS
+        ==========
+        d : str
+            string to split
+        delims : str or list of str
+            a single delimiter, or a list of delimiters, to split on
+        return_delims : boolean
+            if this is true then the list of delimiters found between each split is also returned
+
+        RETURNS
+        =======
+        If parentheses are unbalanced in the string, this function returns False. Otherwise:
+        splits : list
+            strings that were split from d
+        delim_list : list
+            delimiters that were found between each split (only returned if return_delims is True)
+        """
+
+        parens_level = 0
+        last_split_index = 0
+        splits = []
+        delim_list = []
+        for i in range(len(d)):
+            # only split if not within parentheses
+            if d[i] in delims and parens_level == 0:
+                splits.append(d[last_split_index:i])
+                delim_list.append(d[i])
+                last_split_index = i + 1 # we add 1 here to skip the space
+            elif d[i] == "(":
+                parens_level += 1
+            elif d[i] == ")":
+                parens_level -= 1
+
+            # if parentheses become unbalanced, return False to indicate this
+            if parens_level < 0:
+                return False
+        splits.append(d[last_split_index:len(d)])
+
+        if return_delims:
+            return splits, delim_list
+        return splits
+
+
     def recursive_definition_unroller(self, step):
         """This function recursively splits a module definition into its components.
 
@@ -5758,7 +4907,7 @@ class ModulesDatabase(KeggContext):
             all paths that the input step has been unrolled into
         """
 
-        split_steps = utils.split_by_delim_not_within_parens(step, " ")
+        split_steps = self.split_by_delim_not_within_parens(step, " ")
         paths_list = [[]]  # list to save all paths, with initial empty path list to extend from
         for s in split_steps:
             # base case: step is a ko, mnum, non-essential step, or '--'
@@ -5769,19 +4918,19 @@ class ModulesDatabase(KeggContext):
                 if s[0] == "(" and s[-1] == ")":
                     # here we try splitting to see if removing the outer parentheses will make the definition become unbalanced
                     # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
-                    comma_substeps = utils.split_by_delim_not_within_parens(s[1:-1], ",")
+                    comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
                     if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
-                        comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = utils.split_by_delim_not_within_parens(s[1:-1], " ")
+                        comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
                     if not space_substeps:
-                        space_substeps = utils.split_by_delim_not_within_parens(s, " ")
+                        space_substeps = self.split_by_delim_not_within_parens(s, " ")
                 else:
-                    comma_substeps = utils.split_by_delim_not_within_parens(s, ",")
-                    space_substeps = utils.split_by_delim_not_within_parens(s, " ")
+                    comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = self.split_by_delim_not_within_parens(s, " ")
 
                 # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
                 if len(comma_substeps) == 1 and len(space_substeps) == 1:
-                    complex_components, delimiters = utils.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
+                    complex_components, delimiters = self.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
                     complex_strs = [""]
 
                     # reconstruct the complex (and any alternate possible complexes) while keeping the +/- structure the same
@@ -5837,11 +4986,11 @@ class ModulesDatabase(KeggContext):
         """
 
         if step[0] == "(" and step[-1] == ")":
-            substeps = utils.split_by_delim_not_within_parens(step[1:-1], ",")
+            substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
             if not substeps: # if it doesn't work, try without removing surrounding parentheses
-                substeps = utils.split_by_delim_not_within_parens(step, ",")
+                substeps = self.split_by_delim_not_within_parens(step, ",")
         else:
-            substeps = utils.split_by_delim_not_within_parens(step, ",")
+            substeps = self.split_by_delim_not_within_parens(step, ",")
 
         alt_path_list = []
         for s in substeps:
@@ -5852,7 +5001,7 @@ class ModulesDatabase(KeggContext):
         return alt_path_list
 
 
-class ModulesTable:
+class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
     def __init__(self, mod_table_name = None):
@@ -5863,7 +5012,7 @@ class ModulesTable:
         if mod_table_name:
             self.module_table_name = mod_table_name
         else:
-            raise ConfigError("Beep Beep. Warning. ModulesTable was initialized without knowing its own name.")
+            raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
 
 
     def append_and_store(self, db, module_num, data_name, data_value, data_definition=None, line_num=None):
@@ -5962,7 +5111,7 @@ class KeggModuleEnrichment(KeggContext):
         The input format for anvi-script-enrichment-stats is described in a comment at the top of that script, and here is
         how we get the values for each column:
         The first column, 'KEGG_MODULE', and second column 'accession', are already in the modules mode output as 'module_name'
-        and 'module', respectively.
+        and 'kegg_module', respectively.
         The 'N_*' columns are the total number of samples in each group.
         For each module, this function determines which samples the module is 'present' in according to the specified completion threshold.
         This determines the list of samples for the 'sample_ids' column as well as the 'p_*' proportions for each group of samples.
@@ -5980,7 +5129,7 @@ class KeggModuleEnrichment(KeggContext):
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['module', 'module_completeness', 'module_name']
+        required_modules_txt_headers = ['kegg_module', 'module_completeness', 'module_name']
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -6101,16 +5250,16 @@ class KeggModuleEnrichment(KeggContext):
         # convert modules mode output to enrichment input
         N_values = sample_groups_df['group'].value_counts()
         group_list = N_values.keys()
-        module_list = modules_df['module'].unique()
+        module_list = modules_df['kegg_module'].unique()
 
         output_dict = {}
-        header_list = ['MODULE', 'accession', 'sample_ids', 'associated_groups']
+        header_list = ['KEGG_MODULE', 'accession', 'sample_ids', 'associated_groups']
         for c in group_list:
             header_list.append(f"p_{c}")
             header_list.append(f"N_{c}")
 
         for mod_num in module_list:
-            query_string = f"module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            query_string = f"kegg_module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
@@ -6131,7 +5280,7 @@ class KeggModuleEnrichment(KeggContext):
 
             mod_name = samples_with_mod_df['module_name'][0]
             output_dict[mod_name] = {}
-            output_dict[mod_name]['MODULE'] = mod_name
+            output_dict[mod_name]['KEGG_MODULE'] = mod_name
             output_dict[mod_name]['accession'] = mod_num
             output_dict[mod_name]['sample_ids'] = ','.join(samples_with_mod_list)
             sample_group_subset = sample_groups_df.loc[samples_with_mod_list]

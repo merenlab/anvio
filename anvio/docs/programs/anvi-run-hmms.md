@@ -43,17 +43,6 @@ anvi-run-hmms -c %(contigs-db)s \
 
 See the relevant section in the artifact %(hmm-source)s for details.
 
-### Adding HMM hits as a functional annotation source
-
-By default, HMM hits are not considered functional annotations and are kept in a distinct table (the 'hmm_hits' table) in the contigs database. However, there are certain cases when you may want them to be considered as functions instead. For instance, if you want to run %(anvi-estimate-metabolism)s on a set of user-defined metabolic pathways and you have a set of custom HMMs for their enzymes.
-
-To treat the HMM hits as functional annotations and add them to the 'gene_functions' table in your database, you must use the `--add-to-functions-table` flag:
-
-{{ codestart }}
-anvi-run-hmms -c %(contigs-db)s \
-              -H MY_HMM_PROFILE \
-              --add-to-functions-table
-{{ codestop }}
 
 ### Changing the HMMER program
 
@@ -107,3 +96,4 @@ Please note that this output **won't be used to filter hits to be added to the c
 ### Other things anvi-run-hmms can do
 
 * Add the tag `--also-scan-trnas` to basically run %(anvi-scan-trnas)s for you at the same time. It's very convenient. (But it only works if you are not using the `-I` or `-H` flags at the same time because reasons.)
+

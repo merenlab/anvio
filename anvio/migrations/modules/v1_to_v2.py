@@ -32,9 +32,9 @@ def migrate(db_path):
 
     # split any orthology entries with multiple KOs into separate lines
     where_clause = "data_name = 'ORTHOLOGY' AND (data_value LIKE '%+%' OR data_value LIKE '%-%')"
-    bad_rows = modules_db.get_some_rows_from_table("modules", where_clause)
+    bad_rows = modules_db.get_some_rows_from_table("kegg_modules", where_clause)
 
-    modules_db.remove_some_rows_from_table("modules", where_clause)
+    modules_db.remove_some_rows_from_table("kegg_modules", where_clause)
 
     good_rows = []
     for mod, orth, kos, definition, line in bad_rows:
@@ -47,7 +47,7 @@ def migrate(db_path):
                                   "and the string that it came from is %s." % (ko, kos))
             good_rows.append((mod, orth, ko, definition, line))
 
-    modules_db.insert_many("modules", entries=good_rows)
+    modules_db.insert_many("kegg_modules", entries=good_rows)
 
 
     prev_total_entries = modules_db.get_meta_value('total_entries')

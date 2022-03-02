@@ -305,7 +305,7 @@ At the end, there were no more homopolymers associated with INDELs.
 
 **Please consider the following points**:
 
-* If the input and reference genomes are not closely related enough (i.e., expected ANI if there were no sequencing errors > 98%%-99%%), this process may yield very incorrect outcomes. But it should work great for genomes reconstructed from the same culture.
+* If the input and reference genomes are not closely related enough (i.e., expected ANI if there were no sequencing errors > 98%-99%), this process may yield very incorrect outcomes. But it should work great for genomes reconstructed from the same culture.
 
 * The iterative improvement of a given input genome may reach to a 'back-and-forth' situation where there is no overall improvement, but the homopolymers associated with INDELs do not reach to 0. This happens when there are repeats in the reference genome that are identical to each other expect the number of nucleotides in homopolymers.
 

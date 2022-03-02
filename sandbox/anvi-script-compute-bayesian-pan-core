@@ -15,6 +15,15 @@ from anvio.tables.miscdata import TableForItemAdditionalData
 
 __citation__ = "'mOTUlizer' by Buck et al (https://doi.org/10.1101/2021.06.25.449606)"
 
+try:
+    from mOTUlizer.classes.mOTU import mOTU
+except ModuleNotFoundError:
+    raise ConfigError(f"{__citation__} does not seem to be installed on your system as anvi'o was "
+                      f"unable to import its Python libraries :( In theory you should be able to install "
+                      f"mOTUlizer by running the following command in your anvi'o environment: pip install "
+                      f"mOTUlizer. Please visit the URL https://github.com/moritzbuck/mOTUlizer to read most "
+                      f"up-to-date installation instructions or to report issues. Thank you for your patience!")
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -22,7 +31,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['moritzbuck']
 __requires__ = ["pan-db", "genomes-storage-db"]
-__provides__ = ["bin"]
+__provides__ = []
 __resources__ = [("GitHub repository for the mOTUPan", "https://github.com/moritzbuck/mOTUlizer/")]
 __description__ = "Runs mOTUpan on your gene clusters to estimate whether they are core or accessory"
 
@@ -32,16 +41,6 @@ progress = terminal.Progress()
 
 
 def main(args):
-    try:
-        from mOTUlizer.classes.mOTU import mOTU
-    except ModuleNotFoundError:
-        raise ConfigError(f"{__citation__} does not seem to be installed on your system as anvi'o was "
-                          f"unable to import its Python libraries :( In theory you should be able to install "
-                          f"mOTUlizer by running the following command in your anvi'o environment: pip install "
-                          f"mOTUlizer. Please visit the URL https://github.com/moritzbuck/mOTUlizer to read most "
-                          f"up-to-date installation instructions or to report issues. Thank you for your patience!")
-
-
     if not args.output_file and not args.store_in_db:
         if args.just_do_it:
             run.warning("Lol. You are making anvi'o compute stuff that will not be stored anywhere. Weird you :(", lc="green")

@@ -1,2 +1,0 @@
-gene	accession	hmmsource
-Ribosomal_L16	PF00252.21	pfam.xfam.org

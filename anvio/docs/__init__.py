@@ -22,18 +22,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "trnaseq-contigs-db": {
-        "name": "TRNASEQ CONTIGS",
-        "type": "DB",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trnaseq-profile-db": {
-        "name": "TRNASEQ PROFILE",
-        "type": "DB",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "modules-db": {
         "name": "MODULES",
         "type": "DB",
@@ -52,12 +40,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "dna-sequence": {
-        "name": "DNA SEQUENCE",
-        "type": "SEQUENCE",
-        "provided_by_anvio": True,
-        "provided_by_user": True
-    },
     "trnaseq-fasta": {
         "name": "TRNASEQ",
         "type": "FASTA",
@@ -72,12 +54,6 @@ ANVIO_ARTIFACTS ={
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
-        "type": "TXT",
-        "provided_by_anvio": False,
-        "provided_by_user": True
-    },
-    "external-structures": {
-        "name": "EXTERNAL STRUCTURES",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
@@ -112,12 +88,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "markdown-txt": {
-        "name": "MARKDOWN TXT",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "protein-structure-txt": {
         "name": "PDB FILE",
         "type": "TXT",
@@ -130,20 +100,8 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "primers-txt": {
-        "name": "PRIMERS TXT",
-        "type": "TXT",
-        "provided_by_anvio": False,
-        "provided_by_user":True
-    },
     "fasta-txt": {
         "name": "FASTA TXT",
-        "type": "TXT",
-        "provided_by_anvio": False,
-        "provided_by_user":True
-    },
-    "enzymes-txt": {
-        "name": "ENZYMES TXT",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
@@ -173,16 +131,10 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "kegg-data": {
-        "name": "KEGG MODULES DB",
+        "name": "KEGG DB",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
-    },
-    "user-modules-data": {
-        "name": "USER MODULES DB",
-        "type": "DB",
-        "provided_by_anvio": True,
-        "provided_by_user": True
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
@@ -370,18 +322,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "palindromes-txt": {
-        "name": "PALINDROMES",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "inversions": {
-        "name": "INVERSIONS",
-        "type": "CONCEPT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
@@ -568,36 +508,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "trnaseq-seed-txt": {
-        "name": "TRNASEQ SEED SUMMARY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "seeds-specific-txt": {
-        "name": "TRNASEQ SEED SUMMARY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "seeds-non-specific-txt": {
-        "name": "TRNASEQ SEED SUMMARY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "modifications-txt": {
-        "name": "TRNASEQ MODIFICATION SUMMARY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trnaseq-plot": {
-        "name": "TRNASEQ PLOT",
-        "type": "DISPLAY",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "summary": {
         "name": "STATIC SUMMARY",
         "type": "SUMMARY",
@@ -636,12 +546,6 @@ ANVIO_ARTIFACTS ={
     },
     "kegg-metabolism": {
         "name": "KEGG METABOLISM ESTIMATES",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "user-metabolism": {
-        "name": "USER METABOLISM ESTIMATES",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False

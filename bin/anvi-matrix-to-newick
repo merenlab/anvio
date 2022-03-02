@@ -2,13 +2,12 @@
 # -*- coding: utf-8
 
 import sys
+from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils 
 import anvio.terminal as terminal
 import anvio.clustering as clustering
 
-from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -25,24 +24,12 @@ __resources__ = [("See this program in action in the pangenomics tutorial", "htt
 
 run = terminal.Run()
 progress = terminal.Progress()
-PL = terminal.pluralize
 
 def main(args):
     if not args.output_file:
         args.output_file = args.input_matrix + '.newick'
 
     run.info('Input matrix file', args.input_matrix)
-
-    # a quick check of the data to see if there are any missing
-    # values
-    _, _, _, vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_matrix)
-    num_missing_data = len([item for sublist in vectors for item in sublist if item == None])
-    if num_missing_data:
-        run.warning(f"Oy. Your file contains {PL('missing data item', num_missing_data)}. Anvi'o will do its "
-                    f"best to accomodate for it, but you should take a careful look at your output tree (that, "
-                    f"of course, if everything works after this message). Please note that anvi'o will not "
-                    f"normalize your data prior to clustering and will assume that it is already normalized.")
-
     progress.new('Analyzing input file')
     clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage=args.linkage,
                                     distance=args.distance, transpose=args.transpose, progress=progress,

@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-"""
-This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
-is done using query and/or target coverage
-"""
-
 import sys
 import os
 import numpy as np
@@ -14,7 +9,6 @@ import pandas as pd
 import anvio
 import anvio.data.hmm
 import anvio.db as db
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.bamops as bamops
 import anvio.terminal as terminal
@@ -47,27 +41,19 @@ class FilterHmmHitsTable(object):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-
         self.contigs_db_path=A("contigs_db")
         self.domtblout=A("domain_hits_table")
         self.hmm_source=A("hmm_source")
         self.target_coverage=A("target_coverage")
         self.query_coverage=A("query_coverage")
         self.list_hmm_sources=A("list_hmm_sources")
-        self.hmm_profile_dir=A("hmm_profile_dir")
 
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
             sys.exit()
 
-        # Grab HMM sources from internal or external HMMs
-        if self.hmm_profile_dir:
-            self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
-        else:
-            self.sources = anvio.data.hmm.sources
 
     def sanity_checks(self):
-        """Sanity checks for program inputs."""
 
         filesnpaths.is_file_exists(self.contigs_db_path)
         self.run.info("Database Path", self.contigs_db_path)
@@ -83,40 +69,37 @@ class FilterHmmHitsTable(object):
         if self.hmm_source not in info_table:
             raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
                               f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
-                              f"Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
-                              f"need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
+                              "Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
+                              "need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
 
-        target = self.sources[self.hmm_source]['target'].split(':')
+        sources = anvio.data.hmm.sources
+        target = sources[self.hmm_source]['target'].split(':')
 
         if target[0] != 'AA':
             raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
-                              f"anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
-                              f"from protein sequences.")
+                              "anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
+                              "from protein sequences.")
 
 
     def process(self):
-        """Method to run the functions of this program"""
 
         self.sanity_checks()
 
         self.import_domtblout()
 
-        # file_path_csv
-        filtered_domtblout_path = self.filter_domtblout()
+        x = self.filter_domtblout()
 
-        search_results_dict = self.parse_domtblout(filtered_domtblout_path)
-
-        self.append_search_results_dict_to_hmm_tables(search_results_dict = search_results_dict)
+        self.get_hmm_hit_table(hmmsearch_tbl=x)
 
         # remove the tmp file
         if anvio.DEBUG:
-            self.run.info("Filtered domtblout file", filtered_domtblout_path)
+            self.run.info("Filtered domtblout file", x)
         elif not anvio.DEBUG:
-            os.remove(filtered_domtblout_path)
+            os.remove(x)
 
 
     def import_domtblout(self):
-        """Import the domtblout file from hmmsearch then calculate query and target coverage"""
+
         # hmmsearch results so the queries are the hmm models and the targets are the ORFs
         col_info = [
             ('gene_callers_id',  int),   # target name
@@ -157,17 +140,13 @@ class FilterHmmHitsTable(object):
                             index_col=False)
         except Exception as e:
             print(e)
-            raise ConfigError(f"Doesn't look like a --domtblout... anvi'o can't even... "
-                              f"Please look at this error message to find out what happened: "
-                              f"{e}")
+            raise ConfigError("Doesn't look like a --domtblout")
 
         self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
         self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
 
     def filter_domtblout(self):
-        """Filter the hmm_hits table based on query and/or target coverage"""
-
         # Filtering conditions
         if self.query_coverage and self.target_coverage:
             df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
@@ -191,8 +170,11 @@ class FilterHmmHitsTable(object):
         return domtblout_tmp_out
 
 
-    def parse_domtblout(self, hmmsearch_tbl=None):
-        """Parse the new, filtered domtblout file"""
+    def get_hmm_hit_table(self, hmmsearch_tbl=None):
+
+        # Remove old hmm_hits contigs_db_path
+        hmm_tables = TablesForHMMHits(self.contigs_db_path)
+        hmm_tables.remove_source(self.hmm_source)
 
         # Parse domtblout
         alphabet= 'AA'
@@ -202,35 +184,17 @@ class FilterHmmHitsTable(object):
         parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
         search_results_dict = parser.get_search_results()
 
-        return search_results_dict
+        # Re-write hmm_hits table to contigDB
+        sources = anvio.data.hmm.sources
 
-
-    def append_search_results_dict_to_hmm_tables(self, search_results_dict=None):
-        """Put in the new filtered hmm_hits table to the contigsDB"""
-
-        # Remove old hmm_hits contigs_db_path
-        hmm_tables = TablesForHMMHits(self.contigs_db_path)
-        hmm_tables.remove_source(self.hmm_source)
-
-        # Re-write hmm_hits table to contigsDB
-
-        internal_sources = list(anvio.data.hmm.sources.keys())
         source = self.hmm_source
 
-        if self.sources not in internal_sources:
-            kind_of_search = self.sources[source]['kind']
-            domain = self.sources[source]['domain']
-            all_genes_searched_against = self.sources[source]['genes']
-            reference = self.sources[source]['ref']
-        else:
-            sources = anvio.data.hmm.sources
-            source = self.hmm_source
-            kind_of_search = sources[source]['kind']
-            domain = sources[source]['domain']
-            all_genes_searched_against = sources[source]['genes']
-            reference = self.sources[source]['ref']
+        kind_of_search = sources[source]['kind']
+        domain = sources[source]['domain']
+        all_genes_searched_against = sources[source]['genes']
+        reference = sources[source]['ref']
 
-        hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+        hmm_tables.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
 
 @terminal.time_program
@@ -246,7 +210,6 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
-    parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
     parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
     parser.add_argument('--target-coverage',
                         help=" (ali_coord_to - ali_coord_from)/target_length")

@@ -13,6 +13,9 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
+utils.check_h5py_module()
+import h5py
+
 current_version = "21"
 next_version = "22"
 
@@ -36,10 +39,6 @@ def convert_numpy_array_to_binary_blob(array, compress=True):
 
 
 def migrate(db_path):
-
-    utils.check_h5py_module()
-    import h5py
-
     if db_path is None:
         raise ConfigError("No database path is given.")
 
