@@ -1791,9 +1791,17 @@ class KeggEstimatorArgs():
             mod_list_str = "None"
 
         if knum not in self.ko_dict:
-            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                              f"for enzyme {knum} but this enzyme is not in "
-                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
+            if dont_fail_if_not_found:
+                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
+                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
+                                 f"its function.")
+                metadata_dict["enzyme_definition"] = "UNKNOWN"
+            else:
+                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                                  f"for enzyme {knum} but this enzyme is not in "
+                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
+        else:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
 
         metadata_dict = {}
         metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
@@ -4741,8 +4749,6 @@ class KeggModulesDatabase(KeggContext):
 
             if data_name not in module_dictionary[mod]:
                 module_dictionary[mod][data_name] = data_value
-                # BUG FIXME: if there is only one occurrence of a data_name like ORTHOLOGY, that is meant to be a dict with data_definition values,
-                # we will lose the data_definition information because that data name never appears again, so this is never converted to a dict
             else:
                 if isinstance(module_dictionary[mod][data_name], list):
                     module_dictionary[mod][data_name].append(data_value)
