@@ -2709,12 +2709,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            self.coverage_sample_list = self.profile_db.p_meta['samples']
-
-        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
-        meta_dict_for_bin[mod]["genes_to_detection"] = {}
-        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
-        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+            if self.enzymes_txt:
+                self.coverage_sample_list = self.contigs_db_project_name
+            else:
+                self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -3218,10 +3216,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
                              f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+                             f"curious, here is one example: {example}")
 
         # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
-        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
+        if self.add_coverage and 'coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns:
             self.run.warning("You requested coverage/detection values to be added to the output files, but your "
                              "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
                              "Since we don't have this data,/874 --add-coverage will not work, so we are turning this "
@@ -3232,12 +3230,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
                                         self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
             for h in kofam_hits_coverage_headers:
-                for mode in ["hits_in_modules", "hits"]:
-                    if h in self.available_modes[mode]["headers"]:
-                        self.available_modes[mode]["headers"].remove(h)
+                self.available_modes["hits_in_modules"]["headers"].remove(h)
+                self.available_modes["hits"]["headers"].remove(h)
             for h in modules_coverage_headers:
-                if h in self.available_modes["modules"]["headers"]:
-                    self.available_modes["modules"]["headers"].remove(h)
+                self.available_modes["modules"]["headers"].remove(h)
 
         return enzyme_df
 
