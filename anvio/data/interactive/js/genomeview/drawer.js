@@ -164,6 +164,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     if (gene.start < ntStart) continue;
     if (gene.stop > ntStop) return;
     var geneObj = this.geneArrow(gene, geneID, y, genomeID, this.settings['display']['arrow-style']);
+    canvas.add(geneObj)
     canvas.bringToFront(geneObj);
 
     if (showGeneLabels) {
