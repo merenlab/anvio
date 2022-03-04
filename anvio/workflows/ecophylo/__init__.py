@@ -135,6 +135,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
+        # Make log directories
+        if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
+        if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/')
+
+
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
         
