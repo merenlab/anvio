@@ -27,9 +27,9 @@ Feel free to use this **template** for new entries:
   web: (http://your-web-page)
   avatar: (your-avatar.png that is in the AVATARS directory)
   email: (email address)
-  linkedin: (linkedin username)
-  orcid: (ORCiD, not the url, just the numbers)
-  bio: "A one-sentence short and descriptive bio -- see examples"
+  linkedin: (linkedin username -- if there is one)
+  orcid: (ORCiD, not the url, just the numbers -- if there is one)
+  bio: "A one-sentence short and descriptive bio -- see examples at https://anvio.org/#people"
   affiliations:
     - title: (your title: Graduate Student / Post-doctoral scientist / Assistant Professor / etc)
       inst: (name of the institution you are affiliated with)
