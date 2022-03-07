@@ -697,11 +697,11 @@ function buildLegendTables() {
     }
 
     legends = [];
-    
+    let toastr_warn_flag = false
     for (let pindex in categorical_data_colors)
     {
         if(Object.keys(categorical_stats[pindex]).length > 20){
-            console.log('too big, alternative legend time');
+            toastr_warn_flag = true
             var names = 'beep'
         } else {
             var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
@@ -774,7 +774,7 @@ function buildLegendTables() {
             });
         }
     }
-
+    toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
