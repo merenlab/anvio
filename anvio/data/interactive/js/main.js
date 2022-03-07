@@ -697,20 +697,23 @@ function buildLegendTables() {
     }
 
     legends = [];
-
+    
     for (let pindex in categorical_data_colors)
     {
-        console.log(`${pindex} in categorical_data_colors`);
-        // var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
-
-        // names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+        if(Object.keys(categorical_stats[pindex]).length > 20){
+            console.log('too big, alternative legend time');
+            var names = 'beep'
+        } else {
+            var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
+            names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+        }
 
         legends.push({
             'name': getPrettyName(getLayerName(pindex)),
             'source': 'categorical_data_colors',
             'key': pindex,
-            'item_names': 'beep',
-            'item_keys': 'boop',
+            'item_names': names,
+            'item_keys': names,
             'stats': categorical_stats[pindex]
         });
     }
