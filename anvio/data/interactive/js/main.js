@@ -700,22 +700,24 @@ function buildLegendTables() {
 
     for (let pindex in categorical_data_colors)
     {
-        var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
+        console.log(`${pindex} in categorical_data_colors`);
+        // var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
 
-        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+        // names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
 
         legends.push({
             'name': getPrettyName(getLayerName(pindex)),
             'source': 'categorical_data_colors',
             'key': pindex,
-            'item_names': names,
-            'item_keys': names,
+            'item_names': 'beep',
+            'item_keys': 'boop',
             'stats': categorical_stats[pindex]
         });
     }
 
     for (pindex in stack_bar_colors)
     {
+        console.log(`${pindex} in stack_bar_colors`);
         var layer_name = getLayerName(pindex);
         var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
         var pretty_name = getLayerName(pindex);
@@ -732,8 +734,10 @@ function buildLegendTables() {
     }
 
     for (let group in samples_categorical_colors) {
+        console.log(`${group} in sample_categorical_colors`);
         for (let sample in samples_categorical_colors[group])
         {
+            console.log(`${sample} in sample_categorical_colors`);
             var names = Object.keys(samples_categorical_colors[group][sample]);
 
             legends.push({
@@ -749,8 +753,10 @@ function buildLegendTables() {
     }
 
     for (let group in samples_stack_bar_colors) {
+        console.log(`${group} in sample_stack_bar_colors`);
         for (let sample in samples_stack_bar_colors[group])
         {
+            console.log(`${sample} in sample_stack_bar_colors`);
             var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
             var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
