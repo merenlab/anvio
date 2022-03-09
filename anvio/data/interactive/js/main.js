@@ -738,7 +738,6 @@ function buildLegendTables() {
     for (let group in samples_categorical_colors) {
         for (let sample in samples_categorical_colors[group])
         {
-            console.log(`${sample} in sample_categorical_colors`);
             var names = Object.keys(samples_categorical_colors[group][sample]);
 
             legends.push({
@@ -756,7 +755,6 @@ function buildLegendTables() {
     for (let group in samples_stack_bar_colors) {
         for (let sample in samples_stack_bar_colors[group])
         {
-            console.log(`${sample} in sample_stack_bar_colors`);
             var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
             var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
