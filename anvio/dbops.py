@@ -1560,7 +1560,7 @@ class PanSuperclass(object):
         return sequences
 
 
-    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
         if gene_cluster_names is None:
             self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene "
                              "cluster names to work with. If you are a programmer, you should know that you are "
@@ -1589,7 +1589,7 @@ class PanSuperclass(object):
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
-                                             args=(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, self.run))
             workers.append(worker)
             worker.start()
 
@@ -1619,7 +1619,7 @@ class PanSuperclass(object):
 
 
     @staticmethod
-    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, homogeneity_calculator, run):
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, run):
         r = terminal.Run()
         r.verbose = False
 
@@ -1639,14 +1639,15 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
             except:
-                progress.reset()
-                run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
-                            f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
-                            f"into the input dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all "
-                            f" genes are alignedto be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As "
-                            f"you can see, this is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to "
-                            f"`-1` so things can move on, but we highly recommend you to take a look at your data to make sure you are "
-                            f"satisfied with your analysis.", overwrite_verbose=True)
+                if gene_cluster_name not in gene_clusters_failed_to_align:
+                    progress.reset()
+                    run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
+                                f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
+                                f"into the input dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all "
+                                f" genes are alignedto be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As "
+                                f"you can see, this is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to "
+                                f"`-1` so things can move on, but we highly recommend you to take a look at your data to make sure you are "
+                                f"satisfied with your analysis.", overwrite_verbose=True)
 
                 indices_dict['functional'] = -1
                 indices_dict['geometric'] = -1
