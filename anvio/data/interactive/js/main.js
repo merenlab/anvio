@@ -702,7 +702,7 @@ function buildLegendTables() {
     {
         if(Object.keys(categorical_stats[pindex]).length > 20){
             toastr_warn_flag = true
-            var names = 'beep'
+            var names = false
         } else {
             var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
             names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
@@ -781,48 +781,61 @@ function buildLegendTables() {
         } else {
             template += '<span class="label label-default">Main</span> '
         }
-
         template += legend['name'] + '</span><div>';
-        template += `Sort: <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
-                    </div>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
-                    </div>
-                    <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
-                        <table class="col-md-12 table-spacing">
-                            <tr>
-                                <td class="col-md-2">Rule: </td>
-                                <td class="col-md-10">
-                                    <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                    <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
-                                    <input type="radio" name="batch_rule_`+i+`" value="count"> Count
-                                        <select id="count_rule_`+i+`">
-                                            <option selected>==</option>
-                                            <option>&lt;</option>
-                                            <option>&gt;</option>
-                                        </select>
-                                        <input type="text" id="count_rule_value_`+i+`" size="3">
-                                    <br />
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2">Color: </td>
-                                <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2"></td>
-                                <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2"></td>
-                                <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div style="clear: both; display:block;"></div>
-                    <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+
+        if (!legends[i]['item_names']){
+            template += `
+                <div>
+                    <table class="col-md-12 table-spacing">
+                        <tr>
+                            <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name']}-query-input"></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" onclick="queryLegends(${legend['name']})">Query</button></td>
+                        </tr>
+                    </table>
+                </div>
+            `
+        } else {
+            template += `Sort: <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                        </div>
+                        <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
+                            <table class="col-md-12 table-spacing">
+                                <tr>
+                                    <td class="col-md-2">Rule: </td>
+                                    <td class="col-md-10">
+                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="count"> Count
+                                            <select id="count_rule_`+i+`">
+                                                <option selected>==</option>
+                                                <option>&lt;</option>
+                                                <option>&gt;</option>
+                                            </select>
+                                            <input type="text" id="count_rule_value_`+i+`" size="3">
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2">Color: </td>
+                                    <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="clear: both; display:block;"></div>
+                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+        }
 
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
