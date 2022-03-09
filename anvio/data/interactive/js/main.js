@@ -720,7 +720,6 @@ function buildLegendTables() {
 
     for (pindex in stack_bar_colors)
     {
-        console.log(`${pindex} in stack_bar_colors`);
         var layer_name = getLayerName(pindex);
         var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
         var pretty_name = getLayerName(pindex);
@@ -737,7 +736,6 @@ function buildLegendTables() {
     }
 
     for (let group in samples_categorical_colors) {
-        console.log(`${group} in sample_categorical_colors`);
         for (let sample in samples_categorical_colors[group])
         {
             console.log(`${sample} in sample_categorical_colors`);
@@ -756,7 +754,6 @@ function buildLegendTables() {
     }
 
     for (let group in samples_stack_bar_colors) {
-        console.log(`${group} in sample_stack_bar_colors`);
         for (let sample in samples_stack_bar_colors[group])
         {
             console.log(`${sample} in sample_stack_bar_colors`);
@@ -774,7 +771,8 @@ function buildLegendTables() {
             });
         }
     }
-    toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
+    if(toastr_warn_flag) toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
+
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
