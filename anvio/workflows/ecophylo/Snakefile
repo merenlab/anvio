@@ -450,7 +450,7 @@ rule align_sequences:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{HMM}.log")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
-    output: os.path.join(dirs_dict['MSA'], "{HMM}-aligned.fa"),
+    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}-aligned.fa"),
     params: additional_params = M.get_param_value_from_config(['align_sequences', 'additional_params'])
     threads: M.T('align_sequences')
     run:
@@ -622,15 +622,18 @@ rule rename_tree_tips:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_tree_tips_{HMM}.log")
     input:
-        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done")
+        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done"),
     output:
         done = os.path.join(dirs_dict['TREES'], "{HMM}_combined.done"),
-        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk")
+        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk"),
+        fasta = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.faa")
     params:
         fasttree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
-        iqtree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree")
+        iqtree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree"),
+        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
     threads: M.T('rename_tree_tips')
     run:
+        # rename tree tips 
         from ete3 import Tree
 
         def add_split_name_to_tree_tips(tree):
@@ -649,6 +652,20 @@ rule rename_tree_tips:
         
         elif M.run_fasttree == True:
             add_split_name_to_tree_tips(params.fasttree)
+        
+        # rename fasta headers to match tree
+        fasta = open(str(params.fasta))
+        newfasta = open(output.fasta, "a")
+
+        for line in fasta:
+            if line.startswith('>'):
+                newname = line.rstrip("\n") + "_split_00001\n"
+                newfasta.write(newname)
+            else:
+                newfasta.write(line)
+
+        fasta.close()
+        newfasta.close()
 
 
 def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
