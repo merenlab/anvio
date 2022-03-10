@@ -184,6 +184,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Load external-genomes.txt
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             try:

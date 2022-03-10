@@ -1115,6 +1115,8 @@ if M.samples_txt_file:
 
 else:
 
+    # TREE-MODE
+
     rule make_anvio_state_file_tree:
         """Make a state file customized for EcoPhylo workflow interactive interface"""
 
@@ -1134,11 +1136,6 @@ else:
             HMM_source = M.HMM_source_dict[wildcards.HMM]
 
             # Read in misc data headers for layer_order
-            if HMM_source in M.internal_HMM_sources:
-                with open(params.tax_data_final) as f:
-                    lines = f.read()
-                    first = lines.split('\n', 1)[0]
-                scg_taxonomy_layers_list = first.split("\t")
 
             with open(params.misc_data_final) as f:
                 lines = f.read()
@@ -1169,7 +1166,17 @@ else:
             # layer-orders
             first_layers = ["__parent__", "length", "gc_content"]
 
-            layer_order = first_layers + misc_layers_list 
+            if HMM_source in M.internal_HMM_sources:
+                with open(params.tax_data_final) as f:
+                    lines = f.read()
+                    first = lines.split('\n', 1)[0]
+                    scg_taxonomy_layers_list = first.split("\t")
+
+                layer_order = first_layers + misc_layers_list + scg_taxonomy_layers_list 
+
+            else:
+                layer_order = first_layers + misc_layers_list
+
 
             state_dict['layer-order'] = layer_order
 
@@ -1324,9 +1331,11 @@ else:
 
             shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {input.misc_data} --just-do-it")
 
+            shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
+
             HMM_source = M.HMM_source_dict[wildcards.HMM]
             
             if HMM_source in M.internal_HMM_sources:
                 shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
             
-                shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
+                # shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
