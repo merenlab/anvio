@@ -1337,5 +1337,3 @@ else:
             
             if HMM_source in M.internal_HMM_sources:
                 shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
-            
-                # shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
