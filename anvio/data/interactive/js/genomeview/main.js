@@ -278,7 +278,7 @@ function processState(stateName, stateData) {
   }
 
   if (stateData.hasOwnProperty('metadata')) {
-    settings['display']['metadata'] = stateData['display']
+    settings['display']['metadata'] = stateData['display']['metadata']
   } else {
     settings['display']['metadata'] = []
   }
