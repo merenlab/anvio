@@ -292,19 +292,15 @@ function showDeepDiveToolTip(event){
   let totalMetadataString = String()
   let totalAnnotationsString = String()
 
-  function getAndShowMetadata(){
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
-    let totalMetadataString = String()
-    geneMetadata.map(metadata => {
-      totalMetadataString += `
-      <tr>
-      <td>${metadata.label}</td>
-      </tr>
-      `
-    })
-  }
+  let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
+  geneMetadata.map(metadata => {
+    totalMetadataString += `
+    <tr>
+    <td>${metadata.label}</td>
+    </tr>
+    `
+  })
 
-  getAndShowMetadata()
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
       totalAnnotationsString += `
@@ -348,8 +344,9 @@ function showDeepDiveToolTip(event){
       <br>
       <textarea id='metadata-gene-description' placeholder='metadata description'></textarea>
       <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
+      <br>
       <table class="table table-striped">
-      <thead>metadata</thead>
+      <thead><th>metadata</th></thead>
       <tbody>
       ${totalMetadataString}
       </tbody>
