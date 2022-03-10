@@ -703,7 +703,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     # subset misc data to final set of proteins
     df = pd.merge(df, final_sequences_headers, left_on='cluster_members', right_on='identifier', how='inner')
 
-    df['has_genomic_reference_protein_in_cluster'] = np.where(df['cluster_members'].isin(cluster_reps_with_genomic_references_list), 'yes', 'no')
+    df['genomic_seq_in_cluster'] = np.where(df['cluster_members'].isin(cluster_reps_with_genomic_references_list), 'yes', 'no')
 
     # Determine contigsDB type: metagenome or genomes
     # FIXME: This will need to be changed in the future to accomidate SAGs, MAGs, and other genomic sources
@@ -718,7 +718,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     df["contig_db_type"] = df.cluster_members.apply(lambda name: contigsDB_type_dict[name])
 
     # grab the final columns
-    df = df[['split_name', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size']]
+    df = df[['split_name', 'contig_db_type', 'genomic_seq_in_cluster', 'cluster_size']]
 
     # Export
     #-------
