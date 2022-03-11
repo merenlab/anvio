@@ -291,12 +291,17 @@ function showDeepDiveToolTip(event){
   $('#deepdive-tooltip-body').html('').hide()
   let totalMetadataString = String()
   let totalAnnotationsString = String()
+  let metadataLabel = String()
 
   let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
   geneMetadata.map(metadata => {
+    metadataLabel = metadata.label
+    let button = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query Sequence for matches</button>`
+
     totalMetadataString += `
     <tr>
     <td>${metadata.label}</td>
+    <td>${metadata.type == 'tag'? button : 'n/a'}</td>
     </tr>
     `
   })
@@ -346,7 +351,7 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
       <br>
       <table class="table table-striped">
-      <thead><th>metadata</th></thead>
+      <thead><th>metadata</th><th>action</th></thead>
       <tbody>
       ${totalMetadataString}
       </tbody>
@@ -363,6 +368,10 @@ function showDeepDiveToolTip(event){
   </tbody></table>;
   <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
   `).css({'position' : 'absolute', 'left' : window.innerWidth/2 -200, 'top' : window.innerHeight/2 -200 }) // display deepdive tooltip roughly centered in viewport
+
+  $('#metadata-query').on('click', function(){
+    drawer.queryMetadata(metadataLabel)
+  })
 
   $('#gene-dna-sequence-button').on('click', function(){
     show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence'])
@@ -398,7 +407,8 @@ function showDeepDiveToolTip(event){
     let metadataObj = {
       label  : $('#metadata-gene-label').val(),
       genome : event.target.genomeID,
-      gene   : event.target.geneID
+      gene   : event.target.geneID,
+      type   : 'tag'
     }
     settings['display']['metadata'].push(metadataObj)
     $('#metadata-gene-label').val('')
@@ -407,7 +417,8 @@ function showDeepDiveToolTip(event){
     let metadataObj = {
       label  : $('#metadata-gene-description').val(),
       genome : event.target.genomeID,
-      gene   : event.target.geneID
+      gene   : event.target.geneID,
+      type   : 'description'
     }
     settings['display']['metadata'].push(metadataObj)
     $('#metadata-gene-description').val('')

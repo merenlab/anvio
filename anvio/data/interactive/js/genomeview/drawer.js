@@ -758,6 +758,36 @@ GenomeDrawer.prototype.queryFunctions = function () {
   this.glowGenes(glowPayload)
 }
 
+GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
+  let glowPayload = Array()
+  let foundInGenomes = Object()
+  let matches = settings['display']['metadata'].filter( m => m.label.includes(metadataLabel))
+  matches.map(metadata => {
+    glowPayload.push({
+      geneID: metadata.gene,
+      genomeID: metadata.genome
+    })
+    if (!(metadata.genome in foundInGenomes)) {
+      foundInGenomes[metadata.genome] = true
+    }
+  })
+  if (glowPayload.length < 1) {
+    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    return
+  }
+  let lowestStart, highestEnd = null
+  glowPayload.map(gene => {
+    let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+    let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+    let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+
+    if (start < lowestStart || lowestStart == null) lowestStart = start
+    if (end > highestEnd || highestEnd == null) highestEnd = end
+  })
+  zoomOut('partial', lowestStart, highestEnd)
+  this.glowGenes(glowPayload)
+}
+
 GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
     let stop = genomeMax > 35000 ? 35000 : genomeMax
