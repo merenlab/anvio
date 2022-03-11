@@ -724,7 +724,10 @@ GenomeDrawer.prototype.queryFunctions = function () {
     alert('please provide values for function category and/or query')
     return
   }
-
+  if (category == 'metadata'){
+    drawer.queryMetadata(query)
+    return
+  }
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
       if (value[category]?.[1].includes(query)) {
