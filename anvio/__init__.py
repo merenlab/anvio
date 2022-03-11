@@ -408,11 +408,11 @@ D = {
             ['--skip-predict-frame'],
             {'default': False,
              'action': 'store_true',
-             'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
+             'help': "When you provide an external gene calls file, anvi'o will predict the correct frame for each gene as best as it can by "
                      "using a previously-generated Markov model that is trained using the uniprot50 database (see this for details: "
                      "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
                      "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
-                     "those that are in the external gene calls file are not describing proper gene calls according to the model. "
+                     "start/stop positions in the external gene calls file are not describing proper gene calls according to the model. "
                      "If you use this flag, anvi'o will not rely on any model and will attempt to translate your DNA sequences by solely "
                      "relying upon start/stop positions in the file, but it will complain about sequences start/stop positions of which are "
                      "not divisible by 3."}
