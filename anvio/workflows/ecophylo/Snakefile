@@ -497,27 +497,35 @@ rule count_num_sequences_filtered:
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{HMM}.log")
     input:
         step1 = rules.combine_sequence_data.output.NT_all,
-        step2 = rules.cluster_X_percent_sim_mmseqs.output,
+        step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
         step3 = rules.remove_sequences_with_X_percent_gaps.output
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
-    shell:
-        """
-        # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
-        step1=$(grep -c '>' {input.step1})
-        echo -e "num_input_seqs\t$step1\t{input.step1}\n" > {output}
+    run:
+        def count_num_sequences(fasta):
+            num_seqs = 0
+            for line in fasta:
+                if line.startswith(">"):
+                    num_seqs += 1
+            return num_seqs
 
-        # How many SCGs do we have after we cluster them at the nt level and pick representatives?
-        step2=$(grep -c '>' {input.step2})
-        echo -e "cluster_X_percent_sim_mmseqs\t$step2\t{input.step2}\n" >> {output}
+        with open(input.step1) as fasta:
+            step1_num_seqs = count_num_sequences(fasta)
 
-        # How many seqs are in the NR set?
-        step3=$(grep -c '>' {input.step3})
-        echo -e "remove_sequences_with_X_percent_gaps\t$step3\t{input.step3}\n" >> {output}
+        with open(input.step2) as fasta:
+            step2_num_seqs = count_num_sequences(fasta)
 
-        # Add column names here
-        echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
-        """
+        with open(input.step3[0]) as fasta:
+            step3_num_seqs = count_num_sequences(fasta)
+
+        with open(output[0], 'w') as f:
+            col_names = ["rule_name", "num_sequences_left", "rel_path"]
+            step1 = ["num_input_seqs", str(step1_num_seqs), input.step1]
+            step2 = ["num_input_seqs", str(step2_num_seqs), input.step2]
+            step3 = ["num_input_seqs", str(step3_num_seqs), input.step3[0]]
+            lines = [col_names, step1, step2, step3]
+            for line in lines:
+                f.write('\t'.join(line) + '\n')
 
 
 rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
