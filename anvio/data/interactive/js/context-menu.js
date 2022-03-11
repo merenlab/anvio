@@ -242,6 +242,12 @@ ContextMenu = function(options) {
                 get_sequence_and_blast(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
+        'blastp': {
+            'title': ' - blastp',
+            'action': (node, layer, param) => {
+                get_sequence_and_blast(node.label, 'blastp', 'nr', (mode == 'gene') ? 'gene' : 'contig');
+             }
+        },
         'blastx_nr': {
             'title': ' - blastx @ nr',
             'action': (node, layer, param) => {
@@ -432,6 +438,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('blastx_nr');
                 menu.push('blastn_refseq_genomic');
                 menu.push('blastx_refseq_protein');
+                menu.push('blastp');
             }
 
             // tree/dendrogram operations
