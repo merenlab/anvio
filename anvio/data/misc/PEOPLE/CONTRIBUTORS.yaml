@@ -90,7 +90,7 @@
   avatar: bio-jarrod_s.jpg
   email: jarrod.jude.scott@gmail.com
   web: https://istmobiome.rbind.io/
-  bio: "Microbiologist interested in understandng how bacteria and archaea coalesce into complex communities and how they affect host biology, biogeochemical cycles, and ecosystem-level processes in marine and terrestrial systems."
+  bio: "Microbiologist interested in understanding how bacteria and archaea coalesce into complex communities and how they affect host biology, biogeochemical cycles, and ecosystem-level processes in marine and terrestrial systems."
   affiliations:
     - title: Post-doctoral Scientist
       inst: Smithsonian Tropical Research Institute
@@ -110,3 +110,18 @@
       inst: Max Planck Institute for Marine Microbiology
       inst_link: https://mpi-bremen.de
       current: true
+
+- github: simroux
+  name: Simon Roux
+  avatar: bio-simroux.jpg
+  twitter: simroux_virus
+  email: sroux@lbl.gov
+  web: https://simroux.github.io
+  orcid: 0000-0002-5831-5895
+  bio: "Viral ecologist and bioinformatician at the DOE JGI - interested in everything phage, 'omics, microbial and viral ecology and evolution, virus-host interactions, etc"
+  affiliations:
+    - title: Research Scientist
+      inst: Lawrence Berkeley National Laboratory - Joint Genome Institute
+      inst_link: https://jgi.doe.gov
+      current: true
+
