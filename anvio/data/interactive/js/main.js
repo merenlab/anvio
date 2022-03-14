@@ -788,8 +788,9 @@ function buildLegendTables() {
                 <div>
                     <table class="col-md-12 table-spacing">
                         <tr>
-                            <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name']}-query-input"></td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" onclick="queryLegends(${legend['name']})">Query</button></td>
+                            <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Query</button></td>
                         </tr>
                     </table>
                 </div>
@@ -855,6 +856,14 @@ function buildLegendTables() {
             $(el).attr('color', '#' + hex);
         }
     });
+}
+
+function queryLegends(){
+    let legend = event.target.id.replaceAll('-', ' ')
+    let query = $(`#${event.target.id}-query-input`).val()
+    let color = $(`#${event.target.id}-colorpicker`).attr('color')
+    console.log(legend, query, color)
+
 }
 
 function batchColor(legend_id) {
