@@ -219,6 +219,7 @@ function serializeSettings() {
     })
   })
 
+  state['display']['metadata'] = settings['display']['metadata']
   return state
 }
 
