@@ -3031,6 +3031,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return naive_redundancy * entropy/max_entropy
 
 
+    def compute_num_complete_copies_of_path(self, num_ko_hits_in_path_dict):
+        """This function computes the number of copies of a path that are >= x% complete,
+        where x is the module completeness threshold.
+
+        It does this based on the provided dictionary in which each key is a KO in the path
+        and each value is the number of copies of that KO.
+        """
+
+        path_length = len(num_ko_hits_in_path_dict.keys())
+        
+
+
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the redundancy of the specified module within the given bin metabolism dictionary.
 
