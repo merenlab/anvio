@@ -125,3 +125,18 @@
       inst_link: https://jgi.doe.gov
       current: true
 
+- github: xvazquezc
+  name: Xabier Vázquez-Campos
+  twitter: XabiVC
+  web: https://www.researchgate.net/profile/Xabier-Vazquez-Campos
+  avatar: bio-xabi.jpg
+  email: xvazquezc@gmail.com
+  linkedin: xabier-vázquez-campos-5316483
+  orcid: 0000-0003-1134-5058
+  bio: "Environmental microbiologist and bioinformatician - interested in all things 'omics, extremophiles, taxonomy and systematics, evolution..."
+  affiliations:
+    - title: Senior Research Associate
+      inst: School of Biotechnology and Biomolecular Sciences - University of New South Wales
+      inst_link: https://www.babs.unsw.edu.au/
+      current: true
+
