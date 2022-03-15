@@ -584,9 +584,7 @@ D = {
             'action': 'store_true',
             'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
                     "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
-                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
-                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
-                    "group together samples that are not supposed to be friends."}
+                    "instead those samples will be included in a group called 'UNGROUPED'."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
