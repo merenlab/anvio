@@ -3419,7 +3419,7 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
     num_groups = len(group_to_item_dict.keys())
     if num_groups < 2:
         if include_missing_samples_is_true and num_groups == 1:
-            self.run.warning("There is only one group in your groups-txt file, but we have been told that samples not in this file "
+            run.warning("There is only one group in your groups-txt file, but we have been told that samples not in this file "
                              "will be included in a group called 'UNGROUPED', so that means you have 2 groups in total. Everything is "
                              "fine, as far as we know, but if you look at this and think 'Wait, this is very much NOT fine', well, then "
                              "the power is in your hands to fix it.")
