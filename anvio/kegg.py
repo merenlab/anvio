@@ -3076,7 +3076,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             cw_ws_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="weighted_sum")
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
             cw_gm_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="geometric_mean")
-            meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_gm_redundancy)
+            meta_dict_for_bin[mnum]["copywise_geometric-mean"].append(cw_gm_redundancy)
             meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
 
         return
