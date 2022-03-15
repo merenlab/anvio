@@ -3369,17 +3369,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
                              "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
 
-        # sanity check for unique gene ids
-        duplicates = list(enzyme_df[enzyme_df.duplicated(subset=['gene_id'])]['gene_id'].unique())
-        if duplicates:
-            if len(duplicates) > 5:
-                num = len(duplicates) - 1
-                dup_str = f"Here is one example (there are {num} others, but we didn't want to show them all): {duplicates[0]}"
-            else:
-                dup_str = f"Here are the duplicates: {', '.join(duplicates)}"
-            raise ConfigError(f"There are duplicate entries in the `gene_id` column of your enzymes-txt file. We require the values "
-                              f"in this column to be unique, so you'll have to modify (or remove) the duplicates. {dup_str} ")
-
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
         if enzymes_not_in_modules:
