@@ -859,10 +859,20 @@ function buildLegendTables() {
 }
 
 function queryLegends(){
-    let legend = event.target.id.replaceAll('-', ' ')
+    let legend = event.target.id.replaceAll('-', '_').toLowerCase()
     let query = $(`#${event.target.id}-query-input`).val()
     let color = $(`#${event.target.id}-colorpicker`).attr('color')
-    console.log(legend, query, color)
+
+    // because the legends iterator above does not match the categorical_data_colors key
+    // we need to reference the layerdata index value by the same legend name
+    let legend_index = layerdata[0].indexOf(legend)
+
+    if(categorical_data_colors[legend_index]?.[query]){
+        categorical_data_colors[legend_index][query] = color
+        alert('color changed')
+    } else {
+        alert('query not found')
+    }
 
 }
 
