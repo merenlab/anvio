@@ -5994,7 +5994,7 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
 
         # make sure the samples all have a group
         samples_with_none_group = []
