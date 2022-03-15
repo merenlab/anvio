@@ -3056,7 +3056,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
-            # put zero values in dict wherever necessary
             return
 
         for p in paths_of_highest_completeness:
