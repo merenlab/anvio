@@ -6041,7 +6041,7 @@ class KeggModuleEnrichment(KeggContext):
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). Since you have chosen to --include-samples-missing-from-groups-txt, for the purposes of this analysis we will now consider all of "
                                 "these samples to belong to one group called 'UNGROUPED'."
-                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                "Here are the {len(samples_missing_in_groups_txt)} UNGROUPED samples that we will consider as one big happy family: "
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
                 ungrouped_samples = list(samples_missing_in_groups_txt)
