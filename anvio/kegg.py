@@ -1797,6 +1797,47 @@ class KeggEstimatorArgs():
         return mod_db.unroll_module_definition(mnum, def_lines=module_definition)
 
 
+    def split_module_path_into_individual_essential_components(self, path):
+        """Given a list of atomic steps in a module, this function returns a list of each essential individual enzyme.
+
+        When an atomic step is an enzyme complex (ie K01657+K01658), we need to split the complex into its individual components
+        When an atomic step contains non-ssential components (ie K00765-K02502), we need to remove the nonessential components from the list
+        When there are both nonessential and essential components, we need to remove the non-essential ones first and then split the essential ones
+
+        PARAMETERS
+        ==========
+        path : list
+            Each element in list is an atomic step, which can include enzyme complexes and non-essential components
+
+        RETURNS
+        ==========
+        new_path : list
+            Each element in list is a single enzyme
+        """
+
+        new_path = []
+        for x in path:
+            if '+' and '-' in x:
+                # first remove the nonessentials, then add in the essential components
+                idx_of_nonessential = x.index('-')
+                new_x = x[:idx_of_nonessential]
+                individual_components = new_x.split('+')
+                new_path.extend(individual_components)
+            elif '+' in x:
+                # split essential components and add individually to list
+                individual_components = x.split('+')
+                new_path.extend(individual_components)
+            elif '-' in x and x != '--':
+                # remove nonessentials
+                idx_of_nonessential = x.index('-')
+                new_x = x[:idx_of_nonessential]
+                new_path.append(new_x)
+            else:
+                new_path.append(x)
+
+        return new_path
+
+
     def get_enzymes_from_module_definition_in_order(self, mod_definition):
         """Given a module DEFINITION string, this function parses out the enzyme accessions in order of appearance.
 
@@ -3133,6 +3174,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             return
 
         for p in paths_of_highest_completeness:
+            p = self.split_module_path_into_individual_essential_components(p)
             num_hits_per_kofam = [len(meta_dict_for_bin[mnum]["kofam_hits"][k]) if k in meta_dict_for_bin[mnum]["kofam_hits"] else 0 for k in p]
 
             # for now, we will try a bunch of different redundancy calculations and put them all into the dictionary until we find the ones we like
@@ -3153,6 +3195,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # for all paths, we compute the number of copies
         for p in self.module_paths_dict[mnum]:
+            p = self.split_module_path_into_individual_essential_components(p)
+
             num_hits_per_kofam = [len(meta_dict_for_bin[mnum]["kofam_hits"][k]) if k in meta_dict_for_bin[mnum]["kofam_hits"] else 0 for k in p]
             meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
 
