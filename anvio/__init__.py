@@ -2528,6 +2528,14 @@ D = {
              'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
                      "output files. You must provide the profile database corresonding to your contigs db for this to work."}
                 ),
+    'add-redundancy': (
+            ['--add-redundancy'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that module redundancy values (number of complete copies of a module, or path "
+                     "through a module) be added to your output files. In long-format mode, it will be an additional column. "
+                     "In matrix mode, it will be an additional matrix file."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
