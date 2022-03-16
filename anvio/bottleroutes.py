@@ -1013,7 +1013,12 @@ class BottleApplication(Bottle):
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
 
-        return json.dumps({'sequence': sequence, 'header': header})
+        # if the user has provided a FASTA file, it may contain AA or DNA sequences, so we want to return
+        # the sequence type here.
+        if self.interactive.fasta_file:
+            return json.dumps({'sequence': sequence, 'header': header, 'sequence_type': utils.get_sequence_type(sequence)})
+        else:
+            return json.dumps({'sequence': sequence, 'header': header, 'sequence_type': 'DNA'})
 
 
     def gen_summary(self, collection_name):
