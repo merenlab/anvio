@@ -3087,7 +3087,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the redundancy of the specified module within the given bin metabolism dictionary.
 
-        Each module can have multiple paths, but we only compute redundancy on the paths with the highest completeness
+        Each module can have multiple paths, but (in most cases) we only compute redundancy on the paths with the highest completeness
         (stored under the "most_complete_paths" key). If there are no paths in this list (which only happens when there
         are 0 KOfam hits to the module), then we do not compute redundancy.
 
@@ -3107,7 +3107,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
         meta_dict_for_bin[mnum]["copywise_geometric-mean"] = []
         meta_dict_for_bin[mnum]["entropy_weighted"] = []
-        meta_dict_for_bin[mnum]["num_complete_copies_of_path"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
@@ -3134,7 +3135,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
 
             # number of copies of path that have completeness >= threshold
-            meta_dict_for_bin[mnum]["num_complete_copies_of_path"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
+            meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
+
+        # for all paths, we compute the number of copies
+        for p in self.module_paths_dict[mnum]:
+            kofam_hits_in_path = { ko : meta_dict_for_bin[mnum]["kofam_hits"][ko] for ko in meta_dict_for_bin[mnum]["kofam_hits"].keys() if ko in p }
+            num_hits_per_kofam = { ko : len(kofam_hits_in_path[ko]) for ko in kofam_hits_in_path.keys() }
+            for ko in p:
+                if ko not in num_hits_per_kofam:
+                    num_hits_per_kofam[ko] = 0
+            meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
 
         return
 
@@ -3744,7 +3754,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                                 # add path-level redundancy if requested
                                 if self.add_redundancy:
-                                    d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_path"][p_index]
+                                    d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
 
                                 # top-level keys and keys not in superdict
                                 if self.name_header in headers_to_include:
@@ -3936,7 +3946,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # add module redundancy if requested
                     if self.add_redundancy:
                         # we take the maximum copy number of all the paths of highest completeness
-                        d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_path"])
+                        d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
 
                     # everything else at c_dict level
                     for h in remaining_headers:
