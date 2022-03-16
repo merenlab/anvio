@@ -2365,6 +2365,17 @@ def translate(sequence):
     return ''.join(translated_sequence)
 
 
+def get_sequence_type(sequence):
+    """Very primitive function to predict whether a given sequence is DNA or AA sequence"""
+
+    try:
+       letter_frequency = Counter(sequence.upper())
+       sequence_type = 'DNA' if sum([letter_frequency[base] for base in 'ATCG']) / len(sequence) > 0.75 else 'AA'
+       return sequence_type
+    except:
+        return 'DNA'
+
+
 def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None, log_likelihood_cutoff=2):
     """Predict the translation frame with a markov model of amino acid sequences
 
