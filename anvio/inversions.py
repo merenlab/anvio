@@ -799,10 +799,10 @@ class Inversions:
                              f"{', '.join(inversions_with_no_gene_calls_around)}.")
 
         if not len(self.genomic_context_surrounding_consensus_inversions):
-            self.run.warning("Even though anvi'o went through all {PL('inversion', len(self.consensus_inversions))} "
-                             "it was unable to recover any genomic context for any of them. So your final reports will "
-                             "not include any insights into the surrounding genomic context of inversions (but otherwise "
-                             "you will be fine).")
+            self.run.warning(f"Even though anvi'o went through all {PL('inversion', len(self.consensus_inversions))} "
+                             f"it was unable to recover any genomic context for any of them. So your final reports will "
+                             f"not include any insights into the surrounding genomic context of inversions (but otherwise "
+                             f"you will be fine).")
 
 
     def compute_consensus_inversions(self):
