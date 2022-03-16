@@ -2003,6 +2003,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             self.add_gene_coverage_to_headers_list()
 
+        if self.add_redundancy:
+            self.available_modes["hits_in_modules"]["headers"].extend("num_complete_copies_of_path")
+            self.available_modes["hits"]["headers"].extend("num_complete_copies")
+            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
+                                                       'mode_type': 'hits_in_modules',
+                                                       'description': "Number of complete copies of the path through the module"
+                                                       }
+            self.available_headers["num_complete_copies"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of complete copies of the module"
+                                                       }
+
+
 
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
@@ -3728,6 +3741,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "path_completeness" in headers_to_include:
                                     d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
 
+                                # add path-level redundancy if requested
+                                if self.add_redundancy:
+                                    d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_path"][p_index]
+
                                 # top-level keys and keys not in superdict
                                 if self.name_header in headers_to_include:
                                     d[self.modules_unique_id][self.name_header] = bin
@@ -3914,6 +3931,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
                             d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
                             d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
+
+                    # add module redundancy if requested
+                    if self.add_redundancy:
+                        # we take the maximum copy number of all the paths of highest completeness
+                        d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_path"])
 
                     # everything else at c_dict level
                     for h in remaining_headers:
