@@ -3076,7 +3076,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         hit_counts.sort(reverse=True)
 
         copy_number = 0
-        for i in range(1, hit_counts[0]):
+        for i in range(1, hit_counts[0]+1):
             x = len([h for h in hit_counts if h >= i])
             if x >= num_enzymes_needed:
                 copy_number += 1
