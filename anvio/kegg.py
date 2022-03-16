@@ -3105,6 +3105,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mnum]["copywise_completeness_distributions"] = []
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
+        meta_dict_for_bin[mnum]["copywise_geometric-mean"] = []
         meta_dict_for_bin[mnum]["entropy_weighted"] = []
         meta_dict_for_bin[mnum]["num_complete_copies_of_path"] = []
 
