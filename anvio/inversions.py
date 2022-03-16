@@ -815,6 +815,13 @@ class Inversions:
         as strong and independent inversions.
         """
 
+        total_num_inversions = sum([len(l) for l in self.inversions.values()])
+        if total_num_inversions == 0:
+            raise ConfigError("You called a function to compute consensus inversions with "
+                              "zero inversions. Even though everyone knows that no inversions "
+                              "lead to no consensus inversions, and no consensus inversions "
+                              "lead to no 🍰")
+
         # to do this, we need to get all the start positions for all
         # inversions across all samples, cluster them if their start
         # positions are too close to one another to be an different
@@ -1202,6 +1209,19 @@ class Inversions:
 
             # populate `self.inversions` with inversions associated with `entry_name`
             self.process_db(entry_name, profile_db_path, bam_file_path)
+
+        # this is time to check `self.inversions`. if there is nothing in it, then there is no
+        # need to continue with the analysis, reporting, etc.
+        total_num_inversions = sum([len(l) for l in self.inversions.values()])
+        if total_num_inversions == 0:
+            samples_note = f"across your {self.profile_db_bam_file_pairs} samples" \
+                                if len(self.profile_db_bam_file_pairs) > 1 else "in your single sample"
+            self.run.warning(f"The code came all the way down here with zero inversions {samples_note}. "
+                             f"Zero. Zip. Which means either there truly are no inversions in your data, "
+                             f"or anvi'o couldn't find them given the search criteria you have defined "
+                             f"(or criteria defined de facto by the default parameters of the program). "
+                             f"Either ways, this is a goodbye.", header="NO INVERSIONS FOUND")
+            return
 
         # here we know every single inversion. The same inversion site might be
         # found as true inversion in multiple samples when bams and profiles file
