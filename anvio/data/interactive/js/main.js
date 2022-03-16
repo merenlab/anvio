@@ -869,11 +869,12 @@ function queryLegends(){
 
     if(categorical_data_colors[legend_index]?.[query]){
         categorical_data_colors[legend_index][query] = color
-        alert('color changed')
+        toastr.success('layer color updated successfully')
     } else {
         alert('query not found')
     }
-
+    $(`#${event.target.id}-query-input`).val('')
+    $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
 }
 
 function batchColor(legend_id) {
