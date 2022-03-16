@@ -3366,7 +3366,7 @@ def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
     return primers_txt
 
 
-def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_missing_samples_is_true=False):
     """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
 
     Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
@@ -3378,6 +3378,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
         Dictionary in which keys are items and values are groups
     group_to_item_dict : dict
         Dictionary in which keys are groups and values are lists of items in that group
+    include_missing_samples_is_true : Boolean
+        set this to True if samples not in this file will be included in the downstream analysis as
+        an 'UNGROUPED' group, just to let this function know that it should not crash if less
+        than 2 group names are in the groups txt file.
     """
 
     filesnpaths.is_file_tab_delimited(file_path)
@@ -3385,10 +3389,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if 'group' not in columns_found:
-        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+        raise ConfigError("A groups-txt file should have a column that is called `group`.")
 
     if len(columns_found) < 2:
-        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for group names.")
 
     item_column = columns_found[0]
     if item_column == 'group':
@@ -3412,8 +3416,15 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
 
-    if len(group_to_item_dict.keys()) < 2:
-        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+    num_groups = len(group_to_item_dict.keys())
+    if num_groups < 2:
+        if include_missing_samples_is_true and num_groups == 1:
+            run.warning("There is only one group in your groups-txt file, but we have been told that samples not in this file "
+                             "will be included in a group called 'UNGROUPED', so that means you have 2 groups in total. Everything is "
+                             "fine, as far as we know, but if you look at this and think 'Wait, this is very much NOT fine', well, then "
+                             "the power is in your hands to fix it.")
+        else:
+            raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
                           "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
                           "working in should allow for only one group in this file, please feel free to let us know.")
 

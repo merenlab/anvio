@@ -3369,17 +3369,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
                              "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
 
-        # sanity check for unique gene ids
-        duplicates = list(enzyme_df[enzyme_df.duplicated(subset=['gene_id'])]['gene_id'].unique())
-        if duplicates:
-            if len(duplicates) > 5:
-                num = len(duplicates) - 1
-                dup_str = f"Here is one example (there are {num} others, but we didn't want to show them all): {duplicates[0]}"
-            else:
-                dup_str = f"Here are the duplicates: {', '.join(duplicates)}"
-            raise ConfigError(f"There are duplicate entries in the `gene_id` column of your enzymes-txt file. We require the values "
-                              f"in this column to be unique, so you'll have to modify (or remove) the duplicates. {dup_str} ")
-
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
         if enzymes_not_in_modules:
@@ -5913,7 +5902,6 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
-        self.include_ungrouped = True if A('include_ungrouped') else False
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
 
         # init the base class
@@ -6005,31 +5993,23 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
 
         # make sure the samples all have a group
         samples_with_none_group = []
         for s,g in samples_to_groups_dict.items():
             if not g:
                 samples_with_none_group.append(s)
-                if self.include_ungrouped:
-                    samples_to_groups_dict[s] = 'UNGROUPED'
 
-        if not self.include_ungrouped:
-            for s in samples_with_none_group:
-                samples_to_groups_dict.pop(s)
+        for s in samples_with_none_group:
+            samples_to_groups_dict.pop(s)
 
         if samples_with_none_group:
             self.progress.reset()
             none_group_str = ", ".join(samples_with_none_group)
-            if self.include_ungrouped:
-                self.run.warning("Some samples in your groups-txt did not have a group, but since you elected to --include-ungrouped, "
-                                 "we will consider all of those samples to belong to one group called 'UNGROUPED'. Here are those "
-                                 f"UNGROUPED samples: {none_group_str}")
-            else:
-                self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
-                                 "want them to be included in the analysis (but without assigning a group), you can simply re-run "
-                                 "this program with the --include-ungrouped flag. Now. Here are the samples we will be ignoring: "
+            self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
+                                 "want them to be included in the analysis, you need to fix the groups-txt to have a group for "
+                                 "these samples. Anyway. Here are the samples we will be ignoring: "
                                  f"{none_group_str}")
 
         # sanity check for mismatch between modules-txt and groups-txt
@@ -6060,9 +6040,8 @@ class KeggModuleEnrichment(KeggContext):
                 self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). Since you have chosen to --include-samples-missing-from-groups-txt, for the purposes of this analysis we will now consider all of "
-                                "these samples to belong to one group called 'UNGROUPED'. If you wish to ignore these samples instead, please run again "
-                                "without the --include-ungrouped parameter. "
-                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                "these samples to belong to one group called 'UNGROUPED'."
+                                "Here are the {len(samples_missing_in_groups_txt)} UNGROUPED samples that we will consider as one big happy family: "
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
                 ungrouped_samples = list(samples_missing_in_groups_txt)
@@ -6122,10 +6101,9 @@ class KeggModuleEnrichment(KeggContext):
             # we need to explicitly ignore samples without a group here, because they were taken out of sample_groups_df
             # and if only ungrouped samples end up having this module, we will get an index error
             samples_with_mod_list = list(samples_with_mod_df.index)
-            if not self.include_ungrouped:
-                for s in samples_with_none_group:
-                    if s in samples_with_mod_list:
-                        samples_with_mod_list.remove(s)
+            for s in samples_with_none_group:
+                if s in samples_with_mod_list:
+                    samples_with_mod_list.remove(s)
             if len(samples_with_mod_list) == 0:
                 continue
 

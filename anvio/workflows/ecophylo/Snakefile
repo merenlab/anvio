@@ -66,7 +66,7 @@ rule anvi_run_hmms_hmmsearch:
                                     -I {HMM_source} \
                                     --domain-hits-table \
                                     --just-do-it \
-                                    -T {threads} 2> {log}")
+                                    -T {threads} >> {log} 2>&1")
             else:
                 pass
 
@@ -87,7 +87,7 @@ rule anvi_run_hmms_hmmsearch:
                                     --hmmer-output-dir {hmmer_output_dir} \
                                     --domain-hits-table \
                                     --just-do-it \
-                                    -T {threads} 2> {log}")
+                                    -T {threads} >> {log} 2>&1")
             else:
                 pass
         
@@ -122,14 +122,14 @@ rule filter_hmm_hits_by_query_coverage:
                                                     --domain-hits-table {domtblout} \
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+                                                    {params.additional_params} >> {log} 2>&1")
         else:
             shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                     --domain-hits-table {domtblout} \
                                                     --hmm-profile-dir {HMM_dir} \
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+                                                    {params.additional_params} >> {log} 2>&1")
         shell('touch {output.done}')
 
 
@@ -163,21 +163,21 @@ rule anvi_get_sequences_for_hmm_hits:
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} --just-do-it 2> {log}")
+                                                -o {output.faa} --just-do-it >> {log} 2>&1")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
-                                                -o {output.fna} --just-do-it 2> {log}")
+                                                -o {output.fna} --just-do-it >> {log} 2>&1")
         else:
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} --just-do-it 2> {log}")
+                                                -o {output.faa} --just-do-it >> {log} 2>&1")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
-                                                -o {output.fna} --just-do-it 2> {log}")
+                                                -o {output.fna} --just-do-it >> {log} 2>&1")
 
 
 rule simplify_names_from_hmm_hits:
@@ -256,7 +256,7 @@ rule anvi_get_external_gene_calls_file:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         shell('anvi-get-sequences-for-gene-calls -c {contigsDB} \
                                                  --external-gene-calls {output.external_gene_calls} \
-                                                 -o {params.fasta} 2> {log}')
+                                                 -o {params.fasta} >> {log} 2>&1')
 
 
 rule rename_and_filter_external_gene_calls_file:
@@ -338,7 +338,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
             bam = os.path.join(M.contigsDB_name_bam_dict[wildcards.sample_name])
 
             # Run different HMM search depending on whether a HMM is internal or external because anvio
-            shell("anvi-profile-blitz {bam} -c {contigsDB} --gene-mode --report-minimal -o {output}")
+            shell("anvi-profile-blitz {bam} -c {contigsDB} --gene-mode --report-minimal -o {output} >> {log} 2>&1")
 
 
     rule cat_anvi_profile_blitz:
