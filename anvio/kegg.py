@@ -2975,34 +2975,44 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return metabolism_dict_for_list_of_splits
 
-######### REDUNDANCY FUNCTIONS (UNUSED) #########
+######### REDUNDANCY FUNCTIONS (UNUSED IN NON-JSON OUTPUT) #########
 
-    def compute_naive_redundancy_for_path(self, num_ko_hits_in_path_dict):
+    def compute_naive_redundancy_for_path(self, num_ko_hits_in_path):
         """This function computes a naive redundancy measure for a module path, given the number of hits per KO in the path.
 
         naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
+
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
         """
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
-        return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
+        return sum(extra_hits)/len(num_ko_hits_in_path)
 
 
-    def compute_copywise_redundancy_for_path(self, num_ko_hits_in_path_dict, aggregation_measure="average"):
+    def compute_copywise_redundancy_for_path(self, num_ko_hits_in_path, aggregation_measure="average"):
         """This function computes redundancy based on the completeness of each extra copy of a path.
 
         The 'base' redundancy score is determined by the number of extra copies with 100% completeness.
         The completeness measurements of all other extra copies are aggregated (using the aggregation_measure) and
         added to this 'base' redundancy to get the overall path redundancy.
+
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
         """
 
         accepted_aggregation_measures = ["average", "median", "weighted_sum", "geometric_mean"]
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
         base_redundancy = min(extra_hits) # number of extra copies of path that are 100% complete
         extra_copy_completeness = []
         # here we get the completeness of every extra copy of the path
         for i in range((base_redundancy+1), max(extra_hits) + 1):
             num_present_kos_in_copy = len([num_hits for num_hits in extra_hits if num_hits >= i])
-            extra_copy_completeness.append(num_present_kos_in_copy/len(num_ko_hits_in_path_dict.keys()))
+            extra_copy_completeness.append(num_present_kos_in_copy/len(num_ko_hits_in_path))
 
         aggregated_completeness = None
         if not extra_copy_completeness: # this handles the case when ALL extra copies are 100% complete
@@ -3025,12 +3035,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return (base_redundancy + aggregated_completeness), extra_copy_completeness
 
 
-    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path_dict):
-        """This function computes naive redundancy but weights it by the entropy of the hit distribution."""
+    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path):
+        """This function computes naive redundancy but weights it by the entropy of the hit distribution.
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
+        """
+
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
         total_extra_hits = sum(extra_hits)
-        num_kos = len(num_ko_hits_in_path_dict.keys())
+        num_kos = len(num_ko_hits_in_path)
         naive_redundancy = total_extra_hits/num_kos
         if all(e == 0 for e in extra_hits):
             return 0.0
@@ -3045,13 +3061,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return naive_redundancy * entropy/max_entropy
 
 
-    def compute_num_complete_copies_of_path(self, num_ko_hits_in_path_dict):
+    def compute_num_complete_copies_of_path(self, num_ko_hits_in_path):
         """This function computes the number of copies of a path that are >= x% complete,
         where x is the module completeness threshold.
 
-        It does this based on the provided dictionary in which each key is an enzyme in the path
-        and each value is the number of copies of that enzyme.
-        - first, these hit counts are put into an ordered list (descending order)
+        It does this based on the provided list in which each entry is the number of copies of
+        each enzyme in the path.
+        - first, these hit counts are ordered (descending order)
         - then, we compute N, the number of enzymes needed to make the path at least X complete, where
           X is the module completeness threshold
         - finally, we loop from i=1 to the maximum number of hits. Each time, if the number x of enzymes
@@ -3060,8 +3076,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         PARAMETERS
         ==========
-        num_ko_hits_in_path_dict : dictionary
-            keys are all enzymes in path, values are number of hits to that enzyme
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
 
         RETURNS
         ==========
@@ -3070,14 +3086,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         import math
-        path_length = len(num_ko_hits_in_path_dict.keys())
+        path_length = len(num_ko_hits_in_path)
         num_enzymes_needed = math.ceil(self.module_completion_threshold * path_length)  # N
-        hit_counts = [num_ko_hits_in_path_dict[k] for k in num_ko_hits_in_path_dict]
-        hit_counts.sort(reverse=True)
+        num_ko_hits_in_path.sort(reverse=True)
 
         copy_number = 0
-        for i in range(1, hit_counts[0]+1):
-            x = len([h for h in hit_counts if h >= i])
+        for i in range(1, num_ko_hits_in_path[0]+1):
+            x = len([h for h in num_ko_hits_in_path if h >= i])
             if x >= num_enzymes_needed:
                 copy_number += 1
 
@@ -3090,6 +3105,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         Each module can have multiple paths, but (in most cases) we only compute redundancy on the paths with the highest completeness
         (stored under the "most_complete_paths" key). If there are no paths in this list (which only happens when there
         are 0 KOfam hits to the module), then we do not compute redundancy.
+
+        The exception is for path copy number, in which case we want both the copy number of each path (for hits_in_modules output)
+        and the copy number of the paths with highest completeness (the maximum of which will be printed in modules output)
 
         PARAMETERS
         ==========
@@ -3115,11 +3133,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             return
 
         for p in paths_of_highest_completeness:
-            kofam_hits_in_path = { ko : meta_dict_for_bin[mnum]["kofam_hits"][ko] for ko in meta_dict_for_bin[mnum]["kofam_hits"].keys() if ko in p }
-            num_hits_per_kofam = { ko : len(kofam_hits_in_path[ko]) for ko in kofam_hits_in_path.keys() }
-            for ko in p:
-                if ko not in num_hits_per_kofam:
-                    num_hits_per_kofam[ko] = 0
+            num_hits_per_kofam = [len(meta_dict_for_bin[mnum]["kofam_hits"][k]) if k in meta_dict_for_bin[mnum]["kofam_hits"] else 0 for k in p]
 
             # for now, we will try a bunch of different redundancy calculations and put them all into the dictionary until we find the ones we like
             meta_dict_for_bin[mnum]["naive_redundancy"].append(self.compute_naive_redundancy_for_path(num_hits_per_kofam))
@@ -3139,11 +3153,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # for all paths, we compute the number of copies
         for p in self.module_paths_dict[mnum]:
-            kofam_hits_in_path = { ko : meta_dict_for_bin[mnum]["kofam_hits"][ko] for ko in meta_dict_for_bin[mnum]["kofam_hits"].keys() if ko in p }
-            num_hits_per_kofam = { ko : len(kofam_hits_in_path[ko]) for ko in kofam_hits_in_path.keys() }
-            for ko in p:
-                if ko not in num_hits_per_kofam:
-                    num_hits_per_kofam[ko] = 0
+            num_hits_per_kofam = [len(meta_dict_for_bin[mnum]["kofam_hits"][k]) if k in meta_dict_for_bin[mnum]["kofam_hits"] else 0 for k in p]
             meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
 
         return
