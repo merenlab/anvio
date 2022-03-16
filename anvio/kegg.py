@@ -3035,12 +3035,38 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """This function computes the number of copies of a path that are >= x% complete,
         where x is the module completeness threshold.
 
-        It does this based on the provided dictionary in which each key is a KO in the path
-        and each value is the number of copies of that KO.
+        It does this based on the provided dictionary in which each key is an enzyme in the path
+        and each value is the number of copies of that enzyme.
+        - first, these hit counts are put into an ordered list (descending order)
+        - then, we compute N, the number of enzymes needed to make the path at least X complete, where
+          X is the module completeness threshold
+        - finally, we loop from i=1 to the maximum number of hits. Each time, if the number x of enzymes
+          with hit count >= i is x >= N, we add 1 to our count of path copy numbers.
+        - the final count of path copy numbers is returned.
+
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path_dict : dictionary
+            keys are all enzymes in path, values are number of hits to that enzyme
+
+        RETURNS
+        ==========
+        copy_number : int
+            number of copies of path which are at least X complete, where X is module completeness threshold
         """
 
+        import math
         path_length = len(num_ko_hits_in_path_dict.keys())
-        
+        num_enzymes_needed = math.ceil(self.module_completion_threshold * path_length)  # N
+        hit_counts = [num_ko_hits_in_path_dict[k] for k in num_ko_hits_in_path_dict].sort(reverse=True)
+
+        copy_number = 0
+        for i in range(1, hit_counts[0]):
+            x = len([h for h in hit_counts if h >= i])
+            if x >= num_enzymes_needed:
+                copy_number += 1
+
+        return copy_number
 
 
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
