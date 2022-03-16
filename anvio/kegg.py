@@ -3058,7 +3058,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         import math
         path_length = len(num_ko_hits_in_path_dict.keys())
         num_enzymes_needed = math.ceil(self.module_completion_threshold * path_length)  # N
-        hit_counts = [num_ko_hits_in_path_dict[k] for k in num_ko_hits_in_path_dict].sort(reverse=True)
+        hit_counts = [num_ko_hits_in_path_dict[k] for k in num_ko_hits_in_path_dict]
+        hit_counts.sort(reverse=True)
 
         copy_number = 0
         for i in range(1, hit_counts[0]):
