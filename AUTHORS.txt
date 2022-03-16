@@ -1,81 +1,13 @@
-=======================================================================================
-Developers and contributors at the University of Chicago
-=======================================================================================
-A. Murat Eren (a.murat.eren at gmail dot com)
-Evan Kiefl (kiefl.evan at gmail dot com)
-Iva Veseli (iveseli at uchicago.edu)
-Samuel Miller (samuelmiller at uchicago.edu)
-Matthew Schechter (mschechter at uchicago dot edu)
-Matthew Lawrence Klein (mtt.l.kln at gmail dot com)
-Isaac Fink (iafink at uchicago dot edu)
-Florian Trigodet (trigodet dot florian at gmail dot com)
-Emily Fogarty (efogarty at uchicago dot edu)
-
-=======================================================================================
-Developers and contributors at large
-=======================================================================================
-Özcan Esen                                                                Turkey
-Alon Shaiber               Weill Cornell Medicine                         United States
-Jessica Pan                Massachusetts Institute of Technology          United States
-Quentin Clayssen           University of Nantes                           France
-Ryan Moore                 University of Delaware                         United States
-Mahmoud Yousef             University of Chicago                          United States
-Emanuel Burgos             University of Wisconsin-Madison                United States
-Gökmen Göksel              Google, Inc.                                   United States
-Daniel Blankenberg         Genomic Medicine Institute                     United States
-Faruk Uzun                 Monera, Inc.                                   Turkey
-Andrea Watson              Vedanta Biosciences, Inc.                      United States
-Gökmen Görgen              Radity, Inc                                    Switzerland
-Doğan Can Kilment          Makroser, Inc.                                 Turkey
-Amy Willis                 University of Washington                       United States
-Srinidhi Varadharajan      University of Oslo                             Norway
-Mike Lee                   NASA Ames Research Center                      United States
-S. Çağlar Onur             Google, Inc.                                   United States
-Xabier Vázquez-Campos      University of New South Wales                  Australia
-John Eppley                University of Hawaiʻi at Mānoa                 United States
-Jessika Fuessel            University of Chicago                          United States
-Dan Utter                  Harvard University                             United States
-Petra Hribovšek            University of Bergen                           Norway
-Elmar Pruesse              University of Colorado Denver                  United States
-Lucas Paoli                ETH Zurich                                     Switzerland
-Moritz Buck                Uppsala University                             Sweeden
-Tom Delmont                Genoscope                                      France
-Daan Speth                 Max Planck Institute for Marine Microbiology   Germany
-Inés Martinez              University of Alberta                          Canada
-Bryan Merill               Stanford University                            United States
-C. Titus Brown             University of California Davis                 United States
-M. Fauzi Haroon            Harvard University                             United States
-Finlay Maguire             Dalhousie University                           Canada
-
-=======================================================================================
-Developers and contributors no longer on GitHub
-=======================================================================================
-Tobias Paczian
-
---
-
-Anvi'o is an open-source, community-driven project and the purpose of this file is
-to mention names who contributed to its codebase. The file divides individuals into
-two main groups: (1) those who are currently employed at the University of Chicago
-and work on anvi'o as a part of their job description (hence they are ready to
-respond to technical questions or consider feature requests), and (2) those who
-contribute (or have contributed) to the platform and help (or have helped) its
-progress from elsewhere. The order of names in this file follows the logic
-implemented at GitHub's contributors page at the following URL, which ranks
-individuals based on the number of commits they've made to the anvi'o master
-repository:
+Code contributions to anvi'o as recognized by GitHub can be viewed here:
 
     https://github.com/merenlab/anvio/graphs/contributors
 
-Anvi'o developers are aware of the fact that there are no simple quantitative
-measures that can serve as fair and accurate judges of importance or quality. For
-instance this list does not include those who contributed to the platform by submitting
-issues, writing tutorials, making suggestions, or helping other anvi'o users.
+Although, code contributions represent only a fraction of the investment the
+anvi'o community has made into this platform. For instance, the list by GitHub
+does not include those who contributed to the platform by submitting issues,
+writing tutorials, making suggestions, or helping other anvi'o users, even
+though it is these kinds of contributions that keeps a software platform
+alive and relevant. Thus, we maintain a more comprehensive and up-to-date
+list of the "anvi'o people" here:
 
-If you are a user of anvi'o and found yourself all the way here reading these lines, we
-would like you to remind yourself that the order of names in this file means nothing
-more than a poor attempt to have an organization based on a rather neutral metric. If
-you are an anvi'o user, we believe that it would be the most appropriate and kind of
-you to assume that anvi'o wouldn't have been possible without any of these individuals
-and those who contributed to the platform by other means than writing code. We are
-thankful for all who invested their time. Since you are here, we thank you, too.
+    https://anvio.org

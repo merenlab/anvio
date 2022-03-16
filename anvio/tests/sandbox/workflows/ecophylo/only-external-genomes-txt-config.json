@@ -1,7 +1,8 @@
 {
     "metagenomes": "",
     "external_genomes": "external-genomes.txt",
-    "hmm_list": "hmm_list_external.txt",
+    "hmm_list": "hmm_list.txt",
+    "samples_txt": "samples.txt",
     "cluster_representative_method": {
         "method": "mmseqs"
     },
@@ -37,7 +38,8 @@
         "threads": 2
     },
     "align_sequences": {
-        "threads": 5
+        "threads": 5,
+        "additional_params": "-maxiters 1 -diags -sv -distance1 kbit20_3"
     },
     "trim_alignment": {
         "threads": 5,
@@ -100,7 +102,6 @@
     "anvi_import_everything": {
         "threads": 5
     },
-    "samples_txt": "samples.txt",
     "output_dirs": {
         "EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA",
         "RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS",

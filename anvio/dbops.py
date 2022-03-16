@@ -1494,27 +1494,20 @@ class PanSuperclass(object):
 
         if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
             if self.just_do_it:
-                self.run.warning("Please read carefully. Since you are using the flag `--just-do-it`, anvi'o will attempt to do someting that may not "
-                                 "work in some cases. It seems you wish to get sequences for some gene clusters you are interested in. Even though "
-                                 "it was the the amino acid sequences that was aligned for these gene clusters, you are asking for DNA sequences. "
-                                 "Anvi'o will convert the amino acid sequence alignment into a DNA alignment instantly (wihtout any additional "
-                                 "alignment step), but due to the intricacies of gene calling, the amino acid sequence of a gene that is stored "
-                                 "in the contigs database may differ from its DNA sequence. YES THAT IS TRUE BECAUSE THAT'S HOW BIOINFORATICS ROLLS. "
-                                 "For those rare instances, the alignment summary for the amino acid sequence can no longer be used to make sense of "
-                                 "the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for an example in which we have observed this). "
-                                 "But we will give it a try here in your case becasue you asked anvi'o to just do it :/ If this explodes downstream, "
-                                 "it is on you alone.")
+                self.run.warning("Since you are using the flag `--just-do-it`, anvi'o will attempt to first access to the DNA sequences of gene calls "
+                                 "found in gene clusters of interst, and align them from scratch instead of using the previously computed amino acid "
+                                 "sequence alignment summary data (related info: https://github.com/merenlab/anvio/issues/772). Anvi'o apologizes in "
+                                 "advance if this explodes downstream.", header="MINI WARNING AS YOU ARE GETTING SEQUENCES FOR GENE CLUSTERS", lc="yellow")
             else:
-                self.run.warning("Please read carefully. At this part of the code anvi'o attempts to get sequences for the gene clusters you are "
-                                 "interested in. While it was the amino acid sequences that were aligned here, you are you are asking for DNA sequences. "
-                                 "Even though the amino acid sequence alignment summary (the anvi'o way of storing alignment information) can be used to "
-                                 "align DNA sequences instantaneously, due to intricacies associated with the gene calling step, the amino acid sequence "
-                                 "of a gene stored in the contigs database may differ from its DNA sequence (true story). For those rare instances, the "
-                                 "alignment summary for the amino acid sequence may no longer be used to make sense of the DNA sequence "
-                                 "(see https://github.com/merenlab/anvio/issues/772 for more information). What needs to be done is to do another alignment "
-                                 "on the fly. But as you probably already have already guessed, anvi'o will not do that for you, and instead it will report "
-                                 "your DNA sequences for your genes in your gene clusters unaligned. If you really really want to try and see whether it will "
-                                 "work for your gene clusters here, you can try to include `--just-do-it` flag in your command line.")
+                self.run.warning("Anvi'o is getting sequences for the gene clusters you are interested in. While anvi'o aligned amino acid sequences "
+                                 "for these gene clusters, you have requested DNA sequences. Anvi'o stores alignment information in a compressed form "
+                                 "(which we call amino acid sequence alignment summary) which can also align DNA sequences instantaneously. BUT, due to "
+                                 "intricacies associated with gene calling, the amino acid sequence of a gene stored in the contigs database MAY differ "
+                                 "from its DNA sequence (true story). For those VERY RARE instances, the alignment summary for the amino acid sequence "
+                                 "may no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for more "
+                                 "information). One way to address that is to do another alignment on the fly for the DNA sequences for genes found in "
+                                 "gene clusters. But you need ot ask for that specifically, which you can do by including `--just-do-it` flag in your "
+                                 "command line and re-run this program.", header="MINI WARNING AS YOU ARE GETTING SEQUENCES FOR GENE CLUSTERS", lc="yellow")
                 skip_alignments = True
 
         sequences = {}
@@ -1567,7 +1560,7 @@ class PanSuperclass(object):
         return sequences
 
 
-    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), num_threads=1):
+    def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
         if gene_cluster_names is None:
             self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene "
                              "cluster names to work with. If you are a programmer, you should know that you are "
@@ -1596,7 +1589,7 @@ class PanSuperclass(object):
         workers = []
         for i in range(num_threads):
             worker = multiprocessing.Process(target=PanSuperclass.homogeneity_worker,
-                                             args=(input_queue, output_queue, sequences, homogeneity_calculator, self.run))
+                                             args=(input_queue, output_queue, sequences, gene_clusters_failed_to_align, homogeneity_calculator, self.run))
             workers.append(worker)
             worker.start()
 
@@ -1626,36 +1619,39 @@ class PanSuperclass(object):
 
 
     @staticmethod
-    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, homogeneity_calculator, run):
+    def homogeneity_worker(input_queue, output_queue, gene_clusters_dict, gene_clusters_failed_to_align, homogeneity_calculator, run):
         r = terminal.Run()
         r.verbose = False
 
         while True:
             gene_cluster_name = input_queue.get(True)
+
             funct_index = {}
             geo_index = {}
-            indices_dict = {}
-            gene_cluster = {}
-            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            gene_cluster = {gene_cluster_name: gene_clusters_dict[gene_cluster_name]}
+            indices_dict = {'gene cluster': gene_cluster_name}
 
             try:
                 funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
-            except:
-                run.warning("Homogeneity indices computation for gene cluster %s failed. This can happen due to one of three reasons: "
-                            "(1) this gene cluster is named incorrectly, does not exist in the database, or is formatted into the input "
-                            "dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all genes are aligned "
-                            "to be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As you can see, this "
-                            "is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to `-1` so things can "
-                            "move on, but we highly recommend you to take a look at your data to make sure you are satisfied with your "
-                            "analysis." % gene_cluster_name)
-                funct_index[gene_cluster_name] = -1
-                geo_index[gene_cluster_name] = -1
-                combined_index[gene_cluster_name] = -1
 
-            indices_dict['gene cluster'] = gene_cluster_name
-            indices_dict['functional'] = funct_index[gene_cluster_name]
-            indices_dict['geometric'] = geo_index[gene_cluster_name]
-            indices_dict['combined'] = combined_index[gene_cluster_name]
+                indices_dict['functional'] = funct_index[gene_cluster_name]
+                indices_dict['geometric'] = geo_index[gene_cluster_name]
+                indices_dict['combined'] = combined_index[gene_cluster_name]
+            except:
+                if gene_cluster_name not in gene_clusters_failed_to_align:
+                    progress.reset()
+                    run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
+                                f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
+                                f"into the input dictionary incorrectly, (2) there is an alignment mistake in the gene cluster, and not all "
+                                f" genes are alignedto be the same lenght; or (3) the homogeneity calculator was initialized incorrectly. As "
+                                f"you can see, this is a rare circumstance, and anvi'o will set this gene cluster's homogeneity indices to "
+                                f"`-1` so things can move on, but we highly recommend you to take a look at your data to make sure you are "
+                                f"satisfied with your analysis.", overwrite_verbose=True)
+
+                indices_dict['functional'] = -1
+                indices_dict['geometric'] = -1
+                indices_dict['combined'] = -1
 
             output_queue.put(indices_dict)
 
