@@ -3091,6 +3091,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
         meta_dict_for_bin[mnum]["entropy_weighted"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_path"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
@@ -3115,6 +3116,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             cw_gm_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="geometric_mean")
             meta_dict_for_bin[mnum]["copywise_geometric-mean"].append(cw_gm_redundancy)
             meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
+
+            # number of copies of path that have completeness >= threshold
+            meta_dict_for_bin[mnum]["num_complete_copies_of_path"].append(self.compute_num_complete_copies_of_path(num_hits_per_kofam))
 
         return
 
