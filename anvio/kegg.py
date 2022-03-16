@@ -2371,12 +2371,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofam_hits_in_modules',
+                                                       'mode_type': 'hits_in_modules',
                                                        'description': f"Mean coverage of gene in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
-                                                        'mode_type': 'kofam_hits_in_modules',
+                                                        'mode_type': 'hits_in_modules',
                                                         'description': f"Detection of gene in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
