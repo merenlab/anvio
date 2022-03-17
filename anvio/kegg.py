@@ -2667,10 +2667,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         defined_by_modules = False
 
         meta_dict_for_bin[mnum]["pathway_completeness"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
 
         for p in self.module_paths_dict[mnum]:
             num_complete_steps_in_path = 0
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
+            atomic_step_copy_number = []
 
             for atomic_step in p:
                 # there are 5 types of atomic steps to take care of
@@ -2682,6 +2685,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         has_no_ko_step = True
                         warning_str = "'--' steps are assumed incomplete"
                         meta_dict_for_bin[mnum]["warnings"].add(warning_str)
+                        atomic_step_copy_number.append(0)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
@@ -2732,13 +2736,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                             num_matches_processed += 1
 
-                        # after processing all components of the enzyme complex, we compute the complex completeness
+                        # after processing all components of the enzyme complex, we compute the complex completeness and copy number
                         num_present_components = 0
+                        component_copy_number = []
                         for c in essential_components:
                             if c in present_list_for_mnum:
                                 num_present_components += 1
+                                num_copies = len(meta_dict_for_bin[mnum]["kofam_hits"][c])
+                            else:
+                                num_copies = 0
+                            component_copy_number.append(num_copies)
                         component_completeness = num_present_components / len(essential_components)
                         num_complete_steps_in_path += component_completeness
+
+                        if component_completeness >= self.module_completion_threshold:
+                            atomic_step_copy_number.append(min(component_copy_number))
+                        else:
+                            atomic_step_copy_number.append(0)
                 else:
                     # atomic step is a single enzyme or module
                     # 4) Module numbers, ie Mxxxxx
@@ -2756,17 +2770,32 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         if atomic_step in present_list_for_mnum:
                             num_complete_steps_in_path += 1
+                            num_copies = len(meta_dict_for_bin[mnum]["kofam_hits"][atomic_step])
+                        else:
+                            num_copies = 0
+
+                        atomic_step_copy_number.append(num_copies)
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
             meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
+
+            # compute path copy number
+            if defined_by_modules:
+                path_copy_number = "NA"
+            else:
+                path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_number)
+            meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(path_copy_number)
 
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
         meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
         if meta_dict_for_bin[mnum]["percent_complete"] > 0:
             meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+            if not defined_by_modules:
+                meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = [meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
+            meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
 
         # compute proportion of unique enzymes in the module (regardless of which path(s) enzyme is in or whether enzyme is essential)
         if meta_dict_for_bin[mnum]["unique_to_this_module"]:
