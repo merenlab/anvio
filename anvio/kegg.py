@@ -3131,23 +3131,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return naive_redundancy * entropy/max_entropy
 
 
-    def compute_num_complete_copies_of_path(self, num_ko_hits_in_path):
+    def compute_num_complete_copies_of_path(self, copy_num_of_atomic_steps):
         """This function computes the number of copies of a path that are >= x% complete,
         where x is the module completeness threshold.
 
         It does this based on the provided list in which each entry is the number of copies of
-        each enzyme in the path.
-        - first, these hit counts are ordered (descending order)
-        - then, we compute N, the number of enzymes needed to make the path at least X complete, where
+        each atomic step in the path.
+        - first, these copy numbers are ordered (descending order)
+        - then, we compute N, the number of steps needed to make the path at least X complete, where
           X is the module completeness threshold
-        - finally, we loop from i=1 to the maximum number of hits. Each time, if the number x of enzymes
+        - finally, we loop from i=1 to the maximum number of hits. Each time, if the number x of steps
           with hit count >= i is x >= N, we add 1 to our count of path copy numbers.
         - the final count of path copy numbers is returned.
 
         PARAMETERS
         ==========
-        num_ko_hits_in_path : list
-            stores the number of copies of each enzyme in path
+        copy_num_of_atomic_steps : list
+            stores the number of copies of each step in path
 
         RETURNS
         ==========
@@ -3156,13 +3156,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         import math
-        path_length = len(num_ko_hits_in_path)
+        path_length = len(copy_num_of_atomic_steps)
         num_enzymes_needed = math.ceil(self.module_completion_threshold * path_length)  # N
-        num_ko_hits_in_path.sort(reverse=True)
+        copy_num_of_atomic_steps.sort(reverse=True)
 
         copy_number = 0
-        for i in range(1, num_ko_hits_in_path[0]+1):
-            x = len([h for h in num_ko_hits_in_path if h >= i])
+        for i in range(1, copy_num_of_atomic_steps[0]+1):
+            x = len([h for h in copy_num_of_atomic_steps if h >= i])
             if x >= num_enzymes_needed:
                 copy_number += 1
 
