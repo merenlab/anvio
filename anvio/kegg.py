@@ -4136,6 +4136,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """Here we extract and return three subsets of data from the superdicts, for matrix formatted output.
 
         The subsets of data that we need are: module completeness scores, module presence/absence, and KO hit frequency.
+        If --add-copy-number was provided, we also need module copy number.
         Each of these is put into a dictionary (one for modules, one for ko hits) and returned.
         """
 
@@ -4150,6 +4151,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]['percent_complete'] = c_dict['percent_complete']
                 mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
+                if self.add_copy_number:
+                    if c_dict["num_complete_copies_of_most_complete_paths"]:
+                        mod_completeness_presence_subdict[bin][mnum]['copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                    else:
+                        mod_completeness_presence_subdict[bin][mnum]['copy_number'] = 'NA'
 
         for bin, ko_dict in ko_hits_superdict.items():
             ko_hits_subdict[bin] = {}
@@ -4822,7 +4828,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
-        module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
+        module_matrix_stats = {"completeness" : "percent_complete",
+                               "presence" : "complete",
+                               }
+        if self.add_copy_number:
+            module_matrix_stats["copy_number"] = "copy_number"
+            
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
         first_bin = list(module_superdict_multi[first_sample].keys())[0]
