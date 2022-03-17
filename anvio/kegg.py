@@ -4017,7 +4017,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # add module redundancy if requested
                     if self.add_redundancy:
                         # we take the maximum copy number of all the paths of highest completeness
-                        d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                        if c_dict["num_complete_copies_of_most_complete_paths"]:
+                            d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                        else:
+                            d[self.modules_unique_id]["num_complete_copies"] = 'NA'
 
                     # everything else at c_dict level
                     for h in remaining_headers:
