@@ -790,7 +790,16 @@ function buildLegendTables() {
                         <tr>
                             <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].replaceAll(' ','-')}-query-input"></td>
                             <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Query</button></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set Color</button></td>
+                        </tr>
+                        <tr>
+                            <td class="col-md-10"><p>set all categories to this color</p></td>
+                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" >Set all</button></td>
+                        </tr>
+                        <tr>
+                            <td class="col-md-10"><p>randomize all category colors</p></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" >Randomize all</button></td>
                         </tr>
                     </table>
                 </div>
