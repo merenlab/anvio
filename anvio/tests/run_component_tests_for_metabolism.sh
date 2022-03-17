@@ -179,6 +179,21 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          -O modules_custom_coverage \
                          --custom-output-headers module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection
 
+INFO "Testing --add-copy-number in long-format output"
+anvi-estimate-metabolism -c CONTIGS.db \
+                         -O copy_num \
+                         --add-copy-number \
+                         --output-modes modules,hits_in_modules
+SHOW_FILE copy_num_modules.txt
+SHOW_FILE copy_num_hits_in_modules.txt
+
+INFO "Testing --add-copy-number in matrix output"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         -O copy_num \
+                         --add-copy-number \
+                         --matrix-format
+SHOW_FILE copy_num-copy_number-MATRIX.txt
+
 INFO "Testing enzymes txt input (no coverage/detection)"
 anvi-estimate-metabolism --enzymes-txt minimal_enzymes_input.txt \
                          -O enzymes_txt \
