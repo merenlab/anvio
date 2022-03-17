@@ -2046,7 +2046,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.add_redundancy:
             self.available_modes["hits_in_modules"]["headers"].extend(["num_complete_copies_of_path"])
-            self.available_modes["hits"]["headers"].extend(["num_complete_copies"])
+            self.available_modes["modules"]["headers"].extend(["num_complete_copies"])
             self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
                                                        'mode_type': 'hits_in_modules',
                                                        'description': "Number of complete copies of the path through the module"
