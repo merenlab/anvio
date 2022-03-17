@@ -1621,7 +1621,7 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
-        self.add_redundancy = True if A('add_redundancy') else False
+        self.add_copy_number = True if A('add_copy_number') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -2044,7 +2044,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             self.add_gene_coverage_to_headers_list()
 
-        if self.add_redundancy:
+        if self.add_copy_number:
             self.available_modes["hits_in_modules"]["headers"].extend(["num_complete_copies_of_path"])
             self.available_modes["modules"]["headers"].extend(["num_complete_copies"])
             self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
@@ -3824,7 +3824,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
 
                                 # add path-level redundancy if requested
-                                if self.add_redundancy:
+                                if self.add_copy_number:
                                     d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
 
                                 # top-level keys and keys not in superdict
@@ -4015,7 +4015,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
 
                     # add module redundancy if requested
-                    if self.add_redundancy:
+                    if self.add_copy_number:
                         # we take the maximum copy number of all the paths of highest completeness
                         if c_dict["num_complete_copies_of_most_complete_paths"]:
                             d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
