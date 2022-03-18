@@ -2601,8 +2601,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bin_level_module_dict, bin_level_ko_dict
 
 
-    def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
-        """This function calculates the completeness of the specified module within the given bin metabolism dictionary.
+    def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the pathwise completeness of the specified module within the given bin metabolism dictionary.
 
         To do this, it works with the unrolled module definition: a list of all possible paths, where each path is a list of atomic steps.
         Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
@@ -2828,7 +2828,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """This function adjusts completeness of modules that are defined by other modules.
 
         This can only be done after all other modules have been evaluated for completeness.
-        The function uses similar logic as compute_module_completeness_for_bin() to re-assess whether steps defined
+        The function uses similar logic as compute_pathwise_module_completeness_for_bin() to re-assess whether steps defined
         by other modules are complete, and updates the metabolism completess dictionary accordingly.
 
         PARAMETERS
@@ -2988,7 +2988,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if mod == "num_complete_modules":
                 continue
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
-            = self.compute_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+            = self.compute_pathwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
                 complete_mods.append(mod)
@@ -4833,7 +4833,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                }
         if self.add_copy_number:
             module_matrix_stats["copy_number"] = "copy_number"
-            
+
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
         first_bin = list(module_superdict_multi[first_sample].keys())[0]
