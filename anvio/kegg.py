@@ -1694,6 +1694,14 @@ class KeggEstimatorArgs():
 
         We do this once at the start so as to reduce the number of on-the-fly database queries
         that have to happen during the estimation process.
+
+        ## KEYS ADDED TO SELF.ALL_MODULES_IN_DB DICTIONARY
+        * all keys from modules table in database, ie DEFINITION, CLASS, etc
+        'MODULES_DB_SOURCE'         which database this module belongs to ("KEGG" for KEGG modules, "USER" for user-defined modules)
+        'substrate_list'            list of substrate compounds (inputs to the module)
+        'intermediate_list'         list of intermediate compounds
+        'product_list'              list of product compounds (outputs of the module)
+        'top_level_steps'           list of top-level steps in the module DEFINITION
         """
 
         self.all_modules_in_db = {}
@@ -1716,6 +1724,9 @@ class KeggEstimatorArgs():
 
                 # initialize module paths into self.module_paths_dict
                 self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
+
+                # initialize top-level steps into self.all_modules_in_db
+                self.all_modules_in_db[mod]['top_level_steps'] = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
             self.kegg_modules_db.disconnect()
 
@@ -1745,6 +1756,9 @@ class KeggEstimatorArgs():
 
                 # initialize module paths into self.module_paths_dict
                 self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.user_modules_db)
+
+                # initialize top-level steps into self.all_modules_in_db
+                self.all_modules_in_db[mod]['top_level_steps'] = self.user_modules_db.get_top_level_steps_in_module_definition(mod)
 
             self.user_modules_db.disconnect()
 
