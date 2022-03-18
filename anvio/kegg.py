@@ -2615,6 +2615,32 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bin_level_module_dict, bin_level_ko_dict
 
 
+    def compute_stepwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the stepwise completeness of the specified module within the given bin dictionary.
+
+        It uses only the "top-level" steps of the module definition, which are the steps that you get when you first
+        split the module definition on a space. Each "top-level" step is comprised of one or more enzymes that either
+        work together or serve as alternatives to each other. In this calculation, we ignore the possible combinations
+        of enzymes and simply decide whether or not a "top-level" step is complete or not. Then the module completeness
+        is computed as the number of complete "top-level" steps divided by the total number of steps.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        """
+
+        top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
+        num_steps = len(top_level_steps)
+        num_complete = 0
+
+        for step in top_level_steps:
+            
+
+
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the pathwise completeness of the specified module within the given bin metabolism dictionary.
 
