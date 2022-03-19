@@ -463,16 +463,37 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   var arrowPathStr;
   switch (parseInt(style)) {
     case 2: // thicker arrows
-      arrowPathStr = 'M ' + stemLength + ' -10 L 0 -10 L 0 20 L ' + stemLength + ' 20 L ' + stemLength + ' 20 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
+      arrowPathStr = `M ${stemLength} -10
+                      L 0 -10
+                      L 0 20
+                      L ${stemLength} 20
+                      L ${stemLength} 20
+                      L ${stemLength} 20
+                      L ${length} 5
+                      L ${stemLength} -10 z`;
       break;
     case 3: // pentagon arrows
-      arrowPathStr = 'M 0 0 L ' + stemLength + ' 0 L ' + length + ' 20 L ' + stemLength + ' 40 L 0 40 L 0 0 z';
+      arrowPathStr = `M 0 0
+                      L ${stemLength} 0
+                      L ${length} 20
+                      L ${stemLength} 40
+                      L 0 40
+                      L 0 0 z`;
       break;
     case 4: // rect arrows
-      arrowPathStr = 'M ' + length + ' -5 L 0 -5 L 0 15 L ' + length + ' 15 z';
+      arrowPathStr = `M ${length} -5
+                      L 0 -5
+                      L 0 15
+                      L ${length} 15 z`;
       break;
     default: // 'inspect page' arrows
-      arrowPathStr = 'M ' + stemLength + ' 0 L 0 0 L 0 15 L ' + stemLength + ' 15 L ' + stemLength + ' 15 L ' + stemLength + ' 20 L ' + length + ' 5 L ' + stemLength + ' -10 z';
+      arrowPathStr = `M ${stemLength} -2.5
+                      L 0 -2.5
+                      L 0 12.5
+                      L ${stemLength} 12.5
+                      L ${stemLength} 20
+                      L ${length} 5
+                      L ${stemLength} -10 z`;
       break;
   }
 
@@ -795,4 +816,3 @@ GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
     let stop = genomeMax > 35000 ? 35000 : genomeMax
     zoomOut('partial', start, stop)
-}
