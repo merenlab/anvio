@@ -292,19 +292,22 @@ function showDeepDiveToolTip(event){
   let totalMetadataString = String()
   let totalAnnotationsString = String()
   let metadataLabel = String()
+  let button = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query Sequence for matches</button>`
 
   let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
-  geneMetadata.map(metadata => {
-    metadataLabel = metadata.label
-    let button = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query Sequence for matches</button>`
+  const createMetadataContent = () => {
+    geneMetadata.map(metadata => {
+      metadataLabel = metadata.label
 
-    totalMetadataString += `
-    <tr>
-    <td>${metadata.label}</td>
-    <td>${metadata.type == 'tag'? button : 'n/a'}</td>
-    </tr>
-    `
-  })
+      totalMetadataString += `
+      <tr>
+      <td>${metadata.label}</td>
+      <td>${metadata.type == 'tag'? button : 'n/a'}</td>
+      </tr>
+      `
+    })
+  }
+  createMetadataContent()
 
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
@@ -352,7 +355,7 @@ function showDeepDiveToolTip(event){
       <br>
       <table class="table table-striped">
       <thead><th>metadata</th><th>action</th></thead>
-      <tbody>
+      <tbody id="metadata-body">
       ${totalMetadataString}
       </tbody>
       </table>
@@ -412,6 +415,15 @@ function showDeepDiveToolTip(event){
     }
     settings['display']['metadata'].push(metadataObj)
     $('#metadata-gene-label').val('')
+    $('#metadata-body').append(`
+      <tr>
+        <td>${metadataObj.label}</td>
+        <td>${button}</td>
+      </tr>
+    `)
+    $('#metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
+      drawer.queryMetadata(metadataLabel)
+    })
   })
   $('#metadata-gene-description-add').on('click', function(){
     let metadataObj = {
@@ -422,6 +434,15 @@ function showDeepDiveToolTip(event){
     }
     settings['display']['metadata'].push(metadataObj)
     $('#metadata-gene-description').val('')
+    $('#metadata-body').append(`
+      <tr>
+        <td>${metadataObj.label}</td>
+        <td>n/a</td>
+      </tr>
+    `)
+    $('#metadata-query').on('click', function(){
+      drawer.queryMetadata(metadataLabel)
+    })
   })
 }
 
