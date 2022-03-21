@@ -407,48 +407,12 @@
                             </tr>
                           </tbody>
                         </table>
-
-                        <span class="settings-header">Get Sequence for a Range or Selection</span>
-                        <p class="settings-section-info">Using your mouse, you can make regional selections through the panel at the bottom of the genome view screen. Through this section you can make more precise selections by explicitly defining a range, and can get sequences for individual genomes within the selected region or for the entire genome.</p>
-
-                        <div id="range-box"></div>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\n' + sequence);">Get the entire split sequence</button><br />
-                        <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button><br />
-
-
-                        <span class="settings-header">Overlay GC Content</span>
-                        <p class="settings-section-info">GC content may explain some variation in coverage (<a href="http://merenlab.org/2016/12/14/coverage-variation/" target="_blank">more info on wavy coverage patterns</a>). Using this section you can overlay GC content signal on your mapping results. The GC content of the reference sequence calculated as the moving average of a 'sliding window' sampled every 'step size'.</p>
-                        <table id="gc-overlay" style="margin-bottom: 20px;">
-                          <tbody>
-                            <tr>
-                              <td>Sliding window size (nt):</td>
-                              <td><input type="text" class="form-control input-sm" id="gc_window_size" value="30"></td>
-                            </tr>
-                            <tr>
-                              <td>Step size:</td>
-                              <td><input type="text" class="form-control input-sm" id="gc_step_size" value="20"></td>
-                            </tr>
-                            <tr>
-                              <td>Color:</td>
-                              <td><div class="colorpicker" id="gc_overlay_color" color="#008000" style="background-color: #008000"></div></td>
-                            </tr>
-                          </tbody>
-                        </table>
-
-                        <button type="button" class="btn btn-primary btn-xs" onclick="applyOverlayGCContent();">Apply overlay</button>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();">Reset overlay</button>
-
-                        <span class="settings-header">Set/Reset Maximum Values</span>
-                        <p class="settings-section-info">The y-axis on the left hand-side of each plot is automatically sclaed per sample as a function of the maximum coverage value. Using this section you can change the y-axis maximum for each sample independently, or set a single value for all samples to make coverages more comparable.</p>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button><br />
-                        <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button><br />
-
-                        <br><br>
+                        <span style="margin-bottom:600px"></span>
               </div>
 
               <div class="btn-group sidebar-footer" role="group" style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px;">
-                <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+                <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 45px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 45px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
               </div>
             </div>
 
