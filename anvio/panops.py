@@ -584,7 +584,7 @@ class Pangenome(object):
                                                       distance=self.distance, linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
 
-    def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict):
+    def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict, gene_clusters_failed_to_align=set([])):
         if self.skip_alignments:
             self.run.warning('Skipping homogeneity calculations because gene clusters are not alligned.')
             return
@@ -596,7 +596,9 @@ class Pangenome(object):
         pan = dbops.PanSuperclass(args=self.args, r=terminal.Run(verbose=False), p=self.progress)
         gene_cluster_names = set(list(gene_clusters_dict.keys()))
 
-        d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names, num_threads=self.num_threads)
+        d = pan.compute_homogeneity_indices_for_gene_clusters(gene_cluster_names=gene_cluster_names,
+                                                              gene_clusters_failed_to_align=gene_clusters_failed_to_align,
+                                                              num_threads=self.num_threads)
 
         if d is None:
             self.run.warning("Anvi'o received an empty dictionary for homogeneity indices. Not good :/ Returning empty handed,\
@@ -763,9 +765,13 @@ class Pangenome(object):
             worker.start()
 
         received_gene_clusters = 0
+        unsuccessful_alignments = set([])
         while received_gene_clusters < num_non_singleton_gene_clusters:
             try:
                 gene_clusters_item = output_queue.get()
+
+                if not gene_clusters_item['alignment_was_successful']:
+                    unsuccessful_alignments.add(gene_clusters_item['name'])
 
                 if gene_clusters_item:
                     # worker returns None if there is nothing to align
@@ -773,6 +779,7 @@ class Pangenome(object):
                     gene_clusters_dict[gene_clusters_item['name']] = gene_clusters_item['entry']
 
                 if self.debug:
+                    print()
                     print(json.dumps(gene_clusters_item, indent=2))
 
                 received_gene_clusters += 1
@@ -789,7 +796,7 @@ class Pangenome(object):
 
         self.progress.end()
 
-        return gene_clusters_dict
+        return gene_clusters_dict, unsuccessful_alignments
 
 
     @staticmethod
@@ -820,11 +827,14 @@ class Pangenome(object):
                 sequence = genomes_storage.get_gene_sequence(gene_entry['genome_name'], gene_entry['gene_caller_id'])
                 gene_sequences_in_gene_cluster.append(('%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id']), sequence),)
 
+            alignment_was_successful = False
+
             # sometimes alignments fail, and because pangenomic analyses can take forever,
             # everything goes into the trash bin. to prevent that, here we have a try/except
             # block with lots of warnings if something goes wrong.
             try:
                 alignments = aligner(run=r).run_stdin(gene_sequences_in_gene_cluster)
+                alignment_was_successful = True
             except:
                 # realm of sad face. before we continue to spam the user with error messages,
                 # we turn our gene sequences to alignments without alignments. this worker will
@@ -836,26 +846,16 @@ class Pangenome(object):
                 # constructing our #sad:
                 if anvio.DEBUG:
                     temp_file_path = filesnpaths.get_temp_file_path(prefix='ANVIO_GC_%s' % (gene_cluster_name))
-                    with open(temp_file_path, 'w') as output:
+                    with open(temp_file_path, 'w') as reporting_file:
                         for tpl in gene_sequences_in_gene_cluster:
-                            output.write('>%s\n%s\n' % (tpl[0], tpl[1]))
-                    debug_info = "The %d sequences in gene cluster %s are stored in the temporary file '%s'" % \
-                                        (len(gene_sequences_in_gene_cluster), gene_cluster_name, temp_file_path)
-                else:
-                    debug_info = "If you re-run your last command with a `--debug` flag, anvi'o will generate more\
-                                  information for you about the contenets of this gene cluster (but if you are seeing\
-                                  millions of these warnings, it may not be a good idea since with the `--debug` flag\
-                                  anvi'o will generate a FASTA file in a temporary directory with the contents of the\
-                                  gene cluster, and will not attempt to delete them later)."
+                            reporting_file.write('>%s\n%s\n' % (tpl[0], tpl[1]))
 
-                run.warning("VERY BAD NEWS. The alignment of sequences with '%s' in the gene cluster '%s' failed "
-                            "for some reason. Since the real answer to 'why' is too deep in the matrix, there is "
-                            "no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE "
-                            "GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
-                                                       (aligner.__name__, gene_cluster_name, debug_info), nl_before=1)
+                    progress.reset()
+                    run.warning(f"'{temp_file_path}' contains raw sequences for {len(gene_sequences_in_gene_cluster)} genes "
+                                f"{aligner.__name__} couldn't align :/", header=f"FAILED ALIGNMENT FOR GENE CLUSTER '{gene_cluster_name}'",
+                                lc="green", nl_before=1)
 
-
-            output = {'name': gene_cluster_name, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
+            output = {'name': gene_cluster_name, 'alignment_was_successful': alignment_was_successful, 'entry': copy.deepcopy(gene_clusters_dict[gene_cluster_name])}
             for gene_entry in output['entry']:
                 gene_entry['alignment_summary'] = utils.summarize_alignment(alignments['%s_%d' % (gene_entry['genome_name'], gene_entry['gene_caller_id'])])
 
@@ -899,7 +899,29 @@ class Pangenome(object):
         del mcl_clusters
 
         # compute alignments for genes within each gene_cluster (or don't)
-        gene_clusters_dict = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
+        gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
+
+        if len(unsuccessful_alignments):
+            if anvio.DEBUG:
+               self.run.warning(f"The alignment of sequences failed for {len(unsuccessful_alignments)} of the total {len(gene_clusters_dict)} "
+                                f"gene clusters anvi'o identified in your pangenome, and you can find the FASTA files for them in your logs "
+                                f"above. SAD DAY FOR EVERYONE.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
+            else:
+               self.run.warning(f"SOME BAD NEWS :/ The alignment of sequences failed for {len(unsuccessful_alignments)} of the total "
+                                f"{len(gene_clusters_dict)} gene clusters anvi'o identified in your pangenome :/ This often happens "
+                                f"when you have extremely long genes (often due to improper gene calling across scaffolds) or gene "
+                                f"clusters with extremely large number of genes (often happens with transposons or other mobile elements). "
+                                f"This is not the end of the world, since most things will continue to work. But you will be missing some "
+                                f"things for these gene clusters, including gene cluster functional and geometric homogeneity calculations "
+                                f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
+                                f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
+                                f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
+                                f"on what you wish to do with them (if you are not sure, come to anvi'o slack, and tell us about what you "
+                                f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
+                                f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
+                                f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
+                                f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
+                                f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
 
         # populate the pan db with results
         gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
@@ -917,7 +939,7 @@ class Pangenome(object):
         self.populate_layers_additional_data_and_orders()
 
         # work with gene cluster homogeneity index
-        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict)
+        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
 
         # let people know if they have too much data for their own comfort
         if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:

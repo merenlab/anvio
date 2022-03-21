@@ -66,7 +66,7 @@ rule anvi_run_hmms_hmmsearch:
                                     -I {HMM_source} \
                                     --domain-hits-table \
                                     --just-do-it \
-                                    -T {threads} 2> {log}")
+                                    -T {threads} >> {log} 2>&1")
             else:
                 pass
 
@@ -87,7 +87,7 @@ rule anvi_run_hmms_hmmsearch:
                                     --hmmer-output-dir {hmmer_output_dir} \
                                     --domain-hits-table \
                                     --just-do-it \
-                                    -T {threads} 2> {log}")
+                                    -T {threads} >> {log} 2>&1")
             else:
                 pass
         
@@ -122,14 +122,14 @@ rule filter_hmm_hits_by_query_coverage:
                                                     --domain-hits-table {domtblout} \
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+                                                    {params.additional_params} >> {log} 2>&1")
         else:
             shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
                                                     --domain-hits-table {domtblout} \
                                                     --hmm-profile-dir {HMM_dir} \
                                                     --hmm-source {HMM_source} \
                                                     --query-coverage {params.query_coverage} \
-                                                    {params.additional_params} 2> {log}")
+                                                    {params.additional_params} >> {log} 2>&1")
         shell('touch {output.done}')
 
 
@@ -163,21 +163,21 @@ rule anvi_get_sequences_for_hmm_hits:
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} --just-do-it 2> {log}")
+                                                -o {output.faa} --just-do-it >> {log} 2>&1")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --gene-names {wildcards.HMM} \
-                                                -o {output.fna} --just-do-it 2> {log}")
+                                                -o {output.fna} --just-do-it >> {log} 2>&1")
         else:
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
                                                 --get-aa-sequences \
-                                                -o {output.faa} --just-do-it 2> {log}")
+                                                -o {output.faa} --just-do-it >> {log} 2>&1")
 
             shell("anvi-get-sequences-for-hmm-hits -c {contigsDB} \
                                                 --hmm-sources  {HMM_source} \
-                                                -o {output.fna} --just-do-it 2> {log}")
+                                                -o {output.fna} --just-do-it >> {log} 2>&1")
 
 
 rule simplify_names_from_hmm_hits:
@@ -253,7 +253,7 @@ rule anvi_get_external_gene_calls_file:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         shell('anvi-get-sequences-for-gene-calls -c {contigsDB} \
                                                  --external-gene-calls {output.external_gene_calls} \
-                                                 -o {params.fasta} 2> {log}')
+                                                 -o {params.fasta} >> {log} 2>&1')
 
 
 rule rename_and_filter_external_gene_calls_file:
@@ -332,7 +332,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
             bam = os.path.join(M.contigsDB_name_bam_dict[wildcards.sample_name])
 
             # Run different HMM search depending on whether a HMM is internal or external because anvio
-            shell("anvi-profile-blitz {bam} -c {contigsDB} --gene-mode --report-minimal -o {output}")
+            shell("anvi-profile-blitz {bam} -c {contigsDB} --gene-mode --report-minimal -o {output} >> {log} 2>&1")
 
 
     rule cat_anvi_profile_blitz:
@@ -443,11 +443,12 @@ rule align_sequences:
     
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "align_sequences_{HMM}.log")
-	input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa")  
-	output: os.path.join(dirs_dict['MSA'], "{HMM}-aligned.fa")
-	threads: M.T('align_sequences')
-	shell:
-		"muscle -in {input} -out {output} -maxiters 3 -verbose 2> {log}"
+    input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-AA_subset.fa"),
+    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}-aligned.fa"),
+    params: additional_params = M.get_param_value_from_config(['align_sequences', 'additional_params'])
+    threads: M.T('align_sequences')
+    run:
+        shell("muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}")
 
 
 rule trim_alignment:
@@ -493,28 +494,36 @@ rule count_num_sequences_filtered:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "count_num_sequences_filtered_{HMM}.log")
     input:
-        step1 = rules.cat_sequences_to_one_fasta.output.NT_all,
-        step2 = rules.cluster_X_percent_sim_mmseqs.output,
+        step1 = rules.combine_sequence_data.output.NT_all,
+        step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
         step3 = rules.remove_sequences_with_X_percent_gaps.output
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
-    shell:
-        """
-        # How many SCGs (e.g. Ribosomal_L16) did we recruit across all input data (genomes and metagenomes)?
-        step1=$(grep -c '>' {input.step1})
-        echo -e "num_input_seqs\t$step1\t{input.step1}\n" > {output}
+    run:
+        def count_num_sequences(fasta):
+            num_seqs = 0
+            for line in fasta:
+                if line.startswith(">"):
+                    num_seqs += 1
+            return num_seqs
 
-        # How many SCGs do we have after we cluster them at the nt level and pick representatives?
-        step2=$(grep -c '>' {input.step2})
-        echo -e "cluster_X_percent_sim_mmseqs\t$step2\t{input.step2}\n" >> {output}
+        with open(input.step1) as fasta:
+            step1_num_seqs = count_num_sequences(fasta)
 
-        # How many seqs are in the NR set?
-        step3=$(grep -c '>' {input.step3})
-        echo -e "remove_sequences_with_X_percent_gaps\t$step3\t{input.step3}\n" >> {output}
+        with open(input.step2) as fasta:
+            step2_num_seqs = count_num_sequences(fasta)
 
-        # Add column names here
-        echo -e "Rule_name\tNum_sequences\trel_path\n$(cat {output})" > {output}
-        """
+        with open(input.step3[0]) as fasta:
+            step3_num_seqs = count_num_sequences(fasta)
+
+        with open(output[0], 'w') as f:
+            col_names = ["rule_name", "num_sequences_left", "rel_path"]
+            step1 = ["num_input_seqs", str(step1_num_seqs), input.step1]
+            step2 = ["num_input_seqs", str(step2_num_seqs), input.step2]
+            step3 = ["num_input_seqs", str(step3_num_seqs), input.step3[0]]
+            lines = [col_names, step1, step2, step3]
+            for line in lines:
+                f.write('\t'.join(line) + '\n')
 
 
 rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
@@ -624,15 +633,18 @@ rule rename_tree_tips:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "rename_tree_tips_{HMM}.log")
     input:
-        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done")
+        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-tree.done"),
     output:
         done = os.path.join(dirs_dict['TREES'], "{HMM}_combined.done"),
-        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk")
+        tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk"),
+        fasta = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.faa")
     params:
         fasttree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
-        iqtree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree")
+        iqtree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree"),
+        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
     threads: M.T('rename_tree_tips')
     run:
+        # rename tree tips 
         from ete3 import Tree
 
         def add_split_name_to_tree_tips(tree):
@@ -651,6 +663,20 @@ rule rename_tree_tips:
         
         elif M.run_fasttree == True:
             add_split_name_to_tree_tips(params.fasttree)
+        
+        # rename fasta headers to match tree
+        fasta = open(str(params.fasta))
+        newfasta = open(output.fasta, "a")
+
+        for line in fasta:
+            if line.startswith('>'):
+                newname = line.rstrip("\n") + "_split_00001\n"
+                newfasta.write(newname)
+            else:
+                newfasta.write(line)
+
+        fasta.close()
+        newfasta.close()
 
 
 def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
@@ -688,7 +714,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     # subset misc data to final set of proteins
     df = pd.merge(df, final_sequences_headers, left_on='cluster_members', right_on='identifier', how='inner')
 
-    df['has_genomic_reference_protein_in_cluster'] = np.where(df['cluster_members'].isin(cluster_reps_with_genomic_references_list), 'yes', 'no')
+    df['genomic_seq_in_cluster'] = np.where(df['cluster_members'].isin(cluster_reps_with_genomic_references_list), 'yes', 'no')
 
     # Determine contigsDB type: metagenome or genomes
     # FIXME: This will need to be changed in the future to accomidate SAGs, MAGs, and other genomic sources
@@ -703,7 +729,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
     df["contig_db_type"] = df.cluster_members.apply(lambda name: contigsDB_type_dict[name])
 
     # grab the final columns
-    df = df[['split_name', 'contig_db_type', 'has_genomic_reference_protein_in_cluster', 'cluster_size']]
+    df = df[['split_name', 'contig_db_type', 'genomic_seq_in_cluster', 'cluster_size']]
 
     # Export
     #-------
@@ -812,530 +838,9 @@ rule anvi_scg_taxonomy:
             pass
 
 
-
-
 if M.samples_txt_file:
-    rule make_metagenomics_config_file:
-        """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW"""
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "make_metagenomics_config_file.log")
-        input:
-            rules.make_fasta_txt.output.fasta_txt
-        output:
-            config = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_config.json")
-        threads: M.T('make_metagenomics_config_file')
-        run:
-
-            shell('anvi-run-workflow -w metagenomics --get-default-config {output.config}')
-
-            config = open(output.config)
-            config_dict = json.load(config)
-            config_dict['fasta_txt'] = 'fasta.txt'
-            sample_txt_path = M.samples_txt_file
-            config_dict['samples_txt'] = sample_txt_path
-            config_dict['references_mode'] = True
-            config_dict['anvi_run_hmms']['run'] = False
-            config_dict["anvi_script_reformat_fasta"]['run'] = False
-            config_dict['anvi_run_kegg_kofams']['run'] = False
-            config_dict['anvi_run_ncbi_cogs']['run'] = False
-            config_dict['anvi_run_scg_taxonomy']['run'] = False
-            config_dict['anvi_run_trna_scan']['run'] = False
-            config_dict['anvi_run_scg_taxonomy']['run'] = False
-            config_dict['iu_filter_quality_minoche']['run'] = False
-            config_dict['anvi_profile']['--min-contig-length'] = 0
-            config_dict['bowtie']['threads'] = 5
-            config_dict['bowtie_build']['threads'] = 5
-            config_dict['anvi_gen_contigs_database']['threads'] = 5
-
-            if M.clusterize_metagenomics_workflow == True:
-                config_dict['bowtie']['threads'] = 10
-                config_dict['anvi_profile']['threads'] = 10
-                config_dict['anvi_merge']['threads'] = 10
-            else:
-                pass
-
-            with open(output.config, "w") as outfile:
-                json.dump(config_dict, outfile, indent=4)
-
-
-    rule run_metagenomics_workflow:
-        """Run metagenomics workflow to profile HMM_hits"""
-
-        version: 1.0
-        log: "00_LOGS/run_metagenomics_workflow.log"
-        input:
-            config = rules.make_metagenomics_config_file.output.config,
-        output:
-            done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
-        params:
-            HPC_string = M.metagenomics_workflow_HPC_string
-        threads: M.T('run_metagenomics_workflow')
-        run:
-
-            # Convert r1 and r2 to absolute paths
-            samples_txt_new_path = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/", M.samples_txt_file)
-            samples_txt_new = pd.read_csv(M.samples_txt_file, sep='\t', index_col=False)
-            samples_txt_new['r1'] = samples_txt_new['r1'].apply(lambda x: os.path.abspath(str(x)))
-            samples_txt_new['r2'] = samples_txt_new['r2'].apply(lambda x: os.path.abspath(str(x)))
-            samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
-
-            shell("mkdir -p METAGENOMICS_WORKFLOW/00_LOGS && touch {log}")
-
-            if M.clusterize_metagenomics_workflow == True:
-                shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
-            elif M.metagenomics_workflow_HPC_string:
-                HPC_string = params.HPC_string
-                shell(f'cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster "{HPC_string}" --cores 201 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
-            else:
-                shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -")
-            
-
-    rule add_default_collection:
-        """"""
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{HMM}.log")
-        input: metagenomics_workflow_done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
-        params:
-            contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}.db")),
-            profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db")
-        output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done"))
-        threads: M.T('add_default_collection')
-        shell:
-            """
-            anvi-script-add-default-collection -c {params.contigsDB} \
-                                            -p {params.profileDB}
-            """
-
-    rule anvi_summarize:
-        """
-        Get coverage values for HMM_hits
-        """
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{HMM}.log")
-        input: 
-            done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done")
-        params:
-            contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}-contigs.db")),
-            profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
-            output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}")
-        output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"))
-        threads: M.T('anvi_summarize')
-        shell:
-            """
-            anvi-summarize -c {params.contigsDB} \
-                        -p {params.profileDB} \
-                        -o {params.output_dir} \
-                        -C DEFAULT \
-                        --init-gene-coverages \
-                        --just-do-it;
-            """
-            
-    rule make_anvio_state_file:
-        """Make a state file customized for EcoPhylo workflow interactive interface"""
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{HMM}.log")
-        input:
-            num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
-            done_scg = rules.anvi_scg_taxonomy.output.done
-        params:
-            tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
-            misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv"),
-        output:
-            state_file = os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_ECOPHYLO_WORKFLOW_state.json")
-        threads: M.T('make_anvio_state_file')
-        run:
-
-            HMM_source = M.HMM_source_dict[wildcards.HMM]
-
-            # Read in misc data headers for layer_order
-            if HMM_source in M.internal_HMM_sources:
-                with open(params.tax_data_final) as f:
-                    lines = f.read()
-                    first = lines.split('\n', 1)[0]
-                scg_taxonomy_layers_list = first.split("\t")
-
-            with open(params.misc_data_final) as f:
-                lines = f.read()
-                first = lines.split('\n', 1)[0]
-            misc_layers_list = first.split("\t")
-
-            state_dict = {}
-
-            # basics
-            state_dict['version'] = '3'
-            state_dict['tree-type'] = 'phylogram'
-            state_dict['current-view'] = 'single'
-
-            # height and width
-            # FIXME: It's unclear to me how the interactive interface determines
-            # height and width of a tree when the input value is 0. There has to 
-            # be some kind of calculation to determine the tree shape in the backend
-            # of the interface because even after I export a "default" state file
-            # the height and width are still "0". However, if you change the height and width
-            # values within the interface to "" the tree will disappear. I need to sort this 
-            # out eventually to have a clean way of changing the tree shape to 
-            # match the dimensions of the number of SCGs vs metagenomes. 
-            # num_tree_tips = pd.read_csv(input.num_tree_tips, \
-            #                             sep="\t", \
-            #                             index_col=None)
-
-
-            # layer-orders
-            first_layers = ["__parent__", "length", "gc_content"]
-            metagenomes = []
-
-            for metagenome in M.sample_names_for_mapping_list:
-                metagenomes.append(metagenome)
-
-            if HMM_source in M.internal_HMM_sources:
-                layer_order = first_layers + metagenomes + misc_layers_list + scg_taxonomy_layers_list 
-            else:
-                layer_order = first_layers + metagenomes + misc_layers_list 
-
-            state_dict['layer-order'] = layer_order
-
-            # layers
-            layers_dict = {}
-
-            metagenome_layers_dict = {}
-
-            metagenome_attributes = {
-                "color": "#000000",
-                "height": "180",
-                "margin": "15",
-                "type": "bar",
-                "color-start": "#FFFFFF"
-                }
-
-            for metagenome in metagenomes:
-                metagenome_layers_dict[str(metagenome)] = metagenome_attributes
-
-            layer_attributes_parent = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            length = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            gc_content = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            identifier = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            percent_identity = {
-                "color": "#000000",
-                "height": "180",
-                "margin": "15",
-                "type": "line",
-                "color-start": "#FFFFFF"
-                }
-                
-            layers_dict.update(metagenome_layers_dict)
-            layers_dict['__parent__'] = layer_attributes_parent
-            layers_dict['length'] = length
-            layers_dict['gc_content'] = gc_content
-            layers_dict['identifier'] = identifier
-            layers_dict['percent_identity'] = percent_identity
-
-            state_dict['layers'] = layers_dict
-
-            # views
-            views_dict = {}
-
-            single_dict = {}
-
-            percent_identity = {
-                "normalization": "none",
-                "min": {
-                    "value": "90",
-                    "disabled": "false"
-                    },
-                "max": {
-                    "value": "100",
-                    "disabled": "false"
-                    }
-            }
-
-            single_dict['percent_identity'] = percent_identity 
-            views_dict['single'] = single_dict
-            state_dict['views'] = views_dict
-
-            with open(output.state_file, "w") as outfile:
-                    json.dump(state_dict, outfile, indent=4)
-
-    rule anvi_import_everything_metagenome:
-        """
-        Import state file, phylogenetic tree, AND misc data to interactive interface
-
-        If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
-        """
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
-        input:
-            tree = rules.rename_tree_tips.output.tree,
-            misc_data = rules.make_misc_data.output.misc_data_final,
-            state = rules.make_anvio_state_file.output,
-            done = rules.run_metagenomics_workflow.output.done
-        params:
-            tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-            profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
-            tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
-        output: 
-            touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported.done")),
-
-        threads: M.T('anvi_import_state')
-        run:
-            state = os.path.join("ECOPHYLO_WORKFLOW", "{wildcards.HMM}_ECOPHYLO_WORKFLOW_state.json")
-
-            shell(f"anvi-import-state -p {params.profileDB} -s {state} -n default")
-
-            shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
-
-            shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")
-
-            HMM_source = M.HMM_source_dict[wildcards.HMM]
-            
-            if HMM_source in M.internal_HMM_sources:
-                shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
-
+    # DEFAULT-MODE with read recruitment
+    include: "rules/default_mode.smk"
 else:
-
-    rule make_anvio_state_file_tree:
-        """Make a state file customized for EcoPhylo workflow interactive interface"""
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{HMM}.log")
-        input:
-            num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
-            done_scg = rules.anvi_scg_taxonomy.output.done
-        params:
-            tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
-            misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv"),
-        output:
-            state_file = os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_TREE_state.json")
-        threads: M.T('make_anvio_state_file')
-        run:
-
-            HMM_source = M.HMM_source_dict[wildcards.HMM]
-
-            # Read in misc data headers for layer_order
-            if HMM_source in M.internal_HMM_sources:
-                with open(params.tax_data_final) as f:
-                    lines = f.read()
-                    first = lines.split('\n', 1)[0]
-                scg_taxonomy_layers_list = first.split("\t")
-
-            with open(params.misc_data_final) as f:
-                lines = f.read()
-                first = lines.split('\n', 1)[0]
-            misc_layers_list = first.split("\t")
-
-            state_dict = {}
-
-            # basics
-            state_dict['version'] = '3'
-            state_dict['tree-type'] = 'phylogram'
-            state_dict['current-view'] = 'single'
-
-            # height and width
-            # FIXME: It's unclear to me how the interactive interface determines
-            # height and width of a tree when the input value is 0. There has to 
-            # be some kind of calculation to determine the tree shape in the backend
-            # of the interface because even after I export a "default" state file
-            # the height and width are still "0". However, if you change the height and width
-            # values within the interface to "" the tree will disappear. I need to sort this 
-            # out eventually to have a clean way of changing the tree shape to 
-            # match the dimensions of the number of SCGs vs metagenomes. 
-            # num_tree_tips = pd.read_csv(input.num_tree_tips, \
-            #                             sep="\t", \
-            #                             index_col=None)
-
-
-            # layer-orders
-            first_layers = ["__parent__", "length", "gc_content"]
-
-            layer_order = first_layers + misc_layers_list 
-
-            state_dict['layer-order'] = layer_order
-
-            # layers
-            layers_dict = {}
-
-            layer_attributes_parent = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            length = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            gc_content = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            identifier = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            names = {
-                "color": "#000000",
-                "height": "0",
-                "margin": "15",
-                "type": "color",
-                "color-start": "#FFFFFF"
-                }
-
-            percent_identity = {
-                "color": "#000000",
-                "height": "180",
-                "margin": "15",
-                "type": "line",
-                "color-start": "#FFFFFF"
-                }
-                
-            layers_dict['__parent__'] = layer_attributes_parent
-            layers_dict['length'] = length
-            layers_dict['gc_content'] = gc_content
-            layers_dict['identifier'] = identifier
-            layers_dict['percent_identity'] = percent_identity
-
-            state_dict['layers'] = layers_dict
-
-            # views
-            views_dict = {}
-
-            single_dict = {}
-
-            percent_identity = {
-                "normalization": "none",
-                "min": {
-                    "value": "90",
-                    "disabled": "false"
-                    },
-                "max": {
-                    "value": "100",
-                    "disabled": "false"
-                    }
-            }
-
-            single_dict['percent_identity'] = percent_identity 
-            views_dict['single'] = single_dict
-            state_dict['views'] = views_dict
-
-            with open(output.state_file, "w") as outfile:
-                    json.dump(state_dict, outfile, indent=4)
-
-    rule anvi_import_everything_tree:
-        """
-        Import state file, phylogenetic tree, AND misc data to interactive interface
-
-        If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
-        """
-
-        version: 1.0
-        log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
-        input:
-            tree = rules.rename_tree_tips.output.tree,
-            misc_data = rules.make_misc_data.output.misc_data_final,
-            state = rules.make_anvio_state_file_tree.output.state_file
-        params:
-            tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-            tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
-        output: 
-            touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported.done")),
-
-        threads: M.T('anvi_import_state')
-        run:
-            # Make place holder profileDB for tree
-            import anvio
-            import anvio.utils as utils
-            import anvio.filesnpaths as filesnpaths
-            from anvio.dbops import ProfileSuperclass, ProfileDatabase
-
-            filesnpaths.is_file_exists(input.tree)
-            newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(input.tree)).readlines()])
-
-            p_meta = {}
-            views = {}
-
-            p_meta['output_dir'] = None
-            p_meta['views'] = {}
-            p_meta['db_type'] = 'profile'
-            p_meta['merged'] = True
-            p_meta['blank'] = True
-            p_meta['default_view'] = 'single'
-
-            p_meta['item_orders'] = {}
-            p_meta['available_item_orders'] = []
-            p_meta['default_item_order'] = []
-
-            item_order_name = '%s:unknown:unknown' % filesnpaths.get_name_from_file_path(input.tree)
-            p_meta['default_item_order'] = item_order_name
-            p_meta['available_item_orders'].append(item_order_name)
-            p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': newick_tree_text}
-
-            p_meta['default_view'] = "single"
-            p_meta['samples'] = "names"
-            p_meta['sample_id'] = 'AD HOC DISPLAY'
-
-            profile_db = ProfileDatabase(params.tree_profileDB)
-            profile_db.create({'db_type': 'profile',
-                                'db_variant': 'ad-hoc-display',
-                                'blank': True,
-                                'merged': True,
-                                'contigs_db_hash': None,
-                                'items_ordered': False,
-                                'samples': ', '.join(p_meta['samples']),
-                                'sample_id': p_meta['sample_id']})
-
-            shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
-
-            shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {input.misc_data} --just-do-it")
-
-            HMM_source = M.HMM_source_dict[wildcards.HMM]
-            
-            if HMM_source in M.internal_HMM_sources:
-                shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
-            
-                shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
+    # TREE-MODE
+    include: "rules/tree_mode.smk"

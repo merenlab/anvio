@@ -3157,6 +3157,117 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
+    def load_data_from_enzymes_txt(self):
+        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
+
+        RETURNS
+        =======
+        enzyme_df : Pandas DataFrame
+            contains the information in the enzymes txt file
+        """
+
+        self.progress.new("Loading enzymes-txt file...")
+        expected_fields = ['gene_id', 'enzyme_accession', 'source']
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        self.progress.end()
+
+        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
+
+        # sanity check for required columns
+        missing = []
+        for f in expected_fields:
+            if f not in enzyme_df.columns:
+                missing.append(f)
+        if missing:
+            miss_str = ", ".join(missing)
+            exp_str = ", ".join(expected_fields)
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
+                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        # warning about extra columns
+        used_cols = expected_fields + ['coverage', 'detection']
+        extra_cols = []
+        for c in enzyme_df.columns:
+            if c not in used_cols:
+                extra_cols.append(c)
+        if extra_cols:
+            e_str = ", ".join(extra_cols)
+            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+
+        # check and warning for enzymes not in self.all_kos_in_db
+        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if enzymes_not_in_modules:
+            example = enzymes_not_in_modules[0]
+            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+
+        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
+        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
+            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
+                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
+                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
+                             "flag off. Sorry ¯\_(ツ)_/¯")
+            self.add_coverage = False
+            # remove coverage headers from the list so we don't try to access them later
+            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
+            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
+                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
+            for h in kofam_hits_coverage_headers:
+                for mode in ["hits_in_modules", "hits"]:
+                    if h in self.available_modes[mode]["headers"]:
+                        self.available_modes[mode]["headers"].remove(h)
+            for h in modules_coverage_headers:
+                if h in self.available_modes["modules"]["headers"]:
+                    self.available_modes["modules"]["headers"].remove(h)
+
+        return enzyme_df
+
+
+    def estimate_metabolism_from_enzymes_txt(self):
+        """Estimates metabolism on a set of enzymes provided in a text file.
+
+        This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
+        same as the estimate_for_genome() function.
+
+        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
+        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
+        attribute has been set (previously) to the name of the enzyme txt file
+
+        RETURNS
+        =======
+        enzyme_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping the name of the enzyme txt file to its metabolism completeness dictionary
+        enzyme_ko_superdict : dictionary of dictionary of dictionaries
+            maps the name of the enzyme txt file to its KOfam hit dictionary
+        """
+
+        kofam_gene_split_contig = []
+        # no splits or contigs here
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
+            kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
+
+        enzyme_metabolism_superdict = {}
+        enzyme_ko_superdict = {}
+
+        metabolism_dict_for_genome,ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig,
+                                                                                                 bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome,
+                                                                                                         bin_name=self.contigs_db_project_name)
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+        else:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+
+        # append to file
+        self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
+
+        return enzyme_metabolism_superdict, enzyme_ko_superdict
+
+
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False):
         """This is the driver function for estimating metabolism for a single contigs DB.
@@ -5342,7 +5453,6 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
-        self.include_ungrouped = True if A('include_ungrouped') else False
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
 
         # init the base class
@@ -5434,31 +5544,23 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
 
         # make sure the samples all have a group
         samples_with_none_group = []
         for s,g in samples_to_groups_dict.items():
             if not g:
                 samples_with_none_group.append(s)
-                if self.include_ungrouped:
-                    samples_to_groups_dict[s] = 'UNGROUPED'
 
-        if not self.include_ungrouped:
-            for s in samples_with_none_group:
-                samples_to_groups_dict.pop(s)
+        for s in samples_with_none_group:
+            samples_to_groups_dict.pop(s)
 
         if samples_with_none_group:
             self.progress.reset()
             none_group_str = ", ".join(samples_with_none_group)
-            if self.include_ungrouped:
-                self.run.warning("Some samples in your groups-txt did not have a group, but since you elected to --include-ungrouped, "
-                                 "we will consider all of those samples to belong to one group called 'UNGROUPED'. Here are those "
-                                 f"UNGROUPED samples: {none_group_str}")
-            else:
-                self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
-                                 "want them to be included in the analysis (but without assigning a group), you can simply re-run "
-                                 "this program with the --include-ungrouped flag. Now. Here are the samples we will be ignoring: "
+            self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
+                                 "want them to be included in the analysis, you need to fix the groups-txt to have a group for "
+                                 "these samples. Anyway. Here are the samples we will be ignoring: "
                                  f"{none_group_str}")
 
         # sanity check for mismatch between modules-txt and groups-txt
@@ -5489,9 +5591,8 @@ class KeggModuleEnrichment(KeggContext):
                 self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). Since you have chosen to --include-samples-missing-from-groups-txt, for the purposes of this analysis we will now consider all of "
-                                "these samples to belong to one group called 'UNGROUPED'. If you wish to ignore these samples instead, please run again "
-                                "without the --include-ungrouped parameter. "
-                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                "these samples to belong to one group called 'UNGROUPED'."
+                                "Here are the {len(samples_missing_in_groups_txt)} UNGROUPED samples that we will consider as one big happy family: "
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
                 ungrouped_samples = list(samples_missing_in_groups_txt)
@@ -5551,10 +5652,9 @@ class KeggModuleEnrichment(KeggContext):
             # we need to explicitly ignore samples without a group here, because they were taken out of sample_groups_df
             # and if only ungrouped samples end up having this module, we will get an index error
             samples_with_mod_list = list(samples_with_mod_df.index)
-            if not self.include_ungrouped:
-                for s in samples_with_none_group:
-                    if s in samples_with_mod_list:
-                        samples_with_mod_list.remove(s)
+            for s in samples_with_none_group:
+                if s in samples_with_mod_list:
+                    samples_with_mod_list.remove(s)
             if len(samples_with_mod_list) == 0:
                 continue
 

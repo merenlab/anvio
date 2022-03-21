@@ -134,6 +134,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
+        # Make log directories
+        if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
+        if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/')
+
+
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
         
@@ -176,6 +183,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Load external-genomes.txt
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             try:

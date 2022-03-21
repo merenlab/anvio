@@ -397,11 +397,11 @@ D = {
             ['--skip-predict-frame'],
             {'default': False,
              'action': 'store_true',
-             'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
+             'help': "When you provide an external gene calls file, anvi'o will predict the correct frame for each gene as best as it can by "
                      "using a previously-generated Markov model that is trained using the uniprot50 database (see this for details: "
                      "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
                      "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
-                     "those that are in the external gene calls file are not describing proper gene calls according to the model. "
+                     "start/stop positions in the external gene calls file are not describing proper gene calls according to the model. "
                      "If you use this flag, anvi'o will not rely on any model and will attempt to translate your DNA sequences by solely "
                      "relying upon start/stop positions in the file, but it will complain about sequences start/stop positions of which are "
                      "not divisible by 3."}
@@ -573,9 +573,7 @@ D = {
             'action': 'store_true',
             'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
                     "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
-                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
-                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
-                    "group together samples that are not supposed to be friends."}
+                    "instead those samples will be included in a group called 'UNGROUPED'."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],

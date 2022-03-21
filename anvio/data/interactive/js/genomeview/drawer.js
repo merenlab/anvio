@@ -816,3 +816,4 @@ GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
     let stop = genomeMax > 35000 ? 35000 : genomeMax
     zoomOut('partial', start, stop)
+}
