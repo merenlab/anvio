@@ -367,7 +367,7 @@ class Inversions:
                     inversion_candidate.v2_left = construct_v2_left
                     inversion_candidate.v2_right = construct_v2_right
 
-                    if anvio.DEBUG or self.verbose:
+                    if (anvio.DEBUG or self.verbose) and not anvio.QUIET:
                         self.progress.reset()
                         inversion_candidate.display()
                         self.run.info("Construct v1 left", construct_v1_left, mc="cyan")
@@ -384,7 +384,7 @@ class Inversions:
                 ################################################################################
                 true_inversions = self.get_true_inversions_in_stretch(inversion_candidates, bam_file, contig_name, start, stop)
 
-                if anvio.DEBUG or self.verbose:
+                if (anvio.DEBUG or self.verbose) and not anvio.QUIET:
                     if true_inversions:
                         self.progress.reset()
                         self.run.info_single(f"Of the {PL('inversion candidate', len(inversion_candidates))} above, "
@@ -1113,6 +1113,9 @@ class Inversions:
 
 
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
+        if anvio.QUIET:
+            return
+
         try:
             import plotext as plt
         except:
