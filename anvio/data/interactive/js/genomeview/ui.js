@@ -742,7 +742,6 @@ function createBookmark(){
     toastr.success('bookmark successfully created :)')
     $('#create_bookmark_input').val('')
     $('#create_bookmark_description').val('')
-    $('#bookmarks-select').empty()
 
     settings['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
