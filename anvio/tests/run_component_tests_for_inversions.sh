@@ -20,23 +20,20 @@ do
 done
 
 INFO "Running the base analysis (without inversion's activity and gene context report)"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_BASIC \
                        --skip-compute-inversion-activity \
                        --skip-recovering-genomic-context
 
 INFO "Running the analysis with 1 mismatch allowed"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_MISMATCH \
                        -m 1 \
                        --skip-compute-inversion-activity \
                        --skip-recovering-genomic-context
 
 INFO "Running the analysis with using blast"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_BLAST \
                        -m 1 \
                        --palindrome-search-algorithm BLAST \
@@ -45,23 +42,20 @@ anvi-report-inversions --my-name-is florian \
 
 
 INFO "Running the analysis with inversion's activity"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_ACTIVITY \
                        -m 1 \
                        --skip-recovering-genomic-context
 
 
 INFO "Running the complete analyis"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -m 1 \
-                       -o INVERSION_COMPLETE 
+                       -o INVERSION_COMPLETE
 
 
 INFO "Running the analysis on a target region"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_TARGET \
                        -m 1 \
                        --target-contig c_000000000001 \
@@ -69,16 +63,14 @@ anvi-report-inversions --my-name-is florian \
                        --target-region-end 15000
 
 INFO "Running the analysis and check for all palindromes"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_ALL_PALINDROMES \
                        -m 1 \
                        --check-all-palindromes \
                        --verbose
 
 INFO "Running the analysis and only use inverted-reads"
-anvi-report-inversions --my-name-is florian \
-                       -P bams-and-profiles.txt \
+anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_INVERTED_READS \
                        -m 1 \
                        --process-only-inverted-reads \
