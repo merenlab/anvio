@@ -30,9 +30,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
-    group0 = parser.add_argument_group('WHO ARE YOU?', "Are you a part of our very secret group? FIND OUT HERE!.")
-    group0.add_argument('--my-name-is', default='anyone', metavar="YOUR NAME", help="What is your name?", required=True)
-
     groupA = parser.add_argument_group('INPUT DATA', "Essentially a BAMs and profiles file and nothing more.")
     groupA.add_argument(*anvio.A('bams-and-profiles'), **anvio.K('bams-and-profiles'))
 
@@ -147,15 +144,6 @@ if __name__ == '__main__':
 
 
     try:
-        # "'Security from obscurity; I like' --Ron Rivest" --Meren.
-        import base64
-        if eval(compile(base64.b64decode('bm90IGFyZ3MubXlfbmFtZV9pcy51cHBlcigpIGluIHN0cihiYXNlNjQuYjY0ZGVjb2RlKCdUVVZTUlU1R1RFOVNTVUZPJykp'), '<string>', 'eval')):
-            raise ConfigError("This program is not ready for prime-time, and its use is limited to a "
-                              "very secret group of people (and anvi'o is VERY SAD to see that you "
-                              "are not one of them).")
-        else:
-            run.info_single('Tired Gandalf: You shall .. pass', mc='green', nl_before=1)
-
         main(args)
     except ConfigError as e:
         print(e)
