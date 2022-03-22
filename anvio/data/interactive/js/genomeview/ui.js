@@ -742,6 +742,8 @@ function createBookmark(){
     toastr.success('bookmark successfully created :)')
     $('#create_bookmark_input').val('')
     $('#create_bookmark_description').val('')
+    $('#bookmarks-select').empty()
+    $('#bookmarks-select').prepend('<option>Bookmarks</option>')
 
     settings['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
@@ -757,6 +759,7 @@ function createBookmark(){
 function respondToBookmarkSelect(){
   $('#bookmarks-select').change(function(e){
     let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
+    if(!stop)return // edge case for empty 'Bookmarks' placeholder select value
     $('#brush_start').val(start);
     $('#brush_end').val(stop);
     try {
