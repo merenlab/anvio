@@ -2684,15 +2684,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     # anything else that follows a '-' should be an enzyme or enzyme component, and should be skipped
                     else:
-                        enzyme_start_index = cur_index+1
                         # find the next space or '-' or the end of the step
-                        while cur_index+1 < len(step) and (step[cur_index] not in [' ', '-']):
+                        while cur_index+1 < len(step) and (step[cur_index+1] not in [' ', ',', '+', '-', '(', ')']):
                             cur_index += 1
-
-                        if step[cur_index] == ' ':
-                            step_is_present_condition_statement += " and "
-
-                        # if we found another '-', the next iteration of the loop will take care of skipping it
+                        cur_index += 1
+                        # if we found a non-accession character, the next iteration of the loop will take care of it
                         # if we reached the end of the step and the condition statement is empty, then the entire
                         #    step is nonessential so we need to avoid counting it (taken care of later)
 
