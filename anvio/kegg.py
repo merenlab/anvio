@@ -2631,6 +2631,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin : dictionary of dictionaries
             metabolism completeness dict for the current bin, to be modified in-place
 
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "stepwise_completeness"         the stepwise completeness of the module
+        "top_level_step_info"           a dictionary of each top level step, its definition, and completeness.
+                                            keyed by integer from 0 to # of top level steps.
+                                            inner dict contains the keys 'step_definition' and 'complete'
         """
 
         top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
