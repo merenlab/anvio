@@ -2957,7 +2957,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
-    def adjust_module_completeness_for_bin(self, mod, meta_dict_for_bin):
+    def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
         """This function adjusts completeness of modules that are defined by other modules.
 
         This can only be done after all other modules have been evaluated for completeness.
@@ -3138,7 +3138,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
-                mod_is_complete = self.adjust_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+                mod_is_complete = self.adjust_pathwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
                 if mod_is_complete:
                     complete_mods.append(mod)
