@@ -430,6 +430,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "functions-across-genomes-txt": {
+        "name": "FUNCTIONS ACROSS GENOMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-across-genomes-txt": {
+        "name": "HMM HITS ACROSS GENOMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
@@ -684,12 +696,6 @@ ANVIO_ARTIFACTS ={
     },
     "splits-taxonomy-txt": {
         "name": "SPLITS TAXONOMY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "hmm-hits-matrix-txt": {
-        "name": "HMM HITS MATRIX",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
