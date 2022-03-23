@@ -2636,9 +2636,106 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
         num_steps = len(top_level_steps)
         num_complete = 0
+        num_nonessential_steps = 0
 
-        for step in top_level_steps:
-            
+        present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
+
+        meta_dict_for_bin[mnum]['top_level_step_info'] = {}
+
+        for i, step in enumerate(top_level_steps):
+            step_is_present_condition_statement = ""
+            cur_index = 0  # current position in the step DEFINITION
+
+            while cur_index < len(step):
+                if step[cur_index] in ['(',')']:
+                    step_is_present_condition_statement += step[cur_index]
+                    cur_index += 1
+
+                elif step[cur_index] == ",":
+                    step_is_present_condition_statement += " or "
+                    cur_index += 1
+
+                elif step[cur_index] == "+" or step[cur_index] == ' ':
+                    step_is_present_condition_statement += " and "
+                    cur_index += 1
+
+                elif step[cur_index] == "-":
+                    # '--' no associated enzyme case, always False (assumed incomplete)
+                    if step[cur_index+1] == "-":
+                        step_is_present_condition_statement += "False"
+                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+
+                        if anvio.DEBUG:
+                            self.run.warning(f"While estimating the stepwise completeness of KEGG module {mnum}, anvi'o saw "
+                                             f"'--' in the module DEFINITION. This indicates a step in the pathway that has no "
+                                             f"associated enzyme. By default, anvi'o is marking this step incomplete. But it may not be, "
+                                             f"and as a result this module might be falsely considered incomplete. So it may be in your "
+                                             f"interest to take a closer look at this individual module.")
+                        if cur_index < len(step) and step[cur_index] != " ":
+                            raise ConfigError(f"Serious, serious parsing sadness is happening. We just processed a '--' in "
+                                              f"a DEFINITION line for module {mnum} but did not see a space afterwards. Instead, "
+                                              f"we found {step[cur_index+1]}. WHAT DO WE DO NOW?")
+
+                    # a whole set of nonessential KOs - skip all of them
+                    elif step[cur_index+1] == "(":
+                        while step[cur_index] != ")":
+                            cur_index += 1
+                        cur_index += 1 # skip over the ')'
+
+                    # anything else that follows a '-' should be an enzyme or enzyme component, and should be skipped
+                    else:
+                        enzyme_start_index = cur_index+1
+                        # find the next space or '-' or the end of the step
+                        while (step[cur_index] not in [' ', '-']) and cur_index+1 < len(step):
+                            cur_index += 1
+
+                        if step[cur_index] == ' ':
+                            step_is_present_condition_statement += " and "
+
+                        # if we found another '-', the next iteration of the loop will take care of skipping it
+                        # if we reached the end of the step and the condition statement is empty, then the entire
+                        #    step is nonessential so we need to avoid counting it (taken care of later)
+
+                else: # enzyme or module accession
+                    enzyme_start_index = cur_index
+                    while cur_index+1 not in [' ', ',', '+', '-', '(', ')']:
+                        cur_index += 1
+                    enzyme_end_index = cur_index
+
+                    accession = step[enzyme_start_index, enzyme_end_index+1]
+                    # module
+                    if accession in self.all_modules_in_db:
+                        if "percent_complete" in meta_dict_for_bin[mnum]:
+                            if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold:
+                                step_is_present_condition_statement += "True"
+                            else:
+                                step_is_present_condition_statement += "False"
+                        else:
+                            raise ConfigError(f"found a module in step definition {step}, can't check its completeness")
+                    # enzyme
+                    elif accession in present_list_for_mnum:
+                        step_is_present_condition_statement += "True"
+                    else:
+                        step_is_present_condition_statement += "False"
+
+                    cur_index += 1
+
+            meta_dict_for_bin[mnum]['top_level_step_info'][i] = {}
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['step_definition'] = step
+
+            # entire step was nonessential, do not count it
+            if step_is_present_condition_statement == "":
+                num_nonessential_steps += 1
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = "nonessential"
+            else:
+                step_is_present = eval(step_is_present_condition_statement)
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = step_is_present
+                if step_is_present:
+                    num_complete += 1
+
+        # compute stepwise completeness as number of complete (essential) steps / number of total (essential) steps
+        mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
+        meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
 
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
