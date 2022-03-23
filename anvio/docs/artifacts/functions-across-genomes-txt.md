@@ -2,7 +2,7 @@ A TAB-delimited output file that describes the distribution of functions across 
 
 ## General format
 
-With this file type anvi'o may describe the presence-absence of individual functions across genomes, or the frequency of functions.
+With this file type anvi'o may describe the presence-absence of individual functions across genomes, or the frequency of functions. The header of the last column in a %(functions-across-genomes-txt)s file will be the name of the function annotation source from which the gene functions were recovered.
 
 ### Frequency of function hits across genomes
 

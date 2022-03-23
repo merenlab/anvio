@@ -1,4 +1,7 @@
-Generates TAB-delmited output files for %(functions)s from a single functional source across genomes.
+Generates TAB-delmited output files for %(functions)s from a single function annotation source across genomes.
+
+{:.notice}
+For a simlar program that reports HMM hits across genomes, see %(anvi-script-gen-hmm-hits-matrix-across-genomes)s.
 
 The input genomes for this program can be provided through an %(external-genomes)s, %(internal-genomes)s, %(genomes-storage-db)s, or any combination of these sources.
 
