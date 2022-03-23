@@ -430,6 +430,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "functions-across-genomes-txt": {
+        "name": "FUNCTIONS ACROSS GENOMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "hmm-hits-across-genomes-txt": {
         "name": "HMM HITS ACROSS GENOMES",
         "type": "TXT",
