@@ -2686,7 +2686,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         enzyme_start_index = cur_index+1
                         # find the next space or '-' or the end of the step
-                        while (step[cur_index] not in [' ', '-']) and cur_index+1 < len(step):
+                        while cur_index+1 < len(step) and (step[cur_index] not in [' ', '-']):
                             cur_index += 1
 
                         if step[cur_index] == ' ':
@@ -2698,11 +2698,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 else: # enzyme or module accession
                     enzyme_start_index = cur_index
-                    while cur_index+1 not in [' ', ',', '+', '-', '(', ')']:
+                    while cur_index+1 < len(step) and step[cur_index+1] not in [' ', ',', '+', '-', '(', ')']:
                         cur_index += 1
                     enzyme_end_index = cur_index
 
-                    accession = step[enzyme_start_index, enzyme_end_index+1]
+                    accession = step[enzyme_start_index : enzyme_end_index+1]
                     # module
                     if accession in self.all_modules_in_db:
                         if "percent_complete" in meta_dict_for_bin[mnum]:
