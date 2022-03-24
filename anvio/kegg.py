@@ -2634,9 +2634,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
         "stepwise_completeness"         the stepwise completeness of the module
-        "top_level_step_info"           a dictionary of each top level step, its definition, and completeness.
+        "stepwise_is_complete"          whether the module completeness falls over the completeness threshold
+        "top_level_step_info"           a dictionary of each top level step
                                             keyed by integer from 0 to # of top level steps.
-                                            inner dict contains the keys 'step_definition' and 'complete'
+                                            inner dict contains the following keys:
+                                            'step_definition' (string)
+                                            'complete' (Boolean)
+                                            'includes_modules' (Boolean)
+                                            'included_module_list' (list of strings)
         """
 
         top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
@@ -2743,6 +2748,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["stepwise_completeness"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
+
 
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the pathwise completeness of the specified module within the given bin metabolism dictionary.
@@ -2779,8 +2787,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         "pathway_completeness"          a list of the completeness of each pathway
         "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
         "most_complete_paths"           a list of the paths with maximum completeness
-        "pathwise_percent_complete"              the completeness of the module, which is the maximum pathway completeness
-        "pathwise_is_complete"                      whether the module completeness falls over the completeness threshold
+        "pathwise_percent_complete"     the completeness of the module, which is the maximum pathway completeness
+        "pathwise_is_complete"          whether the module completeness falls over the completeness threshold
 
         RETURNS
         =======
