@@ -2074,12 +2074,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.add_copy_number:
             self.available_modes["hits_in_modules"]["headers"].extend(["num_complete_copies_of_path"])
-            self.available_modes["modules"]["headers"].extend(["num_complete_copies"])
+            self.available_modes["modules"]["headers"].extend(["pathwise_num_complete_copies"])
             self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
                                                        'mode_type': 'hits_in_modules',
                                                        'description': "Number of complete copies of the path through the module"
                                                        }
-            self.available_headers["num_complete_copies"] = {'cdict_key': None,
+            self.available_headers["pathwise_num_complete_copies"] = {'cdict_key': None,
                                                        'mode_type': 'modules',
                                                        'description': "Number of complete copies of the module"
                                                        }
@@ -4242,9 +4242,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if self.add_copy_number:
                         # we take the maximum copy number of all the paths of highest completeness
                         if c_dict["num_complete_copies_of_most_complete_paths"]:
-                            d[self.modules_unique_id]["num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                            d[self.modules_unique_id]["pathwise_num_complete_copies"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
                         else:
-                            d[self.modules_unique_id]["num_complete_copies"] = 'NA'
+                            d[self.modules_unique_id]["pathwise_num_complete_copies"] = 'NA'
 
                     # everything else at c_dict level
                     for h in remaining_headers:
