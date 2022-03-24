@@ -92,7 +92,7 @@ anvi-estimate-metabolism -e external-genomes.txt \
 INFO "Generating long format output files on single database"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
                          --output-modes hits,modules,hits_in_modules,modules_custom \
-                         --custom-output-headers module,module_is_complete,module_name \
+                         --custom-output-headers module,pathwise_module_is_complete,stepwise_module_is_complete,module_name \
                          -O long_format_single
 SHOW_FILE long_format_single_hits.txt
 SHOW_FILE long_format_single_modules.txt
@@ -112,22 +112,24 @@ INFO "Generating modules custom output file on single database"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
                          --output-modes modules_custom \
                          -O modules_custom_single \
-                         --custom-output-headers module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings
 SHOW_FILE modules_custom_single_modules_custom.txt
 
 INFO "Generating modules custom output file in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
                          --output-modes modules_custom \
                          -O modules_custom_multi \
-                         --custom-output-headers module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings,db_name
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,enzyme_hits_in_module,enzyme_hit,contig,path_id,path,path_completeness,genome_name,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_substrates,module_products,module_intermediates,warnings,db_name
 SHOW_FILE modules_custom_multi_modules_custom.txt
 
 INFO "Generating matrix output files in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
                          --matrix-format \
                          -O matrix_format_multi
-SHOW_FILE matrix_format_multi-completeness-MATRIX.txt
-SHOW_FILE matrix_format_multi-presence-MATRIX.txt
+SHOW_FILE matrix_format_multi-pathwise_completeness-MATRIX.txt
+SHOW_FILE matrix_format_multi-pathwise_presence-MATRIX.txt
+SHOW_FILE matrix_format_multi-stepwise_completeness-MATRIX.txt
+SHOW_FILE matrix_format_multi-stepwise_presence-MATRIX.txt
 SHOW_FILE matrix_format_multi-enzyme_hits-MATRIX.txt
 
 INFO "Generating JSON output (debug option)"
@@ -177,7 +179,7 @@ anvi-estimate-metabolism -c CONTIGS.db \
                          --add-coverage \
                          --output-modes modules_custom \
                          -O modules_custom_coverage \
-                         --custom-output-headers module,module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection
+                         --custom-output-headers module,pathwise_module_is_complete,DAY_15A_gene_coverages,DAY_15A_avg_coverage,DAY_15A_gene_detection,DAY_15A_avg_detection
 
 INFO "Testing --add-copy-number in long-format output"
 anvi-estimate-metabolism -c CONTIGS.db \
