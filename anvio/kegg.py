@@ -2651,6 +2651,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for i, step in enumerate(top_level_steps):
             step_is_present_condition_statement = ""
             cur_index = 0  # current position in the step DEFINITION
+            step_includes_modules = False
+            included_module_list = []
 
             while cur_index < len(step):
                 if step[cur_index] in ['(',')']:
@@ -2707,13 +2709,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     accession = step[enzyme_start_index : enzyme_end_index+1]
                     # module
                     if accession in self.all_modules_in_db:
-                        if "percent_complete" in meta_dict_for_bin[mnum]:
-                            if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold:
-                                step_is_present_condition_statement += "True"
-                            else:
-                                step_is_present_condition_statement += "False"
-                        else:
-                            raise ConfigError(f"found a module in step definition {step}, can't check its completeness")
+                        step_includes_modules = True
+                        included_module_list.append(accession)
+                        # store the module accession in the condition string to be replaced later
+                        step_is_present_condition_statement += accession
                     # enzyme
                     elif accession in present_list_for_mnum:
                         step_is_present_condition_statement += "True"
@@ -2724,11 +2723,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             meta_dict_for_bin[mnum]['top_level_step_info'][i] = {}
             meta_dict_for_bin[mnum]['top_level_step_info'][i]['step_definition'] = step
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['includes_modules'] = step_includes_modules
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['included_module_list'] = included_module_list
 
             # entire step was nonessential, do not count it
             if step_is_present_condition_statement == "":
                 num_nonessential_steps += 1
                 meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = "nonessential"
+            elif step_includes_modules:
+                # we'll eval this condition statement in a later function once all other modules have stepwise completeness
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = step_is_present_condition_statement
             else:
                 step_is_present = eval(step_is_present_condition_statement)
                 meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = step_is_present
