@@ -56,8 +56,8 @@ P = terminal.pluralize
 OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["module", "stepwise_module_is_complete", "stepwise_module_completeness",
-                                "pathwise_module_is_complete", "pathwise_module_completeness",
+                    'headers': ["module", "stepwise_module_completeness", "stepwise_module_is_complete",
+                                "pathwise_module_completeness", "pathwise_module_is_complete",
                                 "path_id", "path", "path_completeness",
                                 "enzyme_hit", "gene_caller_id", "contig"],
                     'description': "Information on each enzyme (gene annotation) that belongs to a module"
@@ -67,7 +67,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition",
-                                "stepwise_module_is_complete", "stepwise_module_completeness",
+                                "stepwise_module_completeness", "stepwise_module_is_complete",
                                 "pathwise_module_completeness", "pathwise_module_is_complete",
                                 "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
