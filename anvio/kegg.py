@@ -4373,6 +4373,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
+                mod_completeness_presence_subdict[bin][mnum]["stepwise_completeness"] = c_dict["stepwise_completeness"]
+                mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
                 if self.add_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
                         mod_completeness_presence_subdict[bin][mnum]['copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
@@ -5047,8 +5049,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
-        module_matrix_stats = {"completeness" : "pathwise_percent_complete",
-                               "presence" : "pathwise_is_complete",
+        module_matrix_stats = {"pathwise_completeness" : "pathwise_percent_complete",
+                               "pathwise_presence" : "pathwise_is_complete",
+                               "stepwise_completeness" : "stepwise_completeness",
+                               "stepwise_presence" : "stepwise_is_complete",
                                }
         if self.add_copy_number:
             module_matrix_stats["copy_number"] = "copy_number"
