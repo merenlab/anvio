@@ -2764,8 +2764,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         over_complete_threshold = True if meta_dict_for_bin[mnum]["stepwise_completeness"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
-        if over_complete_threshold:
-            meta_dict_for_bin["num_complete_modules"]['stepwise'] += 1
 
 
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
@@ -2985,8 +2983,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         over_complete_threshold = True if meta_dict_for_bin[mnum]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["pathwise_is_complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
-        if over_complete_threshold:
-            meta_dict_for_bin["num_complete_modules"]['pathwise'] += 1
 
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
@@ -3041,9 +3037,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
 
-        if now_complete and not was_already_complete:
-            meta_dict_for_bin["num_complete_modules"]['stepwise'] += 1
-
 
     def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
         """This function adjusts pathwise completeness of modules that are defined by other modules.
@@ -3097,8 +3090,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
         now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
-        if now_complete and not was_already_complete:
-            meta_dict_for_bin["num_complete_modules"]['pathwise'] += 1
 
         return now_complete
 
@@ -3189,16 +3180,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         ==========
         metabolism_dict_for_list_of_splits : dictionary of dictionaries
             the metabolism completeness dictionary of dictionaries for this list of splits. It contains
-            one dictionary of module steps and completion information for each module (keyed by module number),
-            as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
+            one dictionary of module steps and completion information for each module (keyed by module number).
             Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
         bin_name : str
             the name of the bin/genome/metagenome that we are working with
         """
 
-        metabolism_dict_for_list_of_splits["num_complete_modules"] = {'pathwise': 0, 'stepwise': 0}
-
-        complete_mods = []
+        pathwise_complete_mods = set([])
+        stepwise_complete_mods = set([])
         mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
         # modules to warn about
         mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
@@ -3206,13 +3195,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # estimate completeness of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
             = self.compute_pathwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
-                complete_mods.append(mod)
+                pathwise_complete_mods.add(mod)
             if has_nonessential_step:
                 mods_with_nonessential_steps.append(mod)
             if has_no_ko_step:
@@ -3229,13 +3216,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_is_complete = self.adjust_pathwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
                 if mod_is_complete:
-                    complete_mods.append(mod)
+                    pathwise_complete_mods.add(mod)
 
 
         # estimate redundancy of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
 
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
@@ -3260,10 +3245,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG or self.genome_mode:
             self.run.info("Bin name", bin_name)
             self.run.info("Module completion threshold", self.module_completion_threshold)
-            self.run.info("Number of complete modules (pathwise)", metabolism_dict_for_list_of_splits["num_complete_modules"]['pathwise'])
-            self.run.info("Number of complete modules (stepwise)", metabolism_dict_for_list_of_splits["num_complete_modules"]['stepwise'])
-            if complete_mods:
-                self.run.info("Complete modules", ", ".join(complete_mods))
+            self.run.info("Number of complete modules (pathwise)", len(pathwise_complete_mods))
+            self.run.info("Number of complete modules (stepwise)", len(stepwise_complete_mods))
+            if pathwise_complete_mods:
+                self.run.info("Pathwise complete modules", ", ".join(pathwise_complete_mods))
 
         return metabolism_dict_for_list_of_splits
 
@@ -3656,12 +3641,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 bins_found.append(bin_name)
 
             for mod, mod_dict in meta_dict_for_bin.items():
-                if mod == "num_complete_modules":
-                    self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
-                                     "We say this because the key 'num_complete_modules' was found. This isn't a problem; however you should know that anvi'o "
-                                     "won't take any of the existing estimation information into account. The only module-level keys that will be used from this file "
-                                     "are: %s" % (expected_keys_for_module))
-                    continue
                 # verify that dict contains the necessary keys for estimation
                 if not expected_keys_for_module.issubset(set(mod_dict.keys())):
                     missing_keys = expected_keys_for_module.difference(set(mod_dict.keys()))
@@ -3983,9 +3962,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
-
                 if anvio.DEBUG:
                     self.run.info("Generating output for module", mnum)
 
@@ -4368,8 +4344,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for bin, mod_dict in module_superdict.items():
             mod_completeness_presence_subdict[bin] = {}
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
                 mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
@@ -4503,9 +4477,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for bin, mod_dict in metabolism_dict.items():
             data_for_visualization[bin] = {}
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
-
                 data_for_visualization[bin][mnum] = {}
                 for key, value in c_dict.items():
                     if key in module_data_keys_for_visualization:
