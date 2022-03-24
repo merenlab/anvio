@@ -94,12 +94,12 @@ OUTPUT_HEADERS = {'module' : {
                         'description': "Module number"
                         },
                   'module_is_complete' : {
-                        'cdict_key': 'complete',
+                        'cdict_key': "pathwise_is_complete",
                         'mode_type': 'modules',
                         'description': "Whether a module is considered complete or not based on its percent completeness and the completeness threshold"
                         },
                   'module_completeness' : {
-                        'cdict_key': 'percent_complete',
+                        'cdict_key': 'pathwise_percent_complete',
                         'mode_type': 'modules',
                         'description': "Percent completeness of a module"
                         },
@@ -2779,8 +2779,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         "pathway_completeness"          a list of the completeness of each pathway
         "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
         "most_complete_paths"           a list of the paths with maximum completeness
-        "percent_complete"              the completeness of the module, which is the maximum pathway completeness
-        "complete"                      whether the module completeness falls over the completeness threshold
+        "pathwise_percent_complete"              the completeness of the module, which is the maximum pathway completeness
+        "pathwise_is_complete"                      whether the module completeness falls over the completeness threshold
 
         RETURNS
         =======
@@ -2931,11 +2931,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
-        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
-        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
-            meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        meta_dict_for_bin[mnum]["pathwise_percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
+        if meta_dict_for_bin[mnum]["pathwise_percent_complete"] > 0:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["pathwise_percent_complete"]]
             if not defined_by_modules:
-                meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = [meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+                meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = [meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["pathwise_percent_complete"]]
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
             meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
@@ -2956,10 +2956,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
-            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
+            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["pathwise_percent_complete"]),
                             header='DEBUG OUTPUT', lc='yellow')
-        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold else False
-        meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["pathwise_percent_complete"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["pathwise_is_complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
         if over_complete_threshold:
             meta_dict_for_bin["num_complete_modules"] += 1
@@ -3042,7 +3042,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             for atomic_step in p:
                 # module step; we need to count these based on previously computed module completeness
                 if atomic_step in self.all_modules_in_db:
-                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["pathwise_percent_complete"]
                     num_essential_steps_in_path += 1
                 # non-essential KO, don't count as a step in the path
                 elif atomic_step[0] == '-' and not atomic_step == "--":
@@ -3057,15 +3057,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
 
         # after adjusting for all paths, adjust overall module completeness
-        meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
-        if meta_dict_for_bin[mod]["percent_complete"] > 0:
-            meta_dict_for_bin[mod]["most_complete_paths"] = [self.module_paths_dict[mod][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
+        meta_dict_for_bin[mod]["pathwise_percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
+        if meta_dict_for_bin[mod]["pathwise_percent_complete"] > 0:
+            meta_dict_for_bin[mod]["most_complete_paths"] = [self.module_paths_dict[mod][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["pathwise_percent_complete"]]
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        was_already_complete = meta_dict_for_bin[mod]["complete"]
-        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
-        meta_dict_for_bin[mod]["complete"] = now_complete
+        was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
+        now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
         if now_complete and not was_already_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
@@ -3896,8 +3896,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 "pathway_completeness":     [0.66, 0.66, ...]
                 "present_nonessential_kos":      []
                 "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
-                "percent_complete":              0.66
-                "complete":                      False
+                "pathwise_percent_complete":              0.66
+                "pathwise_is_complete":                      False
                                       }
 
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
@@ -3957,9 +3957,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for module", mnum)
 
-                if only_complete_modules and not c_dict["complete"]:
+                if only_complete_modules and not c_dict["pathwise_is_complete"]:
                     continue
-                if exclude_zero_completeness and c_dict["percent_complete"] == 0:
+                if exclude_zero_completeness and c_dict["pathwise_percent_complete"] == 0:
                     continue
 
                 # fetch module info
@@ -4339,8 +4339,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if mnum == "num_complete_modules":
                     continue
                 mod_completeness_presence_subdict[bin][mnum] = {}
-                mod_completeness_presence_subdict[bin][mnum]['percent_complete'] = c_dict['percent_complete']
-                mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
+                mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
+                mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
                 if self.add_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
                         mod_completeness_presence_subdict[bin][mnum]['copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
@@ -4463,7 +4463,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         # add keys to this list to include the data in the visualization dictionary
-        module_data_keys_for_visualization = ['percent_complete']
+        module_data_keys_for_visualization = ['pathwise_percent_complete']
 
         metabolism_dict, ko_hit_dict = self.estimate_metabolism(skip_storing_data=True, return_superdicts=True)
         data_for_visualization = {}
@@ -5007,8 +5007,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         corresponding value comes from running estimate_metabolism() with return_subset_for_matrix_format=True.
 
         That is:
-         module % completeness = module_superdict_multi[sample][bin][mnum]['percent_complete']
-         module is complete = module_superdict_multi[sample][bin][mnum]['complete']
+         module % completeness = module_superdict_multi[sample][bin][mnum]['pathwise_percent_complete']
+         module is complete = module_superdict_multi[sample][bin][mnum]["pathwise_is_complete"]
          # hits for KO = ko_superdict_multi[sample][bin][knum]['num_hits']
 
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
@@ -5018,8 +5018,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
-        module_matrix_stats = {"completeness" : "percent_complete",
-                               "presence" : "complete",
+        module_matrix_stats = {"completeness" : "pathwise_percent_complete",
+                               "presence" : "pathwise_is_complete",
                                }
         if self.add_copy_number:
             module_matrix_stats["copy_number"] = "copy_number"
