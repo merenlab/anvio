@@ -2764,6 +2764,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         over_complete_threshold = True if meta_dict_for_bin[mnum]["stepwise_completeness"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
+        if over_complete_threshold:
+            meta_dict_for_bin["num_complete_modules"]['stepwise'] += 1
 
 
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
@@ -2984,7 +2986,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mnum]["pathwise_is_complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
         if over_complete_threshold:
-            meta_dict_for_bin["num_complete_modules"] += 1
+            meta_dict_for_bin["num_complete_modules"]['pathwise'] += 1
 
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
@@ -3035,8 +3037,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
-        over_complete_threshold = True if mod_stepwise_completeness >= self.module_completion_threshold else False
-        meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
+        was_already_complete = meta_dict_for_bin[mod]["stepwise_is_complete"]
+        now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
+
+        if now_complete and not was_already_complete:
+            meta_dict_for_bin["num_complete_modules"]['stepwise'] += 1
 
 
     def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
@@ -3092,7 +3098,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
         if now_complete and not was_already_complete:
-            meta_dict_for_bin["num_complete_modules"] += 1
+            meta_dict_for_bin["num_complete_modules"]['pathwise'] += 1
 
         return now_complete
 
@@ -3190,7 +3196,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             the name of the bin/genome/metagenome that we are working with
         """
 
-        metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
+        metabolism_dict_for_list_of_splits["num_complete_modules"] = {'pathwise': 0, 'stepwise': 0}
 
         complete_mods = []
         mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
@@ -3254,7 +3260,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG or self.genome_mode:
             self.run.info("Bin name", bin_name)
             self.run.info("Module completion threshold", self.module_completion_threshold)
-            self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
+            self.run.info("Number of complete modules (pathwise)", metabolism_dict_for_list_of_splits["num_complete_modules"]['pathwise'])
+            self.run.info("Number of complete modules (stepwise)", metabolism_dict_for_list_of_splits["num_complete_modules"]['stepwise'])
             if complete_mods:
                 self.run.info("Complete modules", ", ".join(complete_mods))
 
