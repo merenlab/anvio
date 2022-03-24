@@ -502,7 +502,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
     id: 'arrow',
     groupID: genomeID,
     lockMovementY: true,
-    selectable: false,
+    selectable: true,
     hasControls: false,
     hasBorders: false,
     lockScaling: true,
