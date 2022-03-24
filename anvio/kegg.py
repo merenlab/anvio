@@ -56,8 +56,9 @@ P = terminal.pluralize
 OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["module", "pathwise_module_is_complete",
-                                "pathwise_module_completeness", "path_id", "path", "path_completeness",
+                    'headers': ["module", "stepwise_module_is_complete", "stepwise_module_completeness",
+                                "pathwise_module_is_complete", "pathwise_module_completeness",
+                                "path_id", "path", "path_completeness",
                                 "enzyme_hit", "gene_caller_id", "contig"],
                     'description': "Information on each enzyme (gene annotation) that belongs to a module"
                     },
@@ -65,7 +66,9 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
-                                "module_subcategory", "module_definition", "pathwise_module_completeness", "pathwise_module_is_complete",
+                                "module_subcategory", "module_definition",
+                                "stepwise_module_is_complete", "stepwise_module_completeness",
+                                "pathwise_module_completeness", "pathwise_module_is_complete",
                                 "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on metabolic modules"
@@ -92,6 +95,17 @@ OUTPUT_HEADERS = {'module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
                         'description': "Module number"
+                        },
+                  'stepwise_module_is_complete' : {
+                        'cdict_key': "stepwise_is_complete",
+                        'mode_type': 'modules',
+                        'description': "Whether a module is considered complete or not based on its STEPWISE percent completeness and the completeness threshold"
+                        },
+                  'stepwise_module_completeness' : {
+                        'cdict_key': 'stepwise_completeness',
+                        'mode_type': 'modules',
+                        'description': "Percent completeness of a module, computed as the number of complete steps divided by the number of total steps "
+                                       "(where 'steps' are determined by splitting the module definition on the space character)"
                         },
                   'pathwise_module_is_complete' : {
                         'cdict_key': "pathwise_is_complete",
@@ -3020,6 +3034,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
+
+        over_complete_threshold = True if mod_stepwise_completeness >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
 
 
     def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
