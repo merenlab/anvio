@@ -56,8 +56,8 @@ P = terminal.pluralize
 OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "hits_in_modules.txt",
                     'data_dict': "modules",
-                    'headers': ["module", "module_is_complete",
-                                "module_completeness", "path_id", "path", "path_completeness",
+                    'headers': ["module", "pathwise_module_is_complete",
+                                "pathwise_module_completeness", "path_id", "path", "path_completeness",
                                 "enzyme_hit", "gene_caller_id", "contig"],
                     'description': "Information on each enzyme (gene annotation) that belongs to a module"
                     },
@@ -65,7 +65,7 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'output_suffix': "modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
-                                "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
+                                "module_subcategory", "module_definition", "pathwise_module_completeness", "pathwise_module_is_complete",
                                 "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on metabolic modules"
@@ -93,15 +93,15 @@ OUTPUT_HEADERS = {'module' : {
                         'mode_type': 'modules',
                         'description': "Module number"
                         },
-                  'module_is_complete' : {
+                  'pathwise_module_is_complete' : {
                         'cdict_key': "pathwise_is_complete",
                         'mode_type': 'modules',
-                        'description': "Whether a module is considered complete or not based on its percent completeness and the completeness threshold"
+                        'description': "Whether a module is considered complete or not based on its PATHWISE percent completeness and the completeness threshold"
                         },
-                  'module_completeness' : {
+                  'pathwise_module_completeness' : {
                         'cdict_key': 'pathwise_percent_complete',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a module"
+                        'description': "Percent completeness of a module, computed as maximum completeness of all possible combinations of enzymes ('paths') in the definition"
                         },
                   'enzymes_unique_to_module' : {
                         'cdict_key': None,
@@ -6320,7 +6320,7 @@ class KeggModuleEnrichment(KeggContext):
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['module', 'module_completeness', 'module_name']
+        required_modules_txt_headers = ['module', 'pathwise_module_completeness', 'module_name']
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -6450,7 +6450,7 @@ class KeggModuleEnrichment(KeggContext):
             header_list.append(f"N_{c}")
 
         for mod_num in module_list:
-            query_string = f"module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            query_string = f"module == '{mod_num}' and pathwise_module_completeness >= {self.module_completion_threshold}"
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
