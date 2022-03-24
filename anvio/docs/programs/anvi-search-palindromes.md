@@ -1,6 +1,26 @@
-This program finds [palindromes](https://en.wikipedia.org/wiki/Palindromic_sequence) in any DNA sequence. It will search for palindromes that mathes criteria listed by the user (i.e., minimum lenght of the palindromic sequences, maximum number of mismatches, and minimum distance between the two palindromic regions). The program will print out its findings (and tribulations) and will optionally report the search results as a %(palindromes-txt)s.
+This program finds [palindromes](https://en.wikipedia.org/wiki/Palindromic_sequence) in any DNA sequence. It will search for palindromes that matches criteria listed by the user (i.e., minimum length of the palindromic sequences, maximum number of mismatches, and minimum distance between the two palindromic regions, and more).
 
-Please note that this program can find both perfect palindromes (i.e., the identity and order of nucleotides on one strand match to those on the complementary strand) and special cases of palindromes that form [hairpins](https://en.wikipedia.org/wiki/Stem-loop). You can use the minimum distance parameter to target any group of palindromes (i.e., minimum distance of 0 will report only perfect palindromes).
+The program will print out its findings (and tribulations) and will optionally report the search results as a %(palindromes-txt)s.
+
+### Kinds of palindromes
+
+Please note that this program can find both **'in-place' palindromes** (i.e., the identity and order of nucleotides on one strand match to those on the complementary strand) that will look like this in the genomic context:
+
+```
+0        1
+1234567890
+...TCGA...
+```
+
+As well as **'distant palindromes'** (i.e., special cases of palindromes that form [hairpins](https://en.wikipedia.org/wiki/Stem-loop)) that will look like this in the genomic context:
+
+```
+0        1
+12345678901234567
+...ATCC...GGAT...
+```
+
+In this example, the 'distance' for the in-place palindrome will be 0, and the 'distance' for the distant palindromes will be 3. You can set the `--min-distance` parameter to anything greater than 0 to only report distant palindromes, and eliminate all in-place palindromes from your results.
 
 {:.notice}
 The speed of the algorithm will depend on the minimum palindrome length parameter. The shorter the palindrome length, the longer the processing time. Searching for palindromes longer than 50 nts in a 10,000,000 nts long sequence takes about 4 seconds on a laptop.
@@ -14,8 +34,8 @@ The speed of the algorithm will depend on the minimum palindrome length paramete
 In this mode %(anvi-search-palindromes)s will go through every contig sequence in a given %(contigs-db)s.
 
 {{ codestart }}
-anvi-search-palindromes -c %(contigs-db)s \
-                        --output-file %(palindromes-txt)s
+%(anvi-search-palindromes)s -c %(contigs-db)s \
+                         --output-file %(palindromes-txt)s
 {{ codestop }}
 
 #### FASTA file
@@ -23,8 +43,8 @@ anvi-search-palindromes -c %(contigs-db)s \
 Alternatively, you can use a %(fasta)s file as input.
 
 {{ codestart }}
-anvi-search-palindromes --fasta-file %(fasta)s \
-                        --output-file %(palindromes-txt)s
+%(anvi-search-palindromes)s --fasta-file %(fasta)s \
+                         --output-file %(palindromes-txt)s
 {{ codestop }}
 
 #### DNA sequence
@@ -32,7 +52,7 @@ anvi-search-palindromes --fasta-file %(fasta)s \
 Those who are lazy can also pass a DNA sequence for quick searches:
 
 {{ codestart }}
-anvi-search-palindromes --dna-sequence (.. A DNA SEQUENCE OF ANY LENGTH ..)
+%(anvi-search-palindromes)s --dna-sequence (.. A DNA SEQUENCE OF ANY LENGTH ..)
 {{ codestop }}
 
 
@@ -54,9 +74,13 @@ Number of mismatches allowed .................: 0
 Minimum gap length ...........................: 0
 Be verbose? ..................................: Yes
 
+Number of threads for BLAST ..................: 1
+BLAST word size ..............................: 10
 
-58 nts palindrome"
+
+58 nts palindrome
 ===============================================
+Method .......................................: BLAST
 1st sequence [start:stop] ....................: [0:58]
 2nd sequence [start:stop] ....................: [0:58]
 Number of mismatches .........................: 0
