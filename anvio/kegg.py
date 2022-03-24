@@ -3209,6 +3209,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # estimate completeness of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
+            # pathwise
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
             = self.compute_pathwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
@@ -3221,21 +3222,30 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if defined_by_modules:
                 mods_def_by_modules.append(mod)
 
+            # stepwise
+            mod_is_complete = self.compute_stepwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+
+            if mod_is_complete:
+                stepwise_complete_mods.add(mod)
+
             if self.add_coverage:
                 self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
 
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
+                # pathwise
                 mod_is_complete = self.adjust_pathwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
-
                 if mod_is_complete:
                     pathwise_complete_mods.add(mod)
+                # stepwise
+                mod_is_complete = self.adjust_stepwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+                if mod_is_complete:
+                    stepwise_complete_mods.add(mod)
 
 
         # estimate redundancy of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
-
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
@@ -3262,7 +3272,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Number of complete modules (pathwise)", len(pathwise_complete_mods))
             self.run.info("Number of complete modules (stepwise)", len(stepwise_complete_mods))
             if pathwise_complete_mods:
-                self.run.info("Pathwise complete modules", ", ".join(pathwise_complete_mods))
+                self.run.info("Pathwise complete modules", ", ".join(sorted(list(pathwise_complete_mods))))
+            if stepwise_complete_mods:
+                self.run.info("Stepwise complete modules", ", ".join(sorted(list(stepwise_complete_mods))))
 
         return metabolism_dict_for_list_of_splits
 
