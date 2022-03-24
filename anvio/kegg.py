@@ -2656,6 +2656,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                             'complete' (Boolean)
                                             'includes_modules' (Boolean)
                                             'included_module_list' (list of strings)
+
+        RETURNS
+        =======
+        over_complete_threshold : boolean
+            whether or not the module is considered "complete" overall based on the threshold fraction of completeness
         """
 
         top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
@@ -2764,6 +2769,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         over_complete_threshold = True if meta_dict_for_bin[mnum]["stepwise_completeness"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
+
+        return over_complete_threshold
 
 
     def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
@@ -3000,6 +3007,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             the module number to adjust
         meta_dict_for_bin : dictionary of dictionaries
             metabolism completeness dictionary for the current bin
+
+        RETURNS
+        =======
+        now_complete : boolean
+            whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
         num_steps = len(meta_dict_for_bin[mnum]['top_level_step_info'].keys())
@@ -3033,9 +3045,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
-        was_already_complete = meta_dict_for_bin[mod]["stepwise_is_complete"]
+        was_already_complete = meta_dict_for_bin[mnum]["stepwise_is_complete"]
         now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
+
+        return now_complete
 
 
     def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
