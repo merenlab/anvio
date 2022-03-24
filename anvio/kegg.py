@@ -2967,8 +2967,55 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
+    def adjust_stepwise_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function adjusts stepwise completeness of modules that are defined by other modules.
+
+        This can only be done after all other modules have been evaluated for completeness.
+        The function goes through the top-level steps established by compute_stepwise_module_completeness_for_bin()
+        and re-assesses whether steps including other modules are complete. It updates the metabolism completess dictionary accordingly.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            the module number to adjust
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dictionary for the current bin
+        """
+
+        num_steps = len(meta_dict_for_bin[mnum]['top_level_step_info'].keys())
+        num_complete = 0
+        num_nonessential_steps = 0
+
+        for step_num, step_dict in meta_dict_for_bin[mnum]['top_level_step_info'].items():
+            if step_dict['includes_modules']:
+                # this condition statement has module accessions in it, we need to replace those with True/False and eval
+                step_is_present_condition_statement = step_dict['complete']
+                module_accessions_to_replace = step_dict['included_module_list']
+                for m in module_accessions_to_replace:
+                    mod_completeness = meta_dict_for_bin[m]['stepwise_completeness']
+                    if mod_completeness >= self.module_completion_threshold:
+                        step_is_present_condition_statement = step_is_present_condition_statement.replace(m, "True")
+                    else:
+                        step_is_present_condition_statement = step_is_present_condition_statement.replace(m, "False")
+
+                # now evaluate to see if this step is complete
+                step_is_present = eval(step_is_present_condition_statement)
+                meta_dict_for_bin[mnum]['top_level_step_info'][step_num]['complete'] = step_is_present
+                if step_is_present:
+                    num_complete += 1
+
+            else:
+                if step_dict['complete'] == "nonessential":
+                    num_nonessential_steps += 1
+                elif step_dict['complete']:
+                    num_complete += 1
+
+        mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
+        meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
+
+
     def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
-        """This function adjusts completeness of modules that are defined by other modules.
+        """This function adjusts pathwise completeness of modules that are defined by other modules.
 
         This can only be done after all other modules have been evaluated for completeness.
         The function uses similar logic as compute_pathwise_module_completeness_for_bin() to re-assess whether steps defined
