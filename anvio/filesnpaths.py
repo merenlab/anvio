@@ -199,7 +199,8 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
+            raise FilesNPathsError(f"The probability of the file at '{file_path}' to be a TAB-delimited file "
+                                   f"is zero (unless, of course the locale is not properly set for your shell).")
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
         if dont_raise:
