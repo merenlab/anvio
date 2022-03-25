@@ -104,13 +104,19 @@ ANVIO_ARTIFACTS ={
         "name": "BAM FILE",
         "type": "BAM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "bam-stats-txt": {
         "name": "BAM STATS TXT",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "bams-and-profiles-txt": {
+        "name": "BAMS AND PROFILES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "markdown-txt": {
         "name": "MARKDOWN TXT",
@@ -376,9 +382,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "inversions": {
-        "name": "INVERSIONS",
-        "type": "CONCEPT",
+    "inversions-txt": {
+        "name": "INVERSIONS TXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
