@@ -206,8 +206,10 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                                   "Did you export this file on MAC using EXCEL? :(" % file_path)
+            raise FilesNPathsError(f"You (or some code on your behalf) asked anvi'o if the file at '{file_path}' "
+                                   f"was a TAB-delimited file. Anvi'o took the very first line in it that did not "
+                                   f"start with the character '#' (as in commented out lines), and found zero TAB "
+                                   f"in it. This is not how we make TAB-delimited files :(")
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
