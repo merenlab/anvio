@@ -292,7 +292,6 @@ function showDeepDiveToolTip(event){
     if($("#deepdive-tooltip-body").is(":visible")){
       $("#deepdive-tooltip-body").hide()
     }
-    console.log('beep');
   })
 
   $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances

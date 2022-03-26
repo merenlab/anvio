@@ -773,17 +773,15 @@ GenomeDrawer.prototype.queryFunctions = function () {
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
       let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-      gene['start'] = start
-      gene['stop'] = end
       if (start < lowestStart || lowestStart == null) lowestStart = start
       if (end > highestEnd || highestEnd == null) highestEnd = end
       $('#query-results-table').append(`
         <tr>
           <td>${gene['geneID']}</td>
           <td>${gene['genomeID']}</td>
-          <td>${gene['start']}</td>
-          <td>${gene['stop']}</td>
-          <td><button onclick="zoomOut('partial', ${gene['start']}, ${gene['stop']})">go to</button</td>
+          <td>${start}</td>
+          <td>${end}</td>
+          <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
         </tr>
       `)
     })
@@ -821,17 +819,15 @@ GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
       let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-      gene['start'] = start
-      gene['stop'] = end
       if (start < lowestStart || lowestStart == null) lowestStart = start
       if (end > highestEnd || highestEnd == null) highestEnd = end
       $('#query-results-table').append(`
         <tr>
           <td>${gene['geneID']}</td>
           <td>${gene['genomeID']}</td>
-          <td>${gene['start']}</td>
-          <td>${gene['stop']}</td>
-          <td><button onclick="zoomOut('partial', ${gene['start']}, ${gene['stop']})">go to</button</td>
+          <td>${start}</td>
+          <td>${end}</td>
+          <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
         </tr>
       `)
     })
