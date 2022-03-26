@@ -352,7 +352,11 @@ function showDeepDiveToolTip(event){
   <button type="button" id="gene-blastx-at-refseq-button" class="btn btn-default btn-sm">blastx @ refseq_genomic</button>
 
   <br>
-  <h2>metadata<h2/>
+  <h2>color</h2>
+  <div id="picker_tooltip" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
+  <p>set gene arrow color</p>
+  <br>
+  <h2>metadata</h2>
   <div id='metadata-container'>
       <input    id='metadata-gene-label' type='text' placeholder='metadata tag'>
       <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add tag</button>
@@ -361,10 +365,10 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
       <br>
       <table class="table table-striped">
-      <thead><th>metadata</th><th>action</th></thead>
-      <tbody id="metadata-body">
-      ${totalMetadataString}
-      </tbody>
+        <thead><th>metadata</th><th>action</th></thead>
+        <tbody id="metadata-body">
+         ${totalMetadataString}
+        </tbody>
       </table>
   </div>
 
@@ -451,6 +455,30 @@ function showDeepDiveToolTip(event){
       drawer.queryMetadata(metadataLabel)
     })
   })
+  $('#picker_tooltip').colpick({
+    layout: 'hex',
+    submit: 0,
+    colorScheme: 'light',
+    onChange: function(hsb, hex, rgb, el, bySetColor) {
+        $(el).css('background-color', '#' + hex);
+        $(el).attr('color', '#' + hex);
+        if (!bySetColor) $(el).val(hex);
+        let gene = canvas.getObjects().find(obj => obj.id == 'arrow' &&
+                       event.target.genomeID == obj.genomeID &&
+                       event.target.geneID == obj.geneID);
+        gene.fill = `#${hex}`
+        gene.dirty = true
+        if(!settings['display']['colors']['genes']?.[event.target.genomeID]?.[event.target.geneID]){
+          settings['display']['colors']['genes'][event.target.genomeID] = []
+          settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
+        } else {
+          settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
+        }
+        canvas.renderAll()
+    }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
 }
 
 function showToolTip(event){
