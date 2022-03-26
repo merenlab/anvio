@@ -825,6 +825,15 @@ GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
       gene['stop'] = end
       if (start < lowestStart || lowestStart == null) lowestStart = start
       if (end > highestEnd || highestEnd == null) highestEnd = end
+      $('#query-results-table').append(`
+        <tr>
+          <td>${gene['geneID']}</td>
+          <td>${gene['genomeID']}</td>
+          <td>${gene['start']}</td>
+          <td>${gene['stop']}</td>
+          <td><button onclick="zoomOut('partial', ${gene['start']}, ${gene['stop']})">go to</button</td>
+        </tr>
+      `)
     })
   } else {
     lowestStart = 0
