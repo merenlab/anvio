@@ -804,7 +804,7 @@ GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
     return
   }
   let lowestStart, highestEnd = null
-  if genomeMax > 35000 {
+  if (genomeMax > 35000) {
     glowPayload.map(gene => {
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
