@@ -139,7 +139,7 @@ D = {
     'genome-view-db': (
             ['-E', '--genome-view-db'],
             {'metavar': "GENOME_VIEW_DB",
-             'required': False,
+             'required': True,
              'help': "Anvi'o genome view database."}
                 ),
     'only-if-structure': (
