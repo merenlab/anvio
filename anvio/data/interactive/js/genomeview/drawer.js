@@ -768,14 +768,18 @@ GenomeDrawer.prototype.queryFunctions = function () {
     return
   }
   let lowestStart, highestEnd = null
-  glowPayload.map(gene => {
-    let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
-    let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
-    let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-
-    if (start < lowestStart || lowestStart == null) lowestStart = start
-    if (end > highestEnd || highestEnd == null) highestEnd = end
-  })
+  if(genomeMax < 35000){
+    glowPayload.map(gene => {
+      let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+      let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+      let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+      if (start < lowestStart || lowestStart == null) lowestStart = start
+      if (end > highestEnd || highestEnd == null) highestEnd = end
+    })
+  } else {
+    lowestStart = 0
+    highestEnd = genomeMax
+  }
 
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
   zoomOut('partial', lowestStart, highestEnd)
@@ -800,14 +804,19 @@ GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
     return
   }
   let lowestStart, highestEnd = null
-  glowPayload.map(gene => {
-    let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
-    let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
-    let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+  if genomeMax > 35000 {
+    glowPayload.map(gene => {
+      let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+      let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+      let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
 
-    if (start < lowestStart || lowestStart == null) lowestStart = start
-    if (end > highestEnd || highestEnd == null) highestEnd = end
-  })
+      if (start < lowestStart || lowestStart == null) lowestStart = start
+      if (end > highestEnd || highestEnd == null) highestEnd = end
+    })
+  } else {
+    lowestStart = 0
+    highestEnd = genomeMax
+  }
   zoomOut('partial', lowestStart, highestEnd)
   this.glowGenes(glowPayload)
 }
