@@ -612,10 +612,12 @@ class SequencesForHMMHits:
             return (hmm_sequences_dict_for_splits, set([]))
 
 
-    def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
+    def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id, header_section_separator=' ', sequence_in_header=False):
         entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s ' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
+        header = '%s___%s%s' % (entry['gene_name'], gene_unique_id, header_section_separator) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+        if sequence_in_header:
+            header += f'|sequence:{sequence}'
         return (header, sequence)
 
 
@@ -750,7 +752,7 @@ class SequencesForHMMHits:
             utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
 
 
-    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None):
+    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None, header_section_separator=' ', sequence_in_header=False):
         """Stores every sequence in hmm_sequences_dict_for_splits into the `output_file_path`.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -780,7 +782,7 @@ class SequencesForHMMHits:
         f = open(output_file_path, 'w')
 
         for gene_unique_id in hmm_sequences_dict_for_splits:
-            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
+            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id, header_section_separator, sequence_in_header)
 
             if wrap:
                 sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
@@ -791,7 +793,7 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, header_section_separator=' ', sequence_in_header=False, just_do_it=False):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -817,7 +819,7 @@ class SequencesForHMMHits:
         if concatenate_genes:
             self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, partition_file_path, wrap, separator, genes_order, align_with, just_do_it)
         else:
-            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with)
+            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with, header_section_separator, sequence_in_header)
 
 
 class NumGenomesEstimator(SequencesForHMMHits):
