@@ -28,8 +28,8 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('MANDATORY')
-    group1.add_argument(*anvio.A('contigs-db'),
-                        **anvio.K('contigs-db',
+    group1.add_argument(*anvio.A('trnaseq-contigs-db'),
+                        **anvio.K('trnaseq-contigs-db',
                                   {'help': "Path to a `trnaseq`-variant contigs database, as produced by `anvi-merge-trnaseq`."}))
     group1.add_argument(*anvio.A('specific-profile-db'), **anvio.K('specific-profile-db'))
 
