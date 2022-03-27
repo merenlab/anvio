@@ -124,7 +124,7 @@ class BLAST:
         self.run.info('BLAST search db', self.target_fasta)
 
 
-    def blast(self, outputfmt='6', word_size=None, strand=None):
+    def blast(self, outputfmt='6', word_size=None, strand=None, ungapped=False):
         self.run.warning(None, header="NCBI BLAST SEARCH", lc="green")
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
@@ -142,6 +142,9 @@ class BLAST:
 
         if strand:
             cmd_line += ['-strand', strand]
+
+        if ungapped:
+            cmd_line += ['-ungapped']
 
         self.run.info('NCBI %s cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
