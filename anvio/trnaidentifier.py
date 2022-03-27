@@ -18,12 +18,11 @@ from anvio.constants import WC_BASE_PAIRS, WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2022, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
-__status__ = "Development"
 
 
 class TRNAFeature(object):
