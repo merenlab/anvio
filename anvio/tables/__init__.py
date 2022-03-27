@@ -149,6 +149,10 @@ trna_seed_feature_table_name            = 'trna_feature'
 trna_seed_feature_table_structure       = ['gene_callers_id'] + list(itertools.chain(*zip([f + '_start' for f in TRNA_FEATURE_NAMES[: -1]], [f + '_stop' for f in TRNA_FEATURE_NAMES[: -1]]))) + ['alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
 trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TRNA_FEATURE_NAMES[: -1]) * 2                                                                                    + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
 
+trna_gene_hits_table_name               = 'trna_gene_hits'
+trna_gene_hits_table_structure          = ['entry_id', 'seed_contig_name', 'gene_gene_callers_id', 'bin_name', 'decoded_amino_acid', 'anticodon', 'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop', 'trnascan_score', 'unmodified_nucleotides', 'gene_sequence']
+trna_gene_hits_table_types              = ['numeric' , 'text'            , 'numeric'             , 'text'    , 'text'              , 'text'     , 'integer' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'numeric'       , 'text'                  , 'text']
+
 
 ####################################################################################################
 #
@@ -383,6 +387,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
                                   trna_seed_feature_table_name: False,
+                                  trna_gene_hits_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
                                   variable_codons_table_name: True,
