@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     group1 = parser.add_argument_group('MANDATORY')
-    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    group1.add_argument(*anvio.A('trnaseq-contigs-db'), **anvio.K('trnaseq-contigs-db'))
     group1.add_argument(*anvio.A('seeds-specific-txt'), **anvio.K('seeds-specific-txt'))
     group1.add_argument(*anvio.A('modifications-txt'), **anvio.K('modifications-txt'))
 
