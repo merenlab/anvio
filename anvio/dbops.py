@@ -4023,6 +4023,7 @@ class ContigsDatabase:
 
         if db_variant == 'trnaseq':
             self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
+            self.db.create_table(t.trna_gene_hits_table_name, t.trna_gene_hits_table_structure, t.trna_gene_hits_table_types)
 
         return self.db
 
