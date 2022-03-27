@@ -586,6 +586,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-gene-hits": {
+        "name": "TRNA GENE HITS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "trnaseq-plot": {
         "name": "TRNASEQ PLOT",
         "type": "DISPLAY",
