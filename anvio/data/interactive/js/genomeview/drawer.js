@@ -736,6 +736,7 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
 }
 
 GenomeDrawer.prototype.queryFunctions = function () {
+  $('#query-results-table').empty()
   let query = $('#function_search_query').val()
   let category = $('#function_search_category').val()
   let glowPayload = []
@@ -797,6 +798,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
 }
 
 GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
+  $('#query-results-table').empty()
   let glowPayload = Array()
   let foundInGenomes = Object()
   let matches = settings['display']['metadata'].filter( m => m.label.includes(metadataLabel))
