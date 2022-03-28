@@ -63,6 +63,7 @@ class TablesForTransferRNAs:
         self.hits_file_path = P(A('trna_hits_file') or os.path.join(self.tmp_directory_path, 'hits_file.txt'))
         self.log_file_path = P(A('log_file') or os.path.join(self.tmp_directory_path, 'log.txt'))
         self.cutoff_score = A('trna_cutoff_score') or 20
+        self.trna_model = A('trna_model') or 'G'
         self.just_do_it = A('just_do_it')
 
         self.amino_acids = set([aa for aa in constants.AA_to_codons.keys() if aa != 'STP'])
@@ -93,6 +94,7 @@ class TablesForTransferRNAs:
         self.run.info("tRNA hits output", self.hits_file_path)
         self.run.info("Log file", self.log_file_path)
         self.run.info("Cutoff score", self.cutoff_score)
+        self.run.info("tRNA model", self.trna_model)
 
         self.args.fasta_file = fasta_file_path
         self.args.log_file = self.log_file_path
