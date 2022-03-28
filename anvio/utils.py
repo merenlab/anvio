@@ -3678,7 +3678,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
            }
 
-       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+       where entry 1 and entry 2 should be removed (becuse they overlap with 3 and 4, respectively, and they are shorter).
     """
 
     # first create a simpler data structure where all hits in a single contig are accessible directly.
