@@ -786,8 +786,8 @@ class Affinitizer:
 
     @staticmethod
     def list_sample_names(args={}, r=run):
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        seeds_specific_txt_path = A('seeds_specific_txt', str)
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        seeds_specific_txt_path = A('seeds_specific_txt')
 
         if seeds_specific_txt_path == None:
             raise ConfigError("To list samples in `seeds_specific_txt`, a path to this file must be provided.")
