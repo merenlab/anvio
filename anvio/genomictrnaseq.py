@@ -574,4 +574,225 @@ class Integrator(object):
         self.run.info_single(f"In total, {hit_id} tRNA seeds were linked to tRNA genes.")
 
 
+class Affinitizer:
+    default_min_coverage = 10
+    default_min_isoacceptors = 4
+    default_rarefaction_limit = 0
 
+    def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
+        self.progress = p
+        self.run = r
+
+        self.args = args
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
+        self.seeds_specific_txt_path = A('seeds_specific_txt')
+        self.genomic_contigs_db_path = A('contigs_db')
+        self.reference_sample_name = A('reference_sample')
+        self.nonreference_sample_names = A('sample_subset')
+        self.min_coverage = A('min_coverage')
+        if self.min_coverage == None:
+            self.min_coverage = self.default_min_coverage
+        self.min_isoacceptors = A('min_isoacceptors')
+        if self.min_isoacceptors == None:
+            self.min_isoacceptors = self.default_min_isoacceptors
+        self.rarefaction_limit = A('rarefaction_limit')
+        if self.rarefaction_limit == None:
+            self.rarefaction_limit = self.default_rarefaction_limit
+
+        if do_sanity_check:
+            self.sanity_check()
+
+        self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
+        self.collection_name = self.trnaseq_contigs_db_info.get_self_table()['genomic_profile_db_collection_name']
+        if self.collection_name:
+            self.run.info_single(f"A collection of bins named '{self.collection_name}' will be used to partition genomic contigs. "
+                                 "tRNA-seq seeds were linked to tRNA genes in these bins.")
+        else:
+            self.run.info_single("No collection of bins was found, so we assume that you are analyzing a single genome. "
+                                 "When `anvi-integrate-trnaseq` was run, an existing collection could have been provided "
+                                 "in order to exclusively link tRNA-seq seeds to tRNA genes in bins.")
+
+        if self.nonreference_sample_names == None:
+            self.nonreference_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
+            self.nonreference_sample_names.remove(self.reference_sample_name)
+        else:
+            self.nonreference_sample_names = self.nonreference_sample_names.split(',')
+        self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
+
+
+    def sanity_check(self):
+        trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
+        if trnaseq_contigs_db_info.variant != 'trnaseq':
+            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
+        trnaseq_contigs_db_self_table = trnaseq_contigs_db_info.get_self_table()
+        expected_genomic_contigs_db_hash = trnaseq_contigs_db_self_table['genomic_contigs_db_hash']
+        if expected_genomic_contigs_db_hash == None:
+            raise ConfigError(f"tRNA seeds in the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
+                              "were not linked to tRNA genes in a (meta)genomic contigs database. "
+                              "Run `anvi-integrate-trnaseq` with the tRNA-seq contigs database and (meta)genomic contigs database to link seeds to genes.")
+        with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            if len(trnaseq_contigs_db.get_table_as_dataframe('trna_gene_hits', columns_of_interest=['seed_contig_name'])) == 0:
+                raise ConfigError(f"It appears that no tRNA seeds in the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
+                                  f"are linked to tRNA genes in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'.")
+
+        filesnpaths.is_file_exists(self.seeds_specific_txt_path)
+
+        genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
+        if genomic_contigs_db_info.variant != 'unknown':
+            raise ConfigError(f"The database at '{self.genomic_contigs_db_path}' was a '{genomic_contigs_db_info.variant}' variant. "
+                              "This should be a normal (meta)genomic contigs database, technically of an 'unknown' variant, produced by `anvi-gen-contigs-database`.")
+        if expected_genomic_contigs_db_hash != genomic_contigs_db_info.hash:
+            raise ConfigError(f"Puzzlingly, the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
+                              f"and the metagenomic contigs database, '{self.genomic_contigs_db_path}', "
+                              "were not linked by `anvi-integrate-trnaseq`, although we know that the program was run. "
+                              "Perhaps you should rerun that program to relate the tRNA transcripts and genes in the two databases. "
+                              "It appears that the tRNA-seq contigs database was linked to a (meta)genomic contigs database "
+                              f"with the project name, '{trnaseq_contigs_db_self_table['genomic_contigs_db_project_name']}', "
+                              f"hash, '{trnaseq_contigs_db_self_table['genomic_contigs_db_hash']}', "
+                              f"and originally at the filepath, '{trnaseq_contigs_db_self_table['genomic_contigs_db_original_path']}'.")
+        genomic_contigs_db_self_table = genomic_contigs_db_info.get_self_table()
+        if 'modules_db_hash' not in genomic_contigs_db_self_table:
+            raise ConfigError(f"It appears that genes have not been annotated by KOfams in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'. "
+                              "Please run `anvi-run-kegg-kofams` on the database and try again.")
+
+        available_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
+        # Check for the existence of the reference sample.
+        if self.reference_sample_name not in available_sample_names:
+            raise ConfigError(f"The desired reference sample name, '{self.reference_sample_name}', "
+                              f"was not found in `seeds-specific-txt`, '{self.seeds_specific_txt_path}'. "
+                              f"Here are the samples provided in that table: {', '.join(available_sample_names)}")
+        # Check for the existence of a given subset of sample names.
+        if self.nonreference_sample_names:
+            nonreference_sample_names = self.nonreference_sample_names.split(',')
+            bad_sample_names = set(nonreference_sample_names).difference(set(available_sample_names))
+            if bad_sample_names:
+                raise ConfigError("The following desired subset sample names were not found in `seeds-specific-txt`, "
+                                  f"'{self.seeds_specific_txt_path}': {', '.join(bad_sample_names)}. "
+                                  f"Here are the samples provided in that table: {', '.join(available_sample_names)}")
+            if self.reference_sample_name in nonreference_sample_names:
+                raise ConfigError(f"Please do not include the reference sample, '{self.reference_sample_name}' "
+                                  f"in the subset of sample names: {', '.join(nonreference_sample_names)}. Sorry for the sclerotic idiocy.")
+        else:
+            nonreference_sample_names = available_sample_names
+            nonreference_sample_names.remove(self.reference_sample_name)
+        if len(nonreference_sample_names) == 0:
+            raise ConfigError(f"There must be one or more samples beside the reference sample in `seeds-specific-txt`, '{self.seeds_specific_txt}'. "
+                              f"Only the reference sample, '{self.reference_sample_name}', was found.")
+
+        if self.min_coverage < 1:
+            raise ConfigError("The minimum coverage for a tRNA isoacceptor to be detected must be an integer "
+                              f"greater than or equal to 1, not the provided value of {self.min_coverage}.")
+
+        if self.min_isoacceptors < 1:
+            raise ConfigError("The minimum number of tRNA isoacceptors for translational affinity to be calculated "
+                              f"must be an integer greater or equal to 1, not the provided value of {self.min_isoacceptors}.")
+
+        if self.rarefaction_limit < 0:
+            raise ConfigError("The rarefaction limit on subsampled tRNA isoacceptors must be an integer "
+                              f"greater than or equal to 1, not the provided value of {self.rarefaction_limit}.")
+
+
+    def go(self):
+        isoacceptor_df = self.load_isoacceptor_data()
+
+
+    def load_isoacceptor_data(self):
+        # Load data from the tRNA-seq contigs database.
+        with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe('trna_gene_hits', columns_of_interest=['seed_contig_name', 'bin_name', 'decoded_amino_acid', 'anticodon', 'gene_sequence'])
+            # Drop duplicate rows representing hits between the same seed and different genes with identical sequences.
+            trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
+            if self.collection_name == None:
+                trna_gene_hits_df['bin_name'] = ''
+
+            seed_id_df = trnaseq_contigs_db.get_table_as_dataframe('genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig']).rename({'contig': 'seed_contig_name'}, axis=1)
+            trna_gene_hits_df = trna_gene_hits_df.merge(seed_id_df, on='seed_contig_name')
+
+            wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe('trna_feature', columns_of_interest=['gene_callers_id', 'anticodon_loop_start'])
+            wobble_position_df['anticodon_start'] = wobble_position_df['anticodon_loop_start'] + 2
+            wobble_position_df = wobble_position_df.drop('anticodon_loop_start', axis=1)
+            trna_gene_hits_df = trna_gene_hits_df.merge(wobble_position_df, on='gene_callers_id')
+
+            seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe('contig_sequences').rename({'contig': 'seed_contig_name'}, axis=1)
+            trna_gene_hits_df = trna_gene_hits_df.merge(seed_consensus_sequence_df, on='seed_contig_name')
+
+            anticodon_wobble_nucleotides = []
+            for anticodon_start, seed_consensus_sequence in zip(trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['sequence']):
+                anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
+            trna_gene_hits_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
+
+            trna_gene_hits_df = trna_gene_hits_df.drop(['gene_callers_id', 'anticodon_start', 'sequence'], axis=1)
+
+        # Load data from the seeds specific coverage table.
+        coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['contig_name', 'sample_name', 'relative_discriminator_coverage', 'discriminator_1'])
+        coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
+        coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
+        coverage_df = coverage_df[coverage_df['seed_contig_name'].isin(trna_gene_hits_df['seed_contig_name'].unique())]
+        coverage_df = coverage_df[coverage_df['discriminator_1'] >= self.min_coverage]
+        coverage_df = coverage_df.drop('discriminator_1', axis=1)
+        # Ignore seeds that do not have coverage in the reference sample.
+        coverage_df = coverage_df.groupby('seed_contig_name').filter(lambda seed_coverage_df: self.reference_sample_name in seed_coverage_df['sample_name'].values)
+        # Ignore seeds that are in only one sample.
+        coverage_df = coverage_df.groupby('seed_contig_name').filter(lambda seed_coverage_df: len(seed_coverage_df) > 1)
+
+        if len(coverage_df) == 0:
+            self.info.warning(f"No seeds remain after applying the seed detection coverage threshold of {self.min_coverage}. "
+                              "This threshold must be met in both the reference sample and another sample.")
+
+        # Evaluate the anticodon wobble nucleotide in the seed. tRNA-Ile2 has a wobble nucleotide
+        # of lysidine in bacteria or agmatidine in archaea, which are given the same decoding
+        # weight. Check for modification of A34 to I, which is detected as G in tRNA-seq reads.
+        # tRNA-Arg-ACG is the only bacterial tRNA known to contain I34. No archaeal tRNAs are known
+        # to contain I34. I34 has been found in 8 eukaryotic tRNAs.
+        effective_wobble_nucleotides = []
+        for decoded_aa_type, anticodon, seed_wobble_nucleotide in zip(trna_gene_hits_df['decoded_amino_acid'], trna_gene_hits_df['anticodon'], trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
+            if decoded_aa_type == 'Ile2':
+                effective_wobble_nucleotides.append('L')
+            elif anticodon[0] == 'A':
+                if seed_wobble_nucleotide == 'G':
+                    effective_wobble_nucleotides.append('I')
+                else:
+                    effective_wobble_nucleotides.append('A')
+            else:
+                effective_wobble_nucleotides.append(anticodon[0])
+        trna_gene_hits_df['effective_wobble_nucleotide'] = effective_wobble_nucleotides
+        trna_gene_hits_df = trna_gene_hits_df.drop(['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
+        # Drop duplicate rows representing hits between the same seed and different genes with different sequences.
+        # This should only occur if the seed is a partial length tRNA, and the genes differ beyond the 5' end of the seed.
+        # However, confirm that the hits yielded the same anticodon wobble nucleotide, just in case I'm missing something.
+        trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
+        if trna_gene_hits_df.groupby('seed_contig_name').ngroups != trna_gene_hits_df.groupby(['seed_contig_name', 'effective_wobble_nucleotide']).ngroups:
+            confusing_df = trna_gene_hits_df.groupby('seed_contig_name').filter(lambda seed_df: len(seed_df) > 1)
+            raise ConfigError("A strange circumstance has occurred where a seed linked to genes "
+                              "with different sequences was found to have different effective wobble nucleotides. "
+                              f"Here are the entries for the seeds in question:\n{confusing_df.to_string()}")
+
+        seed_df = trna_gene_hits_df.merge(coverage_df, how='inner', on='seed_contig_name')
+        # Perhaps there could be a scenario where isoacceptors differ in their effective wobble
+        # nucleotide: say one is modified to I and the other is kept A. This oddity should be noted.
+        if seed_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seed_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']).ngroups:
+            self.run.warning("A very strange scenario has been found in which apparent seed isoacceptors "
+                             "differ in their anticodon wobble nucleotide. For example, in one seed, "
+                             "the nucleotide could be A and in the other it is modified to I in the seed. "
+                             "Here are the entries for the seeds in question: "
+                             f"{seed_df.groupby(['decoded_amino_acid', 'anticodon']).filter(lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) > 1).to_string()}")
+            seed_df = seed_df.groupby(['decoded_amino_acid', 'anticodon']).filter(lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
+        seed_df = seed_df.drop('seed_contig_name', axis=1)
+        isoacceptor_df = seed_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide', 'sample_name'], as_index=False).agg('sum')
+
+        return isoacceptor_df
+
+
+    @staticmethod
+    def list_sample_names(args={}, r=run):
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        seeds_specific_txt_path = A('seeds_specific_txt', str)
+
+        if seeds_specific_txt_path == None:
+            raise ConfigError("To list samples in `seeds_specific_txt`, a path to this file must be provided.")
+        filesnpaths.is_file_exists(seeds_specific_txt_path)
+
+        available_sample_names = pd.read_csv(seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
+        run.info_single(f"The `seeds_specific_txt` table, '{seeds_specific_txt_path}', contains the following samples: {', '.join(available_sample_names)}")
+        return available_sample_names
