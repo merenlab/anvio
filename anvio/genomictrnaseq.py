@@ -534,6 +534,10 @@ class Integrator(object):
             trnaseq_contigs_db.set_meta_value('genomic_profile_db_creation_date', genomic_profile_db.get_meta_value('creation_date'))
             trnaseq_contigs_db.set_meta_value('genomic_profile_db_collection_name', self.collection_name)
             genomic_profile_db.disconnect()
+        else:
+            trnaseq_contigs_db.set_meta_value('genomic_profile_db_original_path', None)
+            trnaseq_contigs_db.set_meta_value('genomic_profile_db_creation_date', None)
+            trnaseq_contigs_db.set_meta_value('genomic_profile_db_collection_name', None)
 
         table_entries = []
         for hit_id, row in hits_df.iterrows():
