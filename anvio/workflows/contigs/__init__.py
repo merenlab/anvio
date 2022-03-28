@@ -68,7 +68,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
+        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score', '--trna-model']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
 
