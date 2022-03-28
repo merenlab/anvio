@@ -540,8 +540,9 @@ class Integrator(object):
             trnaseq_contigs_db.set_meta_value('genomic_profile_db_collection_name', None)
 
         table_entries = []
-        for hit_id, row in hits_df.iterrows():
-            seed_unmodified_nt_df = unmodified_nt_df[unmodified_nt_df['seed_contig_name'] == row['seed_contig_name']]
+        hit_id = 0
+        for row in hits_df.itertuples(index=False):
+            seed_unmodified_nt_df = unmodified_nt_df[unmodified_nt_df['seed_contig_name'] == row.seed_contig_name]
 
             if len(seed_unmodified_nt_df):
                 seed_unmodified_nt_series = seed_unmodified_nt_df['seed_position'].astype(str) + seed_unmodified_nt_df['unmodified_nt']
@@ -553,20 +554,24 @@ class Integrator(object):
             # gene) to make life easier and allow inspection of the result in the absence of the
             # (meta)genomic contigs database source.
             table_entries.append([hit_id,
-                                  row['seed_contig_name'],
-                                  row['gene_callers_id'],
-                                  row['bin_id'],
-                                  row['decoded_amino_acid'],
-                                  row['anticodon'],
-                                  row['mismatch'],
-                                  row['bitscore'],
-                                  row['seed_alignment_start'],
-                                  row['gene_alignment_start'],
-                                  row['gene_alignment_stop'],
-                                  row['trnascan_score'],
+                                  row.seed_contig_name,
+                                  row.gene_callers_id,
+                                  row.bin_id,
+                                  row.decoded_amino_acid,
+                                  row.anticodon,
+                                  row.mismatch,
+                                  row.bitscore,
+                                  row.seed_alignment_start,
+                                  row.gene_alignment_start,
+                                  row.gene_alignment_stop,
+                                  row.trnascan_score,
                                   unmodified_nt_entry,
-                                  row['gene_sequence']])
+                                  row.gene_sequence])
+            hit_id += 1
         trnaseq_contigs_db._exec_many(f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES ({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
         trnaseq_contigs_db.disconnect()
+
+        self.run.info_single(f"In total, {hit_id} tRNA seeds were linked to tRNA genes.")
+
 
 
