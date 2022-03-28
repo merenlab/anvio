@@ -414,11 +414,13 @@ rule anvi_run_trna_scan:
         # FIXME not sure how to handle optional --trna-hits-file parameter
         #trna_scan_hits_file = M.get_rule_param('anvi_run_trna_scan', '--trna-hits-file'),
         trna_cutoff_score = M.get_rule_param('anvi_run_trna_scan', '--trna-cutoff-score'),
+        trna_model = M.get_rule_param('anvi_run_trna_scan', '--trna-model')
     threads: M.T('anvi_run_trna_scan')
     resources: nodes = M.T('anvi_run_trna_scan'),
     shell: w.r("""anvi-scan-trnas -c {input.contigs} \
                                   -T {threads} \
-                                  {params.trna_cutoff_score} >> {log} 2>&1""")
+                                  {params.trna_cutoff_score} \
+                                  {params.trna_model} >> {log} 2>&1""")
 
 
 rule anvi_get_sequences_for_gene_calls:
