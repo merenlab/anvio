@@ -40,6 +40,7 @@ class tRNAScanSE:
         self.trna_hits_file_path = A('trna_hits_file')
         self.log_file_path = A('log_file')
         self.cutoff_score = A('trna_cutoff_score') or 20
+        self.trna_model = A('trna_model') or 'G'
         self.quiet = A('quiet')
 
         self.run = run or terminal.Run(verbose=(not self.quiet))
@@ -77,6 +78,9 @@ class tRNAScanSE:
 
         if self.cutoff_score < 20 or self.cutoff_score > 100:
             raise ConfigError("The cutoff score must be between 20 and 100.")
+
+        if self.trna_model not in ['G', 'E', 'B', 'A']:
+            raise ConfigError("The tRNAScan-SE model must be one of G (general), E (eukaryotic), B (bacterial), or A (archaeal).")
 
 
     def check_programs(self, quiet=False):
@@ -165,7 +169,7 @@ class tRNAScanSE:
                         d[entry_no]['intron_end'] = int(fields[7]) - int(fields[6])
                     else:
                         d[entry_no]['intron_start'] = d[entry_no]['start'] - int(fields[6])
-                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7]) 
+                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7])
 
         self.progress.end()
 
@@ -193,7 +197,7 @@ class tRNAScanSE:
         command = [self.program_name,
                    self.fasta_file_path,
                    '--score', self.cutoff_score,
-                   '-G',
+                   '-' + self.trna_model,
                    '-o', self.trna_hits_file_path,
                    '--thread', self.num_threads]
 
