@@ -1927,6 +1927,15 @@ D = {
              'help': "Minimum score to assume a hit comes from a proper tRNA gene (passed to the tRNAScan-SE). "
                      "The default is %(default)d. It can get any value between 0-100."}
                 ),
+    'trna-model': (
+            ['--trna-model'],
+            {'default': 'G',
+             'type': str,
+             'choices': ['G', 'B', 'A', 'E'],
+             'help': "tRNAScan-SE model to use in searching for tRNAs. "
+                     "The default, 'G' (general), includes cytosolic tRNAs from all 3 domains. "
+                     "'B' is bacterial, 'A' is archaeal, and 'E' is eukaryotic (cytosolic)."}
+                ),
     'also-scan-trnas': (
             ['--also-scan-trnas'],
             {'default': False,
