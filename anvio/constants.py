@@ -351,6 +351,10 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
 
 amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 
+decoded_AA_types = list(amino_acids) + ['fMet', 'iMet', 'Ile2', 'SeC', 'Sup']
+decoded_AA_types.remove('STP')
+decoded_AA_types.sort()
+
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
                        'ACA': 'Thr', 'ACC': 'Thr', 'ACG': 'Thr', 'ACT': 'Thr',
                        'AAC': 'Asn', 'AAT': 'Asn', 'AAA': 'Lys', 'AAG': 'Lys',
@@ -384,6 +388,23 @@ anticodon_to_AA = Counter({'AAA': 'Phe', 'AAC': 'Val', 'AAG': 'Leu', 'AAT': 'Ile
                            'TCA': 'STP', 'TCC': 'Gly', 'TCG': 'Arg', 'TCT': 'Arg',
                            'TGA': 'Ser', 'TGC': 'Ala', 'TGG': 'Pro', 'TGT': 'Thr',
                            'TTA': 'STP', 'TTC': 'Glu', 'TTG': 'Gln', 'TTT': 'Lys'})
+
+anticodon_to_decoded_AA_types = Counter({'AAA': ['Phe'], 'AAC': ['Val'], 'AAG': ['Leu'], 'AAT': ['Ile'],
+                                         'ACA': ['Cys'], 'ACC': ['Gly'], 'ACG': ['Arg'], 'ACT': ['Ser'],
+                                         'AGA': ['Ser'], 'AGC': ['Ala'], 'AGG': ['Pro'], 'AGT': ['Thr'],
+                                         'ATA': ['Tyr'], 'ATC': ['Asp'], 'ATG': ['His'], 'ATT': ['Asn'],
+                                         'CAA': ['Leu'], 'CAC': ['Val'], 'CAG': ['Leu'], 'CAT': ['Met', 'iMet', 'fMet', 'Ile2'],
+                                         'CCA': ['Trp'], 'CCC': ['Gly'], 'CCG': ['Arg'], 'CCT': ['Arg'],
+                                         'CGA': ['Ser'], 'CGC': ['Ala'], 'CGG': ['Pro'], 'CGT': ['Thr'],
+                                         'CTA': ['Sup'], 'CTC': ['Glu'], 'CTG': ['Gln'], 'CTT': ['Lys'],
+                                         'GAA': ['Phe'], 'GAC': ['Val'], 'GAG': ['Leu'], 'GAT': ['Ile'],
+                                         'GCA': ['Cys'], 'GCC': ['Gly'], 'GCG': ['Arg'], 'GCT': ['Ser'],
+                                         'GGA': ['Ser'], 'GGC': ['Ala'], 'GGG': ['Pro'], 'GGT': ['Thr'],
+                                         'GTA': ['Tyr'], 'GTC': ['Asp'], 'GTG': ['His'], 'GTT': ['Asn'],
+                                         'TAA': ['Leu'], 'TAC': ['Val'], 'TAG': ['Leu'], 'TAT': ['Ile'],
+                                         'TCA': ['SeC', 'Sup'], 'TCC': ['Gly'], 'TCG': ['Arg'], 'TCT': ['Arg'],
+                                         'TGA': ['Ser'], 'TGC': ['Ala'], 'TGG': ['Pro'], 'TGT': ['Thr'],
+                                         'TTA': ['Sup'], 'TTC': ['Glu'], 'TTG': ['Gln'], 'TTT': ['Lys']})
 
 codon_to_codon_RC = Counter({'AAA': 'TTT', 'AAC': 'GTT', 'AAG': 'CTT', 'AAT': 'ATT',
                              'ACA': 'TGT', 'ACC': 'GGT', 'ACG': 'CGT', 'ACT': 'AGT',
