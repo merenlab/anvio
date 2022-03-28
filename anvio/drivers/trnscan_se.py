@@ -156,7 +156,7 @@ class tRNAScanSE:
                                'trna_no': fields[1],
                                'start': int(fields[2]),
                                'stop': int(fields[3]),
-                               'amino_acid': fields[4],
+                               'decoded_amino_acid_type': fields[4],
                                'anticodon': fields[5],
                                'intron_start': int(fields[6]),
                                'intron_end': int(fields[7]),

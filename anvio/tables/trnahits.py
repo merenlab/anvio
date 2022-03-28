@@ -66,6 +66,11 @@ class TablesForTransferRNAs:
         self.trna_model = A('trna_model') or 'G'
         self.just_do_it = A('just_do_it')
 
+        self.decoded_AA_types = set(constants.decoded_AA_types)
+        possible_genes = []
+        for acdn, decoded_aa_types in constants.anticodon_to_decoded_AA_types.items():
+            for decoded_aa_type in decoded_aa_types:
+                possible_genes.append(f'{acdn}_{decoded_aa_type}')
         self.amino_acids = set([aa for aa in constants.AA_to_codons.keys() if aa != 'STP'])
         self.anticodons = set([acdn for acdn in constants.anticodon_to_AA.keys() if constants.anticodon_to_AA[acdn] in self.amino_acids])
 
@@ -74,7 +79,7 @@ class TablesForTransferRNAs:
         self.source = {'ref': 'Chan and Lowe, https://doi.org/10.1007/978-1-4939-9173-0_1',
                        'kind': 'Transfer_RNAs',
                        'domain': None,
-                       'genes': ['%s_%s' % (constants.anticodon_to_AA[acdn], acdn) for acdn in self.anticodons],
+                       'genes': possible_genes,
                        'target': 'RNA:CONTIG',
                        'noise_cutoff_terms': None,
                        'model': None}
@@ -135,7 +140,7 @@ class TablesForTransferRNAs:
         #      'trna_no': '1',
         #      'start': 135361,
         #      'stop': 135433,
-        #      'amino_acid': 'Thr',
+        #      'decoded_amino_acid_type': 'Thr',
         #      'anticodon': 'CGT',
         #      'score': 67.6}}
         #
@@ -158,19 +163,25 @@ class TablesForTransferRNAs:
         for entry_id in search_results_dict:
             entry = search_results_dict[entry_id]
 
-            aa, anticodon = entry['amino_acid'], entry['anticodon']
+            # "Decoded amino acid type" is necessary to distinguish between tRNA genes that decode
+            # initiation Met/fMet from elongation Met, and tRNA-Ile2 that decodes Ile despite having
+            # an anticodon that would appear to decode Met. Additionally, there is a tRNA that
+            # decodes selenocysteine and suppressor tRNAs that decode stop codons due to a mutation
+            # in the anticodon. "iMet", "fMet", "Ile2", "SeC", and "Sup" are added to the standard
+            # 20 amino acids.
+            decoded_aa_type, anticodon = entry['decoded_amino_acid_type'], entry['anticodon']
 
             if anticodon not in self.anticodons:
                 missing_anticodons[anticodon] += 1
                 entries_to_remove.add(entry_id)
                 continue
 
-            if aa not in self.amino_acids:
-                missing_amino_acids[aa] += 1
+            if decoded_aa_type not in self.decoded_AA_types:
+                missing_amino_acids[decoded_aa_type] += 1
                 entries_to_remove.add(entry_id)
                 continue
 
-            aa_codon = '%s_%s' % (aa, anticodon)
+            aa_codon = '%s_%s' % (decoded_aa_type, anticodon)
 
             entry['gene_name'] = aa_codon
             entry['e_value'] = entry['score']
@@ -196,14 +207,14 @@ class TablesForTransferRNAs:
             info_line = ', '.join(['%s (%d)' % (anticodon, missing_anticodons[anticodon]) for anticodon in missing_anticodons])
             self.run.warning("While anvi'o was trying to parse the output from tRNAScan-SE, it "
                              "became clear that some of the codons the tool identified was not "
-                             "known to anvi'o, so we conservatively discareded those entries. "
-                             "Here is the list of codons that were discareded and their frequency "
+                             "known to anvi'o, so we conservatively discarded those entries. "
+                             "Here is the list of codons that were discarded and their frequency "
                              "among your contigs: '%s'." % (info_line), header="WEIRD CODONS ALERT")
 
         if len(missing_amino_acids):
             info_line = ', '.join(['%s (%d)' % (amino_acid, missing_amino_acids[amino_acid]) for amino_acid in missing_amino_acids])
             self.run.warning("While anvi'o was trying to parse the output from tRNAScan-SE, it "
-                             "run into some amino acid names that were not known to anvi'o. "
+                             "ran into some decoded amino acid types that were not known to anvi'o. "
                              "All those entries are now gone :/ But here is the list of amino "
                              "acids and their frequencies: '%s'." % (info_line), header="WEIRD AMINO ACIDS ALERT")
 
@@ -224,7 +235,7 @@ class TablesForTransferRNAs:
         #      'trna_no': '1',
         #      'start': 135361,
         #      'stop': 135433,
-        #      'amino_acid': 'Thr',
+        #      'decoded_amino_acid_type': 'Thr',
         #      'anticodon': 'CGT',
         #      'score': 67.6,
         #      'gene_name': 'Thr_ACG',
@@ -237,11 +248,11 @@ class TablesForTransferRNAs:
             entry = search_results_dict[entry_id]
 
             function_text = 'tRNA gene for amino acid %s (anticodon:%s; score:%.1f; intron_start:%d; intron_end:%d)' \
-                                            % (entry['amino_acid'], entry['anticodon'], entry['score'], entry['intron_start'], entry['intron_end'])
+                                            % (entry['decoded_amino_acid_type'], entry['anticodon'], entry['score'], entry['intron_start'], entry['intron_end'])
 
             functions_dict[entry_id] = {'gene_callers_id': entry['gene_callers_id'],
                                         'source': self.source_name,
-                                        'accession': '%s_%s_%d' % (entry['amino_acid'], entry['anticodon'], entry['gene_callers_id']),
+                                        'accession': '%s_%s_%d' % (entry['decoded_amino_acid_type'], entry['anticodon'], entry['gene_callers_id']),
                                         'function': function_text,
                                         'e_value': 0.0}
 
