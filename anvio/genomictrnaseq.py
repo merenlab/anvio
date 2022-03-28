@@ -39,16 +39,16 @@ class SeedPermuter(object):
         self.run = r
 
         self.args = args
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        self.contigs_db_path = A('trnaseq_contigs_db', str)
-        self.modifications_txt_path = A('modifications_txt', str)
-        self.min_nt_frequency = A('min_nt_frequency', float)
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('trnaseq_contigs_db')
+        self.modifications_txt_path = A('modifications_txt')
+        self.min_nt_frequency = A('min_nt_frequency')
         if self.min_nt_frequency == None:
             self.min_nt_frequency = self.default_min_nt_frequency
-        self.max_variable_positions = A('max_variable_positions', int)
+        self.max_variable_positions = A('max_variable_positions')
         if self.max_variable_positions == None:
             self.max_variable_positions = self.default_max_variable_positions
-        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta', str)
+        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
 
         self.tmp_dir = None
         if self.permuted_seeds_fasta_path == None:
@@ -64,8 +64,7 @@ class SeedPermuter(object):
     def sanity_check(self):
         contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, "
-                              "not the required 'trnaseq' variant.")
+            raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
@@ -191,23 +190,23 @@ class Integrator(object):
         self.run = r
 
         self.args = args
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        self.trnaseq_contigs_db_path = A('trnaseq_contigs_db', str)
-        self.seeds_specific_txt_path = A('seeds_specific_txt', str)
-        self.modifications_txt_path = A('modifications_txt', str)
-        self.genomic_contigs_db_path = A('contigs_db', str)
-        self.genomic_profile_db_path = A('profile_db', str)
-        self.collection_name = A('collection_name', str)
-        self.num_threads = A('num_threads', int) or anvio.K('num_threads')['default']
-        self.max_mismatches = A('max_mismatches', int)
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
+        self.seeds_specific_txt_path = A('seeds_specific_txt')
+        self.modifications_txt_path = A('modifications_txt')
+        self.genomic_contigs_db_path = A('contigs_db')
+        self.genomic_profile_db_path = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
+        self.max_mismatches = A('max_mismatches')
         if self.max_mismatches == None:
             self.max_mismatches = self.default_max_mismatches
-        self.use_full_length_seeds = A('use_full_length_seeds', bool)
+        self.use_full_length_seeds = A('use_full_length_seeds')
         if self.use_full_length_seeds == None:
             self.use_full_length_seeds = False
-        self.blast_dir = A('blast_dir', str)
-        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta', str)
-        self.just_do_it = A('just_do_it', bool)
+        self.blast_dir = A('blast_dir')
+        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
+        self.just_do_it = A('just_do_it')
 
         if self.blast_dir == None:
             self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
@@ -228,8 +227,7 @@ class Integrator(object):
     def sanity_check(self, check_permuted_seeds_fasta=False):
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
-                              "not the required 'trnaseq' variant.")
+            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
@@ -272,8 +270,8 @@ class Integrator(object):
                               "Please run `anvi-scan-trnas` on the database and try again.")
 
         if (self.genomic_profile_db_path and not self.collection_name) or (self.collection_name and not self.genomic_profile_db_path):
-            raise ConfigError("You can't use this program with a profile database but without a collection name "
-                              "or with a collection name but without a profile database.")
+            raise ConfigError("A profile database cannot be provided without a collection name, "
+                              "nor can a collection name be provided without a profile database.")
         if self.genomic_profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.genomic_profile_db_path, self.genomic_contigs_db_path)
 
@@ -282,6 +280,9 @@ class Integrator(object):
             if self.collection_name not in collections.collections_dict:
                 raise ConfigError(f"The desired collection, '{self.collection_name}', does not exist "
                                   f"in the (meta)genomic profile database, '{self.genomic_profile_db_path}'.")
+
+        if self.num_threads < 1:
+            raise ConfigError(f"The number of threads (used by BLAST) must be a positive integer, not the provided value of {self.num_threads}")
 
         if self.max_mismatches < 0:
             raise ConfigError("The maximum number of mismatches allowed in a seed-gene alignment "
