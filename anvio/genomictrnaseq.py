@@ -699,6 +699,7 @@ class Affinitizer:
         isoacceptors_df = self.load_isoacceptor_data()
         if len(isoacceptors_df) == 0:
             return
+        isoacceptor_abundance_dict = self.get_isoacceptor_abundances(isoacceptors_df)
 
 
     def load_isoacceptor_data(self):
@@ -804,7 +805,24 @@ class Affinitizer:
 
         return isoacceptors_df
 
-        return isoacceptor_df
+
+    def get_isoacceptor_abundances(self, isoacceptors_df):
+        isoacceptor_abundance_dict = {}
+        for bin_name, bin_df in isoacceptors_df.groupby('bin_name'):
+            reference_sample_df = bin_df[bin_df['sample_name'] == self.reference_sample_name]
+            reference_sample_df = reference_sample_df.set_index(['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide'])
+            nonreference_isoacceptor_df = bin_df[bin_df['sample_name'] != self.reference_sample_name]
+
+            decoding_keys = []
+            isoacceptor_abundance_ratios = []
+            for row in nonreference_isoacceptor_df.itertuples(index=False):
+                decoding_key = (row.decoded_amino_acid, row.anticodon, row.effective_wobble_nucleotide)
+                reference_abundance = reference_sample_df.loc[decoding_key]['relative_discriminator_coverage']
+                decoding_keys.append(decoding_key)
+                isoacceptor_abundance_ratios.append(row.relative_discriminator_coverage / reference_abundance)
+            isoacceptor_abundance_dict[bin_name] = (decoding_keys, np.array(isoacceptor_abundance_ratios))
+
+        return isoacceptor_abundance_dict
 
 
     @staticmethod
