@@ -381,7 +381,7 @@ function showDeepDiveToolTip(event){
   ${totalAnnotationsString}
   </tbody></table>;
   <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
-  `).css({'position' : 'absolute', 'left' : window.innerWidth/2 -200, 'top' : window.innerHeight/2 -200 }) // display deepdive tooltip roughly centered in viewport
+  `).css({'position' : 'absolute', 'left' : window.innerWidth/2 -200, 'top' : window.innerHeight/2 -200, 'max-width': '600px'}) // display deepdive tooltip roughly centered in viewport
 
   $('#metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
@@ -519,7 +519,7 @@ function showToolTip(event){
     ${totalAnnotationsString}
     </tbody></table>
 
-    `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY })
+    `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY, 'max-width': '600px' })
 }
 
 function show_sequence_modal(title, content) {
