@@ -700,6 +700,7 @@ class Affinitizer:
         if len(isoacceptors_df) == 0:
             return
         isoacceptor_abundance_dict = self.get_isoacceptor_abundances(isoacceptors_df)
+        kegg_df = self.consolidate_kegg_annotations()
 
 
     def load_isoacceptor_data(self):
@@ -823,6 +824,74 @@ class Affinitizer:
             isoacceptor_abundance_dict[bin_name] = (decoding_keys, np.array(isoacceptor_abundance_ratios))
 
         return isoacceptor_abundance_dict
+
+
+    def consolidate_kegg_annotations(self):
+        with self.genomic_contigs_db_info.load_db() as genomic_contigs_db:
+            kegg_df = genomic_contigs_db.get_table_as_dataframe('gene_functions', where_clause=f'''source IN ("KOfam", "KEGG_Module", "KEGG_Class")''')
+        kofam_df = kegg_df[kegg_df['source'] == 'KOfam']
+        module_df = kegg_df[kegg_df['source'] == 'KEGG_Module']
+        class_df = kegg_df[kegg_df['source'] == 'KEGG_Class']
+
+        # Iterate the annotations in each block of lines for KOfam, module, and class. Relate
+        # module/class to KOfam annotations. There is the same number of module and class entries.
+        # Not every KOfam is part of a module/class. There is only one edge case, presumably
+        # vanishingly rare, that can prevent accurate reassignment of module/class to KOfam: a gene
+        # is assigned multiple KOfams, the entries for the KOfams happen to be next to each other in
+        # the table (which I think would happen randomly), and one or more of the KOfams is not part
+        # of a module/class. This hypothetical edge case is resolved by assigning the module/class
+        # to the first occurring KOfam.
+        module_iter = iter(module_df.itertuples(index=False))
+        class_iter = iter(class_df.itertuples(index=False))
+        try:
+            module_row = next(module_iter)
+            class_row = next(class_iter)
+            module_gene_callers_id = module_row.gene_callers_id
+        except StopIteration:
+            module_row = None
+            class_row = None
+            module_gene_callers_id = -1
+
+        new_rows = []
+        for kofam_row in kofam_df.itertuples(index=False):
+            kofam_gene_callers_id = kofam_row.gene_callers_id
+            if kofam_gene_callers_id == module_gene_callers_id:
+                new_rows.append([
+                    kofam_gene_callers_id,
+                    kofam_row.accession,
+                    kofam_row.function,
+                    kofam_row.e_value,
+                    module_row.accession,
+                    module_row.function,
+                    class_row.function
+                ])
+
+                try:
+                    module_row = next(module_iter)
+                    class_row = next(class_iter)
+                    module_gene_callers_id = module_row.gene_callers_id
+                except StopIteration:
+                    module_row = None
+                    class_row = None
+                    module_gene_callers_id = -1
+            else:
+                new_rows.append([
+                    kofam_gene_callers_id,
+                    kofam_row.accession,
+                    kofam_row.function,
+                    kofam_row.e_value,
+                    '',
+                    '',
+                    ''
+                ])
+        new_kegg_df = pd.DataFrame(new_rows, columns=['gene_callers_id',
+                                                      'kofam_accession',
+                                                      'kofam_function',
+                                                      'kofam_e_value',
+                                                      'kegg_module_accession',
+                                                      'kegg_module_function',
+                                                      'kegg_class_function'])
+        return new_kegg_df
 
 
     @staticmethod
