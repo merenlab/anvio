@@ -799,7 +799,7 @@ function buildLegendTables() {
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>randomize all category colors</p></td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" >Randomize all</button></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends(true)">Randomize all</button></td>
                         </tr>
                     </table>
                 </div>
@@ -867,7 +867,7 @@ function buildLegendTables() {
     });
 }
 
-function queryLegends(){
+function queryLegends(randomize){
     let legend = event.target.id.replaceAll('-', '_').toLowerCase()
     let query = $(`#${event.target.id}-query-input`).val()
     let color = $(`#${event.target.id}-colorpicker`).attr('color')
@@ -878,7 +878,13 @@ function queryLegends(){
     let lowercase_layerdata = layerdata[0].map(l => l.toLowerCase())
     let legend_index = lowercase_layerdata.indexOf(legend)
 
-    if(categorical_data_colors[legend_index]?.[query]){
+    if(randomize){
+        for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
+            categorical_data_colors[legend_index][key] = randomColor()
+        }
+        toastr.success('randomized successfully')
+    }
+    else if(categorical_data_colors[legend_index]?.[query]){
         categorical_data_colors[legend_index][query] = color
         toastr.success('layer color updated successfully')
     } else {
@@ -886,6 +892,14 @@ function queryLegends(){
     }
     $(`#${event.target.id}-query-input`).val('')
     $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
+}
+
+function randomizeColor(legend_id){
+    categorical_data_colors[legend_id].forEach(item => {
+        console.log(item)
+    })
+    // console.log('got here', legend_id, randomize, legend)
+
 }
 
 function batchColor(legend_id) {
