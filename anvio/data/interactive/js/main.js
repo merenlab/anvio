@@ -874,7 +874,9 @@ function queryLegends(){
 
     // because the legends iterator above does not match the categorical_data_colors key
     // we need to reference the layerdata index value by the same legend name
-    let legend_index = layerdata[0].indexOf(legend)
+    // because layerdata key casing is unpredictable, we clone the layerdata object to a lowercase copy
+    let lowercase_layerdata = layerdata[0].map(l => l.toLowerCase())
+    let legend_index = lowercase_layerdata.indexOf(legend)
 
     if(categorical_data_colors[legend_index]?.[query]){
         categorical_data_colors[legend_index][query] = color
