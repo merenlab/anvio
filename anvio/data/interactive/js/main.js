@@ -794,12 +794,12 @@ function buildLegendTables() {
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>set all categories to this color</p></td>
-                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" >Set all</button></td>
+                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set all</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>randomize all category colors</p></td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends(true)">Randomize all</button></td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
                         </tr>
                     </table>
                 </div>
@@ -867,10 +867,10 @@ function buildLegendTables() {
     });
 }
 
-function queryLegends(randomize){
+function queryLegends(mode){
     let legend = event.target.id.replaceAll('-', '_').toLowerCase()
     let query = $(`#${event.target.id}-query-input`).val()
-    let color = $(`#${event.target.id}-colorpicker`).attr('color')
+    let color = String()
 
     // because the legends iterator above does not match the categorical_data_colors key
     // we need to reference the layerdata index value by the same legend name
@@ -878,13 +878,19 @@ function queryLegends(randomize){
     let lowercase_layerdata = layerdata[0].map(l => l.toLowerCase())
     let legend_index = lowercase_layerdata.indexOf(legend)
 
-    if(randomize){
+    if(mode == 'random'){
         for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
             categorical_data_colors[legend_index][key] = randomColor()
         }
         toastr.success('randomized successfully')
-    }
-    else if(categorical_data_colors[legend_index]?.[query]){
+    } else if(mode == 'batch'){
+        color = $(`#${event.target.id}-batch-colorpicker`).attr('color')
+        for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
+            categorical_data_colors[legend_index][key] = color
+        }
+        toastr.success('batch colored successfully')
+    } else if(categorical_data_colors[legend_index]?.[query]){
+        color = $(`#${event.target.id}-colorpicker`).attr('color')
         categorical_data_colors[legend_index][query] = color
         toastr.success('layer color updated successfully')
     } else {
@@ -892,14 +898,7 @@ function queryLegends(randomize){
     }
     $(`#${event.target.id}-query-input`).val('')
     $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
-}
-
-function randomizeColor(legend_id){
-    categorical_data_colors[legend_id].forEach(item => {
-        console.log(item)
-    })
-    // console.log('got here', legend_id, randomize, legend)
-
+    $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
 }
 
 function batchColor(legend_id) {
