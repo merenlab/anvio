@@ -899,6 +899,14 @@ function queryLegends(mode){
     $(`#${event.target.id}-query-input`).val('')
     $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
     $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
+
+    // TODO ideally we hook into the Drawer class to only re-render item backgrounds.
+    // short of that, we can automatically trigger a redraw of the entire visualization
+
+
+    // settings = serializeSettings()
+    // drawer = new Drawer(settings)
+    // drawer.draw()
 }
 
 function batchColor(legend_id) {
