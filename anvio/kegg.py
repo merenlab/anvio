@@ -5166,9 +5166,11 @@ class ModulesDatabase(KeggContext):
             # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
             mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
             acc_list = re.split(r'\s+', mod_definition)
-            enzymes_in_def = set(acc_list)
+            accessions_in_def = set(acc_list)
+            # remove any accession that is for a module (ie, not an enzyme)
+            enzymes_in_def = set([acc for acc in accessions_in_def if acc not in self.module_dict.keys()])
             enzymes_without_orth = enzymes_in_def.difference(orth_list)
-            if enzymes_without_orth:
+            if self.data_source != 'KEGG' and enzymes_without_orth:
                 bad_list = ", ".join(enzymes_without_orth)
                 n = len(enzymes_without_orth)
                 raise ConfigError(f"So, there is a thing. And that thing is that there {P('is an enzyme', n, alt='are some enzymes')} "
