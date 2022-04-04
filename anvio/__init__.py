@@ -909,8 +909,8 @@ D = {
              'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
-                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
-                     "if you do not specify anything."}
+                     "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
+                     "to use the default path if you do not specify anything."}
                 ),
     'user-modules': (
             ['-u', '--user-modules'],
