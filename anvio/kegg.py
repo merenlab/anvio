@@ -811,9 +811,6 @@ class KeggSetup(KeggContext):
             if hierarchy_accession[: 2] == 'br':
                 # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
                 continue
-            elif hierarchy_accession == 'ko00001' and hierarchy_name == 'KEGG Orthology (KO)':
-                # this hierarchy lists all orthologs in every hierarchy in which they occur
-                continue
             elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
                 # this hierarchy is for modules, not genes/proteins
                 continue
@@ -5476,8 +5473,17 @@ class ModulesDatabase(KeggContext):
 
                     ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
 
-                    # ignore the first category, the accession of the hierarchy itself, which is in the value of `hierarchy`
                     for categorization in categorizations:
+                        if hierarchy_accession == 'ko00001':
+                            # one top-level class of the "ko00001  KEGG Orthology (KO)" hierarchy is
+                            # "09180 Brite Hierarchies". This is a representation of other
+                            # hierarchies, such as "01001 Protein kinases [BR:ko01001]", as totally
+                            # flat categories, with all subcategories flattened out. We download and
+                            # process json files for these other hierarchies separately. Therefore
+                            # ignore any entries in this category.
+                            if categorization[1].split(' ')[0] == '09180':
+                                continue
+                        # ignore the first category, the accession of the hierarchy itself, which is in the value of `hierarchy`
                         brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '!!!'.join(categorization[1: ]))
                 num_hierarchies_parsed += 1
 
@@ -5987,6 +5993,10 @@ class ModulesDatabase(KeggContext):
         Here is an example of the entry for arginyl-tRNA synthetase:
         ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
             {
+                ('ko00001', 'KEGG Orthology (KO)'):
+                    [
+                        [('09120', 'Genetic Information Processing'), ('09122', 'Translation'), ('00970', 'Aminoacyl-tRNA biosynthesis')]
+                    ],
                 ('ko01000', 'Enzymes'):
                     [
                         [('6.', 'Ligases'), ('6.1', 'Forming carbon-oxygen bonds'), ('6.1.1', 'Ligases forming aminoacyl-tRNA and related compounds'), ('6.1.1.19', 'arginine---tRNA ligase')]
@@ -6008,8 +6018,9 @@ class ModulesDatabase(KeggContext):
 
         Keys and list items are split by accession and description, even in the absence of an
         accession for a category in the hierarchy. Given the hierarchies that are used in
-        construction of the Modules database, only the Enzyme hierarchy is known to yield EC number
-        "accessions" in categories. Every Enzyme hierarchy category should have an accession.
+        construction of the Modules database, only two are known to contain category "accessions."
+        "ko01000 Enzyme" hierarchy categories yield EC number accessions, and "k00001 KEGG Orthology
+        (KO)" hierarchy categories yield five digit accessions.
 
         Categorization lists proceed from most general to most specific level.
 
@@ -6112,8 +6123,8 @@ class ModulesDatabase(KeggContext):
                 hierarchy_dict[hierarchy_key] = category_list = []
 
             categories = categorization.split('!!!')
-            if hierarchy_accession == 'ko01000':
-                # the hierarchy, "ko01000 Enzymes", should have an EC number for each category
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
                 parsed_categories = []
                 for enzyme_category in categories:
                     split_enzyme_category = enzyme_category.split(' ')
@@ -6198,7 +6209,9 @@ class ModulesDatabase(KeggContext):
                 }
 
         Keys and set items are split by accession and description, even in the absence of an
-        accession for a category in the hierarchy, as seen in the example.
+        accession for a category in the hierarchy, as seen in the example. The only hierarchies
+        expected to contain category "accessions" are "ko00001 Gene Ontology (KO)" and "ko01000
+        Enzymes".
 
         Levels of the hierarchy can be collapsed with the `level_cutoff` argument. If `level_cutoff`
         is a positive number, it is measured down from the top level of the hierarchy (level 1). If
@@ -6451,8 +6464,8 @@ class ModulesDatabase(KeggContext):
             categorization = entry_dict['categorization']
             categories = categorization.split('!!!')
 
-            if hierarchy_accession == 'ko01000':
-                # the hierarchy, "ko01000 Enzymes", should have an EC number for each category
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
                 parsed_categories = []
                 for enzyme_category in categories:
                     split_enzyme_category = enzyme_category.split(' ')
