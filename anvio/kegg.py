@@ -6545,7 +6545,35 @@ class ModulesDatabase(KeggContext):
         return hierarchy_dict
 
 
+    def list_brite_hierarchies(self, as_accessions=False, as_tuples=False):
+        """List all BRITE hierarchies in the database.
+
+        PARAMETERS
+        ==========
+        as_accessions : bool, False
+            return list of hierarchy accessions
+
+        as_tuples : bool, False
+            return list of tuples of hierarchy accessions and names
+
+        RETURNS
+        =======
+        hierarchy_entries : list
+            database BRITE hierarchies, formatted "<accession> <name>" with default parameterization
+        """
+
+        if as_accessions:
+            hierarchy_entries = self.db.get_single_column_from_table(self.brite_table_name, 'hierarchy_accession', unique=True)
+        else:
+            hierarchy_entries = self.db.get_some_columns_from_table(self.brite_table_name, 'hierarchy_accession, hierarchy_name', unique=True)
+            if not as_tuples:
+                hierarchy_entries = [f"{accession} {name}" for accession, name in hierarchy_entries]
+
+        return hierarchy_entries
+
+
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
+
     def get_top_level_steps_in_module_definition(self, mnum):
         """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
 
