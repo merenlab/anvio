@@ -375,6 +375,64 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
+    def invert_brite_json_dict(self, brite_dict):
+        """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
+
+        There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
+        'name' is a string and the value for 'children' is a list of dicts.
+
+        Here is an example of what the beginning of the json dict looks like for 'br08902 BRITE
+        Hierarchy Files', the 'hierarchy of all existing hierarchies':
+           {
+             "name": "br08902",
+             "children": [
+               {
+                 "name": "Pathway and Brite",
+                 "children": [
+                   {
+                     "name": "Pathway maps",
+                     "children": [
+                       {
+                         "name": "br08901  KEGG pathway maps"
+                       }
+                     ]
+                   }, ...
+        Observe that innermost dicts only have a single entry keyed by 'name'.
+
+        Here is the corresponding entry in the returned dict for the item in the example:
+            'br08901  KEGG pathway maps':
+                [['br08902', 'Pathway and Brite', 'Pathway maps']]
+        The value is a list of lists because an item can occur multiple times in the same hierarchy.
+
+        PARAMETERS
+        ==========
+        brite_dict : dict
+            dict loaded from BRITE hierarchy json file
+
+        RETURNS
+        =======
+        categorization_dict : dict
+            dict of entry categorizations in BRITE hierarchy
+        """
+
+        children_stack = collections.deque()
+        children_stack.append(([brite_dict['name']], brite_dict['children']))
+        categorization_dict = {}
+        while children_stack:
+            hierarchy, children_list = children_stack.popleft()
+            for child_dict in children_list:
+                child_name = child_dict['name']
+                if 'children' in child_dict:
+                    children_stack.append((hierarchy + [child_name], child_dict['children']))
+                else:
+                    try:
+                        categorization_dict[child_name].append(hierarchy)
+                    except KeyError:
+                        categorization_dict[child_name] = [hierarchy]
+
+        return categorization_dict
+
+
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
