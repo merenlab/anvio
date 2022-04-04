@@ -5954,6 +5954,177 @@ class ModulesDatabase(KeggContext):
 
         return substrate_name_list, intermediate_name_list, product_name_list
 
+######### BRITE TABLE ACCESS FUNCTIONS #########
+
+    def get_brite_table_as_ortholog_dict(self, ortholog_accessions_of_interest=None, hierarchy_accessions_of_interest=None, category_substrings_of_interest=None, case_insensitive_substrings=False, use_ortholog_accessions_as_keys=False):
+        """Load the BRITE hierarchies table as a dictionary keyed by ortholog.
+
+        The returned dictionary contains each hierarchy and each categorization within the hierarchy
+        in which the ortholog is found.
+
+        The returned dictionary is structured as follows:
+            {
+                (<ortholog 1 accession>, <ortholog 1 name>):
+                    {
+                        (<hierarchy A accession>, <hierarchy A name>):
+                            [
+                                [(<category i accession>, <category i name>), (<category j accession>, <category j name>), ...],
+                                [(<category k accession>, <category k name>), (<category l accession>, <category l name>), ...],
+                                ...
+                            ],
+                        (<hierarchy B accession>, <hierarchy B name>):
+                            [
+                                [(<category x accession>, <category x name>), (<category y accession>, <category y name>), ...],
+                                ...
+                            ],
+                        ...
+                    },
+                (<ortholog 2 accession>, <ortholog 2 name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for arginyl-tRNA synthetase:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko01000', 'Enzymes'):
+                    [
+                        [('6.', 'Ligases'), ('6.1', 'Forming carbon-oxygen bonds'), ('6.1.1', 'Ligases forming aminoacyl-tRNA and related compounds'), ('6.1.1.19', 'arginine---tRNA ligase')]
+                    ],
+                ('ko01007', 'Amino acid related enzymes'):
+                    [
+                        [('', 'Aminoacyl-tRNA synthetase'), ('', 'Class I (G)')]
+                    ],
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ],
+                ('ko03029', 'Mitochondrial biogenesis'):
+                    [
+                        [('', 'Mitochondrial DNA transcription, translation, and replication factors'), ('', 'Mitochondrial transcription and translation factors'), ('', 'Other mitochondrial DNA transcription and translation factors')]
+                    ]
+            }
+
+        Keys and list items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy. Given the hierarchies that are used in
+        construction of the Modules database, only the Enzyme hierarchy is known to yield EC number
+        "accessions" in categories. Every Enzyme hierarchy category should have an accession.
+
+        Categorization lists proceed from most general to most specific level.
+
+        Filtration with `hierarchy_accessions_of_interest` and `category_substrings_of_interest`
+        returns the orthologs in the hierarchies and matched categories of interest, and also
+        reduces the returned dictionary to the selected hierarchies and categorizations with matched
+        categories. In the example of arginyl-tRNA synthetase, if `hierarchy_accessions_of_interest`
+        is ['ko03016'] and `category_substrings_of_interest` is ['aminoacyl-tRNA synthetase'], then
+        the returned dictionary becomes:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ]
+            }
+
+        PARAMETERS
+        ==========
+        ortholog_accessions_of_interest : list, None
+            filters results to orthologs of interest
+
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        category_substrings_of_interest : list, None
+            filters results to categories containing substrings of interest
+
+        case_insensitive_substrings : bool, False
+            changes category substring search to be case insensitive
+
+        use_ortholog_accessions_as_keys : bool, False
+            ortholog keys of returned dictionary are accession strings rather than tuples
+
+        RETURNS
+        =======
+        ortholog_dict : dict
+            dictionary of ortholog BRITE categorizations
+        """
+
+        if ortholog_accessions_of_interest or hierarchy_accessions_of_interest:
+            # filter table by orthologs, hierarchies, and category substrings of interest
+            where_clause_string = ""
+
+            if ortholog_accessions_of_interest:
+                ortholog_list = [f"'{knum}'" for knum in ortholog_accessions_of_interest]
+                where_clause_string += f"ortholog_accession IN ({','.join(ortholog_list)})"
+
+            if hierarchy_accessions_of_interest:
+                hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+                if where_clause_string:
+                    where_clause_string += " AND "
+                where_clause_string += f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+
+            if category_substrings_of_interest:
+                if where_clause_string:
+                    where_clause_string += " AND ("
+                for substring in category_substrings_of_interest:
+                    if case_insensitive_substrings:
+                        where_clause_string += f"UPPER(categorization) LIKE UPPER('%{substring}%') OR "
+                    else:
+                        where_clause_string += f"categorization LIKE '%{substring}%' OR "
+                where_clause_string = where_clause_string[: -4] + ")"
+
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko00001',
+        #     'hierarchy_name': 'KEGG Orthology (KO)',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '09100 Metabolism!!!09101 Carbohydrate metabolism!!!00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'}
+
+        # now we convert this to a per-ortholog dict
+        ortholog_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+
+            if use_ortholog_accessions_as_keys:
+                ortholog_key = ortholog_accession
+            else:
+                ortholog_key = (ortholog_accession, ortholog_name)
+            try:
+                hierarchy_dict = ortholog_dict[ortholog_key]
+            except KeyError:
+                ortholog_dict[ortholog_key] = hierarchy_dict = {}
+
+            hierarchy_key = (hierarchy_accession, hierarchy_name)
+            try:
+                category_list = hierarchy_dict[hierarchy_key]
+            except KeyError:
+                hierarchy_dict[hierarchy_key] = category_list = []
+
+            categories = categorization.split('!!!')
+            if hierarchy_accession == 'ko01000':
+                # the hierarchy, "ko01000 Enzymes", should have an EC number for each category
+                parsed_categories = []
+                for enzyme_category in categories:
+                    split_enzyme_category = enzyme_category.split(' ')
+                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+            category_list.append(parsed_categories)
+
+        return ortholog_dict
+
+
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
     def get_top_level_steps_in_module_definition(self, mnum):
         """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
