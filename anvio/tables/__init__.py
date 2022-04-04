@@ -287,6 +287,10 @@ pathway_table_name = "kegg_pathway_maps"
 pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
 pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
+brite_table_name = "brite_hierarchies"
+brite_table_structure = ['hierarchy_accession', 'hierarchy_name', 'ortholog_accession', 'ortholog_name', 'categorization']
+brite_table_types     = [        'str'        ,       'str'     ,         'str'       ,      'str'     ,      'str'      ]
+
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS FOR THE TRNASEQ DB
@@ -418,6 +422,7 @@ table_requires_unique_entry_id = {'self': False,
                                   'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,
+                                  brite_table_name: False,
                                   trnaseq_sequences_table_name: False,
                                   trnaseq_feature_table_name: False,
                                   trnaseq_unconserved_table_name: False,
