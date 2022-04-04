@@ -1141,11 +1141,11 @@ class KeggSetup(KeggContext):
                               f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
-    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG'):
         """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1326,9 +1326,10 @@ class KeggSetup(KeggContext):
             self.decompress_files()
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
+            self.download_brite_hierarchies()
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir)
+            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
@@ -1378,7 +1379,7 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, args=self.args)
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -4961,12 +4962,14 @@ class ModulesDatabase(KeggContext):
     ```
     """
 
-    def __init__(self, db_path, args, module_data_directory=None, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_data_directory=None, brite_data_directory=None, module_dictionary=None, pathway_dictionary=None, brite_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_data_directory = module_data_directory # only required for create()
+        self.brite_data_directory = brite_data_directory # only required for create()
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
+        self.brite_dict = brite_dictionary
         self.data_source = data_source
         self.run = run
         self.progress = progress
@@ -4993,6 +4996,11 @@ class ModulesDatabase(KeggContext):
         self.pathway_table_structure = t.pathway_table_structure
         self.pathway_table_types = t.pathway_table_types
 
+        # BRITE hierarchies table info
+        self.brite_table_name = t.brite_table_name
+        self.brite_table_structure = t.brite_table_structure
+        self.brite_table_types = t.brite_table_types
+
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
@@ -5000,6 +5008,7 @@ class ModulesDatabase(KeggContext):
             if not self.quiet:
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
                 self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+                self.run.info('BRITE ko hierarchies', '%d found' % self.db.get_meta_value('num_brite_hierarchies'))
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
@@ -5010,6 +5019,9 @@ class ModulesDatabase(KeggContext):
             # if not self.pathway_dict:
             #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
             #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+            if not self.brite_dict:
+                raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
 
@@ -5029,6 +5041,7 @@ class ModulesDatabase(KeggContext):
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
+        self.db.create_table(self.brite_table_name, self.brite_table_structure, self.brite_table_types)
 
 
     def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
@@ -5258,6 +5271,9 @@ class ModulesDatabase(KeggContext):
         if not self.module_data_directory:
             raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
                               "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
+        if not self.brite_data_directory:
+            raise ConfigError("Some dumb programmer forgot to provide a brite_data_directory parameter value to the ModulesDatabase "
+                              "class. The DB can't be created unless it knows where the BRITE hierarchies are... Get yourself together.")
 
         self.touch()
 
@@ -5417,20 +5433,86 @@ class ModulesDatabase(KeggContext):
                               "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
         annotation_source_list = ",".join(list(self.annotation_sources))
 
+        if self.brite_dict:
+            # BRITE hierarchies are not available in a database with user-defined modules
+            self.progress.new("Loading BRITE hierarchies into Modules DB...")
+
+            # sanity check that we setup the BRITE hierarchies previously.
+            # It shouldn't be a problem since this function should only be called during the setup process after BRITE download, but just in case.
+            if not os.path.exists(self.brite_data_directory) or len(self.brite_dict.keys()) == 0:
+                raise ConfigError("Appparently, the BRITE hierarchy data files were not correctly setup and now all sorts of things are broken. The "
+                                  "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
+                                  "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
+                                  "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                                  "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of hierarchies "
+                                  "in the BRITE hierarchies dictionary is currently %s" % len(self.brite_dict.keys()))
+
+            # init the Modules table
+            brite_table = BriteTable(self.brite_table_name)
+
+            num_hierarchies_parsed = 0
+            unrecognized_items = []
+            for hierarchy in self.brite_dict:
+                self.progress.update(f"Parsing BRITE hierarchy '{hierarchy}'")
+                hierarchy_accession = hierarchy[: 7] # the validity of the hierarchy accession was checked in `KeggSetup.process_brite_hierarchies_file`
+                hierarchy_name = hierarchy[7: ].lstrip()
+
+                brite_file_path = os.path.join(self.brite_data_directory, hierarchy_accession)
+                for ortholog, categorizations in self.invert_brite_json_dict(json.load(open(brite_file_path))).items():
+                    split_ortholog = ortholog.split(' ')
+                    ortholog_accession = split_ortholog[0]
+
+                    if len(ortholog_accession) != 6:
+                        unrecognized_items.append(hierarchy + ': ' + ortholog)
+                        continue
+                    if ortholog_accession[0] != 'K':
+                        unrecognized_items.append(ortholog)
+                        continue
+                    try:
+                        int(ortholog_accession[1: ])
+                    except ValueError:
+                        unrecognized_items.append(ortholog)
+                        continue
+
+                    ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
+
+                    # ignore the first category, the accession of the hierarchy itself, which is in the value of `hierarchy`
+                    for categorization in categorizations:
+                        brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '!!!'.join(categorization[1: ]))
+                num_hierarchies_parsed += 1
+
+            if unrecognized_items and anvio.DEBUG:
+                self.run.warning("We attempted to parse some names of items in hierarchies as orthologs, "
+                                 "but ignored them since they did not start with an accession formatted 'KXXXXX', where 'XXXXX' are five digits. "
+                                 f"The following entries are formatted as '<hierarchy>: <ignored item>': {', '.join(set(unrecognized_items))}")
+
+            # once we are done parsing all hierarchies, we store whatever db entries remain in the db_entries list
+            # this is necessary because append_and_store() above only stores every 10000 entries
+            self.progress.update("Storing final batch of BRITE entries into DB")
+            brite_table.store(self.db)
+
+            self.progress.end()
+
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
-        self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
-        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
-        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
+        self.run.info('Number of module entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of module parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
+        self.run.info('Number of module parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
         self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
+        if self.brite_dict:
+            self.run.info('Number of BRITE hierarchies', num_hierarchies_parsed, quiet=self.quiet)
+            self.run.info('Number of ortholog BRITE categorizations', brite_table.get_total_entries(), quiet=self.quiet)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('data_source', self.data_source)
         self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
-        self.db.set_meta_value('total_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
+        if self.brite_dict:
+            self.db.set_meta_value('num_brite_hierarchies', num_hierarchies_parsed)
+            self.db.set_meta_value('total_brite_entries', brite_table.get_total_entries(), quiet=self.quiet)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
@@ -6061,6 +6143,45 @@ class ModulesTable:
     def store(self, db):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+    def get_total_entries(self):
+        return self.total_entries
+
+
+class BriteTable:
+    """This class defines operations for creating the KEGG BRITE hierarchies table in Modules.db"""
+
+    def __init__(self, brite_table_name = None):
+        """"""
+        self.db_entries = []
+        self.total_entries = 0
+
+        if brite_table_name:
+            self.brite_table_name = brite_table_name
+        else:
+            raise ConfigError("Beep Beep. Warning. BriteTable was initialized without knowing its own name.")
+
+
+    def append_and_store(self, db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization):
+        """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
+
+        The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+        """
+
+        db_entry = tuple([hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization])
+        self.db_entries.append(db_entry)
+        self.total_entries += 1
+
+        # we can store chunks of 5000 at a time, so we don't want over 10,000 entries.
+        if len(self.db_entries) >= 10000:
+            self.store(db)
+            self.db_entries = []
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.brite_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
     def get_total_entries(self):
