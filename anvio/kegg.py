@@ -775,6 +775,81 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
+    def process_brite_hierarchies_file(self):
+        """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
+
+        This method is called during setup to find all BRITE hierarchies to be downloaded.
+        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins.
+        Excluded hierarchies include those for modules, pathways, and other systems for reactions,
+        compounds, taxa, etc.
+
+        The dictionary that is filled out, `self.brite_dict`, is keyed by the 'ko' hierarchy name
+        exactly as given in the 'br08902' json file. The values are the categorizations of the
+        hierarchy in 'br08902', going from most general to most specific category.
+
+        Here is an example of an entry produced in self.brite_dict:
+            'ko01000  Enzymes':
+                ['Genes and Proteins', 'Protein families: metabolism']
+        """
+
+        filesnpaths.is_file_exists(self.kegg_brite_hierarchies_file)
+        filesnpaths.is_file_json_formatted(self.kegg_brite_hierarchies_file)
+
+        self.progress.new("Parsing KEGG BRITE Hierarchies file")
+
+        brite_hierarchies_dict = json.load(open(self.kegg_brite_hierarchies_file))
+        # store the names of all of the 'ko' hierarchies for genes/proteins
+        self.brite_dict = {}
+        hierarchies_appearing_multiple_times = []
+        hierarchies_with_unrecognized_accession = []
+        for hierarchy, categorizations in self.invert_brite_json_dict(brite_hierarchies_dict).items():
+            # we have observed the hierarchy label to have an accession followed by two spaces followed by the hierarchy name,
+            # but accommodate the possibility that the accession is separated from the name by a variable number of spaces
+            split_hierarchy = hierarchy.split(' ')
+            hierarchy_accession = split_hierarchy[0]
+            hierarchy_name = ' '.join(split_hierarchy[1: ]).lstrip()
+            if hierarchy_accession[: 2] == 'br':
+                # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00001' and hierarchy_name == 'KEGG Orthology (KO)':
+                # this hierarchy lists all orthologs in every hierarchy in which they occur
+                continue
+            elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
+                # this hierarchy is for modules, not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00003' and hierarchy_name == 'KEGG reaction modules':
+                # this hierarchy is also for modules
+                continue
+
+            if len(categorizations) > 1:
+                hierarchies_appearing_multiple_times.append((hierarchy, len(categorizations)))
+
+            if hierarchy_accession[: 2] != 'ko':
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            try:
+                int(hierarchy_accession[2: 7])
+            except ValueError:
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            self.brite_dict[hierarchy] = categorizations[0][1: ]
+
+        error_first_part = ""
+        if hierarchies_appearing_multiple_times:
+            error_first_part = ("Each BRITE hierarchy should only appear once in the hierarchy of hierarchies, "
+                                "but the following hierarchies appeared the given number of times: "
+                                f"{', '.join([f'{hier}: {num_times}' for hier, num_times in hierarchies_appearing_multiple_times])}.")
+        error_second_part = ""
+        if hierarchies_with_unrecognized_accession:
+            error_second_part = ("Each BRITE hierarchy accession is expected to have an accession formatted 'koXXXXX', where 'XXXXX' are five digits, "
+                                 f"but the following hierarchies did not have this format: {', '.join(hierarchies_with_unrecognized_accession)}.")
+        if hierarchies_appearing_multiple_times or hierarchies_with_unrecognized_accession:
+            raise ConfigError("Please contact the developers to look into the following error. "
+                              f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
+
+        self.progress.end()
+
+
     def download_modules(self):
         """This function downloads the KEGG modules.
 
