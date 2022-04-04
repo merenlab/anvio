@@ -6125,6 +6125,426 @@ class ModulesDatabase(KeggContext):
         return ortholog_dict
 
 
+    def get_brite_table_as_hierarchy_dict(self, hierarchy_accessions_of_interest=None, level_cutoff=None, collapse_keys=False, collapse_mixed_branches=True):
+        """Load the BRITE hierarchies table as a dictionary keyed by hierarchy.
+
+        The returned dictionary contains the category structure of the hierarchy and a set of
+        orthologs in each categorization.
+
+        With `collapse_keys` set to the default of False and `collapse_mixed_branches` set to the
+        default of True, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            {
+                                (<level 2 category j accession>, <level 2 category j name>):
+                                    set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                (<level 2 category k accession>, <level 2 category k name>):
+                                    set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                (<level 2 category l accession>, <level 2 category l name>):
+                                    {...},
+                                ...
+                            },
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            {...},
+                        ...
+                    },
+                    {
+                        (<level 1 category n accession>, <level 1 category n name>):
+                            {...},
+                        ...
+                    },
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                {
+                                    ('', 'Small subunit'):
+                                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                                    ('', 'Large subunit'):
+                                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...])
+                                },
+                            ('', 'Mitochondria/ Chloroplast'):
+                                {
+                                    ('', 'Small subunit'):
+                                        {...}
+                                    ('', 'Large subunit'):
+                                        {...}
+                                },
+                            ('', 'Bacteria'):
+                                {
+                                    ...
+                                },
+                            ('', 'Archaea'):
+                                {
+                                    ...
+                                }
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('Eukaryotes'):
+                                set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...]),
+                            ('Prokaryotes'):
+                                set([('K01985', '5SrRNA, rrf; 5S ribosomal RNA'), ('K01977', '16SrRNA, rrs; 16S ribosomal RNA'), ('K01980', '23SrRNA, rrl; 23S ribosomal RNA')])
+                        }
+                }
+
+        Keys and set items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy, as seen in the example.
+
+        Levels of the hierarchy can be collapsed with the `level_cutoff` argument. If `level_cutoff`
+        is a positive number, it is measured down from the top level of the hierarchy (level 1). If
+        `level_cutoff` is a negative number, it is measured up from the bottom-most level of the
+        hierarchy. Since different branches of the hierarchy can have different depths, the negative
+        number is converted to a positive number given the deepest branch: in the "Ribosome"
+        example, the "Ribosomal proteins" branch has 3 levels, and the "Ribosomal RNAs" branch has 2
+        levels, level -2 would be measured against the "Ribosomal proteins" branch and be converted
+        to level 1. If the negative parameterization would eliminate all levels of the hierarchy,
+        the cutoff is set to level 1.
+
+        Example: `level_cutoff` is set to 1 or -2, so levels below "Ribosomal proteins" and
+        "Ribosomal RNAs" are removed:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    ('', 'Ribosomal RNAs'):
+                        set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...])
+                }
+
+        Example: `level_cutoff` is set to -1, only removing "Small subunit" and "Large subunit"
+        levels under "Ribosomal proteins" but not "Ribosomal RNAs".
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                            ('', 'Mitochondria/ Chloroplasts'):
+                                set([...]),
+                            ('', 'Bacteria'):
+                                set([...]),
+                            ('', 'Archaea'):
+                                set([...])
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([...]),
+                            ('', 'Prokaryotes'):
+                                set([...])
+                        }
+
+        Dictionary nesting can be simplified by `collapse_keys`. Each ortholog set is keyed by a
+        single categorization tuple. Applied to the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Small subunit')):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Large subunit')):
+                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Mitochondria/ Chloroplasts'), ('', 'Small subunit')):
+                        set([...]),
+                    ...
+                }
+
+        To this point, we have ignored the possibility that a category containing ortholog "leaves"
+        can also contain additional category "branches". An example of this is in the "RNases"
+        category of the "Ribosome biogenesis" hierarchy. The category contains RNases such as
+        "K14812  NGL2; RNA exonuclease NGL2 [EC:3.1.-.-]", but also includes a category of "RNase
+        MRP" subunits, including "K01164  POP1; ribonuclease P\/MRP protein subunit POP1
+        [EC:3.1.26.5]". With the parameter, `collapse_mixed_branches`, set to the default of True,
+        categories in "mixed" branches are collapsed out of existence: subunit orthologs are placed
+        in "RNases" rather than "RNase MRP", which is removed.
+
+        Mixed branches can be preserved by setting `collapse_mixed_branches` to False. This also
+        changes the structure of the returned dictionary. Now, rather than a category key mapping to
+        EITHER a dict or a set, each category key maps to a tuple of (1) an ortholog set and (2) a
+        category dict. Without `collapse keys`, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            (
+                                set([...]),
+                                {
+                                    (<level 2 category j accession>, <level 2 category j name>):
+                                        (
+                                            set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                            {...}
+                                        ),
+                                    (<level 2 category k accession>, <level 2 category k name>):
+                                        (
+                                            set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                            {}
+                                        ),
+                                    (<level 2 category l accession>, <level 2 category l name>):
+                                        (
+                                            set([]),
+                                            {...},
+                                        )
+                                    ...
+                                }
+                            ),
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            (
+                                set([...]),
+                                {...}
+                            ),
+                        ...
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        With `collapse_keys` and without `collapse_mixed_branches`, the format of the returned
+        dictionary is the same as with `collapse_keys` and `collapse_mixed_branches`. The only
+        difference is that there can be entries for orthologs in a category and orthologs in a
+        subcategory: the categorization key tuples are the same for such entries up to the
+        subcategory elements.
+
+        PARAMETERS
+        ==========
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        level_cutoff : int, None
+            collapse branches below the level cutoff, with a positive level measured top-down and a
+            negative level measured bottom-up from the deepest branch of the tree
+
+        collapse_keys: bool, False
+            eliminate category nesting, keying each ortholog set by a single categorization tuple
+
+        collapse_mixed_branches : bool, True
+            collapse category branches off a category node that also ends in ortholog leaves
+
+        RETURNS
+        =======
+        hierarchy_dict : dict
+            dictionary of BRITE hierarchies
+        """
+
+        if hierarchy_accessions_of_interest:
+            hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+            where_clause_string = f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko01000',
+        #     'hierarchy_name': 'Enzymes',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '1. Oxidoreductases!!!1.1  Acting on the CH-OH group of donors!!!1.1.1  With NAD+ or NADP+ as acceptor!!!1.1.1.1  alcohol dehydrogenase'}
+
+        if collapse_mixed_branches:
+            minimal_topdown_level_cutoff_dict = {}
+            max_depth_dict = {}
+            for entry_dict in dict_from_brite_table.values():
+                hierarchy_accession = entry_dict['hierarchy_accession']
+                categories = entry_dict['categorization'].split('!!!')
+                try:
+                    current_max_depth = max_depth_dict[hierarchy_accession]
+                except KeyError:
+                    current_max_depth = 0
+                max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+            for hierarchy_accession, max_depth in max_depth_dict.items():
+                minimal_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
+
+        topdown_level_cutoff_dict = {}
+        if level_cutoff:
+            if level_cutoff > 0:
+                for hierarchy_accession in set(entry_dict['hierarchy_accession'] for entry_dict in dict_from_brite_table.values()):
+                    topdown_level_cutoff_dict[hierarchy_accession] = level_cutoff
+            elif level_cutoff < 0:
+                # find the positive level corresponding to the negative level cutoff for each hierarchy
+                max_depth_dict = {}
+                for entry_dict in dict_from_brite_table.values():
+                    hierarchy_accession = entry_dict['hierarchy_accession']
+                    categories = entry_dict['categorization'].split('!!!')
+                    try:
+                        current_max_depth = max_depth_dict[hierarchy_accession]
+                    except KeyError:
+                        current_max_depth = 0
+                    max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+                for hierarchy_accession, max_depth in max_depth_dict.items():
+                    topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth + level_cutoff, 1) # ensure that at least one category remains in the hierarchy
+
+            # if "mixed" categories are collapsed, then subcategories of mixed categories should be
+            # ignored in the level cutoff, e.g., if the maximum depth of a hierarchy is 4, but this
+            # is due to a subcategory of a depth 3 mixed category, and so the maximum depth would be
+            # 3 after collapsing this subcategory, then a topdown level cutoff of 4 should be
+            # reduced to 3
+            if collapse_mixed_branches:
+                deep_categorizations = {}
+                shallow_categorizations = {}
+                hierarchy_culprits = set([])
+                is_checked = False
+                while hierarchy_culprits or not is_checked:
+                    for entry_dict in dict_from_brite_table.values():
+                        hierarchy_accession = entry_dict['hierarchy_accession']
+                        if is_checked and hierarchy_accession not in hierarchy_culprits:
+                            continue
+                        categorization = entry_dict['categorization']
+                        categories = categorization.split('!!!')
+                        if len(categories) >= topdown_level_cutoff_dict[hierarchy_accession]:
+                            try:
+                                deep_categorizations[hierarchy_accession].add(categorization)
+                            except KeyError:
+                                deep_categorizations[hierarchy_accession] = set([categorization])
+                        else:
+                            try:
+                                shallow_categorizations[hierarchy_accession].add(categorization)
+                            except KeyError:
+                                shallow_categorizations[hierarchy_accession] = set([categorization])
+
+                    for hierarchy_accession, hierarchy_deep_categorizations in deep_categorizations.items():
+                        try:
+                            hierarchy_shallow_categorizations = shallow_categorizations[hierarchy_accession]
+                        except KeyError:
+                            continue
+
+                        subcategorization_culprits = []
+                        for deep_categorization in hierarchy_deep_categorizations:
+                            for shallow_categorization in hierarchy_shallow_categorizations:
+                                if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
+                                    if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '!!!':
+                                        subcategorization_culprits.append(deep_categorization)
+                                        break
+
+                        for deep_categorization in subcategorization_culprits:
+                            hierarchy_deep_categorizations.remove(deep_categorization)
+
+                        hierarchy_culprits.add(hierarchy_accession)
+                        if hierarchy_deep_categorizations:
+                            hierarchy_culprits.remove(hierarchy_accession)
+                        else:
+                            topdown_level_cutoff_dict[hierarchy_accession] = topdown_level_cutoff_dict[hierarchy_accession] - 1
+                    is_checked = True
+
+        if collapse_mixed_branches:
+            if level_cutoff:
+                for hierarchy_accession, minimal_topdown_level_cutoff in minimal_topdown_level_cutoff_dict.items():
+                    topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
+                    if topdown_level_cutoff > minimal_topdown_level_cutoff:
+                        topdown_level_cutoff_dict[hierarchy_accession] = minimal_topdown_level_cutoff
+            else:
+                topdown_level_cutoff_dict = minimal_topdown_level_cutoff_dict
+
+        # now we convert this to a per-hierarchy dict
+        hierarchy_dict = {}
+        for row_id, entry_dict in dict_from_brite_table.items():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+            categories = categorization.split('!!!')
+
+            if hierarchy_accession == 'ko01000':
+                # the hierarchy, "ko01000 Enzymes", should have an EC number for each category
+                parsed_categories = []
+                for enzyme_category in categories:
+                    split_enzyme_category = enzyme_category.split(' ')
+                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+
+            try:
+                category_dict = hierarchy_dict[(hierarchy_accession, hierarchy_name)]
+            except KeyError:
+                hierarchy_dict[(hierarchy_accession, hierarchy_name)] = category_dict = {}
+
+            try:
+                parsed_categories[0]
+            except IndexError:
+                raise ConfigError("Please contact the developers to look into the following error. "
+                                  f"BRITE table entry '{row_id}' does not appear to have any categories for hierarchy, '{hierarchy_accession}'.")
+
+            if topdown_level_cutoff_dict:
+                try:
+                    topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
+                except KeyError:
+                    topdown_level_cutoff = level_cutoff
+
+            if collapse_mixed_branches:
+                if collapse_keys:
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if topdown_level_cutoff_dict:
+                            if level == topdown_level_cutoff:
+                                try:
+                                    ortholog_set = category_dict[category]
+                                except KeyError:
+                                    category_dict[category] = ortholog_set = set()
+                                ortholog_set.add((ortholog_accession, ortholog_name))
+                                break
+                        elif level == num_categories:
+                            try:
+                                ortholog_set = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = ortholog_set = set()
+                            ortholog_set.add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category]
+                        except KeyError:
+                            category_dict[category] = category_dict = {}
+            else:
+                if collapse_keys:
+                    if topdown_level_cutoff_dict:
+                        key = tuple(parsed_categories[: topdown_level_cutoff])
+                    else:
+                        key = tuple(parsed_categories)
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if topdown_level_cutoff_dict:
+                            if level == topdown_level_cutoff:
+                                try:
+                                    category_tuple = category_dict[category]
+                                except KeyError:
+                                    category_dict[category] = category_tuple = (set(), {})
+                                category_tuple[0].add((ortholog_accession, ortholog_name))
+                                break
+                        elif level == num_categories:
+                            try:
+                                category_tuple = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = category_tuple = (set(), {})
+                            category_tuple[0].add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category][1]
+                        except KeyError:
+                            category_dict[category] = category_tuple = (set(), {})
+                            category_dict = category_tuple[1]
+
+        return hierarchy_dict
+
+
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
     def get_top_level_steps_in_module_definition(self, mnum):
         """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
