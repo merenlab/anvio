@@ -11,6 +11,7 @@ import statistics
 import json
 import time
 import hashlib
+import collections
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -259,6 +260,7 @@ class KeggContext(object):
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
+        self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -267,6 +269,7 @@ class KeggContext(object):
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
+        self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
         if self.user_input_dir:
@@ -429,6 +432,7 @@ class KeggSetup(KeggContext):
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
             self.target_snapshot = self.kegg_snapshot or 'v2021-12-18'
@@ -459,6 +463,8 @@ class KeggSetup(KeggContext):
             self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
             self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
             self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+            # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
+            self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
             if '/' not in self.user_input_dir:
@@ -510,6 +516,12 @@ class KeggSetup(KeggContext):
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
                               % (self.pathway_data_dir, self.kegg_data_dir))
+
+        if os.path.exists(self.brite_data_dir):
+            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
+                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
+                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
+                              % (self.brite_data_dir, self.kegg_data_dir))
 
 
     def check_user_input_dir_format(self):
