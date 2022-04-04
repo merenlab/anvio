@@ -133,6 +133,14 @@ ContextMenu = function(options) {
                 this.menu_items['inspect']['action'](node, layer, 'gene', false);
             }
         },
+        'open_in_legends': {
+            'title': 'Open in Legends Tab',
+            'action': (node, layer, param) => {
+                console.log(node, layer)
+                toggleLeftPanel()
+                $("#legend_settings_tab").tab('show')
+            }
+        },
         'get_hmm_sequence': {
             'title': 'Inspect gene',
             'action': (node, layer, param) => {
@@ -414,6 +422,7 @@ ContextMenu.prototype.BuildMenu = function() {
             if (this.layer) {
                 menu.push('select_layer');
                 menu.push('unselect_layer');
+                menu.push('open_in_legends')
                 menu.push('divider');
             }
 
