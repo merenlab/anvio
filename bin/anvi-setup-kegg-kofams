@@ -15,7 +15,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __provides__ = ["kegg-data", "modules-db"]
-__description__ = "Download and setup KEGG KOfam HMM profiles and KEGG MODULE data"
+__description__ = "Download and setup KEGG KOfam HMM profiles plus KEGG MODULE and KEGG BRITE data"
 
 @time_program
 def main(args):
