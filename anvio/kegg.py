@@ -933,6 +933,48 @@ class KeggSetup(KeggContext):
                                   % (file_path, last_line))
 
 
+    def download_brite_hierarchies(self):
+        """This function downloads a json file for every BRITE hierarchy of interest.
+
+        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins. The
+        BRITE 'hierarchy of hierarchies', 'br08902', is first downloaded and processed to find
+        accessions and thereby download paths of hierarchies of interest.
+        """
+
+        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        # download the BRITE hierarchy json file that classifies all BRITE hierarchies
+        try:
+            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
+                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+        # get BRITE dict
+        self.process_brite_hierarchies_file()
+        self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
+
+        unexpected_hierarchies = []
+        for hierarchy in self.brite_dict:
+            hierarchy_accession = hierarchy[: 7]
+            brite_system = hierarchy_accession[: 2]
+            if brite_system != 'ko':
+                unexpected_hierarchies.append(hierarchy)
+            if not unexpected_hierarchies:
+                file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
+                                    file_path, progress=self.progress, run=self.run)
+                # verify that the whole json file was downloaded
+                filesnpaths.is_file_json_formatted(file_path)
+        if unexpected_hierarchies:
+            raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
+                              f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
+
+
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
 
