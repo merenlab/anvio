@@ -3285,7 +3285,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # stepwise
             mod_is_complete = self.compute_stepwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
-            self.compute_stepwise_module_copynumber_for_bin(mod, metabolism_dict_for_list_of_splits)
+            self.compute_stepwise_module_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
                 stepwise_complete_mods.add(mod)
@@ -3654,7 +3654,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     return enzyme_hit_counts[step_string]
 
 
-    def compute_stepwise_module_copynumber_for_bin(self, mnum, meta_dict_for_bin):
+    def compute_stepwise_module_copy_number_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
 
         It goes through the top-level steps established by compute_stepwise_module_completeness_for_bin() and determines the
@@ -3692,7 +3692,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """This function adjusts stepwise copy number of modules that are defined by other modules.
 
         This can only be done after all other modules have had their copy numbers calculated and added to the metabolism dictionary
-        by the function compute_stepwise_module_copynumber_for_bin().
+        by the function compute_stepwise_module_copy_number_for_bin().
 
         The function goes through the top-level steps in the module and re-computes copy number for steps that include other modules.
         Then it re-calculates the overall module copy number as the minimum copy number of all steps. It updates the metabolism completess
