@@ -5475,16 +5475,27 @@ class ModulesDatabase(KeggContext):
 
                     for categorization in categorizations:
                         if hierarchy_accession == 'ko00001':
-                            # one top-level class of the "ko00001  KEGG Orthology (KO)" hierarchy is
-                            # "09180 Brite Hierarchies". This is a representation of other
-                            # hierarchies, such as "01001 Protein kinases [BR:ko01001]", as totally
-                            # flat categories, with all subcategories flattened out. We download and
-                            # process json files for these other hierarchies separately. Therefore
-                            # ignore any entries in this category.
-                            if categorization[1].split(' ')[0] == '09180':
+                            # the expected top-level classes of the "ko00001  KEGG Orthology (KO)"
+                            # hierarchy are "09100 Metabolism", "09120 Genetic Information
+                            # Processing", "09130 Environmental Information Processing", "09140
+                            # Cellular Processes", "09150 Organismal Systems", "09160 Human
+                            # Diseases", "09180 Brite Hierarchies", and "09190 Not Included in
+                            # Pathway or Brite". "09180 Brite Hierarchies" is a representation of
+                            # other hierarchies, such as "01001 Protein kinases [BR:ko01001]", as
+                            # totally flat categories, with all subcategories flattened out. We
+                            # download and process json files for these other hierarchies
+                            # separately. Therefore ignore any entries in this category. "09150
+                            # Organismal Systems" and "09160 Human Diseases" are also ignored due to
+                            # their focus on humans. The value of "09190 Not Included in Pathway or
+                            # Brite" is debatable, but certain proteins are only found in this
+                            # category, such as bacterial circadian clock proteins (classified under
+                            # "09193 Unclassified: signaling and cellular processes" >>> "99995
+                            # Signaling proteins"), so this category is retained.
+                            category_accession = categorization[1].split(' ')[0]
+                            if category_accession == '09180' or category_accession == '09150' or category_accession == '09160':
                                 continue
                         # ignore the first category, the accession of the hierarchy itself, which is in the value of `hierarchy`
-                        brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '!!!'.join(categorization[1: ]))
+                        brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '>>>'.join(categorization[1: ]))
                 num_hierarchies_parsed += 1
 
             if unrecognized_items and anvio.DEBUG:
