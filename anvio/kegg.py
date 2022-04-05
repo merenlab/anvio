@@ -1469,6 +1469,7 @@ class RunKOfams(KeggContext):
         self.functions_dict = {}
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
+        self.kegg_brite_categorizations_dict = {}
         self.gcids_to_hits_dict = {}
         self.gcids_to_functions_dict = {}
         counter = 0
@@ -1553,6 +1554,39 @@ class RunKOfams(KeggContext):
                         'accession': mod_annotation,
                         'function': mod_class_annotation,
                         'e_value': None,
+                    }
+
+                # add associated KEGG BRITE hierarchy information to database
+                ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(knum)
+
+                # the following explains the format of BRITE "accession" and "function" entries in
+                # the `gene_functions` table of the contigs database. Orthologs can be in multiple
+                # hierarchies, and can be categorized in a hierarchy multiple times. Each
+                # categorization of the ortholog in a hierarchy is separated by "!!!", and each
+                # category in the categorization is separated by ">>>". The hierarchy name is placed
+                # at the beginning of the "function" entry.
+                # For example, "K01647 citrate synthase" produces the following "accession" and
+                # "function" strings:
+                # "ko00001!!!ko00001!!!ko01000"
+                # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
+                #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
+                #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
+                if ortholog_brite_dict:
+                    hierarchy_accession = ""
+                    categorizations = ""
+                    categorization_dicts = list(ortholog_brite_dict.values())
+                    for categorization_dict in categorization_dicts[: -1]:
+                        hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
+                        categorizations += f"{categorization_dict['hierarchy_name']}!!!"
+                    hierarchy_accession += categorization_dicts[-1]['hierarchy_accession']
+                    categorizations += categorization_dicts[-1]['hierarchy_accession']
+
+                    self.kegg_brite_categorizations_dict[counter] = {
+                        'gene_callers_id': gcid,
+                        'source': 'KEGG_BRITE',
+                        'accession': hierarchy_accession,
+                        'function': categorizations,
+                        'e_value': None
                     }
 
                 counter += 1
@@ -1679,6 +1713,39 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
+                            # add associated KEGG BRITE hierarchy information to database
+                            ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(knum)
+
+                            # the following explains the format of BRITE "accession" and "function" entries in
+                            # the `gene_functions` table of the contigs database. Orthologs can be in multiple
+                            # hierarchies, and can be categorized in a hierarchy multiple times. Each
+                            # categorization of the ortholog in a hierarchy is separated by "!!!", and each
+                            # category in the categorization is separated by ">>>". The hierarchy name is placed
+                            # at the beginning of the "function" entry.
+                            # For example, "K01647 citrate synthase" produces the following "accession" and
+                            # "function" strings:
+                            # "ko00001!!!ko00001!!!ko01000"
+                            # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
+                            #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
+                            #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
+                            if ortholog_brite_dict:
+                                hierarchy_accession = ""
+                                categorizations = ""
+                                categorization_dicts = list(ortholog_brite_dict.values())
+                                for categorization_dict in categorization_dicts[: -1]:
+                                    hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
+                                    categorizations += f"{categorization_dict['hierarchy_name']}!!!"
+                                hierarchy_accession += categorization_dicts[-1]['hierarchy_accession']
+                                categorizations += categorization_dicts[-1]['hierarchy_accession']
+
+                                self.kegg_brite_categorizations_dict[next_key] = {
+                                    'gene_callers_id': gcid,
+                                    'source': 'KEGG_BRITE',
+                                    'accession': hierarchy_accession,
+                                    'function': categorizations,
+                                    'e_value': None
+                                }
+
                         next_key += 1
                         num_annotations_added += 1
 
@@ -1707,6 +1774,24 @@ class RunKOfams(KeggContext):
             self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
                              "but still adding KOfam as a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+
+
+    def store_brite_info_in_db(self):
+        """Fills in the table of BRITE hierarchy information in the contigs database.
+
+        The only data stored in this table regards hierarchy depths, gleaned from the full set of
+        information in the modules database. Depth data is needed for pruning categorizations to the
+        desired level.
+        """
+
+        brite_max_depth_dict = self.kegg_modules_db.get_brite_max_depth_dict()
+        qualified_brite_max_depth_dict = self.kegg_modules_db.get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(input_depth_dict=brite_max_depth_dict)
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        entries = []
+        for hierarchy_accession, max_depth in brite_max_depth_dict.items():
+            entries.append((hierarchy_accession, max_depth, qualified_brite_max_depth_dict[hierarchy_accession]))
+        contigs_db.db.insert_many('kegg_brite_info', entries=entries)
+        contigs_db.disconnect()
 
 
     def process_kofam_hmms(self):
@@ -1754,6 +1839,8 @@ class RunKOfams(KeggContext):
         if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
         self.store_annotations_in_db()
+
+        self.store_brite_info_in_db()
 
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:
@@ -5761,6 +5848,12 @@ class ModulesDatabase(KeggContext):
             mod_class = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
             all_mods_classes_list.append(mod_class)
         return all_mods_classes_list
+
+
+    def get_ortholog_brite_categorizations(self, ortholog_accession):
+        """Return a list of the BRITE categorizations of the ortholog."""
+        where_clause_string = f"ortholog_accession = '{ortholog_accession}'"
+        return self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause=where_clause_string, row_num_as_key=True)
 
 
     def get_module_name(self, mnum):
