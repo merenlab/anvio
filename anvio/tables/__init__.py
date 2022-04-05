@@ -138,6 +138,9 @@ gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
+kegg_brite_info_table_name              = 'kegg_brite_info'
+kegg_brite_info_table_structure         = ['hierarchy_accession', 'max_depth', 'max_depth_excluding_subcategories']
+kegg_brite_info_table_types             = [        'text'       ,  'numeric' ,             'numeric'              ]
 
 ####################################################################################################
 #
@@ -386,6 +389,7 @@ table_requires_unique_entry_id = {'self': False,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
+                                  kegg_brite_info_table_name: True,
                                   trna_seed_feature_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
