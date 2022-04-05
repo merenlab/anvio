@@ -3470,9 +3470,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         (stored under the "most_complete_paths" key). If there are no paths in this list (which only happens when there
         are 0 KOfam hits to the module), then we do not compute redundancy.
 
-        The exception is for path copy number, in which case we want both the copy number of each path (for hits_in_modules output)
-        and the copy number of the paths with highest completeness (the maximum of which will be printed in modules output)
-
         PARAMETERS
         ==========
         mnum : string
