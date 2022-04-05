@@ -3682,8 +3682,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
-                if step_copy_num: # avoid taking minimum of None values (from non-essential steps)
-                    module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
+                if step_copy_num is not None: # avoid taking minimum of None values (from non-essential steps)
+                    module_stepwise_copy_num = min(module_stepwise_copy_num, step_copy_num)
 
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
 
@@ -3721,7 +3721,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
 
             # take minimum over all steps, even those not defined by modules
-            if meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"]: # avoid taking minimum of None values (from non-essential steps)
+            if meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] is not None: # avoid taking minimum of None values (from non-essential steps)
                 module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
 
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
