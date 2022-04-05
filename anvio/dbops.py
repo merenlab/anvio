@@ -3796,6 +3796,7 @@ class GenesDatabase:
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_types)
         self.db.create_table(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure, t.gene_level_inseq_stats_table_types)
+        self.db.create_table(t.kegg_brite_info_table_name, t.kegg_brite_info_table_structure, t.kegg_brite_info_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
