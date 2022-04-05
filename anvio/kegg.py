@@ -6096,7 +6096,7 @@ class ModulesDatabase(KeggContext):
         #     'hierarchy_name': 'KEGG Orthology (KO)',
         #     'ortholog_accession': 'K00001',
         #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
-        #     'categorization': '09100 Metabolism!!!09101 Carbohydrate metabolism!!!00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'}
+        #     'categorization': '09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'}
 
         # now we convert this to a per-ortholog dict
         ortholog_dict = {}
@@ -6122,7 +6122,7 @@ class ModulesDatabase(KeggContext):
             except KeyError:
                 hierarchy_dict[hierarchy_key] = category_list = []
 
-            categories = categorization.split('!!!')
+            categories = categorization.split('>>>')
             if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
                 # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
                 parsed_categories = []
@@ -6358,19 +6358,11 @@ class ModulesDatabase(KeggContext):
         #     'hierarchy_name': 'Enzymes',
         #     'ortholog_accession': 'K00001',
         #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
-        #     'categorization': '1. Oxidoreductases!!!1.1  Acting on the CH-OH group of donors!!!1.1.1  With NAD+ or NADP+ as acceptor!!!1.1.1.1  alcohol dehydrogenase'}
+        #     'categorization': '1. Oxidoreductases>>>1.1  Acting on the CH-OH group of donors>>>1.1.1  With NAD+ or NADP+ as acceptor>>>1.1.1.1  alcohol dehydrogenase'}
 
         if collapse_mixed_branches:
             minimal_topdown_level_cutoff_dict = {}
-            max_depth_dict = {}
-            for entry_dict in dict_from_brite_table.values():
-                hierarchy_accession = entry_dict['hierarchy_accession']
-                categories = entry_dict['categorization'].split('!!!')
-                try:
-                    current_max_depth = max_depth_dict[hierarchy_accession]
-                except KeyError:
-                    current_max_depth = 0
-                max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+            max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
             for hierarchy_accession, max_depth in max_depth_dict.items():
                 minimal_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
 
@@ -6381,15 +6373,7 @@ class ModulesDatabase(KeggContext):
                     topdown_level_cutoff_dict[hierarchy_accession] = level_cutoff
             elif level_cutoff < 0:
                 # find the positive level corresponding to the negative level cutoff for each hierarchy
-                max_depth_dict = {}
-                for entry_dict in dict_from_brite_table.values():
-                    hierarchy_accession = entry_dict['hierarchy_accession']
-                    categories = entry_dict['categorization'].split('!!!')
-                    try:
-                        current_max_depth = max_depth_dict[hierarchy_accession]
-                    except KeyError:
-                        current_max_depth = 0
-                    max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+                max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
                 for hierarchy_accession, max_depth in max_depth_dict.items():
                     topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth + level_cutoff, 1) # ensure that at least one category remains in the hierarchy
 
@@ -6409,7 +6393,7 @@ class ModulesDatabase(KeggContext):
                         if is_checked and hierarchy_accession not in hierarchy_culprits:
                             continue
                         categorization = entry_dict['categorization']
-                        categories = categorization.split('!!!')
+                        categories = categorization.split('>>>')
                         if len(categories) >= topdown_level_cutoff_dict[hierarchy_accession]:
                             try:
                                 deep_categorizations[hierarchy_accession].add(categorization)
@@ -6431,7 +6415,7 @@ class ModulesDatabase(KeggContext):
                         for deep_categorization in hierarchy_deep_categorizations:
                             for shallow_categorization in hierarchy_shallow_categorizations:
                                 if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
-                                    if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '!!!':
+                                    if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '>>>':
                                         subcategorization_culprits.append(deep_categorization)
                                         break
 
@@ -6462,7 +6446,7 @@ class ModulesDatabase(KeggContext):
             hierarchy_accession = entry_dict['hierarchy_accession']
             hierarchy_name = entry_dict['hierarchy_name']
             categorization = entry_dict['categorization']
-            categories = categorization.split('!!!')
+            categories = categorization.split('>>>')
 
             if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
                 # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
@@ -6556,6 +6540,41 @@ class ModulesDatabase(KeggContext):
                             category_dict = category_tuple[1]
 
         return hierarchy_dict
+
+
+    def get_brite_max_depth_dict(self, dict_from_brite_table=None):
+        """Return a dictionary of the maximum depths of BRITE hierarchies.
+
+        "Maximum depth" is greatest number of levels of categorization of an ortholog in the
+        hierarchy.
+
+        By default, without `dict_from_brite_table`, every hierarchy in the database is analyzed.
+        With that argument, only the hierarchies represented in the dict are analyzed.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict
+            contains BRITE table rows of interest, as returned by `get_some_rows_from_table_as_dict`, for example
+
+        RETURNS
+        =======
+        max_depth_dict : dict
+            relates hierarchy accession keys to maximum depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        max_depth_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            categories = entry_dict['categorization'].split('>>>')
+            try:
+                current_max_depth = max_depth_dict[hierarchy_accession]
+            except KeyError:
+                current_max_depth = 0
+            max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+
+        return max_depth_dict
 
 
     def list_brite_hierarchies(self, as_accessions=False, as_tuples=False):
