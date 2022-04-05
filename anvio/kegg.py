@@ -3655,6 +3655,86 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     return enzyme_hit_counts[step_string]
 
 
+    def compute_stepwise_module_copynumber_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
+
+        It goes through the top-level steps established by compute_stepwise_module_completeness_for_bin() and determines the
+        copy number of each step. Then, the overall module copy number is calculated as the minimum copy number of all steps.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "stepwise_copy_number"         the stepwise copy number of the module
+
+        [keys added in "top_level_step_info" dictionary]
+            "copy_number"              the copy number of an individual step
+
+        RETURNS
+        =======
+        defined_by_modules : boolean
+            whether or not the module is defined by other modules (if so, it needs its copy number to be adjusted later)
+        """
+
+        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
+
+        module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
+        defined_by_modules = False
+        for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
+            if not meta_dict_for_bin[mnum]["top_level_step_info"]["includes_modules"]:
+                step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+
+                meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = self.get_step_copy_number(step_string, enzyme_hits_dict)
+                module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
+            else:
+                defined_by_modules = True
+
+
+        meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
+
+        return defined_by_modules
+
+
+    def adjust_stepwise_copy_number_for_bin(self, mnum, meta_dict_for_bin):
+        """This function adjusts stepwise copy number of modules that are defined by other modules.
+
+        This can only be done after all other modules have had their copy numbers calculated and added to the metabolism dictionary
+        by the function compute_stepwise_module_copynumber_for_bin().
+
+        The function goes through the top-level steps in the module and re-computes copy number for steps that include other modules.
+        Then it re-calculates the overall module copy number as the minimum copy number of all steps. It updates the metabolism completess
+        dictionary accordingly.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            the module number to adjust
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dictionary for the current bin
+        """
+
+        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
+
+        module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
+        for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
+            # re-calculate ONLY for steps with modules in definition
+            if meta_dict_for_bin[mnum]["top_level_step_info"]["includes_modules"]:
+                step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+
+                for included_module in meta_dict_for_bin[mnum]["top_level_step_info"][key]["included_module_list"]:
+                    enzyme_hits_dict[included_module] = meta_dict_for_bin[mnum]["stepwise_copy_number"]
+
+                meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = self.get_step_copy_number(step_string, enzyme_hits_dict)
+
+            # take minimum over all steps, even those not defined by modules
+            module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
+
+        meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
 
 
 ######### ESTIMATION DRIVER FUNCTIONS #########
