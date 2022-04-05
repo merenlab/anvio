@@ -3679,7 +3679,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
-            if not meta_dict_for_bin[mnum]["top_level_step_info"]["includes_modules"]:
+            if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
 
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = self.get_step_copy_number(step_string, enzyme_hits_dict)
