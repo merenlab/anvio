@@ -3285,6 +3285,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # stepwise
             mod_is_complete = self.compute_stepwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+            self.compute_stepwise_module_copynumber_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
                 stepwise_complete_mods.add(mod)
@@ -3292,7 +3293,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if self.add_coverage:
                 self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
 
-        # go back and adjust completeness of modules that are defined by other modules
+        # go back and adjust completeness/copy number of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
                 # pathwise
@@ -3303,6 +3304,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_is_complete = self.adjust_stepwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
                 if mod_is_complete:
                     stepwise_complete_mods.add(mod)
+                self.adjust_stepwise_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
         # estimate redundancy of each module
