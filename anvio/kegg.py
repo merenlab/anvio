@@ -3513,6 +3513,138 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return
 
+
+    def get_step_copy_number(self, step_string, enzyme_hit_counts):
+        """This function recursively calculates the copy number of a step in a module.
+
+        It parses the definition string of a step and recurses as needed to compute copy number of
+        substeps. Copy numbers of any substeps are mathematically combined to obtain a copy number for
+        the step as a whole.
+
+        The key base case in the recursion is an individual enzyme accession, for which the copy number
+        is simply the number of times it is annotated in the sample (which we obtain from the enzyme_hit_counts dictionary).
+
+        Combining copy numbers works as follows: If two enzymes (or substeps) are connected by an AND, then we need both, so
+        we take the minimum copy number of both of them. If they are connected by an OR, then we can use either, so we can sum
+        their copy numbers. In doing this, we follow correct order of operations, as established by any parentheses in the step definition.
+
+        In short, this function accomplishes the same thing as modifying the step definition by replacing spaces and '+' signs with min()
+        operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
+        the value obtained by evaluating the resulting arithmetic expression.
+
+        Some steps are defined by other modules. When module accessions are found, [FIXME]
+
+        PARAMETERS
+        ==========
+        step_string : str
+            A string containing the definition of one step (or substep) from a module
+        enzyme_hit_counts : dict
+            Keys are enzyme accessions, values are the number of times the enzyme was annotated in the current sample
+
+        RETURNS
+        ==========
+        The copy number (int) of the given step/substep
+        """
+
+        # first, eliminate non-essential KOs from the step definition so they won't be considered
+        step_string = self.remove_nonessential_enzymes_from_module_step(step_string)
+
+        # sometimes a step will have commas outside parentheses. In this case, we need to split those first for proper order of operations
+        step_list = utils.split_by_delim_not_within_parens(step_string, ",")
+        if len(step_list) > 1:
+            added_step_count = 0
+            # call recursively on each split
+            for s in step_list:
+                added_step_count += self.get_step_copy_number(s, enzyme_hit_counts)
+            # combine results using addition and return
+            return added_step_count
+
+        # complex case - parentheses surround substeps, which need to be counted recursively and appropriately combined
+        if '(' in step_string:
+            open_parens_idx = step_string.index('(') # first (outermost) parenthesis
+            close_parens_idx = None
+
+            # find matching parenthesis
+            i = open_parens_idx + 1
+            parens_level = 1
+            while not close_parens_idx:
+                if step_string[i] == '(':
+                    parens_level += 1
+                if step_string[i] == ')':
+                    parens_level -= 1
+
+                    if parens_level == 0:
+                        close_parens_idx = i
+                i += 1
+
+            # call recursively on string within outermost parentheses
+            sub_step = step_string[open_parens_idx+1:close_parens_idx]
+            sub_copy_num = self.get_step_copy_number(sub_step, enzyme_hit_counts)
+
+            # parse the rest of the string and combine with the copy number of the stuff within parentheses
+            step_copy_num = 0
+            # handle anything prior to parentheses
+            if open_parens_idx > 0:
+                previous_str = step_string[:open_parens_idx]
+
+                previous_steps = previous_str[:-1]
+                prev_copy = self.get_step_copy_number(previous_steps, enzyme_hit_counts)
+
+                combo_element = previous_str[-1]
+                if combo_element == ',': # OR
+                    step_copy_num += (prev_copy + sub_copy_num)
+                if combo_element == ' ': # AND
+                    step_copy_num += min(prev_copy,sub_copy_num)
+
+            # handle anything following parentheses
+            if close_parens_idx < len(step_string) - 1:
+                post_str = step_string[close_parens_idx+1:]
+
+                post_steps = step_string[close_parens_idx+2:]
+                post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
+
+                combo_element = step_string[close_parens_idx+1]
+                if combo_element == ',': # OR
+                    step_copy_num += (sub_copy_num + post_copy)
+                if combo_element == ' ': # AND
+                    step_copy_num += min(sub_copy_num,post_copy)
+
+            # handle edge case where parentheses circles entire step
+            if (open_parens_idx == 0) and (close_parens_idx == len(step_string) - 1):
+                step_copy_num += sub_copy_num
+
+            return step_copy_num
+
+        # simple case - no substeps within parentheses
+        else:
+            if ',' in step_string: # OR - combine copy numbers using addition
+                or_splits = step_string.split(',')
+                added_step_count = 0
+                for s in or_splits:
+                    added_step_count += self.get_step_copy_number(s, enzyme_hit_counts)
+                return added_step_count
+
+            elif ' ' in step_string or '+' in step_string: # AND - combine copy numbers using min()
+                and_splits = step_string.replace('+', ' ').split(' ')
+                min_step_count = 10000 # arbitrarily large number to ensure first s is always the minimum
+                for s in and_splits:
+                    s_count = self.get_step_copy_number(s, enzyme_hit_counts)
+                    min_step_count = min(min_step_count, s_count)
+                return min_step_count
+
+            # base cases
+            elif '-' in step_string:
+                if step_string == '--': # no KO profile => no copy number
+                    return 0
+                else: # contains non-essential KO, should never happen because we eliminated them above
+                    raise ConfigError(f"Something is very wrong, because the get_step_copy_number() function found a nonessential "
+                                      f"enzyme in the step definition {step_string}")
+            elif step_string == '': # entire step was nonessential KO, skip computation
+                return None
+            else: # enzyme accession
+                return enzyme_hit_counts[step_string]
+
+
 ######### ESTIMATION DRIVER FUNCTIONS #########
 
     def estimate_for_genome(self, kofam_gene_split_contig):
