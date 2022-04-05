@@ -6338,7 +6338,7 @@ class ModulesDatabase(KeggContext):
                 }
 
         Example: `level_cutoff` is set to -1, only removing "Small subunit" and "Large subunit"
-        levels under "Ribosomal proteins" but not "Ribosomal RNAs".
+        levels under "Ribosomal proteins" but not levels under "Ribosomal RNAs".
             ('ko03011', 'Ribosome'):
                 {
                     ('', 'Ribosomal proteins'):
@@ -6379,8 +6379,8 @@ class ModulesDatabase(KeggContext):
         "K14812  NGL2; RNA exonuclease NGL2 [EC:3.1.-.-]", but also includes a category of "RNase
         MRP" subunits, including "K01164  POP1; ribonuclease P\/MRP protein subunit POP1
         [EC:3.1.26.5]". With the parameter, `collapse_mixed_branches`, set to the default of True,
-        categories in "mixed" branches are collapsed out of existence: subunit orthologs are placed
-        in "RNases" rather than "RNase MRP", which is removed.
+        categories in such "mixed" branches are collapsed out of existence: subunit orthologs are
+        placed in "RNases" rather than "RNase MRP", which is removed.
 
         Mixed branches can be preserved by setting `collapse_mixed_branches` to False. This also
         changes the structure of the returned dictionary. Now, rather than a category key mapping to
@@ -6464,85 +6464,63 @@ class ModulesDatabase(KeggContext):
         #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
         #     'categorization': '1. Oxidoreductases>>>1.1  Acting on the CH-OH group of donors>>>1.1.1  With NAD+ or NADP+ as acceptor>>>1.1.1.1  alcohol dehydrogenase'}
 
+        # find the maximum depth of each hierarchy
+        max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+
+        if level_cutoff == 0 or type(level_cutoff) != int:
+            raise ConfigError("`level_cutoff` must be a nonzero integer.")
+
+        # set the level cutoff for each hierarchy
+        if level_cutoff > 0:
+            topdown_level_cutoff_dict = {hierarchy_accession: min(level_cutoff, max_depth) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        elif level_cutoff < 0:
+            # find the positive level corresponding to the negative level cutoff for each
+            # hierarchy, ensuring that at least one category remains per hierarchy
+            topdown_level_cutoff_dict = {hierarchy_accession: max(max_depth + level_cutoff, 1) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        else:
+            topdown_level_cutoff_dict = max_depth_dict
+
+        # hierarchy level cutoffs can be affected by collapsing subcategories of mixed categories
         if collapse_mixed_branches:
-            maximum_topdown_level_cutoff_dict = {}
-            max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-            for hierarchy_accession, max_depth in max_depth_dict.items():
-                maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
+            topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(topdown_level_cutoff_dict, dict_from_brite_table)
 
-        topdown_level_cutoff_dict = {}
-        if level_cutoff:
-            if level_cutoff > 0:
-                for hierarchy_accession in set(entry_dict['hierarchy_accession'] for entry_dict in dict_from_brite_table.values()):
-                    topdown_level_cutoff_dict[hierarchy_accession] = level_cutoff
-            elif level_cutoff < 0:
-                # find the positive level corresponding to the negative level cutoff for each hierarchy
-                max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-                for hierarchy_accession, max_depth in max_depth_dict.items():
-                    topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth + level_cutoff, 1) # ensure that at least one category remains in the hierarchy
+        # # collapsing subcategories of mixed branches will require knowledge of hierarchy depth
+        # if collapse_mixed_branches:
+        #     maximum_topdown_level_cutoff_dict = {} # record what the -1 level cutoff would be
+        #     max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+        #     for hierarchy_accession, max_depth in max_depth_dict.items():
+        #         maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
 
-            # if "mixed" categories are collapsed, then subcategories of mixed categories should be
-            # ignored in the level cutoff, e.g., if the maximum depth of a hierarchy is 4, but this
-            # is due to a subcategory of a depth 3 mixed category, and so the maximum depth would be
-            # 3 after collapsing this subcategory, then a topdown level cutoff of 4 should be
-            # reduced to 3
-            if collapse_mixed_branches:
-                deep_categorizations = {}
-                shallow_categorizations = {}
-                hierarchy_culprits = set([])
-                is_checked = False
-                while hierarchy_culprits or not is_checked:
-                    for entry_dict in dict_from_brite_table.values():
-                        hierarchy_accession = entry_dict['hierarchy_accession']
-                        if is_checked and hierarchy_accession not in hierarchy_culprits:
-                            continue
-                        categorization = entry_dict['categorization']
-                        categories = categorization.split('>>>')
-                        if len(categories) >= topdown_level_cutoff_dict[hierarchy_accession]:
-                            try:
-                                deep_categorizations[hierarchy_accession].add(categorization)
-                            except KeyError:
-                                deep_categorizations[hierarchy_accession] = set([categorization])
-                        else:
-                            try:
-                                shallow_categorizations[hierarchy_accession].add(categorization)
-                            except KeyError:
-                                shallow_categorizations[hierarchy_accession] = set([categorization])
+        # # set the level cutoff for each hierarchy
+        # topdown_level_cutoff_dict = {}
+        # if level_cutoff:
+        #     if level_cutoff > 0:
+        #         for hierarchy_accession in set(entry_dict['hierarchy_accession'] for entry_dict in dict_from_brite_table.values()):
+        #             topdown_level_cutoff_dict[hierarchy_accession] = level_cutoff
+        #     elif level_cutoff < 0:
+        #         # find the positive level corresponding to the negative level cutoff for each hierarchy
+        #         max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+        #         for hierarchy_accession, max_depth in max_depth_dict.items():
+        #             topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth + level_cutoff, 1) # ensure that at least one category remains in the hierarchy
 
-                    for hierarchy_accession, hierarchy_deep_categorizations in deep_categorizations.items():
-                        try:
-                            hierarchy_shallow_categorizations = shallow_categorizations[hierarchy_accession]
-                        except KeyError:
-                            continue
+        #     # the following code block is tricky to understand. If "mixed" categories are collapsed,
+        #     # then subcategories of mixed categories should be ignored in the level cutoff, e.g., if
+        #     # the maximum depth of a hierarchy is 4, but this is due to a subcategory of a depth 3
+        #     # mixed category, and so the maximum depth would be 3 after collapsing this subcategory,
+        #     # then the topdown level cutoff of 4 should be reduced to 3.
+        #     if collapse_mixed_branches:
+        #         topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(dict_from_brite_table, topdown_level_cutoff_dict)
 
-                        subcategorization_culprits = []
-                        for deep_categorization in hierarchy_deep_categorizations:
-                            for shallow_categorization in hierarchy_shallow_categorizations:
-                                if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
-                                    if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '>>>':
-                                        subcategorization_culprits.append(deep_categorization)
-                                        break
+        # if collapse_mixed_branches:
+        #     if level_cutoff:
+        #         for hierarchy_accession, maximum_topdown_level_cutoff in maximum_topdown_level_cutoff_dict.items():
+        #             topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
+        #             if topdown_level_cutoff > maximum_topdown_level_cutoff:
+        #                 topdown_level_cutoff_dict[hierarchy_accession] = maximum_topdown_level_cutoff
+        #     else:
+        #         topdown_level_cutoff_dict = maximum_topdown_level_cutoff_dict
 
-                        for deep_categorization in subcategorization_culprits:
-                            hierarchy_deep_categorizations.remove(deep_categorization)
-
-                        hierarchy_culprits.add(hierarchy_accession)
-                        if hierarchy_deep_categorizations:
-                            hierarchy_culprits.remove(hierarchy_accession)
-                        else:
-                            topdown_level_cutoff_dict[hierarchy_accession] = topdown_level_cutoff_dict[hierarchy_accession] - 1
-                    is_checked = True
-
-        if collapse_mixed_branches:
-            if level_cutoff:
-                for hierarchy_accession, minimal_topdown_level_cutoff in maximum_topdown_level_cutoff_dict.items():
-                    topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
-                    if topdown_level_cutoff > minimal_topdown_level_cutoff:
-                        topdown_level_cutoff_dict[hierarchy_accession] = minimal_topdown_level_cutoff
-            else:
-                topdown_level_cutoff_dict = maximum_topdown_level_cutoff_dict
-
-        # now we convert this to a per-hierarchy dict
+        # create the per-hierarchy dict
         hierarchy_dict = {}
         for row_id, entry_dict in dict_from_brite_table.items():
             ortholog_accession = entry_dict['ortholog_accession']
@@ -6552,8 +6530,8 @@ class ModulesDatabase(KeggContext):
             categorization = entry_dict['categorization']
             categories = categorization.split('>>>')
 
+            # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
             if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
-                # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
                 parsed_categories = []
                 for enzyme_category in categories:
                     split_enzyme_category = enzyme_category.split(' ')
@@ -6561,24 +6539,16 @@ class ModulesDatabase(KeggContext):
             else:
                 parsed_categories = [('', category) for category in categories]
 
+            # make the top-level category dict for the hierarchy
             try:
                 category_dict = hierarchy_dict[(hierarchy_accession, hierarchy_name)]
             except KeyError:
                 hierarchy_dict[(hierarchy_accession, hierarchy_name)] = category_dict = {}
 
-            try:
-                parsed_categories[0]
-            except IndexError:
-                raise ConfigError("Please contact the developers to look into the following error. "
-                                  f"BRITE table entry '{row_id}' does not appear to have any categories for hierarchy, '{hierarchy_accession}'.")
-
-            if topdown_level_cutoff_dict:
-                try:
-                    topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
-                except KeyError:
-                    topdown_level_cutoff = level_cutoff
+            topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
 
             if collapse_mixed_branches:
+                # each value of a category dict is either a set or a dict
                 if collapse_keys:
                     key = tuple(parsed_categories[: topdown_level_cutoff])
                     try:
@@ -6589,15 +6559,7 @@ class ModulesDatabase(KeggContext):
                 else:
                     num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
-                        if topdown_level_cutoff_dict:
-                            if level == topdown_level_cutoff:
-                                try:
-                                    ortholog_set = category_dict[category]
-                                except KeyError:
-                                    category_dict[category] = ortholog_set = set()
-                                ortholog_set.add((ortholog_accession, ortholog_name))
-                                break
-                        elif level == num_categories:
+                        if level == topdown_level_cutoff:
                             try:
                                 ortholog_set = category_dict[category]
                             except KeyError:
@@ -6608,29 +6570,49 @@ class ModulesDatabase(KeggContext):
                             category_dict = category_dict[category]
                         except KeyError:
                             category_dict[category] = category_dict = {}
+
+                        # if topdown_level_cutoff_dict:
+                        #     if level == topdown_level_cutoff:
+                        #         try:
+                        #             ortholog_set = category_dict[category]
+                        #         except KeyError:
+                        #             category_dict[category] = ortholog_set = set()
+                        #         ortholog_set.add((ortholog_accession, ortholog_name))
+                        #         break
+                        # elif level == num_categories:
+                        #     try:
+                        #         ortholog_set = category_dict[category]
+                        #     except KeyError:
+                        #         category_dict[category] = ortholog_set = set()
+                        #     ortholog_set.add((ortholog_accession, ortholog_name))
+                        #     break
+                        # try:
+                        #     category_dict = category_dict[category]
+                        # except KeyError:
+                        #     category_dict[category] = category_dict = {}
             else:
+                # each value of a category dict is a tuple containing a set and a dict
                 if collapse_keys:
-                    if topdown_level_cutoff_dict:
-                        key = tuple(parsed_categories[: topdown_level_cutoff])
-                    else:
-                        key = tuple(parsed_categories)
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
                     try:
                         ortholog_set = category_dict[key]
                     except KeyError:
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
+
+                    # if topdown_level_cutoff_dict:
+                    #     key = tuple(parsed_categories[: topdown_level_cutoff])
+                    # else:
+                    #     key = tuple(parsed_categories)
+                    # try:
+                    #     ortholog_set = category_dict[key]
+                    # except KeyError:
+                    #     category_dict[key] = ortholog_set = set()
+                    # ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
                     num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
-                        if topdown_level_cutoff_dict:
-                            if level == topdown_level_cutoff:
-                                try:
-                                    category_tuple = category_dict[category]
-                                except KeyError:
-                                    category_dict[category] = category_tuple = (set(), {})
-                                category_tuple[0].add((ortholog_accession, ortholog_name))
-                                break
-                        elif level == num_categories:
+                        if level == topdown_level_cutoff:
                             try:
                                 category_tuple = category_dict[category]
                             except KeyError:
@@ -6642,6 +6624,27 @@ class ModulesDatabase(KeggContext):
                         except KeyError:
                             category_dict[category] = category_tuple = (set(), {})
                             category_dict = category_tuple[1]
+
+                        # if topdown_level_cutoff_dict:
+                        #     if level == topdown_level_cutoff:
+                        #         try:
+                        #             category_tuple = category_dict[category]
+                        #         except KeyError:
+                        #             category_dict[category] = category_tuple = (set(), {})
+                        #         category_tuple[0].add((ortholog_accession, ortholog_name))
+                        #         break
+                        # elif level == num_categories:
+                        #     try:
+                        #         category_tuple = category_dict[category]
+                        #     except KeyError:
+                        #         category_dict[category] = category_tuple = (set(), {})
+                        #     category_tuple[0].add((ortholog_accession, ortholog_name))
+                        #     break
+                        # try:
+                        #     category_dict = category_dict[category][1]
+                        # except KeyError:
+                        #     category_dict[category] = category_tuple = (set(), {})
+                        #     category_dict = category_tuple[1]
 
         return hierarchy_dict
 
@@ -6658,7 +6661,7 @@ class ModulesDatabase(KeggContext):
         PARAMETERS
         ==========
         dict_from_brite_table : dict
-            contains BRITE table rows of interest, as returned by `get_some_rows_from_table_as_dict`, for example
+            contains BRITE table rows of interest, as returned, for example, by `get_some_rows_from_table_as_dict`
 
         RETURNS
         =======
@@ -6679,6 +6682,104 @@ class ModulesDatabase(KeggContext):
             max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
 
         return max_depth_dict
+
+
+    def get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(self, dict_from_brite_table=None, input_depth_dict=None):
+        """Return hierarchy depths disregarding bottom levels of hierarchy that only exist due to subcategories of mixed categories.
+
+        "Mixed" categories contain both subcategories and orthologs.
+
+        Example: The depth of a hierarchy is 4, but this is only due to a subcategory of a depth 3
+        mixed category. After collapsing this subcategory, hierarchy depth is reduced to 3.
+
+        With default arguments, all BRITE table entries and maximum hierarchy depths are considered.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict, None
+            contains BRITE table rows of interest, as returned, for example, by
+            `self.db.get_some_rows_from_table_as_dict`
+
+        input_depth_dict : dict, None
+            contains hierarchy depths of interest, as returned, for example, by
+            `self.get_brite_max_depth_dict`
+
+        RETURNS
+        =======
+        depth_dict : dict, None
+            contains adjusted hierarchy depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        if input_depth_dict:
+            depth_dict = copy.deepcopy(input_depth_dict)
+        else:
+            depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+            # maximum_topdown_level_cutoff_dict = {} # record what the -1 level cutoff would be
+            # max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+            # for hierarchy_accession, max_depth in max_depth_dict.items():
+            #     maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
+
+        deep_categorizations = {} # depth of categorization greater than or equal to level cutoff
+        shallow_categorizations = {} # depth of categorization less than level cutoff
+        hierarchy_culprits = set([]) # hierarchies containing subcategories of mixed categories responsible for depth exceeding level cutoff
+        is_checked = False
+        # keep trimming hierarchy "culprits" until the deepest level is not a subcategory of a mixed category
+        while hierarchy_culprits or not is_checked:
+            for entry_dict in dict_from_brite_table.values():
+                hierarchy_accession = entry_dict['hierarchy_accession']
+                if is_checked and hierarchy_accession not in hierarchy_culprits:
+                    continue
+                categorization = entry_dict['categorization']
+                categories = categorization.split('>>>')
+                if len(categories) >= depth_dict[hierarchy_accession]:
+                    try:
+                        deep_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        deep_categorizations[hierarchy_accession] = set([categorization])
+                else:
+                    try:
+                        shallow_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        shallow_categorizations[hierarchy_accession] = set([categorization])
+
+            # interrogate the "deep" categorizations in each hierarchy
+            for hierarchy_accession, hierarchy_deep_categorizations in deep_categorizations.items():
+                # if all categorizations are deep, then the hierarchy cannot be a "culprit"
+                try:
+                    hierarchy_shallow_categorizations = shallow_categorizations[hierarchy_accession]
+                except KeyError:
+                    continue
+
+                # compare deep categorization strings with all shallow categorizations
+                # strings, checking if the shallow categorization is a substring of the deep
+                # categorization, and thus the deep categorization is a subcategory of a
+                # mixed category
+                subcategorization_culprits = []
+                for deep_categorization in hierarchy_deep_categorizations:
+                    for shallow_categorization in hierarchy_shallow_categorizations:
+                        if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
+                            if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '>>>':
+                                subcategorization_culprits.append(deep_categorization)
+                                break
+
+                # remove culprit subcategories
+                for deep_categorization in subcategorization_culprits:
+                    hierarchy_deep_categorizations.remove(deep_categorization)
+
+                hierarchy_culprits.add(hierarchy_accession)
+                if hierarchy_deep_categorizations:
+                    # there are no more subcategory culprits, but the hierarchy is still
+                    # deeper than the level cutoff: the deep categories will be collapsed as
+                    # per normal
+                    hierarchy_culprits.remove(hierarchy_accession)
+                else:
+                    # there are no more subcategory culprits, so the level cutoff can simply be reduced by 1
+                    depth_dict[hierarchy_accession] = depth_dict[hierarchy_accession] - 1
+            is_checked = True
+
+        return depth_dict
 
 
     def list_brite_hierarchies(self, as_accessions=False, as_tuples=False):
