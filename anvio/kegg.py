@@ -6188,6 +6188,7 @@ class ModulesDatabase(KeggContext):
         """This function returns module DEFINITION fields as one string"""
 
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        def_lines = [l.strip() for l in def_lines] # sometimes there are stray spaces at the end of the string that will mess us up later
         return " ".join(def_lines)
 
 
