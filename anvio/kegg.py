@@ -3641,8 +3641,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       f"enzyme in the step definition {step_string}")
             elif step_string == '': # entire step was nonessential KO, skip computation
                 return None
-            else: # enzyme accession
-                return enzyme_hit_counts[step_string]
+            else: # accession
+                if step_string in self.all_modules_in_db: # module
+                    if step_string in enzyme_hit_counts: # we are currently adjusting, and know the module copy number
+                        return enzyme_hit_counts[step_string]
+                    else: # return 0 for now, will be adjusted later
+                        return 0
+                else: # enzyme
+                    if step_string not in enzyme_hit_counts:
+                        raise ConfigError(f"Dear user, something is very wrong. The function get_step_copy_number() is "
+                                          f"unable to find the number of annotations for {step_string} in the dictionary "
+                                          f"that was provided to it. Copy number cannot be computed without this information.")
+                    return enzyme_hit_counts[step_string]
+
+
 
 
 ######### ESTIMATION DRIVER FUNCTIONS #########
