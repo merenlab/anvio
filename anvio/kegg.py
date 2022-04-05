@@ -6361,10 +6361,10 @@ class ModulesDatabase(KeggContext):
         #     'categorization': '1. Oxidoreductases>>>1.1  Acting on the CH-OH group of donors>>>1.1.1  With NAD+ or NADP+ as acceptor>>>1.1.1.1  alcohol dehydrogenase'}
 
         if collapse_mixed_branches:
-            minimal_topdown_level_cutoff_dict = {}
+            maximum_topdown_level_cutoff_dict = {}
             max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
             for hierarchy_accession, max_depth in max_depth_dict.items():
-                minimal_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
+                maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
 
         topdown_level_cutoff_dict = {}
         if level_cutoff:
@@ -6431,12 +6431,12 @@ class ModulesDatabase(KeggContext):
 
         if collapse_mixed_branches:
             if level_cutoff:
-                for hierarchy_accession, minimal_topdown_level_cutoff in minimal_topdown_level_cutoff_dict.items():
+                for hierarchy_accession, minimal_topdown_level_cutoff in maximum_topdown_level_cutoff_dict.items():
                     topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
                     if topdown_level_cutoff > minimal_topdown_level_cutoff:
                         topdown_level_cutoff_dict[hierarchy_accession] = minimal_topdown_level_cutoff
             else:
-                topdown_level_cutoff_dict = minimal_topdown_level_cutoff_dict
+                topdown_level_cutoff_dict = maximum_topdown_level_cutoff_dict
 
         # now we convert this to a per-hierarchy dict
         hierarchy_dict = {}
