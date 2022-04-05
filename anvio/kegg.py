@@ -3671,30 +3671,19 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         [keys added in "top_level_step_info" dictionary]
             "copy_number"              the copy number of an individual step
-
-        RETURNS
-        =======
-        defined_by_modules : boolean
-            whether or not the module is defined by other modules (if so, it needs its copy number to be adjusted later)
         """
 
         enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
 
         module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
-        defined_by_modules = False
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
 
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
-            else:
-                defined_by_modules = True
-
 
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
-
-        return defined_by_modules
 
 
     def adjust_stepwise_copy_number_for_bin(self, mnum, meta_dict_for_bin):
