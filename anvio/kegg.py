@@ -1902,6 +1902,67 @@ class KeggEstimatorArgs():
         return acc_list
 
 
+    def remove_nonessential_enzymes_from_module_step(self, step_string):
+        """This functions removes nonessential enzymes from a step definition string and returns the resulting definition.
+
+        It is intended to be called on top-level steps of a module definition (not on the full module definition).
+
+        A nonessential enzyme is any accession (ie, '-K11024') or group of accessions (ie, -(K00242,K18859,K18860))
+        that is marked with a leading '-' character. This function finds the '-' characters in the given string and
+        removes any subsequent accessions. The resulting definition with only essential components is returned.
+
+        If a step does not contain nonessential enzymes, the original definition is returned.
+
+        Likewise, '--' is a special case containing the '-' character which actually indicates a step that has no enzyme profile.
+        It seems to always be present as its own step (ie, '--' is the entire step definition string), so we return the original
+        definition in this case. However, in case there is an internal '--' within a more complicated definition, this function
+        ignores the part of the string that includes it and processes the remainder of the string before re-joining the two parts.
+        It is not able to do this for steps with more than one internal '--', which would require multiple splits and joins, so
+        this case results in an error.
+
+        PARAMETERS
+        ==========
+        step_string: str
+            A string containing the definition of one step from a module
+
+        RETURNS
+        =======
+        step_string: str
+            The same string, with nonessential enzyme accessions (if any) removed.
+        """
+
+        if step_string != '--' and '-' in step_string:
+            saw_double_dash = False             # a Boolean to indicate if we found '--' within the step definition
+            str_prior_to_double_dash = None     # if we find '--', this variable stores the string that occurs prior to and including this '--'
+            while '-' in step_string:
+                idx = step_string.index('-')
+                if step_string[idx+1] == '-': # internal '--' case
+                    if saw_double_dash:
+                        raise ConfigError("Unfortunately, a step containing >1 internal instances of '--' was passed to the function "
+                                          "remove_nonessential_enzymes_from_module_step(). This function is not currently able to handle this "
+                                          "situation. Please contact a developer and ask them to turn this into a smarter function. :) ")
+                    saw_double_dash = True
+                    str_prior_to_double_dash = step_string[:idx+2]
+                    step_string = step_string[idx+2:] # continue processing the remainder of the string
+                    continue
+                elif step_string[idx+1] == '(': # group to eliminate
+                    parens_index = idx+1
+                    while step_string[parens_index] != ')':
+                        parens_index += 1
+                    step_string = step_string[:idx] + step_string[parens_index+1:]
+                else: # single non-essential enzyme
+                    punctuation_index = idx+1
+                    while punctuation_index < len(step_string) and step_string[punctuation_index] not in [')','(','+',' ',',']:
+                        punctuation_index += 1
+                    step_string = step_string[:idx] + step_string[punctuation_index:]
+
+            # if we found an internal '--', we put the two pieces of the definition back together
+            if saw_double_dash:
+                step_string = str_prior_to_double_dash + step_string
+
+        return step_string.strip()
+
+
     def get_module_metadata_dictionary(self, mnum):
         """Returns a dictionary of metadata for the given module.
 
