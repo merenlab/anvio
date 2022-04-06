@@ -5861,7 +5861,7 @@ class ModulesDatabase(KeggContext):
     def get_ortholog_brite_categorizations(self, ortholog_accession):
         """Return a list of the BRITE categorizations of the ortholog."""
         where_clause_string = f"ortholog_accession = '{ortholog_accession}'"
-        return self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause=where_clause_string, row_num_as_key=True)
+        return self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause=where_clause_string, error_if_no_data=False, row_num_as_key=True)
 
 
     def get_module_name(self, mnum):
