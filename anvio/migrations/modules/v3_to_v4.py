@@ -63,8 +63,9 @@ def migrate(db_path):
 
     run.info_single(f"The modules database is now {next_version}. An empty table of KEGG BRITE hierarchy "
                     "categorizations of all orthologs was created, and related self table attributes were added. "
-                    "We suggest generating a new modules database from `anvi-setup-kegg-kofams` and rerunning "
-                    "`anvi-run-kegg-kofams` on your contigs databases to benefit from these useful annotations :)",
+                    "We suggest generating a new modules database from `anvi-setup-kegg-kofams` (using the `-D` flag "
+                    "in anvi'o v7 or earlier) and re-running `anvi-run-kegg-kofams` on your contigs databases "
+                    "to benefit from these useful annotations :)",
                     nl_after=1, nl_before=1, mc='green')
 
 

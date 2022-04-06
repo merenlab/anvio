@@ -53,8 +53,10 @@ def migrate(db_path):
     run.info_single(f"The contigs database is now {next_version}. This upgrade added an empty table of the "
                     "maximum depths of KEGG BRITE hierarchies used in KEGG gene annotation -- pretty obscure. "
                     "But this should draw your attention to the fact that `anvi-run-kegg-kofams` will now categorize "
-                    "your genes in the useful BRITE system. We suggest running (or rerunning) this program "
-                    "on your contigs database to benefit from these additional annotations :)",
+                    "your genes in the useful BRITE system when run with an up-to-date modules database. "
+                    "We suggest running `anvi-setup-kegg-kofams` (with the `-D` flag in anvi'o v7 or earlier), "
+                    "and running (or rerunning) `anvi-run-kegg-kofams` on your contigs database to benefit "
+                    "from BRITE annotations :)",
                     nl_after=1, nl_before=1, mc='green')
 
 
