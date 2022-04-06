@@ -5622,7 +5622,7 @@ class ModulesDatabase(KeggContext):
         self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
         if self.brite_dict:
             self.db.set_meta_value('num_brite_hierarchies', num_hierarchies_parsed)
-            self.db.set_meta_value('total_brite_entries', brite_table.get_total_entries(), quiet=self.quiet)
+            self.db.set_meta_value('total_brite_entries', brite_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
