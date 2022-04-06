@@ -6639,10 +6639,6 @@ class ModulesDatabase(KeggContext):
             depth_dict = copy.deepcopy(input_depth_dict)
         else:
             depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-            # maximum_topdown_level_cutoff_dict = {} # record what the -1 level cutoff would be
-            # max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-            # for hierarchy_accession, max_depth in max_depth_dict.items():
-            #     maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
 
         deep_categorizations = {} # depth of categorization greater than or equal to level cutoff
         shallow_categorizations = {} # depth of categorization less than level cutoff
