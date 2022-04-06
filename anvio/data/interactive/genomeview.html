@@ -122,43 +122,6 @@
             </tr>
           </tbody>
         </table>
-        <span class="settings-header">Search!</span>
-        <table style="margin-bottom: 20px;">
-          <tbody>
-            <tr>
-              <td>Category: </td>
-              <td>
-                <select class="type_multiple" id='function_search_category' style="width: 100px;" class="type">
-                </select>
-              </td>
-            </tr>
-            <tr>
-              <td>Function Name:</td>
-              <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="IE 'borp'">
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <button onclick='drawer.queryFunctions()'>Let's Go!</button>
-              </td>
-              <br>
-              <td>
-                <p id='function-query-results-statement'></p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table class="table table-striped" style="width: 100%; text-align: center;">
-          <thead>
-            <th>Gene ID</th>
-            <th>Genome</th>
-            <th>Start</th>
-            <th>Stop</th>
-            <th>Action</th>
-          </thead>
-          <tbody id="query-results-table">
-          </tbody>
-        </table>
 
         <span class="settings-header">Genomes</span>
 
@@ -523,7 +486,43 @@
         style="display: block; font-size: 11px; transform: rotate(90deg);"><u>Q</u>UERY</span>
     </div>
     <div id="query-panel">
-      <h1>beep</h1>
+      <span class="settings-header">Search!</span>
+        <table style="margin-bottom: 20px;">
+          <tbody>
+            <tr>
+              <td>Category: </td>
+              <td>
+                <select class="type_multiple" id='function_search_category' style="width: 100px;" class="type">
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <td>Function Name:</td>
+              <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="IE 'borp'">
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <button onclick='drawer.queryFunctions()'>Let's Go!</button>
+              </td>
+              <br>
+              <td>
+                <p id='function-query-results-statement'></p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <table class="table table-striped" style="width: 100%; text-align: center;">
+          <thead>
+            <th>Gene ID</th>
+            <th>Genome</th>
+            <th>Start</th>
+            <th>Stop</th>
+            <th>Action</th>
+          </thead>
+          <tbody id="query-results-table">
+          </tbody>
+        </table>
     </div>
 
     <div id="toggle-panel-mouseover" onclick="toggleRightPanel('#mouseover-panel')">
