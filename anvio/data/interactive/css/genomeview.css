@@ -75,6 +75,35 @@ g.scale rect.background{
     right: 0px;
     z-index: 999;
 }
+#toggle-panel-query {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(55%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
+
+#toggle-panel-mouseover {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(70%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+    z-index: 999;
+}
 
 #settings-panel {
   	display: none;
