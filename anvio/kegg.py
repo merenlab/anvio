@@ -1581,9 +1581,10 @@ class RunKOfams(KeggContext):
                     categorization_dicts = list(ortholog_brite_dict.values())
                     for categorization_dict in categorization_dicts[: -1]:
                         hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
-                        categorizations += f"{categorization_dict['hierarchy_name']}!!!"
-                    hierarchy_accession += categorization_dicts[-1]['hierarchy_accession']
-                    categorizations += categorization_dicts[-1]['hierarchy_accession']
+                        categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
+                    last_categorization_dict = categorization_dicts[-1]
+                    hierarchy_accession += last_categorization_dict['hierarchy_accession']
+                    categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
 
                     self.kegg_brite_categorizations_dict[counter] = {
                         'gene_callers_id': gcid,
@@ -1738,9 +1739,10 @@ class RunKOfams(KeggContext):
                                 categorization_dicts = list(ortholog_brite_dict.values())
                                 for categorization_dict in categorization_dicts[: -1]:
                                     hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
-                                    categorizations += f"{categorization_dict['hierarchy_name']}!!!"
-                                hierarchy_accession += categorization_dicts[-1]['hierarchy_accession']
-                                categorizations += categorization_dicts[-1]['hierarchy_accession']
+                                    categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
+                                last_categorization_dict = categorization_dicts[-1]
+                                hierarchy_accession += last_categorization_dict['hierarchy_accession']
+                                categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
 
                                 self.kegg_brite_categorizations_dict[next_key] = {
                                     'gene_callers_id': gcid,
