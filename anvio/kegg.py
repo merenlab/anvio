@@ -845,6 +845,7 @@ class KeggSetup(KeggContext):
                               f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
 
         self.progress.end()
+        self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
 
 
     def download_modules(self):
@@ -930,18 +931,16 @@ class KeggSetup(KeggContext):
                                   % (file_path, last_line))
 
 
-    def download_brite_hierarchies(self):
-        """This function downloads a json file for every BRITE hierarchy of interest.
+    def download_brite_hierarchy_of_hierarchies(self):
+        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
 
-        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins. The
-        BRITE 'hierarchy of hierarchies', 'br08902', is first downloaded and processed to find
-        accessions and thereby download paths of hierarchies of interest.
+        This hierarchy contains the names of other hierarchies which are subsequently used for
+        downloading those hierarchy json files.
         """
 
         # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
         self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
 
-        # download the BRITE hierarchy json file that classifies all BRITE hierarchies
         try:
             utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
         except Exception as e:
@@ -951,9 +950,12 @@ class KeggSetup(KeggContext):
                               "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
                               "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
-        # get BRITE dict
-        self.process_brite_hierarchies_file()
-        self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
+
+    def download_brite_hierarchies(self):
+        """This function downloads a json file for every BRITE hierarchy of interest.
+
+        Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
+        """
 
         unexpected_hierarchies = []
         for hierarchy in self.brite_dict:
@@ -1323,6 +1325,8 @@ class KeggSetup(KeggContext):
             self.decompress_files()
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
+            self.download_brite_hierarchy_of_hierarchies()
+            self.process_brite_hierarchies_file()
             self.download_brite_hierarchies()
             self.setup_ko_dict()
             self.run_hmmpress()
