@@ -3719,7 +3719,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
 
                 for included_module in meta_dict_for_bin[mnum]["top_level_step_info"][key]["included_module_list"]:
-                    enzyme_hits_dict[included_module] = meta_dict_for_bin[mnum]["stepwise_copy_number"]
+                    enzyme_hits_dict[included_module] = meta_dict_for_bin[included_module]["stepwise_copy_number"]
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
