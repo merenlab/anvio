@@ -3675,7 +3675,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
 
-        module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
+        all_step_copy_nums = []
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
@@ -3683,8 +3683,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
                 if step_copy_num is not None: # avoid taking minimum of None values (from non-essential steps)
-                    module_stepwise_copy_num = min(module_stepwise_copy_num, step_copy_num)
+                    all_step_copy_nums.append(step_copy_num)
 
+        if all_step_copy_nums:
+            module_stepwise_copy_num = min(all_step_copy_nums)
+        else:
+            module_stepwise_copy_num = None
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
 
 
@@ -3708,7 +3712,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
 
-        module_stepwise_copy_num = 100000 # an arbitrarily large number to ensure first step copy number is smaller
+        all_step_copy_nums = []
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             # re-calculate ONLY for steps with modules in definition
             if meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
@@ -3722,8 +3726,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # take minimum over all steps, even those not defined by modules
             if meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] is not None: # avoid taking minimum of None values (from non-essential steps)
-                module_stepwise_copy_num = min(module_stepwise_copy_num, meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
+                all_step_copy_nums.append(meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
 
+        module_stepwise_copy_num = min(all_step_copy_nums)
         meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
 
 
