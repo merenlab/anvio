@@ -344,26 +344,26 @@ function toggleRightPanel(name) {
   $(name).toggle();
 
   if ($('#mouseover_panel').is(':visible')) {
-      $('#toggle-panel-mouseover').addClass('toggle-panel-right-pos');
+      $('#toggle-panel-mouseover').addClass('toggle-panel-mouseover-pos');
       $('#toggle-panel-mouseover-inner').html('&#9658;');
   } else {
-      $('#toggle-panel-mouseover').removeClass('toggle-panel-right-pos');
+      $('#toggle-panel-mouseover').removeClass('toggle-panel-mouseover-pos');
       $('#toggle-panel-mouseover-inner').html('&#9664;');
   }
 
   if ($('#settings-panel').is(':visible')) {
-      $('#toggle-panel-settings').addClass('toggle-panel-right-pos-2');
+      $('#toggle-panel-settings').addClass('toggle-panel-settings-pos');
       $('#toggle-panel-settings-inner').html('&#9658;');
   } else {
-      $('#toggle-panel-settings').removeClass('toggle-panel-right-pos-2');
+      $('#toggle-panel-settings').removeClass('toggle-panel-settings-pos');
       $('#toggle-panel-settings').html('&#9664;');
   }
 
   if ($('#query-panel').is(':visible')) {
-      $('#toggle-panel-query').addClass('toggle-panel-right-pos-3');
+      $('#toggle-panel-query').addClass('toggle-panel-query-pos');
       $('#toggle-panel-query-inner').html('&#9658;');
   } else {
-      $('#toggle-panel-query').removeClass('toggle-panel-right-pos-3');
+      $('#toggle-panel-query').removeClass('toggle-panel-query-pos');
       $('#toggle-panel-query-inner').html('&#9664;');
   }
 }

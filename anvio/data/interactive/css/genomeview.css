@@ -199,6 +199,12 @@ g.scale rect.background{
 .toggle-panel-settings-pos {
     right: 530px !important;
 }
+.toggle-panel-query-pos {
+    right: 530px !important;
+}
+.toggle-panel-mouseover-pos {
+    right: 530px !important;
+}
 
 #settings-panel .btn {
     margin-bottom: 5px !important;
