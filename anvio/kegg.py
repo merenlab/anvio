@@ -1774,6 +1774,8 @@ class RunKOfams(KeggContext):
                 gene_function_calls_table.create(self.kegg_module_names_dict)
             if self.kegg_module_classes_dict:
                 gene_function_calls_table.create(self.kegg_module_classes_dict)
+            if self.kegg_brite_categorizations_dict:
+                gene_function_calls_table.create(self.kegg_brite_categorizations_dict)
         else:
             self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
                              "but still adding KOfam as a functional source.")
