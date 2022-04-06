@@ -6494,42 +6494,6 @@ class ModulesDatabase(KeggContext):
         if collapse_mixed_branches:
             topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(topdown_level_cutoff_dict, dict_from_brite_table)
 
-        # # collapsing subcategories of mixed branches will require knowledge of hierarchy depth
-        # if collapse_mixed_branches:
-        #     maximum_topdown_level_cutoff_dict = {} # record what the -1 level cutoff would be
-        #     max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-        #     for hierarchy_accession, max_depth in max_depth_dict.items():
-        #         maximum_topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth - 1, 1)
-
-        # # set the level cutoff for each hierarchy
-        # topdown_level_cutoff_dict = {}
-        # if level_cutoff:
-        #     if level_cutoff > 0:
-        #         for hierarchy_accession in set(entry_dict['hierarchy_accession'] for entry_dict in dict_from_brite_table.values()):
-        #             topdown_level_cutoff_dict[hierarchy_accession] = level_cutoff
-        #     elif level_cutoff < 0:
-        #         # find the positive level corresponding to the negative level cutoff for each hierarchy
-        #         max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
-        #         for hierarchy_accession, max_depth in max_depth_dict.items():
-        #             topdown_level_cutoff_dict[hierarchy_accession] = max(max_depth + level_cutoff, 1) # ensure that at least one category remains in the hierarchy
-
-        #     # the following code block is tricky to understand. If "mixed" categories are collapsed,
-        #     # then subcategories of mixed categories should be ignored in the level cutoff, e.g., if
-        #     # the maximum depth of a hierarchy is 4, but this is due to a subcategory of a depth 3
-        #     # mixed category, and so the maximum depth would be 3 after collapsing this subcategory,
-        #     # then the topdown level cutoff of 4 should be reduced to 3.
-        #     if collapse_mixed_branches:
-        #         topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(dict_from_brite_table, topdown_level_cutoff_dict)
-
-        # if collapse_mixed_branches:
-        #     if level_cutoff:
-        #         for hierarchy_accession, maximum_topdown_level_cutoff in maximum_topdown_level_cutoff_dict.items():
-        #             topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
-        #             if topdown_level_cutoff > maximum_topdown_level_cutoff:
-        #                 topdown_level_cutoff_dict[hierarchy_accession] = maximum_topdown_level_cutoff
-        #     else:
-        #         topdown_level_cutoff_dict = maximum_topdown_level_cutoff_dict
-
         # create the per-hierarchy dict
         hierarchy_dict = {}
         for row_id, entry_dict in dict_from_brite_table.items():
@@ -6580,26 +6544,6 @@ class ModulesDatabase(KeggContext):
                             category_dict = category_dict[category]
                         except KeyError:
                             category_dict[category] = category_dict = {}
-
-                        # if topdown_level_cutoff_dict:
-                        #     if level == topdown_level_cutoff:
-                        #         try:
-                        #             ortholog_set = category_dict[category]
-                        #         except KeyError:
-                        #             category_dict[category] = ortholog_set = set()
-                        #         ortholog_set.add((ortholog_accession, ortholog_name))
-                        #         break
-                        # elif level == num_categories:
-                        #     try:
-                        #         ortholog_set = category_dict[category]
-                        #     except KeyError:
-                        #         category_dict[category] = ortholog_set = set()
-                        #     ortholog_set.add((ortholog_accession, ortholog_name))
-                        #     break
-                        # try:
-                        #     category_dict = category_dict[category]
-                        # except KeyError:
-                        #     category_dict[category] = category_dict = {}
             else:
                 # each value of a category dict is a tuple containing a set and a dict
                 if collapse_keys:
@@ -6609,16 +6553,6 @@ class ModulesDatabase(KeggContext):
                     except KeyError:
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
-
-                    # if topdown_level_cutoff_dict:
-                    #     key = tuple(parsed_categories[: topdown_level_cutoff])
-                    # else:
-                    #     key = tuple(parsed_categories)
-                    # try:
-                    #     ortholog_set = category_dict[key]
-                    # except KeyError:
-                    #     category_dict[key] = ortholog_set = set()
-                    # ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
                     num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
@@ -6634,27 +6568,6 @@ class ModulesDatabase(KeggContext):
                         except KeyError:
                             category_dict[category] = category_tuple = (set(), {})
                             category_dict = category_tuple[1]
-
-                        # if topdown_level_cutoff_dict:
-                        #     if level == topdown_level_cutoff:
-                        #         try:
-                        #             category_tuple = category_dict[category]
-                        #         except KeyError:
-                        #             category_dict[category] = category_tuple = (set(), {})
-                        #         category_tuple[0].add((ortholog_accession, ortholog_name))
-                        #         break
-                        # elif level == num_categories:
-                        #     try:
-                        #         category_tuple = category_dict[category]
-                        #     except KeyError:
-                        #         category_dict[category] = category_tuple = (set(), {})
-                        #     category_tuple[0].add((ortholog_accession, ortholog_name))
-                        #     break
-                        # try:
-                        #     category_dict = category_dict[category][1]
-                        # except KeyError:
-                        #     category_dict[category] = category_tuple = (set(), {})
-                        #     category_dict = category_tuple[1]
 
         return hierarchy_dict
 
