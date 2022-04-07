@@ -138,7 +138,8 @@ ContextMenu = function(options) {
             'action': (node, layer, param) => {
                 console.log(node, layer)
                 toggleLeftPanel()
-                $("#legend_settings_tab").tab('show')
+                let legendsTab = $('.nav-tabs a').eq(3)
+                $(legendsTab).tab('show')
             }
         },
         'get_hmm_sequence': {
