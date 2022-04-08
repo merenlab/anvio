@@ -2529,12 +2529,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'hits_in_modules',
+                                                       'mode_type': 'kofams',
                                                        'description': f"Mean coverage of gene in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
-                                                        'mode_type': 'hits_in_modules',
+                                                        'mode_type': 'kofams',
                                                         'description': f"Detection of gene in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
@@ -2557,7 +2557,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                             }
 
         # we update the header list for the affected modes
-        self.available_modes["hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
@@ -4063,9 +4062,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
                                         self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
             for h in kofam_hits_coverage_headers:
-                for mode in ["hits_in_modules", "hits"]:
-                    if h in self.available_modes[mode]["headers"]:
-                        self.available_modes[mode]["headers"].remove(h)
+                if h in self.available_modes["hits"]["headers"]:
+                    self.available_modes["hits"]["headers"].remove(h)
             for h in modules_coverage_headers:
                 if h in self.available_modes["modules"]["headers"]:
                     self.available_modes["modules"]["headers"].remove(h)
