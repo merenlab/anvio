@@ -20,3 +20,4 @@ psutil
 pandas
 snakemake
 multiprocess
+plotext
