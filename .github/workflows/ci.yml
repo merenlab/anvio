@@ -36,4 +36,4 @@ jobs:
     - name: anvio self test
       shell: bash -l {0}
       run: |
-        anvi-self-test --suite mini
+        anvi-self-test --suite mini --no-interactive
