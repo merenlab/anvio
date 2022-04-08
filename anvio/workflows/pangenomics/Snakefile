@@ -20,7 +20,7 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-this_workflow_is_inherited_by_another= False if 'workflows/pangenomics' in workflow.included[0] else True
+this_workflow_is_inherited_by_another= False if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()) else True
 
 if not this_workflow_is_inherited_by_another:
     M = PangenomicsWorkflow(argparse.Namespace(config=config))
@@ -93,7 +93,7 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller} >> {log} 2>&1
         """
 
-if 'workflows/pangenomics' in workflow.included[0]:
+if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()):
     M.check_workflow_program_dependencies(workflow)
 
 
