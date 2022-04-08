@@ -17,6 +17,6 @@ numba
 paste
 pyani
 psutil
-pandas==0.25.1
-snakemake==5.10.0
+pandas
+snakemake
 multiprocess
