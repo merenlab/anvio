@@ -28,12 +28,12 @@ jobs:
         conda install -y mamba
         mamba install -y python=${{ matrix.python-version }} "sqlite >=3.31.1" prodigal mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2019.8 bwa samtools=1.9 centrifuge trimal iqtree trnascan-se r-base r-stringi r-tidyverse r-magrittr r-optparse bioconductor-qvalue fasttree fastani
     - uses: actions/checkout@v2	
-    - name: package install
+    - name: pip install of anvio
       shell: bash -l {0}
       run: |
         curl -L https://github.com/merenlab/anvio/releases/download/v7.1/anvio-7.1.tar.gz --output anvio-7.1.tar.gz
-	pip install anvio-7.1.tar.gz
-    - name: Test with pytest
+        pip install anvio-7.1.tar.gz
+    - name: anvio self test
       shell: bash -l {0}
       run: |
         anvi-self-test --suite mini
