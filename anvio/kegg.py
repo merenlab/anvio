@@ -4541,7 +4541,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         for step in c_dict["top_level_step_info"]:
                             step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
                         d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
-                        
+
 
                     # everything else at c_dict level
                     for h in remaining_headers:
@@ -4674,9 +4674,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
                 if self.add_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
-                        mod_completeness_presence_subdict[bin][mnum]['copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                        mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
                     else:
-                        mod_completeness_presence_subdict[bin][mnum]['copy_number'] = 'NA'
+                        mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = 'NA'
+                    mod_completeness_presence_subdict[bin][mnum]['stepwise_copy_number'] = c_dict["stepwise_copy_number"]
+
 
         for bin, ko_dict in ko_hits_superdict.items():
             ko_hits_subdict[bin] = {}
@@ -5351,7 +5353,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                "stepwise_presence" : "stepwise_is_complete",
                                }
         if self.add_copy_number:
-            module_matrix_stats["copy_number"] = "copy_number"
+            module_matrix_stats["pathwise_copy_number"] = "pathwise_copy_number"
+            module_matrix_stats["stepwise_copy_number"] = "stepwise_copy_number"
 
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
