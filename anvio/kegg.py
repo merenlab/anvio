@@ -47,22 +47,15 @@ pp = terminal.pretty_print
 P = terminal.pluralize
 
 
-"""Some critical constants for metabolism estimation output formatting."""
-# dict containing possible output modes
-# output_suffix should be unique to a mode so that multiple output modes can be used at once
-# data_dict indicates which data dictionary is used for generating the output (modules or kofams)
-# headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
-# description is what is printed when --list-available-modes parameter is used
-OUTPUT_MODES = {'hits_in_modules': {
-                    'output_suffix': "hits_in_modules.txt",
-                    'data_dict': "modules",
-                    'headers': ["module", "stepwise_module_completeness", "stepwise_module_is_complete",
-                                "pathwise_module_completeness", "pathwise_module_is_complete",
-                                "path_id", "path", "path_completeness",
-                                "enzyme_hit", "gene_caller_id", "contig"],
-                    'description': "Information on each enzyme (gene annotation) that belongs to a module"
-                    },
-                'modules': {
+"""Some critical constants for metabolism estimation output formatting.
+
+The below dictionary defines the possible output modes.
+- 'output_suffix' should be unique to a mode so that multiple output modes can be used at once
+- 'data_dict' indicates which data dictionary is used for generating the output (modules or kofams)
+- 'headers' list describes which information to include in the output file (see OUTPUT_HEADERS dict below for more info)
+- 'description' is what is printed when --list-available-modes parameter is used
+"""
+OUTPUT_MODES = {'modules': {
                     'output_suffix': "modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
@@ -79,6 +72,20 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'headers': None,
                     'description': "A custom tab-delimited output file where you choose the included modules data using --custom-output-headers"
                     },
+                'module_paths': {
+                                    'output_suffix': "module_paths.txt",
+                                    'data_dict': "modules",
+                                    'headers': ["module", "pathwise_module_completeness", "pathwise_module_is_complete",
+                                                "path_id", "path", "path_completeness"],
+                                    'description': "Information on each possible path (complete set of enzymes) in a module"
+                                    },
+                'module_steps': {
+                                    'output_suffix': "module_steps.txt",
+                                    'data_dict': "modules",
+                                    'headers': ["module", "stepwise_module_completeness", "stepwise_module_is_complete",
+                                                "step_id", "step", "step_completeness"],
+                                    'description': "Information on each possible path (complete set of enzymes) in a module"
+                                    },
                 'hits': {
                     'output_suffix': "hits.txt",
                     'data_dict': "kofams",
@@ -86,11 +93,13 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
-# dict containing matrix headers of information that we can output in custom mode
-# key corresponds to the header's key in output dictionary (returned from generate_output_dict_for_modules() function)
-# cdict_key is the header's key in modules or kofams data dictionary (if any)
-# mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
-# description is printed when --list-available-output-headers parameter is used
+"""
+The below dictionary describes the type of information we can output
+- the dictionary key corresponds to the header's key in the output dictionary (ie, as returned from generate_output_dict_for_modules() function)
+- 'cdict_key' is the header's key in modules or kofams data dictionary (if any)
+- 'mode_type' indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
+- 'description' is printed when --list-available-output-headers parameter is used
+"""
 OUTPUT_HEADERS = {'module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
@@ -188,9 +197,8 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'mode_type': 'all',
-                        'description': "Gene caller ID of a single enzyme in the contigs DB. If you choose this header, each "
-                                       "line in the output file will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Gene caller ID of a single enzyme in the contigs DB"
                         },
                   'enzyme_hits_in_module' : {
                         'cdict_key': None,
@@ -199,34 +207,45 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'enzyme_hit' : {
                         'cdict_key': 'kofam_hits',
-                        'mode_type': 'modules',
-                        'description': "Enzyme identifier for a single annotation (KO, COG, etc). If you choose this header, each line in the output file "
-                                       "will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Enzyme identifier for a single annotation (KO, COG, etc)"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
-                        'mode_type': 'all',
-                        'description': "Contig that an enzyme annotation is found on. If you choose this header, each line in the output "
-                                       "file will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Contig that an enzyme annotation is found on"
                         },
                   'path_id' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Integer ID for a path through a module. No real meaning and just for data organization. "
-                                       "If you choose this header, each line in the output file will be an enzyme annotation"
+                        'description': "Integer ID for a path through a module. Has no real meaning and is used for data organization"
                         },
                   'path' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "A path through a module (a linear sequence of enzymes that together represent each metabolic step "
-                                       "in the module. Most modules have several of these due to enzyme redundancy). If you choose this header, "
-                                       "each line in the output file will be an enzyme annotation"
+                        'description': "A path through a module: a linear sequence of enzymes that together represent each metabolic step "
+                                       "in the module (most modules have several of these due to enzyme redundancy)"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a particular path through a module. If you choose this header, each line "
-                                       "in the output file will be an enzyme annotation"
+                        'description': "Percent completeness of a given path through a module"
+                        },
+                  'step_id' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Integer ID for a top-level step in a module. Has no real meaning and is used for data organization"
+                        },
+                  'step' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "A 'top-level' step in a module, represented by one or more possible enzymes that can catalyze "
+                                       "a logical part of the metabolic pathway (usually one reaction)"
+                        },
+                  'step_completeness' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Completeness of a given 'top-level' step in a module"
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
@@ -2134,10 +2153,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.add_gene_coverage_to_headers_list()
 
         if self.add_copy_number:
-            self.available_modes["hits_in_modules"]["headers"].extend(["num_complete_copies_of_path"])
+            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
             self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
             self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
-                                                       'mode_type': 'hits_in_modules',
+                                                       'mode_type': 'modules',
                                                        'description': "Number of complete copies of the path through the module"
                                                        }
             self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
