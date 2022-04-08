@@ -276,22 +276,22 @@ class Vmatch(object):
         # Chunk output parsing can lag behind vmatch, so distribute parsing jobs to multiple
         # processes. At any time during the search, the allocated cores will either be running
         # vmatch or parsing output.
-        manager = mp.Manager()
+        manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
         # Rather than passing parsed DataFrames through a pipe for each chunk, append them to a full
         # output table file. Use a lock to prevent multiple processes from writing at once.
         full_output_path = os.path.join(self.temp_dir, 'parsed_output.tsv')
-        lock = mp.Lock()
-        parsing_processes = [mp.Process(target=parsing_worker,
-                                        args=(input_queue,
-                                              output_queue,
-                                              self.align_output_length,
-                                              self.match_mode,
-                                              full_output_path,
-                                              lock,
-                                              self.edit_left_buffer,
-                                              self.edit_right_buffer))
+        lock = multiprocessing.Lock()
+        parsing_processes = [multiprocessing.Process(target=parsing_worker,
+                                                     args=(input_queue,
+                                                           output_queue,
+                                                           self.align_output_length,
+                                                           self.match_mode,
+                                                           full_output_path,
+                                                           lock,
+                                                           self.edit_left_buffer,
+                                                           self.edit_right_buffer))
                              for _ in range(self.num_threads)]
         for p in parsing_processes:
             p.start()
