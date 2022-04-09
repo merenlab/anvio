@@ -4224,6 +4224,127 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### OUTPUT DICTIONARY FUNCTIONS #########
 
+    def add_common_elements_to_output_dict_for_module_in_bin(self, bin, mnum, c_dict, headers_to_include, headers_in_c_dict, d):
+        """This function fills in the provided modules dictionary with data common to all module-related output modes.
+
+        It's designed to be called from the function generate_output_dict_for_modules(), which sets up the modules dictionary
+        and handles the self.modules_unique_id key. For that reason, it is best understood by taking a look at that function
+        first. Most parameters are named to be consistent with the variables in that function.
+
+        The provided modules dictionary will be modified in-place.
+
+        PARAMETERS
+        ==========
+        bin : str
+            current bin name
+        mnum : str
+            current module number
+        c_dict : dictionary
+            fourth level of module completion dictionary corresponding to current module
+        headers_to_include : list
+            which headers to include in the output dictionary
+        headers_in_c_dict : list
+            headers that we can include directly from the c_dict without further processing
+        d : dict
+            the modules output dictionary that needs to be added to
+        """
+
+        # fetch module info
+        metadata_dict = self.get_module_metadata_dictionary(mnum)
+        definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
+        if not isinstance(definition_list, list):
+            definition_list = [definition_list]
+        module_def = '"' + " ".join(definition_list) + '"'
+
+        # top-level keys and keys not in superdict
+        if self.name_header in headers_to_include:
+            d[self.modules_unique_id][self.name_header] = bin
+        if "db_name" in headers_to_include:
+            d[self.modules_unique_id]["db_name"] = self.database_name
+        if 'module' in headers_to_include:
+            d[self.modules_unique_id]['module'] = mnum
+
+        # module-specific info
+        if "module_name" in headers_to_include:
+            d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
+        if "module_class" in headers_to_include:
+            d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
+        if "module_category" in headers_to_include:
+            d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
+        if "module_subcategory" in headers_to_include:
+            d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
+        if "module_definition" in headers_to_include:
+            d[self.modules_unique_id]["module_definition"] = module_def
+        if "module_substrates" in headers_to_include:
+            if self.all_modules_in_db[mnum]['substrate_list']:
+                d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
+            else:
+                d[self.modules_unique_id]["module_substrates"] = "None"
+        if "module_products" in headers_to_include:
+            if self.all_modules_in_db[mnum]['product_list']:
+                d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
+            else:
+                d[self.modules_unique_id]["module_products"] = "None"
+        if "module_intermediates" in headers_to_include:
+            if self.all_modules_in_db[mnum]['intermediate_list']:
+                d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
+            else:
+                d[self.modules_unique_id]["module_intermediates"] = "None"
+
+        # comma-separated lists of KOs and gene calls in module
+        kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+        # gene call list should be in same order as KO list
+        gcids_in_mod = []
+        kos_in_mod_list = []
+        if kos_in_mod:
+            for ko in kos_in_mod:
+                gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
+        if "enzyme_hits_in_module" in headers_to_include:
+            d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+        if "gene_caller_ids_in_module" in headers_to_include:
+            d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
+        # comma-separated list of warnings
+        if "warnings" in headers_to_include:
+            if not c_dict["warnings"]:
+                d[self.modules_unique_id]["warnings"] = "None"
+            else:
+                d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+
+        # list of enzymes unique to module
+        unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
+        if "enzymes_unique_to_module" in headers_to_include:
+            if unique_enzymes:
+                d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
+            else:
+                d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
+        if "unique_enzymes_hit_counts" in headers_to_include:
+            if unique_enzymes:
+                hit_count_list = []
+                for e in unique_enzymes:
+                    hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
+                d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
+            else:
+                d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
+
+        # everything else at c_dict level
+        for h in headers_in_c_dict:
+            if h not in self.available_headers.keys():
+                raise ConfigError("Requested header %s not available." % (h))
+            h_cdict_key = self.available_headers[h]['cdict_key']
+            if not h_cdict_key:
+                raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+
+            value = c_dict[h_cdict_key]
+            if isinstance(value, list):
+                if not value:
+                    value = "None"
+                else:
+                    value = ",".join(value)
+            d[self.modules_unique_id][h] = value
+
+
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
@@ -4307,224 +4428,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if exclude_zero_completeness and c_dict["pathwise_percent_complete"] == 0:
                     continue
 
-                # fetch module info
-                metadata_dict = self.get_module_metadata_dictionary(mnum)
-                definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
-                if not isinstance(definition_list, list):
-                    definition_list = [definition_list]
-                module_def = '"' + " ".join(definition_list) + '"'
-
-                # handle path- and ko-level information
-                if headers_to_include.intersection(path_and_ko_level_headers):
-                    for p_index in range(len(self.module_paths_dict[mnum])):
-                        p = self.module_paths_dict[mnum][p_index]
-
-                        # handle ko-level information
-                        for ko in c_dict['kofam_hits']:
-
-                            # some paths include protein complexes, so we must look for KO within these protein complexes as well
-                            kos_in_path = set([])
-                            for ko_or_complex in p:
-                                split_kos = re.split('\+|\-', ko_or_complex)
-                                kos_in_path.update(split_kos)
-                            if ko not in kos_in_path:
-                                continue
-
-                            for gc_id in c_dict["kofam_hits"][ko]:
-                                d[self.modules_unique_id] = {}
-
-                                # kofam hit specific info
-                                if "enzyme_hit" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hit"] = ko
-                                if "gene_caller_id" in headers_to_include:
-                                    d[self.modules_unique_id]["gene_caller_id"] = gc_id
-                                if "contig" in headers_to_include:
-                                    d[self.modules_unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
-
-                                # add gene coverage if requested
-                                if self.add_coverage:
-                                    for s in self.coverage_sample_list:
-                                        sample_cov_header = s + "_coverage"
-                                        d[self.modules_unique_id][sample_cov_header] = c_dict["genes_to_coverage"][s][gc_id]
-                                        sample_det_header = s + "_detection"
-                                        d[self.modules_unique_id][sample_det_header] = c_dict["genes_to_detection"][s][gc_id]
-
-                                # repeated information for each hit
-                                # path specific info
-                                if "path_id" in headers_to_include:
-                                    d[self.modules_unique_id]["path_id"] = p_index
-                                if "path" in headers_to_include:
-                                    d[self.modules_unique_id]["path"] = ",".join(p)
-                                if "path_completeness" in headers_to_include:
-                                    d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
-
-                                # add path-level redundancy if requested
-                                if self.add_copy_number:
-                                    d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
-
-                                # top-level keys and keys not in superdict
-                                if self.name_header in headers_to_include:
-                                    d[self.modules_unique_id][self.name_header] = bin
-                                if "db_name" in headers_to_include:
-                                    d[self.modules_unique_id]["db_name"] = self.database_name
-                                if 'module' in headers_to_include:
-                                    d[self.modules_unique_id]['module'] = mnum
-
-                                # module specific info
-                                if "module_name" in headers_to_include:
-                                    d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
-                                if "module_class" in headers_to_include:
-                                    d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
-                                if "module_category" in headers_to_include:
-                                    d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
-                                if "module_subcategory" in headers_to_include:
-                                    d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
-                                if "module_definition" in headers_to_include:
-                                    d[self.modules_unique_id]["module_definition"] = module_def
-                                if "module_substrates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['substrate_list']:
-                                        d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_substrates"] = "None"
-                                if "module_products" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['product_list']:
-                                        d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_products"] = "None"
-                                if "module_intermediates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['intermediate_list']:
-                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_intermediates"] = "None"
-
-                                # comma-separated lists of KOs and gene calls in module
-                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                                # gene call list should be in same order as KO list
-                                gcids_in_mod = []
-                                kos_in_mod_list = []
-                                if kos_in_mod:
-                                    for ko in kos_in_mod:
-                                        gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                                        kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                                if "enzyme_hits_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-                                if "gene_caller_ids_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                                # comma-separated list of warnings
-                                if "warnings" in headers_to_include:
-                                    if not c_dict["warnings"]:
-                                        d[self.modules_unique_id]["warnings"] = "None"
-                                    else:
-                                        d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                                # list of enzymes unique to module
-                                unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                                if "enzymes_unique_to_module" in headers_to_include:
-                                    if unique_enzymes:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                                    else:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                                if "unique_enzymes_hit_counts" in headers_to_include:
-                                    if unique_enzymes:
-                                        hit_count_list = []
-                                        for e in unique_enzymes:
-                                            hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                                    else:
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
-
-                                # everything else at c_dict level
-                                for h in remaining_headers:
-                                    if h not in self.available_headers.keys():
-                                        raise ConfigError("Requested header %s not available." % (h))
-                                    h_cdict_key = self.available_headers[h]['cdict_key']
-                                    if not h_cdict_key:
-                                        raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-
-                                    value = c_dict[h_cdict_key]
-                                    if isinstance(value, list):
-                                        if not value:
-                                            value = "None"
-                                        else:
-                                            value = ",".join(value)
-                                    d[self.modules_unique_id][h] = value
-
-                                self.modules_unique_id += 1
                 else:
                     d[self.modules_unique_id] = {}
-
-                    # top-level keys and keys not in superdict
-                    if self.name_header in headers_to_include:
-                        d[self.modules_unique_id][self.name_header] = bin
-                    if "db_name" in headers_to_include:
-                        d[self.modules_unique_id]["db_name"] = self.database_name
-                    if 'module' in headers_to_include:
-                        d[self.modules_unique_id]['module'] = mnum
-
-                    # module specific info
-                    if "module_name" in headers_to_include:
-                        d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
-                    if "module_class" in headers_to_include:
-                        d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
-                    if "module_category" in headers_to_include:
-                        d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
-                    if "module_subcategory" in headers_to_include:
-                        d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
-                    if "module_definition" in headers_to_include:
-                        d[self.modules_unique_id]["module_definition"] = module_def
-                    if "module_substrates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['substrate_list']:
-                            d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
-                        else:
-                            d[self.modules_unique_id]["module_substrates"] = "None"
-                    if "module_products" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['product_list']:
-                            d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
-                        else:
-                            d[self.modules_unique_id]["module_products"] = "None"
-                    if "module_intermediates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['intermediate_list']:
-                            d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
-                        else:
-                            d[self.modules_unique_id]["module_intermediates"] = "None"
-
-                    # comma-separated lists of KOs and gene calls in module
-                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                    # gene call list should be in same order as KO list
-                    gcids_in_mod = []
-                    kos_in_mod_list = []
-                    if kos_in_mod:
-                        for ko in kos_in_mod:
-                            gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                            kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                    if "enzyme_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-                    if "gene_caller_ids_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                    # comma-separated list of warnings
-                    if "warnings" in headers_to_include:
-                        if not c_dict["warnings"]:
-                            d[self.modules_unique_id]["warnings"] = "None"
-                        else:
-                            d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                    # list of enzymes unique to module
-                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                    if "enzymes_unique_to_module" in headers_to_include:
-                        if unique_enzymes:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                        else:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                    if "unique_enzymes_hit_counts" in headers_to_include:
-                        if unique_enzymes:
-                            hit_count_list = []
-                            for e in unique_enzymes:
-                                hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                        else:
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
+                    self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                     # add coverage if requested
                     if self.add_coverage:
@@ -4563,23 +4469,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         for step in c_dict["top_level_step_info"]:
                             step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
                         d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
-
-
-                    # everything else at c_dict level
-                    for h in remaining_headers:
-                        if h not in self.available_headers.keys():
-                            raise ConfigError("Requested header %s not available." % (h))
-                        h_cdict_key = self.available_headers[h]['cdict_key']
-                        if not h_cdict_key:
-                            raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-
-                        value = c_dict[h_cdict_key]
-                        if isinstance(value, list):
-                            if not value:
-                                value = "None"
-                            else:
-                                value = ",".join(value)
-                        d[self.modules_unique_id][h] = value
 
                     self.modules_unique_id += 1
 
