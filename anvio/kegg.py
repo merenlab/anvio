@@ -245,7 +245,7 @@ OUTPUT_HEADERS = {'module' : {
                   'step_completeness' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Completeness of a given 'top-level' step in a module"
+                        'description': "Binary completeness of a given 'top-level' step in a module"
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
@@ -2154,10 +2154,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.add_copy_number:
             self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
+            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
             self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
             self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
                                                        'mode_type': 'modules',
                                                        'description': "Number of complete copies of the path through the module"
+                                                       }
+            self.available_headers["step_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of the step"
                                                        }
             self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
                                                        'mode_type': 'modules',
