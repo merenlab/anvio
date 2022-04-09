@@ -163,9 +163,106 @@ class WorkflowSuperClass:
                               'parameter: %s, %s' % (rule_name, param))
         check_for_risky_param_change(self.config, rule_name, param, wildcard_name, default_value)
 
- 
+
+    def get_max_num_cpus_requested_by_the_workflow(self):
+        """A semi-smart heuristic to find out what we shold set for `--cores`.
+
+        If the user has defined an additional parameter '--cores', or '-c' in their `anvi-run-workflow`
+        command, then we are all good: that is our max threads value. The only thing this function in that
+        case would be to make sure that value exceeds the maximum number of threads asked for by any rule.
+
+        If there are no `--cores` or `-c` parameter among additional params, then we have to figure
+        something out and send it to snakemake. In that case this function will check if the user set a
+        global `max_threads` pameter (and that it exceeds the number of threads asked for by any rule),
+        and send that value to snakemake.
+
+        If there are no `--cores` or `-c` parameter among additional params, and there is no value set
+        for the global `max_threads` in the config file, then this function will find the max num threads
+        requested by any rule, and will send it to snakeamke as the max num CPUs.
+        """
+
+        # figure out whether the user sent `--cores` or `-c` as additional params
+        if '--cores' in self.additional_params:
+            num_cores_additional_param = self.additional_params[self.additional_params.index('--cores') + 1]
+        elif '-c' in self.additional_params:
+            num_cores_additional_param = self.additional_params[self.additional_params.index('-c') + 1]
+        else:
+            num_cores_additional_param = None
+
+        if num_cores_additional_param:
+            try:
+                num_cores_additional_param = int(num_cores_additional_param)
+            except:
+                raise ConfigError(f"So anvi'o was trying to make sense of the `--cores` value you set via the "
+                                  f"`--additional-params` mechanism in your command, but this is what it found "
+                                  f"there instead of a proper integer: '{num_cores_additional_param}' :( Anvi'o "
+                                  f"is not sure if it is you who is screwing something up, or it is anvi'o :/")
+
+        # figure out the maximum number of threads requested by any single job
+        max_num_threads_set_by_any_rule = 0
+        rule_name_for_max_num_threads_value = None
+        for rule in self.rules:
+            threads = A([rule, 'threads'], self.config)
+
+            if not threads:
+                continue
+            else:
+                threads = int(threads)
+
+            if threads > max_num_threads_set_by_any_rule:
+                max_num_threads_set_by_any_rule = threads
+                rule_name_for_max_num_threads_value = rule
+
+        # if the user set `--cores`, make sure that value is larger than the max_num_threads_set_by_any_rule
+        if num_cores_additional_param:
+            if num_cores_additional_param < max_num_threads_set_by_any_rule:
+                raise ConfigError(f"Funny story here. You've set the max number of CPUs to be used for your workflow to "
+                                  f"{num_cores_additional_param} via the `--cores` additional parameter. But then, the "
+                                  f"rule {rule_name_for_max_num_threads_value} is asking for {max_num_threads_set_by_any_rule}. "
+                                  f"Das ist nicht gut. Please either decrease the number of threads for your rule, or "
+                                  f"increase the number of CPUs you are asking from your system to make sure your job is "
+                                  f"not going to get killed by a manager process later.")
+            else:
+                # the user set `--cores`, all good here. We will return nothing, and therefore we will not
+                # add any additional parameter to our call.
+                return None
+
+        # if we are here, it means the user did not set a `--cores` parameter through the additional params
+        # mechanism. we basically need to figure out the maximum number of threads set as a global parameter
+        global_max_threads_value = None
+        if 'max_threads' in self.config and self.config.get('max_threads'):
+            global_max_threads_value = int(self.config.get('max_threads'))
+        else:
+            global_max_threads_value = None
+
+        # now it is time to make a suggestion as our max threads value for snakemake so it can be set as `--cores` argument.`
+        if not global_max_threads_value:
+            if max_num_threads_set_by_any_rule == 0:
+                raise ConfigError("You have not set a global `max_threads` value in your config and none of "
+                                  "your rules includes a value for their `threads`. In this case it is impossible "
+                                  "to determine the maximum number of CPU cores we should ask snakemake to use to run your "
+                                  "workflow :/ Please either define a `max_threads` value in your config file, OR include "
+                                  "a `--cores XX` parameter via the `--additional-params` mechanism of `anvi-run-workflow`, "
+                                  "where XX is the maximum number of CPUs you wish to assign to this job.")
+            else:
+                self.run.warning(f"You haven't set a global `max_threads` value in your config file, and you haven't declared the "
+                                 f"maximum number of CPUs you wish to assign to this job via `--cores`.  But anvi'o found out "
+                                 f"that for the rule `{rule_name_for_max_num_threads_value}` you asked for {max_num_threads_set_by_any_rule} "
+                                 f"threads , which is the largest number of threads among all rules. So, anvi'o will set up your job by "
+                                 f"passing {max_num_threads_set_by_any_rule} as the maximum number of CPU cores to be used by your workflow. "
+                                 f"If you'd like to assign more resources for your workflow, please either use the global `max_threads` "
+                                 f"parameter in your config file, or include a `--cores XX` parameter via the `--additional-params` "
+                                 f"mechanism, where XX is the maximum number of CPUs you wish to assign to this job.",
+                                 header="MAX NUMBER OF CPU CORES HEURISTIC", lc="green")
+                return max_num_threads_set_by_any_rule
+        else:
+            return global_max_threads_value
+
+
     def go(self, skip_dry_run=False):
         """Do the actual running"""
+
+        max_num_cpus_requested_by_the_workflow = self.get_max_num_cpus_requested_by_the_workflow()
 
         self.sanity_checks()
 
@@ -190,11 +287,17 @@ class WorkflowSuperClass:
             sys.argv.extend(self.additional_params)
 
         if self.list_dependencies:
-            sys.argv.extend(['--dryrun', '--printshellcmds'])
+            if max_num_cpus_requested_by_the_workflow:
+                sys.argv.extend(['--dryrun', '--printshellcmds', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
+            else:
+                sys.argv.extend(['--dryrun', '--printshellcmds'])
             snakemake.main()
             sys.exit(0)
         else:
-            sys.argv.extend(['-p'])
+            if max_num_cpus_requested_by_the_workflow:
+                sys.argv.extend(['-p', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
+            else:
+                sys.argv.extend(['-p'])
             snakemake.main()
 
         # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
