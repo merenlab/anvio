@@ -4367,11 +4367,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
                 "pathwise_percent_complete":              0.66
                 "pathwise_is_complete":                      False
+                (.....)
                                       }
 
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
-        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
-        in the rows.
+        where each bin-module, bin-module-path, or bin-module-step (depending on output mode) is keyed by an arbitrary integer.
+        There will be a lot of redundant information in the rows.
 
         PARAMETERS
         ==========
@@ -4407,11 +4408,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
                                     "unique_enzymes_hit_counts"])
-        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
+        path_level_headers = set(["path_id", "path", "path_completeness"])
+        step_level_headers = set(["step_id", "step", "step_completeness"])
+
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
+
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
-        remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
+        remaining_headers = remaining_headers.difference(path_level_headers)
+        remaining_headers = remaining_headers.difference(step_level_headers)
 
         # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
         d = {}
@@ -4428,6 +4433,47 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if exclude_zero_completeness and c_dict["pathwise_percent_complete"] == 0:
                     continue
 
+                # handle path-level information (ie, for module_paths mode)
+                if headers_to_include.intersection(path_level_headers):
+                    for p_index, p in enumerate(self.module_paths_dict[mnum]):
+                        d[self.modules_unique_id] = {}
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+
+                        # path-specific info
+                        if "path_id" in headers_to_include:
+                            d[self.modules_unique_id]["path_id"] = p_index
+                        if "path" in headers_to_include:
+                            d[self.modules_unique_id]["path"] = ",".join(p)
+                        if "path_completeness" in headers_to_include:
+                            d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+
+                        # add path-level redundancy if requested
+                        if self.add_copy_number:
+                            d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
+
+                        self.modules_unique_id += 1
+
+                # handle step-level information (ie, for module_steps mode)
+                elif headers_to_include.intersection(step_level_headers):
+                    for s_index, step_dict in c_dict["top_level_step_info"].items():
+                        d[self.modules_unique_id] = {}
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+
+                        # step-specific info
+                        if "step_id" in headers_to_include:
+                            d[self.modules_unique_id]["step_id"] = s_index
+                        if "step" in headers_to_include:
+                            d[self.modules_unique_id]["step"] = step_dict["step_definition"]
+                        if "step_completeness" in headers_to_include:
+                            d[self.modules_unique_id]["step_completeness"] = 1 if step_dict["complete"] else 0
+
+                        # add step-level redundancy if requested
+                        if self.add_copy_number:
+                            d[self.modules_unique_id]["step_copy_number"] = step_dict["copy_number"]
+
+                        self.modules_unique_id += 1
+
+                # handle module-level information (ie, for modules mode)
                 else:
                     d[self.modules_unique_id] = {}
                     self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
