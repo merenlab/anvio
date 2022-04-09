@@ -4428,9 +4428,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for module", mnum)
 
-                if only_complete_modules and not c_dict["pathwise_is_complete"]:
+                if only_complete_modules and not (c_dict["pathwise_is_complete"] or c_dict["stepwise_is_complete"]):
                     continue
-                if exclude_zero_completeness and c_dict["pathwise_percent_complete"] == 0:
+                if exclude_zero_completeness and (c_dict["pathwise_percent_complete"] == 0 and c_dict["stepwise_completeness"] == 0):
                     continue
 
                 # handle path-level information (ie, for module_paths mode)
