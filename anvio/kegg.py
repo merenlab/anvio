@@ -275,7 +275,9 @@ OUTPUT_HEADERS = {'module' : {
 # get_XXX_metadata_dictionary() function
 MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
 KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
-
+# Exception: if you add to this list, you must add it in the steps_subdict in generate_subsets_for_matrix_format()
+# and to the relevant step metadata clause in write_stat_to_matrix()
+STEP_METADATA_HEADERS = ["step_definition"]
 
 
 class KeggContext(object):
@@ -4613,22 +4615,27 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def generate_subsets_for_matrix_format(self, module_superdict, ko_hits_superdict):
         """Here we extract and return three subsets of data from the superdicts, for matrix formatted output.
 
-        The subsets of data that we need are: module completeness scores, module presence/absence, and KO hit frequency.
-        If --add-copy-number was provided, we also need module copy number.
-        Each of these is put into a dictionary (one for modules, one for ko hits) and returned.
+        The subsets of data that we need are: module completeness scores, module presence/absence, KO hit frequency,
+                                              module top-level step completeness
+        If --add-copy-number was provided, we also need copy numbers for modules and module steps.
+
+        Each of these is put into a dictionary (one for modules, one for ko hits, one for module steps) and returned.
         """
 
         mod_completeness_presence_subdict = {}
         ko_hits_subdict = {}
+        steps_subdict = {}
 
         for bin, mod_dict in module_superdict.items():
             mod_completeness_presence_subdict[bin] = {}
+            steps_subdict[bin] = {}
             for mnum, c_dict in mod_dict.items():
                 mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_completeness"] = c_dict["stepwise_completeness"]
                 mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
+
                 if self.add_copy_number:
                     if c_dict["num_complete_copies_of_most_complete_paths"]:
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
@@ -4636,6 +4643,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = 'NA'
                     mod_completeness_presence_subdict[bin][mnum]['stepwise_copy_number'] = c_dict["stepwise_copy_number"]
 
+                for step_id, step_dict in c_dict["top_level_step_info"].items():
+                    step_key = mnum + "_" + f"{step_id:02d}"
+                    steps_subdict[bin][step_key] = {}
+                    steps_subdict[bin][step_key]["step_is_complete"] = step_dict["complete"]
+                    # we include step metadata in this dictionary directly (rather than trying to access it out later using a function)
+                    steps_subdict[bin][step_key]["step_definition"] = step_dict["step_definition"]
+                    if self.add_copy_number:
+                        steps_subdict[bin][step_key]["step_copy_number"] = step_dict["copy_number"]
 
         for bin, ko_dict in ko_hits_superdict.items():
             ko_hits_subdict[bin] = {}
@@ -4643,7 +4658,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 ko_hits_subdict[bin][knum] = {}
                 ko_hits_subdict[bin][knum]['num_hits'] = len(k_dict['gene_caller_ids']) # number of hits to this KO in the bin
 
-        return mod_completeness_presence_subdict, ko_hits_subdict
+        return mod_completeness_presence_subdict, ko_hits_subdict, steps_subdict
 
 ######### OUTPUT GENERATION FUNCTIONS #########
 
@@ -5098,12 +5113,15 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def get_metabolism_superdict_multi(self):
         """The function that calls metabolism on each individual contigs db.
 
-         If we need matrix format output, it aggregates the results into one dictionary for modules
-         and one for KOs, and returns these. (Otherwise, empty dictionaries are returned.)
+         If we need matrix format output, it aggregates the results into one dictionary for modules, one for KOs,
+         and one for steps. These dictionaries are returned.
+
+         (Otherwise, empty dictionaries are returned.)
          """
 
         metabolism_super_dict = {}
         ko_hits_super_dict = {}
+        module_steps_super_dict = {}
 
         total_num_metagenomes = len(self.database_names)
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
@@ -5117,7 +5135,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
                                                                                                     progress=progress_quiet, \
                                                                                                     run=run_quiet).estimate_metabolism(skip_storing_data=True, \
                                                                                                     return_subset_for_matrix_format=True, \
@@ -5134,7 +5152,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             for mode, file in files_dict.items():
                 file.close()
 
-        return metabolism_super_dict, ko_hits_super_dict
+        return metabolism_super_dict, ko_hits_super_dict, module_steps_super_dict
 
 
     def estimate_metabolism(self):
@@ -5167,10 +5185,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.init_data_from_modules_db()
 
         # these will be empty dictionaries unless matrix format
-        kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
+        kegg_metabolism_superdict_multi, ko_hits_superdict_multi, module_steps_superdict_multi = self.get_metabolism_superdict_multi()
 
         if self.matrix_format:
-            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
+            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi, module_steps_superdict_multi)
 
 
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
@@ -5245,6 +5263,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                         metadata_dict = self.get_module_metadata_dictionary(m)
                     elif stat_header == 'enzyme':
                         metadata_dict = self.get_ko_metadata_dictionary(m, dont_fail_if_not_found=True)
+                    elif stat_header == 'module_step':
+                        # get the step metadata from the first sample and first bin (b/c it will be the same in all of them)
+                        first_samp = sample_list[0]
+                        first_bin = list(stat_dict[first_samp].keys())[0]
+                        metadata_dict = {"step_definition": stat_dict[first_samp][first_bin][m]["step_definition"]}
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
                                           "statistics but there is no function defined for this.")
@@ -5282,7 +5305,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.run.info('Output matrix for "%s"' % stat_name, output_file_path)
 
 
-    def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi):
+    def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi, steps_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
         Contigs DBs are arranged in columns and KEGG modules/KOs are arranged in rows.
@@ -5296,6 +5319,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
          module % completeness = module_superdict_multi[sample][bin][mnum]['pathwise_percent_complete']
          module is complete = module_superdict_multi[sample][bin][mnum]["pathwise_is_complete"]
          # hits for KO = ko_superdict_multi[sample][bin][knum]['num_hits']
+         module step is complete = module_steps_superdict_multi[sample][bin][mnum_stepnum]['step_is_complete']
 
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
@@ -5304,14 +5328,16 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
-        module_matrix_stats = {"pathwise_completeness" : "pathwise_percent_complete",
-                               "pathwise_presence" : "pathwise_is_complete",
-                               "stepwise_completeness" : "stepwise_completeness",
-                               "stepwise_presence" : "stepwise_is_complete",
+        module_matrix_stats = {"module_pathwise_completeness" : "pathwise_percent_complete",
+                               "module_pathwise_presence" : "pathwise_is_complete",
+                               "module_stepwise_completeness" : "stepwise_completeness",
+                               "module_stepwise_presence" : "stepwise_is_complete",
                                }
+        module_step_matrix_stats = {"step_completeness" : "step_is_complete"}
         if self.add_copy_number:
-            module_matrix_stats["pathwise_copy_number"] = "pathwise_copy_number"
-            module_matrix_stats["stepwise_copy_number"] = "stepwise_copy_number"
+            module_matrix_stats["module_pathwise_copy_number"] = "pathwise_copy_number"
+            module_matrix_stats["module_stepwise_copy_number"] = "stepwise_copy_number"
+            module_step_matrix_stats["step_copy_number"] = "step_copy_number"
 
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
@@ -5322,6 +5348,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for stat, key in module_matrix_stats.items():
             self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
                                       item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+                                      write_rows_with_all_zeros=include_zeros)
+
+        module_step_list = list(steps_superdict_multi[first_sample][first_bin].keys())
+        module_step_list.sort()
+        for stat, key in module_step_matrix_stats.items():
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi, \
+                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS, \
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
