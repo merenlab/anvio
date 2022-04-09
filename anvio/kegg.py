@@ -4291,20 +4291,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 d[self.modules_unique_id]["module_intermediates"] = "None"
 
-        # comma-separated lists of KOs and gene calls in module
-        kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-        # gene call list should be in same order as KO list
-        gcids_in_mod = []
-        kos_in_mod_list = []
-        if kos_in_mod:
-            for ko in kos_in_mod:
-                gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-        if "enzyme_hits_in_module" in headers_to_include:
-            d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-        if "gene_caller_ids_in_module" in headers_to_include:
-            d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
         # comma-separated list of warnings
         if "warnings" in headers_to_include:
             if not c_dict["warnings"]:
@@ -4477,6 +4463,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 else:
                     d[self.modules_unique_id] = {}
                     self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+
+                    # comma-separated lists of KOs and gene calls in module
+                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+                    # gene call list should be in same order as KO list
+                    gcids_in_mod = []
+                    kos_in_mod_list = []
+                    if kos_in_mod:
+                        for ko in kos_in_mod:
+                            gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                            kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
+                    if "enzyme_hits_in_module" in headers_to_include:
+                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+                    if "gene_caller_ids_in_module" in headers_to_include:
+                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
                     # add coverage if requested
                     if self.add_coverage:
