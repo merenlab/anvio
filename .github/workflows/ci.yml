@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         python-version: [3.7]
+      fail-fast: false
     steps:
     - uses: conda-incubator/setup-miniconda@v2
       with:
