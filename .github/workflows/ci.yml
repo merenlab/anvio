@@ -31,8 +31,7 @@ jobs:
     - name: pip install of anvio
       shell: bash -l {0}
       run: |
-        curl -L https://github.com/merenlab/anvio/releases/download/v7.1/anvio-7.1.tar.gz --output anvio-7.1.tar.gz
-        pip install anvio-7.1.tar.gz
+        pip install .
     - name: anvio self test
       shell: bash -l {0}
       run: |
