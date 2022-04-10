@@ -182,9 +182,9 @@ class WorkflowSuperClass:
         """
 
         # figure out whether the user sent `--cores` or `-c` as additional params
-        if '--cores' in self.additional_params:
+        if self.additional_params and '--cores' in self.additional_params:
             num_cores_additional_param = self.additional_params[self.additional_params.index('--cores') + 1]
-        elif '-c' in self.additional_params:
+        elif self.additional_params and '-c' in self.additional_params:
             num_cores_additional_param = self.additional_params[self.additional_params.index('-c') + 1]
         else:
             num_cores_additional_param = None
@@ -352,9 +352,11 @@ class WorkflowSuperClass:
                 self.run.info('Workflow PDF file', workflow_graph_output_file_path_prefix + '.pdf')
             else:
                 self.run.warning("Well, anvi'o was going to try to save a nice PDF file for your workflow "
-                                 "graph, but clearly you don't have `dot` installed on your system. That's OK. You "
-                                 "have your dot file now, and you can Google 'how to view dot file on [your operating "
-                                 "system goes here]', and install necessary programs (like .. `dot`).")
+                                 "graph, but clearly you don't have `dot` installed on your system. If you "
+                                 "install `graphviz` (i.e., by running \"mamba install -c conda-forge graphviz\" "
+                                 "or \"conda install -c conda-forge graphviz\") you will no longer see this "
+                                 "message, and instead get your workflow as a PDF file (alternatively you can "
+                                 "always vuew the file `workflow.dot` using any dot viewer).")
 
         os.remove(log_file_path)
 
