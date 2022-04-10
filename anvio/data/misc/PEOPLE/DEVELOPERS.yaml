@@ -328,3 +328,18 @@
     - title: JCVI Research Fellow
       inst: J. Craig Venter Institute
       inst_link: https://www.jcvi.org/
+
+- github: nick-youngblut
+  name: Nick Youngblut
+  bio: "Microbiologist studying methanogens and host-microbiome coevolution"
+  avatar: youngblut.jpg
+  email: nyoungb2@gmail.com
+  web: https://leylab.com/research/ecology-and-evolution-of-host-associated-methanogens-youngblut-group/
+  twitter: nick_youngblut
+  linkedin: nicholas-youngblut
+  orcid: 0000-0002-7424-5276
+  affiliations:
+    - title: Group Leader in the Department of Microbiome Science
+      inst: Max Planck Institute for Biology
+      inst_link: http://eb.tuebingen.mpg.de/
+      current: true
