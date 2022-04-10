@@ -289,7 +289,7 @@ class KeggContext(object):
                                   "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
-    def setup_ko_dict(self):
+    def setup_ko_dict(self, exclude_threshold=True):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
@@ -326,7 +326,8 @@ class KeggContext(object):
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
-        [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        if exclude_threshold:
+            [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
 
 
     def get_ko_skip_list(self):
@@ -2086,9 +2087,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            self.setup_ko_dict()
-            annotation_source_set = set(['KOfam'])
-
+            if not self.enzymes_txt and not self.estimate_from_json:
+                self.setup_ko_dict()
+                annotation_source_set = set(['KOfam'])
+            else:
+                self.setup_ko_dict(exclude_threshold=False)
+                annotation_source_set = set(["KOfam"])
             # check for kegg modules db
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
@@ -2471,7 +2475,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
             because we need access to the self.ko_dict
             """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and not self.enzymes_txt:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
