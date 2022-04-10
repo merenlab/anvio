@@ -8,9 +8,9 @@ If you are adding a new anvi'o developer or contributor into either
 of these YAML files, please send a PR with the relevant changes,
 which include,
 
-* Edit `DEVELOPERS.yaml` **or** `CONTRIBUTORS.yaml` files to add
-a new entry for the new person (please benefit from previous examples).
-* Add a new photo under the the `AVATARS` directory. It should be
+* **Edit `DEVELOPERS.yaml` _or_ `CONTRIBUTORS.yaml` files to add
+a new entry** for the new person (please benefit from previous examples).
+* **Add a new photo** under the the `AVATARS` directory. It should be
 a 900px x 900px head-shot (see previous examples).
 
 Most fields are optional, but please note that every person mentioned
