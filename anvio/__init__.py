@@ -8,7 +8,7 @@ anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-a
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
 major_python_version_required = 3
-minor_python_version_required = 10
+minor_python_version_required = 7
 
 import sys
 import platform
