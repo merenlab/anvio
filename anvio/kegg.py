@@ -775,7 +775,7 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
-    def process_brite_hierarchies_file(self):
+    def process_brite_hierarchy_of_hierarchies(self):
         """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
 
         This method is called during setup to find all BRITE hierarchies to be downloaded.
@@ -1326,7 +1326,7 @@ class KeggSetup(KeggContext):
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             self.download_brite_hierarchy_of_hierarchies()
-            self.process_brite_hierarchies_file()
+            self.process_brite_hierarchy_of_hierarchies()
             self.download_brite_hierarchies()
             self.setup_ko_dict()
             self.run_hmmpress()
@@ -5388,6 +5388,9 @@ class ModulesDatabase(KeggContext):
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
         self.num_corrected_errors = 0
         self.num_uncorrected_errors = 0
+        # keep track of BRITE parsing information
+        self.num_hierarchies_parsed = 0
+        self.num_brite_categorizations = 0
 
         num_modules_parsed = 0
         line_number = 0
@@ -5527,85 +5530,7 @@ class ModulesDatabase(KeggContext):
                               "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
         annotation_source_list = ",".join(list(self.annotation_sources))
 
-        if self.brite_dict:
-            # BRITE hierarchies are not available in a database with user-defined modules
-            self.progress.new("Loading BRITE hierarchies into Modules DB...")
-
-            # sanity check that we setup the BRITE hierarchies previously.
-            # It shouldn't be a problem since this function should only be called during the setup process after BRITE download, but just in case.
-            if not os.path.exists(self.brite_data_directory) or len(self.brite_dict.keys()) == 0:
-                raise ConfigError("Appparently, the BRITE hierarchy data files were not correctly setup and now all sorts of things are broken. The "
-                                  "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
-                                  "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
-                                  "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
-                                  "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of hierarchies "
-                                  "in the BRITE hierarchies dictionary is currently %s" % len(self.brite_dict.keys()))
-
-            # init the Modules table
-            brite_table = BriteTable(self.brite_table_name)
-
-            num_hierarchies_parsed = 0
-            unrecognized_items = []
-            for hierarchy in self.brite_dict:
-                self.progress.update(f"Parsing BRITE hierarchy '{hierarchy}'")
-                hierarchy_accession = hierarchy[: 7] # the validity of the hierarchy accession was checked in `KeggSetup.process_brite_hierarchies_file`
-                hierarchy_name = hierarchy[7: ].lstrip()
-
-                brite_file_path = os.path.join(self.brite_data_directory, hierarchy_accession)
-                for ortholog, categorizations in self.invert_brite_json_dict(json.load(open(brite_file_path))).items():
-                    split_ortholog = ortholog.split(' ')
-                    ortholog_accession = split_ortholog[0]
-
-                    if len(ortholog_accession) != 6:
-                        unrecognized_items.append(hierarchy + ': ' + ortholog)
-                        continue
-                    if ortholog_accession[0] != 'K':
-                        unrecognized_items.append(ortholog)
-                        continue
-                    try:
-                        int(ortholog_accession[1: ])
-                    except ValueError:
-                        unrecognized_items.append(ortholog)
-                        continue
-
-                    ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
-
-                    for categorization in categorizations:
-                        if hierarchy_accession == 'ko00001':
-                            # the expected top-level classes of the "ko00001  KEGG Orthology (KO)"
-                            # hierarchy are "09100 Metabolism", "09120 Genetic Information
-                            # Processing", "09130 Environmental Information Processing", "09140
-                            # Cellular Processes", "09150 Organismal Systems", "09160 Human
-                            # Diseases", "09180 Brite Hierarchies", and "09190 Not Included in
-                            # Pathway or Brite". "09180 Brite Hierarchies" is a representation of
-                            # other hierarchies, such as "01001 Protein kinases [BR:ko01001]", as
-                            # totally flat categories, with all subcategories flattened out. We
-                            # download and process json files for these other hierarchies
-                            # separately. Therefore ignore any entries in this category. "09150
-                            # Organismal Systems" and "09160 Human Diseases" are also ignored due to
-                            # their focus on humans. The value of "09190 Not Included in Pathway or
-                            # Brite" is debatable, but certain proteins are only found in this
-                            # category, such as bacterial circadian clock proteins (classified under
-                            # "09193 Unclassified: signaling and cellular processes" >>> "99995
-                            # Signaling proteins"), so this category is retained.
-                            category_accession = categorization[1].split(' ')[0]
-                            if category_accession == '09180' or category_accession == '09150' or category_accession == '09160':
-                                continue
-                        # ignore the first category, the accession of the hierarchy itself, which is in the value of `hierarchy`
-                        brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '>>>'.join(categorization[1: ]))
-                num_hierarchies_parsed += 1
-
-            if unrecognized_items and anvio.DEBUG:
-                self.run.warning("We attempted to parse some names of items in hierarchies as orthologs, "
-                                 "but ignored them since they did not start with an accession formatted 'KXXXXX', where 'XXXXX' are five digits. "
-                                 f"The following entries are formatted as '<hierarchy>: <ignored item>': {', '.join(set(unrecognized_items))}")
-
-            # once we are done parsing all hierarchies, we store whatever db entries remain in the db_entries list
-            # this is necessary because append_and_store() above only stores every 10000 entries
-            self.progress.update("Storing final batch of BRITE entries into DB")
-            brite_table.store(self.db)
-
-            self.progress.end()
+        self.populate_brite_table()
 
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
@@ -5615,8 +5540,8 @@ class ModulesDatabase(KeggContext):
         self.run.info('Number of module parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
         self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
         if self.brite_dict:
-            self.run.info('Number of BRITE hierarchies', num_hierarchies_parsed, quiet=self.quiet)
-            self.run.info('Number of ortholog BRITE categorizations', brite_table.get_total_entries(), quiet=self.quiet)
+            self.run.info('Number of BRITE hierarchies', self.num_hierarchies_parsed, quiet=self.quiet)
+            self.run.info('Number of ortholog BRITE categorizations', self.num_brite_categorizations, quiet=self.quiet)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
@@ -5625,13 +5550,93 @@ class ModulesDatabase(KeggContext):
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
         if self.brite_dict:
-            self.db.set_meta_value('num_brite_hierarchies', num_hierarchies_parsed)
-            self.db.set_meta_value('total_brite_entries', brite_table.get_total_entries())
+            self.db.set_meta_value('num_brite_hierarchies', self.num_hierarchies_parsed)
+            self.db.set_meta_value('total_brite_entries', self.num_brite_categorizations)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
 
         self.db.disconnect()
+
+
+    def populate_brite_table(self):
+        if not self.brite_dict:
+            # TODO: add more information to this warning once the use of BRITE is expanded beyond
+            # the downloaded up-to-date version of KEGG via `anvi-setup-kegg-kofams -D`: right now,
+            # for example, BRITE will not be used in any archived versions of KEGG or when adding
+            # user-defined modules
+            self.run.warning("KEGG BRITE hierarchy classification of genes will not take place.")
+            return
+
+        self.progress.new("Loading BRITE hierarchies into Modules DB...")
+
+        # init the BRITE table
+        brite_table = BriteTable(self.brite_table_name)
+
+        num_hierarchies_parsed = 0
+        unrecognized_items = []
+        for hierarchy in self.brite_dict:
+            self.progress.update(f"Parsing BRITE hierarchy '{hierarchy}'")
+            hierarchy_accession = hierarchy[: 7] # the validity of the hierarchy accession was checked in `KeggSetup.process_brite_hierarchy_of_hierarchies`
+            hierarchy_name = hierarchy[7: ].lstrip()
+
+            brite_file_path = os.path.join(self.brite_data_directory, hierarchy_accession)
+            for ortholog, categorizations in self.invert_brite_json_dict(json.load(open(brite_file_path))).items():
+                split_ortholog = ortholog.split(' ')
+                ortholog_accession = split_ortholog[0]
+
+                # record items in the hierarchy that do not have expected ortholog accessions formatted KXXXXX
+                if len(ortholog_accession) != 6:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                if ortholog_accession[0] != 'K':
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                try:
+                    int(ortholog_accession[1: ])
+                except ValueError:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+
+                ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
+
+                # process each of the ortholog's categorizations in the hierarchy
+                for categorization in categorizations:
+                    if hierarchy_accession == 'ko00001':
+                        # the expected top-level classes of the "ko00001  KEGG Orthology (KO)"
+                        # hierarchy are "09100 Metabolism", "09120 Genetic Information Processing",
+                        # "09130 Environmental Information Processing", "09140 Cellular Processes",
+                        # "09150 Organismal Systems", "09160 Human Diseases", "09180 Brite
+                        # Hierarchies", and "09190 Not Included in Pathway or Brite". "09180 Brite
+                        # Hierarchies" is a representation of other hierarchies, such as "01001
+                        # Protein kinases [BR:ko01001]", as totally flat categories, with all
+                        # subcategories flattened out. We download and process json files for these
+                        # other hierarchies separately. Therefore ignore entries in "09180 Brite
+                        # Hierarchies". "09150 Organismal Systems" and "09160 Human Diseases" are
+                        # also ignored due to their focus on human genes. The value of "09190 Not
+                        # Included in Pathway or Brite" is debatable, but certain proteins are only
+                        # found in this category, such as bacterial circadian clock proteins
+                        # (classified under "09193 Unclassified: signaling and cellular processes"
+                        # >>> "99995 Signaling proteins"), so it is retained.
+                        category_accession = categorization[1].split(' ')[0]
+                        if category_accession == '09180' or category_accession == '09150' or category_accession == '09160':
+                            continue
+                    brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '>>>'.join(categorization[1: ])) # ignore the first category, the accession of the hierarchy itself
+            num_hierarchies_parsed += 1
+        self.num_hierarchies_parsed = num_hierarchies_parsed
+        self.num_brite_categorizations = brite_table.get_total_entries()
+
+        if unrecognized_items and anvio.DEBUG:
+            self.run.warning("We attempted to parse some names of items in hierarchies as orthologs, "
+                             "but ignored them since they did not start with an accession formatted 'KXXXXX', where 'XXXXX' are five digits. "
+                             f"The following entries are formatted as '<hierarchy>: <ignored item>': {', '.join(set(unrecognized_items))}")
+
+        # once we are done parsing all hierarchies, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of BRITE entries into DB")
+        brite_table.store(self.db)
+
+        self.progress.end()
 
 
     def disconnect(self):
