@@ -1560,39 +1560,10 @@ class RunKOfams(KeggContext):
                         'e_value': None,
                     }
 
-                # add associated KEGG BRITE hierarchy information to database
-                ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(knum)
-
-                # the following explains the format of BRITE "accession" and "function" entries in
-                # the `gene_functions` table of the contigs database. Orthologs can be in multiple
-                # hierarchies, and can be categorized in a hierarchy multiple times. Each
-                # categorization of the ortholog in a hierarchy is separated by "!!!", and each
-                # category in the categorization is separated by ">>>". The hierarchy name is placed
-                # at the beginning of the "function" entry.
-                # For example, "K01647 citrate synthase" produces the following "accession" and
-                # "function" strings:
-                # "ko00001!!!ko00001!!!ko01000"
-                # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
-                #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
-                #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
-                if ortholog_brite_dict:
-                    hierarchy_accession = ""
-                    categorizations = ""
-                    categorization_dicts = list(ortholog_brite_dict.values())
-                    for categorization_dict in categorization_dicts[: -1]:
-                        hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
-                        categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
-                    last_categorization_dict = categorization_dicts[-1]
-                    hierarchy_accession += last_categorization_dict['hierarchy_accession']
-                    categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
-
-                    self.kegg_brite_categorizations_dict[counter] = {
-                        'gene_callers_id': gcid,
-                        'source': 'KEGG_BRITE',
-                        'accession': hierarchy_accession,
-                        'function': categorizations,
-                        'e_value': None
-                    }
+                # get BRITE categorization information in the form to be added to the contigs database
+                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                if ortholog_categorizations_dict:
+                    self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
 
                 counter += 1
             else:
@@ -1718,39 +1689,10 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
-                            # add associated KEGG BRITE hierarchy information to database
-                            ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(knum)
-
-                            # the following explains the format of BRITE "accession" and "function" entries in
-                            # the `gene_functions` table of the contigs database. Orthologs can be in multiple
-                            # hierarchies, and can be categorized in a hierarchy multiple times. Each
-                            # categorization of the ortholog in a hierarchy is separated by "!!!", and each
-                            # category in the categorization is separated by ">>>". The hierarchy name is placed
-                            # at the beginning of the "function" entry.
-                            # For example, "K01647 citrate synthase" produces the following "accession" and
-                            # "function" strings:
-                            # "ko00001!!!ko00001!!!ko01000"
-                            # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
-                            #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
-                            #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
-                            if ortholog_brite_dict:
-                                hierarchy_accession = ""
-                                categorizations = ""
-                                categorization_dicts = list(ortholog_brite_dict.values())
-                                for categorization_dict in categorization_dicts[: -1]:
-                                    hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
-                                    categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
-                                last_categorization_dict = categorization_dicts[-1]
-                                hierarchy_accession += last_categorization_dict['hierarchy_accession']
-                                categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
-
-                                self.kegg_brite_categorizations_dict[next_key] = {
-                                    'gene_callers_id': gcid,
-                                    'source': 'KEGG_BRITE',
-                                    'accession': hierarchy_accession,
-                                    'function': categorizations,
-                                    'e_value': None
-                                }
+                            # get BRITE categorization information in the form to be added to the contigs database
+                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                            if ortholog_categorizations_dict:
+                                self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
                         next_key += 1
                         num_annotations_added += 1
@@ -1758,6 +1700,48 @@ class RunKOfams(KeggContext):
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
+
+
+    def get_ortholog_categorizations_dict(self, ortholog_accession, gene_callers_id=None):
+        """Return a dictionary of ortholog BRITE categorizations.
+
+        The dictionary is formatted to represent a row of the `gene_functions` table in the contigs database.
+        """
+
+        ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(ortholog_accession)
+        if not ortholog_brite_dict:
+            return None
+
+        # the following explains the format of BRITE "accession" and "function" entries in the
+        # table. Orthologs can be in multiple hierarchies, and can be categorized in a hierarchy
+        # multiple times. Each categorization of the ortholog in a hierarchy is separated by "!!!",
+        # and each category in the categorization is separated by ">>>". The hierarchy name is
+        # placed at the beginning of each categorization. Perhaps the name of hierarchy "ko00001",
+        # which is "KEGG Orthology (KO)", should not be placed at the beginning of categorizations
+        # due to its uninformativeness, but for the sake of consistency, the format is maintained
+        # for this hierarchy. For example, "K01647 citrate synthase" produces the following
+        # "accession" and "function" strings:
+        # "ko00001!!!ko00001!!!ko01000"
+        # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
+        #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
+        #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
+        hierarchy_accession = ""
+        categorizations = ""
+        categorization_dicts = list(ortholog_brite_dict.values())
+        for categorization_dict in categorization_dicts[: -1]:
+            hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
+            categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
+        last_categorization_dict = categorization_dicts[-1]
+        hierarchy_accession += last_categorization_dict['hierarchy_accession']
+        categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
+
+        ortholog_categorizations_dict = {'gene_callers_id': gene_callers_id,
+                                         'source': 'KEGG_BRITE',
+                                         'accession': hierarchy_accession,
+                                         'function': categorizations,
+                                         'e_value': None}
+
+        return ortholog_categorizations_dict
 
 
     def store_annotations_in_db(self):
