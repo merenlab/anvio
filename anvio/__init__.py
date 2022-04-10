@@ -3,11 +3,56 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
+anvio_version = '7.1-dev'
+anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
+                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
+
+major_python_version_required = 3
+minor_python_version_required = 10
+
+import sys
+import platform
+
+# make sure anvi'o runs in the right Python environment:
+try:
+    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor >= minor_python_version_required):
+        sys.stderr.write("\n========================================================\n"
+                         "🦄 SOMETHING BAD HAPPENED AND IT NEEDS YOUR ATTENTION 🦄\n"
+                         "========================================================\n"
+                         "The environment in which you're running anvi'o has a Python \n"
+                         "version that is not compatible with the Python version \n"
+                         "requirement of anvi'o you are running. Here is a summary: \n\n"
+
+                         f"    Anvi'o version you have ..............: {anvio_version} ({anvio_codename})\n"
+                         f"    Python version you have ..............: {platform.python_version()}\n"
+                         f"    Python version anvi'o wants ..........: {major_python_version_required}.{minor_python_version_required}.*\n\n")
+
+        if anvio_version.endswith('dev'):
+            sys.stderr.write("Those who follow the active development branch of anvi'o (like \n"
+                             "yourself) are among our most important users as they help us \n"
+                             "find and address bugs before they can make their way into a stable \n"
+                             "release. Thus, we are extra sorry for this inconvenience :/ But \n"
+                             "the change in the required Python version (which must happened \n"
+                             "after you started tracking the active development branch) \n"
+                             "requires you to get rid of your current anvi'o enviroment, and \n"
+                             "setup a new one using the most up-to-date instructions here:\n\n"
+                             "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
+                             "Thank you for your patience and understanding.\n\n")
+        else:
+            sys.stderr.write("This should never have happened with a stable anvi'o release :/ \n"
+                             "Please follow the most up-to-date installation instructions at \n"
+                             "https://anvio.org/install/ to re-install anvi'o and its environment.\n\n")
+        sys.exit(-1)
+except Exception:
+    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
+
+# we are in the right Python environment. import the rest of the libraries
+# and do all the other boring stuff.
+
 import os
 import sys
 import json
 import copy
-import platform
 
 from tabulate import tabulate
 
@@ -15,12 +60,11 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '7.1-dev'
-anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
-                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
-
+# very important variable to determine which help docs are relevant for
+# this particlar anvi'o environment
 anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
 
+# very handy global settings depending on sys.argv content
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
@@ -79,16 +123,6 @@ def TABULATE(table, header, numalign="right", max_width=0):
             table = '\n'.join([l[:max_width - len(prefix)] + prefix + l[-2:] for l in lines_in_table])
 
     print(table)
-
-
-# Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
-# on systems working with multiple Python installations that are managed through modules):
-try:
-    if sys.version_info.major != 3 or sys.version_info.minor < 5:
-        sys.stderr.write("Sad face :( Your active Python version is %s, but anvi'o only works with Python version 3.5.0 or later.\n" % (platform.python_version()))
-        sys.exit(-1)
-except Exception:
-    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
 import anvio.constants as constants
@@ -179,7 +213,6 @@ D = {
                      "The description text will be rendered and shown in all relevant interfaces, including the "
                      "anvi'o interactive interface, or anvi'o summary outputs."}
                 ),
-
     'additional-view': (
             ['-V', '--additional-view'],
             {'metavar': 'ADDITIONAL_VIEW',
