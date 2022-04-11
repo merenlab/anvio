@@ -14,6 +14,7 @@ on:
 
 jobs:
   test-minimal-functionality:
+    runs-on: ubuntu-latest
     steps:
       - name: Building the environment
         uses: ./.github/workflows/build-anvio-environment.yaml

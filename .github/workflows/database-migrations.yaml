@@ -6,6 +6,7 @@ on:
 
 jobs:
   perform-database-migrations:
+    runs-on: ubuntu-latest
     steps:
       - name: Building the environment
         uses: ./.github/workflows/build-anvio-environment.yaml
