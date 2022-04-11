@@ -1,5 +1,4 @@
 name: Weekly Database Migration Tests
-description: "Runs the component test for `database-migrations` to ensure backwards compatibility."
 
 on:
   schedule:
