@@ -36,6 +36,7 @@ if __name__ == '__main__':
     groupI.add_argument(*anvio.A('kegg-snapshot'), **anvio.K('kegg-snapshot'))
 
     groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    groupE.add_argument(*anvio.A('skip-brite-hierarchies'), **anvio.K('skip-brite-hierarchies'))
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 

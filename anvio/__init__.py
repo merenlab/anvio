@@ -2900,6 +2900,12 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'skip-brite-hierarchies': (
+            ['--skip-brite-hierarchies'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
             {'default': 1.0e-5,
