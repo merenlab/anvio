@@ -141,7 +141,16 @@ ContextMenu = function(options) {
                 }
                 let legendsTab = $('.nav-tabs a').eq(3)
                 $(legendsTab).tab('show')
-                console.log(layer[0])
+
+                let split = layerdata_title[node.label][layer[0] -1].split('</td>')
+                let legend = extractContent(split[0])
+                let query = extractContent(split[1])
+
+                function extractContent(s) {
+                    var span = document.createElement('span');
+                    span.innerHTML = s;
+                    return span.textContent || span.innerText;
+                };
             }
         },
         'get_hmm_sequence': {
