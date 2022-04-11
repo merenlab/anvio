@@ -1,4 +1,5 @@
-name: anvio
+name: Minimal Functionality
+description: "Runs the component test for `mini`."
 
 on:
   push:
