@@ -454,6 +454,7 @@ class KeggSetup(KeggContext):
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
         self.kegg_snapshot = args.kegg_snapshot
+        self.skip_brite_hierarchies = args.skip_brite_hierarchies
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -1140,11 +1141,11 @@ class KeggSetup(KeggContext):
                               f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
-    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG'):
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -1210,6 +1211,27 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
     def check_modules_db_version(self):
         """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
 
@@ -1243,6 +1265,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
@@ -1257,6 +1280,11 @@ class KeggSetup(KeggContext):
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -1325,12 +1353,13 @@ class KeggSetup(KeggContext):
             self.decompress_files()
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
-            self.download_brite_hierarchy_of_hierarchies()
-            self.process_brite_hierarchy_of_hierarchies()
-            self.download_brite_hierarchies()
+            if not self.skip_brite_hierarchies:
+                self.download_brite_hierarchy_of_hierarchies()
+                self.process_brite_hierarchy_of_hierarchies()
+                self.download_brite_hierarchies()
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir)
+            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
@@ -1361,6 +1390,7 @@ class RunKOfams(KeggContext):
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1380,7 +1410,12 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
+
+        if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
+            self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
+                             "which could very well be useful to you. BRITE is guaranteed to be set up "
+                             "when downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -5038,7 +5073,7 @@ class ModulesDatabase(KeggContext):
     ```
     """
 
-    def __init__(self, db_path, args, module_data_directory=None, brite_data_directory=None, module_dictionary=None, pathway_dictionary=None, brite_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_data_directory=None, brite_data_directory=None, module_dictionary=None, pathway_dictionary=None, brite_dictionary=None, data_source='KEGG', skip_brite_hierarchies=False, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_data_directory = module_data_directory # only required for create()
@@ -5047,6 +5082,8 @@ class ModulesDatabase(KeggContext):
         self.pathway_dict = pathway_dictionary
         self.brite_dict = brite_dictionary
         self.data_source = data_source
+        # BRITE setup can be skipped to allow newer versions of the database to be consistent with older versions that lacked BRITE
+        self.skip_brite_hierarchies = skip_brite_hierarchies
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -5347,7 +5384,7 @@ class ModulesDatabase(KeggContext):
         if not self.module_data_directory:
             raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
                               "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
-        if not self.brite_data_directory:
+        if not self.skip_brite_hierarchies and not self.brite_data_directory:
             raise ConfigError("Some dumb programmer forgot to provide a brite_data_directory parameter value to the ModulesDatabase "
                               "class. The DB can't be created unless it knows where the BRITE hierarchies are... Get yourself together.")
 
@@ -5523,7 +5560,7 @@ class ModulesDatabase(KeggContext):
         self.run.info('Number of module parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of module parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
         self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
-        if self.brite_dict:
+        if not self.skip_brite_hierarchies and self.brite_dict:
             self.run.info('Number of BRITE hierarchies', self.num_hierarchies_parsed, quiet=self.quiet)
             self.run.info('Number of ortholog BRITE categorizations', self.num_brite_categorizations, quiet=self.quiet)
 
@@ -5533,9 +5570,14 @@ class ModulesDatabase(KeggContext):
         self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
-        if self.brite_dict:
+        if not self.skip_brite_hierarchies and self.brite_dict:
+            self.db.set_meta_value('is_brite_setup', True)
             self.db.set_meta_value('num_brite_hierarchies', self.num_hierarchies_parsed)
             self.db.set_meta_value('total_brite_entries', self.num_brite_categorizations)
+        else:
+            self.db.set_meta_value('is_brite_setup', False)
+            self.db.set_meta_value('num_brite_hierarchies', None)
+            self.db.set_meta_value('total_brite_entries', None)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
@@ -5544,12 +5586,7 @@ class ModulesDatabase(KeggContext):
 
 
     def populate_brite_table(self):
-        if not self.brite_dict:
-            # TODO: add more information to this warning once the use of BRITE is expanded beyond
-            # the downloaded up-to-date version of KEGG via `anvi-setup-kegg-kofams -D`: right now,
-            # for example, BRITE will not be used in any archived versions of KEGG or when adding
-            # user-defined modules
-            self.run.warning("KEGG BRITE hierarchy classification of genes will not take place.")
+        if self.skip_brite_hierarchies or not self.brite_dict:
             return
 
         self.progress.new("Loading BRITE hierarchies into Modules DB...")
