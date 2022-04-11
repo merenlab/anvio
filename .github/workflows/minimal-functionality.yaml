@@ -15,8 +15,7 @@ on:
 jobs:
   build-environment:
     uses: ./.github/workflows/build-anvio-environment.yaml
-    steps:
-      - name: Testing minimal functionality
-        shell: bash -l {0}
-        run: |
-          anvi-self-test --suite mini --no-interactive
+    - name: Testing minimal functionality
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite mini --no-interactive
