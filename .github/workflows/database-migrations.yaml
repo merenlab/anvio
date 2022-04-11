@@ -5,12 +5,33 @@ on:
     - cron: "0 9 * * MON"
 
 jobs:
-  perform-database-migrations:
+  build:
+    name: Building environment with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+      fail-fast: false
     steps:
-      - name: Building the environment
-        uses: ./.github/workflows/build-anvio-environment.yaml
-      - name: Testing minimal functionality
-        shell: bash -l {0}
-        run: |
-          anvi-self-test --suite database-migrations
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: 'latest'
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        channels: conda-forge,bioconda
+        activate-environment: anvio_env
+    - name: Setting up the conda environment
+      shell: bash -l {0}
+      run: |
+        conda info -a
+        conda install -y mamba
+        mamba install -y python=${{ matrix.python-version }} sqlite prodigal mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree r-base r-tidyverse r-optparse r-stringi r-magrittr
+    - uses: actions/checkout@v2
+    - name: Installing anvio from the codebase
+      shell: bash -l {0}
+      run: |
+        pip install .
+    - name: Testing minimal functionality
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite database-migrations
