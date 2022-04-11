@@ -146,7 +146,7 @@ ContextMenu = function(options) {
                 let legend = extractContent(split[0])
                 let query = extractContent(split[1])
 
-                function extractContent(s) {
+                function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
                     var span = document.createElement('span');
                     span.innerHTML = s;
                     return span.textContent || span.innerText;
