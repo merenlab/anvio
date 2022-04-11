@@ -6651,26 +6651,26 @@ class DatabaseMerger(object):
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id])
         elif db_cov_type == 'nonspecific':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id])
         elif db_cov_type == 'combined':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.combined_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id].tolist())
-                    auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id])
+                    auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id])
         elif db_cov_type == 'summed':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summed_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, (seed.sample_spec_covs_dict[sample_id] + seed.sample_nonspec_covs_dict[sample_id]).tolist())
+                    auxiliary_db.append(split_name, sample_id, (seed.sample_spec_covs_dict[sample_id] + seed.sample_nonspec_covs_dict[sample_id]))
         else:
             raise ConfigError(f"The type of profile database provided, {db_cov_type}, "
                               "is not among those that are recognized: 'specific', 'nonspecific', 'combined', and 'summed'.")
