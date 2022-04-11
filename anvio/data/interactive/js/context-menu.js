@@ -136,10 +136,12 @@ ContextMenu = function(options) {
         'open_in_legends': {
             'title': 'Open in Legends Tab',
             'action': (node, layer, param) => {
-                console.log(node, layer)
-                toggleLeftPanel()
+                if (!$('#panel-left').is(':visible')) {
+                    toggleLeftPanel()
+                }
                 let legendsTab = $('.nav-tabs a').eq(3)
                 $(legendsTab).tab('show')
+                console.log(layer[0])
             }
         },
         'get_hmm_sequence': {
