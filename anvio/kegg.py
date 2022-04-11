@@ -576,7 +576,7 @@ class KeggSetup(KeggContext):
                               % (self.pathway_data_dir, self.kegg_data_dir))
 
         if os.path.exists(self.brite_data_dir):
-            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
+            raise ConfigError("It seems the KEGG BRITE directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
                               % (self.brite_data_dir, self.kegg_data_dir))
