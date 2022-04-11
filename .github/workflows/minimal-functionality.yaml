@@ -13,11 +13,12 @@ on:
       - '**.py'
 
 jobs:
+  build-environment:
+    uses: ./.github/workflows/build-anvio-environment.yaml
   test-minimal-functionality:
     runs-on: ubuntu-latest
+    needs: build-environment
     steps:
-      - name: Building the environment
-        uses: ./.github/workflows/build-anvio-environment.yaml
       - name: Testing minimal functionality
         shell: bash -l {0}
         run: |
