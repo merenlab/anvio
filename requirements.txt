@@ -17,7 +17,7 @@ numba
 paste
 pyani
 psutil
-pandas
+pandas>=1.2.1
 snakemake
 multiprocess
 plotext
