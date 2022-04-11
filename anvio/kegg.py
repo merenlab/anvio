@@ -1184,7 +1184,7 @@ class KeggSetup(KeggContext):
             if not os.path.exists(path_to_f_in_archive):
                 is_ok = False
                 if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected file or directory: %s"
+                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
                                      % (path_to_f_in_archive))
 
         # check hmm files
