@@ -2,9 +2,15 @@ name: Minimal Functionality
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - 'master'
+    paths:
+      - '**.py'
   pull_request:
-    branches: [ master ]
+    branches:
+      - 'master'
+    paths:
+      - '**.py'
 
 jobs:
   build:
