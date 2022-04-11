@@ -139,12 +139,23 @@ ContextMenu = function(options) {
                 if (!$('#panel-left').is(':visible')) {
                     toggleLeftPanel()
                 }
-                let legendsTab = $('.nav-tabs a').eq(3)
-                $(legendsTab).tab('show')
+                $($('.nav-tabs a').eq(3)).tab('show')
 
-                let split = layerdata_title[node.label][layer[0] -1].split('</td>')
-                let legend = extractContent(split[0])
-                let query = extractContent(split[1])
+                let splitHTML = layerdata_title[node.label][layer[0] -1].split('</td>')
+                let legend = extractContent(splitHTML[0])
+                let query = extractContent(splitHTML[1])
+                let legendIndex = Number()
+
+                var all = $(".ui-accordion-header").map(function() {
+                    return this.innerHTML;
+                }).get();
+                all.map((i, idx) => {
+                    if(i.includes(legend.replaceAll('_', ' '))){
+                        legendIndex = idx
+                    }
+                })
+                $( ".ui-accordion-header" ).eq( legendIndex ).click()
+                $( `#${legend.replaceAll('_','-')}-query-input`).val(query)
 
                 function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
                     var span = document.createElement('span');
