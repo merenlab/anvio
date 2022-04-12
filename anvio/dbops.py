@@ -4020,7 +4020,6 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
-        self.db.create_table(t.kegg_brite_info_table_name, t.kegg_brite_info_table_structure, t.kegg_brite_info_table_types)
 
         if db_variant == 'trnaseq':
             self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)

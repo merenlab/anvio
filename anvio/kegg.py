@@ -1803,24 +1803,6 @@ class RunKOfams(KeggContext):
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
 
 
-    def store_brite_info_in_db(self):
-        """Fills in the table of BRITE hierarchy information in the contigs database.
-
-        The only data stored in this table regards hierarchy depths, gleaned from the full set of
-        information in the modules database. Depth data is needed for pruning categorizations to the
-        desired level.
-        """
-
-        brite_max_depth_dict = self.kegg_modules_db.get_brite_max_depth_dict()
-        qualified_brite_max_depth_dict = self.kegg_modules_db.get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(input_depth_dict=brite_max_depth_dict)
-        contigs_db = ContigsDatabase(self.contigs_db_path)
-        entries = []
-        for hierarchy_accession, max_depth in brite_max_depth_dict.items():
-            entries.append((hierarchy_accession, max_depth, qualified_brite_max_depth_dict[hierarchy_accession]))
-        contigs_db.db.insert_many('kegg_brite_info', entries=entries)
-        contigs_db.disconnect()
-
-
     def process_kofam_hmms(self):
         """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB."""
 
@@ -1866,8 +1848,6 @@ class RunKOfams(KeggContext):
         if not self.skip_bitscore_heuristic:
             self.update_dict_for_genes_with_missing_annotations(all_gcids_in_contigs_db, search_results_dict, next_key=next_key_in_functions_dict)
         self.store_annotations_in_db()
-
-        self.store_brite_info_in_db()
 
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:

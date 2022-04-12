@@ -138,10 +138,6 @@ gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
-kegg_brite_info_table_name              = 'kegg_brite_info'
-kegg_brite_info_table_structure         = ['hierarchy_accession', 'max_depth', 'max_depth_excluding_subcategories']
-kegg_brite_info_table_types             = [        'text'       ,  'numeric' ,             'numeric'              ]
-
 ####################################################################################################
 #
 #     ADDITIONAL TABLE DESCRIPTIONS FOR THE TRNASEQ VARIANT OF THE CONTIGS DATABASE
@@ -282,17 +278,17 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 #
 ####################################################################################################
 
-module_table_name = "modules"
-module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
-module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+module_table_name       = "modules"
+module_table_structure  = ['module', 'data_name', 'data_value', 'data_definition', 'line']
+module_table_types      = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
-pathway_table_name = "kegg_pathway_maps"
+pathway_table_name      = "kegg_pathway_maps"
 pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
-pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+pathway_table_types     = [ 'str'       ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
-brite_table_name = "brite_hierarchies"
-brite_table_structure = ['hierarchy_accession', 'hierarchy_name', 'ortholog_accession', 'ortholog_name', 'categorization']
-brite_table_types     = [        'str'        ,       'str'     ,         'str'       ,      'str'     ,      'str'      ]
+brite_table_name        = "brite_hierarchies"
+brite_table_structure   = ['hierarchy_accession', 'hierarchy_name', 'ortholog_accession', 'ortholog_name', 'categorization']
+brite_table_types       = [        'str'        ,       'str'     ,         'str'       ,      'str'     ,      'str'      ]
 
 ####################################################################################################
 #
@@ -389,7 +385,6 @@ table_requires_unique_entry_id = {'self': False,
                                   amino_acid_additional_data_table_name: True,
                                   gene_level_coverage_stats_table_name: True,
                                   gene_level_inseq_stats_table_name: True,
-                                  kegg_brite_info_table_name: True,
                                   trna_seed_feature_table_name: False,
                                   item_additional_data_table_name: True,
                                   layer_additional_data_table_name: True,
