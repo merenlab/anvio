@@ -104,10 +104,22 @@ ANVIO_ARTIFACTS ={
         "name": "BAM FILE",
         "type": "BAM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "bam-stats-txt": {
         "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "bams-and-profiles-txt": {
+        "name": "BAMS AND PROFILES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "markdown-txt": {
+        "name": "MARKDOWN TXT",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -132,6 +144,12 @@ ANVIO_ARTIFACTS ={
     },
     "fasta-txt": {
         "name": "FASTA TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "enzymes-txt": {
+        "name": "ENZYMES TXT",
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
@@ -161,10 +179,16 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "kegg-data": {
-        "name": "KEGG DB",
+        "name": "KEGG MODULES DB",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "user-modules-data": {
+        "name": "USER MODULES DB",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
@@ -358,9 +382,9 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "inversions": {
-        "name": "INVERSIONS",
-        "type": "CONCEPT",
+    "inversions-txt": {
+        "name": "INVERSIONS TXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -409,6 +433,18 @@ ANVIO_ARTIFACTS ={
     "kegg-functions": {
         "name": "KOFAM FUNCTIONS",
         "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "functions-across-genomes-txt": {
+        "name": "FUNCTIONS ACROSS GENOMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-across-genomes-txt": {
+        "name": "HMM HITS ACROSS GENOMES",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -616,6 +652,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "user-metabolism": {
+        "name": "USER METABOLISM ESTIMATES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "augustus-gene-calls": {
         "name": "AUGUSTUS GENE CALLS",
         "type": "TXT",
@@ -660,12 +702,6 @@ ANVIO_ARTIFACTS ={
     },
     "splits-taxonomy-txt": {
         "name": "SPLITS TAXONOMY",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "hmm-hits-matrix-txt": {
-        "name": "HMM HITS MATRIX",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False

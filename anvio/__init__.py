@@ -408,11 +408,11 @@ D = {
             ['--skip-predict-frame'],
             {'default': False,
              'action': 'store_true',
-             'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
+             'help': "When you provide an external gene calls file, anvi'o will predict the correct frame for each gene as best as it can by "
                      "using a previously-generated Markov model that is trained using the uniprot50 database (see this for details: "
                      "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
                      "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
-                     "those that are in the external gene calls file are not describing proper gene calls according to the model. "
+                     "start/stop positions in the external gene calls file are not describing proper gene calls according to the model. "
                      "If you use this flag, anvi'o will not rely on any model and will attempt to translate your DNA sequences by solely "
                      "relying upon start/stop positions in the file, but it will complain about sequences start/stop positions of which are "
                      "not divisible by 3."}
@@ -584,9 +584,7 @@ D = {
             'action': 'store_true',
             'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
                     "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
-                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
-                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
-                    "group together samples that are not supposed to be friends."}
+                    "instead those samples will be included in a group called 'UNGROUPED'."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -679,6 +677,17 @@ D = {
              'help': "When running in metagenome mode, anvi'o automatically chooses the most frequent single-copy "
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
+                ),
+    'report-scg-sequences-file-prefix': (
+            ['--report-scg-sequences-file-prefix'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE NAME PREFIX',
+             'help': "When running in metagenome mode, anvi'o has access to each SCG sequence. By providing a "
+                     "file prefix, you can instruct anvi'o to report amino acid and DNA sequences for each SCG "
+                     "it uses to estimate taxonomy. The deflines of the resulting FASTA files will match tot he "
+                     "unique entry IDs used to populate the output file that reports taxonomy. Please note that "
+                     "this parameter will only run if you set the parameter `--scg-name-for-metagenome-mode`."}
                 ),
     'anticodon-for-metagenome-mode': (
             ['-S','--anticodon-for-metagenome-mode'],
@@ -897,10 +906,27 @@ D = {
     'kegg-data-dir': (
             ['--kegg-data-dir'],
             {'default': None,
+             'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
                      "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'user-modules': (
+            ['-u', '--user-modules'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "Directory location where your metabolic module files are kept. It is also "
+                     "the output directory, since the modules database will be set up in this folder."}
+                ),
+    'only-user-modules': (
+            ['--only-user-modules'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you use this flag in conjunction with --user-modules, anvi'o will ONLY "
+                     "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
+                     "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
     'kegg-archive': (
             ['--kegg-archive'],
@@ -2337,6 +2363,13 @@ D = {
                      "this flag, the HMM hits stored in the database will be taken from the --tblout file only. "
                      "Also, this option only works with HMM profiles for amino acid sequences (not nucleotides)."}
                 ),
+    'add-to-functions-table': (
+            ['--add-to-functions-table'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you want anvi'o to store your HMM hits as gene annotations in the 'gene_functions'"
+                     "table of the database, rather than in the 'hmm_hits' table."}
+                ),
     'min-contig-length': (
             ['-M', '--min-contig-length'],
             {'metavar': 'INT',
@@ -2564,13 +2597,35 @@ D = {
                      "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
-        ['--export-gff3'],
-        {
-            'default': False,
-            'action': 'store_true',
-            'help': "If this is true, the output file will be in GFF3 format."
-        }
-    ),
+            ['--export-gff3'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If this is true, the output file will be in GFF3 format."}
+        ),
+    'palindrome-search-algorithm': (
+            ['--palindrome-search-algorithm'],
+            {'default': None,
+             'type': str,
+             'choices': {'numba', 'BLAST'},
+             'help': "There are two algorithms for calculating palindromes: 'BLAST' and 'numba'. By default, anvi'o will dynamically "
+                     "optimize your search for speed and will use numba when a given sequence is shorter than 5,000 nucleotides or "
+                     "will use BLAST otherwise. However, you can use this parameter to ask anvi'o to use either of these methods "
+                     "explicitly to search for palindromes. You can choose from the options 'BLAST' or 'numba'. Please note that "
+                     "the results from the two approaches may differ."}
+        ),
+    'min-mismatch-distance-to-first-base': (
+            ['--min-mismatch-distance-to-first-base'],
+            {'default': 1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "This parameter allows you to trim the palindrome when one or more mismatches are n nucleotides away "
+                     "from a palindrome's start or stop. By default, this flag is set to 1, which means anvi'o will trim "
+                     "palindromes with a mismatch that are occuring on the second or n-1 position. Here is an example "
+                     "palindrome `MMMMMM(X)M` where `M` are the matching nucleotides and `X` is a mismatch. By default, "
+                     "anvi'o will only report the first six matches: `MMMMMMM`. The rationale behind this parameter is that "
+                     "when searching for palindromes with mismatches, the algorithm will extend the palindrome length "
+                     "as much as possible, often wrongly including mismatches which are outside of the true palindrome."}
+        ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
             {'default': 10,
@@ -2583,11 +2638,10 @@ D = {
             {'default': 50,
              'metavar': 'INT',
              'type': int,
-             'help': "The minimum distance between the palindromic sequences (this parameter is essentially "
-                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is 50, "
-                     "which means the algorithm will never report by default sequences that are like "
-                     "`ATCGCGAT` with no gaps between the palindrome where the palindromic sequence matches "
-                     "itself (but you can get such palindromes by setting this parameter to 0)."}
+             'help': "The minimum distance between palindromic sequences (this parameter is essentially "
+                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). A value of 0 means "
+                     "that the algorithm will find all palindromes whether they are 'in-place' palindromes or "
+                     "distant palindromes. The default value is %(default)d ncl."}
         ),
     'max-num-mismatches': (
             ['-m', '--max-num-mismatches'],
@@ -2793,16 +2847,23 @@ D = {
                      "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                      "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
-    'kegg-output-modes': (
-            ['--kegg-output-modes'],
+    'enzymes-txt': (
+            ['--enzymes-txt'],
+            {'default': None,
+             'metavar': 'FILE_PATH',
+             'type': str,
+             'help': "A tab-delimited file describing gene id, enzyme accession, functional annotation source for the enzyme, "
+                     "and (optionally) coverage and detection values for the gene."}
+                ),
+    'output-modes': (
+            ['--output-modes'],
             {'default': None,
              'metavar': 'MODES',
              'type': str,
-             'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
+             'help': "Use this flag to indicate what information you want in the metabolism output files, by "
                      "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
-                     "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
-                     "'complete_modules'. To see a list of available output modes, run this script with the flag "
-                     "--list-available-modes."}
+                     "different output file, all with the same prefix). To see a list of available output modes, "
+                     "run this script with the flag --list-available-modes."}
                 ),
     'list-available-modes': (
             ['--list-available-modes'],
@@ -2908,7 +2969,7 @@ D = {
             'metavar': 'TEXT_FILE',
             'help': "A tab-delimited text file specifying module completeness in every genome/MAG/sample "
                     "that you are interested in. The best way to get this file is to run `anvi-estimate-metabolism "
-                    "--kegg-output-modes modules` on your samples of interest. Trust us."}
+                    "--output-modes modules` on your samples of interest. Trust us."}
                 ),
     'groups-txt': (
             ['-G', '--groups-txt'],

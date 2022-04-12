@@ -368,10 +368,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                          "http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
                     else:
                         self.run.warning("This single profile database does not seem to have any hierarchical clustering "
-                                         "that is required by the interactive interface. You must use `--cluster-contigs` "
-                                         "flag for single profiles if you would like to see a hierarchical clustering "
-                                         "dendrogram in the center of your display. Please read the help menu for "
-                                         "anvi-profile, and/or refer to the tutorial.")
+                                         "that is required by the interactive interface :/ Anvi'o does not automatically compute "
+                                         "a hierarchical clustering of contigs for single profiles, but you can ask for it "
+                                         "explicilty by passing the `--cluster-contigs` flag to the program `anvi-profile`. "
+                                         "This way you will be able to run `anvi-interactive` on your single profile, and see "
+                                         "a dendrogram at the center of your display. Please take a look at the help menu for "
+                                         "`anvi-profile`.")
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
@@ -898,11 +900,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                         distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
                                         check_names_consistency=False)
 
+            # if there are more than one genome in the analysis (which should almost always be the case),
             # let's get a layer's order, too, and immediately add it to the database:
-            layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
-            self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+            if num_genomes > 1:
+                layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+                args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
+                TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+                self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
             TablesForViews(self.profile_db_path).create_new_view(
@@ -966,6 +970,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Collection ID', self.collection_name)
         self.run.info('Number of bins', len(self.bin_names_of_interest))
         self.run.info('Number of splits', len(self.split_names_of_interest))
+
+        if not len(self.split_names_of_interest):
+            raise ConfigError("Something must have gone wrong :/ You are knee deep in refine mode, and have "
+                              "zero split names to work with. You have to go back, Kate. Like, ALL the way "
+                              "back to complaining to the developers on Slack or something :(")
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()
@@ -1118,7 +1127,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_for_collection[view] = d
 
         default_clustering_class = 'mean_coverage' if self.p_meta['merged'] else 'single'
-        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['available_item_orders'])
+        self.p_meta['default_item_order'] = get_default_item_order_name(default_clustering_class, self.p_meta['item_orders'])
 
         # replace self.views with the new view:
         self.views = views_for_collection
@@ -1213,7 +1222,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.skip_init_functions:
             self.init_functions()
 
-        ProfileSuperclass.__init__(self, self.args)
+        if self.mode == 'refine':
+            # the refine trick: initialize profile super without a collection
+            # name since we already know our split names:
+            collection_name = self.collection_name
+            self.collection_name = None
+            self.args.collection_name = None
+            ProfileSuperclass.__init__(self, self.args)
+            self.collection_name = collection_name
+            self.args.collection_name = collection_name
+        else:
+            ProfileSuperclass.__init__(self, self.args)
 
         # init item additional data
         ProfileSuperclass.init_items_additional_data(self)

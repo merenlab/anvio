@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group("PARAMETERS", "Important stuff Tom never pays attention (but you should).")
     groupC.add_argument('--skip-alignments', default = False, action = 'store_true', help = "By default, anvi'o attempts to align amino acid\
-                                sequences in each gene cluster using multiple sequnce alignment via muscle. You can use this flag to skip\
+                                sequences in each gene cluster using multiple sequence alignment via muscle. You can use this flag to skip\
                                 that step and be upset later.")
     groupC.add_argument('--skip-homogeneity',default=False, action='store_true', dest='skip_homogeneity',help="By default, anvi'o attempts to calculate homogeneity\
                                 values for every gene cluster, given that they are aligned. You can use this flag to have anvi'o skip\
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                                 'A' and 'B', the minbit is defined as 'BITSCORE(A, B) / MIN(BITSCORE(A, A), BITSCORE(B, B))'. So the minbit score\
                                 between two sequences goes to 1 if they are very similar over the entire length of the 'shorter' amino acid sequence,\
                                 and goes to 0 if (1) they match over a very short stretch compared even to the length of the shorter amino acid sequence\
-                                or (2) the match betwen sequence identity is low. The default is %(default)g.")
+                                or (2) the match between sequence identity is low. The default is %(default)g.")
     groupC.add_argument('--mcl-inflation', type = float, default = 2.0, metavar = "INFLATION", help = "MCL inflation parameter, that defines\
                                 the sensitivity of the algorithm during the identification of the gene clusters. More information on this\
                                 parameter and it's effect on cluster granularity is here: (http://micans.org/mcl/man/mclfaq.html#faq7.2).\
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('enforce-hierarchical-clustering'), **anvio.K('enforce-hierarchical-clustering', {'help': "If you\
                                 want anvi'o to try to generate a hierarchical clustering of your gene clusters even if the number of gene clusters exceeds\
                                 its suggested limit for hierarchical clustering, you can use this flag to enforce it. Are you are a\
-                                rebel of some sorts? Or did computers made you upset? Express your anger towards machine using this\
+                                rebel of some sorts? Or did computers make you upset? Express your anger towards machine using this\
                                 flag."}))
     groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'default': None, 'help':
                       'The distance metric for the clustering of gene clusters. If you do not use this flag,\

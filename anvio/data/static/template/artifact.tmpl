@@ -1,6 +1,7 @@
 ---
-layout: page
-title: {{ artifact.name }} [artifact]
+layout: artifact
+title: {{ artifact.name }}
+excerpt: A {{ artifact.type }}-type anvi'o artifact. This artifact {% if artifact.provided_by_anvio and not artifact.provided_by_user %}is typically generated, used, and/or exported by anvi'o (and not provided by the user).{% elif not artifact.provided_by_anvio and artifact.provided_by_user %}is typically provided by the user for anvi'o to import into its databases, process, and/or use{% else %}can be generated, used, and/or exported by anvi'o. It can also be provided **by the user** for anvi'o to import into its databases, process, and/or use{% endif %}.
 categories: [anvio]
 comments: false
 redirect_from: /{{ meta.version_short_identifier }}/{{ artifact.name }}

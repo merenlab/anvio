@@ -804,6 +804,70 @@ class MetagenomeDescriptions(object):
         [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
 
 
+    def get_functions_and_sequences_dicts_from_contigs_db(self, metagenome_name, requested_source_list=None, return_only_functions=False):
+        """This function fetches dictionaries of functions, AA sequences, and DNA sequences for a particular metagenome.
+
+        PARAMETERS
+        ==========
+        metagenome_name, str
+            the metagenome name you want data for
+        requested_source_list, list
+            the functional annotation sources you want data for.
+        return_only_functions, bool
+            Return only functions, and don't bother with sequences
+
+        RETURNS
+        =======
+        function_calls_dict : dictionary of function annotations
+        aa_sequences_dict : dictionary of corresponding amino acid sequences
+        dna_sequences_dict : dictionary of corresponding nucleotide sequences
+        """
+
+        if not requested_source_list:
+            raise ConfigError("Someone is trying to call the `get_functions_and_sequences_dicts_from_contigs_db()` from the MetagenomeDescriptions "
+                              "class without providing a list of annotation sources to use. This won't work unfortunately.")
+
+        g = self.metagenomes[metagenome_name]
+
+        if 'gene_function_sources' not in g:
+            raise ConfigError(f"Uh oh. The metagenome you are trying to load functions from ({metagenome_name}) does not appear to have "
+                              f"functional annotation sources initialized.")
+        g_sources = g['gene_function_sources']
+        srcs_missing_from_g = []
+        for s in requested_source_list:
+            if s not in g_sources:
+                srcs_missing_from_g.append(s)
+        if srcs_missing_from_g:
+            req_str = ", ".join(requested_source_list)
+            avail_str = ", ".join(g_sources)
+            miss_str = ", ".join(srcs_missing_from_g)
+            raise ConfigError(f"Whoops. Some of the functional annotation sources you requested for metagenome {metagenome_name} are "
+                              f"not in its contigs database. These are the sources that you asked for: {req_str}. And these are the "
+                              f"sources that are AVAILABLE for this metagenome: {avail_str}. So, the following sources are MISSING: "
+                              f"{miss_str}")
+
+        args = argparse.Namespace()
+        args.contigs_db = g['contigs_db_path']
+
+        contigs_super = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+        contigs_super.init_functions(requested_sources=requested_source_list)
+        function_calls_dict = contigs_super.gene_function_calls_dict
+
+        if return_only_functions:
+            return (function_calls_dict, None, None)
+
+        # get dna sequences
+        gene_caller_ids_list, dna_sequences_dict = contigs_super.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(g['gene_caller_ids']))
+
+        # get amino acid sequences.
+        # FIXME: this should be done in the contigs super.
+        contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+        aa_sequences_dict = contigs_db.db.get_table_as_dict(t.gene_amino_acid_sequences_table_name)
+        contigs_db.disconnect()
+
+        return (function_calls_dict, aa_sequences_dict, dna_sequences_dict)
+
+
 class AggregateFunctions:
     """Aggregate functions from anywhere.
 
@@ -1295,6 +1359,34 @@ class AggregateFunctions:
                                                                                       enrichment_output_file_path=self.functional_enrichment_output_path,
                                                                                       run=self.run,
                                                                                       progress=self.progress)
+
+
+    def report_functions_across_genomes(self, output_file_prefix, quiet=False):
+        """Reports text files for functions across genomes data"""
+
+        output_file_path_for_frequency_view = f"{os.path.abspath(output_file_prefix)}-FREQUENCY.txt"
+        output_file_path_for_presence_absence_view = f"{os.path.abspath(output_file_prefix)}-PRESENCE-ABSENCE.txt"
+
+        filesnpaths.is_output_file_writable(output_file_path_for_frequency_view)
+        filesnpaths.is_output_file_writable(output_file_path_for_presence_absence_view)
+
+        with open(output_file_path_for_frequency_view, 'w') as frequency_output, open(output_file_path_for_presence_absence_view, 'w') as presence_absence_output:
+            layer_names = sorted(list(self.layer_names_considered))
+            frequency_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
+            presence_absence_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
+
+            for key in self.functions_across_layers_frequency:
+                function = self.hash_to_function_dict[key][self.function_annotation_source]
+
+                frequency_data = [f"{self.functions_across_layers_frequency[key][l] if l in self.functions_across_layers_frequency[key] else 0}" for l in layer_names]
+                frequency_output.write('\t'.join([key] + frequency_data + [function]) + '\n')
+
+                presence_absence_data = [f"{self.functions_across_layers_presence_absence[key][l] if l in self.functions_across_layers_presence_absence[key] else 0}" for l in layer_names]
+                presence_absence_output.write('\t'.join([key] + presence_absence_data + [function]) + '\n')
+
+        if not quiet:
+            self.run.info('Functions across genomes (frequency)', output_file_path_for_frequency_view)
+            self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
 
 
     def report_functions_per_group_stats(self, output_file_path, quiet=False):

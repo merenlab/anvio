@@ -18,7 +18,7 @@ The script `anvi-script-enrichment-stats` was implemented by [Amy Willis](https:
 
 ### Basic usage
 
-See %(kegg-metabolism)s for more information on how to generate a "modules" mode output format from %(anvi-estimate-metabolism)s. Please note that the genome names in the modules file must match those that you will mention in the %(groups-txt)s file.
+See %(kegg-metabolism)s or %(user-metabolism)s for more information on how to generate a "modules" mode output format from %(anvi-estimate-metabolism)s. Please note that the genome names in the modules file must match those that you will mention in the %(groups-txt)s file.
 
 {{ codestart }}
 anvi-compute-metabolic-enrichment -M MODULES.TXT \
@@ -46,7 +46,7 @@ anvi-compute-metabolic-enrichment -M MODULES.TXT \
                                   --sample-header metagenome_name
 {{ codestop }}
 
-If you ran %(anvi-estimate-metabolism)s on a bunch of extra genomes but only want to include a subset of them in the %(groups-txt)s, that is fine. By default, any samples from the `MODULES.TXT` file that are missing from the %(groups-txt)s will be **ignored**. However, there is also an option to include those missing samples in the analysis, as one big group called 'UNGROUPED'. To do this, you can use the `--include-samples-missing-from-groups-txt` parameter. Just be careful that if you are also using the `--include-ungrouped` flag (see below), any samples without a specified group in the %(groups-txt)s will also be included in the 'UNGROUPED' group.
+If you ran %(anvi-estimate-metabolism)s on a bunch of extra genomes but only want to include a subset of them in the %(groups-txt)s, that is fine. By default, any samples from the `MODULES.TXT` file that are missing from the %(groups-txt)s will be **ignored**. However, there is also an option to include those missing samples in the analysis, as one big group called 'UNGROUPED'. To do this, you can use the `--include-samples-missing-from-groups-txt` parameter.
 
 {{ codestart }}
 anvi-compute-metabolic-enrichment -M MODULES.TXT \

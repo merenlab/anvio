@@ -658,7 +658,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -680,6 +681,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
         If True, file object will not be closed after writing the dictionary to the file
+    do_not_write_key_column: boolean
+        If True, the first column (keys of the dictionary) will not be written to the file. For use in
+        instances when the key is meaningless or arbitrary.
 
     Returns
     =======
@@ -705,9 +709,15 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             raise ConfigError("Your header item conversion dict is missing keys for one or "
                               "more headers :/ Here is a list of those that do not have any "
                               "entry in the dictionary you sent: '%s'." % (', '.join(missing_headers)))
-        header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
+        if do_not_write_key_column:
+            header_text = '\t'.join([header_item_conversion_dict[h] for h in headers[1:]])
+        else:
+            header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
-        header_text = '\t'.join(headers)
+        if do_not_write_key_column:
+            header_text = '\t'.join(headers[1:])
+        else:
+            header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
         tab = '\t'
@@ -733,7 +743,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                   "missing.")
 
     for k in keys_order:
-        line = [str(k)]
+        if do_not_write_key_column:
+            line = []
+        else:
+            line = [str(k)]
         for header in headers[1:]:
             try:
                 val = d[k][header]
@@ -1068,7 +1081,7 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -1104,13 +1117,17 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         if rows_to_return and row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
-        fields = line.strip().split('\t')[1:]
+        fields = line.strip('\n').split('\t')[1:]
+
+        # long story.
+        if pad_with_zeros:
+            fields = [0] + fields + [0]
 
         try:
             if fields_of_interest:
-                vector = [float(fields[i]) for i in fields_of_interest]
+                vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
-                vector = [float(f) for f in fields]
+                vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
 
@@ -3233,6 +3250,9 @@ def get_bams_and_profiles_txt_as_data(file_path):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
+
+    Updates to this function may require changes in the artifact description at
+    anvio/docs/artifacts/bams-and-profiles-txt.md
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3246,7 +3266,8 @@ def get_bams_and_profiles_txt_as_data(file_path):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
-        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
+                          f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3274,6 +3295,20 @@ def get_bams_and_profiles_txt_as_data(file_path):
         filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
         is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
+    # this file can optionally contain `r1` and `r2` for short reads
+    for raw_reads in ['r1', 'r2']:
+        if raw_reads in columns_found:
+            file_paths = COLUMN_DATA(raw_reads)
+            if '' in file_paths:
+                raise ConfigError("If you are using r1/r2 columns in your `bams-and-profiles-txt` file, then you "
+                                  "must have a valid file path for every single sample. In your current file there "
+                                  "are some blank ones. Sorry.")
+            missing_files = [f for f in file_paths if not os.path.exists(f)]
+            if len(missing_files):
+                raise ConfigError(f"Anvi'o could not find some of the {raw_reads.upper()} files listed in your "
+                                  f"`bams-and-profiles-txt` at {file_path} where they were supposed to be: "
+                                  f"{missing_files}.")
+
     return contigs_db_path, profiles_and_bams
 
 
@@ -3282,10 +3317,17 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     filesnpaths.is_file_tab_delimited(file_path)
 
-    expected_columns = ['sample', 'r1', 'r2']
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if columns_found[0] == 'sample':
+        expected_columns = ['sample', 'r1', 'r2']
+    elif columns_found[0] == 'name':
+        expected_columns = ['name', 'r1', 'r2']
+    else:
+        raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
+
     possible_columns = expected_columns + ['group']
 
-    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
     extra_columns = set(columns_found).difference(set(possible_columns))
 
     if not set(expected_columns).issubset(set(columns_found)):
@@ -3293,9 +3335,10 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     if len(extra_columns):
         run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
-                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
-                    f"business, but we wanted you to be aware of the fact that your input file does not "
-                    f"fully match anvi'o expectations from this file type.")
+                    f"{', '.join(extra_columns)} compared to what is expected of a `samples-txt` file, "
+                    f"which is absolutely fine. You're reading this message becasue anvi'o wanted to "
+                    f"make sure you know that it knows that it is the case. Classic anvi'o virtue "
+                    f"signaling.", lc="yellow")
 
     samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
 
@@ -3353,7 +3396,7 @@ def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
     return primers_txt
 
 
-def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_missing_samples_is_true=False):
     """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
 
     Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
@@ -3365,6 +3408,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
         Dictionary in which keys are items and values are groups
     group_to_item_dict : dict
         Dictionary in which keys are groups and values are lists of items in that group
+    include_missing_samples_is_true : Boolean
+        set this to True if samples not in this file will be included in the downstream analysis as
+        an 'UNGROUPED' group, just to let this function know that it should not crash if less
+        than 2 group names are in the groups txt file.
     """
 
     filesnpaths.is_file_tab_delimited(file_path)
@@ -3372,10 +3419,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if 'group' not in columns_found:
-        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+        raise ConfigError("A groups-txt file should have a column that is called `group`.")
 
     if len(columns_found) < 2:
-        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for group names.")
 
     item_column = columns_found[0]
     if item_column == 'group':
@@ -3399,8 +3446,15 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
 
-    if len(group_to_item_dict.keys()) < 2:
-        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+    num_groups = len(group_to_item_dict.keys())
+    if num_groups < 2:
+        if include_missing_samples_is_true and num_groups == 1:
+            run.warning("There is only one group in your groups-txt file, but we have been told that samples not in this file "
+                             "will be included in a group called 'UNGROUPED', so that means you have 2 groups in total. Everything is "
+                             "fine, as far as we know, but if you look at this and think 'Wait, this is very much NOT fine', well, then "
+                             "the power is in your hands to fix it.")
+        else:
+            raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
                           "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
                           "working in should allow for only one group in this file, please feel free to let us know.")
 
@@ -4540,3 +4594,54 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+def split_by_delim_not_within_parens(d, delims, return_delims=False):
+    """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+    This function exists because regular expressions don't handle nested parentheses very well.
+
+    The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
+    instead of the list of splits in this situation)
+
+    PARAMETERS
+    ==========
+    d : str
+        string to split
+    delims : str or list of str
+        a single delimiter, or a list of delimiters, to split on
+    return_delims : boolean
+        if this is true then the list of delimiters found between each split is also returned
+
+    RETURNS
+    =======
+    If parentheses are unbalanced in the string, this function returns False. Otherwise:
+    splits : list
+        strings that were split from d
+    delim_list : list
+        delimiters that were found between each split (only returned if return_delims is True)
+    """
+
+    parens_level = 0
+    last_split_index = 0
+    splits = []
+    delim_list = []
+    for i in range(len(d)):
+        # only split if not within parentheses
+        if d[i] in delims and parens_level == 0:
+            splits.append(d[last_split_index:i])
+            delim_list.append(d[i])
+            last_split_index = i + 1 # we add 1 here to skip the space
+        elif d[i] == "(":
+            parens_level += 1
+        elif d[i] == ")":
+            parens_level -= 1
+
+        # if parentheses become unbalanced, return False to indicate this
+        if parens_level < 0:
+            return False
+    splits.append(d[last_split_index:len(d)])
+
+    if return_delims:
+        return splits, delim_list
+    return splits

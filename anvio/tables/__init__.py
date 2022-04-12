@@ -23,7 +23,7 @@ structure_db_version = "2"
 genomes_storage_vesion = "7"
 trnaseq_db_version = "2"
 workflow_config_version = "2"
-metabolic_modules_db_version = "2"
+metabolic_modules_db_version = "3"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -279,7 +279,7 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 #
 ####################################################################################################
 
-module_table_name = "kegg_modules"
+module_table_name = "modules"
 module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
 module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
@@ -415,6 +415,7 @@ table_requires_unique_entry_id = {'self': False,
                                   gene_info_table_name: False,
                                   genome_gene_function_calls_table_name: True,
                                   pdb_data_table_name: False,
+                                  'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,
                                   trnaseq_sequences_table_name: False,

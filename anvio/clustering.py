@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
+from scipy.spatial import distance as scipy_distance
 
 import anvio
 import anvio.utils as utils
@@ -102,14 +103,41 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     return newick
 
 
+def get_vectors_for_vectors_with_missing_data(vectors):
+    """Get a distance matrix for vectors with missing data.
+
+    Modified from the solution at https://stackoverflow.com/questions/31420912/python-hierarchical-clustering-with-missing-values
+    """
+
+    vectors[vectors == None] = np.nan
+
+    Npat = vectors.shape[0]
+    dist = np.ndarray(shape=(Npat,Npat))
+    dist.fill(0)
+    for ix in range(0,Npat):
+        x = vectors[ix,]
+        if ix >0:
+            for iy in range(0,ix):
+                y = vectors[iy,]
+                dist[ix,iy] = np.nanmean((x - y) ** 2, dtype='float32')
+                dist[iy,ix] = dist[ix,iy]
+
+    return scipy_distance.squareform(dist)
+
+
 def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=False):
     is_distance_and_linkage_compatible(distance, linkage)
 
     if transpose:
         vectors = vectors.transpose()
 
-    # normalize vectors:
-    vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
+    # if there are missing values in data, we will assume that
+    # it was normalized by the user.
+    if None in vectors:
+        vectors = get_vectors_for_vectors_with_missing_data(vectors)
+    else:
+        # normalize vectors:
+        vectors = get_normalized_vectors(vectors, norm=norm, progress=progress)
 
     tree = get_clustering_as_tree(vectors, linkage, distance, progress)
     newick = get_tree_object_in_newick(tree, id_to_sample_dict)
@@ -119,7 +147,7 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
 
 def create_newick_file_from_matrix_file(observation_matrix_path, output_file_path, linkage=constants.linkage_method_default,
                          distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False,
-                         items_order_file_path=None):
+                         items_order_file_path=None, pad_with_zeros=False):
     is_distance_and_linkage_compatible(distance, linkage)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
@@ -128,7 +156,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
     if items_order_file_path:
         filesnpaths.is_output_file_writable(items_order_file_path)
 
-    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
+    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose, pad_with_zeros=pad_with_zeros)
 
     vectors = np.array(vectors)
 
@@ -139,7 +167,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
 
     if items_order_file_path:
         open(items_order_file_path, 'w').write('\n'.join(utils.get_names_order_from_newick_tree(newick)) + '\n')
-        
+
 
 def get_scaled_vectors(vectors, user_seed=None, n_components=12, normalize=True, progress=progress):
     if user_seed:
