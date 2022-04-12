@@ -909,8 +909,8 @@ D = {
              'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
-                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
-                     "if you do not specify anything."}
+                     "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
+                     "to use the default path if you do not specify anything."}
                 ),
     'user-modules': (
             ['-u', '--user-modules'],
@@ -2899,6 +2899,12 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
+                ),
+    'skip-brite-hierarchies': (
+            ['--skip-brite-hierarchies'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],

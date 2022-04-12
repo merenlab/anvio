@@ -11,6 +11,7 @@ import statistics
 import json
 import time
 import hashlib
+import collections
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -259,6 +260,7 @@ class KeggContext(object):
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
+        self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -267,6 +269,7 @@ class KeggContext(object):
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
+        self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
         if self.user_input_dir:
@@ -372,6 +375,64 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
+    def invert_brite_json_dict(self, brite_dict):
+        """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
+
+        There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
+        'name' is a string and the value for 'children' is a list of dicts.
+
+        Here is an example of what the beginning of the json dict looks like for 'br08902 BRITE
+        Hierarchy Files', the 'hierarchy of all existing hierarchies':
+           {
+             "name": "br08902",
+             "children": [
+               {
+                 "name": "Pathway and Brite",
+                 "children": [
+                   {
+                     "name": "Pathway maps",
+                     "children": [
+                       {
+                         "name": "br08901  KEGG pathway maps"
+                       }
+                     ]
+                   }, ...
+        Observe that innermost dicts only have a single entry keyed by 'name'.
+
+        Here is the corresponding entry in the returned dict for the item in the example:
+            'br08901  KEGG pathway maps':
+                [['br08902', 'Pathway and Brite', 'Pathway maps']]
+        The value is a list of lists because an item can occur multiple times in the same hierarchy.
+
+        PARAMETERS
+        ==========
+        brite_dict : dict
+            dict loaded from BRITE hierarchy json file
+
+        RETURNS
+        =======
+        categorization_dict : dict
+            dict of entry categorizations in BRITE hierarchy
+        """
+
+        children_stack = collections.deque()
+        children_stack.append(([brite_dict['name']], brite_dict['children']))
+        categorization_dict = {}
+        while children_stack:
+            hierarchy, children_list = children_stack.popleft()
+            for child_dict in children_list:
+                child_name = child_dict['name']
+                if 'children' in child_dict:
+                    children_stack.append((hierarchy + [child_name], child_dict['children']))
+                else:
+                    try:
+                        categorization_dict[child_name].append(hierarchy)
+                    except KeyError:
+                        categorization_dict[child_name] = [hierarchy]
+
+        return categorization_dict
+
+
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
@@ -393,6 +454,7 @@ class KeggSetup(KeggContext):
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
         self.kegg_snapshot = args.kegg_snapshot
+        self.skip_brite_hierarchies = args.skip_brite_hierarchies
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -429,6 +491,7 @@ class KeggSetup(KeggContext):
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
             self.target_snapshot = self.kegg_snapshot or 'v2021-12-18'
@@ -459,6 +522,8 @@ class KeggSetup(KeggContext):
             self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
             self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
             self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+            # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
+            self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
             if '/' not in self.user_input_dir:
@@ -510,6 +575,12 @@ class KeggSetup(KeggContext):
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
                               "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
                               % (self.pathway_data_dir, self.kegg_data_dir))
+
+        if os.path.exists(self.brite_data_dir):
+            raise ConfigError("It seems the KEGG BRITE directory %s already exists on your system. This is even more "
+                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
+                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
+                              % (self.brite_data_dir, self.kegg_data_dir))
 
 
     def check_user_input_dir_format(self):
@@ -705,6 +776,79 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
+    def process_brite_hierarchy_of_hierarchies(self):
+        """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
+
+        This method is called during setup to find all BRITE hierarchies to be downloaded.
+        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins.
+        Excluded hierarchies include those for modules, pathways, and other systems for reactions,
+        compounds, taxa, etc.
+
+        The dictionary that is filled out, `self.brite_dict`, is keyed by the 'ko' hierarchy name
+        exactly as given in the 'br08902' json file. The values are the categorizations of the
+        hierarchy in 'br08902', going from most general to most specific category.
+
+        Here is an example of an entry produced in self.brite_dict:
+            'ko01000  Enzymes':
+                ['Genes and Proteins', 'Protein families: metabolism']
+        """
+
+        filesnpaths.is_file_exists(self.kegg_brite_hierarchies_file)
+        filesnpaths.is_file_json_formatted(self.kegg_brite_hierarchies_file)
+
+        self.progress.new("Parsing KEGG BRITE Hierarchies file")
+
+        brite_hierarchies_dict = json.load(open(self.kegg_brite_hierarchies_file))
+        # store the names of all of the 'ko' hierarchies for genes/proteins
+        self.brite_dict = {}
+        hierarchies_appearing_multiple_times = []
+        hierarchies_with_unrecognized_accession = []
+        for hierarchy, categorizations in self.invert_brite_json_dict(brite_hierarchies_dict).items():
+            # we have observed the hierarchy label to have an accession followed by two spaces followed by the hierarchy name,
+            # but accommodate the possibility that the accession is separated from the name by a variable number of spaces
+            split_hierarchy = hierarchy.split(' ')
+            hierarchy_accession = split_hierarchy[0]
+            hierarchy_name = ' '.join(split_hierarchy[1: ]).lstrip()
+            if hierarchy_accession[: 2] == 'br':
+                # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
+                # this hierarchy is for modules, not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00003' and hierarchy_name == 'KEGG reaction modules':
+                # this hierarchy is also for modules
+                continue
+
+            if len(categorizations) > 1:
+                hierarchies_appearing_multiple_times.append((hierarchy, len(categorizations)))
+
+            if hierarchy_accession[: 2] != 'ko':
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            try:
+                int(hierarchy_accession[2: 7])
+            except ValueError:
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            self.brite_dict[hierarchy] = categorizations[0][1: ]
+
+        error_first_part = ""
+        if hierarchies_appearing_multiple_times:
+            error_first_part = ("Each BRITE hierarchy should only appear once in the hierarchy of hierarchies, "
+                                "but the following hierarchies appeared the given number of times: "
+                                f"{', '.join([f'{hier}: {num_times}' for hier, num_times in hierarchies_appearing_multiple_times])}.")
+        error_second_part = ""
+        if hierarchies_with_unrecognized_accession:
+            error_second_part = ("Each BRITE hierarchy accession is expected to have an accession formatted 'koXXXXX', where 'XXXXX' are five digits, "
+                                 f"but the following hierarchies did not have this format: {', '.join(hierarchies_with_unrecognized_accession)}.")
+        if hierarchies_appearing_multiple_times or hierarchies_with_unrecognized_accession:
+            raise ConfigError("Please contact the developers to look into the following error. "
+                              f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
+
+        self.progress.end()
+        self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
+
+
     def download_modules(self):
         """This function downloads the KEGG modules.
 
@@ -786,6 +930,49 @@ class KeggSetup(KeggContext):
                                   "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
+
+
+    def download_brite_hierarchy_of_hierarchies(self):
+        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
+
+        This hierarchy contains the names of other hierarchies which are subsequently used for
+        downloading those hierarchy json files.
+        """
+
+        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
+                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def download_brite_hierarchies(self):
+        """This function downloads a json file for every BRITE hierarchy of interest.
+
+        Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
+        """
+
+        unexpected_hierarchies = []
+        for hierarchy in self.brite_dict:
+            hierarchy_accession = hierarchy[: 7]
+            brite_system = hierarchy_accession[: 2]
+            if brite_system != 'ko':
+                unexpected_hierarchies.append(hierarchy)
+            if not unexpected_hierarchies:
+                file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
+                                    file_path, progress=self.progress, run=self.run)
+                # verify that the whole json file was downloaded
+                filesnpaths.is_file_json_formatted(file_path)
+        if unexpected_hierarchies:
+            raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
+                              f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
 
 
     def decompress_files(self):
@@ -954,11 +1141,11 @@ class KeggSetup(KeggContext):
                               f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
-    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -998,7 +1185,7 @@ class KeggSetup(KeggContext):
             if not os.path.exists(path_to_f_in_archive):
                 is_ok = False
                 if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected file or directory: %s"
+                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
                                      % (path_to_f_in_archive))
 
         # check hmm files
@@ -1024,6 +1211,27 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
     def check_modules_db_version(self):
         """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
 
@@ -1036,7 +1244,7 @@ class KeggSetup(KeggContext):
         target_version = int(anvio.tables.versions_for_db_types['modules'])
         if current_db_version != target_version:
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
                              f"Here is the path to the database: {self.kegg_modules_db_path}")
 
 
@@ -1057,6 +1265,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
@@ -1071,6 +1280,11 @@ class KeggSetup(KeggContext):
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -1139,9 +1353,13 @@ class KeggSetup(KeggContext):
             self.decompress_files()
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
+            if not self.skip_brite_hierarchies:
+                self.download_brite_hierarchy_of_hierarchies()
+                self.process_brite_hierarchy_of_hierarchies()
+                self.download_brite_hierarchies()
             self.setup_ko_dict()
             self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir)
+            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
         elif self.user_input_dir:
             self.setup_user_data()
         else:
@@ -1172,6 +1390,7 @@ class RunKOfams(KeggContext):
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1191,7 +1410,12 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
+
+        if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
+            self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
+                             "which could very well be useful to you. BRITE is guaranteed to be set up "
+                             "when downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1284,6 +1508,7 @@ class RunKOfams(KeggContext):
         self.functions_dict = {}
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
+        self.kegg_brite_categorizations_dict = {}
         self.gcids_to_hits_dict = {}
         self.gcids_to_functions_dict = {}
         counter = 0
@@ -1369,6 +1594,12 @@ class RunKOfams(KeggContext):
                         'function': mod_class_annotation,
                         'e_value': None,
                     }
+
+                if not self.skip_brite_hierarchies:
+                    # get BRITE categorization information in the form to be added to the contigs database
+                    ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                    if ortholog_categorizations_dict:
+                        self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
 
                 counter += 1
             else:
@@ -1494,12 +1725,60 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
+                            if not self.skip_brite_hierarchies:
+                                # get BRITE categorization information in the form to be added to the contigs database
+                                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                                if ortholog_categorizations_dict:
+                                    self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
+
                         next_key += 1
                         num_annotations_added += 1
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
+
+
+    def get_ortholog_categorizations_dict(self, ortholog_accession, gene_callers_id=None):
+        """Return a dictionary of ortholog BRITE categorizations.
+
+        The dictionary is formatted to represent a row of the `gene_functions` table in the contigs database.
+        """
+
+        ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(ortholog_accession)
+        if not ortholog_brite_dict:
+            return None
+
+        # the following explains the format of BRITE "accession" and "function" entries in the
+        # table. Orthologs can be in multiple hierarchies, and can be categorized in a hierarchy
+        # multiple times. Each categorization of the ortholog in a hierarchy is separated by "!!!",
+        # and each category in the categorization is separated by ">>>". The hierarchy name is
+        # placed at the beginning of each categorization. Perhaps the name of hierarchy "ko00001",
+        # which is "KEGG Orthology (KO)", should not be placed at the beginning of categorizations
+        # due to its uninformativeness, but for the sake of consistency, the format is maintained
+        # for this hierarchy. For example, "K01647 citrate synthase" produces the following
+        # "accession" and "function" strings:
+        # "ko00001!!!ko00001!!!ko01000"
+        # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
+        #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
+        #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
+        hierarchy_accession = ""
+        categorizations = ""
+        categorization_dicts = list(ortholog_brite_dict.values())
+        for categorization_dict in categorization_dicts[: -1]:
+            hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
+            categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
+        last_categorization_dict = categorization_dicts[-1]
+        hierarchy_accession += last_categorization_dict['hierarchy_accession']
+        categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
+
+        ortholog_categorizations_dict = {'gene_callers_id': gene_callers_id,
+                                         'source': 'KEGG_BRITE',
+                                         'accession': hierarchy_accession,
+                                         'function': categorizations,
+                                         'e_value': None}
+
+        return ortholog_categorizations_dict
 
 
     def store_annotations_in_db(self):
@@ -1518,6 +1797,8 @@ class RunKOfams(KeggContext):
                 gene_function_calls_table.create(self.kegg_module_names_dict)
             if self.kegg_module_classes_dict:
                 gene_function_calls_table.create(self.kegg_module_classes_dict)
+            if self.kegg_brite_categorizations_dict:
+                gene_function_calls_table.create(self.kegg_brite_categorizations_dict)
         else:
             self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
                              "but still adding KOfam as a functional source.")
@@ -4774,13 +5055,17 @@ class ModulesDatabase(KeggContext):
     ```
     """
 
-    def __init__(self, db_path, args, module_data_directory=None, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_data_directory=None, brite_data_directory=None, module_dictionary=None, pathway_dictionary=None, brite_dictionary=None, data_source='KEGG', skip_brite_hierarchies=False, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_data_directory = module_data_directory # only required for create()
+        self.brite_data_directory = brite_data_directory # only required for create()
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
+        self.brite_dict = brite_dictionary
         self.data_source = data_source
+        # BRITE setup can be skipped to allow newer versions of the database to be consistent with older versions that lacked BRITE
+        self.skip_brite_hierarchies = skip_brite_hierarchies
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -4806,6 +5091,11 @@ class ModulesDatabase(KeggContext):
         self.pathway_table_structure = t.pathway_table_structure
         self.pathway_table_types = t.pathway_table_types
 
+        # BRITE hierarchies table info
+        self.brite_table_name = t.brite_table_name
+        self.brite_table_structure = t.brite_table_structure
+        self.brite_table_types = t.brite_table_types
+
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
@@ -4813,6 +5103,7 @@ class ModulesDatabase(KeggContext):
             if not self.quiet:
                 self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
                 self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+                self.run.info('BRITE ko hierarchies', '%d found' % self.db.get_meta_value('num_brite_hierarchies'))
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
@@ -4823,6 +5114,9 @@ class ModulesDatabase(KeggContext):
             # if not self.pathway_dict:
             #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
             #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+            if not self.brite_dict:
+                raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
 
@@ -4842,6 +5136,7 @@ class ModulesDatabase(KeggContext):
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
+        self.db.create_table(self.brite_table_name, self.brite_table_structure, self.brite_table_types)
 
 
     def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
@@ -5071,6 +5366,9 @@ class ModulesDatabase(KeggContext):
         if not self.module_data_directory:
             raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
                               "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
+        if not self.skip_brite_hierarchies and not self.brite_data_directory:
+            raise ConfigError("Some dumb programmer forgot to provide a brite_data_directory parameter value to the ModulesDatabase "
+                              "class. The DB can't be created unless it knows where the BRITE hierarchies are... Get yourself together.")
 
         self.touch()
 
@@ -5093,6 +5391,9 @@ class ModulesDatabase(KeggContext):
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
         self.num_corrected_errors = 0
         self.num_uncorrected_errors = 0
+        # keep track of BRITE parsing information
+        self.num_hierarchies_parsed = 0
+        self.num_brite_categorizations = 0
 
         num_modules_parsed = 0
         line_number = 0
@@ -5232,25 +5533,113 @@ class ModulesDatabase(KeggContext):
                               "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
         annotation_source_list = ",".join(list(self.annotation_sources))
 
+        self.populate_brite_table()
+
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
-        self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
-        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
-        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
+        self.run.info('Number of module entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of module parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
+        self.run.info('Number of module parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
         self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
+        if not self.skip_brite_hierarchies and self.brite_dict:
+            self.run.info('Number of BRITE hierarchies', self.num_hierarchies_parsed, quiet=self.quiet)
+            self.run.info('Number of ortholog BRITE categorizations', self.num_brite_categorizations, quiet=self.quiet)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('data_source', self.data_source)
         self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
-        self.db.set_meta_value('total_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
+        if not self.skip_brite_hierarchies and self.brite_dict:
+            self.db.set_meta_value('is_brite_setup', True)
+            self.db.set_meta_value('num_brite_hierarchies', self.num_hierarchies_parsed)
+            self.db.set_meta_value('total_brite_entries', self.num_brite_categorizations)
+        else:
+            self.db.set_meta_value('is_brite_setup', False)
+            self.db.set_meta_value('num_brite_hierarchies', None)
+            self.db.set_meta_value('total_brite_entries', None)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
 
         self.db.disconnect()
+
+
+    def populate_brite_table(self):
+        if self.skip_brite_hierarchies or not self.brite_dict:
+            return
+
+        self.progress.new("Loading BRITE hierarchies into Modules DB...")
+
+        # init the BRITE table
+        brite_table = BriteTable(self.brite_table_name)
+
+        num_hierarchies_parsed = 0
+        unrecognized_items = []
+        for hierarchy in self.brite_dict:
+            self.progress.update(f"Parsing BRITE hierarchy '{hierarchy}'")
+            hierarchy_accession = hierarchy[: 7] # the validity of the hierarchy accession was checked in `KeggSetup.process_brite_hierarchy_of_hierarchies`
+            hierarchy_name = hierarchy[7: ].lstrip()
+
+            brite_file_path = os.path.join(self.brite_data_directory, hierarchy_accession)
+            for ortholog, categorizations in self.invert_brite_json_dict(json.load(open(brite_file_path))).items():
+                split_ortholog = ortholog.split(' ')
+                ortholog_accession = split_ortholog[0]
+
+                # record items in the hierarchy that do not have expected ortholog accessions formatted KXXXXX
+                if len(ortholog_accession) != 6:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                if ortholog_accession[0] != 'K':
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                try:
+                    int(ortholog_accession[1: ])
+                except ValueError:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+
+                ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
+
+                # process each of the ortholog's categorizations in the hierarchy
+                for categorization in categorizations:
+                    if hierarchy_accession == 'ko00001':
+                        # the expected top-level classes of the "ko00001  KEGG Orthology (KO)"
+                        # hierarchy are "09100 Metabolism", "09120 Genetic Information Processing",
+                        # "09130 Environmental Information Processing", "09140 Cellular Processes",
+                        # "09150 Organismal Systems", "09160 Human Diseases", "09180 Brite
+                        # Hierarchies", and "09190 Not Included in Pathway or Brite". "09180 Brite
+                        # Hierarchies" is a representation of other hierarchies, such as "01001
+                        # Protein kinases [BR:ko01001]", as totally flat categories, with all
+                        # subcategories flattened out. We download and process json files for these
+                        # other hierarchies separately. Therefore ignore entries in "09180 Brite
+                        # Hierarchies". "09150 Organismal Systems" and "09160 Human Diseases" are
+                        # also ignored due to their focus on human genes. The value of "09190 Not
+                        # Included in Pathway or Brite" is debatable, but certain proteins are only
+                        # found in this category, such as bacterial circadian clock proteins
+                        # (classified under "09193 Unclassified: signaling and cellular processes"
+                        # >>> "99995 Signaling proteins"), so it is retained.
+                        category_accession = categorization[1].split(' ')[0]
+                        if category_accession == '09180' or category_accession == '09150' or category_accession == '09160':
+                            continue
+                    brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '>>>'.join(categorization[1: ])) # ignore the first category, the accession of the hierarchy itself
+            num_hierarchies_parsed += 1
+        self.num_hierarchies_parsed = num_hierarchies_parsed
+        self.num_brite_categorizations = brite_table.get_total_entries()
+
+        if unrecognized_items and anvio.DEBUG:
+            self.run.warning("We attempted to parse some names of items in hierarchies as orthologs, "
+                             "but ignored them since they did not start with an accession formatted 'KXXXXX', where 'XXXXX' are five digits. "
+                             f"The following entries are formatted as '<hierarchy>: <ignored item>': {', '.join(set(unrecognized_items))}")
+
+        # once we are done parsing all hierarchies, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of BRITE entries into DB")
+        brite_table.store(self.db)
+
+        self.progress.end()
 
 
     def disconnect(self):
@@ -5479,6 +5868,12 @@ class ModulesDatabase(KeggContext):
         return all_mods_classes_list
 
 
+    def get_ortholog_brite_categorizations(self, ortholog_accession):
+        """Return a list of the BRITE categorizations of the ortholog."""
+        where_clause_string = f"ortholog_accession = '{ortholog_accession}'"
+        return self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause=where_clause_string, error_if_no_data=False, row_num_as_key=True)
+
+
     def get_module_name(self, mnum):
         """This function returns the name of the specified KEGG module."""
 
@@ -5687,7 +6082,662 @@ class ModulesDatabase(KeggContext):
 
         return substrate_name_list, intermediate_name_list, product_name_list
 
+######### BRITE TABLE ACCESS FUNCTIONS #########
+
+    def get_brite_table_as_ortholog_dict(self, ortholog_accessions_of_interest=None, hierarchy_accessions_of_interest=None, category_substrings_of_interest=None, case_insensitive_substrings=False, use_ortholog_accessions_as_keys=False):
+        """Load the BRITE hierarchies table as a dictionary keyed by ortholog.
+
+        The returned dictionary contains each hierarchy and each categorization within the hierarchy
+        in which the ortholog is found.
+
+        The returned dictionary is structured as follows:
+            {
+                (<ortholog 1 accession>, <ortholog 1 name>):
+                    {
+                        (<hierarchy A accession>, <hierarchy A name>):
+                            [
+                                [(<category i accession>, <category i name>), (<category j accession>, <category j name>), ...],
+                                [(<category k accession>, <category k name>), (<category l accession>, <category l name>), ...],
+                                ...
+                            ],
+                        (<hierarchy B accession>, <hierarchy B name>):
+                            [
+                                [(<category x accession>, <category x name>), (<category y accession>, <category y name>), ...],
+                                ...
+                            ],
+                        ...
+                    },
+                (<ortholog 2 accession>, <ortholog 2 name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for arginyl-tRNA synthetase:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko00001', 'KEGG Orthology (KO)'):
+                    [
+                        [('09120', 'Genetic Information Processing'), ('09122', 'Translation'), ('00970', 'Aminoacyl-tRNA biosynthesis')]
+                    ],
+                ('ko01000', 'Enzymes'):
+                    [
+                        [('6.', 'Ligases'), ('6.1', 'Forming carbon-oxygen bonds'), ('6.1.1', 'Ligases forming aminoacyl-tRNA and related compounds'), ('6.1.1.19', 'arginine---tRNA ligase')]
+                    ],
+                ('ko01007', 'Amino acid related enzymes'):
+                    [
+                        [('', 'Aminoacyl-tRNA synthetase'), ('', 'Class I (G)')]
+                    ],
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ],
+                ('ko03029', 'Mitochondrial biogenesis'):
+                    [
+                        [('', 'Mitochondrial DNA transcription, translation, and replication factors'), ('', 'Mitochondrial transcription and translation factors'), ('', 'Other mitochondrial DNA transcription and translation factors')]
+                    ]
+            }
+
+        Keys and list items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy. Given the hierarchies that are used in
+        construction of the Modules database, only two are known to contain category "accessions."
+        "ko01000 Enzyme" hierarchy categories yield EC number accessions, and "k00001 KEGG Orthology
+        (KO)" hierarchy categories yield five digit accessions.
+
+        Categorization lists proceed from most general to most specific level.
+
+        Filtration with `hierarchy_accessions_of_interest` and `category_substrings_of_interest`
+        returns the orthologs in the hierarchies and matched categories of interest, and also
+        reduces the returned dictionary to the selected hierarchies and categorizations with matched
+        categories. In the example of arginyl-tRNA synthetase, if `hierarchy_accessions_of_interest`
+        is ['ko03016'] and `category_substrings_of_interest` is ['aminoacyl-tRNA synthetase'], then
+        the returned dictionary becomes:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ]
+            }
+
+        PARAMETERS
+        ==========
+        ortholog_accessions_of_interest : list, None
+            filters results to orthologs of interest
+
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        category_substrings_of_interest : list, None
+            filters results to categories containing substrings of interest
+
+        case_insensitive_substrings : bool, False
+            changes category substring search to be case insensitive
+
+        use_ortholog_accessions_as_keys : bool, False
+            ortholog keys of returned dictionary are accession strings rather than tuples
+
+        RETURNS
+        =======
+        ortholog_dict : dict
+            dictionary of ortholog BRITE categorizations
+        """
+
+        if ortholog_accessions_of_interest or hierarchy_accessions_of_interest:
+            # filter table by orthologs, hierarchies, and category substrings of interest
+            where_clause_string = ""
+
+            if ortholog_accessions_of_interest:
+                ortholog_list = [f"'{knum}'" for knum in ortholog_accessions_of_interest]
+                where_clause_string += f"ortholog_accession IN ({','.join(ortholog_list)})"
+
+            if hierarchy_accessions_of_interest:
+                hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+                if where_clause_string:
+                    where_clause_string += " AND "
+                where_clause_string += f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+
+            if category_substrings_of_interest:
+                if where_clause_string:
+                    where_clause_string += " AND ("
+                for substring in category_substrings_of_interest:
+                    if case_insensitive_substrings:
+                        where_clause_string += f"UPPER(categorization) LIKE UPPER('%{substring}%') OR "
+                    else:
+                        where_clause_string += f"categorization LIKE '%{substring}%' OR "
+                where_clause_string = where_clause_string[: -4] + ")"
+
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko00001',
+        #     'hierarchy_name': 'KEGG Orthology (KO)',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'}
+
+        # now we convert this to a per-ortholog dict
+        ortholog_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+
+            if use_ortholog_accessions_as_keys:
+                ortholog_key = ortholog_accession
+            else:
+                ortholog_key = (ortholog_accession, ortholog_name)
+            try:
+                hierarchy_dict = ortholog_dict[ortholog_key]
+            except KeyError:
+                ortholog_dict[ortholog_key] = hierarchy_dict = {}
+
+            hierarchy_key = (hierarchy_accession, hierarchy_name)
+            try:
+                category_list = hierarchy_dict[hierarchy_key]
+            except KeyError:
+                hierarchy_dict[hierarchy_key] = category_list = []
+
+            categories = categorization.split('>>>')
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
+                parsed_categories = []
+                for enzyme_category in categories:
+                    split_enzyme_category = enzyme_category.split(' ')
+                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+            category_list.append(parsed_categories)
+
+        return ortholog_dict
+
+
+    def get_brite_table_as_hierarchy_dict(self, hierarchy_accessions_of_interest=None, level_cutoff=None, collapse_keys=False, collapse_mixed_branches=True):
+        """Load the BRITE hierarchies table as a dictionary keyed by hierarchy.
+
+        The returned dictionary contains the category structure of the hierarchy and a set of
+        orthologs in each categorization.
+
+        With `collapse_keys` set to the default of False and `collapse_mixed_branches` set to the
+        default of True, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            {
+                                (<level 2 category j accession>, <level 2 category j name>):
+                                    set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                (<level 2 category k accession>, <level 2 category k name>):
+                                    set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                (<level 2 category l accession>, <level 2 category l name>):
+                                    {...},
+                                ...
+                            },
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            {...},
+                        ...
+                    },
+                    {
+                        (<level 1 category n accession>, <level 1 category n name>):
+                            {...},
+                        ...
+                    },
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                {
+                                    ('', 'Small subunit'):
+                                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                                    ('', 'Large subunit'):
+                                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...])
+                                },
+                            ('', 'Mitochondria/ Chloroplast'):
+                                {
+                                    ('', 'Small subunit'):
+                                        {...}
+                                    ('', 'Large subunit'):
+                                        {...}
+                                },
+                            ('', 'Bacteria'):
+                                {
+                                    ...
+                                },
+                            ('', 'Archaea'):
+                                {
+                                    ...
+                                }
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('Eukaryotes'):
+                                set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...]),
+                            ('Prokaryotes'):
+                                set([('K01985', '5SrRNA, rrf; 5S ribosomal RNA'), ('K01977', '16SrRNA, rrs; 16S ribosomal RNA'), ('K01980', '23SrRNA, rrl; 23S ribosomal RNA')])
+                        }
+                }
+
+        Keys and set items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy, as seen in the example. The only hierarchies
+        expected to contain category "accessions" are "ko00001 Gene Ontology (KO)" and "ko01000
+        Enzymes".
+
+        Levels of the hierarchy can be collapsed with the `level_cutoff` argument. If `level_cutoff`
+        is a positive number, it is measured down from the top level of the hierarchy (level 1). If
+        `level_cutoff` is a negative number, it is measured up from the bottom-most level of the
+        hierarchy. Since different branches of the hierarchy can have different depths, the negative
+        number is converted to a positive number given the deepest branch: in the "Ribosome"
+        example, the "Ribosomal proteins" branch has 3 levels, and the "Ribosomal RNAs" branch has 2
+        levels, level -2 would be measured against the "Ribosomal proteins" branch and be converted
+        to level 1. If the negative parameterization would eliminate all levels of the hierarchy,
+        the cutoff is set to level 1.
+
+        Example: `level_cutoff` is set to 1 or -2, so levels below "Ribosomal proteins" and
+        "Ribosomal RNAs" are removed:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    ('', 'Ribosomal RNAs'):
+                        set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...])
+                }
+
+        Example: `level_cutoff` is set to -1, only removing "Small subunit" and "Large subunit"
+        levels under "Ribosomal proteins" but not levels under "Ribosomal RNAs".
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                            ('', 'Mitochondria/ Chloroplasts'):
+                                set([...]),
+                            ('', 'Bacteria'):
+                                set([...]),
+                            ('', 'Archaea'):
+                                set([...])
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([...]),
+                            ('', 'Prokaryotes'):
+                                set([...])
+                        }
+
+        Dictionary nesting can be simplified by `collapse_keys`. Each ortholog set is keyed by a
+        single categorization tuple. Applied to the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Small subunit')):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Large subunit')):
+                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Mitochondria/ Chloroplasts'), ('', 'Small subunit')):
+                        set([...]),
+                    ...
+                }
+
+        To this point, we have ignored the possibility that a category containing ortholog "leaves"
+        can also contain additional category "branches". An example of this is in the "RNases"
+        category of the "Ribosome biogenesis" hierarchy. The category contains RNases such as
+        "K14812  NGL2; RNA exonuclease NGL2 [EC:3.1.-.-]", but also includes a category of "RNase
+        MRP" subunits, including "K01164  POP1; ribonuclease P\/MRP protein subunit POP1
+        [EC:3.1.26.5]". With the parameter, `collapse_mixed_branches`, set to the default of True,
+        categories in such "mixed" branches are collapsed out of existence: subunit orthologs are
+        placed in "RNases" rather than "RNase MRP", which is removed.
+
+        Mixed branches can be preserved by setting `collapse_mixed_branches` to False. This also
+        changes the structure of the returned dictionary. Now, rather than a category key mapping to
+        EITHER a dict or a set, each category key maps to a tuple of (1) an ortholog set and (2) a
+        category dict. Without `collapse keys`, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            (
+                                set([...]),
+                                {
+                                    (<level 2 category j accession>, <level 2 category j name>):
+                                        (
+                                            set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                            {...}
+                                        ),
+                                    (<level 2 category k accession>, <level 2 category k name>):
+                                        (
+                                            set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                            {}
+                                        ),
+                                    (<level 2 category l accession>, <level 2 category l name>):
+                                        (
+                                            set([]),
+                                            {...},
+                                        )
+                                    ...
+                                }
+                            ),
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            (
+                                set([...]),
+                                {...}
+                            ),
+                        ...
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        With `collapse_keys` and without `collapse_mixed_branches`, the format of the returned
+        dictionary is the same as with `collapse_keys` and `collapse_mixed_branches`. The only
+        difference is that there can be entries for orthologs in a category and orthologs in a
+        subcategory: the categorization key tuples are the same for such entries up to the
+        subcategory elements.
+
+        PARAMETERS
+        ==========
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        level_cutoff : int, None
+            collapse branches below the level cutoff, with a positive level measured top-down and a
+            negative level measured bottom-up from the deepest branch of the tree
+
+        collapse_keys: bool, False
+            eliminate category nesting, keying each ortholog set by a single categorization tuple
+
+        collapse_mixed_branches : bool, True
+            collapse category branches off a category node that also ends in ortholog leaves
+
+        RETURNS
+        =======
+        hierarchy_dict : dict
+            dictionary of BRITE hierarchies
+        """
+
+        if hierarchy_accessions_of_interest:
+            hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+            where_clause_string = f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko01000',
+        #     'hierarchy_name': 'Enzymes',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '1. Oxidoreductases>>>1.1  Acting on the CH-OH group of donors>>>1.1.1  With NAD+ or NADP+ as acceptor>>>1.1.1.1  alcohol dehydrogenase'}
+
+        # find the maximum depth of each hierarchy
+        max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+
+        if level_cutoff == 0 or type(level_cutoff) != int:
+            raise ConfigError("`level_cutoff` must be a nonzero integer.")
+
+        # set the level cutoff for each hierarchy
+        if level_cutoff > 0:
+            topdown_level_cutoff_dict = {hierarchy_accession: min(level_cutoff, max_depth) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        elif level_cutoff < 0:
+            # find the positive level corresponding to the negative level cutoff for each
+            # hierarchy, ensuring that at least one category remains per hierarchy
+            topdown_level_cutoff_dict = {hierarchy_accession: max(max_depth + level_cutoff, 1) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        else:
+            topdown_level_cutoff_dict = max_depth_dict
+
+        # hierarchy level cutoffs can be affected by collapsing subcategories of mixed categories
+        if collapse_mixed_branches:
+            topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(topdown_level_cutoff_dict, dict_from_brite_table)
+
+        # create the per-hierarchy dict
+        hierarchy_dict = {}
+        for row_id, entry_dict in dict_from_brite_table.items():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+            categories = categorization.split('>>>')
+
+            # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                parsed_categories = []
+                for enzyme_category in categories:
+                    split_enzyme_category = enzyme_category.split(' ')
+                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+
+            # make the top-level category dict for the hierarchy
+            try:
+                category_dict = hierarchy_dict[(hierarchy_accession, hierarchy_name)]
+            except KeyError:
+                hierarchy_dict[(hierarchy_accession, hierarchy_name)] = category_dict = {}
+
+            topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
+
+            if collapse_mixed_branches:
+                # each value of a category dict is either a set or a dict
+                if collapse_keys:
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if level == topdown_level_cutoff:
+                            try:
+                                ortholog_set = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = ortholog_set = set()
+                            ortholog_set.add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category]
+                        except KeyError:
+                            category_dict[category] = category_dict = {}
+            else:
+                # each value of a category dict is a tuple containing a set and a dict
+                if collapse_keys:
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if level == topdown_level_cutoff:
+                            try:
+                                category_tuple = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = category_tuple = (set(), {})
+                            category_tuple[0].add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category][1]
+                        except KeyError:
+                            category_dict[category] = category_tuple = (set(), {})
+                            category_dict = category_tuple[1]
+
+        return hierarchy_dict
+
+
+    def get_brite_max_depth_dict(self, dict_from_brite_table=None):
+        """Return a dictionary of the maximum depths of BRITE hierarchies.
+
+        "Maximum depth" is greatest number of levels of categorization of an ortholog in the
+        hierarchy.
+
+        By default, without `dict_from_brite_table`, every hierarchy in the database is analyzed.
+        With that argument, only the hierarchies represented in the dict are analyzed.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict
+            contains BRITE table rows of interest, as returned, for example, by `get_some_rows_from_table_as_dict`
+
+        RETURNS
+        =======
+        max_depth_dict : dict
+            relates hierarchy accession keys to maximum depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        max_depth_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            categories = entry_dict['categorization'].split('>>>')
+            try:
+                current_max_depth = max_depth_dict[hierarchy_accession]
+            except KeyError:
+                current_max_depth = 0
+            max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+
+        return max_depth_dict
+
+
+    def get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(self, dict_from_brite_table=None, input_depth_dict=None):
+        """Return hierarchy depths disregarding bottom levels of hierarchy that only exist due to subcategories of mixed categories.
+
+        "Mixed" categories contain both subcategories and orthologs.
+
+        Example: The depth of a hierarchy is 4, but this is only due to a subcategory of a depth 3
+        mixed category. After collapsing this subcategory, hierarchy depth is reduced to 3.
+
+        With default arguments, all BRITE table entries and maximum hierarchy depths are considered.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict, None
+            contains BRITE table rows of interest, as returned, for example, by
+            `self.db.get_some_rows_from_table_as_dict`
+
+        input_depth_dict : dict, None
+            contains hierarchy depths of interest, as returned, for example, by
+            `self.get_brite_max_depth_dict`
+
+        RETURNS
+        =======
+        depth_dict : dict, None
+            contains adjusted hierarchy depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        if input_depth_dict:
+            depth_dict = copy.deepcopy(input_depth_dict)
+        else:
+            depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+
+        deep_categorizations = {} # depth of categorization greater than or equal to level cutoff
+        shallow_categorizations = {} # depth of categorization less than level cutoff
+        hierarchy_culprits = set([]) # hierarchies containing subcategories of mixed categories responsible for depth exceeding level cutoff
+        is_checked = False
+        # keep trimming hierarchy "culprits" until the deepest level is not a subcategory of a mixed category
+        while hierarchy_culprits or not is_checked:
+            for entry_dict in dict_from_brite_table.values():
+                hierarchy_accession = entry_dict['hierarchy_accession']
+                if is_checked and hierarchy_accession not in hierarchy_culprits:
+                    continue
+                categorization = entry_dict['categorization']
+                categories = categorization.split('>>>')
+                if len(categories) >= depth_dict[hierarchy_accession]:
+                    try:
+                        deep_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        deep_categorizations[hierarchy_accession] = set([categorization])
+                else:
+                    try:
+                        shallow_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        shallow_categorizations[hierarchy_accession] = set([categorization])
+
+            # interrogate the "deep" categorizations in each hierarchy
+            for hierarchy_accession, hierarchy_deep_categorizations in deep_categorizations.items():
+                # if all categorizations are deep, then the hierarchy cannot be a "culprit"
+                try:
+                    hierarchy_shallow_categorizations = shallow_categorizations[hierarchy_accession]
+                except KeyError:
+                    continue
+
+                # compare deep categorization strings with all shallow categorizations
+                # strings, checking if the shallow categorization is a substring of the deep
+                # categorization, and thus the deep categorization is a subcategory of a
+                # mixed category
+                subcategorization_culprits = []
+                for deep_categorization in hierarchy_deep_categorizations:
+                    for shallow_categorization in hierarchy_shallow_categorizations:
+                        if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
+                            if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '>>>':
+                                subcategorization_culprits.append(deep_categorization)
+                                break
+
+                # remove culprit subcategories
+                for deep_categorization in subcategorization_culprits:
+                    hierarchy_deep_categorizations.remove(deep_categorization)
+
+                hierarchy_culprits.add(hierarchy_accession)
+                if hierarchy_deep_categorizations:
+                    # there are no more subcategory culprits, but the hierarchy is still
+                    # deeper than the level cutoff: the deep categories will be collapsed as
+                    # per normal
+                    hierarchy_culprits.remove(hierarchy_accession)
+                else:
+                    # there are no more subcategory culprits, so the level cutoff can simply be reduced by 1
+                    depth_dict[hierarchy_accession] = depth_dict[hierarchy_accession] - 1
+            is_checked = True
+
+        return depth_dict
+
+
+    def list_brite_hierarchies(self, as_accessions=False, as_tuples=False):
+        """List all BRITE hierarchies in the database.
+
+        PARAMETERS
+        ==========
+        as_accessions : bool, False
+            return list of hierarchy accessions
+
+        as_tuples : bool, False
+            return list of tuples of hierarchy accessions and names
+
+        RETURNS
+        =======
+        hierarchy_entries : list
+            database BRITE hierarchies, formatted "<accession> <name>" with default parameterization
+        """
+
+        if as_accessions:
+            hierarchy_entries = self.db.get_single_column_from_table(self.brite_table_name, 'hierarchy_accession', unique=True)
+        else:
+            hierarchy_entries = self.db.get_some_columns_from_table(self.brite_table_name, 'hierarchy_accession, hierarchy_name', unique=True)
+            if not as_tuples:
+                hierarchy_entries = [f"{accession} {name}" for accession, name in hierarchy_entries]
+
+        return hierarchy_entries
+
+
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
+
     def get_top_level_steps_in_module_definition(self, mnum):
         """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
 
@@ -5876,6 +6926,45 @@ class ModulesTable:
     def store(self, db):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+    def get_total_entries(self):
+        return self.total_entries
+
+
+class BriteTable:
+    """This class defines operations for creating the KEGG BRITE hierarchies table in Modules.db"""
+
+    def __init__(self, brite_table_name = None):
+        """"""
+        self.db_entries = []
+        self.total_entries = 0
+
+        if brite_table_name:
+            self.brite_table_name = brite_table_name
+        else:
+            raise ConfigError("Beep Beep. Warning. BriteTable was initialized without knowing its own name.")
+
+
+    def append_and_store(self, db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization):
+        """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
+
+        The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+        """
+
+        db_entry = tuple([hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization])
+        self.db_entries.append(db_entry)
+        self.total_entries += 1
+
+        # we can store chunks of 5000 at a time, so we don't want over 10,000 entries.
+        if len(self.db_entries) >= 10000:
+            self.store(db)
+            self.db_entries = []
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.brite_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
 
     def get_total_entries(self):
