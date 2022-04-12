@@ -1595,10 +1595,11 @@ class RunKOfams(KeggContext):
                         'e_value': None,
                     }
 
-                # get BRITE categorization information in the form to be added to the contigs database
-                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
-                if ortholog_categorizations_dict:
-                    self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
+                if not self.skip_brite_hierarchies:
+                    # get BRITE categorization information in the form to be added to the contigs database
+                    ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                    if ortholog_categorizations_dict:
+                        self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
 
                 counter += 1
             else:
@@ -1724,10 +1725,11 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
-                            # get BRITE categorization information in the form to be added to the contigs database
-                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
-                            if ortholog_categorizations_dict:
-                                self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
+                            if not self.skip_brite_hierarchies:
+                                # get BRITE categorization information in the form to be added to the contigs database
+                                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                                if ortholog_categorizations_dict:
+                                    self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
                         next_key += 1
                         num_annotations_added += 1
