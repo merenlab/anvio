@@ -1244,7 +1244,7 @@ class KeggSetup(KeggContext):
         target_version = int(anvio.tables.versions_for_db_types['modules'])
         if current_db_version != target_version:
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
                              f"Here is the path to the database: {self.kegg_modules_db_path}")
 
 
