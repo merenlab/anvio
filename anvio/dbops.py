@@ -4740,14 +4740,12 @@ class AA_counts(ContigsSuperclass):
 ####################################################################################################
 
 def is_db_ok_to_create(db_path, db_type):
-    if os.path.exists(db_path):
-        raise ConfigError("Anvi'o will not overwrite an existing %s database. Please choose a different name "
-                           "or remove the existing database ('%s') first." % (db_type, db_path))
-
     if not db_path.lower().endswith('.db'):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers "
                            "apologize for imposing their views on how anvi'o databases should be named, and are "
                            "humbled by your cooperation." % db_type)
+
+    filesnpaths.is_output_file_writable(db_path, ok_if_exists=False)
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):
