@@ -149,14 +149,13 @@ ContextMenu = function(options) {
                 var all = $(".ui-accordion-header").map(function() {
                     return this.innerHTML;
                 }).get();
-                console.log(legend);
                 all.map((i, idx) => {
                     if(i.toLowerCase().includes(legend.replaceAll('_', ' '))){
                         legendIndex = idx
                     }
                 })
                 $( ".ui-accordion-header" ).eq( legendIndex ).click()
-                $( `#${legend.replaceAll('_','-')}-query-input`).val(query)
+                $( `#${legend.replaceAll('_','-').replaceAll(' ','-')}-query-input`).val(query)
 
                 function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
                     var span = document.createElement('span');

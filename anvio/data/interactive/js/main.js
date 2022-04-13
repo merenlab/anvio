@@ -789,12 +789,12 @@ function buildLegendTables() {
                     <table class="col-md-12 table-spacing">
                         <tr>
                             <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-md-10"><div id="${legend['name'].toLowerCase().replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set Color</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>set all categories to this color</p></td>
-                            <td class="col-md-10"><div id="${legend['name'].toLowerCase().replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set all</button></td>
                         </tr>
                         <tr>
@@ -871,15 +871,15 @@ function buildLegendTables() {
 }
 
 function queryLegends(mode){
-    let legend = event.target.id.replaceAll('-', '_').toLowerCase()
-    let query = $(`#${legend}-query-input`).val()
+    let legendFormatted = event.target.id.replaceAll('-', '_').toLowerCase()
+    let query = $(`#${event.target.id.toLowerCase()}-query-input`).val()
     let color = String()
 
     // because the legends iterator above does not match the categorical_data_colors key
     // we need to reference the layerdata index value by the same legend name
     // because layerdata key casing is unpredictable, we clone the layerdata object to a lowercase copy
     let lowercase_layerdata = layerdata[0].map(l => l.toLowerCase())
-    let legend_index = lowercase_layerdata.indexOf(legend)
+    let legend_index = lowercase_layerdata.indexOf(legendFormatted)
 
     if(mode == 'random'){
         for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
@@ -899,12 +899,14 @@ function queryLegends(mode){
     } else {
         alert('query not found')
     }
-    $(`#${legend}-query-input`).val('')
-    $(`#${legend}-colorpicker`).attr('color', "#FFFFFF")
-    $(`#${legend}-batch-colorpicker`).attr('color', "#FFFFFF")
+    $(`#${event.target.id}-query-input`).val('')
+    $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
+    $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
 
     function displaySuccessMessage(){
-        $(`#${legend}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
+        console.log('success triggered')
+        console.log(legendFormatted)
+        $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
     }
 
     // TODO ideally we hook into the Drawer class to only re-render item backgrounds.
