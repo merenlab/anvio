@@ -142,15 +142,16 @@ ContextMenu = function(options) {
                 $($('.nav-tabs a').eq(3)).tab('show')
 
                 let splitHTML = layerdata_title[node.label][layer[0] -1].split('</td>')
-                let legend = extractContent(splitHTML[0])
+                let legend = extractContent(splitHTML[0]).toLowerCase()
                 let query = extractContent(splitHTML[1])
                 let legendIndex = Number()
 
                 var all = $(".ui-accordion-header").map(function() {
                     return this.innerHTML;
                 }).get();
+                console.log(legend);
                 all.map((i, idx) => {
-                    if(i.includes(legend.replaceAll('_', ' '))){
+                    if(i.toLowerCase().includes(legend.replaceAll('_', ' '))){
                         legendIndex = idx
                     }
                 })

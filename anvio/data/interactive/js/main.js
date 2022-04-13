@@ -788,7 +788,7 @@ function buildLegendTables() {
                 <div>
                     <table class="col-md-12 table-spacing">
                         <tr>
-                            <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
                             <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set Color</button></td>
                         </tr>
