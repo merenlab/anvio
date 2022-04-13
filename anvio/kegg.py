@@ -4249,6 +4249,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             headers that we can include directly from the c_dict without further processing
         d : dict
             the modules output dictionary that needs to be added to
+
+        RETURNS
+        =======
+        gcids_in_mod : list
+            the gene caller ids of the genes contributing to the module. We return this because
+            in some situations these ids will be used later to determine module coverage
         """
 
         # fetch module info
@@ -4293,6 +4299,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 d[self.modules_unique_id]["module_intermediates"] = "None"
 
+        # comma-separated lists of KOs and gene calls in module
+        kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+        # gene call list should be in same order as KO list
+        gcids_in_mod = []
+        kos_in_mod_list = []
+        if kos_in_mod:
+            for ko in kos_in_mod:
+                gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
+        if "enzyme_hits_in_module" in headers_to_include:
+            d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+        if "gene_caller_ids_in_module" in headers_to_include:
+            d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
         # comma-separated list of warnings
         if "warnings" in headers_to_include:
             if not c_dict["warnings"]:
@@ -4331,6 +4351,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 else:
                     value = ",".join(value)
             d[self.modules_unique_id][h] = value
+
+            return gcids_in_mod
 
 
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
@@ -4425,7 +4447,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if headers_to_include.intersection(path_level_headers):
                     for p_index, p in enumerate(self.module_paths_dict[mnum]):
                         d[self.modules_unique_id] = {}
-                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+                        gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                         # path-specific info
                         if "path_id" in headers_to_include:
@@ -4445,7 +4467,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 elif headers_to_include.intersection(step_level_headers):
                     for s_index, step_dict in c_dict["top_level_step_info"].items():
                         d[self.modules_unique_id] = {}
-                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+                        gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                         # step-specific info
                         if "step_id" in headers_to_include:
@@ -4464,21 +4486,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # handle module-level information (ie, for modules mode)
                 else:
                     d[self.modules_unique_id] = {}
-                    self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
-
-                    # comma-separated lists of KOs and gene calls in module
-                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                    # gene call list should be in same order as KO list
-                    gcids_in_mod = []
-                    kos_in_mod_list = []
-                    if kos_in_mod:
-                        for ko in kos_in_mod:
-                            gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                            kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                    if "enzyme_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-                    if "gene_caller_ids_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+                    gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                     # add coverage if requested
                     if self.add_coverage:
