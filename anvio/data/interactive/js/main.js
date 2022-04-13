@@ -908,14 +908,6 @@ function queryLegends(mode){
         console.log(legendFormatted)
         $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
     }
-
-    // TODO ideally we hook into the Drawer class to only re-render item backgrounds.
-    // short of that, we can automatically trigger a redraw of the entire visualization
-
-
-    // settings = serializeSettings()
-    // drawer = new Drawer(settings)
-    // drawer.draw()
 }
 
 function batchColor(legend_id) {
