@@ -5787,9 +5787,9 @@ class ModulesDatabase(KeggContext):
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
 
             if not self.quiet:
-                self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-                self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
-                self.run.info('BRITE ko hierarchies', '%d found' % self.db.get_meta_value('num_brite_hierarchies'))
+                self.run.info("Modules database", f"An existing database, {self.db_path}, has been loaded.", quiet=self.quiet)
+                self.run.info("Modules", f"{self.db.get_meta_value('num_modules')} found", quiet=self.quiet)
+                self.run.info("BRITE KO hierarchies", f"{self.db.get_meta_value('num_brite_hierarchies')} found", quiet=self.quiet)
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
