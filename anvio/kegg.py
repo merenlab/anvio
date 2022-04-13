@@ -2180,8 +2180,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                        }
 
 
-
-
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
@@ -4352,6 +4350,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     value = ",".join(value)
             d[self.modules_unique_id][h] = value
 
+        # add module copy number if requested
+        if self.add_copy_number:
+            # pathwise: we take the maximum copy number of all the paths of highest completeness
+            if "pathwise_copy_number" in headers_to_include:
+                if c_dict["num_complete_copies_of_most_complete_paths"]:
+                    d[self.modules_unique_id]["pathwise_copy_number"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                else:
+                    d[self.modules_unique_id]["pathwise_copy_number"] = 'NA'
+
+            # stepwise copy number
+            if "stepwise_copy_number" in headers_to_include:
+                d[self.modules_unique_id]["stepwise_copy_number"] = c_dict["stepwise_copy_number"]
+            if "per_step_copy_numbers" in headers_to_include:
+                step_copy_numbers = []
+                for step in c_dict["top_level_step_info"]:
+                    step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
+                d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
+
         return gcids_in_mod
 
 
@@ -4418,8 +4434,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
                                     "unique_enzymes_hit_counts"])
-        path_level_headers = set(["path_id", "path", "path_completeness"])
-        step_level_headers = set(["step_id", "step", "step_completeness"])
+        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path"])
+        step_level_headers = set(["step_id", "step", "step_completeness", "step_copy_number"])
 
         requested_path_info = headers_to_include.intersection(path_level_headers)
         requested_step_info = headers_to_include.intersection(step_level_headers)
@@ -4522,21 +4538,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
                             d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
                             d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
-
-                    # add module copy number if requested
-                    if self.add_copy_number:
-                        # pathwise: we take the maximum copy number of all the paths of highest completeness
-                        if c_dict["num_complete_copies_of_most_complete_paths"]:
-                            d[self.modules_unique_id]["pathwise_copy_number"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
-                        else:
-                            d[self.modules_unique_id]["pathwise_copy_number"] = 'NA'
-
-                        # stepwise copy number
-                        d[self.modules_unique_id]["stepwise_copy_number"] = c_dict["stepwise_copy_number"]
-                        step_copy_numbers = []
-                        for step in c_dict["top_level_step_info"]:
-                            step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
-                        d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
 
                     self.modules_unique_id += 1
 
