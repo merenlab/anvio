@@ -789,17 +789,20 @@ function buildLegendTables() {
                     <table class="col-md-12 table-spacing">
                         <tr>
                             <td class="col-md-10"><input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-md-10"><div id="${legend['name'].toLowerCase().replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div> </td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set Color</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>set all categories to this color</p></td>
-                            <td class="col-md-10"><div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10"><div id="${legend['name'].toLowerCase().replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set all</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-10"><p>randomize all category colors</p></td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                        </tr>
+                        <tr>
+                            <td class="col-md-10" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-success-message" style="display: none; background-color: green; color: white; text-align: center; border-radius: 10px; border-style: solid; width: 100%"><p>Success!</p></td>
                         </tr>
                     </table>
                 </div>
@@ -869,7 +872,7 @@ function buildLegendTables() {
 
 function queryLegends(mode){
     let legend = event.target.id.replaceAll('-', '_').toLowerCase()
-    let query = $(`#${event.target.id}-query-input`).val()
+    let query = $(`#${legend}-query-input`).val()
     let color = String()
 
     // because the legends iterator above does not match the categorical_data_colors key
@@ -882,23 +885,27 @@ function queryLegends(mode){
         for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
             categorical_data_colors[legend_index][key] = randomColor()
         }
-        toastr.success('randomized successfully')
+        displaySuccessMessage()
     } else if(mode == 'batch'){
         color = $(`#${event.target.id}-batch-colorpicker`).attr('color')
         for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
             categorical_data_colors[legend_index][key] = color
         }
-        toastr.success('batch colored successfully')
+        displaySuccessMessage()
     } else if(categorical_data_colors[legend_index]?.[query]){
         color = $(`#${event.target.id}-colorpicker`).attr('color')
         categorical_data_colors[legend_index][query] = color
-        toastr.success('layer color updated successfully')
+        displaySuccessMessage()
     } else {
         alert('query not found')
     }
-    $(`#${event.target.id}-query-input`).val('')
-    $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
-    $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
+    $(`#${legend}-query-input`).val('')
+    $(`#${legend}-colorpicker`).attr('color', "#FFFFFF")
+    $(`#${legend}-batch-colorpicker`).attr('color', "#FFFFFF")
+
+    function displaySuccessMessage(){
+        $(`#${legend}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
+    }
 
     // TODO ideally we hook into the Drawer class to only re-render item backgrounds.
     // short of that, we can automatically trigger a redraw of the entire visualization
