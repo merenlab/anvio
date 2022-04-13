@@ -4247,12 +4247,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             headers that we can include directly from the c_dict without further processing
         d : dict
             the modules output dictionary that needs to be added to
-
-        RETURNS
-        =======
-        gcids_in_mod : list
-            the gene caller ids of the genes contributing to the module. We return this because
-            in some situations these ids will be used later to determine module coverage
         """
 
         # fetch module info
@@ -4368,7 +4362,28 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
                 d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
 
-        return gcids_in_mod
+        # add coverage if requested
+        if self.add_coverage:
+            for s in self.coverage_sample_list:
+                sample_cov_header = s + "_gene_coverages"
+                sample_det_header = s + "_gene_detection"
+                sample_avg_cov_header = s + "_avg_coverage"
+                sample_avg_det_header = s + "_avg_detection"
+
+                gene_coverages_in_mod = []
+                gene_detection_in_mod = []
+                for gc in gcids_in_mod:
+                    if self.enzymes_txt:
+                        gc_idx = gc
+                    else:
+                        gc_idx = int(gc)
+                    gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
+                    gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
+
+                d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
+                d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
+                d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
+                d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
 
 
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
@@ -4475,7 +4490,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if headers_to_include.intersection(path_level_headers):
                     for p_index, p in enumerate(self.module_paths_dict[mnum]):
                         d[self.modules_unique_id] = {}
-                        gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                         # path-specific info
                         if "path_id" in headers_to_include:
@@ -4495,7 +4510,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 elif headers_to_include.intersection(step_level_headers):
                     for s_index, step_dict in c_dict["top_level_step_info"].items():
                         d[self.modules_unique_id] = {}
-                        gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                         # step-specific info
                         if "step_id" in headers_to_include:
@@ -4514,30 +4529,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 # handle module-level information (ie, for modules mode)
                 else:
                     d[self.modules_unique_id] = {}
-                    gcids_in_mod = self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
-
-                    # add coverage if requested
-                    if self.add_coverage:
-                        for s in self.coverage_sample_list:
-                            sample_cov_header = s + "_gene_coverages"
-                            sample_det_header = s + "_gene_detection"
-                            sample_avg_cov_header = s + "_avg_coverage"
-                            sample_avg_det_header = s + "_avg_detection"
-
-                            gene_coverages_in_mod = []
-                            gene_detection_in_mod = []
-                            for gc in gcids_in_mod:
-                                if self.enzymes_txt:
-                                    gc_idx = gc
-                                else:
-                                    gc_idx = int(gc)
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
-
-                            d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
-                            d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
-                            d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
-                            d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
+                    self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                     self.modules_unique_id += 1
 
