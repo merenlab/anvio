@@ -4421,6 +4421,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         path_level_headers = set(["path_id", "path", "path_completeness"])
         step_level_headers = set(["step_id", "step", "step_completeness"])
 
+        requested_path_info = headers_to_include.intersection(path_level_headers)
+        requested_step_info = headers_to_include.intersection(step_level_headers)
+        if requested_path_info and requested_step_info:
+            raise ConfigError(f"Oh, bother. It seems you have requested both path-level headers and step-level headers for your modules-related "
+                              f"output. Unfortunately, these two types of information are incompatible and cannot be put into the same output "
+                              f"file due to the way we internally organize the data. Sorry. If you want both types of information, we recommend "
+                              f"requesting both in separate files using `--output-modes module_paths,module_steps`. If you absolutely need custom "
+                              f"formatting for the output files, then you can run this program twice and each time provide either only path-level "
+                              f"headers or only step-level headers to the `--custom-output-headers` flag. To help you out, here are the path-level "
+                              f"headers that you requested: {', '.join(requested_path_info)}. And here are the step-level headers that you requested: "
+                              f"{', '.join(requested_step_info)}")
+
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
 
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
