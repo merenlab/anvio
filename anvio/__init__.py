@@ -27,6 +27,7 @@ QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+FORCE_OVERWRITE = '--force-overwrite' in sys.argv
 DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
 FORCE_USE_MY_TREE = '--force-use-my-tree' in sys.argv
 DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
@@ -907,8 +908,8 @@ D = {
              'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
-                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
-                     "if you do not specify anything."}
+                     "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
+                     "to use the default path if you do not specify anything."}
                 ),
     'user-modules': (
             ['-u', '--user-modules'],
@@ -2603,13 +2604,35 @@ D = {
                      "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
-        ['--export-gff3'],
-        {
-            'default': False,
-            'action': 'store_true',
-            'help': "If this is true, the output file will be in GFF3 format."
-        }
-    ),
+            ['--export-gff3'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If this is true, the output file will be in GFF3 format."}
+        ),
+    'palindrome-search-algorithm': (
+            ['--palindrome-search-algorithm'],
+            {'default': None,
+             'type': str,
+             'choices': {'numba', 'BLAST'},
+             'help': "There are two algorithms for calculating palindromes: 'BLAST' and 'numba'. By default, anvi'o will dynamically "
+                     "optimize your search for speed and will use numba when a given sequence is shorter than 5,000 nucleotides or "
+                     "will use BLAST otherwise. However, you can use this parameter to ask anvi'o to use either of these methods "
+                     "explicitly to search for palindromes. You can choose from the options 'BLAST' or 'numba'. Please note that "
+                     "the results from the two approaches may differ."}
+        ),
+    'min-mismatch-distance-to-first-base': (
+            ['--min-mismatch-distance-to-first-base'],
+            {'default': 1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "This parameter allows you to trim the palindrome when one or more mismatches are n nucleotides away "
+                     "from a palindrome's start or stop. By default, this flag is set to 1, which means anvi'o will trim "
+                     "palindromes with a mismatch that are occuring on the second or n-1 position. Here is an example "
+                     "palindrome `MMMMMM(X)M` where `M` are the matching nucleotides and `X` is a mismatch. By default, "
+                     "anvi'o will only report the first six matches: `MMMMMMM`. The rationale behind this parameter is that "
+                     "when searching for palindromes with mismatches, the algorithm will extend the palindrome length "
+                     "as much as possible, often wrongly including mismatches which are outside of the true palindrome."}
+        ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
             {'default': 10,
@@ -2622,11 +2645,10 @@ D = {
             {'default': 50,
              'metavar': 'INT',
              'type': int,
-             'help': "The minimum distance between the palindromic sequences (this parameter is essentially "
-                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is 50, "
-                     "which means the algorithm will never report by default sequences that are like "
-                     "`ATCGCGAT` with no gaps between the palindrome where the palindromic sequence matches "
-                     "itself (but you can get such palindromes by setting this parameter to 0)."}
+             'help': "The minimum distance between palindromic sequences (this parameter is essentially "
+                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). A value of 0 means "
+                     "that the algorithm will find all palindromes whether they are 'in-place' palindromes or "
+                     "distant palindromes. The default value is %(default)d ncl."}
         ),
     'max-num-mismatches': (
             ['-m', '--max-num-mismatches'],
@@ -2884,6 +2906,12 @@ D = {
              'action': 'store_true',
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
+                ),
+    'skip-brite-hierarchies': (
+            ['--skip-brite-hierarchies'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],

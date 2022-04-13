@@ -368,10 +368,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                          "http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
                     else:
                         self.run.warning("This single profile database does not seem to have any hierarchical clustering "
-                                         "that is required by the interactive interface. You must use `--cluster-contigs` "
-                                         "flag for single profiles if you would like to see a hierarchical clustering "
-                                         "dendrogram in the center of your display. Please read the help menu for "
-                                         "anvi-profile, and/or refer to the tutorial.")
+                                         "that is required by the interactive interface :/ Anvi'o does not automatically compute "
+                                         "a hierarchical clustering of contigs for single profiles, but you can ask for it "
+                                         "explicilty by passing the `--cluster-contigs` flag to the program `anvi-profile`. "
+                                         "This way you will be able to run `anvi-interactive` on your single profile, and see "
+                                         "a dendrogram at the center of your display. Please take a look at the help menu for "
+                                         "`anvi-profile`.")
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
