@@ -27,6 +27,7 @@ QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+FORCE_OVERWRITE = '--force-overwrite' in sys.argv
 DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
 FORCE_USE_MY_TREE = '--force-use-my-tree' in sys.argv
 DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
