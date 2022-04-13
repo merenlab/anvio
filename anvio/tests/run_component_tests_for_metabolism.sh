@@ -209,7 +209,7 @@ SHOW_FILE modules_custom_coverage_modules_custom.txt
 
 ## COPY NUMBER TESTS
 INFO "Testing --add-copy-number in long-format output"
-anvi-estimate-metabolism -c CONTIGS.db \
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
                          -O copy_num \
                          --add-copy-number \
                          --output-modes modules,module_paths,module_steps
@@ -225,6 +225,27 @@ anvi-estimate-metabolism -e external-genomes.txt \
 SHOW_FILE copy_num-module_pathwise_copy_number-MATRIX.txt
 SHOW_FILE copy_num-module_stepwise_copy_number-MATRIX.txt
 SHOW_FILE copy_num-module_step_copy_number-MATRIX.txt
+
+INFO "Listing custom output headers with --add-copy-number enabled"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                         --add-copy-number \
+                         --list-available-output-headers
+
+INFO "Generating custom output with --add-copy-number enabled (including path-level headers)"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                          --add-copy-number \
+                          --output-modes modules_custom \
+                          -O modules_custom_copynum_path \
+                          --custom-output-headers module,path,pathwise_copy_number,num_complete_copies_of_path,stepwise_copy_number,per_step_copy_numbers
+SHOW_FILE modules_custom_copynum_path_modules_custom.txt
+
+INFO "Generating custom output with --add-copy-number enabled (including step-level headers)"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
+                          --add-copy-number \
+                          --output-modes modules_custom \
+                          -O modules_custom_copynum_step \
+                          --custom-output-headers module,step,pathwise_copy_number,stepwise_copy_number,per_step_copy_numbers,step_copy_number
+SHOW_FILE modules_custom_copynum_step_modules_custom.txt
 
 
 ## ENZYMES TXT TESTS
