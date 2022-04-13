@@ -112,19 +112,33 @@ SHOW_FILE long_format_multi_module_steps.txt
 SHOW_FILE long_format_multi_modules_custom.txt
 
 # below we try every single header for modules_custom mode
-INFO "Generating modules custom output file with ALL headers on single database"
+INFO "Generating modules custom output file with ALL headers (including path-level) on single database"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
                          --output-modes modules_custom \
-                         -O modules_custom_single \
-                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,path_id,path,path_completeness,step_id,step,step_completeness,warnings,genome_name
-SHOW_FILE modules_custom_single_modules_custom.txt
+                         -O modules_custom_single_path \
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,path_id,path,path_completeness,warnings,genome_name
+SHOW_FILE modules_custom_single_path_modules_custom.txt
 
-INFO "Generating modules custom output file with ALL headers in multi mode"
+INFO "Generating modules custom output file with ALL headers (including step-level) on single database"
+anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
+                         --output-modes modules_custom \
+                         -O modules_custom_single_step \
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,step_id,step,step_completeness,warnings,genome_name
+SHOW_FILE modules_custom_single_step_modules_custom.txt
+
+INFO "Generating modules custom output file with ALL headers (including path-level) in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
                          --output-modes modules_custom \
-                         -O modules_custom_multi \
-                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,path_id,path,path_completeness,step_id,step,step_completeness,warnings,genome_name,db_name
-SHOW_FILE modules_custom_multi_modules_custom.txt
+                         -O modules_custom_multi_path \
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,path_id,path,path_completeness,warnings,genome_name,db_name
+SHOW_FILE modules_custom_multi_path_modules_custom.txt
+
+INFO "Generating modules custom output file with ALL headers (including step-level) in multi mode"
+anvi-estimate-metabolism -e external-genomes.txt \
+                         --output-modes modules_custom \
+                         -O modules_custom_multi_step \
+                         --custom-output-headers module,stepwise_module_is_complete,stepwise_module_completeness,pathwise_module_is_complete,pathwise_module_completeness,enzymes_unique_to_module,unique_enzymes_hit_counts,proportion_unique_enzymes_present,unique_enzymes_context_string,module_name,module_class,module_category,module_subcategory,module_definition,module_substrates,module_products,module_intermediates,gene_caller_ids_in_module,enzyme_hits_in_module,step_id,step,step_completeness,warnings,genome_name,db_name
+SHOW_FILE modules_custom_multi_step_modules_custom.txt
 
 INFO "Generating matrix output files in multi mode"
 anvi-estimate-metabolism -e external-genomes.txt \
