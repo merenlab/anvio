@@ -224,7 +224,7 @@ anvi-estimate-metabolism -e external-genomes.txt \
                          --matrix-format
 SHOW_FILE copy_num-module_pathwise_copy_number-MATRIX.txt
 SHOW_FILE copy_num-module_stepwise_copy_number-MATRIX.txt
-SHOW_FILE copy_num-module_step_copy_number-MATRIX.txt
+SHOW_FILE copy_num-step_copy_number-MATRIX.txt
 
 INFO "Listing custom output headers with --add-copy-number enabled"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
