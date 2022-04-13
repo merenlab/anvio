@@ -4352,7 +4352,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     value = ",".join(value)
             d[self.modules_unique_id][h] = value
 
-            return gcids_in_mod
+        return gcids_in_mod
 
 
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
