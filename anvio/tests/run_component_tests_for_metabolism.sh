@@ -160,19 +160,6 @@ INFO "Estimating from JSON output (debug option)"
 anvi-estimate-metabolism --estimate-from-json estimation_data.json \
                          -O from_json
 
-## ENRICHMENT TESTS
-INFO "Testing metabolic enrichment script"
-anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
-                                  -G groups.txt \
-                                  -o enrichment.txt
-SHOW_FILE enrichment.txt
-
-INFO "Testing metabolic enrichment with --include-samples-missing-from-groups-txt"
-anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
-                                  -G groups_with_missing_sample.txt \
-                                  --include-samples-missing-from-groups-txt \
-                                  -o enrichment_ungrouped.txt
-SHOW_FILE enrichment_ungrouped.txt
 
 ## COVERAGE TESTS
 INFO "Testing --add-coverage for genome mode"
@@ -259,3 +246,18 @@ SHOW_FILE enzymes_txt_cov_modules.txt
 SHOW_FILE enzymes_txt_cov_module_paths.txt
 SHOW_FILE enzymes_txt_cov_module_steps.txt
 SHOW_FILE enzymes_txt_cov_hits.txt
+
+
+## ENRICHMENT TESTS
+INFO "Testing metabolic enrichment script"
+anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
+                                  -G groups.txt \
+                                  -o enrichment.txt
+SHOW_FILE enrichment.txt
+
+INFO "Testing metabolic enrichment with --include-samples-missing-from-groups-txt"
+anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
+                                  -G groups_with_missing_sample.txt \
+                                  --include-samples-missing-from-groups-txt \
+                                  -o enrichment_ungrouped.txt
+SHOW_FILE enrichment_ungrouped.txt
