@@ -908,15 +908,8 @@ class KeggSetup(KeggContext):
         self.progress.end()
         self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
 
-
-    def download_modules(self):
-        """This function downloads the KEGG modules.
-
-        To do so, it also processes the KEGG module file into a dictionary via the process_module_file() function.
-        To verify that each file has been downloaded properly, we check that the last line is '///'.
-        """
-
-        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+    def download_kegg_module_file(self):
+        """This function downloads the KEGG module file, which tells us which module files to download."""
 
         # download the kegg module file, which lists all modules
         try:
@@ -928,9 +921,15 @@ class KeggSetup(KeggContext):
                               "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
                               "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
-        # get module dict
-        self.process_module_file()
-        self.run.info("Number of KEGG Modules", len(self.module_dict.keys()))
+
+    def download_modules(self):
+        """This function downloads the KEGG modules.
+
+        To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
 
         # download all modules
         for mnum in self.module_dict.keys():
@@ -1411,6 +1410,8 @@ class KeggSetup(KeggContext):
             # it also downloads and processes the KEGG Module files into the MODULES.db
             self.download_profiles()
             self.decompress_files()
+            self.download_kegg_module_file()
+            self.process_module_file() # get module dict
             self.download_modules()
             #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
             if not self.skip_brite_hierarchies:
