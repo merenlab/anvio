@@ -1069,6 +1069,7 @@ class KeggSetup(KeggContext):
         """
 
         for hierarchy in self.brite_dict.keys():
+            hierarchy_accession = hierarchy[: 7]
             file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
             if not os.path.exists(file_path):
                 raise ConfigError(f"The BRITE hierarchy file for {hierarchy} does not exist at its expected location, {file_path}. "
