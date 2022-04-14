@@ -1206,7 +1206,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
-        if filesnpaths.is_file_exists(db_path):
+        if filesnpaths.is_file_exists(db_path, dont_raise=True):
             if self.overwrite_modules_db:
                 os.remove(db_path)
             else:
