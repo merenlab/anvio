@@ -904,8 +904,6 @@ function queryLegends(mode){
     $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
 
     function displaySuccessMessage(){
-        console.log('success triggered')
-        console.log(legendFormatted)
         $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
     }
 }
