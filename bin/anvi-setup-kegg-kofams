@@ -39,6 +39,11 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('download-from-kegg'), **anvio.K('download-from-kegg'))
     groupD.add_argument(*anvio.A('only-download'), **anvio.K('only-download'))
     groupD.add_argument(*anvio.A('only-database'), **anvio.K('only-database'))
+    groupD.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations',
+                                                                                {'help': "Overwrite any existing modules database "
+                                                                                         "in the KEGG data directory "
+                                                                                         "[USE WITH CAUTION]. Only relevant if you "
+                                                                                         "are using the --only-database flag"}))
 
     groupA = parser.add_argument_group('SETUP FROM KEGG ARCHIVE', "Choose this option if you already have a "
                                         ".tar.gz archive of anvi'o-formatted KEGG data on your computer. We'll "

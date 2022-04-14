@@ -492,6 +492,7 @@ class KeggSetup(KeggContext):
         self.only_database = True if args.only_database else False
         self.kegg_snapshot = args.kegg_snapshot
         self.skip_brite_hierarchies = args.skip_brite_hierarchies
+        self.overwrite_modules_db = args.overwrite_output_destinations
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -1205,6 +1206,14 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
+        if filesnpaths.is_file_exists(db_path):
+            if self.overwrite_modules_db:
+                os.remove(db_path)
+            else:
+                raise ConfigError(f"Woah there. There is already a modules database at {db_path}. If you really want to make a new modules database "
+                                  f"in this folder, you should either delete the existing database yourself, or re-run this program with the "
+                                  f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
+                                  f"sure you are aware of that, so that you have no regrets.")
         try:
             mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
             mod_db.create()
