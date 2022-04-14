@@ -973,6 +973,7 @@ class KeggSetup(KeggContext):
                                   f"module is present in the KEGG MODULE file that lists all modules you *should* have "
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
+        self.run.info("Number of module files found", len(self.module_dict))
 
 
     def download_pathways(self):
@@ -1078,6 +1079,7 @@ class KeggSetup(KeggContext):
                                   f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
+        self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
 
 
     def decompress_files(self):
