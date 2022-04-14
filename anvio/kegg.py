@@ -506,8 +506,9 @@ class KeggSetup(KeggContext):
             raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
-        # initializing this to None here so that it doesn't break things downstream
+        # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
+        self.brite_dict = None
 
         # init the base class
         KeggContext.__init__(self, self.args)
