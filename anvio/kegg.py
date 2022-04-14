@@ -614,6 +614,7 @@ class KeggSetup(KeggContext):
                           #self.pathway_data_dir,
                           ]
         if not self.skip_brite_hierarchies:
+            files_to_check.append(self.kegg_brite_hierarchies_file)
             files_to_check.append(self.brite_data_dir)
 
         files_that_exist = []
