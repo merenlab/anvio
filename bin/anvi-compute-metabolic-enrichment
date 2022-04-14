@@ -55,8 +55,8 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     groupE = parser.add_argument_group('OPTIONAL OPTIONS', "If you want it, here it is, come and get it.")
-    groupB.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
-    groupB.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
+    groupE.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
+    groupE.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
                                 {'help': "This threshold defines the percent completeness score at which we consider a KEGG module to be 'present'"
                                          "in a given sample. That is, if a module's completeness in a sample is less than this value, then we say "
                                          "the module is not present in that sample, and this will affect the module's enrichment score. "
@@ -65,7 +65,8 @@ if __name__ == '__main__':
                                          "any groups). Note that the closer this number is to 0, the more meaningless this whole enrichment analysis is... "
                                          "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
                                          "if you wish. The default threshold is %(default)g."}))
-    groupB.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
+                                         
+    groupE.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)
