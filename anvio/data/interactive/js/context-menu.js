@@ -154,7 +154,7 @@ ContextMenu = function(options) {
                         legendIndex = idx
                     }
                 })
-                $( ".ui-accordion-header" ).eq( legendIndex ).click()
+                $( ".ui-accordion" ).accordion( "option", "active", legendIndex );
                 $( `#${legend.replaceAll('_','-').replaceAll(' ','-')}-query-input`).val(query)
 
                 function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
