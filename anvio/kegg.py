@@ -580,42 +580,55 @@ class KeggSetup(KeggContext):
                         self.run.info("Successfully removed", path)
 
 
-    def is_database_exists(self):
-        """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
+    def is_database_exists(self, fail_if_exists=True):
+        """This function determines whether the user has already downloaded all required KEGG data.
 
-        if os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use the --reset flag "
-                              "or delete this directory manually if you want to re-download it." % self.kegg_data_dir)
+        More specifically, it looks for the KEGG files that we use to learn what to download (as in
+        the KEGG MODULE file) and for the existence of the data directories that are created by this
+        program.
 
-        if os.path.exists(self.kegg_module_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
-                              "delete this directory manually to let this script re-download everything from scratch."
-                              % self.kegg_data_dir)
+        PARAMETERS
+        ==========
+        fail_if_exists : Boolean
+            if this is True, this function will fail if the KEGG data already exists on the user's
+            computer. If it is False, AND the user has already downloaded all required KEGG data,
+            then this function will not fail. This is to enable the --only-database option.
+            Note that in this case we require all KEGG data to be pre-downloaded to avoid mixing
+            older and newer KEGG data - so if this data is only partially downloaded, the function
+            will raise an error even if this parameter is False.
+        """
 
-        if os.path.exists(self.kegg_pathway_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG pathway "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
-                              "delete this directory manually to let this script re-download everything from scratch."
-                              % self.kegg_data_dir)
+        files_to_check = [self.kofam_hmm_file_path,
+                          self.kegg_module_file,
+                          self.kegg_module_data_dir,
+                          self.brite_data_dir,
+                          self.kegg_pathway_file,
+                          self.pathway_data_dir ]
+        files_that_exist = []
 
-        if os.path.exists(self.kegg_module_data_dir):
-            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
-                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.kegg_module_data_dir, self.kegg_data_dir))
+        for f in files_to_check:
+            if os.path.exists(f):
+                if fail_if_exists:
+                    raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
+                                      "or delete this directory manually if you want to re-download it.")
+                else:
+                    files_that_exist.append(f)
 
-        if os.path.exists(self.pathway_data_dir):
-            raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
-                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.pathway_data_dir, self.kegg_data_dir))
+        if files_that_exist:
+            exist_str = "\n".join(files_that_exist)
+            # we require all data to be present. Otherwise we might produce chimeric KEGG data.
+            if files_that_exist != files_to_check:
+                raise ConfigError(f"We found some, but not all, required KEGG data on your computer in the KEGG "
+                                  f"data directory. Since you don't have everything you need, we need you to re-download "
+                                  f"everything from scratch. Please re-run this program using the `--reset` flag, and if "
+                                  f"you were using the `--only-database` option, remove that flag. :) And just FYI, here is "
+                                  f"the KEGG data we found:\n{exist_str}")
 
-        if os.path.exists(self.brite_data_dir):
-            raise ConfigError("It seems the KEGG BRITE directory %s already exists on your system. This is even more "
-                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.brite_data_dir, self.kegg_data_dir))
+            self.run.warning(f"We found already-downloaded KEGG data on your computer. Setup will continue using "
+                             f"this data. However, if you think everything should be re-downloaded from scratch, please kill this program "
+                             f"and restart it using the `--reset` flag. Here is the data you already have, in case you "
+                             f"need to check it to make sure we are not using something that is too old:\n"
+                             f"{exist_str}")
 
 
     def check_user_input_dir_format(self):
