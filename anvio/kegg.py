@@ -622,7 +622,9 @@ class KeggSetup(KeggContext):
             if os.path.exists(f):
                 if fail_if_exists:
                     raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
-                                      "or delete this directory manually if you want to re-download it.")
+                                      "or delete the KEGG data directory manually if you want to re-download KEGG data. "
+                                      "See also the --only-database option, which you can use if you already "
+                                      "have all required KEGG data in that folder.")
                 else:
                     files_that_exist.append(f)
 
