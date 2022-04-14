@@ -643,6 +643,12 @@ class KeggSetup(KeggContext):
                              f"need to check it to make sure we are not using something that is too old:\n"
                              f"{exist_str}")
 
+        if self.only_database and not files_that_exist:
+            raise ConfigError(f"We noticed that there is no KEGG data on your computer at {self.kegg_data_dir} even "
+                              f"though you used the --only-database option. If you don't actually have KEGG data already "
+                              f"downloaded, you should get rid of the --only-database flag and re-run this program. If you "
+                              f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
+
 
     def check_user_input_dir_format(self):
         """This function checks whether the user input directory exists and contains the required subfolders
