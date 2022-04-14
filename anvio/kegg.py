@@ -914,7 +914,6 @@ class KeggSetup(KeggContext):
                               f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
 
         self.progress.end()
-        self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
 
 
     def download_kegg_module_file(self):
@@ -1044,6 +1043,7 @@ class KeggSetup(KeggContext):
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
+        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
         unexpected_hierarchies = []
         for hierarchy in self.brite_dict:
             hierarchy_accession = hierarchy[: 7]
