@@ -7781,6 +7781,7 @@ class KeggModuleEnrichment(KeggContext):
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
+        self.use_stepwise_completeness = A('use_stepwise_completeness')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -7845,8 +7846,14 @@ class KeggModuleEnrichment(KeggContext):
         # read the files into dataframes
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
+        completeness_header = 'pathwise_module_completeness'
+        if self.use_stepwise_completeness:
+            completeness_header = 'stepwise_module_completeness'
+        self.progress.reset()
+        self.run.info("Completeness score being used for determining sample presence", completeness_header)
+
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['module', 'pathwise_module_completeness', 'module_name']
+        required_modules_txt_headers = ['module', 'module_name', completeness_header]
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -7967,7 +7974,7 @@ class KeggModuleEnrichment(KeggContext):
             header_list.append(f"N_{c}")
 
         for mod_num in module_list:
-            query_string = f"module == '{mod_num}' and pathwise_module_completeness >= {self.module_completion_threshold}"
+            query_string = f"module == '{mod_num}' and {completeness_header} >= {self.module_completion_threshold}"
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue

@@ -3028,6 +3028,15 @@ D = {
                     "look at. The values in this column should correspond to those in the 'sample' column in "
                     "the groups-txt input file."}
                 ),
+    'use-stepwise-completeness': (
+            ['--use-stepwise-completeness'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "By default, this program will use pathwise completeness of a module to determine if it "
+                    "is present in a sample or not. To make it use stepwise completeness instead, provide this "
+                    "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
+                    "pathwise vs stepwise completeness."} 
+                ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
             {'metavar': 'FASTA',
