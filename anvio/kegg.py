@@ -6251,12 +6251,13 @@ class ModulesDatabase(KeggContext):
                 self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the Modules DB. "
                                  "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                                  "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                                 "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
-                                 "will also probably need the `--reset` flag). When doing so, you will also see which lines caused issues; this "
-                                 "can be a lot of output, so you can suppress the line-specific output with the `--quiet` flag if that makes things "
-                                 "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
-                                 "with `--reset --debug --quiet` to see exactly which modules had issues, or run with `--reset --debug` to see exactly "
-                                 "which lines in which modules had issues. Anvi'o developers thank you for your attention and patience 😇")
+                                 "you would like to see which modules threw these errors, please re-run the setup using the --debug flag (you "
+                                 "will also probably need the --reset or --overwrite-output-destinations flag). When doing so, you will also "
+                                 "see which lines caused issues; this can be a lot of output, so you can suppress the line-specific output with "
+                                 "the `--quiet` flag if that makes things easier to read. So, in summary: You can probably ignore this warning. "
+                                 "But if you want more info: run setup again with `--reset --debug --quiet` to see exactly which modules had "
+                                 "issues, or run with `--reset --debug` to see exactly which lines in which modules had issues. Anvi'o developers "
+                                 "thank you for your attention and patience 😇")
                 self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
                 self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
