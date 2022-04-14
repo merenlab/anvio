@@ -957,6 +957,24 @@ class KeggSetup(KeggContext):
                                   % (file_path, last_line))
 
 
+    def confirm_downloaded_modules(self):
+        """This function verifies that all module files have been downloaded.
+
+        It checks that there is a module file for every module in the self.module_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_module_file(), has already been called.
+        """
+
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+
+
     def download_pathways(self):
         """This function downloads the KEGG Pathways.
 
@@ -1042,6 +1060,24 @@ class KeggSetup(KeggContext):
                               f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
 
 
+    def confirm_downloaded_brite_hierarchies(self):
+        """This function verifies that all BRITE hierarchy files have been downloaded.
+
+        It checks that there is a hierarchy file for every hierarchy in the self.brite_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_brite_hierarchy_of_hierarchies(), has already been called.
+        """
+
+        for hierarchy in self.brite_dict.keys():
+            file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The BRITE hierarchy file for {hierarchy} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+
+
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
 
@@ -1062,8 +1098,10 @@ class KeggSetup(KeggContext):
     def confirm_downloaded_profiles(self):
         """This function verifies that all Kofam profiles have been properly downloaded.
 
-        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
-        K23763.hmm with some exceptions; all KO numbers from ko_list file (except those in ko_skip_list) should be included.
+        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
+        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
+
+        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
         """
 
         ko_nums = self.ko_dict.keys()
@@ -1439,10 +1477,12 @@ class KeggSetup(KeggContext):
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
                     self.download_brite_hierarchies()
             else:
-                # get required attributes for database setup
+                # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
+                self.confirm_downloaded_modules()
                 if not self.skip_brite_hierarchies:
                     self.process_brite_hierarchy_of_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
 
             if not self.only_download:
                 self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
