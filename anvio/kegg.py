@@ -909,6 +909,7 @@ class KeggSetup(KeggContext):
         self.progress.end()
         self.run.info("Number of BRITE hierarchies", len(self.brite_dict))
 
+
     def download_kegg_module_file(self):
         """This function downloads the KEGG module file, which tells us which module files to download."""
 
@@ -1405,25 +1406,36 @@ class KeggSetup(KeggContext):
 
         if self.kegg_archive_path:
             self.setup_from_archive()
+
         elif self.download_from_kegg:
             # mostly for developers and the adventurous
-            # this downloads, decompresses, and hmmpresses the KOfam profiles
-            # it also downloads and processes the KEGG Module files into the MODULES.db
-            self.download_profiles()
-            self.decompress_files()
-            self.download_kegg_module_file()
-            self.process_module_file() # get module dict
-            self.download_modules()
-            #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
-            if not self.skip_brite_hierarchies:
-                self.download_brite_hierarchy_of_hierarchies()
-                self.process_brite_hierarchy_of_hierarchies()
-                self.download_brite_hierarchies()
-            self.setup_ko_dict()
-            self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
+            if not self.only_database:
+                # this downloads, decompresses, and hmmpresses the KOfam profiles
+                self.download_profiles()
+                self.decompress_files()
+                self.setup_ko_dict() # get ko dict attribute
+                self.run_hmmpress()
+                # it also downloads and processes the KEGG Module files into the MODULES.db
+                self.download_kegg_module_file()
+                self.process_module_file() # get module dict attribute
+                self.download_modules()
+                #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
+                if not self.skip_brite_hierarchies:
+                    self.download_brite_hierarchy_of_hierarchies()
+                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
+                    self.download_brite_hierarchies()
+            else:
+                # get required attributes for database setup
+                self.process_module_file()
+                if not self.skip_brite_hierarchies:
+                    self.process_brite_hierarchy_of_hierarchies()
+
+            if not self.only_download:
+                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
+
         elif self.user_input_dir:
             self.setup_user_data()
+
         else:
             # the default, set up from frozen KEGG release
             self.setup_kegg_snapshot()

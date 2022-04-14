@@ -959,7 +959,8 @@ D = {
                      "make a modules database. (It would be a *very* good idea for you to specify a "
                      "data directory using --kegg-data-dir in this case, so that you can find the resulting "
                      "data easily and avoid messing up any data in the default KEGG directory. But you are "
-                     "of course free to do whatever you want.)"}
+                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
+                     "processed with `hmmpress` if you choose this option."}
              ),
     'only-database': (
             ['--only-database'],
