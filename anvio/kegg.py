@@ -609,11 +609,13 @@ class KeggSetup(KeggContext):
         files_to_check = [self.kofam_hmm_file_path,
                           self.kegg_module_file,
                           self.kegg_module_data_dir,
-                          self.brite_data_dir,
-                          self.kegg_pathway_file,
-                          self.pathway_data_dir ]
-        files_that_exist = []
+                          #self.kegg_pathway_file,   # uncomment these two if we ever start using KEGG PATHWAYs
+                          #self.pathway_data_dir,
+                          ]
+        if not self.skip_brite_hierarchies:
+            files_to_check.append(self.brite_data_dir)
 
+        files_that_exist = []
         for f in files_to_check:
             if os.path.exists(f):
                 if fail_if_exists:
@@ -628,9 +630,11 @@ class KeggSetup(KeggContext):
             if files_that_exist != files_to_check:
                 raise ConfigError(f"We found some, but not all, required KEGG data on your computer in the KEGG "
                                   f"data directory. Since you don't have everything you need, we need you to re-download "
-                                  f"everything from scratch. Please re-run this program using the `--reset` flag, and if "
-                                  f"you were using the `--only-database` option, remove that flag. :) And just FYI, here is "
-                                  f"the KEGG data we found:\n{exist_str}")
+                                  f"everything from scratch. Please re-run this program using the --reset flag, and if "
+                                  f"you were using the --only-database option, remove that flag. :) HOWEVER, if you notice that "
+                                  "KEGG BRITE data does not appear to be in the upcoming list, but you don't actually want "
+                                  "to download BRITE data, then you can just add the --skip-brite-hierarchies to your previous "
+                                  f"command and be on your way (ie, no --reset needed). Here is the KEGG data we found:\n{exist_str}")
 
             self.run.warning(f"We found already-downloaded KEGG data on your computer. Setup will continue using "
                              f"this data. However, if you think everything should be re-downloaded from scratch, please kill this program "
