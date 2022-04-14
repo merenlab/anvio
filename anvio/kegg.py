@@ -526,9 +526,9 @@ class KeggSetup(KeggContext):
             filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
             if not args.reset and not anvio.DEBUG and not skip_init:
-                self.is_database_exists()
+                self.is_database_exists(fail_if_exists=(not self.only_database))
 
-            if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
+            if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
