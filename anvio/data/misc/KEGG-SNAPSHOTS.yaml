@@ -31,6 +31,12 @@ v2021-12-18:
     hash: 58937b64c44c
     modules_db_version: 3
 
+v2022-04-14:
+    url: https://figshare.com/ndownloader/files/34817563
+    archive_name: KEGG_build_2022-04-14_666feeac5de2.tar.gz
+    hash: 666feeac5de2
+    modules_db_version: 4
+
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
 #    `anvi-setup-kegg-kofams -D --kegg-data-dir ./KEGG`
