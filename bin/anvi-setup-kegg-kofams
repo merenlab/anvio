@@ -37,6 +37,8 @@ if __name__ == '__main__':
                                         "updates its formatting (but if that happens, you can always try the default "
                                         "option).")
     groupD.add_argument(*anvio.A('download-from-kegg'), **anvio.K('download-from-kegg'))
+    groupD.add_argument(*anvio.A('only-download'), **anvio.K('only-download'))
+    groupD.add_argument(*anvio.A('only-database'), **anvio.K('only-database'))
 
     groupA = parser.add_argument_group('SETUP FROM KEGG ARCHIVE', "Choose this option if you already have a "
                                         ".tar.gz archive of anvi'o-formatted KEGG data on your computer. We'll "

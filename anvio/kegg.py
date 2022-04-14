@@ -488,6 +488,8 @@ class KeggSetup(KeggContext):
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
+        self.only_download = True if args.only_download else False
+        self.only_database = True if args.only_database else False
         self.kegg_snapshot = args.kegg_snapshot
         self.skip_brite_hierarchies = args.skip_brite_hierarchies
 
