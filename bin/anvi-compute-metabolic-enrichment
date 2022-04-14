@@ -22,13 +22,13 @@ __resources__ = [("A description of the enrichment script run by this program ca
 __tags__ = ["metabolism"]
 __requires__ = ['kegg-metabolism', 'user-metabolism', 'groups-txt', 'external-genomes', 'internal-genomes', 'functions']
 __provides__ = ['functional-enrichment-txt']
-__description__ = ("A program that computes metabolic enrichment acros groups of genomes and metagenomes")
+__description__ = ("A program that computes metabolic enrichment across groups of genomes and metagenomes")
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-    # make sure the output files is not going to overwrite anything
+    # make sure the output file is not going to overwrite anything
     if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
         raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
                           f"Please remove the exiting file first, or give a different output file name to this program.")
