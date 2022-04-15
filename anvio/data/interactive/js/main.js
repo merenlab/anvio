@@ -911,7 +911,7 @@ function queryLegends(mode){
     $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
 
     function displaySuccessMessage(){
-        $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(2000).fadeOut(300)
+        $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(4000).fadeOut(300)
     }
 }
 
