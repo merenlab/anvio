@@ -38,7 +38,8 @@ This is helpful if you don't have write access to the default directory location
 By default, the KEGG snapshot that will be installed is the latest one, which is up-to-date with your current version of anvi'o. If, however, you want a snapshot from an earlier version, you can run something like the following to get it:
 
 {{ codestart }}
-anvi-setup-kegg-kofams --kegg-data-dir /path/to/directory/KEGG --kegg-snapshot v2020-04-27
+anvi-setup-kegg-kofams --kegg-data-dir /path/to/directory/KEGG \
+                       --kegg-snapshot v2020-04-27
 {{ codestop }}
 
 Just keep in mind that you may need to migrate the MODULES.db from these earlier versions in order to make it compatible with the current metabolism code. Anvi'o will tell you if you need to do this.
@@ -73,7 +74,9 @@ An important thing to note about this option is that it has rigid expectations f
 Suppose you only want to download data from KEGG, but you don't need a %(modules-db)s - at least not right away. You can instruct this program to stop after downloading by providing the `--only-download` flag:
 
 {{ codestart }}
-anvi-setup-kegg-kofams --download-from-kegg --only-download --kegg-data-dir /path/to/directory/KEGG
+anvi-setup-kegg-kofams --download-from-kegg \
+                       --only-download \
+                       --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 It's probably a good idea in this case to specify where you want this data to go using `--kegg-data-dir`, to make sure you can find it later.
@@ -88,7 +91,9 @@ This option is primarily useful for developers to test `anvi-setup-kegg-kofams` 
 Let's say you already have KEGG data on your computer that you got by running this program with the `--only-download` flag. Now you want to turn this data into a %(modules-db)s. To do that, run this program using the `--only-database` flag and provide the location of the pre-downloaded KEGG data:
 
 {{ codestart }}
-anvi-setup-kegg-kofams --download-from-kegg --only-database --kegg-data-dir /path/to/directory/KEGG
+anvi-setup-kegg-kofams --download-from-kegg \
+                       --only-database \
+                       --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 {.notice}
@@ -97,7 +102,10 @@ The KEGG data that you already have on your computer has to be in the format exp
 One more note: since this flag is most often used for testing the database setup capabilities of this program, which entails running `anvi-setup-kegg-kofams -D --only-database` multiple times on the same KEGG data directory, there is an additional flag that may be useful in this context. To avoid having to manually delete the created modules database each time you run, you can use the `--overwrite-output-destinations` flag:
 
 {{ codestart }}
-anvi-setup-kegg-kofams --download-from-kegg --only-database --kegg-data-dir /path/to/directory/KEGG --overwrite-output-destinations
+anvi-setup-kegg-kofams --download-from-kegg \
+                       --only-database \
+                       --kegg-data-dir /path/to/directory/KEGG \
+                       --overwrite-output-destinations
 {{ codestop }}
 
 ### Avoiding BRITE setup
