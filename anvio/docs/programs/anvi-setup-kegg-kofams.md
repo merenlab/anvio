@@ -1,4 +1,4 @@
-%(anvi-setup-kegg-kofams)s downloads and organizes data from KEGG for use by other programs, namely %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. It downloads HMM profiles from the [KOfam](https://academic.oup.com/bioinformatics/article/36/7/2251/5631907) database as well as the metabolism information of [KEGG MODULES](https://www.genome.jp/kegg/module.html) and the functional classification information of [KEGG BRITE](https://www.genome.jp/kegg/brite.html) resources. The KOfam profiles are prepared for later use by the HMMER software, and the information from MODULES and BRITE is made accessible to other anvi'o programs as a %(modules-db)s. This program generates a directory with these files (%(kegg-data)s), which by default is located at `anvio/anvio/data/misc/KEGG/`.
+%(anvi-setup-kegg-kofams)s downloads and organizes data from KEGG for use by other programs, namely %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. It downloads HMM profiles from the [KOfam](https://academic.oup.com/bioinformatics/article/36/7/2251/5631907) database as well as the metabolism information of [KEGG MODULES](https://www.genome.jp/kegg/module.html) and the functional classification information of [KEGG BRITE](https://www.genome.jp/kegg/brite.html). The KOfam profiles are prepared for later use by the HMMER software, and the information from MODULES and BRITE is made accessible to other anvi'o programs as a %(modules-db)s. This program generates a directory with these files (%(kegg-data)s), which by default is located at `anvio/anvio/data/misc/KEGG/`.
 
 ### Default Usage
 
@@ -18,7 +18,7 @@ Doing it this way ensures that almost everyone uses the same version of KEGG dat
 But the trade-off to this is that the default KEGG data version is tied to an anvi'o release, and it will not always include the most up-to-date information from KEGG. Luckily, for those who want the most updated version of KEGG, you can still use this program to generate the KEGG data directory by downloading directly from KEGG (see 'Generating an anvi'o compatible KEGG data directory from scratch' below).
 
 {:.warning}
-BRITE hierarchy data is not included in the default KEGG archive for anvi'o `v7` and can only be set up in this version by downloading directly from KEGG.
+BRITE hierarchy data is not included in the default KEGG snapshot for anvi'o `v7`. Starting from the `v7.1-dev` version of anvi'o, there is a new default KEGG snapshot including BRITE information. This data can also be set up by using the option to download directly from KEGG in `v7.1-dev` or later.
 
 ### How to set up KEGG data in a non-default location
 
@@ -60,6 +60,8 @@ KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/d
 - determine if any KOfam profiles are missing bitscore thresholds, and remove those from the standard profile location so that they are not used for annotation (if you want to see these, you will find them in the `orphan_data` folder in your KEGG data directory)
 - concatenate all remaining KOfam profiles into one file and run `hmmpress` on them
 - parse the flat text file for each KEGG module and store the information into the %(modules-db)s
+- parse the flat text file for each KEGG module and the JSON file for each BRITE hierarchy
+- store the MODULE and BRITE information in the %(modules-db)s
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
