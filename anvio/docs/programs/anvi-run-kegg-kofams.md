@@ -58,6 +58,27 @@ anvi-run-kegg-kofams -c %(contigs-db)s \
                      --keep-all-hits
 {{ codestop }}
 
+## Save the bitscores of HMM hits
+
+If you want to see the bitscores of all KOfam hits that were added to your contigs database, you can use the `--log-bitscores` option to save these values into a tab-delimited file:
+
+{{ codestart }}
+anvi-run-kegg-kofams -c %(contigs-db)s \
+                     --log-bitscores
+{{ codestop }}
+
+Here is an example of what the resulting bitscore file would look like:
+
+|**entry_id**|**bit_score**|**domain_bit_score**|**e_value**|**entry_id**|**gene_callers_id**|**gene_hmm_id**|**gene_name**|
+|:--|:--|:--|:--|:--|:--|:--|:--|
+|1|177.4|85.1|8e-54|0|1371|-|K10681|
+|2|34.1|33.7|9.1e-11|1|1141|-|K01954|
+|3|22.4|22.4|3.1e-07|2|1402|-|K01954|
+|4|12.8|11.8|0.00024|3|1099|-|K01954|
+|5|17.1|16.7|4.4e-05|4|1267|-|K20024|
+
+Combining this flag with the `--keep-all-hits` option is one way to get the bitscores of all matches to the KOfam profiles, even the ones that would usually not pass the bitscore threshold provided by KEGG.
+
 ## Modify the bitscore relaxation heuristic
 As described above, this program does its best to avoid missing valid annotations by relaxing the bitscore threshold for genes without any annotations. For such a gene, hits with e-value <= X and bitscore > (Y * KEGG threshold) that are all hits to the same KOfam profile are used to annotate the gene with that KO.
 
