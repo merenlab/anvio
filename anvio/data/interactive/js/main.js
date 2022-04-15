@@ -805,8 +805,11 @@ function buildLegendTables() {
                             <td class="col-md-10"><p>randomize all category colors</p></td>
                             <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
                         </tr>
+                    </table>
+
+                    <table class="col-md-12 table-spacing" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-success-message" style="display: none;">
                         <tr>
-                            <td class="col-md-10" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-success-message" style="display: none; background-color: green; color: white; text-align: center; border-radius: 10px; border-style: solid; width: 100%"><p>Success!</p></td>
+                        <td style="background-color: #85eb8559; color: black; text-align: center; border-radius: 3px; width: 100%">All set! Don't forget to click <b>Draw</b> to see changes when you're done :)</td>
                         </tr>
                     </table>
                 </div>
