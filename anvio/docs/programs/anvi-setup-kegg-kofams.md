@@ -92,7 +92,23 @@ anvi-setup-kegg-kofams --download-from-kegg --only-database --kegg-data-dir /pat
 {{ codestop }}
 
 {.notice}
-The KEGG data that you already have on your computer has to be in the format expected by this program, or you'll run into errors. Pretty much the only reasonable way to get the data into the proper format is to run this program with the `--only-download` option. Otherwise you would have to go through a lot of manual file-changing shenanigans - possible, but not advisable. 
+The KEGG data that you already have on your computer has to be in the format expected by this program, or you'll run into errors. Pretty much the only reasonable way to get the data into the proper format is to run this program with the `--only-download` option. Otherwise you would have to go through a lot of manual file-changing shenanigans - possible, but not advisable.
+
+One more note: since this flag is most often used for testing the database setup capabilities of this program, which entails running `anvi-setup-kegg-kofams -D --only-database` multiple times on the same KEGG data directory, there is an additional flag that may be useful in this context. To avoid having to manually delete the created modules database each time you run, you can use the `--overwrite-output-destinations` flag:
+
+{{ codestart }}
+anvi-setup-kegg-kofams --download-from-kegg --only-database --kegg-data-dir /path/to/directory/KEGG --overwrite-output-destinations
+{{ codestop }}
+
+### Avoiding BRITE setup
+
+As of anvi'o `v7.1-dev` or later, KEGG BRITE hierarchies are added to the %(modules-db)s when running this program with the `-D` (`--download-from-kegg`) option. If you don't want this cool new feature - because you are a rebel, or adverse to change, or something is not working on your computer, whatever - then fine. You can use the `--skip-brite-hierarchies` flag:
+
+{{ codestart }}
+anvi-setup-kegg-kofams -D --skip-brite-hierarchies
+{{ codestop }}
+
+Hopefully it makes sense to you that this flag does not work when setting up from a KEGG snapshot that already includes BRITE data in it.
 
 ### How do I share this data?
 Suppose you have been living on the edge and annotating your contigs databases with a non-default version of %(kegg-data)s, and you share these databases with a collaborator who wants to run downstream programs like %(anvi-estimate-metabolism)s on them. Your collaborator (who has a different version of %(kegg-data)s on their computer) will likely get version errors as detailed on the %(anvi-estimate-metabolism)s help page.
@@ -103,7 +119,7 @@ In order for your collaborator to be able to work with your dataset, they need t
 2. You could share with your collaborator just the %(modules-db)s. If all they want to do is to run %(anvi-estimate-metabolism)s on databases annotated by your version of the KEGG data directory, this should be all they need. They would need to pass the folder containing your %(modules-db)s to %(anvi-estimate-metabolism)s using the `--kegg-data-dir` parameter.
 3. If your collaborator also wants to be able to annotate other databases with your version of %(kegg-data)s, then they need to have the KOfam profiles as well. You can send them your %(modules-db)s and have them download the KOfam profiles most similar to the ones you have from the [KOfam archives](https://www.genome.jp/ftp/db/kofam/archives/) (which are labeled by date). Then they would have to essentially construct their own KEGG data directory by copying the structure of the default one and putting the downloaded files (and the %(modules-db)s you sent them) into the correct locations. The KOfam profiles must be concatenated into a `Kofam.hmm` file and `hmmpress` must be run on that file to generate the required indices for `hmmsearch`. Your collaborator must also have the `ko_list.txt` file (which _should_ be downloaded with the profiles) in the right spot. Then they could pass their makeshift KEGG data directory to %(anvi-run-kegg-kofams)s using `--kegg-data-dir`, and they should be golden. (A word of warning: they may want to remove KOs without bitscore thresholds in the `ko_list.txt` before concatenating the profiles, otherwise they will likely get a lot of weak hits for these KOs.)
 
-## I already have a KEGG snapshot: set up from an archive file
+## I already have a KEGG snapshot: set up from a pre-downloaded archive file
 
 If you have an archive (`.tar.gz`) of the KEGG data directory already on your computer (perhaps a colleague or Meren Lab developer gave you one), you can set up KEGG from this archive instead:
 
