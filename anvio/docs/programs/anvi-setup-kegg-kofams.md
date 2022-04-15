@@ -68,6 +68,32 @@ KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/d
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
+### The --only-download option
+
+Suppose you only want to download data from KEGG, but you don't need a %(modules-db)s - at least not right away. You can instruct this program to stop after downloading by providing the `--only-download` flag:
+
+{{ codestart }}
+anvi-setup-kegg-kofams --download-from-kegg --only-download --kegg-data-dir /path/to/directory/KEGG
+{{ codestop }}
+
+It's probably a good idea in this case to specify where you want this data to go using `--kegg-data-dir`, to make sure you can find it later.
+
+ Actually, in addition to downloading the data, the program will also do a bit of processing on the KOfam profiles: it will remove those without bitscore thresholds, concatenate the remaining profiles into one file, and run `hmmpress` on them. But no database will be created when this flag is used.
+
+{:.notice}
+This option is primarily useful for developers to test `anvi-setup-kegg-kofams` - for instance, so that you can download the data once and run the database setup option (`--only-database`) multiple times. However, if non-developers find another practical use-case for this flag, we'd be happy to add those ideas here. Send us a message, or feel free to edit this file and pull request your changes on the anvi'o Github repository. :)
+
+### The --only-database option
+
+Let's say you already have KEGG data on your computer that you got by running this program with the `--only-download` flag. Now you want to turn this data into a %(modules-db)s. To do that, run this program using the `--only-database` flag and provide the location of the pre-downloaded KEGG data:
+
+{{ codestart }}
+anvi-setup-kegg-kofams --download-from-kegg --only-database --kegg-data-dir /path/to/directory/KEGG
+{{ codestop }}
+
+{.notice}
+The KEGG data that you already have on your computer has to be in the format expected by this program, or you'll run into errors. Pretty much the only reasonable way to get the data into the proper format is to run this program with the `--only-download` option. Otherwise you would have to go through a lot of manual file-changing shenanigans - possible, but not advisable. 
+
 ### How do I share this data?
 Suppose you have been living on the edge and annotating your contigs databases with a non-default version of %(kegg-data)s, and you share these databases with a collaborator who wants to run downstream programs like %(anvi-estimate-metabolism)s on them. Your collaborator (who has a different version of %(kegg-data)s on their computer) will likely get version errors as detailed on the %(anvi-estimate-metabolism)s help page.
 
