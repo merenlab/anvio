@@ -507,6 +507,12 @@ class KeggSetup(KeggContext):
             raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
+        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
+            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
+                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
+                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
+                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
+
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
         self.brite_dict = None
