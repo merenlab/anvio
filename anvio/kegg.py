@@ -483,16 +483,17 @@ class KeggSetup(KeggContext):
     """
 
     def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.args = args
         self.run = run
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
-        self.only_download = True if args.only_download else False
-        self.only_database = True if args.only_database else False
+        self.only_download = True if A('only_download') else False
+        self.only_database = True if A('only_database') else False
         self.kegg_snapshot = args.kegg_snapshot
-        self.skip_brite_hierarchies = args.skip_brite_hierarchies
-        self.overwrite_modules_db = args.overwrite_output_destinations
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.overwrite_modules_db = A('overwrite_output_destinations')
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -1462,7 +1463,7 @@ class KeggSetup(KeggContext):
         """
 
         self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER')
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
 
 
     def setup_data(self):
