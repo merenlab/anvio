@@ -534,7 +534,7 @@ class KeggSetup(KeggContext):
                 filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+                #filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset) # commented out because we don't work with pathways yet
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
