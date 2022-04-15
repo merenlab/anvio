@@ -134,7 +134,7 @@ ContextMenu = function(options) {
             }
         },
         'open_in_legends': {
-            'title': 'Open in Legends Tab',
+            'title': 'Change category color(s)',
             'action': (node, layer, param) => {
                 if (!$('#panel-left').is(':visible')) {
                     toggleLeftPanel()
@@ -451,6 +451,7 @@ ContextMenu.prototype.BuildMenu = function() {
                 let legend = extractContent(splitHTML[0]).toLowerCase()
                 let matchedLayerIndex = layerdata[0].map(l => l.toLowerCase()).indexOf(legend).toString()
                 if(Object.keys(categorical_data_colors).includes(matchedLayerIndex)){
+                    menu.push('divider');
                     menu.push('open_in_legends')
                 }
                 menu.push('divider');
