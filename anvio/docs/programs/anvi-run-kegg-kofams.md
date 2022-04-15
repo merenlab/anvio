@@ -98,3 +98,11 @@ anvi-run-kegg-kofams -c %(contigs-db)s \
                      -E 1e-15 \
                      -H 0.90
 {{ codestop }}
+
+## Skip BRITE annotations
+If for some strange reason you do not want KEGG BRITE annotations to be added to your contigs database, you can skip them by providing the `--skip-brite-hierarchies` flag:
+
+{{ codestart }}
+anvi-run-kegg-kofams -c %(contigs-db)s \
+                     --skip-brite-hierarchies
+{{ codestop }}
