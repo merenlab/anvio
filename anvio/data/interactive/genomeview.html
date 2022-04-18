@@ -13,7 +13,7 @@
   <link rel="stylesheet" type="text/css" href="./css/genomeview.css" />
   <!-- main css file imported for color picker functionality -->
   <link rel="stylesheet" type="text/css" href="./css/main.css" />
-  <link rel="stylesheet" type="text/css" href="css/loading.css" />
+  <link rel="stylesheet" type="text/css" href="./css/loading.css" />
 
   <link rel="shortcut icon" href="#">
 
@@ -74,10 +74,11 @@
       <div id="scaleBox" height="140px">
         <svg id="scaleSvg" height="120px"></svg>
       </div>
+      <button onclick="showTabularModal()">Display Viewport Data</button>
       <button id="zoom-out" onclick="zoomOut()" style="float:right">-</button>
       <button id="zoom-in" onclick="zoomIn()" style="float:right; margin-right:5px">+</button>
       <input type="text" class="form-control input-sm" id="brush_start"
-        style="width: 60px; float:left; margin-right:10px" value="0"></input>
+      style="width: 60px; float:left; margin-right:10px" value="0"></input>
       <input type="text" class="form-control input-sm" id="brush_end" style="width: 60px; float:left" value="0"></input>
       <select id='bookmarks-select' style="width: 120px; float:left; margin-left:10px">
         <option selected="true" disabled="disabled">Bookmarks</option>
@@ -87,6 +88,7 @@
     <div id='tooltip-body' display='none'></div>
     <div id='deepdive-tooltip-body' display='none'></div>
     <div id='lasso-menu-body' display='none'></div>
+    <div id='tabular-modal-body'></div>
 
     <div id="toggle-panel-settings" onclick="toggleRightPanel('#settings-panel')">
       <span id="toggle-panel-settings-inner">&#9664;</span><span
