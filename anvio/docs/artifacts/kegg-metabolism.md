@@ -178,9 +178,19 @@ The 'modules_custom' output mode will have user-defined content and the suffix `
 
 ## Matrix format output
 
-Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output type is to generate matrices of module statistics for easy visualization and clustering. Currently, the matrix-formatted output includes a module completeness matrix, a matrix of binary module presence/absence values, and a matrix of enzyme annotation counts. In these matrices, each row is a module or enzyme, and each column is an input sample.
+Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once (otherwise known as 'Multi Mode'). The purpose of this output type is to generate matrices of module statistics for easy visualization and clustering. Currently, the matrix-formatted output includes:
+- matrices of module completeness scores, one for pathwise completeness and one for stepwise completeness
+- matrices of binary module presence/absence values, one for pathwise completeness and one for stepwise completeness
+- matrix of binary top-level step completeness values
+- matrix of enzyme annotation counts
 
-Here is an example of a module completeness matrix, for bins in a metagenome:
+If you use the `--add-copy-number` flag, you will get three additional matrix files:
+- matrices of module copy number, one for pathwise copy number and one for stepwise copy number
+- matrix of top-level step copy number
+
+In these tab-delimited matrix files, each row is a module, top-level step, or enzyme, and each column is an input sample.
+
+Here is an example of a module pathwise completeness matrix, for bins in a metagenome:
 
 | module | bin_1 | bin_2 | bin_3 | bin_4 | bin_5 | bin_6 |
 |:--|:--|:--|:--|:--|:--|:--|
@@ -191,7 +201,7 @@ Here is an example of a module completeness matrix, for bins in a metagenome:
 | M00005 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
 
-Each cell of the matrix is the completeness score for the corresponding module in the corresponding sample (which is, in this case, a bin).
+Each cell of the matrix is the pathwise completeness score for the corresponding module in the corresponding sample (which is, in this case, a bin).
 
 While the above is the default matrix format, some users may want to include more annotation information in the matrices so that it is easier to know what is going on when looking at the matrix data manually. You can add this metadata to the matrices by using the `--include-metadata` flag when running %(anvi-estimate-metabolism)s, and the output will look something like the following:
 
@@ -202,8 +212,10 @@ While the above is the default matrix format, some users may want to include mor
 | M00003 | Gluconeogenesis, oxaloacetate => fructose-6P | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | 0.88 | 0.00 | 1.00 | 0.75 | 1.00 | 0.88 |
 |(...) | (...) | (...) | (...) | (...) | (...) | (...) |
 
-The module completeness matrix files will have the suffix `completeness-MATRIX.txt`.
+The module/step completeness matrix files will have the suffix `completeness-MATRIX.txt`.
 
 Module presence/absence matrix files will have the suffix `presence-MATRIX.txt`. In these files, each cell of the matrix will have either a 1.0 or a 0.0. A 1.0 indicates that the module has a completeness score above the module completeness threshold in that sample, while a 0.0 indicates that the module's completeness score is not above the threshold.
 
-Finally, KO hit matrix files will have the suffix `enzyme_hits-MATRIX.txt`. Each row of the matrix will be an enzyme, and each column will be an input sample. Cells in this matrix will contain an integer value, representing the number of times the enzyme was annotated in that sample. (Note: you will also add metadata to this matrix type when you use the `--include-metadata` flag).
+Enzyme hit matrix files will have the suffix `enzyme_hits-MATRIX.txt`. Each row of the matrix will be an enzyme, and each column will be an input sample. Cells in this matrix will contain an integer value, representing the number of times the enzyme was annotated in that sample. (Note: you will also add metadata to this matrix type when you use the `--include-metadata` flag).
+
+Copy number matrices will have the suffix `copy_number-MATRIX.txt`. In these files, each cell of the matrix will be an integer representing the number of copies of a module or top-level step in a given sample.
