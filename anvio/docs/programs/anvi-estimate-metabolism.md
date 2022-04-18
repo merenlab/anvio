@@ -4,7 +4,7 @@ The metabolic pathways that this program considers (by default) are those define
 
 Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
-Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. The output is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
+Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
 For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
@@ -275,7 +275,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custo
 
 **Including modules with 0%% completeness in long-format output**
 
-By default, modules with a completeness score of 0 are not printed to the output files to save on space. But you can explicitly include them by adding the `--include-zeros` flag.
+By default, modules with completeness scores of 0 are not printed to the output files to save on space (both pathwise completeness and stepwise completeness must be 0 to exclude modules from the output). But you can explicitly include them by adding the `--include-zeros` flag.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
@@ -286,7 +286,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits_in_modules,hits --add-coverage
+anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --output-modes modules,hits --add-coverage
 {{ codestop }}
 
 This option also works for the `--enzymes-txt` input option, provided that you include _both_ a `coverage` column and a `detection` column in the %(enzymes-txt)s input file.
@@ -295,7 +295,7 @@ This option also works for the `--enzymes-txt` input option, provided that you i
 anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s --add-coverage
 {{ codestop }}
 
-For `hits_in_modules` and `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
+For `hits` mode output files, in which each row describes one enzyme annotation for a gene in the contigs database, the output will contain two additional columns per sample in the profile database. One column will contain the mean coverage of that particular gene call by reads from that sample and the other will contain the detection of that gene in the sample.
 
 For `modules` mode output files, in which each row describes a metabolic module, the output will contain _four_ additional columns per sample in the profile database. One column will contain comma-separated mean coverage values for each gene call in the module, in the same order as the corresponding gene calls in the `gene_caller_ids_in_module` column. Another column will contain the average of these gene coverage values, which represents the average coverage of the entire module. Likewise, the third and fourth columns will contain comma-separated detection values for each gene call and the average detection, respectively.
 
@@ -308,7 +308,7 @@ anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --add-coverage --li
 ### Matrix Output
 Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or enzyme annotation (hit) counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file.
 
-In each matrix, the rows will describe modules or enzymes, the columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
+In each matrix, the rows will describe modules, top-level steps, or enzymes. The columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
 
 **Obtaining matrix-formatted output**
 
@@ -330,7 +330,7 @@ Note that this flag only works for matrix output because, well, the long-format 
 
 **Including rows of all zeros in the matrix output**
 
-The `--include-zeros` flag works for matrix output, too. By default, modules that have 0 completeness (or KOs that have 0 hits) in every input sample will be left out of the matrix files. Using `--include-zeros` results in the inclusion of these items (that is, the inclusion of rows of all zeros).
+The `--include-zeros` flag works for matrix output, too. By default, modules that have 0 completeness (or enzymes that have 0 hits) in every input sample will be left out of the matrix files. Using `--include-zeros` results in the inclusion of these items (that is, the inclusion of rows of all zeros).
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --include-zeros
