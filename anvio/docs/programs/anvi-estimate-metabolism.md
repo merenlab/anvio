@@ -203,9 +203,10 @@ The program will print a list like the one below and then exit.
 ```
 AVAILABLE OUTPUT MODES
 ===============================================
-hits_in_modules ..............................: Information on each enzyme (gene annotation) that belongs to a module
 modules ......................................: Information on metabolic modules
 modules_custom ...............................: A custom tab-delimited output file where you choose the included modules data using --custom-output-headers
+module_paths .................................: Information on each possible path (complete set of enzymes) in a module
+module_steps .................................: Information on each top-level step in a module
 hits .........................................: Information on all enzyme annotations in the contigs DB, regardless of module membership
 ```
 
