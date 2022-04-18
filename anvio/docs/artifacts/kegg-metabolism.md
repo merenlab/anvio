@@ -44,7 +44,6 @@ If you use the flag `--add-copy-number` when running %(anvi-estimate-metabolism)
 - `stepwise_copy_number` is the minimum number of times we see each top-level step in the module.
 - `per_step_copy_numbers` is a comma-separated list of the copy number of each individual top-level step in the module. It is meant to be used for interpreting the stepwise copy number (which is simply the minimum of this list).
 
-
 **Coverage and detection values in the output**
 
 If you use the flag `--add-coverage` and provide a profile database, additional columns containing coverage and detection data will be added for each sample in the profile database. Here is a mock example of the additional columns you will see (for a generic sample called 'SAMPLE_1'):
@@ -91,7 +90,7 @@ Without further ado, here is an example of this output mode (also from the Infan
 
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
 - `path_id`: a unique identifier of the current path through the module
-- `path`: the current path of enzymes through the module (described above), which this enzyme annotation contributes to
+- `path`: the current path of enzymes through the module (described above)
 - `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
 
 Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
