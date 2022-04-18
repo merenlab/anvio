@@ -174,7 +174,7 @@ Since each row is a single gene in this output mode, these columns will contain 
 
 ### Custom Mode (for module data)
 
-The 'modules_custom' output mode will have user-defined content and the suffix `modules_custom.txt` (we currently only support output customization for modules data). See %(anvi-estimate-metabolism)s for an example command to work with this mode. The output file will look similar to the 'modules' mode output, but with a different (sub)set of columns.
+The 'modules_custom' output mode will have user-defined content and the suffix `modules_custom.txt` (we currently only support output customization for modules data). See %(anvi-estimate-metabolism)s for an example command to work with this mode. The output file will look similar to the 'modules' mode output, but with a different (sub)set of columns. You can use the flag `--list-available-output-headers` to see all of the possible columns you can choose from - this list will change depending on what input type you have and whether you use the `--add-copy-number` or `--add-coverage` flags (one caveat: using these flags with 'Multi Mode' input does not show you all possible output headers, so it is best to build your custom header list by looking at the possible headers for one sample).
 
 ## Matrix format output
 
