@@ -549,7 +549,14 @@ function show_sequence_modal(title, content) {
 
 function showTabularModal(){
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
-  
+  var genomes = Object()
+
+  arrows.map(arrow => {
+    if(!genomes[arrow['genomeID']]){
+      genomes[arrow['genomeID']] = true
+    }
+  })
+
   $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30}).append(`
     <button type="button" class="btn btn-default btn-sm" onClick="$('#tabular-modal-body').html('').hide()">close</>
   `)
