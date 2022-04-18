@@ -88,7 +88,15 @@
     <div id='tooltip-body' display='none'></div>
     <div id='deepdive-tooltip-body' display='none'></div>
     <div id='lasso-menu-body' display='none'></div>
-    <div id='tabular-modal-body'></div>
+
+    <div id='tabular-modal-body'>
+      <div role="tabpanel" style="margin: 0px;">
+        <ul id='tabular-modal-tab-list' class="nav nav-tabs" role="tablist" style="background-image: url("images/full-bg.png");">
+        </ul>
+      </div>
+      <div id="modal-tab-content"></div>
+      <button type="button" class="btn btn-default btn-sm" onClick="$('#tabular-modal-body').hide()">close</button>
+    </div>
 
     <div id="toggle-panel-settings" onclick="toggleRightPanel('#settings-panel')">
       <span id="toggle-panel-settings-inner">&#9664;</span><span
