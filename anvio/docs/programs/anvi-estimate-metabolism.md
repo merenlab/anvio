@@ -246,25 +246,24 @@ The program will print a list like the one below and then exit.
 AVAILABLE OUTPUT HEADERS
 ===============================================
 module .......................................: Module number [modules output mode]
-module_is_complete ...........................: Whether a module is considered complete or not based on its percent completeness and the completeness threshold [modules output mode]
-module_completeness ..........................: Percent completeness of a module [modules output mode]
+stepwise_module_is_complete ..................: Whether a module is considered complete or not based on its STEPWISE percent completeness and the completeness threshold [modules output mode]
+stepwise_module_completeness .................: Percent completeness of a module, computed as the number of complete steps divided by the number of total steps (where 'steps' are determined by splitting the module definition
+                                                on the space character) [modules output mode]
+pathwise_module_is_complete ..................: Whether a module is considered complete or not based on its PATHWISE percent completeness and the completeness threshold [modules output mode]
+pathwise_module_completeness .................: Percent completeness of a module, computed as maximum completeness of all possible combinations of enzymes ('paths') in the definition [modules output mode]
 enzymes_unique_to_module .....................: A list of enzymes that only belong to this module (ie, they are not members of multiple modules) [modules output mode]
 unique_enzymes_hit_counts ....................: How many times each unique enzyme appears in the sample (order of counts corresponds to list in `enzymes_unique_to_module` field) [modules output mode]
 proportion_unique_enzymes_present ............: Proportion of enzymes unique to this one module that are present in the sample [modules output mode]
 unique_enzymes_context_string ................: Describes the unique enzymes contributing to the `proportion_unique_enzymes_present` field [modules output mode]
 module_name ..................................: Name/description of a module [modules output mode]
-[.......]
-enzyme .......................................: Identifier for an enzyme that is annotated in your database(s), ie a KO or COG number [kofams output mode]
-modules_with_enzyme ..........................: A comma-separated list of modules that the enzyme belongs to [kofams output mode]
-enzyme_definition ............................: The functional annotation associated with the enzyme [kofams output mode]
-genome_name ..................................: Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules [all output modes]
+[....]
 ```
 
 As you can see, this flag is also useful when you want to quickly look up the description of each column of data in your output files.
 
 For each header, the output mode(s) that it is applicable to are listed after the description. The headers you can choose from for `modules_custom` output end in either `[modules output mode]` or `[all output modes]`.
 
-Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide.
+Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide. You will see additional possible headers if you use the `--add-copy-number` or `--add-coverage` flags (though this only works for single sample inputs, not for Multi Mode - if you wish to get custom output for Multi Mode, it is best to construct your custom header list by looking at the possible headers for your given parameter set for a SINGLE sample from your input file).
 
 **Using custom output mode**
 
