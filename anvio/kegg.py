@@ -5366,7 +5366,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # we will find in the metagenomes file
         self.update_available_headers_for_multi()
 
-        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+        self.run.warning("Just so you know, if you used the flags --add-copy-number or --add-coverage, you "
+                         "won't see the possible headers for these data in the list below. If you want to "
+                         "include this information in a custom output file and need to know which headers "
+                         "you can choose from, you should re-run this command with --list-available-output-headers "
+                         "on a SINGLE sample from your input file.")
+
+        self.run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
             desc_str = header_meta['description']
