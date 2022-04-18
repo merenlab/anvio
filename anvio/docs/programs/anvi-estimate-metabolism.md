@@ -281,6 +281,18 @@ By default, modules with completeness scores of 0 are not printed to the output 
 anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 {{ codestop }}
 
+**Including module copy number in long-format output**
+
+You can ask this program to count the number of copies of each module in your input samples by providing the `--add-copy-number` flag:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-coverage
+{{ codestop }}
+
+Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %{kegg-metabolism}s.
+
+This flag also works for matrix output.
+
 **Including coverage and detection in long-format output**
 
 If you have a profile database associated with your contigs database and you would like to include coverage and detection data in the metabolism estimation output files, you can use the `--add-coverage` flag. You will need to provide the profile database as well, of course. :)
@@ -405,6 +417,16 @@ K21071	0	0	0
 K00918	0	0	0
 [....]
 ```
+
+**Including copy number in matrix output**
+
+The `--add-copy-number` flag, which was discussed above for including module copy number values in long-format output, also works for matrix output:
+
+{{ codestart }}
+anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --add-copy-number
+{{ codestop }}
+
+When you use this flag, you will get matrices describing copy number statistics in addition to the typical set of matrix output files.
 
 ### Other output options
 
