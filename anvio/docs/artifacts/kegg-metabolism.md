@@ -37,6 +37,14 @@ What are the data in each of these columns?
 - `gene_caller_ids_in_module`: a comma-separated list of the genes with enzyme annotations that contribute to this pathway, in the same order as the annotations in the `enzyme_hits_in_module` column
 - `warnings`: miscellaneous caveats to consider when interpreting the `module_completeness` scores. For example, a warning like "No KOfam profile for K00172" would indicate that we cannot annotate K00172 because we have no HMM profile for that gene family, which means that any metabolic pathway containing this KO can never be fully complete (even if a gene from that family does exist in your sequences). Seeing many warnings like "K01810 is present in multiple modules: M00001/M00004/M00892/M00909" indicates that the current module shares many enzymes with other metabolic pathways, meaning that it may appear to be complete only because its component enzymes are common. Extra caution should be taken when considering the completeness of modules with warnings
 
+**Module copy number values in the output**
+
+If you use the flag `--add-copy-number` when running %(anvi-estimate-metabolism)s, you will see three additional columns describing the estimated copy number of each module: `pathwise_copy_number`, `stepwise_copy_number`, and `per_step_copy_numbers`.
+- `pathwise_copy_number` is the number of 'complete' copies of the path through the module with the highest (pathwise) completeness score, where 'complete' here means 'greater than or equal to the module completeness threshold'. If there are multiple paths through the module with the highest pathwise completeness score, we take the maximum copy number of all of these paths.
+- `stepwise_copy_number` is the minimum number of times we see each top-level step in the module.
+- `per_step_copy_numbers` is a comma-separated list of the copy number of each individual top-level step in the module. It is meant to be used for interpreting the stepwise copy number (which is simply the minimum of this list).
+
+
 **Coverage and detection values in the output**
 
 If you use the flag `--add-coverage` and provide a profile database, additional columns containing coverage and detection data will be added for each sample in the profile database. Here is a mock example of the additional columns you will see (for a generic sample called 'SAMPLE_1'):
