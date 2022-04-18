@@ -99,6 +99,50 @@ Note that in this output mode, `pathwise_module_completeness` and `pathwise_modu
 
 If you use the flag `--add-copy-number`, this output mode will gain an additional column, `num_complete_copies_of_path`, which describes the number of 'complete' copies of the current path through the module. To calculate this, we look at the number of annotations for each enzyme in the path and figure out how many times we can use different annotations to get a copy of the path with a completeness score that is greater than or equal to the completeness score threshold.
 
+### 'Module Steps' Mode
+
+The 'module_steps' output file will have the suffix `module_steps.txt`. Each line in the file will represent information about one top-level step in a metabolic module. The top-level steps are the major steps that you get when you split the module definition on a space. Each "top-level" step is comprised of one or more enzymes that either work together or serve as alternatives to each other to catalyze (usually) one reaction in the metabolic pathway.
+
+If we use module [M00001](https://www.genome.jp/kegg-bin/show_module?M00001) as an example again, we would get the following top-level steps for this module:
+
+1. (K00844,K12407,K00845,K00886,K08074,K00918)
+2. (K01810,K06859,K13810,K15916)
+3. (K00850,K16370,K21071,K00918)
+4. (K01623,K01624,K11645,K16305,K16306)
+5. K01803
+6. ((K00134,K00150) K00927,K11389)
+7. (K01834,K15633,K15634,K15635)
+8. K01689
+9. (K00873,K12406)
+
+The first top-level step in this module is comprised of different glucokinase enzymes, all of which can catalyze the conversion from alpha-D-Glucose to alpha-D-Glucose 6-phosphate. The second top-level step is made up of alternative KOs for the glucose-6-phosphate isomerase enzyme, which converts alpha-D-Glucose 6-phosphate to beta-D-Fructose 6-phosphate. And so on.
+
+Each top-level step in a metabolic module gets its own line in the 'module_steps' output file. Here is an example showing all 9 steps for module M00001 in one Enterococcus genome from the Infant Gut Dataset:
+
+|**module**|**genome_name**|**db_name**|**stepwise_module_completeness**|**stepwise_module_is_complete**|**step_id**|**step**|**step_completeness**|
+|:--|:--|:--|:--|:--|:--|:--|:--|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|(K00844,K12407,K00845,K25026,K00886,K08074,K00918)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|(K01810,K06859,K13810,K15916)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|(K00850,K16370,K21071,K00918)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|3|(K01623,K01624,K11645,K16305,K16306)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|4|K01803|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|5|((K00134,K00150) K00927,K11389)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|6|(K01834,K15633,K15634,K15635)|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|7|K01689|1|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|8|(K00873,K12406)|1|
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+
+As in the previous section, you should look at the 'modules' mode section for descriptions of any columns that are shared with that mode. Below are the descriptions of new columns in this mode:
+- `step_id`: a unique identifier of each top-level step in the module
+- `step`: the definition of the top-level step, as extracted from the module definition
+- `step_completeness`: an integer value of 1 in this column indicates that the step is complete, meaning that (at least) one of any alternative enzymes (or sets of enzymes) in this step has been annotated. A value of 0 indicates that the step is incomplete, meaning that there is no way for the step's reaction to be catalyzed based on the set of enzyme annotations we are considering. This value is binary (so 0 and 1 are the only possible values for this column).
+
+Note that in this output mode, `stepwise_module_completeness` and `stepwise_module_is_complete` are the stepwise completeness scores of the module overall, not of a particular step in the module. These values will be repeated for all lines describing the same module.
+
+**Step copy number values in the output**
+
+If you use the flag `--add-copy-number`, this output mode will gain an additional column, `step_copy_number`, which describes the number of copies of the current step. To calculate this value, we look at the number of annotations for each alternative enzyme in the step and figure out how many different versions of the step we can make by combining different annotations.
+
 ### Enzyme 'Hits' Mode
 
 The 'hits' output file will have the suffix `hits.txt`. Unlike the previous mode, this output will include ALL enzyme hits (from all annotation sources used for metabolism estimation), regardless of whether the enzyme belongs to a metabolic module or not. Since only a subset of these enzymes belong to modules, this output does not include module-related information like paths and module completeness.
