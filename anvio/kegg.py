@@ -85,7 +85,7 @@ OUTPUT_MODES = {'modules': {
                                     'data_dict': "modules",
                                     'headers': ["module", "stepwise_module_completeness", "stepwise_module_is_complete",
                                                 "step_id", "step", "step_completeness"],
-                                    'description': "Information on each possible path (complete set of enzymes) in a module"
+                                    'description': "Information on each top-level step in a module"
                                     },
                 'hits': {
                     'output_suffix': "hits.txt",
