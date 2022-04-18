@@ -3433,7 +3433,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # compute path copy number
             if defined_by_modules:
-                path_copy_number = 'NA'
+                path_copy_number = atomic_step_copy_number # save list with atomic step copy numbers to use when adjusting module copy number later
             else:
                 path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_number)
             meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(path_copy_number)
@@ -3563,11 +3563,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
             num_complete_module_steps = 0
 
+            # take previously computed step copy numbers. This list includes all steps except those defined by modules.
+            atomic_step_copy_numbers_in_path = meta_dict_for_bin[mod]["num_complete_copies_of_all_paths"][i]
+            module_copy_num_should_be_NA = False # flag to indicate whether component modules have a copy number of NA
+
             for atomic_step in p:
                 # module step; we need to count these based on previously computed module completeness
                 if atomic_step in self.all_modules_in_db:
                     num_complete_module_steps += meta_dict_for_bin[atomic_step]["pathwise_percent_complete"]
                     num_essential_steps_in_path += 1
+
+                    if meta_dict_for_bin[atomic_step]["pathwise_copy_number"] == "NA":
+                        module_copy_num_should_be_NA = True
+                    else:
+                        atomic_step_copy_numbers_in_path.append(meta_dict_for_bin[atomic_step]["pathwise_copy_number"])
                 # non-essential KO, don't count as a step in the path
                 elif atomic_step[0] == '-' and not atomic_step == "--":
                     pass
@@ -3580,6 +3589,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
             meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
 
+            # now we adjust the path copy number
+            if module_copy_num_should_be_NA:
+                path_copy_number = "NA"
+            else:
+                path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_numbers_in_path)
+            meta_dict_for_bin[mod]["num_complete_copies_of_all_paths"][i] = path_copy_number
+
         # after adjusting for all paths, adjust overall module completeness
         meta_dict_for_bin[mod]["pathwise_percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
         if meta_dict_for_bin[mod]["pathwise_percent_complete"] > 0:
@@ -3590,6 +3606,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
         now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
+
+        # and adjust overall module copy number
+        if meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"]:
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+        else:
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = 'NA'
 
         return now_complete
 
