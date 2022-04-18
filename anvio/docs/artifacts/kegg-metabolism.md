@@ -58,11 +58,13 @@ In this mock example, the module in this row has four gene calls in it. The `SAM
 {.warning}
 The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. If you have one of these output files and need information about it, you should look in the documentation pages for anvi'o `v7`. If you would like to obtain a similar output, the closest available is 'module_paths' mode.
 
-The 'hits_in_modules' output file will have the suffix `hits_in_modules.txt`. Each line in the file will represent information about one enzyme annotation (ie, one gene) in a given genome, metagenome, or bin - but _only_ enzymes that are a part of at least one module are included in this output. Hits are organized according to the module that they belong to, and more specifically the path through the module in which the enzyme appears.
+### 'Module Paths' Mode
+
+The 'module_paths' output file will have the suffix `module_paths.txt`. Each line in the file will represent information about one path through a metabolic module.
 
 What is a path through a module, you ask? Well. There is a lengthier explanation of this [here](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#what-data-is-used-for-estimation), but we will go through it briefly below.
 
-KEGG modules are metabolic pathways defined by a set of KOs. For example, here is the definition of module [M00001](https://www.genome.jp/kegg-bin/show_module?M00001), better known as "Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate":
+Modules are metabolic pathways defined by a set of enzymes - for KEGG modules, these enzymes are KEGG orthologs, or KOs. For example, here is the definition of module [M00001](https://www.genome.jp/kegg-bin/show_module?M00001), better known as "Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate":
 
 (K00844,K12407,K00845,K00886,K08074,K00918) (K01810,K06859,K13810,K15916) (K00850,K16370,K21071,K00918) (K01623,K01624,K11645,K16305,K16306) K01803 ((K00134,K00150) K00927,K11389) (K01834,K15633,K15634,K15635) K01689 (K00873,K12406)
 
@@ -70,41 +72,33 @@ Spaces separate steps (reactions) in the metabolic pathway, and commas separate 
 
 (**K00844**,K12407,K00845,K00886,K08074,K00918) (**K01810**,K06859,K13810,K15916) (**K00850**,K16370,K21071,K00918) (**K01623**,K01624,K11645,K16305,K16306) **K01803** ((**K00134**,K00150) **K00927**,K11389) (**K01834**,K15633,K15634,K15635) **K01689** (**K00873**,K12406)
 
-to get the following path of KOs (which happens to be the path shown in the output example below):
+to get the following path of KOs (which happens to be the first path shown in the output example below):
 
 K00844 K01810 K00850 K01623 K01803 K00134 K00927 K01834 K01689 K00873
 
-For every KO in the path above that has a hit in the %(contigs-db)s, there will be a corresponding line in the 'hits_in_modules' output file. The same will occur for every possible path in every single KEGG module, resulting in a lot of lines and extremely repetitive but nicely parseable information.
+In summary, a 'path' is one set of enzymes that can be used to catalyze all reactions in a given metabolic pathway, and there can be many possible paths (containing different sets of alternative enzymes) for a module. For every possible path through a module, there will be a corresponding line in the 'module_paths' output file.
 
 The same principle applies to user-defined metabolic modules, except that the enzymes can be from a variety of different annotation sources (not just KOfam).
 
 Without further ado, here is an example of this output mode (also from the Infant Gut dataset):
 
-module | genome_name | db_name | module_is_complete | module_completeness | path_id | path | path_completeness | enzyme_hit | gene_caller_id | contig
-|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
-M00001 | Enterococcus_faecalis_6240 | E_faecalis_6240 | True | 1.0 | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | K00134 | 1044 | Enterococcus_faecalis_6240_contig_00003_chromosome
-M00001 | Enterococcus_faecalis_6240 | E_faecalis_6240 | True | 1.0 | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | K25026 | 642 | Enterococcus_faecalis_6240_contig_00003_chromosome
-M00001 | Enterococcus_faecalis_6240 | E_faecalis_6240 | True | 1.0 | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | K01689 | 1041 | Enterococcus_faecalis_6240_contig_00003_chromosome
-|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+|**module**|**genome_name**|**db_name**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**path_id**|**path**|**path_completeness**|
+|:--|:--|:--|:--|:--|:--|:--|:--|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|K12407,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|K00845,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
-
-- `enzyme_hit`: an enzyme annotation from the contigs database that contributes to a module
-- `gene_caller_id`: the ID of the gene that is annotated with this enzyme
-- `contig`: the contig on which this gene is present
 - `path_id`: a unique identifier of the current path through the module
 - `path`: the current path of enzymes through the module (described above), which this enzyme annotation contributes to
 - `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
 
-**Coverage and detection values in the output**
+Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
 
-The flag `--add-coverage` can also be used for this output mode, but in this case, the columns that are added (for each sample in the profile database) are slightly different. Here is a mock example:
+**Path copy number values in the output**
 
-| SAMPLE_1_coverage | SAMPLE_1_detection |
-|:--|:--|
-| 3.0 | 1.0 |
-
-Since each row is a single gene in this output mode, these columns will contain the coverage/detection values for that gene only.
+If you use the flag `--add-copy-number`, this output mode will gain an additional column, `num_complete_copies_of_path`, which describes the number of 'complete' copies of the current path through the module. To calculate this, we look at the number of annotations for each enzyme in the path and figure out how many times we can use different annotations to get a copy of the path with a completeness score that is greater than or equal to the completeness score threshold.
 
 ### Enzyme 'Hits' Mode
 
