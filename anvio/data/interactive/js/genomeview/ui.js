@@ -548,18 +548,29 @@ function show_sequence_modal(title, content) {
 }
 
 function showTabularModal(){
+  $('#tabular-modal-tab-list').html('')
+  $('#modal-tab-content').html('')
+
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
-  var genomes = Object()
+  var genomesObj = Object()
 
   arrows.map(arrow => {
-    if(!genomes[arrow['genomeID']]){
-      genomes[arrow['genomeID']] = true
+    if(!genomesObj[arrow['genomeID']]){
+      genomesObj[arrow['genomeID']] = true
     }
   })
+  Object.keys(genomesObj).map(genome => {
+    $('#tabular-modal-tab-list').append(`
+      <li role="presentation" class="nav-item">
+        <a href="${genome}" aria-controls="${genome}" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="false" data-help="${genome}"></span> ${genome}</a>
+      </li>
+    `)
+    $('#modal-tab-content').append(`
+      <div id="${genome}"> lets go ${genome}</div>
+    `)
+  })
 
-  $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30}).append(`
-    <button type="button" class="btn btn-default btn-sm" onClick="$('#tabular-modal-body').html('').hide()">close</>
-  `)
+  $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30})
 }
 
 function showLassoMenu(selected_genes, x, y) {
