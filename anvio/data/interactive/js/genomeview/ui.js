@@ -547,6 +547,12 @@ function show_sequence_modal(title, content) {
   $('.modal-sequence textarea').trigger('click');
 }
 
+function showTabularModal(){
+  $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30}).append(`
+    <button type="button" class="btn btn-default btn-sm" onClick="$('#tabular-modal-body').html('').hide()">close</>
+  `)
+}
+
 function showLassoMenu(selected_genes, x, y) {
   //x = 600;
   //y = 200;
