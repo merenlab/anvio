@@ -164,7 +164,13 @@ Here are the descriptions of any new columns not yet discussed in the previous s
 
 **Coverage and detection values in the output**
 
-If you use the flag `--add-coverage` and provide a profile database, you will get the same additional columns per row as described above in for `hits_in_modules` mode. That is, you will get one column per sample for coverage (containing the coverage value of the KO hit in the sample) and one column per sample for detection (containing the detection value of the KO hit in the sample).
+If you use the flag `--add-coverage` and provide a profile database, you will get one additional column per sample for coverage (containing the coverage value of the enzyme annotation in the sample) and one additional column per sample for detection (containing the detection value of the enzyme annotation in the sample). Here is a mock example:
+
+SAMPLE_1_coverage | SAMPLE_1_detection
+|:--|:--|
+3.0 | 1.0
+
+Since each row is a single gene in this output mode, these columns will contain the coverage/detection values for that gene only.
 
 ### Custom Mode (for module data)
 
