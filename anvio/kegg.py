@@ -3433,7 +3433,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # compute path copy number
             if defined_by_modules:
-                path_copy_number = "NA"
+                path_copy_number = 'NA'
             else:
                 path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_number)
             meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(path_copy_number)
@@ -3448,6 +3448,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
             meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
+
+        # set module copy number as the maximum copy number of the path(s) of maximum completeness
+        if meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"]:
+            meta_dict_for_bin[mnum]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+        else:
+            meta_dict_for_bin[mnum]["pathwise_copy_number"] = 'NA'
 
         # compute proportion of unique enzymes in the module (regardless of which path(s) enzyme is in or whether enzyme is essential)
         if meta_dict_for_bin[mnum]["unique_to_this_module"]:
@@ -4735,10 +4741,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.add_copy_number:
             # pathwise: we take the maximum copy number of all the paths of highest completeness
             if "pathwise_copy_number" in headers_to_include:
-                if c_dict["num_complete_copies_of_most_complete_paths"]:
-                    d[self.modules_unique_id]["pathwise_copy_number"] = max(c_dict["num_complete_copies_of_most_complete_paths"])
-                else:
-                    d[self.modules_unique_id]["pathwise_copy_number"] = 'NA'
+                d[self.modules_unique_id]["pathwise_copy_number"] = c_dict["pathwise_copy_number"]
 
             # stepwise copy number
             if "stepwise_copy_number" in headers_to_include:
