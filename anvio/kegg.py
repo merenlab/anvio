@@ -2931,7 +2931,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
-                                                             'mode_type': 'all',
+                                                             'mode_type': 'modules',
                                                              'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
