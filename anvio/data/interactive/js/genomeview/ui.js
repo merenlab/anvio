@@ -604,8 +604,6 @@ function showTabularModal(){
     })
     $(`#${genome[0]}-table-body`).append(totalTableString)
   })
-
-  // $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30})
 }
 
 function showLassoMenu(selected_genes, x, y) {
