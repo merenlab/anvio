@@ -49,6 +49,7 @@ def migrate(db_path):
 
     modules_db.set_meta_value('num_brite_hierarchies', None)
     modules_db.set_meta_value('total_brite_hierarchies', None)
+    modules_db.set_meta_value('is_brite_setup', 0)
 
     progress.update("Creating a new table for KEGG BRITE categorizations")
 

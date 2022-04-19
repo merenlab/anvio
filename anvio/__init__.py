@@ -605,10 +605,8 @@ D = {
             ['--include-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to include genomes/samples with no group in the analysis. (For pangenomes, this means "
-                     "the genome has no value set for the category variable which you specified using --category-variable. "
-                     "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
-                     "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
+             'help': "Use this flag if you want anvi'o to include genomes with no group in the analysis. This means the "
+                     "genome has nothing in the 'group' column of the input file. By default all "
                      "variables with no value will be ignored, but if you apply this flag, they will instead be considered as "
                      "a single group (called 'UNGROUPED' when performing the statistical analysis."}
                 ),
@@ -986,6 +984,27 @@ D = {
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
                      "from KEGG's REST API and set it up into an anvi'o-compatible database."}
                 ),
+    'only-download': (
+            ['--only-download'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "You want this program to only download data from KEGG, and then stop. It will not "
+                     "make a modules database. (It would be a *very* good idea for you to specify a "
+                     "data directory using --kegg-data-dir in this case, so that you can find the resulting "
+                     "data easily and avoid messing up any data in the default KEGG directory. But you are "
+                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
+                     "processed with `hmmpress` if you choose this option."}
+             ),
+    'only-database': (
+            ['--only-database'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "You already have all the KEGG data you need on your computer. Perhaps you even got it from "
+                     "this program, using the --only-download option. We don't know. What matters is that you don't "
+                     "need anything downloaded, you just want this program to setup a modules database from that "
+                     "existing data. Good. We can do that if you provide this flag (and probably also the --kegg-data-dir "
+                     "in which said data is located)."}
+             ),
     'kegg-snapshot': (
             ['--kegg-snapshot'],
             {'default': None,
@@ -2560,6 +2579,14 @@ D = {
              'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
                      "output files. You must provide the profile database corresonding to your contigs db for this to work."}
                 ),
+    'add-copy-number': (
+            ['--add-copy-number'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that module copy number (the number of complete copies of a module, or path "
+                     "through a module) be added to your output files. In long-format mode, it will be an additional column. "
+                     "In matrix mode, it will be an additional matrix file."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -3033,6 +3060,15 @@ D = {
                     "just in case you got it a different way, this is how you can tell anvi'o which column to "
                     "look at. The values in this column should correspond to those in the 'sample' column in "
                     "the groups-txt input file."}
+                ),
+    'use-stepwise-completeness': (
+            ['--use-stepwise-completeness'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "By default, this program will use pathwise completeness of a module to determine if it "
+                    "is present in a sample or not. To make it use stepwise completeness instead, provide this "
+                    "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
+                    "pathwise vs stepwise completeness."} 
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
