@@ -100,8 +100,8 @@ def main(args):
         progress.end()
 
         if not args.bin_id:
-            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag "
-                              "`--list-bins`.")
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you "
+                              "want? Use the flag `--list-bins`.")
 
         pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
         collection_dict = pan.collections.get_collection_dict(args.collection_name)
@@ -122,8 +122,9 @@ def main(args):
     else:
         run.info('Mode', 'Working with all gene clusters.')
 
-    pan = dbops.PanSuperclass(args)
+    pan = dbops.PanSuperclass(args, r=terminal.Run(verbose=False))
     pan.init_gene_clusters(gene_cluster_ids)
+    pan.run = run
 
     # this will simply return pan.gene_clusters if there are no filters requested
     filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
