@@ -37,7 +37,7 @@ anvi-compute-metabolic-enrichment -M MODULES.TXT \
                                   --module-completion-threshold 0.9
 {{ codestop }}
 
-By default, this program uses the [pathwise completeness score](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#two-estimation-strategies-pathwise-and-stepwise) to determine which modules are 'present' in a genome, but you can ask it to use stepwise completeness instead by using the `--use-stepwise-completeness` flag.
+By default, this program uses the [pathwise completeness score](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#two-estimation-strategies---pathwise-and-stepwise) to determine which modules are 'present' in a genome, but you can ask it to use stepwise completeness instead by using the `--use-stepwise-completeness` flag.
 
 {{ codestart }}
 anvi-compute-metabolic-enrichment -M MODULES.TXT \

@@ -93,13 +93,13 @@ Without further ado, here is an example of this output mode (also from the Infan
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
 - `path_id`: a unique identifier of the current path through the module
 - `path`: the current path of enzymes through the module (described above)
-- `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completeness-copy-number-calculated)
+- `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completenesscopy-number-calculated)
 
 Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
 
 **Path copy number values in the output**
 
-If you use the flag `--add-copy-number`, this output mode will gain an additional column, `num_complete_copies_of_path`, which describes the number of 'complete' copies of the current path through the module. To calculate this, we look at the number of annotations for each enzyme in the path and figure out how many times we can use different annotations to get a copy of the path with a completeness score that is greater than or equal to the completeness score threshold. For more details, check out [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completeness-copy-number-calculated)
+If you use the flag `--add-copy-number`, this output mode will gain an additional column, `num_complete_copies_of_path`, which describes the number of 'complete' copies of the current path through the module. To calculate this, we look at the number of annotations for each enzyme in the path and figure out how many times we can use different annotations to get a copy of the path with a completeness score that is greater than or equal to the completeness score threshold. For more details, check out [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completenesscopy-number-calculated)
 
 ### 'Module Steps' Mode
 
@@ -137,13 +137,13 @@ Each top-level step in a metabolic module gets its own line in the 'module_steps
 As in the previous section, you should look at the 'modules' mode section for descriptions of any columns that are shared with that mode. Below are the descriptions of new columns in this mode:
 - `step_id`: a unique identifier of each top-level step in the module
 - `step`: the definition of the top-level step, as extracted from the module definition
-- `step_completeness`: an integer value of 1 in this column indicates that the step is complete, meaning that (at least) one of any alternative enzymes (or sets of enzymes) in this step has been annotated. A value of 0 indicates that the step is incomplete, meaning that there is no way for the step's reaction to be catalyzed based on the set of enzyme annotations we are considering. This value is binary (so 0 and 1 are the only possible values for this column). To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-stepwise-completeness-copy-number-calculated).
+- `step_completeness`: an integer value of 1 in this column indicates that the step is complete, meaning that (at least) one of any alternative enzymes (or sets of enzymes) in this step has been annotated. A value of 0 indicates that the step is incomplete, meaning that there is no way for the step's reaction to be catalyzed based on the set of enzyme annotations we are considering. This value is binary (so 0 and 1 are the only possible values for this column). To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-stepwise-completenesscopy-number-calculated).
 
 Note that in this output mode, `stepwise_module_completeness` and `stepwise_module_is_complete` are the stepwise completeness scores of the module overall, not of a particular step in the module. These values will be repeated for all lines describing the same module.
 
 **Step copy number values in the output**
 
-If you use the flag `--add-copy-number`, this output mode will gain an additional column, `step_copy_number`, which describes the number of copies of the current step. To calculate this value, we look at the number of annotations for each alternative enzyme in the step and figure out how many different versions of the step we can make by combining different annotations. For more details, check out [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-stepwise-completeness-copy-number-calculated).
+If you use the flag `--add-copy-number`, this output mode will gain an additional column, `step_copy_number`, which describes the number of copies of the current step. To calculate this value, we look at the number of annotations for each alternative enzyme in the step and figure out how many different versions of the step we can make by combining different annotations. For more details, check out [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-stepwise-completenesscopy-number-calculated).
 
 ### Enzyme 'Hits' Mode
 
