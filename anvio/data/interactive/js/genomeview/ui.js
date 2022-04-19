@@ -556,9 +556,12 @@ function showTabularModal(){
 
   arrows.map(arrow => {
     if(!genomesObj[arrow['genomeID']]){
-      genomesObj[arrow['genomeID']] = true
+      genomesObj[arrow['genomeID']] = [arrow]
+    } else {
+      genomesObj[arrow['genomeID']].push(arrow)
     }
   })
+
   Object.keys(genomesObj).map((genome, idx) => {
     $('#tabular-modal-nav-tabs').append(`
       <li><a data-toggle="tab" href="#${genome}">${genome}</a></li>
