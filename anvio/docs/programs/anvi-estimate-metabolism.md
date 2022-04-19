@@ -549,7 +549,7 @@ Confused? Yeah, this is complicated stuff! But hopefully the illustrative exampl
 
 ### How is pathwise completeness/copy number calculated?
 
-For demonstration purposes, let's talk through the estimation of pathwise completeness for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
+For demonstration purposes, let's talk through the estimation of pathwise completeness and copy number for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
 
 #### Step 1: Unrolling module definitions
 As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
