@@ -263,6 +263,14 @@ function setEventListeners(){
   $('#show_gene_labels_box').attr("checked", showGeneLabels);
   $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
 
+  $("#tabular-modal-body").on('shown.bs.modal', function(){
+    showTabularModal()
+  });
+  $("#tabular-modal-body").on('hide.bs.modal', function(){
+    $('#tabular-modal-nav-tabs').html('')
+    $('#modal-tab-content').html('')
+  });
+
   // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
 
   // drag box selection
@@ -548,9 +556,6 @@ function show_sequence_modal(title, content) {
 }
 
 function showTabularModal(){
-  $('#tabular-modal-nav-tabs').html('')
-  $('#modal-tab-content').html('')
-
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
   var genomesObj = Object()
 
@@ -569,8 +574,17 @@ function showTabularModal(){
     $('#modal-tab-content').append(`
       <div id="${genome}" class="tab-pane fade in ${idx == 0 ? 'active' : ''}">
         <h3>${genome}</h3>
-        <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: center; font-size: 12px; background: white">
-          <thead><th>look at me</th></thead>
+        <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
+          <thead>
+            <th>Gene ID</th>
+            <th>Start</th>
+            <th>Stop</th>
+            <th>Direction</th>
+            <th>Contig</th>
+            <th>Source</th>
+          </thead>
+          <tbody id="${genome}-table-body">
+          </tbody>
         </table>
       </div>
     `)
@@ -578,12 +592,20 @@ function showTabularModal(){
   Object.entries(genomesObj).map((genome, idx) => {
     let totalTableString = ''
     genome[1].forEach(gene => {
-      totalTableString += `<tr><td>this is a gene look at me</td></tr>`
+      totalTableString += `
+      <tr>
+        <td>${gene['geneID']}</td>
+        <td>${gene['gene']['start']}</td>
+        <td>${gene['gene']['stop']}</td>
+        <td>${gene['gene']['direction']}</td>
+        <td>${gene['gene']['contig']}</td>
+        <td>${gene['gene']['source']}</td>
+      </tr>`
     })
-    $(`#${genome[0]}-table`).append(totalTableString)
+    $(`#${genome[0]}-table-body`).append(totalTableString)
   })
 
-  $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30})
+  // $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30})
 }
 
 function showLassoMenu(selected_genes, x, y) {
