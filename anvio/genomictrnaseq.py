@@ -32,6 +32,8 @@ run = terminal.Run()
 pp = terminal.pretty_print
 
 class SeedPermuter(object):
+    """Using the `go` method, generates a FASTA file of permuted seed sequences from a tRNA-seq contigs database."""
+
     default_min_nt_frequency = 0.05
     default_max_variable_positions = 5
 
@@ -66,6 +68,8 @@ class SeedPermuter(object):
 
 
     def sanity_check(self):
+        """Check the feasibility of args from initialization."""
+
         contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if contigs_db_info.variant != 'trnaseq':
             raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, "
@@ -85,6 +89,8 @@ class SeedPermuter(object):
 
 
     def go(self):
+        """Permute tRNA seed sequences at predicted sites of modification-induced substitutions."""
+
         with self.contigs_db_info.load_db() as contigs_db:
             seed_contig_names_seqs = contigs_db.get_table_as_list_of_tuples('contig_sequences')
 
