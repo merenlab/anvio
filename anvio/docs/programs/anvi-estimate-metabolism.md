@@ -535,9 +535,21 @@ Which of the annotations are considered for metabolism estimation depends on the
 
 User-defined metabolic modules must specify the annotation source(s) needed to find their component enzymes in your data. Adding these annotation sources to your contigs databases may require running a variety of programs. However, `anvi-estimate-metabolism` loads these gene annotations and uses them in the same way as it does 'KOfam' annotations for KEGG data.
 
-### How is the module completeness score calculated?
+### Two estimation strategies - pathwise and stepwise
 
-For demonstration purposes, let's talk through the estimation of module completeness for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
+We currently have two ways of estimating the completeness of a module, which differ in how we decompose the module DEFINITION string into smaller parts.
+
+For the 'pathwise' strategy, we consider all possible 'paths' through the module - each alternative set of enzymes that could be used together to catalyze every reaction in the metabolic pathway. After calculating the percent completeness in all possible paths, we take the maximum completeness to be the pathwise completeness score of the module as a whole. This is the most granular way of estimating module completeness because we consider all the possible alternatives.
+
+For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents one metabolic reaction in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
+
+The pathwise and stepwise strategies also apply to copy number calculations, in which enzyme annotations are allocated to create different copies of a path, step, or module. Path copy number is computed as the number of complete copies of a path through a module, and a module's pathwise copy number is then calculated as the maximum copy number of any of its paths that have the highest completeness score. Step copy number is the number of complete copies of a top-level step, and a module's stepwise copy number is the minimum copy number of all of its top--level steps.
+
+Confused? Yeah, this is complicated stuff! But hopefully the illustrative examples in the next few sections will clear it up.
+
+### How is pathwise completeness/copy number calculated?
+
+For demonstration purposes, let's talk through the estimation of pathwise completeness for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
 
 #### Step 1: Unrolling module definitions
 As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
