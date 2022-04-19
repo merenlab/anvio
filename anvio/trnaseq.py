@@ -6508,15 +6508,6 @@ class DatabaseMerger(object):
         set_meta_value('trna_taxonomy_was_run', False)
         set_meta_value('trna_taxonomy_database_version', None)
         set_meta_value('creation_date', time.time())
-        # Additional meta-values are specific to this database variant.
-        # The following meta-values are set by `anvi-integrate-trnaseq.`
-        set_meta_value('genomic_contigs_db_original_path', None)
-        set_meta_value('genomic_contigs_db_project_name', None)
-        set_meta_value('genomic_contigs_db_hash', None)
-        set_meta_value('genomic_contigs_db_creation_date', None)
-        set_meta_value('genomic_profile_db_original_path', None)
-        set_meta_value('genomic_profile_db_creation_date', None)
-        set_meta_value('genomic_profile_db_collection_name', None)
 
         insert_many = contigs_db.db.insert_many
         insert_many('contig_sequences', [(seed.name, seed.string) for seed in self.seeds])

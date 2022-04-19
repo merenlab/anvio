@@ -235,35 +235,16 @@ class Integrator(object):
     def sanity_check(self, check_permuted_seeds_fasta=False):
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
+            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
+                              "not the required 'trnaseq' variant.")
 
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
         if str(trnaseq_contigs_db_info.version) != required_version:
             raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' is outdated (this database is v{trnaseq_contigs_db_info.version} "
-                              f"and your anvi'o installation wants to work with v{required_version}). You can migrate your database without losing "
-                              "any data using the program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
-
-        with trnaseq_contigs_db_info.load_db() as database:
-            stored_genomic_contigs_db_original_path = database.get_meta_value('genomic_contigs_db_original_path')
-            stored_genomic_contigs_db_project_name = database.get_meta_value('genomic_contigs_db_project_name')
-            stored_genomic_contigs_db_hash = database.get_meta_value('genomic_contigs_db_hash')
-            stored_genomic_contigs_db_creation_hmd, stored_genomic_contigs_db_creation_mdy = utils.parse_epoch_time(database.get_meta_value('genomic_contigs_db_creation_date'))
-            stored_genomic_profile_db_original_path = database.get_meta_value('genomic_profile_db_original_path')
-            stored_genomic_profile_db_creation_hmd, stored_genomic_profile_db_creation_mdy = utils.parse_epoch_time(database.get_meta_value('genomic_profile_db_creation_date'))
-            stored_genomic_profile_db_collection_name = database.get_meta_value('genomic_profile_db_collection_name')
-        if stored_genomic_contigs_db_original_path and not self.overwrite_table:
-            if stored_genomic_profile_db_original_path:
-                additional_message = (f" Hits were restricted to the bin collection '{stored_genomic_profile_db_collection_name}' from the associated profile database "
-                                      f"originally created at {stored_genomic_profile_db_creation_hmd} on {stored_genomic_profile_db_creation_mdy} (UTC).")
-            else:
-                additional_message = ""
-            raise ConfigError(f"Use the flag `--just-do-it` to overwrite existing tRNA gene hits in the tRNA-seq database at '{self.genomic_contigs_db_path}'. "
-                              f"The database currently has hits to a (meta)genomic contigs database with project name '{stored_genomic_contigs_db_project_name}' "
-                              f"originally created at {stored_genomic_contigs_db_creation_hmd} on {stored_genomic_contigs_db_creation_mdy} (UTC) "
-                              f"at the path '{stored_genomic_contigs_db_original_path}' "
-                              f"and with the identifying hash '{stored_genomic_contigs_db_hash}'."
-                              f"{additional_message}")
+                              f"and your anvi'o installation wants to work with v{required_version}). "
+                              "You can migrate your database without losing any data using the program `anvi-migrate` "
+                              "with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
@@ -529,24 +510,6 @@ class Integrator(object):
         if self.overwrite_table:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
 
-        # Set meta-values in the tRNA-seq contigs database to track the associated (meta)genomic databases and collection.
-        genomic_contigs_db = self.genomic_contigs_db_info.load_db()
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_original_path', os.path.abspath(self.genomic_contigs_db_path))
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_project_name', genomic_contigs_db.get_meta_value('project_name'))
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_hash', genomic_contigs_db.get_meta_value('contigs_db_hash'))
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_creation_date', genomic_contigs_db.get_meta_value('creation_date'))
-        genomic_contigs_db.disconnect()
-        if self.genomic_profile_db_path:
-            genomic_profile_db = self.genomic_profile_db_info.load_db()
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_original_path', os.path.abspath(self.genomic_profile_db_path))
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_creation_date', genomic_profile_db.get_meta_value('creation_date'))
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_collection_name', self.collection_name)
-            genomic_profile_db.disconnect()
-        else:
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_original_path', None)
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_creation_date', None)
-            trnaseq_contigs_db.set_meta_value('genomic_profile_db_collection_name', None)
-
         table_entries = []
         hit_id = 0
         for row in hits_df.itertuples(index=False):
@@ -613,14 +576,6 @@ class Affinitizer:
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
         self.genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path)
-        self.collection_name = self.trnaseq_contigs_db_info.get_self_table()['genomic_profile_db_collection_name']
-        if self.collection_name:
-            self.run.info_single(f"A collection of bins named '{self.collection_name}' will be used to partition genomic contigs. "
-                                 "tRNA-seq seeds were linked to tRNA genes in these bins.")
-        else:
-            self.run.info_single("No collection of bins was found, so we assume that you are analyzing a single genome. "
-                                 "When `anvi-integrate-trnaseq` was run, an existing collection could have been provided "
-                                 "in order to exclusively link tRNA-seq seeds to tRNA genes in bins.")
 
         if self.nonreference_sample_names == None:
             self.nonreference_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
@@ -633,13 +588,8 @@ class Affinitizer:
     def sanity_check(self):
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
-        trnaseq_contigs_db_self_table = trnaseq_contigs_db_info.get_self_table()
-        expected_genomic_contigs_db_hash = trnaseq_contigs_db_self_table['genomic_contigs_db_hash']
-        if expected_genomic_contigs_db_hash == None:
-            raise ConfigError(f"tRNA seeds in the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
-                              "were not linked to tRNA genes in a (meta)genomic contigs database. "
-                              "Run `anvi-integrate-trnaseq` with the tRNA-seq contigs database and (meta)genomic contigs database to link seeds to genes.")
+            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
+                              "not the required 'trnaseq' variant.")
         with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
             if len(trnaseq_contigs_db.get_table_as_dataframe('trna_gene_hits', columns_of_interest=['seed_contig_name'])) == 0:
                 raise ConfigError(f"It appears that no tRNA seeds in the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
@@ -650,18 +600,8 @@ class Affinitizer:
         genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
         if genomic_contigs_db_info.variant != 'unknown':
             raise ConfigError(f"The database at '{self.genomic_contigs_db_path}' was a '{genomic_contigs_db_info.variant}' variant. "
-                              "This should be a normal (meta)genomic contigs database, technically of an 'unknown' variant, produced by `anvi-gen-contigs-database`.")
-        if expected_genomic_contigs_db_hash != genomic_contigs_db_info.hash:
-            raise ConfigError(f"Puzzlingly, the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
-                              f"and the metagenomic contigs database, '{self.genomic_contigs_db_path}', "
-                              "were not linked by `anvi-integrate-trnaseq`, although we know that the program was run. "
-                              "Perhaps you should rerun that program to relate the tRNA transcripts and genes in the two databases. "
-                              "It appears that the tRNA-seq contigs database was linked to a (meta)genomic contigs database "
-                              f"with the project name, '{trnaseq_contigs_db_self_table['genomic_contigs_db_project_name']}', "
-                              f"hash, '{trnaseq_contigs_db_self_table['genomic_contigs_db_hash']}', "
-                              f"and originally at the filepath, '{trnaseq_contigs_db_self_table['genomic_contigs_db_original_path']}'.")
-        genomic_contigs_db_self_table = genomic_contigs_db_info.get_self_table()
-        if 'modules_db_hash' not in genomic_contigs_db_self_table:
+                              "This should be a normal (meta)genomic contigs database, technically an 'unknown' variant, produced by `anvi-gen-contigs-database`.")
+        if 'modules_db_hash' not in genomic_contigs_db_info.get_self_table():
             raise ConfigError(f"It appears that genes have not been annotated by KOfams in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'. "
                               "Please run `anvi-run-kegg-kofams` on the database and try again.")
 
