@@ -554,7 +554,7 @@ For demonstration purposes, let's talk through the estimation of pathwise comple
 #### Part 1: Unrolling module definitions
 As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
 
-`anvi-estimate-metabolism` uses a recursive algorithm to "unroll" the module definition string into a list of all possible paths. First, the definition string is split into its top-level steps (which are separated by spaces). Each step is either an atomic step, a protein complex (KO components separated by '+' or '-'), or a compound step (multiple alternatives, separated by commas). Compound steps and protein complexes are recursively broken down until we have only atomic steps. An atomic step can be a single KO, a module number, a nonessential KO starting with '-', or '--' (a string indicating that there is a reaction for which we do not have a KO). We use the atomic steps to build a list of alternative paths through the module definition. Protein complexes are split into their respective components using this strategy to find all possible alternative complexes, and then these complexes (with all their component KOs) are used to build the alternative paths.
+`anvi-estimate-metabolism` uses a recursive algorithm to "unroll" the module definition string into a list of all possible paths. First, the definition string is split into its top-level steps (which are separated by spaces). Each step is either an atomic step, a protein complex (KO components separated by '+' or '-'), or a compound step (multiple alternatives, separated by commas). Compound steps and protein complexes are recursively broken down until we have only atomic steps. An atomic step can be a single KO, a module number, a nonessential KO starting with '-', or `--` (a string indicating that there is a reaction for which we do not have a KO). We use the atomic steps to build a list of alternative paths through the module definition. Protein complexes are split into their respective components using this strategy to find all possible alternative complexes, and then these complexes (with all their component KOs) are used to build the alternative paths.
 
 Let's see this in action, using the Threonine Biosynthesis module from above as an example. We first split the definition on spaces to get all top-level steps. Here we show each top-level step on its own line:
 ```
@@ -606,7 +606,7 @@ Once we have our list of alternative paths through the module, the next task is 
 
 3. Non-essential KOs - some KOs are marked as non-essential even when they are not part of a protein complex. They look like this: '-K12420', with a minus sign in front of the KO identifier (that particular example comes from module [M00778](https://www.genome.jp/kegg-bin/show_module?M00778)). These steps are ignored for the purposes of computing module completeness.
 
-4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string '--' serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100%% completeness - it is sad, but what can we do? We warn the user about these instances so that they can check manually for any missing steps.
+4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string `--` serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100%% completeness - it is sad, but what can we do? We warn the user about these instances so that they can check manually for any missing steps.
 
 5. Modules - finally, some modules are defined by other modules. We can't determine if these steps are complete until we've estimated completeness for every module, so we ignore these for now.
 
@@ -641,7 +641,7 @@ In reality, this part is actually done at the same time as Part 2, but it is eas
 
 3. Non-essential KOs - just like we ignore these steps when computing completeness, we also ignore them when computing copy number.
 
-4. Steps without associated KOs (the '--' case) - Just like we always consider these atomic steps to be incomplete, we also always give them a copy number of 0.
+4. Steps without associated KOs (the `--` case) - Just like we always consider these atomic steps to be incomplete, we also always give them a copy number of 0.
 
 5. Modules - as you might guess, the copy number of these atomic steps are obtained later, after we've computed copy number for every other module. There is an adjustment step for copy number just like there is one for completeness (Part 4 above).
 
@@ -709,7 +709,7 @@ Unlike pathwise completeness, where we consider all possible alternatives and co
 
 To compute this binary completeness for each top-level step, we convert the step into a Boolean expression by following this set of rules:
 - enzyme accessions (ie, KOs) are replaced with 'True' if the enzyme is annotated in the sample, and otherwise are replaced with 'False'.
-- '--' steps do not have associated enzyme profiles, so we cannot say whether these steps are complete. These are always 'False'.
+- `--` steps do not have associated enzyme profiles, so we cannot say whether these steps are complete. These are always 'False'.
 - commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into OR relationships.
 - spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into AND relationships.
 - plus signs ('+') represent essential enzyme components, meaning that you need both (at the same time). We convert plus signs into AND relationships.
@@ -767,7 +767,7 @@ Just like in pathwise completeness, we need to deal with the case when a module 
 
 Now we need to calculate the copy number of each top-level step. We can do this by converting the step into an _arithmetic expression_ this time, by following a new set of rules:
 - enzyme accessions (ie, KOs) are replaced with the number of annotations this accession has in the given sample.
-- '--' steps are unknown, so we replace these with a count of '0'.
+- `--` steps are unknown, so we replace these with a count of '0'.
 - commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into addition operations.
 - spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into min() operations.
 - plus signs ('+') represent essential enzyme components, meaning that you need both (at the same time). We convert plus signs into min() operations.
