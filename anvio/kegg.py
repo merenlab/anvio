@@ -541,7 +541,6 @@ class KeggSetup(KeggContext):
                 filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                #filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset) # commented out because we don't work with pathways yet
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
@@ -617,8 +616,6 @@ class KeggSetup(KeggContext):
         files_to_check = [self.kofam_hmm_file_path,
                           self.kegg_module_file,
                           self.kegg_module_data_dir,
-                          #self.kegg_pathway_file,   # uncomment these two if we ever start using KEGG PATHWAYs
-                          #self.pathway_data_dir,
                           ]
         if not self.skip_brite_hierarchies:
             files_to_check.append(self.kegg_brite_hierarchies_file)
@@ -1301,10 +1298,8 @@ class KeggSetup(KeggContext):
         expected_directories_and_files = [self.orphan_data_dir,
                                           self.kegg_module_data_dir,
                                           self.kegg_hmm_data_dir,
-                                          #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
                                           self.ko_list_file_path,
                                           self.kegg_module_file,
-                                          #self.kegg_pathway_file,  #TODO: uncomment me when we start incorporating pathways
                                           self.kegg_modules_db_path]
         for f in expected_directories_and_files:
             path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
@@ -1484,7 +1479,6 @@ class KeggSetup(KeggContext):
                 self.download_kegg_module_file()
                 self.process_module_file() # get module dict attribute
                 self.download_modules()
-                #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
                 if not self.skip_brite_hierarchies:
                     self.download_brite_hierarchy_of_hierarchies()
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
@@ -5933,10 +5927,7 @@ class ModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
-            # This is commented out because we are not yet using pathways. But it should be uncommented when we get to the point of using them :)
-            # if not self.pathway_dict:
-            #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
-            #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                                  
             if not self.skip_brite_hierarchies and not self.brite_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
