@@ -289,7 +289,7 @@ You can ask this program to count the number of copies of each module in your in
 anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-coverage
 {{ codestop }}
 
-Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %{kegg-metabolism}s.
+Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %(kegg-metabolism)s.
 
 This flag also works for matrix output.
 
