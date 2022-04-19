@@ -40,9 +40,9 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY', "This program requires FOUR INPUT FILES: "
-                                       "(1) A `trnaseq`-variant contigs database produced by `anvi-merge-trnaseq`, "
+                                       "(1) A 'trnaseq'-variant contigs database produced by `anvi-merge-trnaseq`, "
                                        "(2) a table of **specific** coverages of seeds produced by `anvi-tabulate-trnaseq`, "
-                                       "(3) a table of seed modifications modifications also produced by `anvi-tabulate-trnaseq`, and "
+                                       "(3) a table of seed modifications also produced by `anvi-tabulate-trnaseq`, and "
                                        "(4) a (meta)genomic contigs database produced by `anvi-gen-contigs-database`.")
     groupA.add_argument(*anvio.A('trnaseq-contigs-db'), **anvio.K('trnaseq-contigs-db'))
     groupA.add_argument(*anvio.A('seeds-specific-txt'), **anvio.K('seeds-specific-txt'))
@@ -53,9 +53,9 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('BINS', "Gene assignment can be aware of bins. "
                                        "tRNA-seq seeds may match identical genes in different metagenomic bins, "
                                        "creating ambiguity regarding the genes responsible for expression. "
-                                       "A collection of bins in the metagenomic contigs database can be provided to restrict seed assignment "
-                                       "to genes only found in any ONE bin in the collection: seeds matching genes in multiple bins, "
-                                       "or genes in a bin plus genes in unbinned contigs, will be disregarded.")
+                                       "A collection of bins in the metagenomic profile database can be provided "
+                                       "to restrict seed assignment to genes only found in any ONE bin in this collection: "
+                                       "seeds will be disregarded that match genes in multiple bins or in bins and unbinned contigs.")
     groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False, 'help': ("Anvi'o (meta)genomic profile database paired with the "
                                                                                                      "(meta)genomic contigs database: NOT a tRNA-seq profile database!")}))
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
