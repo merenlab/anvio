@@ -40,17 +40,20 @@ class SeedPermuter(object):
         self.run = r
 
         self.args = args
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
         self.contigs_db_path = A('trnaseq_contigs_db')
         self.modifications_txt_path = A('modifications_txt')
+
         self.min_nt_frequency = A('min_nt_frequency')
         if self.min_nt_frequency == None:
             self.min_nt_frequency = self.default_min_nt_frequency
         self.max_variable_positions = A('max_variable_positions')
         if self.max_variable_positions == None:
             self.max_variable_positions = self.default_max_variable_positions
-        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
 
+        self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.tmp_dir = None
         if self.permuted_seeds_fasta_path == None:
             self.tmp_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
@@ -191,13 +194,17 @@ class Integrator(object):
         self.run = r
 
         self.args = args
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
         self.seeds_specific_txt_path = A('seeds_specific_txt')
         self.modifications_txt_path = A('modifications_txt')
         self.genomic_contigs_db_path = A('contigs_db')
+
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
+
         self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
         self.max_mismatches = A('max_mismatches')
         if self.max_mismatches == None:
@@ -205,14 +212,14 @@ class Integrator(object):
         self.use_full_length_seeds = A('use_full_length_seeds')
         if self.use_full_length_seeds == None:
             self.use_full_length_seeds = False
+
         self.blast_dir = A('blast_dir')
+        if self.blast_dir == None:
+            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.just_do_it = A('just_do_it')
 
-        if self.blast_dir == None:
-            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
         self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
-
         self.overwrite_table = self.just_do_it
 
         if do_sanity_check:
