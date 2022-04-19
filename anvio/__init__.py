@@ -1608,6 +1608,13 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
                 ),
+    'split-output-per-gene-cluster': (
+            ['--split-output-per-gene-cluster'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If/when there are more than one gene clusters to report, put each gene cluster into a "
+                     "separate FASTA file."}
+                ),
     'bin-id': (
             ['-b', '--bin-id'],
             {'metavar': 'BIN_NAME',
