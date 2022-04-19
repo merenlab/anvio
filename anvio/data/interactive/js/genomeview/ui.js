@@ -548,7 +548,7 @@ function show_sequence_modal(title, content) {
 }
 
 function showTabularModal(){
-  $('#tabular-modal-tab-list').html('')
+  $('#tabular-modal-nav-tabs').html('')
   $('#modal-tab-content').html('')
 
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
@@ -559,14 +559,15 @@ function showTabularModal(){
       genomesObj[arrow['genomeID']] = true
     }
   })
-  Object.keys(genomesObj).map(genome => {
-    $('#tabular-modal-tab-list').append(`
-      <li role="presentation" class="nav-item">
-        <a href="${genome}" aria-controls="${genome}" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="false" data-help="${genome}"></span> ${genome}</a>
-      </li>
+  Object.keys(genomesObj).map((genome, idx) => {
+    $('#tabular-modal-nav-tabs').append(`
+      <li><a data-toggle="tab" href="#${genome}">${genome}</a></li>
     `)
     $('#modal-tab-content').append(`
-      <div id="${genome}"> lets go ${genome}</div>
+      <div id="${genome}" class="tab-pane fade in ${idx == 0 ? 'active' : ''}">
+        <h3>${genome}</h3>
+        <p>Some content.</p>
+      </div>
     `)
   })
 
