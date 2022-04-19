@@ -45,9 +45,11 @@ class SeedPermuter(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
+        # mandatory args
         self.contigs_db_path = A('trnaseq_contigs_db')
         self.modifications_txt_path = A('modifications_txt')
 
+        # optional args for algorithm parameterization
         self.min_nt_frequency = A('min_nt_frequency')
         if self.min_nt_frequency == None:
             self.min_nt_frequency = self.default_min_nt_frequency
@@ -55,6 +57,7 @@ class SeedPermuter(object):
         if self.max_variable_positions == None:
             self.max_variable_positions = self.default_max_variable_positions
 
+        # paths for output files
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.tmp_dir = None
         if self.permuted_seeds_fasta_path == None:
