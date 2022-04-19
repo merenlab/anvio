@@ -551,7 +551,7 @@ Confused? Yeah, this is complicated stuff! But hopefully the illustrative exampl
 
 For demonstration purposes, let's talk through the estimation of pathwise completeness and copy number for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
 
-#### Step 1: Unrolling module definitions
+#### Part 1: Unrolling module definitions
 As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
 
 `anvi-estimate-metabolism` uses a recursive algorithm to "unroll" the module definition string into a list of all possible paths. First, the definition string is split into its top-level steps (which are separated by spaces). Each step is either an atomic step, a protein complex (KO components separated by '+' or '-'), or a compound step (multiple alternatives, separated by commas). Compound steps and protein complexes are recursively broken down until we have only atomic steps. An atomic step can be a single KO, a module number, a nonessential KO starting with '-', or '--' (a string indicating that there is a reaction for which we do not have a KO). We use the atomic steps to build a list of alternative paths through the module definition. Protein complexes are split into their respective components using this strategy to find all possible alternative complexes, and then these complexes (with all their component KOs) are used to build the alternative paths.
@@ -597,7 +597,7 @@ By the way, here is one alternative path from the module M00011, just so you kno
 [K00164+K00658+K00382,K01902+K01903,K00234+K00235+K00236+K00237,K01676,K00026]
 ```
 
-#### Step 2: Marking steps complete
+#### Part 2: Marking steps complete
 Once we have our list of alternative paths through the module, the next task is to compute the completeness of each path. Each alternative path is a list of atomic steps or protein complexes. We loop over every step in the path and use the annotation pool of KOs to decide whether the step is complete (1) or not (0). We have the following cases to handle:
 
 1. A single KO - this is easy. If we have an annotation for this KO in our pool of 'KOfam' annotations, then the step is complete (1).
@@ -612,7 +612,7 @@ Once we have our list of alternative paths through the module, the next task is 
 
 To get the completeness score for a given path through the module, we first add up the completeness of each essential step in the path and then we divide that sum by the number of essential steps.
 
-#### Step 3: Module completeness
+#### Part 3: Module completeness
 By this time, we have a completeness score (a fraction between 0 and 1) for every possible path through the module. To get the completeness score for the module overall, we simply take the maximum of all these completeness scores.
 
 {.notice}
@@ -622,7 +622,7 @@ We can then check this number against the module completeness threshold (which i
 
 Note that some modules, especially those with a lot of possible paths, can have more than one path which has the maximum completeness score (that is, the score that determines the completeness of the module). This will be important later for calculating pathwise copy number, so we keep track of all of the paths with this maximum completeness score.
 
-#### Step 4: Adjusting completeness
+#### Part 4: Adjusting completeness
 But don't forget that there are some modules defined by other modules. These are usually what KEGG calls 'Signature Modules', which are collections of enzymes that collectively encode some phenotype, rather than a typical pathway of chemical reactions. For these modules, we have to go back and adjust the completeness score after we know the completeness of its component modules. To do this, we basically re-do the previous two tasks to recompute the number of complete steps in each path and the overall completeness of the module. This time, when we reach a 'Module' atomic step (case 5), we take that module's fractional completeness score to be the completeness of the step.
 
 As an example, consider module [M00618](https://www.genome.jp/kegg-bin/show_module?M00618), the Acetogen signature module. Its definition is
@@ -631,9 +631,9 @@ M00377 M00579
 ```
 Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55%% complete.
 
-#### Step 5: Path copy number
+#### Part 5: Path copy number
 
-In reality, this step is actually done at the same time as step 2, but it is easier to understand if we think of it separately. We have all our possible paths through the module from step 1, and we need to figure out the copy number of each path. To do this, we look at the number of annotations of each atomic step in the path. Here is how we handle each atomic step:
+In reality, this part is actually done at the same time as Part 2, but it is easier to understand if we think of it separately. We have all our possible paths through the module from Part 1, and we need to figure out the copy number of each path. To do this, we look at the number of annotations of each atomic step in the path. Here is how we handle each atomic step:
 
 1. A single KO - the copy number of this atomic step is equal to the number of annotations (hits) of this enzyme. If the atomic step is K00133 and you have 5 genes annotated with K00133, then you have 5 copies of that step. If you have 0 annotations, then the step copy number is 0. This is the simplest case.
 
@@ -643,7 +643,7 @@ In reality, this step is actually done at the same time as step 2, but it is eas
 
 4. Steps without associated KOs (the '--' case) - Just like we always consider these atomic steps to be incomplete, we also always give them a copy number of 0.
 
-5. Modules - as you might guess, the copy number of these atomic steps are obtained later, after we've computed copy number for every other module. There is an adjustment step for copy number just like there is one for completeness (step 4 above).
+5. Modules - as you might guess, the copy number of these atomic steps are obtained later, after we've computed copy number for every other module. There is an adjustment step for copy number just like there is one for completeness (Part 4 above).
 
 To get the copy number for a given path through the module, we determine the number of complete copies of the path. This is the same as the way we handle copy number of protein complexes, as described above. And it _also depends on the module completeness threshold_. Suppose a path has 4 essential atomic steps (call them A,B,C, and D) with the following copy numbers: 4,3,1, and 2. Using the default completeness threshold of 0.75, we need at least 3 out of 4 atomic steps to be present in order for a copy of the path to be considered complete. There is one copy that has all 4 steps, one copy that has 3/4, one copy that has 2/4 and one that has 1/4. This is perhaps easier to see in graph form, with atomic steps on the x-axis and atomic step copy number on the y-axis:
 
@@ -655,9 +655,9 @@ A B C D
 
 Each copy of the path is a horizontal row of X's in the simple graphic above. There are 2 copies of the path with at least 3/4 atomic steps in the list (marked with arrows), which means that the path copy number is 2.
 
-#### Step 6: Module copy number
+#### Part 6: Module copy number
 
-Once we have the completeness scores and copy numbers of all possible paths through the module, we can compute the copy number of the module itself. Remember from step 3 that we saved the paths which have the highest completeness score? We take the maximum copy number of those paths of highest completeness.
+Once we have the completeness scores and copy numbers of all possible paths through the module, we can compute the copy number of the module itself. Remember from Part 3 that we saved the paths which have the highest completeness score? We take the maximum copy number of those paths of highest completeness.
 
 So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
 
@@ -666,9 +666,9 @@ We're making assumptions here again, just like we were when computing module com
 
 One last note - if a module does not have any paths of highest completeness, we cannot compute the copy number. In this case, the copy number of the module will be reported as 'NA' in the output file(s).
 
-#### Step 7: Adjusting copy number
+#### Part 7: Adjusting copy number
 
-This step is analogous to step 4, in that we go back later to adjust the copy number of modules defined by other modules. We set the copy number of a module atomic step to be the previously-computed copy number of that module (if any). The tricky bit here is that some modules can have a copy number of 'NA'. When this is the case for one of our atomic steps, we make the adjusted module copy number 'NA' as well.
+This part is analogous to Part 4, in that we go back later to adjust the copy number of modules defined by other modules. We set the copy number of a module atomic step to be the previously-computed copy number of that module (if any). The tricky bit here is that some modules can have a copy number of 'NA'. When this is the case for one of our atomic steps, we make the adjusted module copy number 'NA' as well.
 
 #### Pathwise Strategy Summary
 In short: pathwise module completeness in a given sample is calculated as the maximum fraction of essential KOs (enzymes) that are annotated in the sample, where the maximum is taken over all possible sets of KOs (enzymes) from the module definition. Likewise, pathwise module copy number is calculated as the maximum copy number of any path with the module's completeness score.
