@@ -45,6 +45,15 @@ anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db \
                                      -b GENE_CLUSTER_BIN_1_CORE \
                                      -o aligned_gene_sequences_in_GENE_CLUSTER_BIN_1_CORE_AA.fa
 
+mkdir SPLIT_GENE_CLUSTER_FILES
+INFO "Exporting aligned amino acid sequences for some gene clusters as individual files"
+anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db \
+                                     -g TEST-GENOMES.db \
+                                     -C test_collection \
+                                     -b GENE_CLUSTER_BIN_1_CORE \
+                                     --split-output-per-gene-cluster \
+                                     -O SPLIT_GENE_CLUSTER_FILES/MY_PROJECT
+
 INFO "Exporting aligned DNA sequences for some gene clusters"
 anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db \
                                      -g TEST-GENOMES.db \
