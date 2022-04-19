@@ -500,7 +500,7 @@ The program %(anvi-setup-kegg-kofams)s acquires the definitions of these modules
 
 ![Module M00018 Definition](../../images/M00018.png){:.center-img .width-50}
 
-This biosynthesis pathway has five steps, or chemical reactions. The [first reaction](https://www.genome.jp/dbget-bin/www_bget?R00480) in the pathway requires an aspartate kinase enzyme (also known as a homoserine dehydrogenase), and there are four possible orthologs known to encode this function: K00928, K12524, K12525, or K12526. Only one of these genes is required to be able to carry out this step. In contrast, the [second reaction](https://www.genome.jp/dbget-bin/www_bget?R02291) can be fulfilled by only one known KO, the aspartate-semialdehyde dehydrogenase [K00133](https://www.genome.jp/dbget-bin/www_bget?ko:K00133).
+This biosynthesis pathway has five major steps, or chemical reactions (we call these major steps 'top-level steps', which will be important later). The [first reaction](https://www.genome.jp/dbget-bin/www_bget?R00480) in the pathway requires an aspartate kinase enzyme (also known as a homoserine dehydrogenase), and there are four possible orthologs known to encode this function: K00928, K12524, K12525, or K12526. Only one of these genes is required to be able to carry out this step. In contrast, the [second reaction](https://www.genome.jp/dbget-bin/www_bget?R02291) can be fulfilled by only one known KO, the aspartate-semialdehyde dehydrogenase [K00133](https://www.genome.jp/dbget-bin/www_bget?ko:K00133).
 
 The definition string for module M00018 is this:
 
@@ -674,3 +674,160 @@ This step is analogous to step 4, in that we go back later to adjust the copy nu
 In short: pathwise module completeness in a given sample is calculated as the maximum fraction of essential KOs (enzymes) that are annotated in the sample, where the maximum is taken over all possible sets of KOs (enzymes) from the module definition. Likewise, pathwise module copy number is calculated as the maximum copy number of any path with the module's completeness score.
 
 These values get harder to interpret when we are considering metagenomes rather than the genomes of individual organisms. There could be lots of different paths through a module used by different populations in a metagenome, but the module completeness/copy number values would summarize only the most common path(s). For situations like this, it is a good idea to take advantage of the ['module_paths' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-paths-mode) to look at these scores for all individual paths through each module.
+
+### How is stepwise completeness/copy number calculated?
+
+Now we'll walk through an example of estimating stepwise completeness and copy number in one sample, again keeping in mind that the following steps are repeated for each module in each sample.
+
+#### Part 1: Top-level steps
+
+For stepwise completeness and copy number, we do our calculations at the level of top-level steps. These are the major steps in a metabolic pathway, each of which usually represents a single chemical reaction. A top-level step describes the enzyme(s) that can be used to catalyze that reaction. We can get the top-level steps of a module by splitting its DEFINITION string by its spaces (not including any spaces within parentheses).
+
+Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018) as an example again. Earlier we described how M00018 is made up of five major steps, each one of which represents a single reaction in this metabolic pathway.
+
+We take the M00018 DEFINITION string:
+```
+(K00928,K12524,K12525,K12526) K00133 (K00003,K12524,K12525) (K00872,K02204,K02203) K01733
+```
+
+and split it by spaces to get the top-level steps:
+```
+(K00928,K12524,K12525,K12526)
+K00133
+(K00003,K12524,K12525)
+(K00872,K02204,K02203)
+K01733
+```
+
+This is far more straightforward than unrolling the module into all possible paths. For the stepwise metrics, we will focus only on these major steps, and what's more, we will ignore a lot of the nuance that comes from alternative enzymes within a top-level step.
+
+#### Part 2: Step completeness
+
+Unlike pathwise completeness, where we consider all possible alternatives and compute a fractional completeness for each path, a top-level step can only be entirely complete (1) or entirely incomplete (0). In other words, step completeness is binary. We don't care _how_ the step is complete. It doesn't matter which of the enzymes in a step are used to make it complete.
+
+To compute this binary completeness for each top-level step, we convert the step into a Boolean expression by following this set of rules:
+- enzyme accessions (ie, KOs) are replaced with 'True' if the enzyme is annotated in the sample, and otherwise are replaced with 'False'.
+- '--' steps do not have associated enzyme profiles, so we cannot say whether these steps are complete. These are always 'False'.
+- commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into OR relationships.
+- spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into AND relationships.
+- plus signs ('+') represent essential enzyme components, meaning that you need both (at the same time). We convert plus signs into AND relationships.
+- minus signs ('-') represent nonessential enzyme components, meaning that you don't need them. We ignore these.
+- parentheses are kept where they are to maintain proper order of operations.
+
+After this conversion is done, we can simply evaluate the Boolean expression to determine whether or not the step is complete.
+
+Let's use the step `(K00928,K12524,K12525,K12526)` from M00018 as an example. Suppose that both K12524 and K12526 are annotated in the sample. Then this step would be converted into the following Boolean expression:
+```
+(False OR True OR False OR True)
+```
+which evaluates to True, meaning that this step is complete (1).
+
+Here's a more complicated example from module [M00849](https://www.genome.jp/module/M00849+R02082):
+```
+((K00869 (K17942,(K25517+K09128 K25518+K03186))),(K18689 K18690 K22813))
+```
+Suppose the following enzymes are annotated in the sample: K00869, K25517, K09128, K25518, K18689, and K22813. Then this step would become the following Boolean expression:
+```
+((True AND (False OR (True AND True AND True AND False))) OR (True AND False AND True))
+```
+Since this is a bit more complicated, we must evaluate it by following order of operations:
+```
+=> ((True AND (False OR (False))) OR (True AND False AND True))
+=> ((True AND (False)) OR (True AND False AND True))
+=> (False) OR (True AND False AND True))
+=> (False) OR (False)
+=> False
+```
+Since it ultimately evaluates to False, this step is incomplete (0).
+
+Note: if a top-level step includes entire modules in its definition, we skip evaluating its completeness for now.
+
+#### Part 3: Module completeness
+
+Once we've evaluated the binary completeness of each top-level step in a module, we calculate the stepwise completeness of the module by simply taking the percentage of complete top-level steps. So if, for instance, our five top-level steps in M00018 were evaluated like this:
+
+```
+(K00928,K12524,K12525,K12526) => complete (1)
+K00133 => complete (1)
+(K00003,K12524,K12525) => not complete (0)
+(K00872,K02204,K02203) => complete (1)
+K01733 => complete (1)
+```
+Then the overall stepwise completeness of M00018 would be 4/5, or 80%. If we were using the default module completeness threshold of 0.75, then this module would be considered 'complete' overall based on its stepwise score.
+
+Note: if any of the module's top-level steps are defined by other modules, we skip computing its completeness for now because we don't know the completeness of these steps yet. These will be adjusted in the next section.
+
+#### Part 4: Adjusting completeness
+
+Just like in pathwise completeness, we need to deal with the case when a module is defined by another module. In Part 3, we skipped any modules that have top-level steps defined by other modules. Now, we go back and re-compute the completeness of any of these steps using the Boolean expression from Part 2 (ie, by replacing module accessions with 'True' if their stepwise completeness is above the module completeness threshold, or 'False' otherwise). Then we repeat Part 3 on the affected modules to calculate their overall stepwise completeness.
+
+#### Part 5: Step copy number
+
+Now we need to calculate the copy number of each top-level step. We can do this by converting the step into an _arithmetic expression_ this time, by following a new set of rules:
+- enzyme accessions (ie, KOs) are replaced with the number of annotations this accession has in the given sample.
+- '--' steps are unknown, so we replace these with a count of '0'.
+- commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into addition operations.
+- spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into min() operations.
+- plus signs ('+') represent essential enzyme components, meaning that you need both (at the same time). We convert plus signs into min() operations.
+- minus signs ('-') represent nonessential enzyme components, meaning that you don't need them. We ignore these.
+- parentheses are kept where they are to maintain proper order of operations.
+
+By doing it this way, we take into account all possible ways to complete the step without caring about which of the enzymes are contributing.
+
+Let's go through our examples again, this time with enzyme hit counts. For `(K00928,K12524,K12525,K12526)`, suppose that K12524 was annotated once and K12526 was annotated twice in the sample. Then this step becomes the following arithmetic expression:
+```
+(0 + 1 + 0 + 2)
+=> 3
+```
+This evaluates to a step copy number of 3. K12524 and K12526 can catalyze the same reaction, so their hit counts are combined when we compute the copy number.
+
+Now our complex example, `((K00869 (K17942,(K25517+K09128 K25518+K03186))),(K18689 K18690 K22813))`. Suppose that K00869 was annotated twice, K25517/K09128/K25518 were each annotated once, K03186 was annotated twice, and K18689 was annotated once. The conversion is a little bit more complicated here because we now need min() operations, so let's go through it step-by-step. We do this by following the order of operations - so the innermost set of parentheses are converted first.
+
+First, for the sequential enzyme complexes in `(K25517+K09128 K25518+K03186)`, we require all four enzyme components to be present. So the minimum number of annotations of any of these four components determines the copy number of this part of the step. In other words, this combo is only as strong as its weakest link: `min(K25517,K09128,K25518,K03186)` becomes `min(1,1,1,2)` when we replace the enzyme accessions with their hit counts. We might have 2 copies of component K03186, but because we are limited by the copy numbers of the other three components, we only have 1 copy of this sub-step overall.
+
+The comma in `(K17942,(K25517+K09128 K25518+K03186)` indicates that we can use either `K17942` OR the sequential complexes `(K25517+K09128 K25518+K03186)`. We've already converted the latter set of enzymes, so all that is left is to add the hit count of enzyme K17942 (which happens to be annotated 0 times): `(0 + min(1,1,1,2))`.
+
+To finish up the left side of the step definition, we have an AND relationship between K00869 and the other enzymes in `(K00869 (K17942,(K25517+K09128 K25518+K03186)))`. Since we need both, we take the minimum of K00869's annotation count and of the expression we already converted: `min(2,(0 + min(1,1,1,2)))`.
+
+Moving on to the second half of the step definition, the sequential enzymes in `(K18689 K18690 K22813)` become `min(1,0,0)`.
+
+Finally, we put everything all together, using addition since there is a comma (OR relationship) between the two halves of the definition:
+```
+(min(2,(0 + min(1,1,1,2))) + min(1,0,0))
+```
+
+Here is the evaluation of the resulting arithmetic expression:
+```
+=> (min(2,(0 + 1)) + min(1,0,0))
+=> (min(2,1) + min(1,0,0))
+=> (1 + min(1,0,0))
+=> (1 + 0)
+=> 1
+```
+Ultimately, this step has a copy number of 1. This happened because there was at least one copy of every enzyme in the first half of the step definition (though you wouldn't be able to figure this out just by looking at the step copy number).
+
+Fun fact: this conversion from definition string to arithmetic expression is quite complex for a computer to do, and in the code for this program, it is implemented as a recursive function.
+
+#### Part 6: Module copy number
+
+Every top-level step in the module is connected by an AND relationship - you need all of the steps in order to have the module complete. For this reason, we compute the module stepwise copy number by taking the minimum copy number of all top-level steps. So if we had the following copy numbers for each top-level step in M00018:
+
+```
+(K00928,K12524,K12525,K12526) => 1 copy
+K00133 => 2 copies
+(K00003,K12524,K12525) => 0 copies
+(K00872,K02204,K02203) => 1 copy
+K01733 => 1 copy
+```
+Then the overall stepwise copy number of M00018 would be 0 (because the third step has 0 copies).
+
+To make stepwise copy number easier to interpret, the output files of this program will include the individual step copy numbers in addition to the overall module copy number.
+
+#### Part 7: Adjusting copy number
+
+Once again, we must go back and adjust the copy number for any modules that are defined by other modules. For any top-level step whose definition includes modules, we take the arithmetic expression from Part 5 and replace those module accessions with the pre-computed stepwise copy number of the module. After evaluating the expression to get the copy number of these top-level steps, we can repeat Part 6 to get the module copy number.
+
+#### Stepwise Strategy Summary
+In short: stepwise module completeness in a given sample is calculated as the percentage of complete top-level steps. Likewise, stepwise module copy number is calculated as the minimum copy number of all top-level steps in the module definition.
+
+To help interpret these stepwise metrics for modules, it is a good idea to look at the ['module_steps' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-steps-mode) to see the scores for all individual top-level steps in a module.
