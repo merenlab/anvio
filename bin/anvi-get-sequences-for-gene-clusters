@@ -121,50 +121,57 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
-                                       an ugly name. So, be explicit.")
-    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file',{'metavar':'FASTA'}))
-    groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
+    groupB = parser.add_argument_group('OUTPUT OPTION #1: SINGLE FILE', "Here you get to chose an output file name to report things. LUCKY YOU.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'metavar':'FASTA'}))
 
-    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be reported. You can ask for a single gene cluster,\
+    groupC = parser.add_argument_group('OUTPUT OPTION #2: MULTIPLE FILES', "Here you can ask anvi'o to report multiple FASTA files, where each gene cluster "
+                                       "goes into its own unique FASTA file. If you declare teh flag `--split-output-per-gene-cluster`, anvi'o "
+                                       "will store each gene cluster into your work directory, using the gene cluster name as the output file name. "
+                                       "You can use the `--output-file-prefix` parameter to store them in a different directory and/or with specific "
+                                       "file name prefixes.")
+    groupC.add_argument(*anvio.A('split-output-per-gene-cluster'), **anvio.K('split-output-per-gene-cluster'))
+    groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+
+    groupD = parser.add_argument_group('SELECTION', "Which gene clusters should be reported. You can ask for a single gene cluster,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
                                        of interest. If you give nothing, this program will export alignments for every single gene cluster\
                                        found in the profile database (and this is called 'customer service').")
-    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
-    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
-    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupD.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupD.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
+    groupD.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
-    groupD = parser.add_argument_group('ADVANCED FILTERS', "If you are here you must be looking for ways to specify\
+    groupE = parser.add_argument_group('ADVANCED FILTERS', "If you are here you must be looking for ways to specify\
                                         exactly what you want from that database of gene clusters. These filters will\
                                         be applied to what your previous selections reported.")
-    groupD.add_argument(*anvio.A('min-num-genomes-gene-cluster-occurs'), **anvio.K('min-num-genomes-gene-cluster-occurs'))
-    groupD.add_argument(*anvio.A('max-num-genomes-gene-cluster-occurs'), **anvio.K('max-num-genomes-gene-cluster-occurs'))
-    groupD.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
-    groupD.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
-    groupD.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
-    groupD.add_argument(*anvio.A('min-functional-homogeneity-index'), **anvio.K('min-functional-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
-    groupD.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
-    groupD.add_argument(*anvio.A('min-combined-homogeneity-index'), **anvio.K('min-combined-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-combined-homogeneity-index'), **anvio.K('max-combined-homogeneity-index'))
-    groupD.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
+    groupE.add_argument(*anvio.A('min-num-genomes-gene-cluster-occurs'), **anvio.K('min-num-genomes-gene-cluster-occurs'))
+    groupE.add_argument(*anvio.A('max-num-genomes-gene-cluster-occurs'), **anvio.K('max-num-genomes-gene-cluster-occurs'))
+    groupE.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
+    groupE.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
+    groupE.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
+    groupE.add_argument(*anvio.A('min-functional-homogeneity-index'), **anvio.K('min-functional-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
+    groupE.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
+    groupE.add_argument(*anvio.A('min-combined-homogeneity-index'), **anvio.K('min-combined-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-combined-homogeneity-index'), **anvio.K('max-combined-homogeneity-index'))
+    groupE.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
 
-    groupE = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
-    groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    groupE.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+    groupF = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
+    groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupF.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    groupF = parser.add_argument_group('PHYLOGENOMICS', "Get separately aligned and concatenated sequences for phylogenomics.")
-    groupF.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
-    groupF.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
-    groupF.add_argument(*anvio.A('separator'), **anvio.K('separator'))
-    groupF.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
-    groupF.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
+    groupG = parser.add_argument_group('PHYLOGENOMICS', "Get separately aligned and concatenated sequences for phylogenomics.")
+    groupG.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
+    groupG.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
+    groupG.add_argument(*anvio.A('separator'), **anvio.K('separator'))
+    groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupG.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
 
-    groupG = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
-    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupH = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
+    groupH.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
+    groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupH.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
 
     args = parser.get_args(parser)
