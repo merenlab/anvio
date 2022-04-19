@@ -32,9 +32,13 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):
+def sanity_check(args):
     if args.gene_cluster_id and args.gene_cluster_ids_file:
-        raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
+        raise ConfigError('You should either declare a single gene cluster name or a set of gene cluster names in a file, but not both :/')
+
+    if args.gene_cluster_id and args.split_output_per_gene_cluster:
+        raise ConfigError("If you are providing a single gene cluster id via `--gene-cluster-id`, then you don't "
+                          "need to use the flag `--split-output-per-gene-cluster`.")
 
     if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
         raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or '
@@ -42,8 +46,36 @@ def main(args):
                           'mixed. If you need to know what collections are available in the pan database, use the flag '
                           '`--list-collections`.')
 
-    if not args.output_file:
-        args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'gene-cluster-alignments-output-with-an-ugly-name.fa')
+    if args.output_file and args.split_output_per_gene_cluster:
+        raise ConfigError("The parameter `--output-file` is incompatible with the flag `--split-output-per-gene-cluster`. Why? "
+                          "Because when you declare `--split-output-per-gene-cluster`, anvi'o reports many output files and "
+                          "assigns the name of each ")
+
+    if args.split_output_per_gene_cluster and args.concatenate_gene_clusters and args.partition_file:
+        raise ConfigError("You can't ask anvi'o to produce split output files per concatenated gene cluster, and offer an output for "
+                          "a partition file. Why? Because anvi'o developers are lazy, and thought now one would ever need it really. "
+                          "But if you managed ot run into this error, please let an anvi'o developer know online and they will "
+                          "implement something for it.")
+
+    if args.split_output_per_gene_cluster:
+        if not args.output_file_prefix:
+            args.output_file_prefix = os.getcwd() + '/'
+        else:
+            if args.output_file_prefix.startswith('/'):
+                pass
+            elif args.output_file_prefix.endswith('/'):
+                pass
+            elif args.output_file_prefix.find('/') > -1:
+                args.output_file_prefix = os.path.abspath('/'.join(args.output_file_prefix.split('/')[:-1])) + '/' + args.output_file_prefix.split('/')[-1] + '_'
+            else:
+                args.output_file_prefix = os.getcwd() + '/' + args.output_file_prefix + '_'
+
+        filesnpaths.is_output_dir_writable(os.path.dirname(args.output_file_prefix))
+    else:
+        if not args.output_file:
+            args.output_file = os.path.join(os.path.abspath(os.getcwd()), 'GENE-CLUSTER-ALIGNMENTS.fa')
+
+        filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
 
     if not args.concatenate_gene_clusters and args.align_with:
         raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner. "
@@ -53,10 +85,14 @@ def main(args):
     if not args.concatenate_gene_clusters and args.partition_file:
         raise ConfigError("Partition files are only relevant when you use the flag `--concatenate-gene-clusters`.")
 
-    filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_output_file_writable(args.partition_file) if args.partition_file else None
 
+    return args
+
+
+def main(args):
     gene_cluster_ids = set([])
+
     if args.collection_name or args.list_collections or args.list_bins:
         progress.new('Initializing')
         progress.update('...')
@@ -177,7 +213,7 @@ if __name__ == '__main__':
     args = parser.get_args(parser)
 
     try:
-        main(args)
+        main(sanity_check(args))
     except ConfigError as e:
         print(e)
         sys.exit(-1)
