@@ -68,7 +68,8 @@ class SeedPermuter(object):
     def sanity_check(self):
         contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
+            raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, "
+                              "not the required 'trnaseq' variant.")
 
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
@@ -78,7 +79,7 @@ class SeedPermuter(object):
 
         if self.max_variable_positions < 1:
             raise ConfigError(f"The specified maximum number of variable positions in a permuted sequence is '{self.max_variable_positions}', "
-                              "but it needs to be an integer with a value of 1 or greater.")
+                              "but it needs to be a positive integer.")
 
         filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
 
