@@ -1690,9 +1690,12 @@ class PanSuperclass(object):
         self.progress.end()
         output_file.close()
 
-        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        if len(gene_clusters_dict) == 1:
+            gene_cluster_name = list(gene_clusters_dict.keys())[0]
+            self.run.info('Gene cluster name', gene_cluster_name)
+        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid')
         self.run.info('Num sequences reported', sequence_counter)
-        self.run.info('Output FASTA file', output_file_path, mc='green')
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
 
 
     def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
