@@ -260,9 +260,5 @@ a{
 }
 
 #tabular-modal-body{
-    height: 90vh;
-    width: 90vw;
-    background: white;
-    display: none;
     overflow: scroll;
 }
