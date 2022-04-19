@@ -647,11 +647,13 @@ In reality, this part is actually done at the same time as Part 2, but it is eas
 
 To get the copy number for a given path through the module, we determine the number of complete copies of the path. This is the same as the way we handle copy number of protein complexes, as described above. And it _also depends on the module completeness threshold_. Suppose a path has 4 essential atomic steps (call them A,B,C, and D) with the following copy numbers: 4,3,1, and 2. Using the default completeness threshold of 0.75, we need at least 3 out of 4 atomic steps to be present in order for a copy of the path to be considered complete. There is one copy that has all 4 steps, one copy that has 3/4, one copy that has 2/4 and one that has 1/4. This is perhaps easier to see in graph form, with atomic steps on the x-axis and atomic step copy number on the y-axis:
 
+```
 X
 X X
 X X   X  <-- (3/4 enzymes present)
 X X X X  <-- (4/4 enzymes present)
 A B C D
+```
 
 Each copy of the path is a horizontal row of X's in the simple graphic above. There are 2 copies of the path with at least 3/4 atomic steps in the list (marked with arrows), which means that the path copy number is 2.
 
