@@ -569,9 +569,18 @@ function showTabularModal(){
     $('#modal-tab-content').append(`
       <div id="${genome}" class="tab-pane fade in ${idx == 0 ? 'active' : ''}">
         <h3>${genome}</h3>
-        <p>Some content.</p>
+        <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: center; font-size: 12px; background: white">
+          <thead><th>look at me</th></thead>
+        </table>
       </div>
     `)
+  })
+  Object.entries(genomesObj).map((genome, idx) => {
+    let totalTableString = ''
+    genome[1].forEach(gene => {
+      totalTableString += `<tr><td>this is a gene look at me</td></tr>`
+    })
+    $(`#${genome[0]}-table`).append(totalTableString)
   })
 
   $('#tabular-modal-body').show().css({'position' : 'absolute', 'left' : 30, 'top' : 30})
