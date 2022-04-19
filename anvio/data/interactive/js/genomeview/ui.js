@@ -576,12 +576,16 @@ function showTabularModal(){
         <h3>${genome}</h3>
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead>
+            <th><input class="form-check-input" type='checkbox'></input> Select</th>
             <th>Gene ID</th>
             <th>Start</th>
             <th>Stop</th>
             <th>Direction</th>
             <th>Contig</th>
             <th>Source</th>
+            <th>Deepdive</th>
+            <th>Glow</th>
+            <th>Color</th>
           </thead>
           <tbody id="${genome}-table-body">
           </tbody>
@@ -592,18 +596,48 @@ function showTabularModal(){
   Object.entries(genomesObj).map((genome, idx) => {
     let totalTableString = ''
     genome[1].forEach(gene => {
+      console.log(gene)
       totalTableString += `
       <tr>
+        <td><input class="form-check-input" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
         <td>${gene['gene']['stop']}</td>
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
         <td>${gene['gene']['source']}</td>
+        <td><button class="btn btn-default btn-sm" onclick="">Deep Dive</button></td>
+        <td><button class="btn btn-default btn-sm" onclick="">Glow in Sequence</button></td>
+        <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
     })
     $(`#${genome[0]}-table-body`).append(totalTableString)
   })
+
+  $('.colorpicker').colpick({
+    layout: 'hex',
+    submit: 0,
+    colorScheme: 'light',
+    onChange: function(hsb, hex, rgb, el, bySetColor) {
+        $(el).css('background-color', '#' + hex);
+        $(el).attr('color', '#' + hex);
+        if (!bySetColor) $(el).val(hex);
+
+        // if(!settings['display']['colors']['genes'][selected_genes[0].genomeID])
+        //   settings['display']['colors']['genes'][selected_genes[0].genomeID] = {};
+        // selected_genes.forEach(gene => {
+        //   gene.fill = '#' + hex;
+        //   gene.dirty = true;
+        //   settings['display']['colors']['genes'][selected_genes[0].genomeID][gene.geneID] = '#' + hex;
+        // });
+        canvas.renderAll();
+    }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+      // selected_genes.forEach(gene => {
+      //   gene.fill = this.value;
+      // });
+  });
 }
 
 function showLassoMenu(selected_genes, x, y) {
