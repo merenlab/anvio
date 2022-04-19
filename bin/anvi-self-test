@@ -33,10 +33,12 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'metabolism'            : ['run_component_tests_for_metabolism.sh'],
          'display-functions'     : ['run_component_tests_for_display_functions.sh'],
          'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
+         'inversions'            : ['run_component_tests_for_inversions.sh'],
          'workflow-contigs'      : ['run_workflow_tests_for_contigs.sh'],
          'workflow-metagenomics' : ['run_workflow_tests_for_metagenomics.sh'],
          'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
-         'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh']
+         'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh'],
+         'database-migrations'   : ['run_migration_tests_for_ancient_anvio_databases.sh'],
          }
 
 run = terminal.Run()

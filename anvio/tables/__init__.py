@@ -23,7 +23,7 @@ structure_db_version = "2"
 genomes_storage_vesion = "7"
 trnaseq_db_version = "2"
 workflow_config_version = "2"
-metabolic_modules_db_version = "3"
+metabolic_modules_db_version = "4"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -137,7 +137,6 @@ gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,  
 gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
-
 
 ####################################################################################################
 #
@@ -283,13 +282,17 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 #
 ####################################################################################################
 
-module_table_name = "modules"
-module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
-module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+module_table_name       = "modules"
+module_table_structure  = ['module', 'data_name', 'data_value', 'data_definition', 'line']
+module_table_types      = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
-pathway_table_name = "kegg_pathway_maps"
+pathway_table_name      = "kegg_pathway_maps"
 pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
-pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+pathway_table_types     = [ 'str'       ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+
+brite_table_name        = "brite_hierarchies"
+brite_table_structure   = ['hierarchy_accession', 'hierarchy_name', 'ortholog_accession', 'ortholog_name', 'categorization']
+brite_table_types       = [        'str'        ,       'str'     ,         'str'       ,      'str'     ,      'str'      ]
 
 ####################################################################################################
 #
@@ -423,6 +426,7 @@ table_requires_unique_entry_id = {'self': False,
                                   'kegg_modules': False,        # no longer in use as of modules db v3
                                   module_table_name: False,
                                   pathway_table_name: False,
+                                  brite_table_name: False,
                                   trnaseq_sequences_table_name: False,
                                   trnaseq_feature_table_name: False,
                                   trnaseq_unconserved_table_name: False,

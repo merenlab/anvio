@@ -14,9 +14,16 @@ import numpy
 import random
 import argparse
 import textwrap
-import multiprocessing
 import itertools
 import scipy.signal
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from io import StringIO
 from collections import Counter
@@ -1683,9 +1690,12 @@ class PanSuperclass(object):
         self.progress.end()
         output_file.close()
 
-        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        if len(gene_clusters_dict) == 1:
+            gene_cluster_name = list(gene_clusters_dict.keys())[0]
+            self.run.info('Gene cluster name', gene_cluster_name)
+        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid')
         self.run.info('Num sequences reported', sequence_counter)
-        self.run.info('Output FASTA file', output_file_path, mc='green')
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
 
 
     def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
@@ -4741,14 +4751,12 @@ class AA_counts(ContigsSuperclass):
 ####################################################################################################
 
 def is_db_ok_to_create(db_path, db_type):
-    if os.path.exists(db_path):
-        raise ConfigError("Anvi'o will not overwrite an existing %s database. Please choose a different name "
-                           "or remove the existing database ('%s') first." % (db_type, db_path))
-
     if not db_path.lower().endswith('.db'):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers "
                            "apologize for imposing their views on how anvi'o databases should be named, and are "
                            "humbled by your cooperation." % db_type)
+
+    filesnpaths.is_output_file_writable(db_path, ok_if_exists=False)
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):

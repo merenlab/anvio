@@ -7,7 +7,14 @@ import gc
 import functools
 import itertools
 import numpy as np
-import multiprocessing as mp
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from hashlib import sha1
 from itertools import groupby
@@ -309,7 +316,7 @@ class Kmerizer:
             The second item in an inner tuple is a list of start positions of the k-mer in the input sequence,
             as a given k-mer can occur multiple times in the sequence.
         """
-        pool = mp.Pool(self.num_threads)
+        pool = multiprocessing.Pool(self.num_threads)
         all_seq_kmer_items = pool.map(
             functools.partial(get_kmer_worker,
                               kmer_size=kmer_size,
@@ -902,13 +909,13 @@ class Aligner:
                                  num_threads=self.num_threads).get_kmer_dict(seed_size)
             target_seq_dict = dict(zip(target_names, target_seq_arrays))
 
-            manager = mp.Manager()
+            manager = multiprocessing.Manager()
             input_queue = manager.Queue()
             output_queue = manager.Queue()
             processes = []
 
             for _ in range(self.num_threads):
-                p = mp.Process(target=align_without_indels_worker,
+                p = multiprocessing.Process(target=align_without_indels_worker,
                                args=(input_queue,
                                      output_queue,
                                      kmer_dict,
@@ -981,7 +988,7 @@ class Aligner:
         # Do not update Progress with prefix k-mer extraction.
         kmer_dict = Kmerizer(self.target_names, self.target_seq_strings).get_prefix_full_seq_dict(kmer_size)
 
-        pool = mp.Pool(self.num_threads)
+        pool = multiprocessing.Pool(self.num_threads)
         matched_target_names = pool.map(functools.partial(prefix_match_worker,
                                                           kmer_size=kmer_size,
                                                           kmer_dict=kmer_dict,

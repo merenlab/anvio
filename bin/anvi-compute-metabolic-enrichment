@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""A program that computes metabolic enrichment acros groups of genomes and metagenomes"""
+"""A program that computes metabolic enrichment across groups of genomes and metagenomes"""
 
 import sys
 
@@ -22,13 +22,13 @@ __resources__ = [("A description of the enrichment script run by this program ca
 __tags__ = ["metabolism"]
 __requires__ = ['kegg-metabolism', 'user-metabolism', 'groups-txt', 'external-genomes', 'internal-genomes', 'functions']
 __provides__ = ['functional-enrichment-txt']
-__description__ = ("A program that computes metabolic enrichment acros groups of genomes and metagenomes")
+__description__ = ("A program that computes metabolic enrichment across groups of genomes and metagenomes")
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-    # make sure the output files is not going to overwrite anything
+    # make sure the output file is not going to overwrite anything
     if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
         raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
                           f"Please remove the exiting file first, or give a different output file name to this program.")
@@ -55,8 +55,8 @@ if __name__ == '__main__':
     groupO.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
     groupE = parser.add_argument_group('OPTIONAL OPTIONS', "If you want it, here it is, come and get it.")
-    groupB.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
-    groupB.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
+    groupE.add_argument(*anvio.A('sample-header'), **anvio.K('sample-header'))
+    groupE.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold',
                                 {'help': "This threshold defines the percent completeness score at which we consider a KEGG module to be 'present'"
                                          "in a given sample. That is, if a module's completeness in a sample is less than this value, then we say "
                                          "the module is not present in that sample, and this will affect the module's enrichment score. "
@@ -65,7 +65,8 @@ if __name__ == '__main__':
                                          "any groups). Note that the closer this number is to 0, the more meaningless this whole enrichment analysis is... "
                                          "but hey, this is your show. This threshold CAN be different from the completeness threshold used in `anvi-estimate-metabolism` "
                                          "if you wish. The default threshold is %(default)g."}))
-    groupB.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
+    groupE.add_argument(*anvio.A('use-stepwise-completeness'), **anvio.K('use-stepwise-completeness'))
+    groupE.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = parser.get_args(parser)

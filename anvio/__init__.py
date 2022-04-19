@@ -3,11 +3,56 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
+anvio_version = '7.1-dev'
+anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
+                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
+
+major_python_version_required = 3
+minor_python_version_required = 7
+
+import sys
+import platform
+
+# make sure anvi'o runs in the right Python environment:
+try:
+    if not (sys.version_info.major == major_python_version_required and sys.version_info.minor >= minor_python_version_required):
+        sys.stderr.write("\n========================================================\n"
+                         "🦄 SOMETHING BAD HAPPENED AND IT NEEDS YOUR ATTENTION 🦄\n"
+                         "========================================================\n"
+                         "The environment in which you're running anvi'o has a Python \n"
+                         "version that is not compatible with the Python version \n"
+                         "requirement of anvi'o you are running. Here is a summary: \n\n"
+
+                         f"    Anvi'o version you have ..............: {anvio_version} ({anvio_codename})\n"
+                         f"    Python version you have ..............: {platform.python_version()}\n"
+                         f"    Python version anvi'o wants ..........: {major_python_version_required}.{minor_python_version_required}.*\n\n")
+
+        if anvio_version.endswith('dev'):
+            sys.stderr.write("Those who follow the active development branch of anvi'o (like \n"
+                             "yourself) are among our most important users as they help us \n"
+                             "find and address bugs before they can make their way into a stable \n"
+                             "release. Thus, we are extra sorry for this inconvenience :/ But \n"
+                             "the change in the required Python version (which must happened \n"
+                             "after you started tracking the active development branch) \n"
+                             "requires you to get rid of your current anvi'o enviroment, and \n"
+                             "setup a new one using the most up-to-date instructions here:\n\n"
+                             "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
+                             "Thank you for your patience and understanding.\n\n")
+        else:
+            sys.stderr.write("This should never have happened with a stable anvi'o release :/ \n"
+                             "Please follow the most up-to-date installation instructions at \n"
+                             "https://anvio.org/install/ to re-install anvi'o and its environment.\n\n")
+        sys.exit(-1)
+except Exception:
+    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
+
+# we are in the right Python environment. import the rest of the libraries
+# and do all the other boring stuff.
+
 import os
 import sys
 import json
 import copy
-import platform
 
 from tabulate import tabulate
 
@@ -15,18 +60,18 @@ from tabulate import tabulate
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '7.1-dev'
-anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
-                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
-
+# very important variable to determine which help docs are relevant for
+# this particlar anvi'o environment
 anvio_version_for_help_docs = "main" if anvio_version.endswith('dev') else anvio_version
 
+# very handy global settings depending on sys.argv content
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 AS_MARKDOWN = '--as-markdown' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+FORCE_OVERWRITE = '--force-overwrite' in sys.argv
 DISPLAY_DB_CALLS = '--display-db-calls' in sys.argv
 FORCE_USE_MY_TREE = '--force-use-my-tree' in sys.argv
 DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
@@ -79,16 +124,6 @@ def TABULATE(table, header, numalign="right", max_width=0):
             table = '\n'.join([l[:max_width - len(prefix)] + prefix + l[-2:] for l in lines_in_table])
 
     print(table)
-
-
-# Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
-# on systems working with multiple Python installations that are managed through modules):
-try:
-    if sys.version_info.major != 3 or sys.version_info.minor < 5:
-        sys.stderr.write("Sad face :( Your active Python version is %s, but anvi'o only works with Python version 3.5.0 or later.\n" % (platform.python_version()))
-        sys.exit(-1)
-except Exception:
-    sys.stderr.write("(anvi'o failed to learn about your Python version, but it will pretend as if nothing happened)\n\n")
 
 
 import anvio.constants as constants
@@ -185,7 +220,6 @@ D = {
                      "The description text will be rendered and shown in all relevant interfaces, including the "
                      "anvi'o interactive interface, or anvi'o summary outputs."}
                 ),
-
     'additional-view': (
             ['-V', '--additional-view'],
             {'metavar': 'ADDITIONAL_VIEW',
@@ -577,10 +611,8 @@ D = {
             ['--include-ungrouped'],
             {'default': False,
              'action': 'store_true',
-             'help': "Use this flag if you want anvi'o to include genomes/samples with no group in the analysis. (For pangenomes, this means "
-                     "the genome has no value set for the category variable which you specified using --category-variable. "
-                     "For modules, this means the sample has no group specified in the groups-txt file. And for regular 'ol "
-                     "genomes, this means the genome has nothing in the 'group' column of the input file). By default all "
+             'help': "Use this flag if you want anvi'o to include genomes with no group in the analysis. This means the "
+                     "genome has nothing in the 'group' column of the input file. By default all "
                      "variables with no value will be ignored, but if you apply this flag, they will instead be considered as "
                      "a single group (called 'UNGROUPED' when performing the statistical analysis."}
                 ),
@@ -590,9 +622,7 @@ D = {
             'action': 'store_true',
             'help': "Sometimes, you might have some sample names in your modules-txt file that you did not include in the groups-txt file. "
                     "This is fine. By default, we will ignore those samples because they do not have a group. But if you use this flag, then "
-                    "instead those samples will be included in a group called 'UNGROUPED'. Be cautious when using this flag in combination with "
-                    "the --include-ungrouped flag (which also sticks samples without groups into the 'UNGROUPED' group) so that you don't accidentally "
-                    "group together samples that are not supposed to be friends."}
+                    "instead those samples will be included in a group called 'UNGROUPED'."}
                 ),
     'functional-occurrence-table-output': (
             ['-F', '--functional-occurrence-table-output'],
@@ -917,8 +947,8 @@ D = {
              'metavar': 'DIR_PATH',
              'type': str,
              'help': "The directory path for your KEGG setup, which will include things like "
-                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
-                     "if you do not specify anything."}
+                     "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
+                     "to use the default path if you do not specify anything."}
                 ),
     'user-modules': (
             ['-u', '--user-modules'],
@@ -960,6 +990,27 @@ D = {
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
                      "from KEGG's REST API and set it up into an anvi'o-compatible database."}
                 ),
+    'only-download': (
+            ['--only-download'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "You want this program to only download data from KEGG, and then stop. It will not "
+                     "make a modules database. (It would be a *very* good idea for you to specify a "
+                     "data directory using --kegg-data-dir in this case, so that you can find the resulting "
+                     "data easily and avoid messing up any data in the default KEGG directory. But you are "
+                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
+                     "processed with `hmmpress` if you choose this option."}
+             ),
+    'only-database': (
+            ['--only-database'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "You already have all the KEGG data you need on your computer. Perhaps you even got it from "
+                     "this program, using the --only-download option. We don't know. What matters is that you don't "
+                     "need anything downloaded, you just want this program to setup a modules database from that "
+                     "existing data. Good. We can do that if you provide this flag (and probably also the --kegg-data-dir "
+                     "in which said data is located)."}
+             ),
     'kegg-snapshot': (
             ['--kegg-snapshot'],
             {'default': None,
@@ -1562,6 +1613,13 @@ D = {
             ['--gene-cluster-ids-file'],
             {'metavar': 'FILE_PATH',
              'help': "Text file for gene clusters (each line should contain be a unique gene cluster id)."}
+                ),
+    'split-output-per-gene-cluster': (
+            ['--split-output-per-gene-cluster'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If/when there are more than one gene clusters to report, put each gene cluster into a "
+                     "separate FASTA file."}
                 ),
     'bin-id': (
             ['-b', '--bin-id'],
@@ -2543,6 +2601,14 @@ D = {
              'help': "Use this flag to request that coverage and detection values be added as columns in long-format "
                      "output files. You must provide the profile database corresonding to your contigs db for this to work."}
                 ),
+    'add-copy-number': (
+            ['--add-copy-number'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to request that module copy number (the number of complete copies of a module, or path "
+                     "through a module) be added to your output files. In long-format mode, it will be an additional column. "
+                     "In matrix mode, it will be an additional matrix file."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -2614,13 +2680,35 @@ D = {
                      "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
-        ['--export-gff3'],
-        {
-            'default': False,
-            'action': 'store_true',
-            'help': "If this is true, the output file will be in GFF3 format."
-        }
-    ),
+            ['--export-gff3'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If this is true, the output file will be in GFF3 format."}
+        ),
+    'palindrome-search-algorithm': (
+            ['--palindrome-search-algorithm'],
+            {'default': None,
+             'type': str,
+             'choices': {'numba', 'BLAST'},
+             'help': "There are two algorithms for calculating palindromes: 'BLAST' and 'numba'. By default, anvi'o will dynamically "
+                     "optimize your search for speed and will use numba when a given sequence is shorter than 5,000 nucleotides or "
+                     "will use BLAST otherwise. However, you can use this parameter to ask anvi'o to use either of these methods "
+                     "explicitly to search for palindromes. You can choose from the options 'BLAST' or 'numba'. Please note that "
+                     "the results from the two approaches may differ."}
+        ),
+    'min-mismatch-distance-to-first-base': (
+            ['--min-mismatch-distance-to-first-base'],
+            {'default': 1,
+             'metavar': 'INT',
+             'type': int,
+             'help': "This parameter allows you to trim the palindrome when one or more mismatches are n nucleotides away "
+                     "from a palindrome's start or stop. By default, this flag is set to 1, which means anvi'o will trim "
+                     "palindromes with a mismatch that are occuring on the second or n-1 position. Here is an example "
+                     "palindrome `MMMMMM(X)M` where `M` are the matching nucleotides and `X` is a mismatch. By default, "
+                     "anvi'o will only report the first six matches: `MMMMMMM`. The rationale behind this parameter is that "
+                     "when searching for palindromes with mismatches, the algorithm will extend the palindrome length "
+                     "as much as possible, often wrongly including mismatches which are outside of the true palindrome."}
+        ),
     'min-palindrome-length': (
             ['-l', '--min-palindrome-length'],
             {'default': 10,
@@ -2633,11 +2721,10 @@ D = {
             {'default': 50,
              'metavar': 'INT',
              'type': int,
-             'help': "The minimum distance between the palindromic sequences (this parameter is essentially "
-                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). The default is 50, "
-                     "which means the algorithm will never report by default sequences that are like "
-                     "`ATCGCGAT` with no gaps between the palindrome where the palindromic sequence matches "
-                     "itself (but you can get such palindromes by setting this parameter to 0)."}
+             'help': "The minimum distance between palindromic sequences (this parameter is essentially "
+                     "asking for the number of `x` in the sequence `ATCGxxxCGAT`). A value of 0 means "
+                     "that the algorithm will find all palindromes whether they are 'in-place' palindromes or "
+                     "distant palindromes. The default value is %(default)d ncl."}
         ),
     'max-num-mismatches': (
             ['-m', '--max-num-mismatches'],
@@ -2896,6 +2983,12 @@ D = {
              'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
                      "of every KOfam hit that is put in the contigs database."}
                 ),
+    'skip-brite-hierarchies': (
+            ['--skip-brite-hierarchies'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
             {'default': 1.0e-5,
@@ -2989,6 +3082,15 @@ D = {
                     "just in case you got it a different way, this is how you can tell anvi'o which column to "
                     "look at. The values in this column should correspond to those in the 'sample' column in "
                     "the groups-txt input file."}
+                ),
+    'use-stepwise-completeness': (
+            ['--use-stepwise-completeness'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "By default, this program will use pathwise completeness of a module to determine if it "
+                    "is present in a sample or not. To make it use stepwise completeness instead, provide this "
+                    "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
+                    "pathwise vs stepwise completeness."} 
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],

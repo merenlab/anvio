@@ -1082,7 +1082,7 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -1118,7 +1118,11 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         if rows_to_return and row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
-        fields = line.strip().split('\t')[1:]
+        fields = line.strip('\n').split('\t')[1:]
+
+        # long story.
+        if pad_with_zeros:
+            fields = [0] + fields + [0]
 
         try:
             if fields_of_interest:
@@ -1305,24 +1309,31 @@ def check_R_packages_are_installed(required_package_dict):
             missing_packages.append(lib)
 
     if missing_packages:
-        raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                          "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                          "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                          "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                          "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                          "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                          "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                          "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                          "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                          "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                          "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                          "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                          "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                          "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                          "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                  {'missing': ', '.join(missing_packages),
-                                                                   'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
-                                                                   'example': missing_packages[0]})
+        if len(missing_packages) == 1 and 'qvalue' in missing_packages:
+            raise ConfigError("It seems you're struggling with the R package `qvalue`. It can be a pain to install. In our experience "
+                              "best way to install this package is to do it through Bioconductor directly. For that, please "
+                              "copy-paste this command as a single line into your terminal and run it: "
+                              "Rscript -e 'install.packages(\"BiocManager\", repos=\"https://cran.rstudio.com\"); BiocManager::install(\"qvalue\")'")
+        else:
+            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                              "be much more helpful solving the issue. If none of the solutions offered here worked for you, feel free to "
+                              "come to anvi'o Slack and ask around -- others may already have a solution for it already. Apologies for the "
+                              "frustration. R frustrates everyone." % {'missing': ', '.join(missing_packages),
+                                                                       'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
+                                                                       'example': missing_packages[0]})
     else:
         os.remove(log_file)
 
@@ -3261,6 +3272,9 @@ def get_bams_and_profiles_txt_as_data(file_path):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
+
+    Updates to this function may require changes in the artifact description at
+    anvio/docs/artifacts/bams-and-profiles-txt.md
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3274,7 +3288,8 @@ def get_bams_and_profiles_txt_as_data(file_path):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
-        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
+                          f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3302,6 +3317,20 @@ def get_bams_and_profiles_txt_as_data(file_path):
         filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
         is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
+    # this file can optionally contain `r1` and `r2` for short reads
+    for raw_reads in ['r1', 'r2']:
+        if raw_reads in columns_found:
+            file_paths = COLUMN_DATA(raw_reads)
+            if '' in file_paths:
+                raise ConfigError("If you are using r1/r2 columns in your `bams-and-profiles-txt` file, then you "
+                                  "must have a valid file path for every single sample. In your current file there "
+                                  "are some blank ones. Sorry.")
+            missing_files = [f for f in file_paths if not os.path.exists(f)]
+            if len(missing_files):
+                raise ConfigError(f"Anvi'o could not find some of the {raw_reads.upper()} files listed in your "
+                                  f"`bams-and-profiles-txt` at {file_path} where they were supposed to be: "
+                                  f"{missing_files}.")
+
     return contigs_db_path, profiles_and_bams
 
 
@@ -3310,10 +3339,17 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     filesnpaths.is_file_tab_delimited(file_path)
 
-    expected_columns = ['sample', 'r1', 'r2']
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if columns_found[0] == 'sample':
+        expected_columns = ['sample', 'r1', 'r2']
+    elif columns_found[0] == 'name':
+        expected_columns = ['name', 'r1', 'r2']
+    else:
+        raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
+
     possible_columns = expected_columns + ['group']
 
-    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
     extra_columns = set(columns_found).difference(set(possible_columns))
 
     if not set(expected_columns).issubset(set(columns_found)):
@@ -3321,9 +3357,10 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     if len(extra_columns):
         run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
-                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
-                    f"business, but we wanted you to be aware of the fact that your input file does not "
-                    f"fully match anvi'o expectations from this file type.")
+                    f"{', '.join(extra_columns)} compared to what is expected of a `samples-txt` file, "
+                    f"which is absolutely fine. You're reading this message becasue anvi'o wanted to "
+                    f"make sure you know that it knows that it is the case. Classic anvi'o virtue "
+                    f"signaling.", lc="yellow")
 
     samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
 
@@ -3381,7 +3418,7 @@ def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
     return primers_txt
 
 
-def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
+def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_missing_samples_is_true=False):
     """Groups-txt is an anvi'o artifact associating items with groups. This function extracts this file into a set of dictionaries.
 
     Note that it only extracts the first column of the file (which will contain the 'item' or 'sample' information and can have any
@@ -3393,6 +3430,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
         Dictionary in which keys are items and values are groups
     group_to_item_dict : dict
         Dictionary in which keys are groups and values are lists of items in that group
+    include_missing_samples_is_true : Boolean
+        set this to True if samples not in this file will be included in the downstream analysis as
+        an 'UNGROUPED' group, just to let this function know that it should not crash if less
+        than 2 group names are in the groups txt file.
     """
 
     filesnpaths.is_file_tab_delimited(file_path)
@@ -3400,10 +3441,10 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if 'group' not in columns_found:
-        raise ConfigError("A groups-txt file should have a single column that is called `group`.")
+        raise ConfigError("A groups-txt file should have a column that is called `group`.")
 
     if len(columns_found) < 2:
-        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for groups names.")
+        raise ConfigError("A groups-txt file should have at least two columns - one for item names, and one for group names.")
 
     item_column = columns_found[0]
     if item_column == 'group':
@@ -3427,8 +3468,15 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress):
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
 
-    if len(group_to_item_dict.keys()) < 2:
-        raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
+    num_groups = len(group_to_item_dict.keys())
+    if num_groups < 2:
+        if include_missing_samples_is_true and num_groups == 1:
+            run.warning("There is only one group in your groups-txt file, but we have been told that samples not in this file "
+                             "will be included in a group called 'UNGROUPED', so that means you have 2 groups in total. Everything is "
+                             "fine, as far as we know, but if you look at this and think 'Wait, this is very much NOT fine', well, then "
+                             "the power is in your hands to fix it.")
+        else:
+            raise ConfigError("We notice that there is only one group in your groups-txt file. In the current applications that require "
                           "a groups-txt, we expect to have at least two groups, so we think this is an error. If the context you are "
                           "working in should allow for only one group in this file, please feel free to let us know.")
 
