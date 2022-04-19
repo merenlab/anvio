@@ -260,5 +260,5 @@ a{
 }
 
 #tabular-modal-body{
-    overflow: scroll;
+    overflow-y: scroll;
 }
