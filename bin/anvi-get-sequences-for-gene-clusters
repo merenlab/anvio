@@ -138,17 +138,35 @@ def main(args):
         run.info_single("Dry run, eh? Well. Your dry run is done!")
         sys.exit(0)
 
-    if args.concatenate_gene_clusters:
-        pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                               output_file_path=args.output_file,
-                                                               report_DNA_sequences=args.report_DNA_sequences,
-                                                               align_with=args.align_with,
-                                                               separator=args.separator,
-                                                               partition_file_path=args.partition_file)
-    else:
-        pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                     output_file_path=args.output_file,
-                                                     report_DNA_sequences=args.report_DNA_sequences)
+
+    if args.output_file:
+        if args.concatenate_gene_clusters:
+            pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                                   output_file_path=args.output_file,
+                                                                   report_DNA_sequences=args.report_DNA_sequences,
+                                                                   align_with=args.align_with,
+                                                                   separator=args.separator,
+                                                                   partition_file_path=args.partition_file)
+        else:
+            pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                         output_file_path=args.output_file,
+                                                         report_DNA_sequences=args.report_DNA_sequences)
+    elif args.split_output_per_gene_cluster:
+        if args.concatenate_gene_clusters:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                                       output_file_path=output_file_path,
+                                                                       report_DNA_sequences=args.report_DNA_sequences,
+                                                                       align_with=args.align_with,
+                                                                       separator=args.separator,
+                                                                       partition_file_path=args.partition_file)
+        else:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                             output_file_path=output_file_path,
+                                                             report_DNA_sequences=args.report_DNA_sequences)
 
 
 if __name__ == '__main__':
