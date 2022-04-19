@@ -28,7 +28,7 @@ What are the data in each of these columns?
 - `genome_name`/`bin_name`/`contig_name`: the identifier for the current sample, whether that is a genome, bin, or contig from a metagenome assembly
 - `db_name`: the name of the contigs database from which this data comes (only appears in output from multi-mode, in which multiple DBs are processed at once)
 - `module_name`/`module_class`/`module_category`/`module_subcategory`/`module_definition`: metabolic pathway information, from the KEGG MODULE database or from user-defined metabolic modules
-- `stepwise_module_completeness`/`pathwise_module_completeness`: a fraction between 0 and 1 indicating the proportion of steps in the metabolic pathway that have an associated enzyme annotation. There are currently two strategies for defining the 'steps' in a metabolic pathway - 'stepwise' and 'pathwise'. To learn how these numbers are calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
+- `stepwise_module_completeness`/`pathwise_module_completeness`: a fraction between 0 and 1 indicating the proportion of steps in the metabolic pathway that have an associated enzyme annotation. There are currently two strategies for defining the 'steps' in a metabolic pathway - 'stepwise' and 'pathwise'. To learn how these numbers are calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#technical-details)
 - `stepwise_module_is_complete`/`pathwise_module_is_complete`: a Boolean value indicating whether the corresponding `module_completeness` score is above a certain threshold or not (the default threshold is 0.75)
 - `proportion_unique_enzymes_present`: some enzymes only belong to one metabolic pathway, which means that their presence is a better indicator for the presence of a metabolic capacity than other enzymes that are shared across multiple pathways. This column contains the fraction of these unique enzymes that are present in the sample. For instance, if the module has only 1 unique enzyme and it is present, you will see a 1 in this column. You can find out the denominator of this fraction (ie, the number of unique enzymes for this module) by either calculating the length of the list in the `enzymes_unique_to_module` column, or by requesting custom modules mode output with the `unique_enzymes_context_string` header
 - `enzymes_unique_to_module`: a comma-separated list of the enzymes that only belong to the current module (ie, are not shared across multiple metabolic pathways)
@@ -61,7 +61,7 @@ The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. I
 
 The 'module_paths' output file will have the suffix `module_paths.txt`. Each line in the file will represent information about one path through a metabolic module.
 
-What is a path through a module, you ask? Well. There is a lengthier explanation of this [here](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#what-data-is-used-for-estimation), but we will go through it briefly below.
+What is a path through a module, you ask? Well. There is a lengthier explanation of this [here](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#technical-details), but we will go through it briefly below.
 
 Modules are metabolic pathways defined by a set of enzymes - for KEGG modules, these enzymes are KEGG orthologs, or KOs. For example, here is the definition of module [M00001](https://www.genome.jp/kegg-bin/show_module?M00001), better known as "Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate":
 
@@ -91,7 +91,7 @@ Without further ado, here is an example of this output mode (also from the Infan
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
 - `path_id`: a unique identifier of the current path through the module
 - `path`: the current path of enzymes through the module (described above)
-- `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://merenlab.org/software/anvio/help/main/programs/anvi-estimate-metabolism/#how-is-the-module-completeness-score-calculated)
+- `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completeness-copy-number-calculated)
 
 Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
 
