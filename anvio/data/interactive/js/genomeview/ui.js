@@ -569,7 +569,7 @@ function showTabularModal(){
 
   Object.keys(genomesObj).map((genome, idx) => {
     $('#tabular-modal-nav-tabs').append(`
-      <li><a data-toggle="tab" href="#${genome}">${genome}</a></li>
+      <li class="${idx == 0 ? 'active' : ''}"><a data-toggle="tab" href="#${genome}">${genome}</a></li>
     `)
     $('#modal-tab-content').append(`
       <div id="${genome}" class="tab-pane fade in ${idx == 0 ? 'active' : ''}">
