@@ -74,7 +74,7 @@
       <div id="scaleBox" height="140px">
         <svg id="scaleSvg" height="120px"></svg>
       </div>
-      <button onclick="showTabularModal()">Display Viewport Data</button>
+      <button data-toggle="modal" data-target="#tabular-modal-body">Display Viewport Data</button>
       <button id="zoom-out" onclick="zoomOut()" style="float:right">-</button>
       <button id="zoom-in" onclick="zoomIn()" style="float:right; margin-right:5px">+</button>
       <input type="text" class="form-control input-sm" id="brush_start"
@@ -89,10 +89,22 @@
     <div id='deepdive-tooltip-body' display='none'></div>
     <div id='lasso-menu-body' display='none'></div>
 
-    <div id='tabular-modal-body'>
-      <ul class="nav nav-tabs" id="tabular-modal-nav-tabs"></ul>
-      <div id="modal-tab-content" class="tab-content"></div>
-      <button type="button" class="btn btn-default btn-sm" onClick="$('#tabular-modal-body').hide()">close</button>
+    <div id='tabular-modal-body' class="modal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Viewport Genomic Data</h4>
+          </div>
+          <div class="modal-body">
+            <ul class="nav nav-tabs" id="tabular-modal-nav-tabs"></ul>
+            <div id="modal-tab-content" class="tab-content" role="dialog"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="toggle-panel-settings" onclick="toggleRightPanel('#settings-panel')">
