@@ -615,7 +615,7 @@ To get the completeness score for a given path through the module, we first add 
 #### Part 3: Module completeness
 By this time, we have a completeness score (a fraction between 0 and 1) for every possible path through the module. To get the completeness score for the module overall, we simply take the maximum of all these completeness scores.
 
-{.notice}
+{:.notice}
 Why take the maximum? We are assuming here that if the metabolic pathway is actually being used in a cell (which we can't know for sure without doing some transcriptomics and possibly metabolomics), the most complete set of enzymes in that pathway is the most likely to be used. This is certainly a questionable assumption, but we need to make some choices like this in order to summarize the data, so we do it. It gets tricker to interpret this number when there is more than one path through the module that has the maximum completeness score - which one is being used? We cannot know just from (meta)genomics data, so it would take additional data types or knowledge of the biological system to figure this out.
 
 We can then check this number against the module completeness threshold (which is 0.75 by default). If the module completeness score is greater than or equal to the threshold, we mark the module as 'complete'. This boolean value is meant only as a way to easily filter through the modules output, and you shouldn't put too much stock in it because it covers up a lot of nuances, as you can tell from the details above :).
@@ -661,7 +661,7 @@ Once we have the completeness scores and copy numbers of all possible paths thro
 
 So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90%% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
 
-{.notice}
+{:.notice}
 We're making assumptions here again, just like we were when computing module completeness. Any of those paths (or none of them) could be the one that is used in the cell, and we don't know which one. But the idea here is that if a sample has the most copies of path X, there is probably a good reason that is has that many copies because microbial cells like to streamline their genomes whenever possible.
 
 One last note - if a module does not have any paths of highest completeness, we cannot compute the copy number. In this case, the copy number of the module will be reported as 'NA' in the output file(s).

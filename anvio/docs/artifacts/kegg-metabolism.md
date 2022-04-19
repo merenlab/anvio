@@ -56,7 +56,7 @@ If you use the flag `--add-coverage` and provide a profile database, additional 
 
 In this mock example, the module in this row has four gene calls in it. The `SAMPLE_1_gene_coverages` column lists the mean coverage of each of those genes in SAMPLE_1 (in the same order as the gene calls are listed in the `gene_caller_ids_in_module` column), and the `SAMPLE_1_avg_coverage` column holds the average of these values. As you probably expected, the `detection` columns are similarly defined, except that they contain detection values instead of coverage.
 
-{.warning}
+{:.warning}
 The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. If you have one of these output files and need information about it, you should look in the documentation pages for anvi'o `v7`. If you would like to obtain a similar output, the closest available is 'module_paths' mode.
 
 ### 'Module Paths' Mode

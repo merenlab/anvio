@@ -96,7 +96,7 @@ anvi-setup-kegg-kofams --download-from-kegg \
                        --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
-{.notice}
+{:.notice}
 The KEGG data that you already have on your computer has to be in the format expected by this program, or you'll run into errors. Pretty much the only reasonable way to get the data into the proper format is to run this program with the `--only-download` option. Otherwise you would have to go through a lot of manual file-changing shenanigans - possible, but not advisable.
 
 One more note: since this flag is most often used for testing the database setup capabilities of this program, which entails running `anvi-setup-kegg-kofams -D --only-database` multiple times on the same KEGG data directory, there is an additional flag that may be useful in this context. To avoid having to manually delete the created modules database each time you run, you can use the `--overwrite-output-destinations` flag:
