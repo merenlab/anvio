@@ -7064,9 +7064,9 @@ class ModulesDatabase(KeggContext):
             if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
                 # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
                 parsed_categories = []
-                for enzyme_category in categories:
-                    split_enzyme_category = enzyme_category.split(' ')
-                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+                for category in categories:
+                    split_category = category.split(' ')
+                    parsed_categories.append((split_category[0], ' '.join(split_category[1: ])))
             else:
                 parsed_categories = [('', category) for category in categories]
             category_list.append(parsed_categories)
@@ -7331,9 +7331,9 @@ class ModulesDatabase(KeggContext):
             # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
             if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
                 parsed_categories = []
-                for enzyme_category in categories:
-                    split_enzyme_category = enzyme_category.split(' ')
-                    parsed_categories.append((split_enzyme_category[0], ' '.join(split_enzyme_category[1: ])))
+                for category in categories:
+                    split_category = category.split(' ')
+                    parsed_categories.append((split_category[0], ' '.join(split_category[1: ])))
             else:
                 parsed_categories = [('', category) for category in categories]
 
