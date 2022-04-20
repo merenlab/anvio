@@ -605,6 +605,15 @@ GenomeDrawer.prototype.glowGenes = function (geneParams) {
   canvas.renderAll();
 }
 
+GenomeDrawer.prototype.prepareModalToGlowGene = function(genomeHTMLCollection, geneID){
+  // TODO this htmlcollection nonsense is a very frustrating bug
+  // whereby passing a stringtype var via function call in a jquery string literal template
+  // transforms the data into an html collection array. for now, this ugly bit of code
+  // resolves the issue
+  drawer.glowGenes([{genomeID: genomeHTMLCollection[0]['id'], geneID: geneID}])
+  $('#tabular-modal-body').fadeOut(1000).delay(3000).fadeIn(1000)
+}
+
 /*
  *  Shift genomes horizontally to align genes around the target gene cluster.
  *

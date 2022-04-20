@@ -596,7 +596,6 @@ function showTabularModal(){
   Object.entries(genomesObj).map((genome, idx) => {
     let totalTableString = ''
     genome[1].forEach(gene => {
-      console.log(gene)
       totalTableString += `
       <tr>
         <td><input class="form-check-input" type='checkbox'></input></td>
@@ -607,7 +606,7 @@ function showTabularModal(){
         <td>${gene['gene']['contig']}</td>
         <td>${gene['gene']['source']}</td>
         <td><button class="btn btn-default btn-sm" onclick="">Deep Dive</button></td>
-        <td><button class="btn btn-default btn-sm" onclick="">Glow in Sequence</button></td>
+        <td><button class="btn btn-default btn-sm" onclick="drawer.prepareModalToGlowGene(${genome[0]}, ${gene['geneID']})">Glow in Sequence</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
     })
