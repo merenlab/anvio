@@ -35,6 +35,7 @@ anvi-db-info $output_dir/CONTIGS.db
 
 INFO "Searching for palindromes in a DNA sequence"
 anvi-search-palindromes --dna-sequence TGTGAGTAGCTGCGGCGTCCGCGACCGGCGGGCGGCATGCATTGACGACACGCTCCGGGCCGCTCAGGCCAAGTCTTTACGGTCTTACAACGCATGCCGCCCACCGGTCGCTCGTAGGTGCGGAAAAGTTATTTGAGATAA \
+                        --min-distance 0 \
                         --max-num-mismatches 2
 
 INFO "Searching for palindromes in a FASTA file"
