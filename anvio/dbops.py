@@ -2990,6 +2990,9 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
+        # make sure the GENES directory exists.
+        filesnpaths.gen_output_directory(os.path.dirname(self.genes_db_path), progress=self.progress, run=self.run, delete_if_exists=False, dont_warn=False)
+
         # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
 
