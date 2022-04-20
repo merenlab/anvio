@@ -44,6 +44,7 @@ def migrate(db_path):
     try:
         modules_db.remove_meta_key_value_pair('num_brite_hierarchies')
         modules_db.remove_meta_key_value_pair('total_brite_entries')
+        modules_db.remove_meta_key_value_pair('is_brite_setup')
     except:
         pass
 
