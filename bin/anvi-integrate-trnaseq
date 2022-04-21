@@ -65,8 +65,9 @@ if __name__ == '__main__':
     groupC.add_argument('-n', '--min-nt-frequency',
                         metavar='FLOAT', type=float,
                         default=genomictrnaseq.SeedPermuter.default_min_nt_frequency,
-                        help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide frequency, summed across all samples, "
-                             "required for the nucleotide to be substituted in the permuted sequence.")
+                        help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide relative frequency, "
+                             "averaged across samples in which the modification is detected, "
+                             "that is required for the nucleotide to be substituted in the permuted sequence.")
     groupC.add_argument('-v', '--max-variable-positions',
                         metavar='INT', type=int,
                         default=genomictrnaseq.SeedPermuter.default_max_variable_positions,

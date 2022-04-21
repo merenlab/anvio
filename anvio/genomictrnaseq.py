@@ -156,17 +156,46 @@ class SeedPermuter(object):
 
 
     def get_variable_nts_dict(self, variable_nts_df):
-        variable_nts_dict = {}
-        for position, position_variable_nts_df in variable_nts_df.set_index('seed_position').groupby('seed_position', sort=False):
-            total_nts_df = position_variable_nts_df.sum(axis=0)
-            total_nts_frequency_series = total_nts_df / total_nts_df.sum()
-            total_nts_series = total_nts_df[total_nts_frequency_series > self.min_nt_frequency]
-            total_nts_series = total_nts_series.loc[~total_nts_series.index.isin([total_nts_series.idxmax()])]
+        """Find the minority nucleotides at each predicted modified position in a seed.
 
-            if len(total_nts_series) == 0:
+        Each row in the input table contains data for a single seed + predicted modified position +
+        sample. Samples without a predicted modified position due to a lack of variability (as found
+        in `anvi-merge-trnaseq`) are not present in this table.
+
+        For each seed + modified position, calculate the average relative frequency of each nucleotide
+        across samples. Ignore the reference nucleotide in the seed sequence.
+
+        Record the non-reference nucleotides meeting the relative frequency threshold.
+
+        Parameters
+        ==========
+        variable_nts_df : pandas DataFrame
+            a table of nucleotide frequencies at predicted modified positions in a seed
+
+        Returns
+        =======
+        variable_nts_dict : dict
+            a dict with keys being predicted modified positions in the seed and values being tuples
+            of minority nucleotides (chars)
+        """
+
+        # Loop through each predicted modification in the seed.
+        variable_nts_dict = {}
+        for position, gb_df in variable_nts_df.set_index('seed_position').groupby('seed_position', sort=False):
+            # Calculate nucleotide relative frequencies for each sample.
+            position_variable_nts_df = gb_df.div(gb_df.sum(axis=1), axis=0)
+            # Drop the column indicating the reference nucleotide for the modification in the seed
+            # and the column of reference nucleotide relative frequency.
+            position_variable_nts_df = position_variable_nts_df.drop(['reference', position_variable_nts_df['reference'].iloc[0]], axis=1)
+            # Calculate the mean relative frequency of each non-reference nucleotide across samples.
+            position_variable_nts_series = position_variable_nts_df.mean(axis=0)
+            # Filter nucleotides by threshold relative frequency.
+            position_variable_nts_series = position_variable_nts_series[position_variable_nts_series > self.min_nt_frequency]
+
+            if len(position_variable_nts_series) == 0:
                 continue
 
-            variable_nts_dict[position] = tuple(total_nts_series.index)
+            variable_nts_dict[position] = tuple(position_variable_nts_series.index)
         return variable_nts_dict
 
 
