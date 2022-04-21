@@ -338,6 +338,8 @@
   twitter: nick_youngblut
   linkedin: nicholas-youngblut
   orcid: 0000-0002-7424-5276
+  intellectual-contributions:
+    - contribution: "Spearheaded the implementation of GitHub actions for automated component tests"
   affiliations:
     - title: Group Leader in the Department of Microbiome Science
       inst: Max Planck Institute for Biology

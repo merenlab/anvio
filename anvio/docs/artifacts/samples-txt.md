@@ -11,7 +11,7 @@ The following three columns are **required** for this file type:
 * `r1`: path to the FASTQ file for pair one, and
 * `r2`: path to the FASTQ file for pair two.
 
-{:notice}
+{:.notice}
 You can also use `name` as your first column instead of `sample`.
 
 While you can use relative paths for `r1` and `r2`, it is always better to have absolute paths to improve reproducibility.

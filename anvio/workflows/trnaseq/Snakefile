@@ -282,7 +282,7 @@ rule anvi_tabulate_trnaseq:
     shell: "anvi-tabulate-trnaseq -c {params.contigs_db} -s {params.specific_profile_db} -n {params.nonspecific_profile_db} --output-dir {params.output_dir} {params.overwrite_output_destinations} >> {log} 2>&1"
 
 
-if 'workflows/trnaseq' in workflow.included[0]:
+if 'anvio/workflows/trnaseq' in str(workflow.included[0].abspath()):
     # Check if all program dependencies are met.
     # For this line to be effective, there should be an initial dry run step --
     # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.

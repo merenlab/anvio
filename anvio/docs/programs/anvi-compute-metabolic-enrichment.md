@@ -37,6 +37,15 @@ anvi-compute-metabolic-enrichment -M MODULES.TXT \
                                   --module-completion-threshold 0.9
 {{ codestop }}
 
+By default, this program uses the [pathwise completeness score](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#two-estimation-strategies---pathwise-and-stepwise) to determine which modules are 'present' in a genome, but you can ask it to use stepwise completeness instead by using the `--use-stepwise-completeness` flag.
+
+{{ codestart }}
+anvi-compute-metabolic-enrichment -M MODULES.TXT \
+                                  -G %(groups-txt)s \
+                                  -o %(functional-enrichment-txt)s \
+                                  --use-stepwise-completeness
+{{ codestop }}
+
 By default, the column containing genome names in your MODULES.TXT file will have the header `db_name`, **but there are certain cases in which you might have them in a different column name for your genomes or metagenomes** (such as those cases where you did not run %(anvi-estimate-metabolism)s in multi-mode). In those cases, you can tell this program to look for a *different* column name to find your genomes or metagenomes using the `--sample-header`. For example, if your metagenome names are listed under the `metagenome_name` column, you would do the following:
 
 {{ codestart }}

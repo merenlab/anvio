@@ -46,3 +46,5 @@ INFO "Firing up the interactive interface with the \"combined\" profile database
 anvi-interactive -p ${output_dir}/CONVERTED/COMBINED_COVERAGE/PROFILE.db \
                  -c ${output_dir}/CONVERTED/CONTIGS.db \
                  ${dry_run_controller}
+
+rm blast-log.txt
