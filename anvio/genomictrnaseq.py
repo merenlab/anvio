@@ -102,6 +102,8 @@ class SeedPermuter(object):
         output_fasta = fastalib.FastaOutput(self.permuted_seeds_fasta_path)
         self.run.info("FASTA file of permuted seeds", self.permuted_seeds_fasta_path)
 
+        # Permute tRNA-seq seeds with predicted modifications.
+        # Write all seed sequences to the output FASTA along with permuted sequences.
         seed_count = 0
         seed_total = len(seed_contig_names_seqs)
         permuted_seq_count = 0
@@ -115,15 +117,15 @@ class SeedPermuter(object):
             try:
                 variable_nts_df = variable_nts_gb.get_group(seed_contig_name)
             except KeyError:
-                # No modification positions were predicted in the seed.
+                # No modified positions were predicted in the seed.
                 output_fasta.write_id(seed_contig_name)
                 output_fasta.write_seq(seed_seq)
                 continue
 
             variable_nts_dict = self.get_variable_nts_dict(variable_nts_df)
             if not variable_nts_dict:
-                # No nts beside the most abundant had relative frequencies above the minimum threshold
-                # at any predicted modification positions in the seed.
+                # No nucleotides beside the most abundant had relative frequencies above the minimum
+                # threshold for permutation at any predicted modification positions in the seed.
                 output_fasta.write_id(seed_contig_name)
                 output_fasta.write_seq(seed_seq)
                 continue
