@@ -213,15 +213,46 @@ class SeedPermuter(object):
 
 
     def get_permuted_seed_info(self, variable_nts_dict, seed_seq):
+        """Generate permuted sequences, returning not just the new sequences but also the permuted
+        positions and substituted nucleotides in the sequences.
+
+        Parameters
+        ==========
+        variable_nts_dict : dict
+            the dict recording nucleotides to substitute at positions in the seed
+
+        seed_seq : str
+            the seed sequence to permute
+
+        Returns
+        =======
+        permuted_seed_info : list
+            a list of tuples, each tuple containing a 1) permuted seed sequence string, 2) a tuple
+            of permuted position indices, and 3) a tuple of substituted nucleotide characters at
+            those positions
+        """
+
         permuted_seed_info = []
+        # Loop through the different numbers of permuted positions that can be introduced in the
+        # sequence, starting with 1 permuted position.
         for num_variable_positions in range(1, min(len(variable_nts_dict), self.max_variable_positions) + 1):
+            # Find combinations of permuted positions, e.g., with 1 permuted position, and positions
+            # 8 and 32 being variable, then one combination would simply be (8, ) and the other
+            # combination (32, ).
             permutation_combinations = combinations(variable_nts_dict, num_variable_positions)
+            # Loop through each combination.
             for permuted_positions in permutation_combinations:
+                # Find the sets of nucleotides that will be substituted into the sequence given the
+                # combination of positions. Each loop generates a new permuted sequence and entry.
                 for permuted_nts in product(*[variable_nts_dict[position] for position in permuted_positions]):
                     permuted_seed_seq = seed_seq
+                    # Loop through the positions to make the nucleotide substitutions.
                     for position, nt in zip(permuted_positions, permuted_nts):
                         permuted_seed_seq = permuted_seed_seq[: position] + nt + permuted_seed_seq[position + 1: ]
+                    # In addition to the permuted sequence, record the permuted positions and
+                    # substituted nucleotides.
                     permuted_seed_info.append((permuted_seed_seq, tuple(permuted_positions), tuple(permuted_nts)))
+
         return permuted_seed_info
 
 
