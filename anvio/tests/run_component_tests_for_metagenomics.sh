@@ -751,22 +751,10 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                     -b Bin_1 \
                     --exclude-samples $files/samples_to_exclude_for_mcg.txt
 
-INFO "Generating mock external genome data"
-cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
+INFO "Acquiring mock external genome data"
+cp $files/mock_data_for_pangenomics/E_faecalis*.db $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
-cp $files/mock_data_for_pangenomics/functions/*-functions.txt $output_dir/
 cp $files/example_description.md $output_dir/
-
-for g in 01 02 03
-do
-    echo -n "$g .. "
-    anvi-gen-contigs-database -f $output_dir/$g.fa \
-                              -o $output_dir/$g.db \
-                              --project-name $g >/dev/null 2>&1
-
-    anvi-import-functions -c $output_dir/$g.db \
-                          -i $output_dir/$g-functions.txt >/dev/null 2>&1
-done; echo
 
 INFO "Dereplicating genomes using pyANI"
 anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
@@ -815,7 +803,7 @@ anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
-                     --annotation-source COG_FUNCTION \
+                     --annotation-source COG20_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_COGs.tsv \
                      --analyze-unknown-functions
