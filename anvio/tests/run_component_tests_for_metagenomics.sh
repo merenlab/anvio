@@ -646,8 +646,10 @@ INFO "Running anvi'o script to correct homopolymer INDELs in --test-run mode"
 anvi-script-fix-homopolymer-indels --test-run
 
 INFO "Running anvi'o script to correct homopolymer INDELs with real files"
-anvi-script-fix-homopolymer-indels --input $files/single_contig_with_INDEL_errors.fa \
-                                   --reference $files/single_contig.fa \
+cp $files/single_contig_with_INDEL_errors.fa $output_dir/
+cp $files/single_contig.fa $output_dir/
+anvi-script-fix-homopolymer-indels --input $output_dir/single_contig_with_INDEL_errors.fa \
+                                   --reference $output_dir/single_contig.fa \
                                    --output $output_dir/single_contig_INDEL_errors_FIXED.fa \
                                    --verbose
 
