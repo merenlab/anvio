@@ -80,6 +80,7 @@ class NGram(object):
             self.annotation_sources = [self.annotation_source, 'gene_clusters']
 
         if self.pan_db_path:
+            filesnpaths.is_file_exists(self.pan_db_path)
             self.pan_db = PanDatabase(self.pan_db_path)
 
             self.p_meta = self.pan_db.meta
