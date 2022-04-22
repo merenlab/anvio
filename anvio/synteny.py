@@ -13,14 +13,10 @@ import pandas as pd
 from collections import Counter
 
 import anvio
-import anvio.tables as t
-import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.panops as panops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
-import anvio.genomedescriptions as genomedescriptions
 
 from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
@@ -219,7 +215,6 @@ class NGram(object):
 
         self.run.info_single("What do we say to loci that appear to have no coherent synteny patterns...? Not today! ⚔️", nl_before=1, nl_after=1)
 
-        genes_and_functions_list = []
         for contigs_db_name in self.genomes_storage.get_genomes_dict():
 
             # Get list of genes-callers-ids
