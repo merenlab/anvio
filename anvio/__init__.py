@@ -2594,6 +2594,16 @@ D = {
                      "through a module) be added to your output files. In long-format mode, it will be an additional column. "
                      "In matrix mode, it will be an additional matrix file."}
                 ),
+    'include-kos-without-threshold': (
+            ['--include-kos-without-threshold'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, we don't include KOfam annotations if the KOfam profile does not have a bitscore "
+                     "threshold with which we can distinguish good hits from bad hits (anvi-run-kegg-kofams does not "
+                     "even annotate these KOfams). But if you got your KOfam annotations outside of anvi'o and you "
+                     "want to include ALL KOfams in your analysis, use this flag to do so. This flag may be especially "
+                     "appropriate in the case of enzymes-txt input, though you can use it with all input types."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -3075,7 +3085,7 @@ D = {
             'help': "By default, this program will use pathwise completeness of a module to determine if it "
                     "is present in a sample or not. To make it use stepwise completeness instead, provide this "
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
-                    "pathwise vs stepwise completeness."} 
+                    "pathwise vs stepwise completeness."}
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],
