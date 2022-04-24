@@ -1060,17 +1060,17 @@ class GetReadsFromBAM:
             ##############################################################
             # the user has chosen the anvi'o files path
             ##############################################################
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
-
-            if self.profile_db_path and self.target_contig:
+            if self.target_contig:
                 raise ConfigError("If you choose to go with anvi'o databases to determine which short reads "
                                   "to get from your BAM files, then you can't also provide a target contig "
                                   "name.")
+
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         elif self.target_contig:
             ##############################################################
             # the user has chosen the ad hoc inputs path
             ##############################################################
-            if self.profile_db_path or self.target_contig or self.collection_name or self.bin_id or self.bin_ids_file_path:
+            if self.profile_db_path or self.collection_name or self.bin_id or self.bin_ids_file_path:
                 raise ConfigError("If you choose to go with an ad hoc contig name to get your short reads for, "
                                   "you can't also provide anvi'o databases, collections, or bin names. Stop "
                                   "confusing anvi'o :(")
@@ -1097,10 +1097,6 @@ class GetReadsFromBAM:
             filesnpaths.is_output_file_writable(self.output_file_path)
         else:
             filesnpaths.is_output_file_writable('short_reads.fa')
-
-
-
-        self.sanity_checked = True
 
 
     def get_short_reads_dict(self, contig_start_stops):
