@@ -345,6 +345,11 @@ class KeggContext(object):
         This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
         Here is an example of the dictionary structure:
         self.ko_dict["K00001"]["threshold"] = 329.57
+
+        PARAMETERS
+        ==========
+        exclude_threshold : Boolean
+            If this is true, we remove KOs without a bitscore threshold from the ko_dict
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
@@ -366,6 +371,8 @@ class KeggContext(object):
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         if exclude_threshold:
             [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        else:
+            self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
 
     def get_ko_skip_list(self):
@@ -2039,6 +2046,7 @@ class KeggEstimatorArgs():
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
+        self.exclude_kos_no_threshold = False if A('include_kos_without_threshold') else True
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -2645,12 +2653,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            if not self.enzymes_txt and not self.estimate_from_json:
-                self.setup_ko_dict()
-                annotation_source_set = set(['KOfam'])
-            else:
-                self.setup_ko_dict(exclude_threshold=False)
-                annotation_source_set = set(["KOfam"])
+            self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
+            annotation_source_set = set(['KOfam'])
+
             # check for kegg modules db
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
@@ -3032,7 +3037,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
             because we need access to the self.ko_dict
             """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and not self.enzymes_txt:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and not self.exclude_kos_no_threshold:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -5931,7 +5936,7 @@ class ModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
-                                  
+
             if not self.skip_brite_hierarchies and not self.brite_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
