@@ -1153,6 +1153,12 @@ class GetReadsFromBAM:
             has_unknown_mate = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
+
+                    contig_length = bam_file_object.lengths[bam_file_object.references.index(contig_id)]
+
+                    if stop > contig_length:
+                        stop = contig_length
+
                     for read in bam_file_object.fetch_only(contig_id, start, stop):
 
                         defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
