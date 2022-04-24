@@ -167,12 +167,12 @@ class PairedEndTemplateDist:
             else:
                 stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
                                       'num_reads_considered': 0,
-                                      'mean'     : f"",
-                                      'mean_Q2Q3': f"",
-                                      'median'   : f"",
-                                      'min'      : f"",
-                                      'max'      : f"",
-                                      'std'      : f""}
+                                      'mean'     : "",
+                                      'mean_Q2Q3': "",
+                                      'median'   : "",
+                                      'min'      : "",
+                                      'max'      : "",
+                                      'std'      : ""}
 
         self.progress.end()
 

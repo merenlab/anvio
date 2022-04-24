@@ -647,7 +647,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.sample_id = 's' + self.sample_id
 
                 if self.fetch_filter:
-                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper()}"
+                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper().replace('-', '_').replace('.', '_').replace(' ', '_')}"
 
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
