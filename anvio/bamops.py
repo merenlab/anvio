@@ -1193,7 +1193,23 @@ class GetReadsFromBAM:
         return short_reads_dict
 
 
-    def get_short_reads_for_splits_dict(self, split_names_of_interest=None):
+    def get_short_reads_for_contig_and_range(self):
+        """A route get short reads based on the contig name and/or start/stop positions defined by the user"""
+
+        if not self.target_contig:
+            raise ConfigError("You can't be here without a target contig name :/")
+
+        self.run.info('Mode', "Contig name provided by the user", mc="green")
+        self.run.info('Contig name', self.target_contig)
+        self.run.info('Target region start', self.target_region_start if self.target_region_start else "Start from the beginning")
+        self.run.info('Target region end', self.target_region_end if self.target_region_end else "Go all the way to the end of the contig")
+
+        contig_start_stops = [(self.target_contig, self.target_region_start or 0, self.target_region_end or sys.maxsize)]
+
+        return self.get_short_reads_dict(contig_start_stops)
+
+
+    def get_short_reads_through_anvio_files(self, split_names_of_interest=None):
         """A route get short reads based on anvi'o collection/bin names or for a given splits dict"""
 
         if split_names_of_interest:
@@ -1265,7 +1281,12 @@ class GetReadsFromBAM:
 
         self.sanity_check()
 
-        short_reads_dict = self.get_short_reads_for_splits_dict()
+        if self.profile_db_path or self.contigs_db_path:
+            short_reads_dict = self.get_short_reads_through_anvio_files()
+        elif self.target_contig:
+            short_reads_dict = self.get_short_reads_for_contig_and_range()
+        else:
+            raise ConfigError("Anvi'o needs an adult :(")
 
         return short_reads_dict
 
