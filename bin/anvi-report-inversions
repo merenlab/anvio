@@ -133,9 +133,9 @@ if __name__ == '__main__':
                     "if you focus on a particular contig only, all regions identified in it by FWD/FWD or REV/REV reads. "
                     "You can limit the search space on that contig using target region start and end parameters.")
     groupG.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
-    groupG.add_argument('--target-contig', default=None, type=str, help="Contig name of interest.", metavar="CONTIG_NAME")
-    groupG.add_argument('--target-region-start', default=None, type=int, help="The start position of the region of interest.", metavar="START")
-    groupG.add_argument('--target-region-end', default=None, type=int, help="The end position of the region of interest.", metavar="END")
+    groupG.add_argument(*anvio.A('target-contig'), **anvio.K('target-contig'))
+    groupG.add_argument(*anvio.A('target-region-start'), **anvio.K('target-region-start'))
+    groupG.add_argument(*anvio.A('target-region-end'), **anvio.K('target-region-end'))
 
     groupG = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupG.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
