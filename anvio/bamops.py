@@ -1102,7 +1102,7 @@ class GetReadsFromBAM:
     def get_short_reads_dict(self, contig_start_stops):
         """Gets short reads from BAM files, literally"""
 
-        self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]))
+        self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]), nl_before=1)
         self.run.info('Fetch filter', self.fetch_filter, nl_after=1, mc=('red' if not self.fetch_filter else 'green'))
 
         # prepare the dictionary to be returned
@@ -1146,21 +1146,26 @@ class GetReadsFromBAM:
              'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
              'template_length', 'tid', 'tlen']'''
 
+            D = lambda sequence: {'seq': sequence, 'contig': contig_id, 'start': str(read.get_reference_positions()[0]), 'stop': str(read.get_reference_positions()[-1]), 'bam': bam_file_name, 'read': read.query_name}
+
+            # this will serve as a unique id per read
+            counter = 0
             has_unknown_mate = {}
+            unknown_mate_defline_to_counter = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
 
+                    # learn contig length & ensure the stop position is not longer than the contig length
                     contig_length = bam_file_object.lengths[bam_file_object.references.index(contig_id)]
-
-                    if stop > contig_length:
-                        stop = contig_length
+                    stop = contig_length if stop > contig_length else stop
 
                     for read in bam_file_object.fetch_only(contig_id, start, stop):
+                        counter += 1
 
                         defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
 
                         if not read.is_paired:
-                            short_reads_dict['UNPAIRED'][defline] = read.query_sequence
+                            short_reads_dict['UNPAIRED'][counter] = D(read.query_sequence)
 
                         elif defline in has_unknown_mate:
                             # `read`s mate has already been read. so assign the read and the mate
@@ -1169,23 +1174,35 @@ class GetReadsFromBAM:
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
 
+                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline] 
+
                             # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
-                                short_reads_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
-                                short_reads_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
+                                short_reads_dict[mate_DIRECTION][counter] = D(has_unknown_mate[counter_for_unknown_mate])
+                                short_reads_dict[read_DIRECTION][counter] = D(utils.rev_comp(read.query_sequence))
                             else:
-                                short_reads_dict[mate_DIRECTION][defline] = utils.rev_comp(has_unknown_mate[defline])
-                                short_reads_dict[read_DIRECTION][defline] = read.query_sequence
+                                short_reads_dict[mate_DIRECTION][counter] = D(utils.rev_comp(has_unknown_mate[counter_for_unknown_mate]))
+                                short_reads_dict[read_DIRECTION][counter] = D(read.query_sequence)
 
-                            del has_unknown_mate[defline]
+                            del has_unknown_mate[counter_for_unknown_mate]
+                            del unknown_mate_defline_to_counter[defline]
 
                         else:
-                            has_unknown_mate[defline] = read.query_sequence
+                            has_unknown_mate[counter] = D(read.query_sequence)
+                            unknown_mate_defline_to_counter[defline] = counter
+
+
                 short_reads_dict['UNPAIRED'].update(has_unknown_mate)
             else:
                 for contig_id, start, stop in contig_start_stops:
+                    # sanity check for the stop position
+                    contig_length = bam_file_object.lengths[bam_file_object.references.index(contig_id)]
+                    stop = contig_length if stop > contig_length else stop
+
                     for read in bam_file_object.fetch_only(contig_id, start, stop):
-                        short_reads_dict['all']['_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])] = read.query_sequence
+                        counter += 1
+                        short_reads_dict['all'][counter] = D(read.query_sequence)
+
             bam_file_object.close()
 
         self.progress.end()
@@ -1299,9 +1316,12 @@ class GetReadsFromBAM:
 
         if self.split_R1_and_R2:
             for read_type in sorted(list(short_reads_dict.keys())):
-                output_file_path = '%s_%s.fa' % (self.output_file_prefix, read_type)
+                output_file_path = f"{self.output_file_prefix}_{read_type}.fa"
+                with open(output_file_path, 'w') as output:
+                    for entry_id in short_reads_dict[read_type]:
+                        e = short_reads_dict[read_type][entry_id]
+                        output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
-                utils.store_dict_as_FASTA_file(short_reads_dict[read_type], output_file_path)
                 if self.gzip:
                     utils.gzip_compress_file(output_file_path)
                     output_file_path = output_file_path + ".gz"
@@ -1313,7 +1333,11 @@ class GetReadsFromBAM:
             self.run.info('Num unpaired reads stored', pp(len(short_reads_dict['UNPAIRED'])), mc='green')
         else:
             output_file_path = self.output_file_path or 'short_reads.fa'
-            utils.store_dict_as_FASTA_file(short_reads_dict['all'], output_file_path)
+
+            with open(output_file_path, 'w') as output:
+                for entry_id in short_reads_dict['all']:
+                    e = short_reads_dict['all'][entry_id]
+                    output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
             if self.gzip:
                 utils.gzip_compress_file(output_file_path)
