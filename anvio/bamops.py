@@ -1130,6 +1130,10 @@ class GetReadsFromBAM:
             bam_file_object = BAMFileObject(bam_file_path)
             bam_file_object.fetch_filter = self.fetch_filter
 
+            for contig_id, start, stop in contig_start_stops:
+                if contig_id not in bam_file_object.references:
+                    raise ConfigError(f"The contig name '{contig_id}' is not in the BAM file at '{bam_file_path}' :(")
+
             self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
 
             '''here's what's available in the read objects below:
