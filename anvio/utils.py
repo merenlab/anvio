@@ -4128,6 +4128,17 @@ def is_profile_db_merged(profile_db_path):
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
+    # let's make sure we did get some paths
+    if not profile_db_path or not contigs_db_path:
+        if not profile_db_path and not contigs_db_path:
+            missing = 'any paths for profile-db or contigs-db'
+        else:
+            missing = 'a profile-db path' if not profile_db_path else 'a contigs-db path'
+
+        raise ConfigError(f"A function in anvi'o was about to see if the profile-db and the contigs-db someone "
+                          f"wanted to work with were compatible with one another, but it was called without "
+                          f"{missing} :/")
+
     pdb = dbi(profile_db_path)
     cdb = dbi(contigs_db_path)
 
