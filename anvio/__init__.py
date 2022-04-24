@@ -1558,6 +1558,27 @@ D = {
             {'metavar': 'CONTIG_NAME',
              'help': "Contig name."}
                 ),
+    'target-contig': (
+            ['--target-contig'],
+            {'metavar': 'CONTIG_NAME',
+             'default': None,
+             'type': str,
+             'help': "Contig name of interest."}
+                ),
+    'target-region-start': (
+            ['--target-region-start'],
+            {'metavar': 'NUCLEOTIDE_POSITION',
+             'default': None,
+             'type': int,
+             'help': "The start position of the region of interest."}
+                ),
+    'target-region-end': (
+            ['--target-region-end'],
+            {'metavar': 'NUCLEOTIDE_POSITION',
+             'default': None,
+             'type': int,
+             'help': "The end position of the region of interest."}
+                ),
     'program': (
             ['--program'],
             {'metavar': 'PROGRAM_NAME',
