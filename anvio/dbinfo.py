@@ -146,6 +146,13 @@ class DBInfo(ABC):
 
     @staticmethod
     def is_db(path, dont_raise=False):
+        if not path:
+            raise ConfigError("A low-level function was expecting a database path, but got `None`. A programmer "
+                              "needs to look into this :/ Meanwhile, please check your command line parameters. "
+                              "Most likely you need to declare a database path, but you do not. You can see the "
+                              "entire traceback if you include the flag `--debug` in your command, which may "
+                              "help you figure out where did things start going wrong.")
+
         if not os.path.exists(path):
             raise ConfigError(f"There is nothing at '{path}' :/")
 
