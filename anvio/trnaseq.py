@@ -7501,13 +7501,23 @@ class ResultTabulator(object):
             gene_callers_id_anticodon_aa_dict[gene_callers_id] = anticodon_aa_item
         anticodon_aa_iter = iter(anticodon_aa_items)
 
+        # Coverages are stored as bytes or as a single integer when coverage is zero for the sample.
+        # Convert coverage entries back to numpy arrays accordingly.
         convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
+        convert_int_to_numpy_array = lambda x: np.zeros(x, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
+        def convert_coverage_entry_to_numpy_array(cov_entry):
+            try:
+                cov_array = convert_binary_blob_to_numpy_array(cov_entry)
+            except TypeError:
+                cov_array = convert_int_to_numpy_array(cov_entry)
+            return cov_array
+
         spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
         spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
         spec_aux_db.close()
         spec_aux_df['contig_name'] = spec_aux_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
         spec_aux_df = spec_aux_df.drop('split_name', axis=1)
-        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_coverage_entry_to_numpy_array)
 
         if do_nonspec:
             nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
@@ -7515,7 +7525,7 @@ class ResultTabulator(object):
             nonspec_aux_db.close()
             nonspec_aux_df['contig_name'] = spec_aux_df['contig_name'].values
             nonspec_aux_df = nonspec_aux_df.drop('split_name', axis=1)
-            nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+            nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_coverage_entry_to_numpy_array)
 
         spec_covs_dict = {}
         sample_rel_discriminator_spec_cov_dict = {}
