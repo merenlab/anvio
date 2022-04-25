@@ -122,7 +122,7 @@ class SeedPermuter(object):
                 output_fasta.write_seq(seed_seq)
                 continue
 
-            variable_nts_dict = self.get_variable_nts_dict(variable_nts_df)
+            variable_nts_dict = self.get_variable_nts_dict(variable_nts_df, seed_seq)
             if not variable_nts_dict:
                 # No nucleotides beside the most abundant had relative frequencies above the minimum
                 # threshold for permutation at any predicted modification positions in the seed.
@@ -131,7 +131,6 @@ class SeedPermuter(object):
                 continue
 
             permuted_seed_info = self.get_permuted_seed_info(variable_nts_dict, seed_seq)
-            self.remove_original_seed_seq(permuted_seed_info, seed_seq)
 
             permuted_seq_count += len(permuted_seed_info)
             max_permuted_seq_count = max(len(permuted_seed_info), max_permuted_seq_count)
@@ -160,7 +159,7 @@ class SeedPermuter(object):
             the modifications table with a subset of columns grouped by seed ID ("contig name")
         """
 
-        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0, usecols=['contig_name', 'seed_position', 'reference', 'A', 'C', 'G', 'T'])
+        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0, usecols=['contig_name', 'seed_position', 'A', 'C', 'G', 'T'])
         modifications_df = modifications_df.set_index('contig_name')
         modifications_df = modifications_df.dropna()
         variable_nts_gb = modifications_df.groupby('contig_name')
@@ -168,22 +167,25 @@ class SeedPermuter(object):
         return variable_nts_gb
 
 
-    def get_variable_nts_dict(self, variable_nts_df):
-        """Find the minority nucleotides at each predicted modified position in a seed.
+    def get_variable_nts_dict(self, variable_nts_df, seed_seq):
+        """Find nucleotides that can be substituted at each predicted modified position in a seed.
 
         Each row in the input table contains data for a single seed + predicted modified position +
         sample. Samples without a predicted modified position due to a lack of variability (as found
         in `anvi-merge-trnaseq`) are not present in this table.
 
         For each seed + modified position, calculate the average relative frequency of each nucleotide
-        across samples. Ignore the reference nucleotide in the seed sequence.
+        across samples. Ignore the nucleotide in the seed sequence.
 
-        Record the non-reference nucleotides meeting the relative frequency threshold.
+        Record the nucleotides meeting the relative frequency threshold.
 
         Parameters
         ==========
         variable_nts_df : pandas DataFrame
             a table of nucleotide frequencies at predicted modified positions in a seed
+
+        seed_seq : str
+            the seed sequence to permute
 
         Returns
         =======
@@ -197,10 +199,9 @@ class SeedPermuter(object):
         for position, gb_df in variable_nts_df.set_index('seed_position').groupby('seed_position', sort=False):
             # Calculate nucleotide relative frequencies for each sample.
             position_variable_nts_df = gb_df.div(gb_df.sum(axis=1), axis=0)
-            # Drop the column indicating the reference nucleotide for the modification in the seed
-            # and the column of reference nucleotide relative frequency.
-            position_variable_nts_df = position_variable_nts_df.drop(['reference', position_variable_nts_df['reference'].iloc[0]], axis=1)
-            # Calculate the mean relative frequency of each non-reference nucleotide across samples.
+            # Drop the column of the relative frequency of the nucleotide in the seed sequence.
+            position_variable_nts_df = position_variable_nts_df.drop(seed_seq[position], axis=1)
+            # Calculate the mean relative frequency of each nucleotide across samples.
             position_variable_nts_series = position_variable_nts_df.mean(axis=0)
             # Filter nucleotides by threshold relative frequency.
             position_variable_nts_series = position_variable_nts_series[position_variable_nts_series > self.min_nt_frequency]
@@ -254,18 +255,6 @@ class SeedPermuter(object):
                     permuted_seed_info.append((permuted_seed_seq, tuple(permuted_positions), tuple(permuted_nts)))
 
         return permuted_seed_info
-
-
-    def remove_original_seed_seq(self, permuted_seed_info, seed_seq):
-        original_index = None
-        for i, seq_info in enumerate(permuted_seed_info):
-            if seq_info[0] == seed_seq:
-                original_index = i
-                break
-        if original_index == None:
-            return False
-        permuted_seed_info.pop(original_index)
-        return True
 
 
 class Integrator(object):
