@@ -400,16 +400,22 @@ class Integrator(object):
 
 
     def filter_hits(self, search_output_path):
+        """The heavy lifting to confidently associate tRNA-seq seeds with tRNA genes."""
+
+        # Load BLAST output table.
         hits_df = pd.read_csv(search_output_path, sep='\t', header=None, names=self.blast_search_output_cols)
 
+        # Apply some alignment filters to hits.
         hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
         if self.use_full_length_seeds:
             hits_df = hits_df[hits_df['sstart'] == 1]
 
+        # Separate seed IDs and permutation info.
         hits_df[['seed_contig_name', 'seed_permutation']] = hits_df['qseqid'].str.split('|', expand=True)
         hits_df['seed_permutation'] = hits_df['seed_permutation'].fillna('')
         hits_df = hits_df.drop('qseqid', axis=1)
 
+        # If considering a collection of bins, associate seed "contigs" with bins.
         contig_bin_id_dict = {}
         if self.bin_conscious:
             bin_contig_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
@@ -417,6 +423,7 @@ class Integrator(object):
                 for split_name in split_names:
                     contig_bin_id_dict[split_name.split('_split_')[0]] = bin_id
 
+        # Extract information on each hit.
         decoded_amino_acids = []
         anticodons = []
         bin_ids = []
@@ -461,7 +468,8 @@ class Integrator(object):
 
         # Filter individual alignments.
         retained_indices = []
-        for index, decoded_amino_acid, seed_alignment_start, seed_length, gene_alignment_start, gene_alignment_end, gene_sequence, gene_length in zip(hits_df.index, hits_df['decoded_amino_acid'], hits_df['qstart'], hits_df['qlen'], hits_df['sstart'], hits_df['send'], hits_df['gene_sequence'], hits_df['slen']):
+        for index, decoded_amino_acid, seed_alignment_start, seed_length, gene_alignment_start, gene_alignment_end, gene_sequence, gene_length in zip(
+            hits_df.index, hits_df['decoded_amino_acid'], hits_df['qstart'], hits_df['qlen'], hits_df['sstart'], hits_df['send'], hits_df['gene_sequence'], hits_df['slen']):
             if (gene_length - gene_alignment_end == 0) or ((gene_length - gene_alignment_end == 3) and gene_sequence[-3: ] == 'CCA'):
                 # The alignment ends at the end of the gene or just short of a 3'-CCA acceptor in the gene (the seed should never contain the 3'-CCA acceptor).
                 if (seed_alignment_start == 1) and (gene_alignment_end - gene_alignment_start == seed_length - 1):
@@ -484,44 +492,44 @@ class Integrator(object):
 
         # Multiple permutations of the same seed may be retained after filtering by score. There are
         # two and possibly more ways that this can occur. (1) The unmodified nucleotide at a
-        # modified position has a very low frequency and so is not used in the permuted sequences.
-        # The permuted sequences, none of which contain the correct nucleotide, match this
+        # modified position has a very low frequency and so was not used in the permuted sequences.
+        # The permuted sequences, none of which contain the correct nucleotide, mismatch this
         # nucleotide in the gene equally well. (2) A permutation is introduced at a predicted
         # modification position that is actually a single nucleotide variant, and different versions
-        # of the SNV occur in different (meta)genomic contigs. The following mechanism resolves both
+        # of the SNV occur in different (meta)genomic contigs. The following procedure resolves both
         # of these possibilities, with the last step being the one that resolves the first
-        # possibility. (1) Choose the permutation with the most hits. (2) If not resolved, choose
-        # the permutation with the fewest permuted positions. (3) If not resolved, break the tie by
-        # choosing the first permutation in the table, which will favor permutations toward the 5'
-        # end.
+        # possibility. (1) Choose the permutation hitting the greatest number of genes. (2) If not
+        # resolved, choose the permutation with the fewest permuted positions. (3) If not resolved,
+        # break the tie by choosing the first permutation in the table, which will favor
+        # permutations toward the 5' end.
         are_permutations_unresolved = True
         if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
             are_permutations_unresolved = False
-        if are_permutations_unresolved:
+        if are_permutations_unresolved: # (1)
             hits_df['count'] = hits_df.groupby(['seed_contig_name', 'seed_permutation'], as_index=False)['seed_contig_name'].transform(len)
             hits_df = hits_df[hits_df['count'] == hits_df.groupby('seed_contig_name')['count'].transform('max')]
             hits_df = hits_df.drop('count', axis=1)
             if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
                 are_permutations_unresolved = False
-        if are_permutations_unresolved:
+        if are_permutations_unresolved: # (2)
             hits_df['num_permuted_positions'] = hits_df['seed_permutation'].apply(lambda p: p.count('_'))
             hits_df = hits_df[hits_df['num_permuted_positions'] == hits_df.groupby('seed_contig_name')['num_permuted_positions'].transform('min')]
             hits_df = hits_df.drop('num_permuted_positions', axis=1)
             if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
                 are_permutations_unresolved = False
-        if are_permutations_unresolved:
+        if are_permutations_unresolved: # (3)
             hits_df = hits_df[hits_df['seed_permutation'] == hits_df.groupby('seed_contig_name')['seed_permutation'].transform('first')]
 
-        # Seeds can be artifacts of the anvi'o de novo workflow, especially in relatively deeply
-        # sequenced samples with high coverages, such as tRNA-seq libraries of pure cultures.
+        # Seeds can be artifacts of the anvi'o de novo tRNA-seq workflow, especially in relatively
+        # deeply sequenced samples with high coverages, such as tRNA-seq libraries of pure cultures.
         # `anvi-merge-trnaseq` reports up to the number of seeds set by the user. If the user asks
         # for 1,000 seeds from a bacterial isolate experiment, then ~25-50 of these seeds will be
-        # true tRNA sequences and up to ~950-975 will be artifacts (with unaccounted
-        # modification-induced indels, nontemplated nucleotides, sequence errors, etc.), typically
-        # at low frequency, that could not be resolved as non-tRNA by the tRNA-seq workflow. To
-        # remove these artifact seeds, hits to the same gene are sorted by number of mismatches in
-        # the alignment and seed abundance, and only the lowest mismatch/highest seed abundance hit
-        # is retained. Seed abundance is taken as the average of relative abundance in each sample
+        # true tRNA sequences and up to ~950-975 will be artifacts (containing unaccounted
+        # modification-induced indels, nontemplated nucleotides, sequence errors, etc., typically at
+        # low frequency), that could not be resolved as non-tRNA by the tRNA-seq workflow. To remove
+        # these artifact seeds, hits to the same gene are sorted by number of mismatches in the
+        # alignment and seed abundance, and only the lowest mismatch/highest seed abundance hit is
+        # retained. Seed abundance is taken as the average of relative abundance in each sample
         # based on 3' (discriminator nucleotide) coverage of the seed. For example, if there are two
         # tRNA-seq samples in the experiment, and two seeds hit the same gene each with one
         # mismatch, but one seed has relative 3' abundances of 0.02 and 0.03 in the two samples and
