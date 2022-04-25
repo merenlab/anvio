@@ -3078,6 +3078,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
+                # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
+                if ko not in bin_level_ko_dict:
+                    raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
+                                      f"annotated in your data. This usually happens when you are using `KOfam` annotations that are "
+                                      f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
+                                      f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
+                                      f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
+                                      f"you will have to re-run this program with the flag --include-kos-without-threshold. If you just now "
+                                      f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
+                                      f"or remove them from your input --enzymes-txt file.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
