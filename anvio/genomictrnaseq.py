@@ -314,6 +314,24 @@ class Integrator(object):
             raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
                               "not the required 'trnaseq' variant.")
 
+        # If the tRNA-seq seeds have already been associated with tRNA genes, then `--just-do-it` is needed.
+        trnaseq_contigs_db_self_table = trnaseq_contigs_db_info.get_self_table()
+        associated_genomic_contigs_db_hash = trnaseq_contigs_db_self_table['genomic_contigs_db_hash']
+        associated_genomic_contigs_db_project_name = trnaseq_contigs_db_self_table['genomic_contigs_db_project_name']
+        associated_genomic_collection_name = trnaseq_contigs_db_self_table['genomic_collection']
+        associated_genomic_profile_db_hash = trnaseq_contigs_db_self_table['genomic_profile_db_hash']
+        if not self.overwrite_table and associated_genomic_contigs_db_hash != None:
+            if associated_genomic_collection_name:
+                additional_message = (f" A collection named {associated_genomic_collection_name} was used "
+                                      f"from a profile database with the hash, {associated_genomic_profile_db_hash}. ")
+            else:
+                additional_message = ""
+            raise ConfigError(f"The tRNA-seq contigs database at '{self.trnaseq_contigs_db_path}' "
+                              "has already been associated with tRNA genes from a (meta)genomic contigs database "
+                              f"with the project name, {associated_genomic_contigs_db_project_name}, "
+                              f"and hash ID, {associated_genomic_contigs_db_hash}.{additional_message}"
+                              f"`anvi-integrate-trnaseq` can be run with the flag `--just-do-it` to overwrite the existing data.")
+
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
         if str(trnaseq_contigs_db_info.version) != required_version:
