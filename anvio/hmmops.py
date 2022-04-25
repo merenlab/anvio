@@ -794,7 +794,19 @@ class SequencesForHMMHits:
 
 
     def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, header_section_separator=' ', sequence_in_header=False, just_do_it=False):
-        """Stores HMM sequences into a FASTA file."""
+        """Stores HMM sequences into a FASTA file.
+
+        The parameters, `header_section_separator` and `sequence_in_header`, were added for the
+        benefit of `genomictrnaseq.Integrator`.
+
+        `header_section_separator` allows replacement of the default space separating sections of
+        information in the deflines. BLAST drops anything after the first space in writing the
+        defline to the output file, say, in the `sseqid` field.
+
+        `sequence_in_header` adds a section to the defline containing the sequence itself. This is
+        again useful in the BLAST output file, since there is no option to output the full query or
+        subject sequence.
+        """
 
         filesnpaths.is_output_file_writable(output_file_path)
         filesnpaths.is_output_file_writable(partition_file_path) if partition_file_path else None
