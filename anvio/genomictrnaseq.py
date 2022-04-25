@@ -387,6 +387,8 @@ class Integrator(object):
 
 
     def blast(self):
+        """Align permuted tRNA-seq seeds to tRNA genes."""
+
         blast = BLAST(self.permuted_seeds_fasta_path, self.trna_genes_fasta_path, search_program='blastn', run=self.run, progress=self.progress, num_threads=self.num_threads)
         blast.tmp_dir = self.blast_dir
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
