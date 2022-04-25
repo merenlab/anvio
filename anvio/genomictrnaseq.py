@@ -623,8 +623,16 @@ class Integrator(object):
 
     def update_trnaseq_contigs_database(self, hits_df, unmodified_nt_df):
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
-        if self.overwrite_table:
-            trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
+
+        # Erase the table contents: if this table was already filled out in a previous run, then
+        # `self.sanity_check` would catch this and force the user to `--just-do-it`.
+        trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
+
+        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_project_name', self.genomic_contigs_db_info.hash)
+        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_hash', self.genomic_contigs_db_info.project_name)
+        if self.genomic_profile_db_info:
+            trnaseq_contigs_db.set_meta_value('genomic_profile_db_hash', self.genomic_profile_db_info.hash)
+            trnaseq_contigs_db.set_meta_value('genomic_collections_name', self.collection_name)
 
         table_entries = []
         hit_id = 0
