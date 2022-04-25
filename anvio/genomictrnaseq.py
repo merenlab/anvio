@@ -258,6 +258,8 @@ class SeedPermuter(object):
 
 
 class Integrator(object):
+    """Using the `go` method, links tRNA-seq seeds to tRNA genes and adds this information to the tRNA-seq contigs database."""
+
     default_max_mismatches = 3
     blast_search_output_cols = ['qseqid', 'sseqid', 'mismatch', 'qstart', 'qlen', 'sstart', 'send', 'slen', 'bitscore']
 
@@ -305,6 +307,8 @@ class Integrator(object):
 
 
     def sanity_check(self, check_permuted_seeds_fasta=False):
+        """Check the feasibility of args from initialization."""
+
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
             raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
@@ -357,6 +361,8 @@ class Integrator(object):
 
 
     def go(self):
+        """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs database."""
+
         self.write_trna_genes_fasta()
         search_output_path = self.blast()
         hits_df = self.filter_hits(search_output_path)
@@ -365,13 +371,17 @@ class Integrator(object):
 
 
     def write_trna_genes_fasta(self):
-        # This method is based on `anvi-get-sequences-for-hmm-hits`.
+        """Write tRNA genes in the (meta)genomic contigs database to a FASTA file.
+
+        This method is based on `anvi-get-sequences-for-hmm-hits`.
+        """
+
         trna_gene_info = hmmops.SequencesForHMMHits(self.genomic_contigs_db_path, sources=set(['Transfer_RNAs']))
         splits_dict = {self.genomic_contigs_db_info.project_name: list(self.genomic_contigs_db_info.load_db().smart_get(tables.splits_info_table_name, 'split').keys())}
         hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
 
         if not len(hmm_seqs_dict):
-            raise ConfigError("Unfortunately it appears that no tRNA genes were found in the contigs database.")
+            raise ConfigError("Unfortunately it appears that no tRNA genes were found in the (meta)genomic contigs database.")
 
         trna_gene_info.store_hmm_sequences_into_FASTA(hmm_seqs_dict, self.trna_genes_fasta_path, header_section_separator='|', sequence_in_header=True)
 
