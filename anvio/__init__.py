@@ -2594,14 +2594,16 @@ D = {
                      "through a module) be added to your output files. In long-format mode, it will be an additional column. "
                      "In matrix mode, it will be an additional matrix file."}
                 ),
-    'include-kos-without-threshold': (
-            ['--include-kos-without-threshold'],
+    'include-kos-not-from-current-kegg': (
+            ['--include-kos-not-from-current-kegg'],
             {'default': False,
              'action': 'store_true',
              'help': "By default, we don't include KOfam annotations if the KOfam profile does not have a bitscore "
                      "threshold with which we can distinguish good hits from bad hits (anvi-run-kegg-kofams does not "
                      "even annotate these KOfams). But if you got your KOfam annotations outside of anvi'o and you "
-                     "want to include ALL KOfams in your analysis, use this flag to do so. This flag may be especially "
+                     "want to include ALL KOfams in your analysis, use this flag to do so. You may also need this flag "
+                     "if the set of KOfam annotations you are using doesn't match the set in your current KEGG data "
+                     "directory, for reasons besides the lack of threshold. This flag may be especially "
                      "appropriate in the case of enzymes-txt input, though you can use it with all input types."}
                 ),
     'users-data-dir': (

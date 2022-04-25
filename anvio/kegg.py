@@ -2046,7 +2046,7 @@ class KeggEstimatorArgs():
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
-        self.exclude_kos_no_threshold = False if A('include_kos_without_threshold') else True
+        self.exclude_kos_no_threshold = False if A('include_kos_not_from_current_kegg') else True
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -3056,7 +3056,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                          f"that are different from the current version of KEGG on your computer (this can "
                                          f"happen with --enzymes-txt input). Because we are not considering these annotations, "
                                          f"you may get KeyErrors downstream. You can force the inclusion of these KOfams by "
-                                         f"re-running this program with the --include-kos-without-threshold flag.")
+                                         f"re-running this program with the --include-kos-not-from-current-kegg flag.")
 
                 continue
 
@@ -3085,7 +3085,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
                                       f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
                                       f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
-                                      f"you will have to re-run this program with the flag --include-kos-without-threshold. If you just now "
+                                      f"you will have to re-run this program with the flag --include-kos-not-from-current-kegg. If you just now "
                                       f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
                                       f"or remove them from your input --enzymes-txt file.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
