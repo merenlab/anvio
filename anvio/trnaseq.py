@@ -2081,17 +2081,18 @@ class TRNASeqDataset(object):
             mean_read_unpaired_freq_Uf += read_count * unpaired_freq
             mean_seq_extrap_freq_Uf += seq_Uf.num_extrap_5prime_nts
             mean_read_extrap_freq_Uf += read_count * seq_Uf.num_extrap_5prime_nts
-        mean_reads_Uf = read_count_Uf / seq_count_Uf
-        mean_read_3prime_length_Uf /= read_count_Uf
-        mean_read_5prime_length_Uf /= read_long_5prime_count_Uf
-        mean_seq_profiled_freq_Uf /= seq_count_Uf
-        mean_read_profiled_freq_Uf /= read_count_Uf
-        mean_seq_unconserved_freq_Uf /= seq_count_Uf
-        mean_read_unconserved_freq_Uf /= read_count_Uf
-        mean_seq_unpaired_freq_Uf /= seq_count_Uf
-        mean_read_unpaired_freq_Uf /= read_count_Uf
-        mean_seq_extrap_freq_Uf /= seq_count_Uf
-        mean_read_extrap_freq_Uf /= read_count_Uf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_reads_Uf = div_zero_as_nan(read_count_Uf, seq_count_Uf)
+        mean_read_3prime_length_Uf = div_zero_as_nan(mean_read_3prime_length_Uf, read_count_Uf)
+        mean_read_5prime_length_Uf = div_zero_as_nan(mean_read_5prime_length_Uf, read_long_5prime_count_Uf)
+        mean_seq_profiled_freq_Uf = div_zero_as_nan(mean_seq_profiled_freq_Uf, seq_count_Uf)
+        mean_read_profiled_freq_Uf = div_zero_as_nan(mean_read_profiled_freq_Uf, read_count_Uf)
+        mean_seq_unconserved_freq_Uf = div_zero_as_nan(mean_seq_unconserved_freq_Uf, seq_count_Uf)
+        mean_read_unconserved_freq_Uf = div_zero_as_nan(mean_read_unconserved_freq_Uf, read_count_Uf)
+        mean_seq_unpaired_freq_Uf = div_zero_as_nan(mean_seq_unpaired_freq_Uf, seq_count_Uf)
+        mean_read_unpaired_freq_Uf = div_zero_as_nan(mean_read_unpaired_freq_Uf, read_count_Uf)
+        mean_seq_extrap_freq_Uf = div_zero_as_nan(mean_seq_extrap_freq_Uf, seq_count_Uf)
+        mean_read_extrap_freq_Uf = div_zero_as_nan(mean_read_extrap_freq_Uf, read_count_Uf)
 
         seq_count_Uc = len(self.dict_Uc_nontrna)
         read_count_Uc = 0
@@ -2125,14 +2126,14 @@ class TRNASeqDataset(object):
             unpaired_freq = seq_Uc.num_unpaired / (seq_Uc.num_paired + seq_Uc.num_unpaired)
             mean_seq_unpaired_freq_Uc += unpaired_freq
             mean_read_unpaired_freq_Uc += read_count * unpaired_freq
-        mean_reads_Uc = read_count_Uc / seq_count_Uc
-        mean_read_3prime_length_Uc /= read_count_Uc
-        mean_seq_profiled_freq_Uc /= seq_count_Uc
-        mean_read_profiled_freq_Uc /= read_count_Uc
-        mean_seq_unconserved_freq_Uc /= seq_count_Uc
-        mean_read_unconserved_freq_Uc /= read_count_Uc
-        mean_seq_unpaired_freq_Uc /= seq_count_Uc
-        mean_read_unpaired_freq_Uc /= read_count_Uc
+        mean_reads_Uc = div_zero_as_nan(read_count_Uc, seq_count_Uc)
+        mean_read_3prime_length_Uc = div_zero_as_nan(mean_read_3prime_length_Uc, read_count_Uc)
+        mean_seq_profiled_freq_Uc = div_zero_as_nan(mean_seq_profiled_freq_Uc, seq_count_Uc)
+        mean_read_profiled_freq_Uc = div_zero_as_nan(mean_read_profiled_freq_Uc, read_count_Uc)
+        mean_seq_unconserved_freq_Uc = div_zero_as_nan(mean_seq_unconserved_freq_Uc, seq_count_Uc)
+        mean_read_unconserved_freq_Uc = div_zero_as_nan(mean_read_unconserved_freq_Uc, read_count_Uc)
+        mean_seq_unpaired_freq_Uc = div_zero_as_nan(mean_seq_unpaired_freq_Uc, seq_count_Uc)
+        mean_read_unpaired_freq_Uc = div_zero_as_nan(mean_read_unpaired_freq_Uc, read_count_Uc)
 
         seq_count_Un = len(self.dict_Un)
         read_count_Un = 0
@@ -2142,7 +2143,7 @@ class TRNASeqDataset(object):
             read_count_Un += read_count
             if read_count > max_reads_Un:
                 max_reads_Un = read_count
-        mean_reads_Un = read_count_Un / seq_count_Un
+        mean_reads_Un = div_zero_as_nan(read_count_Un, seq_count_Un)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -2258,7 +2259,8 @@ class TRNASeqDataset(object):
         count_Tf = len(self.dict_Tf)
         anticodon_count_Tf = 0
         complete_count_Tf = 0
-        mean_uniq_seqs_Tf = len(self.dict_Uf) / count_Tf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_uniq_seqs_Tf = div_zero_as_nan(len(self.dict_Uf), count_Tf)
         single_count_Tf = 0
         mean_reads_Tf = 0
         max_reads_Tf = 0
@@ -2276,11 +2278,11 @@ class TRNASeqDataset(object):
                 max_reads_Tf = read_count
             if seq_Tf.long_5prime_extension_dict:
                 long_5prime_count_Tf += 1
-        mean_reads_Tf /= count_Tf
+        mean_reads_Tf = div_zero_as_nan(mean_reads_Tf, count_Tf)
 
         count_Tc = len(self.dict_Tc_nontrna)
         anticodon_count_Tc = 0
-        mean_uniq_seqs_Tc = len(self.dict_Uc_nontrna) / count_Tc
+        mean_uniq_seqs_Tc = div_zero_as_nan(len(self.dict_Uc_nontrna), count_Tc)
         single_uniq_seq_count_Tc = 0
         mean_reads_Tc = 0
         max_reads_Tc = 0
@@ -2293,7 +2295,7 @@ class TRNASeqDataset(object):
             mean_reads_Tc += read_count
             if read_count > max_reads_Tc:
                 max_reads_Tc = read_count
-        mean_reads_Tc /= count_Tc
+        mean_reads_Tc = div_zero_as_nan(mean_reads_Tc, count_Tc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -2804,20 +2806,21 @@ class TRNASeqDataset(object):
                 max_nonspec_reads_Nf = nonspec_reads
             if spec_reads + nonspec_reads > max_total_reads_Nf:
                 max_total_reads_Nf = spec_reads + nonspec_reads
-        mean_spec_T_Nf /= count_Nf
-        mean_nonspec_T_Nf /= count_Nf
-        mean_spec_U_Nf /= count_Nf
-        mean_nonspec_U_Nf /= count_Nf
-        spec_reads_Nf /= count_Nf
-        nonspec_reads_Nf /= count_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_T_Nf = div_zero_as_nan(mean_spec_T_Nf, count_Nf)
+        mean_nonspec_T_Nf = div_zero_as_nan(mean_nonspec_T_Nf, count_Nf)
+        mean_spec_U_Nf = div_zero_as_nan(mean_spec_U_Nf, count_Nf)
+        mean_nonspec_U_Nf = div_zero_as_nan(mean_nonspec_U_Nf, count_Nf)
+        spec_reads_Nf = div_zero_as_nan(spec_reads_Nf, count_Nf)
+        nonspec_reads_Nf = div_zero_as_nan(nonspec_reads_Nf, count_Nf)
         count_Tc_trna_Nf = len(self.dict_Tc_trna)
         count_Uc_trna_Nf = len(self.dict_Uc_trna)
         read_count_Uc_trna_Nf = 0
         for seq_Uc_trna in self.dict_Uc_trna.values():
             read_count_Uc_trna_Nf += seq_Uc_trna.read_count
-        mean_Tc_trna_Nf = count_Tc_trna_Nf / count_Nf
-        mean_Uc_trna_Nf = count_Uc_trna_Nf / count_Nf
-        mean_Uc_reads_Nf = read_count_Uc_trna_Nf / count_Nf
+        mean_Tc_trna_Nf = div_zero_as_nan(count_Tc_trna_Nf, count_Nf)
+        mean_Uc_trna_Nf = div_zero_as_nan(count_Uc_trna_Nf, count_Nf)
+        mean_Uc_reads_Nf = div_zero_as_nan(read_count_Uc_trna_Nf, count_Nf)
 
         count_Nc = len(self.dict_Nc)
         anticodon_count_Nc = 0
@@ -2844,12 +2847,12 @@ class TRNASeqDataset(object):
                     for name_U in seq_T.names_U:
                         mean_nonspec_U_Nc += 1
                         mean_nonspec_reads_Nc += dict_Uc_nontrna[name_U].read_count
-        mean_spec_T_Nc /= count_Nc
-        mean_nonspec_T_Nc /= count_Nc
-        mean_spec_U_Nc /= count_Nc
-        mean_nonspec_U_Nc /= count_Nc
-        mean_spec_reads_Nc /= count_Nc
-        mean_nonspec_reads_Nc /= count_Nc
+        mean_spec_T_Nc = div_zero_as_nan(mean_spec_T_Nc, count_Nc)
+        mean_nonspec_T_Nc = div_zero_as_nan(mean_nonspec_T_Nc, count_Nc)
+        mean_spec_U_Nc = div_zero_as_nan(mean_spec_U_Nc, count_Nc)
+        mean_nonspec_U_Nc = div_zero_as_nan(mean_nonspec_U_Nc, count_Nc)
+        mean_spec_reads_Nc = div_zero_as_nan(mean_spec_reads_Nc, count_Nc)
+        mean_nonspec_reads_Nc = div_zero_as_nan(mean_nonspec_reads_Nc, count_Nc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -3262,10 +3265,11 @@ class TRNASeqDataset(object):
             if seq_Nf.spec_map_seq_count or seq_Nf.nonspec_map_seq_count:
                 count_any_Nf += 1
         count_Nf = len(self.dict_Nf)
-        mean_spec_Tm_Nf /= count_Nf
-        mean_nonspec_Tm_Nf /= count_Nf
-        spec_reads_Nf /= count_Nf
-        nonspec_reads_Nf /= count_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_Tm_Nf = div_zero_as_nan(mean_spec_Tm_Nf, count_Nf)
+        mean_nonspec_Tm_Nf = div_zero_as_nan(mean_nonspec_Tm_Nf, count_Nf)
+        spec_reads_Nf = div_zero_as_nan(spec_reads_Nf, count_Nf)
+        nonspec_reads_Nf = div_zero_as_nan(nonspec_reads_Nf, count_Nf)
 
         count_spec_Tm = 0
         reads_spec_Tm = 0
@@ -3360,8 +3364,9 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_Nf = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nf:
                 max_total_cov_Nf = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_Nf /= total_length_Nf
-        mean_nonspec_cov_Nf /= total_length_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_cov_Nf = div_zero_as_nan(mean_spec_cov_Nf, total_length_Nf)
+        mean_nonspec_cov_Nf = div_zero_as_nan(mean_nonspec_cov_Nf, total_length_Nf)
 
         spec_read_Nc = 0
         mean_spec_cov_Nc = 0
@@ -3384,8 +3389,8 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_Nc = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nc:
                 max_total_cov_Nc = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_Nc /= total_length_Nc
-        mean_nonspec_cov_Nc /= total_length_Nc
+        mean_spec_cov_Nc = div_zero_as_nan(mean_spec_cov_Nc, total_length_Nc)
+        mean_nonspec_cov_Nc = div_zero_as_nan(mean_nonspec_cov_Nc, total_length_Nc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -3697,8 +3702,9 @@ class TRNASeqDataset(object):
             length_M = len(dict_Nf[seq_M.name].string)
             total_sub_count += len(seq_M.sub_positions)
             total_length_M += length_M
-        mean_sub_per_seq = total_sub_count / count_M
-        mean_sub_per_nt = total_sub_count / total_length_M
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_sub_per_seq = div_zero_as_nan(total_sub_count, count_M)
+        mean_sub_per_nt = div_zero_as_nan(total_sub_count, total_length_M)
 
         warning = self.run.warning
         info = self.run.info
@@ -4503,8 +4509,9 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_M = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_M:
                 max_total_cov_M = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_M /= total_length_M
-        mean_nonspec_cov_M /= total_length_M
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_cov_M = div_zero_as_nan(mean_spec_cov_M, total_length_M)
+        mean_nonspec_cov_M = div_zero_as_nan(mean_nonspec_cov_M, total_length_M)
 
         if not self.skip_indel_profiling:
             count_indel_M = 0
