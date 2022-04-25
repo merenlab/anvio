@@ -3048,6 +3048,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     for m in mods_it_is_in:
                         if knum[0] != 'M':
                             bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+
+                if anvio.DEBUG:
+                    if self.exclude_kos_no_threshold:
+                        self.run.warning(f"We cannot find an entry for KO {knum} in the `ko_list.txt` file downloaded "
+                                         f"from KEGG. What this means is that you are somehow using KOfam annotations "
+                                         f"that are different from the current version of KEGG on your computer (this can "
+                                         f"happen with --enzymes-txt input). Because we are not considering these annotations, "
+                                         f"you may get KeyErrors downstream. You can force the inclusion of these KOfams by "
+                                         f"re-running this program with the --include-kos-without-threshold flag.")
+
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
