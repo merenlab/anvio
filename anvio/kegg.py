@@ -3053,7 +3053,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     if self.exclude_kos_no_threshold:
                         self.run.warning(f"We cannot find an entry for KO {knum} in the `ko_list.txt` file downloaded "
                                          f"from KEGG. What this means is that you are somehow using KOfam annotations "
-                                         f"that are different from the current version of KEGG on your computer (this can "
+                                         f"that are different from the current version of KOfam on your computer (this can "
                                          f"happen with --enzymes-txt input). Because we are not considering these annotations, "
                                          f"you may get KeyErrors downstream. You can force the inclusion of these KOfams by "
                                          f"re-running this program with the --include-kos-not-in-kofam flag.")
