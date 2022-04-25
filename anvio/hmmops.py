@@ -617,7 +617,7 @@ class SequencesForHMMHits:
         header = '%s___%s%s' % (entry['gene_name'], gene_unique_id, header_section_separator) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
         if sequence_in_header:
-            header += f'|sequence:{sequence}'
+            header += f'{header_section_separator}sequence:{sequence}'
         return (header, sequence)
 
 
