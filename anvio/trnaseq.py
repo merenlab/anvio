@@ -6516,7 +6516,6 @@ class DatabaseMerger(object):
         set_meta_value('trna_taxonomy_database_version', None)
         set_meta_value('genomic_contigs_db_project_name', None)
         set_meta_value('genomic_contigs_db_hash', None)
-        set_meta_value('genomic_profile_db_hash', None)
         set_meta_value('genomic_collection_name', None)
         set_meta_value('creation_date', time.time())
 
