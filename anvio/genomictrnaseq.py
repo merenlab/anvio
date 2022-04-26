@@ -714,6 +714,8 @@ class Affinitizer:
             self.nonreference_sample_names = self.nonreference_sample_names.split(',')
         self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
 
+        self.genomic_collection_name = self.trnaseq_contigs_db_info.get_self_table()['genomic_collection_name']
+
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
