@@ -9,7 +9,14 @@ import copy
 import shutil
 import argparse
 import numpy as np
-import multiprocessing
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from collections import OrderedDict
 
@@ -640,7 +647,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.sample_id = 's' + self.sample_id
 
                 if self.fetch_filter:
-                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper()}"
+                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper().replace('-', '_').replace('.', '_').replace(' ', '_')}"
 
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:

@@ -1,0 +1,41 @@
+name: Daily Component Tests and Migrations
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+
+jobs:
+  build:
+    name: Daily Component Tests and Migrations (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7]
+      fail-fast: false
+    steps:
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: 'latest'
+        auto-update-conda: true
+        python-version: ${{ matrix.python-version }}
+        channels: conda-forge,bioconda
+        activate-environment: anvio_env
+    - name: "Set up the conda environment"
+      shell: bash -l {0}
+      run: |
+        conda info -a
+        conda install -y mamba
+        mamba install -y python=${{ matrix.python-version }} sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree r-base r-tidyverse r-optparse r-stringi r-magrittr
+    - uses: actions/checkout@v2
+    - name: "Install anvi'o from the codebase"
+      shell: bash -l {0}
+      run: |
+        pip install .
+    - name: "Run component tests for metagenomics-full"
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite metagenomics-full --no-interactive
+    - name: "Migrate ancient anvi'o databases"
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite database-migrations

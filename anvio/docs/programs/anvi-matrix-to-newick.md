@@ -1,16 +1,14 @@
-This program converts a distance matrix (computed from a %(view-data)s artifact) into a %(dendrogram)s. 
+You can send any matrix file to this program to get a %(dendrogram)s from it.
 
-It uses the numerical data in a %(view-data)s to compute a distance matrix behind the scenes, and then runs some hierarchical clustering to create a %(dendrogram)s for all of your items. 
-
-With all default parameters, a run would look like this:
+An example run would look like this:
 
 {{ codestart }}
-anvi-matrix-to-newick -o path/for/%(dendrogram)s \ 
-                      %(view-data)s 
+anvi-matrix-to-newick TAB_DELIMITED_DATA.txt \
+                      %(dendrogram)s
 {{ codestop }}
 
-If your input file has your samples as rows instead of columns, just add the flag `--transpose`. 
+By default, %(anvi-matrix-to-newick)s will cluster rows. With the flag `--transpose`, it will cluster columns.
 
-You can also ask for an additional output file: the order of the items in the resulting dendrogram as a %(misc-data-items-order)s in LIST format. To get this, simply provide a path to its desired location  with `--items-order-file`. 
+See [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html) a list of distance metrics you can use, and [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html) a list of linkage methods you can use.
 
-Additionally, for hierarchical clustering, you can change the distance metric (a full list of the available metrics can be found [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html)) or the linkage method (though this is not recommended, the list of options can be found [here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.linkage.html)).
+%(anvi-matrix-to-newick)s can handle missing data, but in that case the program will not normalize your data and will assume that it is already normalized.

@@ -41,7 +41,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'filter_hmm_hits_by_query_coverage',
                            'anvi_get_sequences_for_hmm_hits',
                            'simplify_names_from_hmm_hits',
-                           'cat_sequences_to_one_fasta',
+                           'combine_sequence_data',
                            'anvi_get_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'cluster_X_percent_sim_mmseqs',
@@ -79,6 +79,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
@@ -92,17 +93,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'metagenomes': 'metagenomes.txt',
             'external_genomes': 'external-genomes.txt',
             'hmm_list': 'hmm_list.txt',
+            'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 2},
             'simplify_names_from_hmm_hits': {'threads': 2},
-            'cat_sequences_to_one_fasta': {'threads': 2},
+            'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 5},
             'cat_external_gene_calls_file': {'threads': 2},
             'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
-            'align_sequences': {'threads': 5},
+            'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
             'remove_sequences_with_X_percent_gaps': {'threads': 5, '--max-percentage-gaps': 50},
             'count_num_sequences_filtered': {'threads': 5},
@@ -132,6 +134,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"MISC_DATA": "ECOPHYLO_WORKFLOW/06_MISC_DATA"})
         self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
+
+        # Make log directories
+        if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
+        if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
+            os.makedirs('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/')
+
 
     def init(self):
         """This function is called from within the snakefile to initialize parameters."""
@@ -175,6 +184,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Load external-genomes.txt
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
             try:
@@ -228,9 +238,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.HMM_source_dict = dict(zip(HMM_df.name, HMM_df.source))
                 self.HMM_path_dict = dict(zip(HMM_df.name, HMM_df.path))
 
-            except IndexError as e:
+            except AttributeError as e:
                 raise ConfigError("The hmm_list.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.hmm_list_path, e))
+                                  "This is the error from trying to load it: %s" % (self.hmm_list_path, e))
 
             if any("-" in s for s in self.HMM_source_dict.keys()):
                 raise ConfigError(f"Please do not use "-" in your external HMM names in: "
@@ -250,29 +260,23 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Load samples.txt
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        if self.samples_txt_file:
+            filesnpaths.is_file_tab_delimited(self.samples_txt_file)
 
-        if not self.samples_txt_file:
-            if os.path.exists('samples.txt'):
-                self.samples_txt_file = 'samples.txt'
-            else:
-                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
-                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
-                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
-                                  "around either. So please add a `samples.txt` directive.")
+            try:
+                # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
+                self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
+            except IndexError as e:
+                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                                "This is what we know: '%s'" % (self.samples_txt_file, e))
+            if 'sample' not in list(self.samples_information.columns):
+                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                                "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
 
-        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-
-        try:
-            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except IndexError as e:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "This is what we know: '%s'" % (self.samples_txt_file, e))
-        if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
-
-        self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+            self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+        else:
+            self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
+                             f"to profile the ecology and will just be making trees for now!")
         
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
@@ -303,19 +307,32 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         for HMM in self.HMM_source_dict.keys():
 
-            target_file = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
-            target_files.append(target_file)
+            if not self.samples_txt_file:
+                # Just making trees
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_files.append(target_file)
+                
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_files.append(target_file)
+                
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_files.append(target_file)
 
-            target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
-            target_files.append(target_file)
-
-            target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
-            target_files.append(target_file)
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_files.append(target_file)
             
-            target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
-            target_files.append(target_file)
+            else:
+                # Making trees AND profiling SCGs
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_files.append(target_file)
 
-            target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
-            target_files.append(target_file)
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_files.append(target_file)
+                
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_files.append(target_file)
         
         return target_files

@@ -11,6 +11,7 @@ import statistics
 import json
 import time
 import hashlib
+import collections
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -47,25 +48,21 @@ pp = terminal.pretty_print
 P = terminal.pluralize
 
 
-"""Some critical constants for metabolism estimation output formatting."""
-# dict containing possible output modes
-# output_suffix should be unique to a mode so that multiple output modes can be used at once
-# data_dict indicates which data dictionary is used for generating the output (modules or kofams)
-# headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
-# description is what is printed when --list-available-modes parameter is used
-OUTPUT_MODES = {'hits_in_modules': {
-                    'output_suffix': "hits_in_modules.txt",
-                    'data_dict': "modules",
-                    'headers': ["module", "module_is_complete",
-                                "module_completeness", "path_id", "path", "path_completeness",
-                                "enzyme_hit", "gene_caller_id", "contig"],
-                    'description': "Information on each enzyme (gene annotation) that belongs to a module"
-                    },
-                'modules': {
+"""Some critical constants for metabolism estimation output formatting.
+
+The below dictionary defines the possible output modes.
+- 'output_suffix' should be unique to a mode so that multiple output modes can be used at once
+- 'data_dict' indicates which data dictionary is used for generating the output (modules or kofams)
+- 'headers' list describes which information to include in the output file (see OUTPUT_HEADERS dict below for more info)
+- 'description' is what is printed when --list-available-modes parameter is used
+"""
+OUTPUT_MODES = {'modules': {
                     'output_suffix': "modules.txt",
                     'data_dict': "modules",
                     'headers': ["module", "module_name", "module_class", "module_category",
-                                "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
+                                "module_subcategory", "module_definition",
+                                "stepwise_module_completeness", "stepwise_module_is_complete",
+                                "pathwise_module_completeness", "pathwise_module_is_complete",
                                 "proportion_unique_enzymes_present", "enzymes_unique_to_module", "unique_enzymes_hit_counts",
                                 "enzyme_hits_in_module", "gene_caller_ids_in_module", "warnings"],
                     'description': "Information on metabolic modules"
@@ -76,6 +73,20 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'headers': None,
                     'description': "A custom tab-delimited output file where you choose the included modules data using --custom-output-headers"
                     },
+                'module_paths': {
+                                    'output_suffix': "module_paths.txt",
+                                    'data_dict': "modules",
+                                    'headers': ["module", "pathwise_module_completeness", "pathwise_module_is_complete",
+                                                "path_id", "path", "path_completeness"],
+                                    'description': "Information on each possible path (complete set of enzymes) in a module"
+                                    },
+                'module_steps': {
+                                    'output_suffix': "module_steps.txt",
+                                    'data_dict': "modules",
+                                    'headers': ["module", "stepwise_module_completeness", "stepwise_module_is_complete",
+                                                "step_id", "step", "step_completeness"],
+                                    'description': "Information on each top-level step in a module"
+                                    },
                 'hits': {
                     'output_suffix': "hits.txt",
                     'data_dict': "kofams",
@@ -83,25 +94,38 @@ OUTPUT_MODES = {'hits_in_modules': {
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
-# dict containing matrix headers of information that we can output in custom mode
-# key corresponds to the header's key in output dictionary (returned from generate_output_dict_for_modules() function)
-# cdict_key is the header's key in modules or kofams data dictionary (if any)
-# mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
-# description is printed when --list-available-output-headers parameter is used
+"""
+The below dictionary describes the type of information we can output
+- the dictionary key corresponds to the header's key in the output dictionary (ie, as returned from generate_output_dict_for_modules() function)
+- 'cdict_key' is the header's key in modules or kofams data dictionary (if any)
+- 'mode_type' indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
+- 'description' is printed when --list-available-output-headers parameter is used
+"""
 OUTPUT_HEADERS = {'module' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
                         'description': "Module number"
                         },
-                  'module_is_complete' : {
-                        'cdict_key': 'complete',
+                  'stepwise_module_is_complete' : {
+                        'cdict_key': "stepwise_is_complete",
                         'mode_type': 'modules',
-                        'description': "Whether a module is considered complete or not based on its percent completeness and the completeness threshold"
+                        'description': "Whether a module is considered complete or not based on its STEPWISE percent completeness and the completeness threshold"
                         },
-                  'module_completeness' : {
-                        'cdict_key': 'percent_complete',
+                  'stepwise_module_completeness' : {
+                        'cdict_key': 'stepwise_completeness',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a module"
+                        'description': "Percent completeness of a module, computed as the number of complete steps divided by the number of total steps "
+                                       "(where 'steps' are determined by splitting the module definition on the space character)"
+                        },
+                  'pathwise_module_is_complete' : {
+                        'cdict_key': "pathwise_is_complete",
+                        'mode_type': 'modules',
+                        'description': "Whether a module is considered complete or not based on its PATHWISE percent completeness and the completeness threshold"
+                        },
+                  'pathwise_module_completeness' : {
+                        'cdict_key': 'pathwise_percent_complete',
+                        'mode_type': 'modules',
+                        'description': "Percent completeness of a module, computed as maximum completeness of all possible combinations of enzymes ('paths') in the definition"
                         },
                   'enzymes_unique_to_module' : {
                         'cdict_key': None,
@@ -174,9 +198,8 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'mode_type': 'all',
-                        'description': "Gene caller ID of a single enzyme in the contigs DB. If you choose this header, each "
-                                       "line in the output file will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Gene caller ID of a single enzyme in the contigs DB"
                         },
                   'enzyme_hits_in_module' : {
                         'cdict_key': None,
@@ -185,34 +208,45 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'enzyme_hit' : {
                         'cdict_key': 'kofam_hits',
-                        'mode_type': 'modules',
-                        'description': "Enzyme identifier for a single annotation (KO, COG, etc). If you choose this header, each line in the output file "
-                                       "will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Enzyme identifier for a single annotation (KO, COG, etc)"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
-                        'mode_type': 'all',
-                        'description': "Contig that an enzyme annotation is found on. If you choose this header, each line in the output "
-                                       "file will be an enzyme annotation"
+                        'mode_type': 'kofams',
+                        'description': "Contig that an enzyme annotation is found on"
                         },
                   'path_id' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "Integer ID for a path through a module. No real meaning and just for data organization. "
-                                       "If you choose this header, each line in the output file will be an enzyme annotation"
+                        'description': "Integer ID for a path through a module. Has no real meaning and is used for data organization"
                         },
                   'path' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
-                        'description': "A path through a module (a linear sequence of enzymes that together represent each metabolic step "
-                                       "in the module. Most modules have several of these due to enzyme redundancy). If you choose this header, "
-                                       "each line in the output file will be an enzyme annotation"
+                        'description': "A path through a module: a linear sequence of enzymes that together represent each metabolic step "
+                                       "in the module (most modules have several of these due to enzyme redundancy)"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
                         'mode_type': 'modules',
-                        'description': "Percent completeness of a particular path through a module. If you choose this header, each line "
-                                       "in the output file will be an enzyme annotation"
+                        'description': "Percent completeness of a given path through a module"
+                        },
+                  'step_id' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Integer ID for a top-level step in a module. Has no real meaning and is used for data organization"
+                        },
+                  'step' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "A 'top-level' step in a module, represented by one or more possible enzymes that can catalyze "
+                                       "a logical part of the metabolic pathway (usually one reaction)"
+                        },
+                  'step_completeness' : {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Binary completeness of a given 'top-level' step in a module"
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
@@ -242,7 +276,9 @@ OUTPUT_HEADERS = {'module' : {
 # get_XXX_metadata_dictionary() function
 MODULE_METADATA_HEADERS = ["module_name", "module_class", "module_category", "module_subcategory"]
 KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
-
+# Exception: if you add to this list, you must add it in the steps_subdict in generate_subsets_for_matrix_format()
+# and to the relevant step metadata clause in write_stat_to_matrix()
+STEP_METADATA_HEADERS = ["step_definition"]
 
 
 class KeggContext(object):
@@ -259,6 +295,7 @@ class KeggContext(object):
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
+        self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -267,6 +304,7 @@ class KeggContext(object):
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
+        self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
         if self.user_input_dir:
@@ -289,7 +327,7 @@ class KeggContext(object):
                                   "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
-    def setup_ko_dict(self):
+    def setup_ko_dict(self, exclude_threshold=True):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
@@ -307,6 +345,11 @@ class KeggContext(object):
         This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
         Here is an example of the dictionary structure:
         self.ko_dict["K00001"]["threshold"] = 329.57
+
+        PARAMETERS
+        ==========
+        exclude_threshold : Boolean
+            If this is true, we remove KOs without a bitscore threshold from the ko_dict
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
@@ -326,7 +369,10 @@ class KeggContext(object):
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
-        [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        if exclude_threshold:
+            [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        else:
+            self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
 
     def get_ko_skip_list(self):
@@ -372,6 +418,64 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
+    def invert_brite_json_dict(self, brite_dict):
+        """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
+
+        There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
+        'name' is a string and the value for 'children' is a list of dicts.
+
+        Here is an example of what the beginning of the json dict looks like for 'br08902 BRITE
+        Hierarchy Files', the 'hierarchy of all existing hierarchies':
+           {
+             "name": "br08902",
+             "children": [
+               {
+                 "name": "Pathway and Brite",
+                 "children": [
+                   {
+                     "name": "Pathway maps",
+                     "children": [
+                       {
+                         "name": "br08901  KEGG pathway maps"
+                       }
+                     ]
+                   }, ...
+        Observe that innermost dicts only have a single entry keyed by 'name'.
+
+        Here is the corresponding entry in the returned dict for the item in the example:
+            'br08901  KEGG pathway maps':
+                [['br08902', 'Pathway and Brite', 'Pathway maps']]
+        The value is a list of lists because an item can occur multiple times in the same hierarchy.
+
+        PARAMETERS
+        ==========
+        brite_dict : dict
+            dict loaded from BRITE hierarchy json file
+
+        RETURNS
+        =======
+        categorization_dict : dict
+            dict of entry categorizations in BRITE hierarchy
+        """
+
+        children_stack = collections.deque()
+        children_stack.append(([brite_dict['name']], brite_dict['children']))
+        categorization_dict = {}
+        while children_stack:
+            hierarchy, children_list = children_stack.popleft()
+            for child_dict in children_list:
+                child_name = child_dict['name']
+                if 'children' in child_dict:
+                    children_stack.append((hierarchy + [child_name], child_dict['children']))
+                else:
+                    try:
+                        categorization_dict[child_name].append(hierarchy)
+                    except KeyError:
+                        categorization_dict[child_name] = [hierarchy]
+
+        return categorization_dict
+
+
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
 
@@ -387,12 +491,17 @@ class KeggSetup(KeggContext):
     """
 
     def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.args = args
         self.run = run
         self.progress = progress
         self.kegg_archive_path = args.kegg_archive
         self.download_from_kegg = True if args.download_from_kegg else False
+        self.only_download = True if A('only_download') else False
+        self.only_database = True if A('only_database') else False
         self.kegg_snapshot = args.kegg_snapshot
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.overwrite_modules_db = A('overwrite_output_destinations')
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -400,9 +509,22 @@ class KeggSetup(KeggContext):
         if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
             raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
                               "KEGG archives. Please pick just one setup option and try again.")
+        if (not self.download_from_kegg) and (self.only_download or self.only_database):
+            raise ConfigError("Erm. The --only-download and --only-database options are only valid if you are also using the --download-from-kegg "
+                              "option. Sorry.")
+        if self.only_download and self.only_database:
+            raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
+                              "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
-        # initializing this to None here so that it doesn't break things downstream
+        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
+            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
+                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
+                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
+                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
+
+        # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
+        self.brite_dict = None
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -418,20 +540,19 @@ class KeggSetup(KeggContext):
             # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
             if '/' not in self.kegg_data_dir:
                 self.kegg_data_dir += '/'
-            filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
             if not args.reset and not anvio.DEBUG and not skip_init:
-                self.is_database_exists()
+                self.is_database_exists(fail_if_exists=(not self.only_database))
 
-            if self.download_from_kegg and not self.kegg_archive_path and not skip_init:
+            if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
                 filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
-            self.target_snapshot = self.kegg_snapshot or 'v2021-12-18'
+            self.target_snapshot = self.kegg_snapshot or 'v2022-04-14'
             self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
             self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -459,6 +580,8 @@ class KeggSetup(KeggContext):
             self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
             self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
             self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+            # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
+            self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
             if '/' not in self.user_input_dir:
@@ -480,36 +603,66 @@ class KeggSetup(KeggContext):
                         self.run.info("Successfully removed", path)
 
 
-    def is_database_exists(self):
-        """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
+    def is_database_exists(self, fail_if_exists=True):
+        """This function determines whether the user has already downloaded all required KEGG data.
 
-        if os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use the --reset flag "
-                              "or delete this directory manually if you want to re-download it." % self.kegg_data_dir)
+        More specifically, it looks for the KEGG files that we use to learn what to download (as in
+        the KEGG MODULE file) and for the existence of the data directories that are created by this
+        program.
 
-        if os.path.exists(self.kegg_module_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
-                              "delete this directory manually to let this script re-download everything from scratch."
-                              % self.kegg_data_dir)
+        PARAMETERS
+        ==========
+        fail_if_exists : Boolean
+            if this is True, this function will fail if the KEGG data already exists on the user's
+            computer. If it is False, AND the user has already downloaded all required KEGG data,
+            then this function will not fail. This is to enable the --only-database option.
+            Note that in this case we require all KEGG data to be pre-downloaded to avoid mixing
+            older and newer KEGG data - so if this data is only partially downloaded, the function
+            will raise an error even if this parameter is False.
+        """
 
-        if os.path.exists(self.kegg_pathway_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG pathway "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
-                              "delete this directory manually to let this script re-download everything from scratch."
-                              % self.kegg_data_dir)
+        files_to_check = [self.kofam_hmm_file_path,
+                          self.kegg_module_file,
+                          self.kegg_module_data_dir,
+                          ]
+        if not self.skip_brite_hierarchies:
+            files_to_check.append(self.kegg_brite_hierarchies_file)
+            files_to_check.append(self.brite_data_dir)
 
-        if os.path.exists(self.kegg_module_data_dir):
-            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
-                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.kegg_module_data_dir, self.kegg_data_dir))
+        files_that_exist = []
+        for f in files_to_check:
+            if os.path.exists(f):
+                if fail_if_exists:
+                    raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
+                                      "or delete the KEGG data directory manually if you want to re-download KEGG data. "
+                                      "See also the --only-database option, which you can use if you already "
+                                      "have all required KEGG data in that folder.")
+                else:
+                    files_that_exist.append(f)
 
-        if os.path.exists(self.pathway_data_dir):
-            raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
-                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
-                              % (self.pathway_data_dir, self.kegg_data_dir))
+        if files_that_exist:
+            exist_str = "\n".join(files_that_exist)
+            # we require all data to be present. Otherwise we might produce chimeric KEGG data.
+            if files_that_exist != files_to_check:
+                raise ConfigError(f"We found some, but not all, required KEGG data on your computer in the KEGG "
+                                  f"data directory. Since you don't have everything you need, we need you to re-download "
+                                  f"everything from scratch. Please re-run this program using the --reset flag, and if "
+                                  f"you were using the --only-database option, remove that flag. :) HOWEVER, if you notice that "
+                                  "KEGG BRITE data does not appear to be in the upcoming list, but you don't actually want "
+                                  "to download BRITE data, then you can just add the --skip-brite-hierarchies to your previous "
+                                  f"command and be on your way (ie, no --reset needed). Here is the KEGG data we found:\n{exist_str}")
+
+            self.run.warning(f"We found already-downloaded KEGG data on your computer. Setup will continue using "
+                             f"this data. However, if you think everything should be re-downloaded from scratch, please kill this program "
+                             f"and restart it using the `--reset` flag. Here is the data you already have, in case you "
+                             f"need to check it to make sure we are not using something that is too old:\n"
+                             f"{exist_str}")
+
+        if self.only_database and not files_that_exist:
+            raise ConfigError(f"We noticed that there is no KEGG data on your computer at {self.kegg_data_dir} even "
+                              f"though you used the --only-database option. If you don't actually have KEGG data already "
+                              f"downloaded, you should get rid of the --only-database flag and re-run this program. If you "
+                              f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
 
 
     def check_user_input_dir_format(self):
@@ -705,14 +858,80 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
-    def download_modules(self):
-        """This function downloads the KEGG modules.
+    def process_brite_hierarchy_of_hierarchies(self):
+        """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
 
-        To do so, it also processes the KEGG module file into a dictionary via the process_module_file() function.
-        To verify that each file has been downloaded properly, we check that the last line is '///'.
+        This method is called during setup to find all BRITE hierarchies to be downloaded.
+        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins.
+        Excluded hierarchies include those for modules, pathways, and other systems for reactions,
+        compounds, taxa, etc.
+
+        The dictionary that is filled out, `self.brite_dict`, is keyed by the 'ko' hierarchy name
+        exactly as given in the 'br08902' json file. The values are the categorizations of the
+        hierarchy in 'br08902', going from most general to most specific category.
+
+        Here is an example of an entry produced in self.brite_dict:
+            'ko01000  Enzymes':
+                ['Genes and Proteins', 'Protein families: metabolism']
         """
 
-        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        filesnpaths.is_file_exists(self.kegg_brite_hierarchies_file)
+        filesnpaths.is_file_json_formatted(self.kegg_brite_hierarchies_file)
+
+        self.progress.new("Parsing KEGG BRITE Hierarchies file")
+
+        brite_hierarchies_dict = json.load(open(self.kegg_brite_hierarchies_file))
+        # store the names of all of the 'ko' hierarchies for genes/proteins
+        self.brite_dict = {}
+        hierarchies_appearing_multiple_times = []
+        hierarchies_with_unrecognized_accession = []
+        for hierarchy, categorizations in self.invert_brite_json_dict(brite_hierarchies_dict).items():
+            # we have observed the hierarchy label to have an accession followed by two spaces followed by the hierarchy name,
+            # but accommodate the possibility that the accession is separated from the name by a variable number of spaces
+            split_hierarchy = hierarchy.split(' ')
+            hierarchy_accession = split_hierarchy[0]
+            hierarchy_name = ' '.join(split_hierarchy[1: ]).lstrip()
+            if hierarchy_accession[: 2] == 'br':
+                # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
+                # this hierarchy is for modules, not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00003' and hierarchy_name == 'KEGG reaction modules':
+                # this hierarchy is also for modules
+                continue
+
+            if len(categorizations) > 1:
+                hierarchies_appearing_multiple_times.append((hierarchy, len(categorizations)))
+
+            if hierarchy_accession[: 2] != 'ko':
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            try:
+                int(hierarchy_accession[2: 7])
+            except ValueError:
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            self.brite_dict[hierarchy] = categorizations[0][1: ]
+
+        error_first_part = ""
+        if hierarchies_appearing_multiple_times:
+            error_first_part = ("Each BRITE hierarchy should only appear once in the hierarchy of hierarchies, "
+                                "but the following hierarchies appeared the given number of times: "
+                                f"{', '.join([f'{hier}: {num_times}' for hier, num_times in hierarchies_appearing_multiple_times])}.")
+        error_second_part = ""
+        if hierarchies_with_unrecognized_accession:
+            error_second_part = ("Each BRITE hierarchy accession is expected to have an accession formatted 'koXXXXX', where 'XXXXX' are five digits, "
+                                 f"but the following hierarchies did not have this format: {', '.join(hierarchies_with_unrecognized_accession)}.")
+        if hierarchies_appearing_multiple_times or hierarchies_with_unrecognized_accession:
+            raise ConfigError("Please contact the developers to look into the following error. "
+                              f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
+
+        self.progress.end()
+
+
+    def download_kegg_module_file(self):
+        """This function downloads the KEGG module file, which tells us which module files to download."""
 
         # download the kegg module file, which lists all modules
         try:
@@ -724,9 +943,15 @@ class KeggSetup(KeggContext):
                               "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
                               "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
-        # get module dict
-        self.process_module_file()
-        self.run.info("Number of KEGG Modules", len(self.module_dict.keys()))
+
+    def download_modules(self):
+        """This function downloads the KEGG modules.
+
+        To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
 
         # download all modules
         for mnum in self.module_dict.keys():
@@ -744,6 +969,25 @@ class KeggSetup(KeggContext):
                                   "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
+
+
+    def confirm_downloaded_modules(self):
+        """This function verifies that all module files have been downloaded.
+
+        It checks that there is a module file for every module in the self.module_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_module_file(), has already been called.
+        """
+
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+        self.run.info("Number of module files found", len(self.module_dict))
 
 
     def download_pathways(self):
@@ -788,6 +1032,70 @@ class KeggSetup(KeggContext):
                                   % (file_path, last_line))
 
 
+    def download_brite_hierarchy_of_hierarchies(self):
+        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
+
+        This hierarchy contains the names of other hierarchies which are subsequently used for
+        downloading those hierarchy json files.
+        """
+
+        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
+                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def download_brite_hierarchies(self):
+        """This function downloads a json file for every BRITE hierarchy of interest.
+
+        Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
+        """
+
+        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
+        unexpected_hierarchies = []
+        for hierarchy in self.brite_dict:
+            hierarchy_accession = hierarchy[: 7]
+            brite_system = hierarchy_accession[: 2]
+            if brite_system != 'ko':
+                unexpected_hierarchies.append(hierarchy)
+            if not unexpected_hierarchies:
+                file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
+                                    file_path, progress=self.progress, run=self.run)
+                # verify that the whole json file was downloaded
+                filesnpaths.is_file_json_formatted(file_path)
+        if unexpected_hierarchies:
+            raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
+                              f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
+
+
+    def confirm_downloaded_brite_hierarchies(self):
+        """This function verifies that all BRITE hierarchy files have been downloaded.
+
+        It checks that there is a hierarchy file for every hierarchy in the self.brite_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_brite_hierarchy_of_hierarchies(), has already been called.
+        """
+
+        for hierarchy in self.brite_dict.keys():
+            hierarchy_accession = hierarchy[: 7]
+            file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The BRITE hierarchy file for {hierarchy} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+        self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
+
+
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
 
@@ -808,8 +1116,10 @@ class KeggSetup(KeggContext):
     def confirm_downloaded_profiles(self):
         """This function verifies that all Kofam profiles have been properly downloaded.
 
-        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
-        K23763.hmm with some exceptions; all KO numbers from ko_list file (except those in ko_skip_list) should be included.
+        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
+        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
+
+        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
         """
 
         ko_nums = self.ko_dict.keys()
@@ -954,11 +1264,19 @@ class KeggSetup(KeggContext):
                               f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
-    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
+        if filesnpaths.is_file_exists(db_path, dont_raise=True):
+            if self.overwrite_modules_db:
+                os.remove(db_path)
+            else:
+                raise ConfigError(f"Woah there. There is already a modules database at {db_path}. If you really want to make a new modules database "
+                                  f"in this folder, you should either delete the existing database yourself, or re-run this program with the "
+                                  f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
+                                  f"sure you are aware of that, so that you have no regrets.")
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -988,17 +1306,15 @@ class KeggSetup(KeggContext):
         expected_directories_and_files = [self.orphan_data_dir,
                                           self.kegg_module_data_dir,
                                           self.kegg_hmm_data_dir,
-                                          #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
                                           self.ko_list_file_path,
                                           self.kegg_module_file,
-                                          #self.kegg_pathway_file,  #TODO: uncomment me when we start incorporating pathways
                                           self.kegg_modules_db_path]
         for f in expected_directories_and_files:
             path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
             if not os.path.exists(path_to_f_in_archive):
                 is_ok = False
                 if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected file or directory: %s"
+                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
                                      % (path_to_f_in_archive))
 
         # check hmm files
@@ -1024,6 +1340,27 @@ class KeggSetup(KeggContext):
         return is_ok
 
 
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
     def check_modules_db_version(self):
         """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
 
@@ -1036,7 +1373,7 @@ class KeggSetup(KeggContext):
         target_version = int(anvio.tables.versions_for_db_types['modules'])
         if current_db_version != target_version:
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             "{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
                              f"Here is the path to the database: {self.kegg_modules_db_path}")
 
 
@@ -1057,6 +1394,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
@@ -1071,6 +1409,11 @@ class KeggSetup(KeggContext):
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -1123,7 +1466,7 @@ class KeggSetup(KeggContext):
         """
 
         self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER')
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
 
 
     def setup_data(self):
@@ -1131,19 +1474,37 @@ class KeggSetup(KeggContext):
 
         if self.kegg_archive_path:
             self.setup_from_archive()
+
         elif self.download_from_kegg:
             # mostly for developers and the adventurous
-            # this downloads, decompresses, and hmmpresses the KOfam profiles
-            # it also downloads and processes the KEGG Module files into the MODULES.db
-            self.download_profiles()
-            self.decompress_files()
-            self.download_modules()
-            #self.download_pathways()   # This is commented out because we do not do anything with pathways downstream, but we will in the future.
-            self.setup_ko_dict()
-            self.run_hmmpress()
-            self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir)
+            if not self.only_database:
+                # this downloads, decompresses, and hmmpresses the KOfam profiles
+                self.download_profiles()
+                self.decompress_files()
+                self.setup_ko_dict() # get ko dict attribute
+                self.run_hmmpress()
+                # it also downloads and processes the KEGG Module files into the MODULES.db
+                self.download_kegg_module_file()
+                self.process_module_file() # get module dict attribute
+                self.download_modules()
+                if not self.skip_brite_hierarchies:
+                    self.download_brite_hierarchy_of_hierarchies()
+                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
+                    self.download_brite_hierarchies()
+            else:
+                # get required attributes for database setup and make sure all expected files were downloaded
+                self.process_module_file()
+                self.confirm_downloaded_modules()
+                if not self.skip_brite_hierarchies:
+                    self.process_brite_hierarchy_of_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
+
+            if not self.only_download:
+                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
+
         elif self.user_input_dir:
             self.setup_user_data()
+
         else:
             # the default, set up from frozen KEGG release
             self.setup_kegg_snapshot()
@@ -1172,6 +1533,7 @@ class RunKOfams(KeggContext):
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1191,7 +1553,12 @@ class RunKOfams(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, args=self.args)
+        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
+
+        if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
+            self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
+                             "which could very well be useful to you. BRITE is guaranteed to be set up "
+                             "when downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1284,6 +1651,7 @@ class RunKOfams(KeggContext):
         self.functions_dict = {}
         self.kegg_module_names_dict = {}
         self.kegg_module_classes_dict = {}
+        self.kegg_brite_categorizations_dict = {}
         self.gcids_to_hits_dict = {}
         self.gcids_to_functions_dict = {}
         counter = 0
@@ -1369,6 +1737,12 @@ class RunKOfams(KeggContext):
                         'function': mod_class_annotation,
                         'e_value': None,
                     }
+
+                if not self.skip_brite_hierarchies:
+                    # get BRITE categorization information in the form to be added to the contigs database
+                    ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                    if ortholog_categorizations_dict:
+                        self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
 
                 counter += 1
             else:
@@ -1494,12 +1868,60 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
+                            if not self.skip_brite_hierarchies:
+                                # get BRITE categorization information in the form to be added to the contigs database
+                                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                                if ortholog_categorizations_dict:
+                                    self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
+
                         next_key += 1
                         num_annotations_added += 1
 
         self.progress.end()
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
+
+
+    def get_ortholog_categorizations_dict(self, ortholog_accession, gene_callers_id=None):
+        """Return a dictionary of ortholog BRITE categorizations.
+
+        The dictionary is formatted to represent a row of the `gene_functions` table in the contigs database.
+        """
+
+        ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(ortholog_accession)
+        if not ortholog_brite_dict:
+            return None
+
+        # the following explains the format of BRITE "accession" and "function" entries in the
+        # table. Orthologs can be in multiple hierarchies, and can be categorized in a hierarchy
+        # multiple times. Each categorization of the ortholog in a hierarchy is separated by "!!!",
+        # and each category in the categorization is separated by ">>>". The hierarchy name is
+        # placed at the beginning of each categorization. Perhaps the name of hierarchy "ko00001",
+        # which is "KEGG Orthology (KO)", should not be placed at the beginning of categorizations
+        # due to its uninformativeness, but for the sake of consistency, the format is maintained
+        # for this hierarchy. For example, "K01647 citrate synthase" produces the following
+        # "accession" and "function" strings:
+        # "ko00001!!!ko00001!!!ko01000"
+        # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
+        #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
+        #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
+        hierarchy_accession = ""
+        categorizations = ""
+        categorization_dicts = list(ortholog_brite_dict.values())
+        for categorization_dict in categorization_dicts[: -1]:
+            hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
+            categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
+        last_categorization_dict = categorization_dicts[-1]
+        hierarchy_accession += last_categorization_dict['hierarchy_accession']
+        categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
+
+        ortholog_categorizations_dict = {'gene_callers_id': gene_callers_id,
+                                         'source': 'KEGG_BRITE',
+                                         'accession': hierarchy_accession,
+                                         'function': categorizations,
+                                         'e_value': None}
+
+        return ortholog_categorizations_dict
 
 
     def store_annotations_in_db(self):
@@ -1518,6 +1940,8 @@ class RunKOfams(KeggContext):
                 gene_function_calls_table.create(self.kegg_module_names_dict)
             if self.kegg_module_classes_dict:
                 gene_function_calls_table.create(self.kegg_module_classes_dict)
+            if self.kegg_brite_categorizations_dict:
+                gene_function_calls_table.create(self.kegg_brite_categorizations_dict)
         else:
             self.run.warning("There are no KOfam hits to add to the database. Returning empty handed, "
                              "but still adding KOfam as a functional source.")
@@ -1613,6 +2037,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
+        self.enzymes_txt = A('enzymes_txt') or None
         self.output_modes = A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
@@ -1620,6 +2045,8 @@ class KeggEstimatorArgs():
         self.exclude_zero_modules = False if A('include_zeros') else True
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
+        self.add_copy_number = True if A('add_copy_number') else False
+        self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -1692,6 +2119,14 @@ class KeggEstimatorArgs():
 
         We do this once at the start so as to reduce the number of on-the-fly database queries
         that have to happen during the estimation process.
+
+        ## KEYS ADDED TO SELF.ALL_MODULES_IN_DB DICTIONARY
+        * all keys from modules table in database, ie DEFINITION, CLASS, etc
+        'MODULES_DB_SOURCE'         which database this module belongs to ("KEGG" for KEGG modules, "USER" for user-defined modules)
+        'substrate_list'            list of substrate compounds (inputs to the module)
+        'intermediate_list'         list of intermediate compounds
+        'product_list'              list of product compounds (outputs of the module)
+        'top_level_steps'           list of top-level steps in the module DEFINITION
         """
 
         self.all_modules_in_db = {}
@@ -1714,6 +2149,9 @@ class KeggEstimatorArgs():
 
                 # initialize module paths into self.module_paths_dict
                 self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.kegg_modules_db)
+
+                # initialize top-level steps into self.all_modules_in_db
+                self.all_modules_in_db[mod]['top_level_steps'] = self.kegg_modules_db.get_top_level_steps_in_module_definition(mod)
 
             self.kegg_modules_db.disconnect()
 
@@ -1744,6 +2182,9 @@ class KeggEstimatorArgs():
                 # initialize module paths into self.module_paths_dict
                 self.module_paths_dict[mod] = self.init_paths_for_module(mod, mod_db=self.user_modules_db)
 
+                # initialize top-level steps into self.all_modules_in_db
+                self.all_modules_in_db[mod]['top_level_steps'] = self.user_modules_db.get_top_level_steps_in_module_definition(mod)
+
             self.user_modules_db.disconnect()
 
         # INIT ENZYMES
@@ -1756,7 +2197,8 @@ class KeggEstimatorArgs():
             for k in ko_list:
                 if k not in self.all_kos_in_db:
                     src = self.all_modules_in_db[mod]['ANNOTATION_SOURCE'][k] if 'ANNOTATION_SOURCE' in self.all_modules_in_db[mod] else 'KOfam'
-                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src}
+                    func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else 'UNKNOWN'
+                    self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
 
 
@@ -1794,6 +2236,47 @@ class KeggEstimatorArgs():
         return mod_db.unroll_module_definition(mnum, def_lines=module_definition)
 
 
+    def split_module_path_into_individual_essential_components(self, path):
+        """Given a list of atomic steps in a module, this function returns a list of each essential individual enzyme.
+
+        When an atomic step is an enzyme complex (ie K01657+K01658), we need to split the complex into its individual components
+        When an atomic step contains non-ssential components (ie K00765-K02502), we need to remove the nonessential components from the list
+        When there are both nonessential and essential components, we need to remove the non-essential ones first and then split the essential ones
+
+        PARAMETERS
+        ==========
+        path : list
+            Each element in list is an atomic step, which can include enzyme complexes and non-essential components
+
+        RETURNS
+        ==========
+        new_path : list
+            Each element in list is a single enzyme
+        """
+
+        new_path = []
+        for x in path:
+            if '+' and '-' in x:
+                # first remove the nonessentials, then add in the essential components
+                idx_of_nonessential = x.index('-')
+                new_x = x[:idx_of_nonessential]
+                individual_components = new_x.split('+')
+                new_path.extend(individual_components)
+            elif '+' in x:
+                # split essential components and add individually to list
+                individual_components = x.split('+')
+                new_path.extend(individual_components)
+            elif '-' in x and x != '--':
+                # remove nonessentials
+                idx_of_nonessential = x.index('-')
+                new_x = x[:idx_of_nonessential]
+                new_path.append(new_x)
+            else:
+                new_path.append(x)
+
+        return new_path
+
+
     def get_enzymes_from_module_definition_in_order(self, mod_definition):
         """Given a module DEFINITION string, this function parses out the enzyme accessions in order of appearance.
 
@@ -1829,6 +2312,67 @@ class KeggEstimatorArgs():
         return acc_list
 
 
+    def remove_nonessential_enzymes_from_module_step(self, step_string):
+        """This functions removes nonessential enzymes from a step definition string and returns the resulting definition.
+
+        It is intended to be called on top-level steps of a module definition (not on the full module definition).
+
+        A nonessential enzyme is any accession (ie, '-K11024') or group of accessions (ie, -(K00242,K18859,K18860))
+        that is marked with a leading '-' character. This function finds the '-' characters in the given string and
+        removes any subsequent accessions. The resulting definition with only essential components is returned.
+
+        If a step does not contain nonessential enzymes, the original definition is returned.
+
+        Likewise, '--' is a special case containing the '-' character which actually indicates a step that has no enzyme profile.
+        It seems to always be present as its own step (ie, '--' is the entire step definition string), so we return the original
+        definition in this case. However, in case there is an internal '--' within a more complicated definition, this function
+        ignores the part of the string that includes it and processes the remainder of the string before re-joining the two parts.
+        It is not able to do this for steps with more than one internal '--', which would require multiple splits and joins, so
+        this case results in an error.
+
+        PARAMETERS
+        ==========
+        step_string: str
+            A string containing the definition of one step from a module
+
+        RETURNS
+        =======
+        step_string: str
+            The same string, with nonessential enzyme accessions (if any) removed.
+        """
+
+        if step_string != '--' and '-' in step_string:
+            saw_double_dash = False             # a Boolean to indicate if we found '--' within the step definition
+            str_prior_to_double_dash = None     # if we find '--', this variable stores the string that occurs prior to and including this '--'
+            while '-' in step_string:
+                idx = step_string.index('-')
+                if step_string[idx+1] == '-': # internal '--' case
+                    if saw_double_dash:
+                        raise ConfigError("Unfortunately, a step containing >1 internal instances of '--' was passed to the function "
+                                          "remove_nonessential_enzymes_from_module_step(). This function is not currently able to handle this "
+                                          "situation. Please contact a developer and ask them to turn this into a smarter function. :) ")
+                    saw_double_dash = True
+                    str_prior_to_double_dash = step_string[:idx+2]
+                    step_string = step_string[idx+2:] # continue processing the remainder of the string
+                    continue
+                elif step_string[idx+1] == '(': # group to eliminate
+                    parens_index = idx+1
+                    while step_string[parens_index] != ')':
+                        parens_index += 1
+                    step_string = step_string[:idx] + step_string[parens_index+1:]
+                else: # single non-essential enzyme
+                    punctuation_index = idx+1
+                    while punctuation_index < len(step_string) and step_string[punctuation_index] not in [')','(','+',' ',',']:
+                        punctuation_index += 1
+                    step_string = step_string[:idx] + step_string[punctuation_index:]
+
+            # if we found an internal '--', we put the two pieces of the definition back together
+            if saw_double_dash:
+                step_string = str_prior_to_double_dash + step_string
+
+        return step_string.strip()
+
+
     def get_module_metadata_dictionary(self, mnum):
         """Returns a dictionary of metadata for the given module.
 
@@ -1855,7 +2399,7 @@ class KeggEstimatorArgs():
         return metadata_dict
 
 
-    def get_ko_metadata_dictionary(self, knum):
+    def get_ko_metadata_dictionary(self, knum, dont_fail_if_not_found=False):
         """Returns a dictionary of metadata for the given KO.
 
         The dictionary must include all the metadata from KO_METADATA_HEADERS,
@@ -1875,14 +2419,25 @@ class KeggEstimatorArgs():
         else:
             mod_list_str = "None"
 
-        if knum not in self.ko_dict:
-            raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
-                              f"for enzyme {knum} but this enzyme is not in "
-                              "the enzyme dictionary (self.ko_dict). This should never have happened.")
-
         metadata_dict = {}
-        metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
         metadata_dict["modules_with_enzyme"] = mod_list_str
+
+        if knum not in self.ko_dict:
+            # if we can't find the enzyme in the KO dictionary, try to find it in the database
+            if knum in self.all_kos_in_db and 'function' in self.all_kos_in_db[knum]:
+                metadata_dict["enzyme_definition"] = self.all_kos_in_db[knum]['function']
+            elif dont_fail_if_not_found:
+                self.run.warning(f"The enzyme {knum} was not found in the metabolism data, so we are unable to determine "
+                                 f"its functional annotation. You will see 'UNKNOWN' for this enzyme in any outputs describing "
+                                 f"its function.")
+                metadata_dict["enzyme_definition"] = "UNKNOWN"
+            else:
+                raise ConfigError("Something is mysteriously wrong. You are seeking metadata "
+                                  f"for enzyme {knum} but this enzyme is not in "
+                                  "the enzyme dictionary (self.ko_dict). This should never have happened.")
+        else:
+            metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
+
         return metadata_dict
 
 
@@ -1939,10 +2494,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
 
+        if self.enzymes_txt:
+            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
+
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path:
-            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
-                              "flag, in which case you must provide a JSON-formatted file.")
+        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
+            raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -1976,13 +2533,40 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-        if self.add_coverage and not self.profile_db_path:
-            raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-        elif self.add_coverage and utils.is_blank_profile(self.profile_db_path):
-            raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                              "values, so the --add-coverage flag will not work.")
-        elif self.add_coverage:
+        if self.add_coverage:
+            if not self.enzymes_txt:
+                if not self.profile_db_path:
+                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+                if utils.is_blank_profile(self.profile_db_path):
+                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                      "values, so the --add-coverage flag will not work.")
+
             self.add_gene_coverage_to_headers_list()
+
+        if self.add_copy_number:
+            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
+            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
+            self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
+            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of complete copies of the path through the module"
+                                                       }
+            self.available_headers["step_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of the step"
+                                                       }
+            self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Pathwise module copy number, as in the maximum number of complete copies considering all the paths of highest completeness"
+                                                       }
+            self.available_headers["stepwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Stepwise module copy number, as in the minimum copy number of all top-level steps in the module"
+                                                       }
+            self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
+                                                       }
 
 
         # OUTPUT OPTIONS SANITY CHECKS
@@ -2034,18 +2618,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # let user know what they told anvi'o to work on
-        self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
-        self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
-        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.contigs_db_path:
+            self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
+        if self.profile_db_path:
+            self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         if self.collection_name:
-            self.run.info('Collection', self.collection_name)
+            self.run.info('Collection', self.collection_name, quiet=self.quiet)
         if self.bin_id:
-            self.run.info('Bin ID', self.bin_id)
+            self.run.info('Bin ID', self.bin_id, quiet=self.quiet)
         elif self.bin_ids_file:
-            self.run.info('Bin IDs file', self.bin_ids_file)
+            self.run.info('Bin IDs file', self.bin_ids_file, quiet=self.quiet)
+        if self.enzymes_txt:
+            self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
+
+        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
 
 
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -2063,7 +2652,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            self.setup_ko_dict()
+            self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
@@ -2073,7 +2662,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
-            if not self.estimate_from_json:
+            if not self.estimate_from_json and not self.enzymes_txt:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
                 if 'modules_db_hash' not in contigs_db.meta:
                     raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
@@ -2100,7 +2689,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # LOAD USER DATA
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             if self.user_input_dir:
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
@@ -2132,7 +2721,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         self.ko_dict[k] = user_kos[k]
                 user_modules_db.disconnect()
 
-        if not self.estimate_from_json:
+        if not self.estimate_from_json and not self.enzymes_txt:
             contigs_db.disconnect()
 
         self.annotation_sources_to_use = list(annotation_source_set)
@@ -2308,37 +2897,43 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
 
-        The profile DB is initialized in this function in order to get access to the sample names that will
+        If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
         """
 
-        if not self.profile_db:
-            self.args.skip_consider_gene_dbs = True
-            self.profile_db = ProfileSuperclass(self.args)
+        # obtain list of sample names
+        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
+            samples_list = [self.contigs_db_project_name]
 
-        # first we get lists of all the headers we will need to add.
+        else:
+            if not self.profile_db:
+                self.args.skip_consider_gene_dbs = True
+                self.profile_db = ProfileSuperclass(self.args)
+
+            samples_list = self.profile_db.p_meta['samples']
+
+        # obtain lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
         kofam_hits_coverage_headers = []
         kofam_hits_detection_headers = []
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        samples_in_profile_db = self.profile_db.p_meta['samples']
-        for s in samples_in_profile_db:
+        for s in samples_list:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
-                                                       'mode_type': 'kofam_hits_in_modules',
+                                                       'mode_type': 'kofams',
                                                        'description': f"Mean coverage of gene in sample {s}"
                                                        }
             kofam_hits_detection_headers.append(s + "_detection")
             self.available_headers[s + "_detection"] = {'cdict_key': None,
-                                                        'mode_type': 'kofam_hits_in_modules',
+                                                        'mode_type': 'kofams',
                                                         'description': f"Detection of gene in sample {s}"
                                                         }
             modules_coverage_headers.extend([s + "_gene_coverages", s + "_avg_coverage"])
             self.available_headers[s + "_gene_coverages"] = {'cdict_key': None,
-                                                             'mode_type': 'all',
+                                                             'mode_type': 'modules',
                                                              'description': f"Comma-separated coverage values for each gene in module in sample {s}"
                                                              }
             self.available_headers[s + "_avg_coverage"] = {'cdict_key': None,
@@ -2356,7 +2951,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                             }
 
         # we update the header list for the affected modes
-        self.available_modes["hits_in_modules"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
 
@@ -2415,7 +3009,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
-            self.run.info("Number of splits", len(split_list))
+            if split_list:
+                num_splits = len(split_list)
+            else:
+                num_splits = "None"
+            self.run.info("Number of splits", num_splits)
 
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.all_modules_in_db.keys()
@@ -2434,8 +3032,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             have a way to know if profiles are missing. But for KOfams with missing profiles, this step is necessary
             so that we don't add the enzyme to the bin_level_ko_dict, because later this will cause problems since
             the enzyme is not in self.ko_dict
+
+            Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
+            because we need access to the self.ko_dict
             """
-            if self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and self.exclude_kos_no_threshold:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -2446,6 +3047,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     for m in mods_it_is_in:
                         if knum[0] != 'M':
                             bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+
+                if anvio.DEBUG:
+                    if self.exclude_kos_no_threshold:
+                        self.run.warning(f"We cannot find an entry for KO {knum} in the `ko_list.txt` file downloaded "
+                                         f"from KEGG. What this means is that you are somehow using KOfam annotations "
+                                         f"that are different from the current version of KOfam on your computer (this can "
+                                         f"happen with --enzymes-txt input). Because we are not considering these annotations, "
+                                         f"you may get KeyErrors downstream. You can force the inclusion of these KOfams by "
+                                         f"re-running this program with the --include-kos-not-in-kofam flag.")
+
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
@@ -2466,6 +3077,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
+                # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
+                if ko not in bin_level_ko_dict:
+                    raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
+                                      f"annotated in your data. This usually happens when you are using `KOfam` annotations that are "
+                                      f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
+                                      f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
+                                      f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
+                                      f"you will have to re-run this program with the flag --include-kos-not-in-kofam. If you just now "
+                                      f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
+                                      f"or remove them from your input --enzymes-txt file.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
@@ -2510,8 +3131,152 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return bin_level_module_dict, bin_level_ko_dict
 
 
-    def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
-        """This function calculates the completeness of the specified module within the given bin metabolism dictionary.
+    def compute_stepwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the stepwise completeness of the specified module within the given bin dictionary.
+
+        It uses only the "top-level" steps of the module definition, which are the steps that you get when you first
+        split the module definition on a space. Each "top-level" step is comprised of one or more enzymes that either
+        work together or serve as alternatives to each other. In this calculation, we ignore the possible combinations
+        of enzymes and simply decide whether or not a "top-level" step is complete or not. Then the module completeness
+        is computed as the number of complete "top-level" steps divided by the total number of steps.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "stepwise_completeness"         the stepwise completeness of the module
+        "stepwise_is_complete"          whether the module completeness falls over the completeness threshold
+        "top_level_step_info"           a dictionary of each top level step
+                                            keyed by integer from 0 to # of top level steps.
+                                            inner dict contains the following keys:
+                                            'step_definition' (string)
+                                            'complete' (Boolean)
+                                            'includes_modules' (Boolean)
+                                            'included_module_list' (list of strings)
+
+        RETURNS
+        =======
+        over_complete_threshold : boolean
+            whether or not the module is considered "complete" overall based on the threshold fraction of completeness
+        """
+
+        top_level_steps = self.all_modules_in_db[mnum]['top_level_steps']
+        num_steps = len(top_level_steps)
+        num_complete = 0
+        num_nonessential_steps = 0
+
+        present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
+
+        meta_dict_for_bin[mnum]['top_level_step_info'] = {}
+
+        for i, step in enumerate(top_level_steps):
+            step_is_present_condition_statement = ""
+            cur_index = 0  # current position in the step DEFINITION
+            step_includes_modules = False
+            included_module_list = []
+
+            while cur_index < len(step):
+                if step[cur_index] in ['(',')']:
+                    step_is_present_condition_statement += step[cur_index]
+                    cur_index += 1
+
+                elif step[cur_index] == ",":
+                    step_is_present_condition_statement += " or "
+                    cur_index += 1
+
+                elif step[cur_index] == "+" or step[cur_index] == ' ':
+                    step_is_present_condition_statement += " and "
+                    cur_index += 1
+
+                elif step[cur_index] == "-":
+                    # '--' no associated enzyme case, always False (assumed incomplete)
+                    if step[cur_index+1] == "-":
+                        step_is_present_condition_statement += "False"
+                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+
+                        if anvio.DEBUG:
+                            self.run.warning(f"While estimating the stepwise completeness of KEGG module {mnum}, anvi'o saw "
+                                             f"'--' in the module DEFINITION. This indicates a step in the pathway that has no "
+                                             f"associated enzyme. By default, anvi'o is marking this step incomplete. But it may not be, "
+                                             f"and as a result this module might be falsely considered incomplete. So it may be in your "
+                                             f"interest to take a closer look at this individual module.")
+                        if cur_index < len(step) and step[cur_index] != " ":
+                            raise ConfigError(f"Serious, serious parsing sadness is happening. We just processed a '--' in "
+                                              f"a DEFINITION line for module {mnum} but did not see a space afterwards. Instead, "
+                                              f"we found {step[cur_index+1]}. WHAT DO WE DO NOW?")
+
+                    # a whole set of nonessential KOs - skip all of them
+                    elif step[cur_index+1] == "(":
+                        while step[cur_index] != ")":
+                            cur_index += 1
+                        cur_index += 1 # skip over the ')'
+
+                    # anything else that follows a '-' should be an enzyme or enzyme component, and should be skipped
+                    else:
+                        # find the next space or '-' or the end of the step
+                        while cur_index+1 < len(step) and (step[cur_index+1] not in [' ', ',', '+', '-', '(', ')']):
+                            cur_index += 1
+                        cur_index += 1
+                        # if we found a non-accession character, the next iteration of the loop will take care of it
+                        # if we reached the end of the step and the condition statement is empty, then the entire
+                        #    step is nonessential so we need to avoid counting it (taken care of later)
+
+                else: # enzyme or module accession
+                    enzyme_start_index = cur_index
+                    while cur_index+1 < len(step) and step[cur_index+1] not in [' ', ',', '+', '-', '(', ')']:
+                        cur_index += 1
+                    enzyme_end_index = cur_index
+
+                    accession = step[enzyme_start_index : enzyme_end_index+1]
+                    # module
+                    if accession in self.all_modules_in_db:
+                        step_includes_modules = True
+                        included_module_list.append(accession)
+                        # store the module accession in the condition string to be replaced later
+                        step_is_present_condition_statement += accession
+                    # enzyme
+                    elif accession in present_list_for_mnum:
+                        step_is_present_condition_statement += "True"
+                    else:
+                        step_is_present_condition_statement += "False"
+
+                    cur_index += 1
+
+            meta_dict_for_bin[mnum]['top_level_step_info'][i] = {}
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['step_definition'] = step
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['includes_modules'] = step_includes_modules
+            meta_dict_for_bin[mnum]['top_level_step_info'][i]['included_module_list'] = included_module_list
+
+            # entire step was nonessential, do not count it
+            if step_is_present_condition_statement == "":
+                num_nonessential_steps += 1
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = "nonessential"
+            elif step_includes_modules:
+                # we'll eval this condition statement in a later function once all other modules have stepwise completeness
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = step_is_present_condition_statement
+            else:
+                step_is_present = eval(step_is_present_condition_statement)
+                meta_dict_for_bin[mnum]['top_level_step_info'][i]['complete'] = step_is_present
+                if step_is_present:
+                    num_complete += 1
+
+        # compute stepwise completeness as number of complete (essential) steps / number of total (essential) steps
+        mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
+        meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
+
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["stepwise_completeness"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["stepwise_is_complete"] = over_complete_threshold
+
+        return over_complete_threshold
+
+
+    def compute_pathwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the pathwise completeness of the specified module within the given bin metabolism dictionary.
 
         To do this, it works with the unrolled module definition: a list of all possible paths, where each path is a list of atomic steps.
         Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
@@ -2545,8 +3310,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         "pathway_completeness"          a list of the completeness of each pathway
         "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
         "most_complete_paths"           a list of the paths with maximum completeness
-        "percent_complete"              the completeness of the module, which is the maximum pathway completeness
-        "complete"                      whether the module completeness falls over the completeness threshold
+        "pathwise_percent_complete"     the completeness of the module, which is the maximum pathway completeness
+        "pathwise_is_complete"          whether the module completeness falls over the completeness threshold
 
         RETURNS
         =======
@@ -2576,10 +3341,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         defined_by_modules = False
 
         meta_dict_for_bin[mnum]["pathway_completeness"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"] = []
+        meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
 
         for p in self.module_paths_dict[mnum]:
             num_complete_steps_in_path = 0
             num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
+            atomic_step_copy_number = []
 
             for atomic_step in p:
                 # there are 5 types of atomic steps to take care of
@@ -2591,6 +3359,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         has_no_ko_step = True
                         warning_str = "'--' steps are assumed incomplete"
                         meta_dict_for_bin[mnum]["warnings"].add(warning_str)
+                        atomic_step_copy_number.append(0)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
@@ -2641,13 +3410,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                             num_matches_processed += 1
 
-                        # after processing all components of the enzyme complex, we compute the complex completeness
+                        # after processing all components of the enzyme complex, we compute the complex completeness and copy number
                         num_present_components = 0
+                        component_copy_number = []
                         for c in essential_components:
                             if c in present_list_for_mnum:
                                 num_present_components += 1
+                                num_copies = len(meta_dict_for_bin[mnum]["kofam_hits"][c])
+                            else:
+                                num_copies = 0
+                            component_copy_number.append(num_copies)
                         component_completeness = num_present_components / len(essential_components)
                         num_complete_steps_in_path += component_completeness
+
+                        if component_completeness >= self.module_completion_threshold:
+                            atomic_step_copy_number.append(min(component_copy_number))
+                        else:
+                            atomic_step_copy_number.append(0)
                 else:
                     # atomic step is a single enzyme or module
                     # 4) Module numbers, ie Mxxxxx
@@ -2665,17 +3444,38 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     else:
                         if atomic_step in present_list_for_mnum:
                             num_complete_steps_in_path += 1
+                            num_copies = len(meta_dict_for_bin[mnum]["kofam_hits"][atomic_step])
+                        else:
+                            num_copies = 0
+
+                        atomic_step_copy_number.append(num_copies)
 
             path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
             meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
 
+            # compute path copy number
+            if defined_by_modules:
+                path_copy_number = atomic_step_copy_number # save list with atomic step copy numbers to use when adjusting module copy number later
+            else:
+                path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_number)
+            meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"].append(path_copy_number)
+
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
-        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
-        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
-            meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        meta_dict_for_bin[mnum]["pathwise_percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
+        if meta_dict_for_bin[mnum]["pathwise_percent_complete"] > 0:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [self.module_paths_dict[mnum][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["pathwise_percent_complete"]]
+            if not defined_by_modules:
+                meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = [meta_dict_for_bin[mnum]["num_complete_copies_of_all_paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["pathwise_percent_complete"]]
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
+            meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"] = []
+
+        # set module copy number as the maximum copy number of the path(s) of maximum completeness
+        if meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"]:
+            meta_dict_for_bin[mnum]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+        else:
+            meta_dict_for_bin[mnum]["pathwise_copy_number"] = 'NA'
 
         # compute proportion of unique enzymes in the module (regardless of which path(s) enzyme is in or whether enzyme is essential)
         if meta_dict_for_bin[mnum]["unique_to_this_module"]:
@@ -2693,22 +3493,78 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
-            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
+            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["pathwise_percent_complete"]),
                             header='DEBUG OUTPUT', lc='yellow')
-        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold else False
-        meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["pathwise_percent_complete"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["pathwise_is_complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
-        if over_complete_threshold:
-            meta_dict_for_bin["num_complete_modules"] += 1
 
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
-    def adjust_module_completeness_for_bin(self, mod, meta_dict_for_bin):
-        """This function adjusts completeness of modules that are defined by other modules.
+    def adjust_stepwise_completeness_for_bin(self, mnum, meta_dict_for_bin):
+        """This function adjusts stepwise completeness of modules that are defined by other modules.
 
         This can only be done after all other modules have been evaluated for completeness.
-        The function uses similar logic as compute_module_completeness_for_bin() to re-assess whether steps defined
+        The function goes through the top-level steps established by compute_stepwise_module_completeness_for_bin()
+        and re-assesses whether steps including other modules are complete. It updates the metabolism completess dictionary accordingly.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            the module number to adjust
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dictionary for the current bin
+
+        RETURNS
+        =======
+        now_complete : boolean
+            whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
+        """
+
+        num_steps = len(meta_dict_for_bin[mnum]['top_level_step_info'].keys())
+        num_complete = 0
+        num_nonessential_steps = 0
+
+        for step_num, step_dict in meta_dict_for_bin[mnum]['top_level_step_info'].items():
+            if step_dict['includes_modules']:
+                # this condition statement has module accessions in it, we need to replace those with True/False and eval
+                step_is_present_condition_statement = step_dict['complete']
+                module_accessions_to_replace = step_dict['included_module_list']
+                for m in module_accessions_to_replace:
+                    mod_completeness = meta_dict_for_bin[m]['stepwise_completeness']
+                    if mod_completeness >= self.module_completion_threshold:
+                        step_is_present_condition_statement = step_is_present_condition_statement.replace(m, "True")
+                    else:
+                        step_is_present_condition_statement = step_is_present_condition_statement.replace(m, "False")
+
+                # now evaluate to see if this step is complete
+                step_is_present = eval(step_is_present_condition_statement)
+                meta_dict_for_bin[mnum]['top_level_step_info'][step_num]['complete'] = step_is_present
+                if step_is_present:
+                    num_complete += 1
+
+            else:
+                if step_dict['complete'] == "nonessential":
+                    num_nonessential_steps += 1
+                elif step_dict['complete']:
+                    num_complete += 1
+
+        mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
+        meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
+
+        was_already_complete = meta_dict_for_bin[mnum]["stepwise_is_complete"]
+        now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
+        meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
+
+        return now_complete
+
+
+    def adjust_pathwise_completeness_for_bin(self, mod, meta_dict_for_bin):
+        """This function adjusts pathwise completeness of modules that are defined by other modules.
+
+        This can only be done after all other modules have been evaluated for completeness.
+        The function uses similar logic as compute_pathwise_module_completeness_for_bin() to re-assess whether steps defined
         by other modules are complete, and updates the metabolism completess dictionary accordingly.
 
         PARAMETERS
@@ -2729,11 +3585,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
             num_complete_module_steps = 0
 
+            # take previously computed step copy numbers. This list includes all steps except those defined by modules.
+            atomic_step_copy_numbers_in_path = meta_dict_for_bin[mod]["num_complete_copies_of_all_paths"][i]
+            module_copy_num_should_be_NA = False # flag to indicate whether component modules have a copy number of NA
+
             for atomic_step in p:
                 # module step; we need to count these based on previously computed module completeness
                 if atomic_step in self.all_modules_in_db:
-                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["pathwise_percent_complete"]
                     num_essential_steps_in_path += 1
+
+                    if meta_dict_for_bin[atomic_step]["pathwise_copy_number"] == "NA":
+                        module_copy_num_should_be_NA = True
+                    else:
+                        atomic_step_copy_numbers_in_path.append(meta_dict_for_bin[atomic_step]["pathwise_copy_number"])
                 # non-essential KO, don't count as a step in the path
                 elif atomic_step[0] == '-' and not atomic_step == "--":
                     pass
@@ -2746,18 +3611,29 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
             meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
 
+            # now we adjust the path copy number
+            if module_copy_num_should_be_NA:
+                path_copy_number = "NA"
+            else:
+                path_copy_number = self.compute_num_complete_copies_of_path(atomic_step_copy_numbers_in_path)
+            meta_dict_for_bin[mod]["num_complete_copies_of_all_paths"][i] = path_copy_number
+
         # after adjusting for all paths, adjust overall module completeness
-        meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
-        if meta_dict_for_bin[mod]["percent_complete"] > 0:
-            meta_dict_for_bin[mod]["most_complete_paths"] = [self.module_paths_dict[mod][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
+        meta_dict_for_bin[mod]["pathwise_percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
+        if meta_dict_for_bin[mod]["pathwise_percent_complete"] > 0:
+            meta_dict_for_bin[mod]["most_complete_paths"] = [self.module_paths_dict[mod][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["pathwise_percent_complete"]]
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        was_already_complete = meta_dict_for_bin[mod]["complete"]
-        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
-        meta_dict_for_bin[mod]["complete"] = now_complete
-        if now_complete and not was_already_complete:
-            meta_dict_for_bin["num_complete_modules"] += 1
+        was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
+        now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
+        meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
+
+        # and adjust overall module copy number
+        if meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"]:
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+        else:
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = 'NA'
 
         return now_complete
 
@@ -2780,7 +3656,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         avg_detection = meta_dict_for_bin[module]["average_detection_per_sample"][sample]
         """
 
-        if not self.profile_db:
+        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
+        meta_dict_for_bin[mod]["genes_to_detection"] = {}
+        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
+        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+
+        if not self.enzymes_txt and not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
@@ -2800,12 +3681,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            self.coverage_sample_list = self.profile_db.p_meta['samples']
-
-        meta_dict_for_bin[mod]["genes_to_coverage"] = {}
-        meta_dict_for_bin[mod]["genes_to_detection"] = {}
-        meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
-        meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
+            if self.enzymes_txt:
+                self.coverage_sample_list = [self.contigs_db_project_name]
+            else:
+                self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
         for s in self.coverage_sample_list:
@@ -2814,8 +3693,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             coverage_sum = 0
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
-                cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
-                det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
+                if self.enzymes_txt:
+                    cov = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['coverage'].values[0]
+                    det = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['detection'].values[0]
+                else:
+                    cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
+                    det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
                 coverage_sum += cov
                 detection_sum += det
                 meta_dict_for_bin[mod]["genes_to_coverage"][s][g] = cov
@@ -2841,16 +3724,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         ==========
         metabolism_dict_for_list_of_splits : dictionary of dictionaries
             the metabolism completeness dictionary of dictionaries for this list of splits. It contains
-            one dictionary of module steps and completion information for each module (keyed by module number),
-            as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
+            one dictionary of module steps and completion information for each module (keyed by module number).
             Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
         bin_name : str
             the name of the bin/genome/metagenome that we are working with
         """
 
-        metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
-
-        complete_mods = []
+        pathwise_complete_mods = set([])
+        stepwise_complete_mods = set([])
         mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
         # modules to warn about
         mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
@@ -2858,13 +3739,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # estimate completeness of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
+            # pathwise
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
-            = self.compute_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+            = self.compute_pathwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
-                complete_mods.append(mod)
+                pathwise_complete_mods.add(mod)
             if has_nonessential_step:
                 mods_with_nonessential_steps.append(mod)
             if has_no_ko_step:
@@ -2872,23 +3752,32 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if defined_by_modules:
                 mods_def_by_modules.append(mod)
 
+            # stepwise
+            mod_is_complete = self.compute_stepwise_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+            self.compute_stepwise_module_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
+
+            if mod_is_complete:
+                stepwise_complete_mods.add(mod)
+
             if self.add_coverage:
                 self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
 
-        # go back and adjust completeness of modules that are defined by other modules
+        # go back and adjust completeness/copy number of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
-                mod_is_complete = self.adjust_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
-
+                # pathwise
+                mod_is_complete = self.adjust_pathwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
                 if mod_is_complete:
-                    complete_mods.append(mod)
+                    pathwise_complete_mods.add(mod)
+                # stepwise
+                mod_is_complete = self.adjust_stepwise_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
+                if mod_is_complete:
+                    stepwise_complete_mods.add(mod)
+                self.adjust_stepwise_copy_number_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
         # estimate redundancy of each module
         for mod in metabolism_dict_for_list_of_splits.keys():
-            if mod == "num_complete_modules":
-                continue
-
             self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
@@ -2912,40 +3801,53 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG or self.genome_mode:
             self.run.info("Bin name", bin_name)
             self.run.info("Module completion threshold", self.module_completion_threshold)
-            self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
-            if complete_mods:
-                self.run.info("Complete modules", ", ".join(complete_mods))
+            self.run.info("Number of complete modules (pathwise)", len(pathwise_complete_mods))
+            self.run.info("Number of complete modules (stepwise)", len(stepwise_complete_mods))
+            if pathwise_complete_mods:
+                self.run.info("Pathwise complete modules", ", ".join(sorted(list(pathwise_complete_mods))))
+            if stepwise_complete_mods:
+                self.run.info("Stepwise complete modules", ", ".join(sorted(list(stepwise_complete_mods))))
 
         return metabolism_dict_for_list_of_splits
 
-######### REDUNDANCY FUNCTIONS (UNUSED) #########
+######### REDUNDANCY FUNCTIONS (UNUSED IN NON-JSON OUTPUT) #########
 
-    def compute_naive_redundancy_for_path(self, num_ko_hits_in_path_dict):
+    def compute_naive_redundancy_for_path(self, num_ko_hits_in_path):
         """This function computes a naive redundancy measure for a module path, given the number of hits per KO in the path.
 
         naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
+
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
         """
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
-        return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
+        return sum(extra_hits)/len(num_ko_hits_in_path)
 
 
-    def compute_copywise_redundancy_for_path(self, num_ko_hits_in_path_dict, aggregation_measure="average"):
+    def compute_copywise_redundancy_for_path(self, num_ko_hits_in_path, aggregation_measure="average"):
         """This function computes redundancy based on the completeness of each extra copy of a path.
 
         The 'base' redundancy score is determined by the number of extra copies with 100% completeness.
         The completeness measurements of all other extra copies are aggregated (using the aggregation_measure) and
         added to this 'base' redundancy to get the overall path redundancy.
+
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
         """
 
         accepted_aggregation_measures = ["average", "median", "weighted_sum", "geometric_mean"]
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
         base_redundancy = min(extra_hits) # number of extra copies of path that are 100% complete
         extra_copy_completeness = []
         # here we get the completeness of every extra copy of the path
         for i in range((base_redundancy+1), max(extra_hits) + 1):
             num_present_kos_in_copy = len([num_hits for num_hits in extra_hits if num_hits >= i])
-            extra_copy_completeness.append(num_present_kos_in_copy/len(num_ko_hits_in_path_dict.keys()))
+            extra_copy_completeness.append(num_present_kos_in_copy/len(num_ko_hits_in_path))
 
         aggregated_completeness = None
         if not extra_copy_completeness: # this handles the case when ALL extra copies are 100% complete
@@ -2968,12 +3870,18 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return (base_redundancy + aggregated_completeness), extra_copy_completeness
 
 
-    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path_dict):
-        """This function computes naive redundancy but weights it by the entropy of the hit distribution."""
+    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path):
+        """This function computes naive redundancy but weights it by the entropy of the hit distribution.
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        PARAMETERS
+        ==========
+        num_ko_hits_in_path : list
+            stores the number of copies of each enzyme in path
+        """
+
+        extra_hits = [x - 1 if x > 1 else 0 for x in num_ko_hits_in_path]
         total_extra_hits = sum(extra_hits)
-        num_kos = len(num_ko_hits_in_path_dict.keys())
+        num_kos = len(num_ko_hits_in_path)
         naive_redundancy = total_extra_hits/num_kos
         if all(e == 0 for e in extra_hits):
             return 0.0
@@ -2988,10 +3896,48 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return naive_redundancy * entropy/max_entropy
 
 
+    def compute_num_complete_copies_of_path(self, copy_num_of_atomic_steps):
+        """This function computes the number of copies of a path that are >= x% complete,
+        where x is the module completeness threshold.
+
+        It does this based on the provided list in which each entry is the number of copies of
+        each atomic step in the path.
+        - first, these copy numbers are ordered (descending order)
+        - then, we compute N, the number of steps needed to make the path at least X complete, where
+          X is the module completeness threshold
+        - finally, we loop from i=1 to the maximum number of hits. Each time, if the number x of steps
+          with hit count >= i is x >= N, we add 1 to our count of path copy numbers.
+        - the final count of path copy numbers is returned.
+
+        PARAMETERS
+        ==========
+        copy_num_of_atomic_steps : list
+            stores the number of copies of each step in path
+
+        RETURNS
+        ==========
+        copy_number : int
+            number of copies of path which are at least X complete, where X is module completeness threshold
+        """
+
+        import math
+        path_length = len(copy_num_of_atomic_steps)
+        num_enzymes_needed = math.ceil(self.module_completion_threshold * path_length)  # N
+        copy_num_of_atomic_steps.sort(reverse=True)
+
+        copy_number = 0
+        for i in range(1, copy_num_of_atomic_steps[0]+1):
+            x = len([h for h in copy_num_of_atomic_steps if h >= i])
+            if x >= num_enzymes_needed:
+                copy_number += 1
+
+        return copy_number
+
+
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the redundancy of the specified module within the given bin metabolism dictionary.
 
-        Each module can have multiple paths, but we only compute redundancy on the paths with the highest completeness
+        Each module can have multiple paths, but (in most cases) we only compute redundancy on the paths with the highest completeness
         (stored under the "most_complete_paths" key). If there are no paths in this list (which only happens when there
         are 0 KOfam hits to the module), then we do not compute redundancy.
 
@@ -3009,19 +3955,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mnum]["copywise_completeness_distributions"] = []
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
+        meta_dict_for_bin[mnum]["copywise_geometric-mean"] = []
         meta_dict_for_bin[mnum]["entropy_weighted"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
-            # put zero values in dict wherever necessary
             return
 
         for p in paths_of_highest_completeness:
-            kofam_hits_in_path = { ko : meta_dict_for_bin[mnum]["kofam_hits"][ko] for ko in meta_dict_for_bin[mnum]["kofam_hits"].keys() if ko in p }
-            num_hits_per_kofam = { ko : len(kofam_hits_in_path[ko]) for ko in kofam_hits_in_path.keys() }
-            for ko in p:
-                if ko not in num_hits_per_kofam:
-                    num_hits_per_kofam[ko] = 0
+            p = self.split_module_path_into_individual_essential_components(p)
+            num_hits_per_kofam = [len(meta_dict_for_bin[mnum]["kofam_hits"][k]) if k in meta_dict_for_bin[mnum]["kofam_hits"] else 0 for k in p]
 
             # for now, we will try a bunch of different redundancy calculations and put them all into the dictionary until we find the ones we like
             meta_dict_for_bin[mnum]["naive_redundancy"].append(self.compute_naive_redundancy_for_path(num_hits_per_kofam))
@@ -3033,10 +3976,230 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             cw_ws_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="weighted_sum")
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
             cw_gm_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="geometric_mean")
-            meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_gm_redundancy)
+            meta_dict_for_bin[mnum]["copywise_geometric-mean"].append(cw_gm_redundancy)
             meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
 
         return
+
+
+    def get_step_copy_number(self, step_string, enzyme_hit_counts):
+        """This function recursively calculates the copy number of a step in a module.
+
+        It parses the definition string of a step and recurses as needed to compute copy number of
+        substeps. Copy numbers of any substeps are mathematically combined to obtain a copy number for
+        the step as a whole.
+
+        The key base case in the recursion is an individual enzyme accession, for which the copy number
+        is simply the number of times it is annotated in the sample (which we obtain from the enzyme_hit_counts dictionary).
+
+        Combining copy numbers works as follows: If two enzymes (or substeps) are connected by an AND, then we need both, so
+        we take the minimum copy number of both of them. If they are connected by an OR, then we can use either, so we can sum
+        their copy numbers. In doing this, we follow correct order of operations, as established by any parentheses in the step definition.
+
+        In short, this function accomplishes the same thing as modifying the step definition by replacing spaces and '+' signs with min()
+        operations, replacing commas with + operations, and replacing enzyme accessions with their corresponding hit counts; then returning
+        the value obtained by evaluating the resulting arithmetic expression.
+
+        Some steps are defined by other modules. When module accessions are found, [FIXME]
+
+        PARAMETERS
+        ==========
+        step_string : str
+            A string containing the definition of one step (or substep) from a module
+        enzyme_hit_counts : dict
+            Keys are enzyme accessions, values are the number of times the enzyme was annotated in the current sample
+
+        RETURNS
+        ==========
+        The copy number (int) of the given step/substep
+        """
+
+        # first, eliminate non-essential KOs from the step definition so they won't be considered
+        step_string = self.remove_nonessential_enzymes_from_module_step(step_string)
+
+        # sometimes a step will have commas outside parentheses. In this case, we need to split those first for proper order of operations
+        step_list = utils.split_by_delim_not_within_parens(step_string, ",")
+        if len(step_list) > 1:
+            added_step_count = 0
+            # call recursively on each split
+            for s in step_list:
+                added_step_count += self.get_step_copy_number(s, enzyme_hit_counts)
+            # combine results using addition and return
+            return added_step_count
+
+        # complex case - parentheses surround substeps, which need to be counted recursively and appropriately combined
+        if '(' in step_string:
+            open_parens_idx = step_string.index('(') # first (outermost) parenthesis
+            close_parens_idx = None
+
+            # find matching parenthesis
+            i = open_parens_idx + 1
+            parens_level = 1
+            while not close_parens_idx:
+                if step_string[i] == '(':
+                    parens_level += 1
+                if step_string[i] == ')':
+                    parens_level -= 1
+
+                    if parens_level == 0:
+                        close_parens_idx = i
+                i += 1
+
+            # call recursively on string within outermost parentheses
+            sub_step = step_string[open_parens_idx+1:close_parens_idx]
+            sub_copy_num = self.get_step_copy_number(sub_step, enzyme_hit_counts)
+
+            # parse the rest of the string and combine with the copy number of the stuff within parentheses
+            step_copy_num = 0
+            # handle anything prior to parentheses
+            if open_parens_idx > 0:
+                previous_str = step_string[:open_parens_idx]
+
+                previous_steps = previous_str[:-1]
+                prev_copy = self.get_step_copy_number(previous_steps, enzyme_hit_counts)
+
+                combo_element = previous_str[-1]
+                if combo_element == ',': # OR
+                    step_copy_num += (prev_copy + sub_copy_num)
+                if combo_element == ' ': # AND
+                    step_copy_num += min(prev_copy,sub_copy_num)
+
+            # handle anything following parentheses
+            if close_parens_idx < len(step_string) - 1:
+                post_str = step_string[close_parens_idx+1:]
+
+                post_steps = step_string[close_parens_idx+2:]
+                post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
+
+                combo_element = step_string[close_parens_idx+1]
+                if combo_element == ',': # OR
+                    step_copy_num += (sub_copy_num + post_copy)
+                if combo_element == ' ': # AND
+                    step_copy_num += min(sub_copy_num,post_copy)
+
+            # handle edge case where parentheses circles entire step
+            if (open_parens_idx == 0) and (close_parens_idx == len(step_string) - 1):
+                step_copy_num += sub_copy_num
+
+            return step_copy_num
+
+        # simple case - no substeps within parentheses
+        else:
+            if ',' in step_string: # OR - combine copy numbers using addition
+                or_splits = step_string.split(',')
+                added_step_count = 0
+                for s in or_splits:
+                    added_step_count += self.get_step_copy_number(s, enzyme_hit_counts)
+                return added_step_count
+
+            elif ' ' in step_string or '+' in step_string: # AND - combine copy numbers using min()
+                and_splits = step_string.replace('+', ' ').split(' ')
+                min_step_count = 10000 # arbitrarily large number to ensure first s is always the minimum
+                for s in and_splits:
+                    s_count = self.get_step_copy_number(s, enzyme_hit_counts)
+                    min_step_count = min(min_step_count, s_count)
+                return min_step_count
+
+            # base cases
+            elif '-' in step_string:
+                if step_string == '--': # no KO profile => no copy number
+                    return 0
+                else: # contains non-essential KO, should never happen because we eliminated them above
+                    raise ConfigError(f"Something is very wrong, because the get_step_copy_number() function found a nonessential "
+                                      f"enzyme in the step definition {step_string}")
+            elif step_string == '': # entire step was nonessential KO, skip computation
+                return None
+            else: # accession
+                if step_string in self.all_modules_in_db: # module
+                    if step_string in enzyme_hit_counts: # we are currently adjusting, and know the module copy number
+                        return enzyme_hit_counts[step_string]
+                    else: # return 0 for now, will be adjusted later
+                        return 0
+                else: # enzyme
+                    if step_string not in enzyme_hit_counts:
+                        return 0
+                    return enzyme_hit_counts[step_string]
+
+
+    def compute_stepwise_module_copy_number_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
+
+        It goes through the top-level steps established by compute_stepwise_module_completeness_for_bin() and determines the
+        copy number of each step. Then, the overall module copy number is calculated as the minimum copy number of all steps.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "stepwise_copy_number"         the stepwise copy number of the module
+
+        [keys added in "top_level_step_info" dictionary]
+            "copy_number"              the copy number of an individual step
+        """
+
+        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
+
+        all_step_copy_nums = []
+        for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
+            if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
+                step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+
+                step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
+                meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
+                if step_copy_num is not None: # avoid taking minimum of None values (from non-essential steps)
+                    all_step_copy_nums.append(step_copy_num)
+
+        if all_step_copy_nums:
+            module_stepwise_copy_num = min(all_step_copy_nums)
+        else:
+            module_stepwise_copy_num = None
+        meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
+
+
+    def adjust_stepwise_copy_number_for_bin(self, mnum, meta_dict_for_bin):
+        """This function adjusts stepwise copy number of modules that are defined by other modules.
+
+        This can only be done after all other modules have had their copy numbers calculated and added to the metabolism dictionary
+        by the function compute_stepwise_module_copy_number_for_bin().
+
+        The function goes through the top-level steps in the module and re-computes copy number for steps that include other modules.
+        Then it re-calculates the overall module copy number as the minimum copy number of all steps. It updates the metabolism completess
+        dictionary accordingly.
+
+        PARAMETERS
+        ==========
+        mnum : string
+            the module number to adjust
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dictionary for the current bin
+        """
+
+        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
+
+        all_step_copy_nums = []
+        for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
+            # re-calculate ONLY for steps with modules in definition
+            if meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
+                step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+
+                for included_module in meta_dict_for_bin[mnum]["top_level_step_info"][key]["included_module_list"]:
+                    enzyme_hits_dict[included_module] = meta_dict_for_bin[included_module]["stepwise_copy_number"]
+
+                step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
+                meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
+
+            # take minimum over all steps, even those not defined by modules
+            if meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] is not None: # avoid taking minimum of None values (from non-essential steps)
+                all_step_copy_nums.append(meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"])
+
+        module_stepwise_copy_num = min(all_step_copy_nums)
+        meta_dict_for_bin[mnum]["stepwise_copy_number"] = module_stepwise_copy_num
+
 
 ######### ESTIMATION DRIVER FUNCTIONS #########
 
@@ -3253,12 +4416,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 bins_found.append(bin_name)
 
             for mod, mod_dict in meta_dict_for_bin.items():
-                if mod == "num_complete_modules":
-                    self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
-                                     "We say this because the key 'num_complete_modules' was found. This isn't a problem; however you should know that anvi'o "
-                                     "won't take any of the existing estimation information into account. The only module-level keys that will be used from this file "
-                                     "are: %s" % (expected_keys_for_module))
-                    continue
                 # verify that dict contains the necessary keys for estimation
                 if not expected_keys_for_module.issubset(set(mod_dict.keys())):
                     missing_keys = expected_keys_for_module.difference(set(mod_dict.keys()))
@@ -3286,6 +4443,116 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.run.info("Bins/genomes/metagenomes found", ", ".join(bins_found))
         return new_kegg_metabolism_superdict
+
+
+    def load_data_from_enzymes_txt(self):
+        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
+
+        RETURNS
+        =======
+        enzyme_df : Pandas DataFrame
+            contains the information in the enzymes txt file
+        """
+
+        self.progress.new("Loading enzymes-txt file...")
+        expected_fields = ['gene_id', 'enzyme_accession', 'source']
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        self.progress.end()
+
+        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
+
+        # sanity check for required columns
+        missing = []
+        for f in expected_fields:
+            if f not in enzyme_df.columns:
+                missing.append(f)
+        if missing:
+            miss_str = ", ".join(missing)
+            exp_str = ", ".join(expected_fields)
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
+                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        # warning about extra columns
+        used_cols = expected_fields + ['coverage', 'detection']
+        extra_cols = []
+        for c in enzyme_df.columns:
+            if c not in used_cols:
+                extra_cols.append(c)
+        if extra_cols:
+            e_str = ", ".join(extra_cols)
+            self.run.warning("Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             "going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+
+        # check and warning for enzymes not in self.all_kos_in_db
+        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if enzymes_not_in_modules:
+            example = enzymes_not_in_modules[0]
+            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+
+        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
+        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
+            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
+                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
+                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
+                             "flag off. Sorry ¯\_(ツ)_/¯")
+            self.add_coverage = False
+            # remove coverage headers from the list so we don't try to access them later
+            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
+            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
+                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
+            for h in kofam_hits_coverage_headers:
+                if h in self.available_modes["hits"]["headers"]:
+                    self.available_modes["hits"]["headers"].remove(h)
+            for h in modules_coverage_headers:
+                if h in self.available_modes["modules"]["headers"]:
+                    self.available_modes["modules"]["headers"].remove(h)
+
+        return enzyme_df
+
+
+    def estimate_metabolism_from_enzymes_txt(self):
+        """Estimates metabolism on a set of enzymes provided in a text file.
+
+        This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
+        same as the estimate_for_genome() function.
+
+        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
+        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
+        attribute has been set (previously) to the name of the enzyme txt file
+
+        RETURNS
+        =======
+        enzyme_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping the name of the enzyme txt file to its metabolism completeness dictionary
+        enzyme_ko_superdict : dictionary of dictionary of dictionaries
+            maps the name of the enzyme txt file to its KOfam hit dictionary
+        """
+
+        kofam_gene_split_contig = []
+        # no splits or contigs here
+        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
+            kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
+
+        enzyme_metabolism_superdict = {}
+        enzyme_ko_superdict = {}
+
+        metabolism_dict_for_genome,ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig,
+                                                                                                 bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome,
+                                                                                                         bin_name=self.contigs_db_project_name)
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+        else:
+            enzyme_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
+            enzyme_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
+
+        # append to file
+        self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
+
+        return enzyme_metabolism_superdict, enzyme_ko_superdict
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
@@ -3344,7 +4611,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.output_file_dict = self.setup_output_for_appending()
 
         if self.estimate_from_json:
-            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data() ## TODO: fix this for user data
+            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
             # we either get the modules DB info from the previous class, or we have to initialize it here
             if all_modules_in_db:
@@ -3354,20 +4621,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 self.init_data_from_modules_db()
 
-            kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-
-            if self.add_coverage:
-                self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
-
-            if self.profile_db_path and self.collection_name and not self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-            elif not self.collection_name and not self.metagenome_mode:
-                self.genome_mode = True
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
-            elif self.metagenome_mode:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+            if self.enzymes_txt:
+                self.enzymes_txt_data = self.load_data_from_enzymes_txt()
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
             else:
-                raise ConfigError("This class doesn't know how to deal with that yet :/")
+                kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
+
+                if self.add_coverage:
+                    self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
+
+                if self.profile_db_path and self.collection_name and not self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+                elif not self.collection_name and not self.metagenome_mode:
+                    self.genome_mode = True
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
+                elif self.metagenome_mode:
+                    kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                else:
+                    raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
@@ -3390,6 +4661,165 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 ######### OUTPUT DICTIONARY FUNCTIONS #########
 
+    def add_common_elements_to_output_dict_for_module_in_bin(self, bin, mnum, c_dict, headers_to_include, headers_in_c_dict, d):
+        """This function fills in the provided modules dictionary with data common to all module-related output modes.
+
+        It's designed to be called from the function generate_output_dict_for_modules(), which sets up the modules dictionary
+        and handles the self.modules_unique_id key. For that reason, it is best understood by taking a look at that function
+        first. Most parameters are named to be consistent with the variables in that function.
+
+        The provided modules dictionary will be modified in-place.
+
+        PARAMETERS
+        ==========
+        bin : str
+            current bin name
+        mnum : str
+            current module number
+        c_dict : dictionary
+            fourth level of module completion dictionary corresponding to current module
+        headers_to_include : list
+            which headers to include in the output dictionary
+        headers_in_c_dict : list
+            headers that we can include directly from the c_dict without further processing
+        d : dict
+            the modules output dictionary that needs to be added to
+        """
+
+        # fetch module info
+        metadata_dict = self.get_module_metadata_dictionary(mnum)
+        definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
+        if not isinstance(definition_list, list):
+            definition_list = [definition_list]
+        module_def = '"' + " ".join(definition_list) + '"'
+
+        # top-level keys and keys not in superdict
+        if self.name_header in headers_to_include:
+            d[self.modules_unique_id][self.name_header] = bin
+        if "db_name" in headers_to_include:
+            d[self.modules_unique_id]["db_name"] = self.database_name
+        if 'module' in headers_to_include:
+            d[self.modules_unique_id]['module'] = mnum
+
+        # module-specific info
+        if "module_name" in headers_to_include:
+            d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
+        if "module_class" in headers_to_include:
+            d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
+        if "module_category" in headers_to_include:
+            d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
+        if "module_subcategory" in headers_to_include:
+            d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
+        if "module_definition" in headers_to_include:
+            d[self.modules_unique_id]["module_definition"] = module_def
+        if "module_substrates" in headers_to_include:
+            if self.all_modules_in_db[mnum]['substrate_list']:
+                d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
+            else:
+                d[self.modules_unique_id]["module_substrates"] = "None"
+        if "module_products" in headers_to_include:
+            if self.all_modules_in_db[mnum]['product_list']:
+                d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
+            else:
+                d[self.modules_unique_id]["module_products"] = "None"
+        if "module_intermediates" in headers_to_include:
+            if self.all_modules_in_db[mnum]['intermediate_list']:
+                d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
+            else:
+                d[self.modules_unique_id]["module_intermediates"] = "None"
+
+        # comma-separated lists of KOs and gene calls in module
+        kos_in_mod = sorted(c_dict['kofam_hits'].keys())
+        # gene call list should be in same order as KO list
+        gcids_in_mod = []
+        kos_in_mod_list = []
+        if kos_in_mod:
+            for ko in kos_in_mod:
+                gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
+                kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
+        if "enzyme_hits_in_module" in headers_to_include:
+            d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
+        if "gene_caller_ids_in_module" in headers_to_include:
+            d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
+        # comma-separated list of warnings
+        if "warnings" in headers_to_include:
+            if not c_dict["warnings"]:
+                d[self.modules_unique_id]["warnings"] = "None"
+            else:
+                d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
+
+        # list of enzymes unique to module
+        unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
+        if "enzymes_unique_to_module" in headers_to_include:
+            if unique_enzymes:
+                d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
+            else:
+                d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
+        if "unique_enzymes_hit_counts" in headers_to_include:
+            if unique_enzymes:
+                hit_count_list = []
+                for e in unique_enzymes:
+                    hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
+                d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
+            else:
+                d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
+
+        # everything else at c_dict level
+        for h in headers_in_c_dict:
+            if h not in self.available_headers.keys():
+                raise ConfigError("Requested header %s not available." % (h))
+            h_cdict_key = self.available_headers[h]['cdict_key']
+            if not h_cdict_key:
+                raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+
+            value = c_dict[h_cdict_key]
+            if isinstance(value, list):
+                if not value:
+                    value = "None"
+                else:
+                    value = ",".join(value)
+            d[self.modules_unique_id][h] = value
+
+        # add module copy number if requested
+        if self.add_copy_number:
+            # pathwise: we take the maximum copy number of all the paths of highest completeness
+            if "pathwise_copy_number" in headers_to_include:
+                d[self.modules_unique_id]["pathwise_copy_number"] = c_dict["pathwise_copy_number"]
+
+            # stepwise copy number
+            if "stepwise_copy_number" in headers_to_include:
+                d[self.modules_unique_id]["stepwise_copy_number"] = c_dict["stepwise_copy_number"]
+            if "per_step_copy_numbers" in headers_to_include:
+                step_copy_numbers = []
+                for step in c_dict["top_level_step_info"]:
+                    step_copy_numbers.append(str(c_dict["top_level_step_info"][step]["copy_number"]))
+                d[self.modules_unique_id]["per_step_copy_numbers"] = ",".join(step_copy_numbers)
+
+        # add coverage if requested
+        if self.add_coverage:
+            for s in self.coverage_sample_list:
+                sample_cov_header = s + "_gene_coverages"
+                sample_det_header = s + "_gene_detection"
+                sample_avg_cov_header = s + "_avg_coverage"
+                sample_avg_det_header = s + "_avg_detection"
+
+                gene_coverages_in_mod = []
+                gene_detection_in_mod = []
+                for gc in gcids_in_mod:
+                    if self.enzymes_txt:
+                        gc_idx = gc
+                    else:
+                        gc_idx = int(gc)
+                    gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
+                    gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
+
+                d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
+                d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
+                d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
+                d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
+
+
     def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
@@ -3410,13 +4840,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 "pathway_completeness":     [0.66, 0.66, ...]
                 "present_nonessential_kos":      []
                 "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
-                "percent_complete":              0.66
-                "complete":                      False
+                "pathwise_percent_complete":              0.66
+                "pathwise_is_complete":                      False
+                (.....)
                                       }
 
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
-        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
-        in the rows.
+        where each bin-module, bin-module-path, or bin-module-step (depending on output mode) is keyed by an arbitrary integer.
+        There will be a lot of redundant information in the rows.
 
         PARAMETERS
         ==========
@@ -3452,11 +4883,27 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
                                     "unique_enzymes_hit_counts"])
-        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "enzyme_hit", "gene_caller_id", "contig"])
+        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path"])
+        step_level_headers = set(["step_id", "step", "step_completeness", "step_copy_number"])
+
+        requested_path_info = headers_to_include.intersection(path_level_headers)
+        requested_step_info = headers_to_include.intersection(step_level_headers)
+        if requested_path_info and requested_step_info:
+            raise ConfigError(f"Oh, bother. It seems you have requested both path-level headers and step-level headers for your modules-related "
+                              f"output. Unfortunately, these two types of information are incompatible and cannot be put into the same output "
+                              f"file due to the way we internally organize the data. Sorry. If you want both types of information, we recommend "
+                              f"requesting both in separate files using `--output-modes module_paths,module_steps`. If you absolutely need custom "
+                              f"formatting for the output files, then you can run this program twice and each time provide either only path-level "
+                              f"headers or only step-level headers to the `--custom-output-headers` flag. To help you out, here are the path-level "
+                              f"headers that you requested: {', '.join(requested_path_info)}. And here are the step-level headers that you requested: "
+                              f"{', '.join(requested_step_info)}")
+
         keys_not_in_superdict = set([h for h in self.available_headers.keys() if self.available_headers[h]['cdict_key'] is None])
+
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
-        remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
+        remaining_headers = remaining_headers.difference(path_level_headers)
+        remaining_headers = remaining_headers.difference(step_level_headers)
 
         # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
         d = {}
@@ -3465,266 +4912,58 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
-
                 if anvio.DEBUG:
                     self.run.info("Generating output for module", mnum)
 
-                if only_complete_modules and not c_dict["complete"]:
+                if only_complete_modules and not (c_dict["pathwise_is_complete"] or c_dict["stepwise_is_complete"]):
                     continue
-                if exclude_zero_completeness and c_dict["percent_complete"] == 0:
+                if exclude_zero_completeness and (c_dict["pathwise_percent_complete"] == 0 and c_dict["stepwise_completeness"] == 0):
                     continue
 
-                # fetch module info
-                metadata_dict = self.get_module_metadata_dictionary(mnum)
-                definition_list = self.all_modules_in_db[mnum]["DEFINITION"]
-                if not isinstance(definition_list, list):
-                    definition_list = [definition_list]
-                module_def = '"' + " ".join(definition_list) + '"'
+                # handle path-level information (ie, for module_paths mode)
+                if headers_to_include.intersection(path_level_headers):
+                    for p_index, p in enumerate(self.module_paths_dict[mnum]):
+                        d[self.modules_unique_id] = {}
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
-                # handle path- and ko-level information
-                if headers_to_include.intersection(path_and_ko_level_headers):
-                    for p_index in range(len(self.module_paths_dict[mnum])):
-                        p = self.module_paths_dict[mnum][p_index]
+                        # path-specific info
+                        if "path_id" in headers_to_include:
+                            d[self.modules_unique_id]["path_id"] = p_index
+                        if "path" in headers_to_include:
+                            d[self.modules_unique_id]["path"] = ",".join(p)
+                        if "path_completeness" in headers_to_include:
+                            d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
 
-                        # handle ko-level information
-                        for ko in c_dict['kofam_hits']:
+                        # add path-level redundancy if requested
+                        if self.add_copy_number:
+                            d[self.modules_unique_id]["num_complete_copies_of_path"] = c_dict["num_complete_copies_of_all_paths"][p_index]
 
-                            # some paths include protein complexes, so we must look for KO within these protein complexes as well
-                            kos_in_path = set([])
-                            for ko_or_complex in p:
-                                split_kos = re.split('\+|\-', ko_or_complex)
-                                kos_in_path.update(split_kos)
-                            if ko not in kos_in_path:
-                                continue
+                        self.modules_unique_id += 1
 
-                            for gc_id in c_dict["kofam_hits"][ko]:
-                                d[self.modules_unique_id] = {}
+                # handle step-level information (ie, for module_steps mode)
+                elif headers_to_include.intersection(step_level_headers):
+                    for s_index, step_dict in c_dict["top_level_step_info"].items():
+                        d[self.modules_unique_id] = {}
+                        self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
-                                # kofam hit specific info
-                                if "enzyme_hit" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hit"] = ko
-                                if "gene_caller_id" in headers_to_include:
-                                    d[self.modules_unique_id]["gene_caller_id"] = gc_id
-                                if "contig" in headers_to_include:
-                                    d[self.modules_unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+                        # step-specific info
+                        if "step_id" in headers_to_include:
+                            d[self.modules_unique_id]["step_id"] = s_index
+                        if "step" in headers_to_include:
+                            d[self.modules_unique_id]["step"] = step_dict["step_definition"]
+                        if "step_completeness" in headers_to_include:
+                            d[self.modules_unique_id]["step_completeness"] = 1 if step_dict["complete"] else 0
 
-                                # add gene coverage if requested
-                                if self.add_coverage:
-                                    for s in self.coverage_sample_list:
-                                        sample_cov_header = s + "_coverage"
-                                        d[self.modules_unique_id][sample_cov_header] = c_dict["genes_to_coverage"][s][gc_id]
-                                        sample_det_header = s + "_detection"
-                                        d[self.modules_unique_id][sample_det_header] = c_dict["genes_to_detection"][s][gc_id]
+                        # add step-level redundancy if requested
+                        if self.add_copy_number:
+                            d[self.modules_unique_id]["step_copy_number"] = step_dict["copy_number"]
 
-                                # repeated information for each hit
-                                # path specific info
-                                if "path_id" in headers_to_include:
-                                    d[self.modules_unique_id]["path_id"] = p_index
-                                if "path" in headers_to_include:
-                                    d[self.modules_unique_id]["path"] = ",".join(p)
-                                if "path_completeness" in headers_to_include:
-                                    d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                        self.modules_unique_id += 1
 
-                                # top-level keys and keys not in superdict
-                                if self.name_header in headers_to_include:
-                                    d[self.modules_unique_id][self.name_header] = bin
-                                if "db_name" in headers_to_include:
-                                    d[self.modules_unique_id]["db_name"] = self.database_name
-                                if 'module' in headers_to_include:
-                                    d[self.modules_unique_id]['module'] = mnum
-
-                                # module specific info
-                                if "module_name" in headers_to_include:
-                                    d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
-                                if "module_class" in headers_to_include:
-                                    d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
-                                if "module_category" in headers_to_include:
-                                    d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
-                                if "module_subcategory" in headers_to_include:
-                                    d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
-                                if "module_definition" in headers_to_include:
-                                    d[self.modules_unique_id]["module_definition"] = module_def
-                                if "module_substrates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['substrate_list']:
-                                        d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_substrates"] = "None"
-                                if "module_products" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['product_list']:
-                                        d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_products"] = "None"
-                                if "module_intermediates" in headers_to_include:
-                                    if self.all_modules_in_db[mnum]['intermediate_list']:
-                                        d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
-                                    else:
-                                        d[self.modules_unique_id]["module_intermediates"] = "None"
-
-                                # comma-separated lists of KOs and gene calls in module
-                                kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                                # gene call list should be in same order as KO list
-                                gcids_in_mod = []
-                                kos_in_mod_list = []
-                                if kos_in_mod:
-                                    for ko in kos_in_mod:
-                                        gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                                        kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                                if "enzyme_hits_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-                                if "gene_caller_ids_in_module" in headers_to_include:
-                                    d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                                # comma-separated list of warnings
-                                if "warnings" in headers_to_include:
-                                    if not c_dict["warnings"]:
-                                        d[self.modules_unique_id]["warnings"] = "None"
-                                    else:
-                                        d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                                # list of enzymes unique to module
-                                unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                                if "enzymes_unique_to_module" in headers_to_include:
-                                    if unique_enzymes:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                                    else:
-                                        d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                                if "unique_enzymes_hit_counts" in headers_to_include:
-                                    if unique_enzymes:
-                                        hit_count_list = []
-                                        for e in unique_enzymes:
-                                            hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                                    else:
-                                        d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
-
-                                # everything else at c_dict level
-                                for h in remaining_headers:
-                                    if h not in self.available_headers.keys():
-                                        raise ConfigError("Requested header %s not available." % (h))
-                                    h_cdict_key = self.available_headers[h]['cdict_key']
-                                    if not h_cdict_key:
-                                        raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-
-                                    value = c_dict[h_cdict_key]
-                                    if isinstance(value, list):
-                                        if not value:
-                                            value = "None"
-                                        else:
-                                            value = ",".join(value)
-                                    d[self.modules_unique_id][h] = value
-
-                                self.modules_unique_id += 1
+                # handle module-level information (ie, for modules mode)
                 else:
                     d[self.modules_unique_id] = {}
-
-                    # top-level keys and keys not in superdict
-                    if self.name_header in headers_to_include:
-                        d[self.modules_unique_id][self.name_header] = bin
-                    if "db_name" in headers_to_include:
-                        d[self.modules_unique_id]["db_name"] = self.database_name
-                    if 'module' in headers_to_include:
-                        d[self.modules_unique_id]['module'] = mnum
-
-                    # module specific info
-                    if "module_name" in headers_to_include:
-                        d[self.modules_unique_id]["module_name"] = metadata_dict["module_name"]
-                    if "module_class" in headers_to_include:
-                        d[self.modules_unique_id]["module_class"] = metadata_dict["module_class"]
-                    if "module_category" in headers_to_include:
-                        d[self.modules_unique_id]["module_category"] = metadata_dict["module_category"]
-                    if "module_subcategory" in headers_to_include:
-                        d[self.modules_unique_id]["module_subcategory"] = metadata_dict["module_subcategory"]
-                    if "module_definition" in headers_to_include:
-                        d[self.modules_unique_id]["module_definition"] = module_def
-                    if "module_substrates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['substrate_list']:
-                            d[self.modules_unique_id]["module_substrates"] = ",".join(self.all_modules_in_db[mnum]['substrate_list'])
-                        else:
-                            d[self.modules_unique_id]["module_substrates"] = "None"
-                    if "module_products" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['product_list']:
-                            d[self.modules_unique_id]["module_products"] = ",".join(self.all_modules_in_db[mnum]['product_list'])
-                        else:
-                            d[self.modules_unique_id]["module_products"] = "None"
-                    if "module_intermediates" in headers_to_include:
-                        if self.all_modules_in_db[mnum]['intermediate_list']:
-                            d[self.modules_unique_id]["module_intermediates"] = ",".join(self.all_modules_in_db[mnum]['intermediate_list'])
-                        else:
-                            d[self.modules_unique_id]["module_intermediates"] = "None"
-
-                    # comma-separated lists of KOs and gene calls in module
-                    kos_in_mod = sorted(c_dict['kofam_hits'].keys())
-                    # gene call list should be in same order as KO list
-                    gcids_in_mod = []
-                    kos_in_mod_list = []
-                    if kos_in_mod:
-                        for ko in kos_in_mod:
-                            gcids_in_mod += [str(x) for x in c_dict["kofam_hits"][ko]]
-                            kos_in_mod_list += [ko for x in c_dict["kofam_hits"][ko]]
-                    if "enzyme_hits_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
-                    if "gene_caller_ids_in_module" in headers_to_include:
-                        d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
-
-                    # comma-separated list of warnings
-                    if "warnings" in headers_to_include:
-                        if not c_dict["warnings"]:
-                            d[self.modules_unique_id]["warnings"] = "None"
-                        else:
-                            d[self.modules_unique_id]["warnings"] = ",".join(c_dict["warnings"])
-
-                    # list of enzymes unique to module
-                    unique_enzymes = sorted(list(c_dict["unique_to_this_module"]))
-                    if "enzymes_unique_to_module" in headers_to_include:
-                        if unique_enzymes:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = ",".join(unique_enzymes)
-                        else:
-                            d[self.modules_unique_id]["enzymes_unique_to_module"] = "No enzymes unique to module"
-                    if "unique_enzymes_hit_counts" in headers_to_include:
-                        if unique_enzymes:
-                            hit_count_list = []
-                            for e in unique_enzymes:
-                                hit_count_list.append(str(len(c_dict["kofam_hits"][e])))
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = ",".join(hit_count_list)
-                        else:
-                            d[self.modules_unique_id]["unique_enzymes_hit_counts"] = "NA"
-
-                    # add coverage if requested
-                    if self.add_coverage:
-                        for s in self.coverage_sample_list:
-                            sample_cov_header = s + "_gene_coverages"
-                            sample_det_header = s + "_gene_detection"
-                            sample_avg_cov_header = s + "_avg_coverage"
-                            sample_avg_det_header = s + "_avg_detection"
-
-                            gene_coverages_in_mod = []
-                            gene_detection_in_mod = []
-                            for gc in gcids_in_mod:
-                                gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][int(gc)])
-                                gene_detection_in_mod.append(c_dict["genes_to_detection"][s][int(gc)])
-
-                            d[self.modules_unique_id][sample_cov_header] = ",".join([str(c) for c in gene_coverages_in_mod])
-                            d[self.modules_unique_id][sample_det_header] = ",".join([str(d) for d in gene_detection_in_mod])
-                            d[self.modules_unique_id][sample_avg_cov_header] = c_dict["average_coverage_per_sample"][s]
-                            d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
-
-                    # everything else at c_dict level
-                    for h in remaining_headers:
-                        if h not in self.available_headers.keys():
-                            raise ConfigError("Requested header %s not available." % (h))
-                        h_cdict_key = self.available_headers[h]['cdict_key']
-                        if not h_cdict_key:
-                            raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
-
-                        value = c_dict[h_cdict_key]
-                        if isinstance(value, list):
-                            if not value:
-                                value = "None"
-                            else:
-                                value = ",".join(value)
-                        d[self.modules_unique_id][h] = value
+                    self.add_common_elements_to_output_dict_for_module_in_bin(bin, mnum, c_dict, headers_to_include, remaining_headers, d)
 
                     self.modules_unique_id += 1
 
@@ -3776,7 +5015,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 if anvio.DEBUG:
                     self.run.info("Generating output for KO", ko)
 
-                metadata_dict = self.get_ko_metadata_dictionary(ko)
+                metadata_dict = self.get_ko_metadata_dictionary(ko, dont_fail_if_not_found=True)
 
                 for gc_id in k_dict["gene_caller_ids"]:
                     d[self.ko_unique_id] = {}
@@ -3797,16 +5036,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
 
                     if self.add_coverage:
-                        if not self.profile_db:
-                            raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
-                                              "not been initialized, therefore we cannot add coverage values to your output. "
-                                              "This is likely a bug or developer mistake. It is a sad day :(")
+                        if self.enzymes_txt:
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["coverage"].values[0]
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["detection"].values[0]
+                        else:
+                            if not self.profile_db:
+                                raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
+                                                  "not been initialized, therefore we cannot add coverage values to your output. "
+                                                  "This is likely a bug or developer mistake. It is a sad day :(")
 
-                        for s in self.coverage_sample_list:
-                            sample_cov_header = s + "_coverage"
-                            d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
-                            sample_det_header = s + "_detection"
-                            d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
+                            for s in self.coverage_sample_list:
+                                sample_cov_header = s + "_coverage"
+                                d[self.ko_unique_id][sample_cov_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['mean_coverage']
+                                sample_det_header = s + "_detection"
+                                d[self.ko_unique_id][sample_det_header] = self.profile_db.gene_level_coverage_stats_dict[gc_id][s]['detection']
 
                     self.ko_unique_id += 1
 
@@ -3816,21 +5062,42 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     def generate_subsets_for_matrix_format(self, module_superdict, ko_hits_superdict):
         """Here we extract and return three subsets of data from the superdicts, for matrix formatted output.
 
-        The subsets of data that we need are: module completeness scores, module presence/absence, and KO hit frequency.
-        Each of these is put into a dictionary (one for modules, one for ko hits) and returned.
+        The subsets of data that we need are: module completeness scores, module presence/absence, KO hit frequency,
+                                              module top-level step completeness
+        If --add-copy-number was provided, we also need copy numbers for modules and module steps.
+
+        Each of these is put into a dictionary (one for modules, one for ko hits, one for module steps) and returned.
         """
 
         mod_completeness_presence_subdict = {}
         ko_hits_subdict = {}
+        steps_subdict = {}
 
         for bin, mod_dict in module_superdict.items():
             mod_completeness_presence_subdict[bin] = {}
+            steps_subdict[bin] = {}
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
                 mod_completeness_presence_subdict[bin][mnum] = {}
-                mod_completeness_presence_subdict[bin][mnum]['percent_complete'] = c_dict['percent_complete']
-                mod_completeness_presence_subdict[bin][mnum]['complete'] = c_dict['complete']
+                mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
+                mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
+                mod_completeness_presence_subdict[bin][mnum]["stepwise_completeness"] = c_dict["stepwise_completeness"]
+                mod_completeness_presence_subdict[bin][mnum]["stepwise_is_complete"] = c_dict["stepwise_is_complete"]
+
+                if self.add_copy_number:
+                    if c_dict["num_complete_copies_of_most_complete_paths"]:
+                        mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = max(c_dict["num_complete_copies_of_most_complete_paths"])
+                    else:
+                        mod_completeness_presence_subdict[bin][mnum]['pathwise_copy_number'] = 'NA'
+                    mod_completeness_presence_subdict[bin][mnum]['stepwise_copy_number'] = c_dict["stepwise_copy_number"]
+
+                for step_id, step_dict in c_dict["top_level_step_info"].items():
+                    step_key = mnum + "_" + f"{step_id:02d}"
+                    steps_subdict[bin][step_key] = {}
+                    steps_subdict[bin][step_key]["step_is_complete"] = step_dict["complete"]
+                    # we include step metadata in this dictionary directly (rather than trying to access it out later using a function)
+                    steps_subdict[bin][step_key]["step_definition"] = step_dict["step_definition"]
+                    if self.add_copy_number:
+                        steps_subdict[bin][step_key]["step_copy_number"] = step_dict["copy_number"]
 
         for bin, ko_dict in ko_hits_superdict.items():
             ko_hits_subdict[bin] = {}
@@ -3838,7 +5105,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 ko_hits_subdict[bin][knum] = {}
                 ko_hits_subdict[bin][knum]['num_hits'] = len(k_dict['gene_caller_ids']) # number of hits to this KO in the bin
 
-        return mod_completeness_presence_subdict, ko_hits_subdict
+        return mod_completeness_presence_subdict, ko_hits_subdict, steps_subdict
 
 ######### OUTPUT GENERATION FUNCTIONS #########
 
@@ -3948,7 +5215,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         # add keys to this list to include the data in the visualization dictionary
-        module_data_keys_for_visualization = ['percent_complete']
+        module_data_keys_for_visualization = ['pathwise_percent_complete']
 
         metabolism_dict, ko_hit_dict = self.estimate_metabolism(skip_storing_data=True, return_superdicts=True)
         data_for_visualization = {}
@@ -3956,9 +5223,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for bin, mod_dict in metabolism_dict.items():
             data_for_visualization[bin] = {}
             for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
-
                 data_for_visualization[bin][mnum] = {}
                 for key, value in c_dict.items():
                     if key in module_data_keys_for_visualization:
@@ -4149,7 +5413,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         # we will find in the metagenomes file
         self.update_available_headers_for_multi()
 
-        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+        self.run.warning("Just so you know, if you used the flags --add-copy-number or --add-coverage, you "
+                         "won't see the possible headers for these data in the list below. If you want to "
+                         "include this information in a custom output file and need to know which headers "
+                         "you can choose from, you should re-run this command with --list-available-output-headers "
+                         "on a SINGLE sample from your input file.")
+
+        self.run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
             desc_str = header_meta['description']
@@ -4227,7 +5497,6 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 gene_functions_in_genome_dict, _, _= g.get_functions_and_sequences_dicts_from_contigs_db(genome_name, requested_source_list=self.annotation_sources_to_use, return_only_functions=True)
                 # reminder, an entry in gene_functions_in_genome_dict looks like this:
                 # 4264: {'KOfam': None, 'COG20_FUNCTION': None, 'UpxZ': ('PF06603.14', 'UpxZ', 3.5e-53)}
-                #print(gene_functions_in_genome_dict)
                 for gcid, func_dict in gene_functions_in_genome_dict.items():
                     for source, func_tuple in func_dict.items():
                         if func_tuple:
@@ -4297,12 +5566,15 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def get_metabolism_superdict_multi(self):
         """The function that calls metabolism on each individual contigs db.
 
-         If we need matrix format output, it aggregates the results into one dictionary for modules
-         and one for KOs, and returns these. (Otherwise, empty dictionaries are returned.)
+         If we need matrix format output, it aggregates the results into one dictionary for modules, one for KOs,
+         and one for steps. These dictionaries are returned.
+
+         (Otherwise, empty dictionaries are returned.)
          """
 
         metabolism_super_dict = {}
         ko_hits_super_dict = {}
+        module_steps_super_dict = {}
 
         total_num_metagenomes = len(self.database_names)
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
@@ -4316,7 +5588,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
                                                                                                     progress=progress_quiet, \
                                                                                                     run=run_quiet).estimate_metabolism(skip_storing_data=True, \
                                                                                                     return_subset_for_matrix_format=True, \
@@ -4333,7 +5605,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             for mode, file in files_dict.items():
                 file.close()
 
-        return metabolism_super_dict, ko_hits_super_dict
+        return metabolism_super_dict, ko_hits_super_dict, module_steps_super_dict
 
 
     def estimate_metabolism(self):
@@ -4366,10 +5638,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.init_data_from_modules_db()
 
         # these will be empty dictionaries unless matrix format
-        kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
+        kegg_metabolism_superdict_multi, ko_hits_superdict_multi, module_steps_superdict_multi = self.get_metabolism_superdict_multi()
 
         if self.matrix_format:
-            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
+            self.store_metabolism_superdict_multi_matrix_format(kegg_metabolism_superdict_multi, ko_hits_superdict_multi, module_steps_superdict_multi)
 
 
 ######### OUTPUT GENERATION FUNCTIONS -- MULTI #########
@@ -4443,7 +5715,12 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     if stat_header == 'module':
                         metadata_dict = self.get_module_metadata_dictionary(m)
                     elif stat_header == 'enzyme':
-                        metadata_dict = self.get_ko_metadata_dictionary(m)
+                        metadata_dict = self.get_ko_metadata_dictionary(m, dont_fail_if_not_found=True)
+                    elif stat_header == 'module_step':
+                        # get the step metadata from the first sample and first bin (b/c it will be the same in all of them)
+                        first_samp = sample_list[0]
+                        first_bin = list(stat_dict[first_samp].keys())[0]
+                        metadata_dict = {"step_definition": stat_dict[first_samp][first_bin][m]["step_definition"]}
                     else:
                         raise ConfigError(f"write_stat_to_matrix() speaking. I need to access metadata for {stat_header} "
                                           "statistics but there is no function defined for this.")
@@ -4481,7 +5758,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.run.info('Output matrix for "%s"' % stat_name, output_file_path)
 
 
-    def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi):
+    def store_metabolism_superdict_multi_matrix_format(self, module_superdict_multi, ko_superdict_multi, steps_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
         Contigs DBs are arranged in columns and KEGG modules/KOs are arranged in rows.
@@ -4492,9 +5769,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         corresponding value comes from running estimate_metabolism() with return_subset_for_matrix_format=True.
 
         That is:
-         module % completeness = module_superdict_multi[sample][bin][mnum]['percent_complete']
-         module is complete = module_superdict_multi[sample][bin][mnum]['complete']
+         module % completeness = module_superdict_multi[sample][bin][mnum]['pathwise_percent_complete']
+         module is complete = module_superdict_multi[sample][bin][mnum]["pathwise_is_complete"]
          # hits for KO = ko_superdict_multi[sample][bin][knum]['num_hits']
+         module step is complete = module_steps_superdict_multi[sample][bin][mnum_stepnum]['step_is_complete']
 
         If self.matrix_include_metadata was True, these superdicts will also include relevant metadata.
         """
@@ -4503,7 +5781,17 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # module stats that each will be put in separate matrix file
         # key is the stat, value is the corresponding header in superdict
-        module_matrix_stats = {"completeness" : "percent_complete", "presence" : "complete"}
+        module_matrix_stats = {"module_pathwise_completeness" : "pathwise_percent_complete",
+                               "module_pathwise_presence" : "pathwise_is_complete",
+                               "module_stepwise_completeness" : "stepwise_completeness",
+                               "module_stepwise_presence" : "stepwise_is_complete",
+                               }
+        module_step_matrix_stats = {"step_completeness" : "step_is_complete"}
+        if self.add_copy_number:
+            module_matrix_stats["module_pathwise_copy_number"] = "pathwise_copy_number"
+            module_matrix_stats["module_stepwise_copy_number"] = "stepwise_copy_number"
+            module_step_matrix_stats["step_copy_number"] = "step_copy_number"
+
         # all samples/bins have the same modules in the dict so we can pull the item list from the first pair
         first_sample = list(module_superdict_multi.keys())[0]
         first_bin = list(module_superdict_multi[first_sample].keys())[0]
@@ -4513,6 +5801,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for stat, key in module_matrix_stats.items():
             self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
                                       item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+                                      write_rows_with_all_zeros=include_zeros)
+
+        module_step_list = list(steps_superdict_multi[first_sample][first_bin].keys())
+        module_step_list.sort()
+        for stat, key in module_step_matrix_stats.items():
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi, \
+                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS, \
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
@@ -4605,13 +5900,17 @@ class ModulesDatabase(KeggContext):
     ```
     """
 
-    def __init__(self, db_path, args, module_data_directory=None, module_dictionary=None, pathway_dictionary=None, data_source='KEGG', run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_data_directory=None, brite_data_directory=None, module_dictionary=None, pathway_dictionary=None, brite_dictionary=None, data_source='KEGG', skip_brite_hierarchies=False, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_data_directory = module_data_directory # only required for create()
+        self.brite_data_directory = brite_data_directory # only required for create()
         self.module_dict = module_dictionary
         self.pathway_dict = pathway_dictionary
+        self.brite_dict = brite_dictionary
         self.data_source = data_source
+        # BRITE setup can be skipped to allow newer versions of the database to be consistent with older versions that lacked BRITE
+        self.skip_brite_hierarchies = skip_brite_hierarchies
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -4637,23 +5936,29 @@ class ModulesDatabase(KeggContext):
         self.pathway_table_structure = t.pathway_table_structure
         self.pathway_table_types = t.pathway_table_types
 
+        # BRITE hierarchies table info
+        self.brite_table_name = t.brite_table_name
+        self.brite_table_structure = t.brite_table_structure
+        self.brite_table_types = t.brite_table_types
+
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
 
             if not self.quiet:
-                self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-                self.run.info('Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+                self.run.info("Modules database", f"An existing database, {self.db_path}, has been loaded.", quiet=self.quiet)
+                self.run.info("Modules", f"{self.db.get_meta_value('num_modules')} found", quiet=self.quiet)
+                self.run.info("BRITE KO hierarchies", f"{self.db.get_meta_value('num_brite_hierarchies')} found", quiet=self.quiet)
 
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
-            # This is commented out because we are not yet using pathways. But it should be uncommented when we get to the point of using them :)
-            # if not self.pathway_dict:
-            #     raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
-            #                       "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+
+            if not self.skip_brite_hierarchies and not self.brite_dict:
+                raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
 
@@ -4673,6 +5978,7 @@ class ModulesDatabase(KeggContext):
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
+        self.db.create_table(self.brite_table_name, self.brite_table_structure, self.brite_table_types)
 
 
     def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
@@ -4902,6 +6208,9 @@ class ModulesDatabase(KeggContext):
         if not self.module_data_directory:
             raise ConfigError("Some dumb programmer forgot to provide a module_data_directory parameter value to the ModulesDatabase "
                               "class. The DB can't be created unless it knows where the modules are... Get yourself together.")
+        if not self.skip_brite_hierarchies and not self.brite_data_directory:
+            raise ConfigError("Some dumb programmer forgot to provide a brite_data_directory parameter value to the ModulesDatabase "
+                              "class. The DB can't be created unless it knows where the BRITE hierarchies are... Get yourself together.")
 
         self.touch()
 
@@ -4924,6 +6233,9 @@ class ModulesDatabase(KeggContext):
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
         self.num_corrected_errors = 0
         self.num_uncorrected_errors = 0
+        # keep track of BRITE parsing information
+        self.num_hierarchies_parsed = 0
+        self.num_brite_categorizations = 0
 
         num_modules_parsed = 0
         line_number = 0
@@ -4994,10 +6306,14 @@ class ModulesDatabase(KeggContext):
 
             # every enzyme in the module definition needs an orthology line
             mod_definition = " ".join(mod_definition)
-            acc_list = module_definition_to_enzyme_accessions(mod_definition)
-            enzymes_in_def = set(acc_list)
+            # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
+            mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+            acc_list = re.split(r'\s+', mod_definition)
+            accessions_in_def = set(acc_list)
+            # remove any accession that is for a module (ie, not an enzyme)
+            enzymes_in_def = set([acc for acc in accessions_in_def if acc not in self.module_dict.keys()])
             enzymes_without_orth = enzymes_in_def.difference(orth_list)
-            if enzymes_without_orth:
+            if self.data_source != 'KEGG' and enzymes_without_orth:
                 bad_list = ", ".join(enzymes_without_orth)
                 n = len(enzymes_without_orth)
                 raise ConfigError(f"So, there is a thing. And that thing is that there {P('is an enzyme', n, alt='are some enzymes')} "
@@ -5043,12 +6359,13 @@ class ModulesDatabase(KeggContext):
                 self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the Modules DB. "
                                  "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                                  "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                                 "you would like to see which modules threw these errors, please re-run the setup using the `--debug` flag (you "
-                                 "will also probably need the `--reset` flag). When doing so, you will also see which lines caused issues; this "
-                                 "can be a lot of output, so you can suppress the line-specific output with the `--quiet` flag if that makes things "
-                                 "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
-                                 "with `--reset --debug --quiet` to see exactly which modules had issues, or run with `--reset --debug` to see exactly "
-                                 "which lines in which modules had issues. Anvi'o developers thank you for your attention and patience 😇")
+                                 "you would like to see which modules threw these errors, please re-run the setup using the --debug flag (you "
+                                 "will also probably need the --reset or --overwrite-output-destinations flag). When doing so, you will also "
+                                 "see which lines caused issues; this can be a lot of output, so you can suppress the line-specific output with "
+                                 "the `--quiet` flag if that makes things easier to read. So, in summary: You can probably ignore this warning. "
+                                 "But if you want more info: run setup again with `--reset --debug --quiet` to see exactly which modules had "
+                                 "issues, or run with `--reset --debug` to see exactly which lines in which modules had issues. Anvi'o developers "
+                                 "thank you for your attention and patience 😇")
                 self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
                 self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
@@ -5059,25 +6376,113 @@ class ModulesDatabase(KeggContext):
                               "'ANNOTATION_SOURCE' fields to those module files, and then re-do this setup.")
         annotation_source_list = ",".join(list(self.annotation_sources))
 
+        self.populate_brite_table()
+
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of modules', num_modules_parsed, quiet=self.quiet)
-        self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
-        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
-        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
+        self.run.info('Number of module entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of module parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
+        self.run.info('Number of module parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
         self.run.info('Annotation sources required for estimation', ", ".join(self.annotation_sources))
+        if not self.skip_brite_hierarchies and self.brite_dict:
+            self.run.info('Number of BRITE hierarchies', self.num_hierarchies_parsed, quiet=self.quiet)
+            self.run.info('Number of ortholog BRITE categorizations', self.num_brite_categorizations, quiet=self.quiet)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('data_source', self.data_source)
         self.db.set_meta_value('annotation_sources', annotation_source_list)
         self.db.set_meta_value('num_modules', num_modules_parsed)
-        self.db.set_meta_value('total_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
+        if not self.skip_brite_hierarchies and self.brite_dict:
+            self.db.set_meta_value('is_brite_setup', True)
+            self.db.set_meta_value('num_brite_hierarchies', self.num_hierarchies_parsed)
+            self.db.set_meta_value('total_brite_entries', self.num_brite_categorizations)
+        else:
+            self.db.set_meta_value('is_brite_setup', False)
+            self.db.set_meta_value('num_brite_hierarchies', None)
+            self.db.set_meta_value('total_brite_entries', None)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
         self.db.set_meta_value('version', t.metabolic_modules_db_version)
 
         self.db.disconnect()
+
+
+    def populate_brite_table(self):
+        if self.skip_brite_hierarchies or not self.brite_dict:
+            return
+
+        self.progress.new("Loading BRITE hierarchies into Modules DB...")
+
+        # init the BRITE table
+        brite_table = BriteTable(self.brite_table_name)
+
+        num_hierarchies_parsed = 0
+        unrecognized_items = []
+        for hierarchy in self.brite_dict:
+            self.progress.update(f"Parsing BRITE hierarchy '{hierarchy}'")
+            hierarchy_accession = hierarchy[: 7] # the validity of the hierarchy accession was checked in `KeggSetup.process_brite_hierarchy_of_hierarchies`
+            hierarchy_name = hierarchy[7: ].lstrip()
+
+            brite_file_path = os.path.join(self.brite_data_directory, hierarchy_accession)
+            for ortholog, categorizations in self.invert_brite_json_dict(json.load(open(brite_file_path))).items():
+                split_ortholog = ortholog.split(' ')
+                ortholog_accession = split_ortholog[0]
+
+                # record items in the hierarchy that do not have expected ortholog accessions formatted KXXXXX
+                if len(ortholog_accession) != 6:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                if ortholog_accession[0] != 'K':
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+                try:
+                    int(ortholog_accession[1: ])
+                except ValueError:
+                    unrecognized_items.append(f'{hierarchy}: {ortholog}')
+                    continue
+
+                ortholog_name = ' '.join(split_ortholog[1: ]).lstrip()
+
+                # process each of the ortholog's categorizations in the hierarchy
+                for categorization in categorizations:
+                    if hierarchy_accession == 'ko00001':
+                        # the expected top-level classes of the "ko00001  KEGG Orthology (KO)"
+                        # hierarchy are "09100 Metabolism", "09120 Genetic Information Processing",
+                        # "09130 Environmental Information Processing", "09140 Cellular Processes",
+                        # "09150 Organismal Systems", "09160 Human Diseases", "09180 Brite
+                        # Hierarchies", and "09190 Not Included in Pathway or Brite". "09180 Brite
+                        # Hierarchies" is a representation of other hierarchies, such as "01001
+                        # Protein kinases [BR:ko01001]", as totally flat categories, with all
+                        # subcategories flattened out. We download and process json files for these
+                        # other hierarchies separately. Therefore ignore entries in "09180 Brite
+                        # Hierarchies". "09150 Organismal Systems" and "09160 Human Diseases" are
+                        # also ignored due to their focus on human genes. The value of "09190 Not
+                        # Included in Pathway or Brite" is debatable, but certain proteins are only
+                        # found in this category, such as bacterial circadian clock proteins
+                        # (classified under "09193 Unclassified: signaling and cellular processes"
+                        # >>> "99995 Signaling proteins"), so it is retained.
+                        category_accession = categorization[1].split(' ')[0]
+                        if category_accession == '09180' or category_accession == '09150' or category_accession == '09160':
+                            continue
+                    brite_table.append_and_store(self.db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, '>>>'.join(categorization[1: ])) # ignore the first category, the accession of the hierarchy itself
+            num_hierarchies_parsed += 1
+        self.num_hierarchies_parsed = num_hierarchies_parsed
+        self.num_brite_categorizations = brite_table.get_total_entries()
+
+        if unrecognized_items and anvio.DEBUG:
+            self.run.warning("We attempted to parse some names of items in hierarchies as orthologs, "
+                             "but ignored them since they did not start with an accession formatted 'KXXXXX', where 'XXXXX' are five digits. "
+                             f"The following entries are formatted as '<hierarchy>: <ignored item>': {', '.join(set(unrecognized_items))}")
+
+        # once we are done parsing all hierarchies, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of BRITE entries into DB")
+        brite_table.store(self.db)
+
+        self.progress.end()
 
 
     def disconnect(self):
@@ -5153,7 +6558,10 @@ class ModulesDatabase(KeggContext):
                 module_dictionary[mod] = {}
 
             if data_name not in module_dictionary[mod]:
-                module_dictionary[mod][data_name] = data_value
+                if not data_definition:
+                    module_dictionary[mod][data_name] = data_value
+                else:
+                    module_dictionary[mod][data_name] = {data_value : data_definition}
             else:
                 # place multiple definition lines into list
                 if data_name == "DEFINITION":
@@ -5303,6 +6711,12 @@ class ModulesDatabase(KeggContext):
         return all_mods_classes_list
 
 
+    def get_ortholog_brite_categorizations(self, ortholog_accession):
+        """Return a list of the BRITE categorizations of the ortholog."""
+        where_clause_string = f"ortholog_accession = '{ortholog_accession}'"
+        return self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause=where_clause_string, error_if_no_data=False, row_num_as_key=True)
+
+
     def get_module_name(self, mnum):
         """This function returns the name of the specified KEGG module."""
 
@@ -5355,6 +6769,7 @@ class ModulesDatabase(KeggContext):
         """This function returns module DEFINITION fields as one string"""
 
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        def_lines = [l.strip() for l in def_lines] # sometimes there are stray spaces at the end of the string that will mess us up later
         return " ".join(def_lines)
 
 
@@ -5511,7 +6926,662 @@ class ModulesDatabase(KeggContext):
 
         return substrate_name_list, intermediate_name_list, product_name_list
 
+######### BRITE TABLE ACCESS FUNCTIONS #########
+
+    def get_brite_table_as_ortholog_dict(self, ortholog_accessions_of_interest=None, hierarchy_accessions_of_interest=None, category_substrings_of_interest=None, case_insensitive_substrings=False, use_ortholog_accessions_as_keys=False):
+        """Load the BRITE hierarchies table as a dictionary keyed by ortholog.
+
+        The returned dictionary contains each hierarchy and each categorization within the hierarchy
+        in which the ortholog is found.
+
+        The returned dictionary is structured as follows:
+            {
+                (<ortholog 1 accession>, <ortholog 1 name>):
+                    {
+                        (<hierarchy A accession>, <hierarchy A name>):
+                            [
+                                [(<category i accession>, <category i name>), (<category j accession>, <category j name>), ...],
+                                [(<category k accession>, <category k name>), (<category l accession>, <category l name>), ...],
+                                ...
+                            ],
+                        (<hierarchy B accession>, <hierarchy B name>):
+                            [
+                                [(<category x accession>, <category x name>), (<category y accession>, <category y name>), ...],
+                                ...
+                            ],
+                        ...
+                    },
+                (<ortholog 2 accession>, <ortholog 2 name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for arginyl-tRNA synthetase:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko00001', 'KEGG Orthology (KO)'):
+                    [
+                        [('09120', 'Genetic Information Processing'), ('09122', 'Translation'), ('00970', 'Aminoacyl-tRNA biosynthesis')]
+                    ],
+                ('ko01000', 'Enzymes'):
+                    [
+                        [('6.', 'Ligases'), ('6.1', 'Forming carbon-oxygen bonds'), ('6.1.1', 'Ligases forming aminoacyl-tRNA and related compounds'), ('6.1.1.19', 'arginine---tRNA ligase')]
+                    ],
+                ('ko01007', 'Amino acid related enzymes'):
+                    [
+                        [('', 'Aminoacyl-tRNA synthetase'), ('', 'Class I (G)')]
+                    ],
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ],
+                ('ko03029', 'Mitochondrial biogenesis'):
+                    [
+                        [('', 'Mitochondrial DNA transcription, translation, and replication factors'), ('', 'Mitochondrial transcription and translation factors'), ('', 'Other mitochondrial DNA transcription and translation factors')]
+                    ]
+            }
+
+        Keys and list items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy. Given the hierarchies that are used in
+        construction of the Modules database, only two are known to contain category "accessions."
+        "ko01000 Enzyme" hierarchy categories yield EC number accessions, and "k00001 KEGG Orthology
+        (KO)" hierarchy categories yield five digit accessions.
+
+        Categorization lists proceed from most general to most specific level.
+
+        Filtration with `hierarchy_accessions_of_interest` and `category_substrings_of_interest`
+        returns the orthologs in the hierarchies and matched categories of interest, and also
+        reduces the returned dictionary to the selected hierarchies and categorizations with matched
+        categories. In the example of arginyl-tRNA synthetase, if `hierarchy_accessions_of_interest`
+        is ['ko03016'] and `category_substrings_of_interest` is ['aminoacyl-tRNA synthetase'], then
+        the returned dictionary becomes:
+        ('K01887', 'RARS, argS; arginyl-tRNA synthetase [EC:6.1.1.19]'):
+            {
+                ('ko03016', 'Transfer RNA biogenesis'):
+                    [
+                        [('', 'Eukaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Multi-aminoacyl-tRNA synthetase complex (MSC)')],
+                        [('', 'Prokaryotic type'), ('', 'Aminoacyl-tRNA synthetases (AARSs)'), ('', 'Other AARSs')]
+                    ]
+            }
+
+        PARAMETERS
+        ==========
+        ortholog_accessions_of_interest : list, None
+            filters results to orthologs of interest
+
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        category_substrings_of_interest : list, None
+            filters results to categories containing substrings of interest
+
+        case_insensitive_substrings : bool, False
+            changes category substring search to be case insensitive
+
+        use_ortholog_accessions_as_keys : bool, False
+            ortholog keys of returned dictionary are accession strings rather than tuples
+
+        RETURNS
+        =======
+        ortholog_dict : dict
+            dictionary of ortholog BRITE categorizations
+        """
+
+        if ortholog_accessions_of_interest or hierarchy_accessions_of_interest:
+            # filter table by orthologs, hierarchies, and category substrings of interest
+            where_clause_string = ""
+
+            if ortholog_accessions_of_interest:
+                ortholog_list = [f"'{knum}'" for knum in ortholog_accessions_of_interest]
+                where_clause_string += f"ortholog_accession IN ({','.join(ortholog_list)})"
+
+            if hierarchy_accessions_of_interest:
+                hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+                if where_clause_string:
+                    where_clause_string += " AND "
+                where_clause_string += f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+
+            if category_substrings_of_interest:
+                if where_clause_string:
+                    where_clause_string += " AND ("
+                for substring in category_substrings_of_interest:
+                    if case_insensitive_substrings:
+                        where_clause_string += f"UPPER(categorization) LIKE UPPER('%{substring}%') OR "
+                    else:
+                        where_clause_string += f"categorization LIKE '%{substring}%' OR "
+                where_clause_string = where_clause_string[: -4] + ")"
+
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko00001',
+        #     'hierarchy_name': 'KEGG Orthology (KO)',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]'}
+
+        # now we convert this to a per-ortholog dict
+        ortholog_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+
+            if use_ortholog_accessions_as_keys:
+                ortholog_key = ortholog_accession
+            else:
+                ortholog_key = (ortholog_accession, ortholog_name)
+            try:
+                hierarchy_dict = ortholog_dict[ortholog_key]
+            except KeyError:
+                ortholog_dict[ortholog_key] = hierarchy_dict = {}
+
+            hierarchy_key = (hierarchy_accession, hierarchy_name)
+            try:
+                category_list = hierarchy_dict[hierarchy_key]
+            except KeyError:
+                hierarchy_dict[hierarchy_key] = category_list = []
+
+            categories = categorization.split('>>>')
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
+                parsed_categories = []
+                for category in categories:
+                    split_category = category.split(' ')
+                    parsed_categories.append((split_category[0], ' '.join(split_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+            category_list.append(parsed_categories)
+
+        return ortholog_dict
+
+
+    def get_brite_table_as_hierarchy_dict(self, hierarchy_accessions_of_interest=None, level_cutoff=None, collapse_keys=False, collapse_mixed_branches=True):
+        """Load the BRITE hierarchies table as a dictionary keyed by hierarchy.
+
+        The returned dictionary contains the category structure of the hierarchy and a set of
+        orthologs in each categorization.
+
+        With `collapse_keys` set to the default of False and `collapse_mixed_branches` set to the
+        default of True, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            {
+                                (<level 2 category j accession>, <level 2 category j name>):
+                                    set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                (<level 2 category k accession>, <level 2 category k name>):
+                                    set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                (<level 2 category l accession>, <level 2 category l name>):
+                                    {...},
+                                ...
+                            },
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            {...},
+                        ...
+                    },
+                    {
+                        (<level 1 category n accession>, <level 1 category n name>):
+                            {...},
+                        ...
+                    },
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        Here is an example of the entry for the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                {
+                                    ('', 'Small subunit'):
+                                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                                    ('', 'Large subunit'):
+                                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...])
+                                },
+                            ('', 'Mitochondria/ Chloroplast'):
+                                {
+                                    ('', 'Small subunit'):
+                                        {...}
+                                    ('', 'Large subunit'):
+                                        {...}
+                                },
+                            ('', 'Bacteria'):
+                                {
+                                    ...
+                                },
+                            ('', 'Archaea'):
+                                {
+                                    ...
+                                }
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('Eukaryotes'):
+                                set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...]),
+                            ('Prokaryotes'):
+                                set([('K01985', '5SrRNA, rrf; 5S ribosomal RNA'), ('K01977', '16SrRNA, rrs; 16S ribosomal RNA'), ('K01980', '23SrRNA, rrl; 23S ribosomal RNA')])
+                        }
+                }
+
+        Keys and set items are split by accession and description, even in the absence of an
+        accession for a category in the hierarchy, as seen in the example. The only hierarchies
+        expected to contain category "accessions" are "ko00001 Gene Ontology (KO)" and "ko01000
+        Enzymes".
+
+        Levels of the hierarchy can be collapsed with the `level_cutoff` argument. If `level_cutoff`
+        is a positive number, it is measured down from the top level of the hierarchy (level 1). If
+        `level_cutoff` is a negative number, it is measured up from the bottom-most level of the
+        hierarchy. Since different branches of the hierarchy can have different depths, the negative
+        number is converted to a positive number given the deepest branch: in the "Ribosome"
+        example, the "Ribosomal proteins" branch has 3 levels, and the "Ribosomal RNAs" branch has 2
+        levels, level -2 would be measured against the "Ribosomal proteins" branch and be converted
+        to level 1. If the negative parameterization would eliminate all levels of the hierarchy,
+        the cutoff is set to level 1.
+
+        Example: `level_cutoff` is set to 1 or -2, so levels below "Ribosomal proteins" and
+        "Ribosomal RNAs" are removed:
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    ('', 'Ribosomal RNAs'):
+                        set([('K01979', 'SSUrRNA; small subunit ribosomal RNA'), ('K01982', 'LSUrRNA; large subunit ribosomal RNA'), ...])
+                }
+
+        Example: `level_cutoff` is set to -1, only removing "Small subunit" and "Large subunit"
+        levels under "Ribosomal proteins" but not levels under "Ribosomal RNAs".
+            ('ko03011', 'Ribosome'):
+                {
+                    ('', 'Ribosomal proteins'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                            ('', 'Mitochondria/ Chloroplasts'):
+                                set([...]),
+                            ('', 'Bacteria'):
+                                set([...]),
+                            ('', 'Archaea'):
+                                set([...])
+                        },
+                    ('', 'Ribosomal RNAs'):
+                        {
+                            ('', 'Eukaryotes'):
+                                set([...]),
+                            ('', 'Prokaryotes'):
+                                set([...])
+                        }
+
+        Dictionary nesting can be simplified by `collapse_keys`. Each ortholog set is keyed by a
+        single categorization tuple. Applied to the "Ribosome" hierarchy:
+            ('ko03011', 'Ribosome'):
+                {
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Small subunit')):
+                        set([('K02981', 'RP-S2e, RPS2; small subunit ribosomal protein S2e'), ('K02985', 'RP-S3e, RPS3; small subunit ribosomal protein S3e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Eukaryotes'), ('', 'Large subunit')):
+                        set([('K02925', 'RP-L3e, RPL3; large subunit ribosomal protein L3e'), ('K02930', 'RP-L4e, RPL4; large subunit ribosomal protein L4e'), ...]),
+                    (('', 'Ribosomal proteins'), ('', 'Mitochondria/ Chloroplasts'), ('', 'Small subunit')):
+                        set([...]),
+                    ...
+                }
+
+        To this point, we have ignored the possibility that a category containing ortholog "leaves"
+        can also contain additional category "branches". An example of this is in the "RNases"
+        category of the "Ribosome biogenesis" hierarchy. The category contains RNases such as
+        "K14812  NGL2; RNA exonuclease NGL2 [EC:3.1.-.-]", but also includes a category of "RNase
+        MRP" subunits, including "K01164  POP1; ribonuclease P\/MRP protein subunit POP1
+        [EC:3.1.26.5]". With the parameter, `collapse_mixed_branches`, set to the default of True,
+        categories in such "mixed" branches are collapsed out of existence: subunit orthologs are
+        placed in "RNases" rather than "RNase MRP", which is removed.
+
+        Mixed branches can be preserved by setting `collapse_mixed_branches` to False. This also
+        changes the structure of the returned dictionary. Now, rather than a category key mapping to
+        EITHER a dict or a set, each category key maps to a tuple of (1) an ortholog set and (2) a
+        category dict. Without `collapse keys`, the returned dictionary is structured as follows:
+            {
+                (<hierarchy A accession>, <hierarchy A name>):
+                    {
+                        (<level 1 category i accession>, <level 1 category i name>):
+                            (
+                                set([...]),
+                                {
+                                    (<level 2 category j accession>, <level 2 category j name>):
+                                        (
+                                            set([(<ortholog 1 accession>, <ortholog 1 name>), (<ortholog 2 accession>, <ortholog 2 name>), ...]),
+                                            {...}
+                                        ),
+                                    (<level 2 category k accession>, <level 2 category k name>):
+                                        (
+                                            set([(<ortholog 3 accession>, <ortholog 3 name>), (<ortholog 4 accession>, <ortholog 4 name>), ...]),
+                                            {}
+                                        ),
+                                    (<level 2 category l accession>, <level 2 category l name>):
+                                        (
+                                            set([]),
+                                            {...},
+                                        )
+                                    ...
+                                }
+                            ),
+                        (<level 1 category m accession>, <level 1 category m name>):
+                            (
+                                set([...]),
+                                {...}
+                            ),
+                        ...
+                (<hierarchy B accession>, <hierarchy B name>):
+                    {...},
+                ...
+            }
+
+        With `collapse_keys` and without `collapse_mixed_branches`, the format of the returned
+        dictionary is the same as with `collapse_keys` and `collapse_mixed_branches`. The only
+        difference is that there can be entries for orthologs in a category and orthologs in a
+        subcategory: the categorization key tuples are the same for such entries up to the
+        subcategory elements.
+
+        PARAMETERS
+        ==========
+        hierarchy_accessions_of_interest : list, None
+            filters results to hierarchies of interest
+
+        level_cutoff : int, None
+            collapse branches below the level cutoff, with a positive level measured top-down and a
+            negative level measured bottom-up from the deepest branch of the tree
+
+        collapse_keys: bool, False
+            eliminate category nesting, keying each ortholog set by a single categorization tuple
+
+        collapse_mixed_branches : bool, True
+            collapse category branches off a category node that also ends in ortholog leaves
+
+        RETURNS
+        =======
+        hierarchy_dict : dict
+            dictionary of BRITE hierarchies
+        """
+
+        if hierarchy_accessions_of_interest:
+            hierarchy_list = [f"'{konum}'" for konum in hierarchy_accessions_of_interest]
+            where_clause_string = f"hierarchy_accession IN ({','.join(hierarchy_list)})"
+            # this WILL fail if you ask for a data name that doesn't exist, so know your data before you query
+            dict_from_brite_table = self.db.get_some_rows_from_table_as_dict(self.brite_table_name, where_clause_string, row_num_as_key=True)
+        else:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        # the returned dict is keyed by an arbitrary integer, and each value is a dict containing one row from the BRITE table, e.g.,
+        # 0: {'hierarchy_accession': 'ko01000',
+        #     'hierarchy_name': 'Enzymes',
+        #     'ortholog_accession': 'K00001',
+        #     'ortholog_name': 'E1.1.1.1, adh; alcohol dehydrogenase [EC:1.1.1.1]',
+        #     'categorization': '1. Oxidoreductases>>>1.1  Acting on the CH-OH group of donors>>>1.1.1  With NAD+ or NADP+ as acceptor>>>1.1.1.1  alcohol dehydrogenase'}
+
+        # find the maximum depth of each hierarchy
+        max_depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+
+        if level_cutoff == 0 or type(level_cutoff) != int:
+            raise ConfigError("`level_cutoff` must be a nonzero integer.")
+
+        # set the level cutoff for each hierarchy
+        if level_cutoff > 0:
+            topdown_level_cutoff_dict = {hierarchy_accession: min(level_cutoff, max_depth) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        elif level_cutoff < 0:
+            # find the positive level corresponding to the negative level cutoff for each
+            # hierarchy, ensuring that at least one category remains per hierarchy
+            topdown_level_cutoff_dict = {hierarchy_accession: max(max_depth + level_cutoff, 1) for hierarchy_accession, max_depth in max_depth_dict.items()}
+        else:
+            topdown_level_cutoff_dict = max_depth_dict
+
+        # hierarchy level cutoffs can be affected by collapsing subcategories of mixed categories
+        if collapse_mixed_branches:
+            topdown_level_cutoff_dict = self.get_brite_topdown_level_cutoff_dict_ignoring_subcategories_of_mixed_categories(topdown_level_cutoff_dict, dict_from_brite_table)
+
+        # create the per-hierarchy dict
+        hierarchy_dict = {}
+        for row_id, entry_dict in dict_from_brite_table.items():
+            ortholog_accession = entry_dict['ortholog_accession']
+            ortholog_name = entry_dict['ortholog_name']
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            hierarchy_name = entry_dict['hierarchy_name']
+            categorization = entry_dict['categorization']
+            categories = categorization.split('>>>')
+
+            # the hierarchies, "ko00001 KEGG Orthology (KO)" and "ko01000 Enzymes", should have "accessions" for each category
+            if hierarchy_accession == 'ko00001' or hierarchy_accession == 'ko01000':
+                parsed_categories = []
+                for category in categories:
+                    split_category = category.split(' ')
+                    parsed_categories.append((split_category[0], ' '.join(split_category[1: ])))
+            else:
+                parsed_categories = [('', category) for category in categories]
+
+            # make the top-level category dict for the hierarchy
+            try:
+                category_dict = hierarchy_dict[(hierarchy_accession, hierarchy_name)]
+            except KeyError:
+                hierarchy_dict[(hierarchy_accession, hierarchy_name)] = category_dict = {}
+
+            topdown_level_cutoff = topdown_level_cutoff_dict[hierarchy_accession]
+
+            if collapse_mixed_branches:
+                # each value of a category dict is either a set or a dict
+                if collapse_keys:
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if level == topdown_level_cutoff:
+                            try:
+                                ortholog_set = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = ortholog_set = set()
+                            ortholog_set.add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category]
+                        except KeyError:
+                            category_dict[category] = category_dict = {}
+            else:
+                # each value of a category dict is a tuple containing a set and a dict
+                if collapse_keys:
+                    key = tuple(parsed_categories[: topdown_level_cutoff])
+                    try:
+                        ortholog_set = category_dict[key]
+                    except KeyError:
+                        category_dict[key] = ortholog_set = set()
+                    ortholog_set.add((ortholog_accession, ortholog_name))
+                else:
+                    num_categories = len(parsed_categories)
+                    for level, category in enumerate(parsed_categories, 1):
+                        if level == topdown_level_cutoff:
+                            try:
+                                category_tuple = category_dict[category]
+                            except KeyError:
+                                category_dict[category] = category_tuple = (set(), {})
+                            category_tuple[0].add((ortholog_accession, ortholog_name))
+                            break
+                        try:
+                            category_dict = category_dict[category][1]
+                        except KeyError:
+                            category_dict[category] = category_tuple = (set(), {})
+                            category_dict = category_tuple[1]
+
+        return hierarchy_dict
+
+
+    def get_brite_max_depth_dict(self, dict_from_brite_table=None):
+        """Return a dictionary of the maximum depths of BRITE hierarchies.
+
+        "Maximum depth" is greatest number of levels of categorization of an ortholog in the
+        hierarchy.
+
+        By default, without `dict_from_brite_table`, every hierarchy in the database is analyzed.
+        With that argument, only the hierarchies represented in the dict are analyzed.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict
+            contains BRITE table rows of interest, as returned, for example, by `get_some_rows_from_table_as_dict`
+
+        RETURNS
+        =======
+        max_depth_dict : dict
+            relates hierarchy accession keys to maximum depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        max_depth_dict = {}
+        for entry_dict in dict_from_brite_table.values():
+            hierarchy_accession = entry_dict['hierarchy_accession']
+            categories = entry_dict['categorization'].split('>>>')
+            try:
+                current_max_depth = max_depth_dict[hierarchy_accession]
+            except KeyError:
+                current_max_depth = 0
+            max_depth_dict[hierarchy_accession] = max(current_max_depth, len(categories))
+
+        return max_depth_dict
+
+
+    def get_brite_depth_dict_ignoring_subcategories_of_mixed_categories(self, dict_from_brite_table=None, input_depth_dict=None):
+        """Return hierarchy depths disregarding bottom levels of hierarchy that only exist due to subcategories of mixed categories.
+
+        "Mixed" categories contain both subcategories and orthologs.
+
+        Example: The depth of a hierarchy is 4, but this is only due to a subcategory of a depth 3
+        mixed category. After collapsing this subcategory, hierarchy depth is reduced to 3.
+
+        With default arguments, all BRITE table entries and maximum hierarchy depths are considered.
+
+        PARAMETERS
+        ==========
+        dict_from_brite_table : dict, None
+            contains BRITE table rows of interest, as returned, for example, by
+            `self.db.get_some_rows_from_table_as_dict`
+
+        input_depth_dict : dict, None
+            contains hierarchy depths of interest, as returned, for example, by
+            `self.get_brite_max_depth_dict`
+
+        RETURNS
+        =======
+        depth_dict : dict, None
+            contains adjusted hierarchy depths
+        """
+        if not dict_from_brite_table:
+            dict_from_brite_table = self.db.get_table_as_dict(self.brite_table_name, row_num_as_key=True)
+
+        if input_depth_dict:
+            depth_dict = copy.deepcopy(input_depth_dict)
+        else:
+            depth_dict = self.get_brite_max_depth_dict(dict_from_brite_table)
+
+        deep_categorizations = {} # depth of categorization greater than or equal to level cutoff
+        shallow_categorizations = {} # depth of categorization less than level cutoff
+        hierarchy_culprits = set([]) # hierarchies containing subcategories of mixed categories responsible for depth exceeding level cutoff
+        is_checked = False
+        # keep trimming hierarchy "culprits" until the deepest level is not a subcategory of a mixed category
+        while hierarchy_culprits or not is_checked:
+            for entry_dict in dict_from_brite_table.values():
+                hierarchy_accession = entry_dict['hierarchy_accession']
+                if is_checked and hierarchy_accession not in hierarchy_culprits:
+                    continue
+                categorization = entry_dict['categorization']
+                categories = categorization.split('>>>')
+                if len(categories) >= depth_dict[hierarchy_accession]:
+                    try:
+                        deep_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        deep_categorizations[hierarchy_accession] = set([categorization])
+                else:
+                    try:
+                        shallow_categorizations[hierarchy_accession].add(categorization)
+                    except KeyError:
+                        shallow_categorizations[hierarchy_accession] = set([categorization])
+
+            # interrogate the "deep" categorizations in each hierarchy
+            for hierarchy_accession, hierarchy_deep_categorizations in deep_categorizations.items():
+                # if all categorizations are deep, then the hierarchy cannot be a "culprit"
+                try:
+                    hierarchy_shallow_categorizations = shallow_categorizations[hierarchy_accession]
+                except KeyError:
+                    continue
+
+                # compare deep categorization strings with all shallow categorizations
+                # strings, checking if the shallow categorization is a substring of the deep
+                # categorization, and thus the deep categorization is a subcategory of a
+                # mixed category
+                subcategorization_culprits = []
+                for deep_categorization in hierarchy_deep_categorizations:
+                    for shallow_categorization in hierarchy_shallow_categorizations:
+                        if deep_categorization[: len(shallow_categorization)] == shallow_categorization:
+                            if deep_categorization[len(shallow_categorization): len(shallow_categorization) + 3] == '>>>':
+                                subcategorization_culprits.append(deep_categorization)
+                                break
+
+                # remove culprit subcategories
+                for deep_categorization in subcategorization_culprits:
+                    hierarchy_deep_categorizations.remove(deep_categorization)
+
+                hierarchy_culprits.add(hierarchy_accession)
+                if hierarchy_deep_categorizations:
+                    # there are no more subcategory culprits, but the hierarchy is still
+                    # deeper than the level cutoff: the deep categories will be collapsed as
+                    # per normal
+                    hierarchy_culprits.remove(hierarchy_accession)
+                else:
+                    # there are no more subcategory culprits, so the level cutoff can simply be reduced by 1
+                    depth_dict[hierarchy_accession] = depth_dict[hierarchy_accession] - 1
+            is_checked = True
+
+        return depth_dict
+
+
+    def list_brite_hierarchies(self, as_accessions=False, as_tuples=False):
+        """List all BRITE hierarchies in the database.
+
+        PARAMETERS
+        ==========
+        as_accessions : bool, False
+            return list of hierarchy accessions
+
+        as_tuples : bool, False
+            return list of tuples of hierarchy accessions and names
+
+        RETURNS
+        =======
+        hierarchy_entries : list
+            database BRITE hierarchies, formatted "<accession> <name>" with default parameterization
+        """
+
+        if as_accessions:
+            hierarchy_entries = self.db.get_single_column_from_table(self.brite_table_name, 'hierarchy_accession', unique=True)
+        else:
+            hierarchy_entries = self.db.get_some_columns_from_table(self.brite_table_name, 'hierarchy_accession, hierarchy_name', unique=True)
+            if not as_tuples:
+                hierarchy_entries = [f"{accession} {name}" for accession, name in hierarchy_entries]
+
+        return hierarchy_entries
+
+
 ######### MODULE DEFINITION UNROLLING FUNCTIONS #########
+
     def get_top_level_steps_in_module_definition(self, mnum):
         """This function access the DEFINITION line of a KEGG Module and returns the top-level steps as a list
 
@@ -5706,6 +7776,45 @@ class ModulesTable:
         return self.total_entries
 
 
+class BriteTable:
+    """This class defines operations for creating the KEGG BRITE hierarchies table in Modules.db"""
+
+    def __init__(self, brite_table_name = None):
+        """"""
+        self.db_entries = []
+        self.total_entries = 0
+
+        if brite_table_name:
+            self.brite_table_name = brite_table_name
+        else:
+            raise ConfigError("Beep Beep. Warning. BriteTable was initialized without knowing its own name.")
+
+
+    def append_and_store(self, db, hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization):
+        """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
+
+        The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+        """
+
+        db_entry = tuple([hierarchy_accession, hierarchy_name, ortholog_accession, ortholog_name, categorization])
+        self.db_entries.append(db_entry)
+        self.total_entries += 1
+
+        # we can store chunks of 5000 at a time, so we don't want over 10,000 entries.
+        if len(self.db_entries) >= 10000:
+            self.store(db)
+            self.db_entries = []
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.brite_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+
+    def get_total_entries(self):
+        return self.total_entries
+
+
 class KeggModuleEnrichment(KeggContext):
     """This class is a driver for anvi-script-enrichment-stats for modules input.
 
@@ -5728,8 +7837,8 @@ class KeggModuleEnrichment(KeggContext):
         self.sample_header_in_modules_txt = A('sample_header') or 'db_name'
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_path = A('output_file')
-        self.include_ungrouped = True if A('include_ungrouped') else False
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
+        self.use_stepwise_completeness = A('use_stepwise_completeness')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -5794,8 +7903,14 @@ class KeggModuleEnrichment(KeggContext):
         # read the files into dataframes
         modules_df = pd.read_csv(self.modules_txt, sep='\t')
 
+        completeness_header = 'pathwise_module_completeness'
+        if self.use_stepwise_completeness:
+            completeness_header = 'stepwise_module_completeness'
+        self.progress.reset()
+        self.run.info("Completeness score being used for determining sample presence", completeness_header)
+
         # make sure we have all the columns we need in modules mode output, since this output can be customized
-        required_modules_txt_headers = ['module', 'module_completeness', 'module_name']
+        required_modules_txt_headers = ['module', 'module_name', completeness_header]
         missing_headers = []
         for h in required_modules_txt_headers:
             if h not in modules_df.columns:
@@ -5820,31 +7935,23 @@ class KeggModuleEnrichment(KeggContext):
                                "it using the --sample-header parameter. Just so you know, the columns in modules-txt that you can choose from "
                                f"are: {col_list}")
 
-        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt)
+        samples_to_groups_dict, groups_to_samples_dict = utils.get_groups_txt_file_as_dict(self.groups_txt, include_missing_samples_is_true=self.include_missing)
 
         # make sure the samples all have a group
         samples_with_none_group = []
         for s,g in samples_to_groups_dict.items():
             if not g:
                 samples_with_none_group.append(s)
-                if self.include_ungrouped:
-                    samples_to_groups_dict[s] = 'UNGROUPED'
 
-        if not self.include_ungrouped:
-            for s in samples_with_none_group:
-                samples_to_groups_dict.pop(s)
+        for s in samples_with_none_group:
+            samples_to_groups_dict.pop(s)
 
         if samples_with_none_group:
             self.progress.reset()
             none_group_str = ", ".join(samples_with_none_group)
-            if self.include_ungrouped:
-                self.run.warning("Some samples in your groups-txt did not have a group, but since you elected to --include-ungrouped, "
-                                 "we will consider all of those samples to belong to one group called 'UNGROUPED'. Here are those "
-                                 f"UNGROUPED samples: {none_group_str}")
-            else:
-                self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
-                                 "want them to be included in the analysis (but without assigning a group), you can simply re-run "
-                                 "this program with the --include-ungrouped flag. Now. Here are the samples we will be ignoring: "
+            self.run.warning("Some samples in your groups-txt did not have a group, and we will ignore those samples. If you "
+                                 "want them to be included in the analysis, you need to fix the groups-txt to have a group for "
+                                 "these samples. Anyway. Here are the samples we will be ignoring: "
                                  f"{none_group_str}")
 
         # sanity check for mismatch between modules-txt and groups-txt
@@ -5875,9 +7982,8 @@ class KeggModuleEnrichment(KeggContext):
                 self.progress.reset()
                 self.run.warning(f"Your groups-txt file does not contain some samples present in your modules-txt ({self.sample_header_in_modules_txt} "
                                 "column). Since you have chosen to --include-samples-missing-from-groups-txt, for the purposes of this analysis we will now consider all of "
-                                "these samples to belong to one group called 'UNGROUPED'. If you wish to ignore these samples instead, please run again "
-                                "without the --include-ungrouped parameter. "
-                                "Here are the UNGROUPED samples that we will consider as one big happy family: "
+                                "these samples to belong to one group called 'UNGROUPED'."
+                                "Here are the {len(samples_missing_in_groups_txt)} UNGROUPED samples that we will consider as one big happy family: "
                                 f"{missing_samples_str}")
                 # add those samples to the UNGROUPED group
                 ungrouped_samples = list(samples_missing_in_groups_txt)
@@ -5925,7 +8031,7 @@ class KeggModuleEnrichment(KeggContext):
             header_list.append(f"N_{c}")
 
         for mod_num in module_list:
-            query_string = f"module == '{mod_num}' and module_completeness >= {self.module_completion_threshold}"
+            query_string = f"module == '{mod_num}' and {completeness_header} >= {self.module_completion_threshold}"
             samples_with_mod_df = modules_df.query(query_string)
             if samples_with_mod_df.shape[0] == 0:
                 continue
@@ -5937,10 +8043,9 @@ class KeggModuleEnrichment(KeggContext):
             # we need to explicitly ignore samples without a group here, because they were taken out of sample_groups_df
             # and if only ungrouped samples end up having this module, we will get an index error
             samples_with_mod_list = list(samples_with_mod_df.index)
-            if not self.include_ungrouped:
-                for s in samples_with_none_group:
-                    if s in samples_with_mod_list:
-                        samples_with_mod_list.remove(s)
+            for s in samples_with_none_group:
+                if s in samples_with_mod_list:
+                    samples_with_mod_list.remove(s)
             if len(samples_with_mod_list) == 0:
                 continue
 

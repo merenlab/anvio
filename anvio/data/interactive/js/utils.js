@@ -98,13 +98,13 @@ function fire_up_ncbi_blast(sequence, program, database, target)
 
     if (typeof program !== 'undefined')
         post_variables['PROGRAM'] = program;
-    
+
     if (typeof database !== 'undefined')
         post_variables['DATABASE'] = database;
 
     var blast_window = window.open('about:blank', '_blank');
     var form = document.createElement('form');
-    
+
     form.action = 'https://blast.ncbi.nlm.nih.gov/Blast.cgi';
     form.method = 'POST';
 
@@ -139,7 +139,7 @@ function generate_inspect_link(options) {
             }
             else if (type == 'inspect_gene') {
                 new_url = 'charts.html?id=' + item_name + '&highlight_gene=true&gene_mode=true';
-            } 
+            }
             else if (type == 'inspect_geneclusters') {
                 new_url = 'geneclusters.html?id=' + item_name;
             }
@@ -483,37 +483,37 @@ function strip(html)
 }
 
 //--------------------------------------------------------------------------------------------------
-function clearMinMax(selectbox) 
+function clearMinMax(selectbox)
 {
     var tr = $(selectbox).parent().parent();
 
     $(tr).find('.input-min').val('0').prop('disabled', true);
-    $(tr).find('.input-max').val('0').prop('disabled', true);     
+    $(tr).find('.input-max').val('0').prop('disabled', true);
 }
 
 function togglePickerStart(selectbox, togglePicker)
 {
     var tr = $(selectbox).parent().parent();
 
-    if(selectbox.value=='intensity' || selectbox.value=='line' || selectbox.value=='text') {  
+    if(selectbox.value=='intensity' || selectbox.value=='line' || selectbox.value=='text') {
         $(tr).find('.picker_start').css('visibility', 'visible');
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'visible');
             $(tr).find('.input-height').css('visibility', 'hidden');
             $('.max-font-size-input').show();
         }
-    } else { 
+    } else {
         $(tr).find('.picker_start').css('visibility', 'hidden');
         if (togglePicker) {
             $(tr).find('.picker_end').css('visibility', 'hidden');
             $(tr).find('.input-height').css('visibility', 'visible');
             $(tr).find('.input-height').val('30');
         }
-    }  
+    }
 }
 
 /* Poor man's timer.
- * 
+ *
  *     function ...(...) {
  *         var my_timer = new BasicTimer('my_func');
  *         (...)
@@ -524,7 +524,7 @@ function togglePickerStart(selectbox, togglePicker)
  *         my_timer.getDeltaSeconds('End');
  *     }
  *
- */ 
+ */
 function BasicTimer(name) {
     this.name = name;
     this.start = new Date().getTime();
@@ -536,7 +536,7 @@ function BasicTimer(name) {
         deltaSecondsPrev = (this.now - this.previousDelta) / 1000;
 
         this.previousDelta = this.now;
-        
+
         consoleOutput = typeof consoleOutput !== 'undefined' ? consoleOutput: true;
 
         prettyText = this.name + ' [' + event + ']: ' + readableNumber(deltaSecondsPrev) + ' seconds (' + readableNumber(deltaSecondsStart) + ' seconds since beginning)';
@@ -651,9 +651,9 @@ function removeSingleParents()
 {
     // layerdata and parameter count is global
 
-    for (var i = 1; i < parameter_count; i++) 
+    for (var i = 1; i < parameter_count; i++)
     {
-        if (layerdata[0][i] == '__parent__') 
+        if (layerdata[0][i] == '__parent__')
         {
             var parent_count_dict = {};
             for (var j=1; j < layerdata.length; j++)

@@ -114,8 +114,15 @@ import argparse
 import numpy as np
 import pandas as pd
 import pickle as pkl
-import multiprocessing as mp
 import matplotlib.pyplot as plt
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from hashlib import sha1
 from itertools import chain
@@ -1916,11 +1923,11 @@ class TRNASeqDataset(object):
         total_read_count = 0
         total_uniq_count = len(uniq_read_infos)
 
-        manager = mp.Manager()
+        manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
         profiler = trnaidentifier.Profiler()
-        processes = [mp.Process(target=profile_worker, args=(input_queue, output_queue, profiler))
+        processes = [multiprocessing.Process(target=profile_worker, args=(input_queue, output_queue, profiler))
                      for _ in range(self.num_threads)]
         for p in processes:
             p.start()
@@ -5340,8 +5347,8 @@ class DatabaseMerger(object):
         self.spec_profile_db_path = os.path.join(self.spec_out_dir, 'PROFILE.db')
         self.spec_auxiliary_db_path = os.path.join(self.spec_out_dir, 'AUXILIARY-DATA.db')
 
-        if not 1 <= self.num_threads <= mp.cpu_count():
-            raise ConfigError(f"The number of threads to use must be a positive integer less than or equal to {mp.cpu_count()}. Try again!")
+        if not 1 <= self.num_threads <= multiprocessing.cpu_count():
+            raise ConfigError(f"The number of threads to use must be a positive integer less than or equal to {multiprocessing.cpu_count()}. Try again!")
 
         self.set_treatment_preference()
 
@@ -5440,11 +5447,11 @@ class DatabaseMerger(object):
         self.progress.new(pid)
         self.progress.update(f"{loaded_db_count}/{num_trnaseq_db_paths} dbs loaded")
 
-        manager = mp.Manager()
+        manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue_Nu_summaries = manager.Queue()
         output_queue_M_summaries = manager.Queue()
-        processes = [mp.Process(target=trnaseq_db_loader,
+        processes = [multiprocessing.Process(target=trnaseq_db_loader,
                                 args=(input_queue, output_queue_Nu_summaries, output_queue_M_summaries, self))
                      for _ in range(self.num_threads)]
         for p in processes:
@@ -6644,26 +6651,26 @@ class DatabaseMerger(object):
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id, seed.sample_spec_covs_dict[sample_id])
         elif db_cov_type == 'nonspecific':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id, seed.sample_nonspec_covs_dict[sample_id])
         elif db_cov_type == 'combined':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.combined_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id].tolist())
-                    auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id].tolist())
+                    auxiliary_db.append(split_name, sample_id + '_specific', seed.sample_spec_covs_dict[sample_id])
+                    auxiliary_db.append(split_name, sample_id + '_nonspecific', seed.sample_nonspec_covs_dict[sample_id])
         elif db_cov_type == 'summed':
             auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.summed_auxiliary_db_path, self.contigs_db_hash, db_variant='trnaseq', create_new=True)
             for seed in self.seeds:
                 split_name = seed.name + '_split_00001'
                 for sample_id in self.trnaseq_db_sample_ids:
-                    auxiliary_db.append(split_name, sample_id, (seed.sample_spec_covs_dict[sample_id] + seed.sample_nonspec_covs_dict[sample_id]).tolist())
+                    auxiliary_db.append(split_name, sample_id, (seed.sample_spec_covs_dict[sample_id] + seed.sample_nonspec_covs_dict[sample_id]))
         else:
             raise ConfigError(f"The type of profile database provided, {db_cov_type}, "
                               "is not among those that are recognized: 'specific', 'nonspecific', 'combined', and 'summed'.")
@@ -7494,13 +7501,23 @@ class ResultTabulator(object):
             gene_callers_id_anticodon_aa_dict[gene_callers_id] = anticodon_aa_item
         anticodon_aa_iter = iter(anticodon_aa_items)
 
+        # Coverages are stored as bytes or as a single integer when coverage is zero for the sample.
+        # Convert coverage entries back to numpy arrays accordingly.
         convert_binary_blob_to_numpy_array = partial(utils.convert_binary_blob_to_numpy_array, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
+        convert_int_to_numpy_array = lambda x: np.zeros(x, dtype=auxiliarydataops.TRNASEQ_COVERAGE_DTYPE)
+        def convert_coverage_entry_to_numpy_array(cov_entry):
+            try:
+                cov_array = convert_binary_blob_to_numpy_array(cov_entry)
+            except TypeError:
+                cov_array = convert_int_to_numpy_array(cov_entry)
+            return cov_array
+
         spec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.spec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
         spec_aux_df = spec_aux_db.db.get_table_as_dataframe(tables.split_coverages_table_name)
         spec_aux_db.close()
         spec_aux_df['contig_name'] = spec_aux_df['split_name'].apply(lambda s: s.split('_split_00001')[0])
         spec_aux_df = spec_aux_df.drop('split_name', axis=1)
-        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+        spec_aux_df['coverages'] = spec_aux_df['coverages'].apply(convert_coverage_entry_to_numpy_array)
 
         if do_nonspec:
             nonspec_aux_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.nonspec_aux_db_path, self.contigs_db_info.hash, db_variant='trnaseq')
@@ -7508,7 +7525,7 @@ class ResultTabulator(object):
             nonspec_aux_db.close()
             nonspec_aux_df['contig_name'] = spec_aux_df['contig_name'].values
             nonspec_aux_df = nonspec_aux_df.drop('split_name', axis=1)
-            nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_binary_blob_to_numpy_array)
+            nonspec_aux_df['coverages'] = nonspec_aux_df['coverages'].apply(convert_coverage_entry_to_numpy_array)
 
         spec_covs_dict = {}
         sample_rel_discriminator_spec_cov_dict = {}

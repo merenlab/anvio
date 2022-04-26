@@ -119,7 +119,7 @@ def is_proper_external_gene_calls_file(file_path):
                 call_type = int(fields[6])
             except ValueError:
                 raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
-                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
+                                       "http://anvio.org/help/main/artifacts/external-gene-calls/")
 
             if call_type not in call_types_allowed:
                 raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
@@ -156,8 +156,18 @@ def is_output_file_writable(file_path, ok_if_exists=True):
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
         raise FilesNPathsError(f"You do not have write access to the file at '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
-        raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
-                               f"avoid overwriting stuff.")
+        if anvio.FORCE_OVERWRITE:
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                raise FilesNPathsError(f"As per your instructions, anvi'o was trying to delete the file at '{file_path}', "
+                                       f"yet it failed (typical anvi'o?). Here is the error message from another programmer "
+                                       f"in the matrix: {e}.")
+        else:
+            raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
+                                   f"avoid overwriting stuff. But you can always use the flag `--force-overwrite` "
+                                   f"to instruct anvi'o to delete the existing file first.")
+
     return True
 
 
@@ -199,14 +209,17 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
+            raise FilesNPathsError(f"The probability of the file at '{file_path}' to be a TAB-delimited file "
+                                   f"is zero (unless, of course the locale is not properly set for your shell).")
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                                   "Did you export this file on MAC using EXCEL? :(" % file_path)
+            raise FilesNPathsError(f"You (or some code on your behalf) asked anvi'o if the file at '{file_path}' "
+                                   f"was a TAB-delimited file. Anvi'o took the very first line in it that did not "
+                                   f"start with the character '#' (as in commented out lines), and found zero TAB "
+                                   f"in it. This is not how we make TAB-delimited files :(")
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
@@ -375,8 +388,19 @@ def check_output_directory(output_directory, ok_if_exists=False):
     output_directory = os.path.abspath(output_directory)
 
     if os.path.exists(output_directory) and not ok_if_exists:
-        raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
-                               f"overwriting stuff (except when it does (typical anvi'o))).")
+        if anvio.FORCE_OVERWRITE:
+            try:
+                shutil.rmtree(output_directory)
+            except Exception as e:
+                raise FilesNPathsError(f"As per your instructions, anvi'o was trying to delete the directory at '{output_directory}', "
+                                       f"yet it failed (typical anvi'o?). Here is the error message from another programmer in "
+                                       f"the matrix: {e}.")
+        else:
+            raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
+                                   f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
+                                   f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
+                                   f"first remove the existing output directory (a flag that deserves extreme caution "
+                                   f"for obvious reasons).")
 
     return output_directory
 
