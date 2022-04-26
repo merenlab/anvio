@@ -787,49 +787,72 @@ class Affinitizer:
 
 
     def load_isoacceptor_data(self):
+        """Workhorse method to load and filter data, find properties of seeds, and ultimately group isoacceptors."""
+
         # Load data from the tRNA-seq contigs database.
         with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
-            trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe('trna_gene_hits', columns_of_interest=['seed_contig_name', 'bin_name', 'decoded_amino_acid', 'anticodon', 'gene_sequence'])
-            # Drop duplicate rows representing hits between the same seed and different genes with identical sequences.
+            trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
+                'trna_gene_hits', columns_of_interest=['seed_contig_name', 'bin_name', 'decoded_amino_acid', 'anticodon', 'gene_sequence'])
+            # Drop duplicate rows (only preserve one row) representing hits between the same
+            # tRNA-seq seed and different tRNA genes with identical sequences.
             trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
-            if self.collection_name == None:
+            if self.genomic_collection_name == None:
                 trna_gene_hits_df['bin_name'] = ''
 
+            self.run.info("tRNA-seq seeds linked to tRNA genes", len(trna_gene_hits_df))
+
+            # Get the gene callers IDs of the tRNA-seq seeds.
             seed_contig_names = ','.join(['"%s"' % seed_contig_name for seed_contig_name in trna_gene_hits_df['seed_contig_name'].unique()])
             contigs_where_clause = f'''contig IN ({seed_contig_names})'''
-            seed_id_df = trnaseq_contigs_db.get_table_as_dataframe('genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig'], where_clause=contigs_where_clause)
-            seed_id_df = seed_id_df.rename({'contig': 'seed_contig_name'}, axis=1)
+            seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
+                'genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig'], where_clause=contigs_where_clause)
+            seed_id_df = seed_id_df.rename({'contig': 'seed_contig_name', 'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
             trna_gene_hits_df = trna_gene_hits_df.merge(seed_id_df, on='seed_contig_name')
 
-            seed_gene_callers_ids = ','.join(['"%s"' % gene_callers_id for gene_callers_id in trna_gene_hits_df['gene_callers_id'].unique()])
+            # Find wobble position 34 in the tRNA-seq seed sequences.
+            seed_gene_callers_ids = ','.join(['"%s"' % gene_callers_id for gene_callers_id in trna_gene_hits_df['seed_gene_callers_id'].unique()])
             ids_where_clause = f'''gene_callers_id IN ({seed_gene_callers_ids})'''
-            wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe('trna_feature', columns_of_interest=['gene_callers_id', 'anticodon_loop_start'], where_clause=ids_where_clause)
+            wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
+                'trna_feature', columns_of_interest=['gene_callers_id', 'anticodon_loop_start'], where_clause=ids_where_clause)
+            wobble_position_df = wobble_position_df.rename({'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
             wobble_position_df['anticodon_start'] = wobble_position_df['anticodon_loop_start'] + 2
             wobble_position_df = wobble_position_df.drop('anticodon_loop_start', axis=1)
-            trna_gene_hits_df = trna_gene_hits_df.merge(wobble_position_df, on='gene_callers_id')
+            trna_gene_hits_df = trna_gene_hits_df.merge(wobble_position_df, on='seed_gene_callers_id')
 
+            # Get the tRNA-seq seed consensus sequence strings.
             seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe('contig_sequences', where_clause=contigs_where_clause)
-            seed_consensus_sequence_df = seed_consensus_sequence_df.rename({'contig': 'seed_contig_name'}, axis=1)
+            seed_consensus_sequence_df = seed_consensus_sequence_df.rename({'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
             trna_gene_hits_df = trna_gene_hits_df.merge(seed_consensus_sequence_df, on='seed_contig_name')
 
+            # Find the nucleotides read at wobble position 34 in the tRNA-seq seeds.
             anticodon_wobble_nucleotides = []
-            for anticodon_start, seed_consensus_sequence in zip(trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['sequence']):
+            for anticodon_start, seed_consensus_sequence in zip(trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['seed_sequence']):
                 anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
             trna_gene_hits_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
 
-            trna_gene_hits_df = trna_gene_hits_df.drop(['gene_callers_id', 'anticodon_start', 'sequence'], axis=1)
+            trna_gene_hits_df = trna_gene_hits_df.drop(['seed_gene_callers_id', 'anticodon_start', 'seed_sequence'], axis=1)
 
         # Load data from the seeds specific coverage table.
-        coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['contig_name', 'sample_name', 'relative_discriminator_coverage', 'discriminator_1'])
+        coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2],
+                                  usecols=['contig_name', 'sample_name', 'relative_discriminator_coverage', 'discriminator_1'])
         coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
+        # Select data for the samples of interest.
         coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
+        # Select data for the tRNA-seq seeds linked to tRNA genes.
         coverage_df = coverage_df[coverage_df['seed_contig_name'].isin(trna_gene_hits_df['seed_contig_name'].unique())]
         coverage_df = coverage_df[coverage_df['discriminator_1'] >= self.min_coverage]
         coverage_df = coverage_df.drop('discriminator_1', axis=1)
-        # Ignore seeds that do not have coverage in the reference sample.
-        coverage_df = coverage_df.groupby('seed_contig_name').filter(lambda seed_coverage_df: self.reference_sample_name in seed_coverage_df['sample_name'].values)
+
+        # Ignore tRNA-seq seeds that do not have coverage in the reference sample.
+        coverage_df = coverage_df.groupby('seed_contig_name').filter(
+            lambda seed_coverage_df: self.reference_sample_name in seed_coverage_df['sample_name'].values)
+
+        self.run.info("Filtered seeds detected in reference sample", len(coverage_df['seed_contig_name'].unique()))
+
         # Ignore seeds that are in only one sample.
         coverage_df = coverage_df.groupby('seed_contig_name').filter(lambda seed_coverage_df: len(seed_coverage_df) > 1)
+
+        self.run.info("Filtered seeds detected in >1 sample", len(coverage_df['seed_contig_name'].unique()))
 
         if len(coverage_df) == 0:
             self.info.warning(f"No seeds remain after applying the seed detection coverage threshold of {self.min_coverage}. "
@@ -837,7 +860,8 @@ class Affinitizer:
 
         # Evaluate the anticodon wobble nucleotide in the seed.
         effective_wobble_nucleotides = []
-        for decoded_aa_type, anticodon, seed_wobble_nucleotide in zip(trna_gene_hits_df['decoded_amino_acid'], trna_gene_hits_df['anticodon'], trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
+        for decoded_aa_type, anticodon, seed_wobble_nucleotide in zip(
+            trna_gene_hits_df['decoded_amino_acid'], trna_gene_hits_df['anticodon'], trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
             if decoded_aa_type == 'Ile2':
                 # tRNA-Ile2 has a wobble nucleotide of lysidine in bacteria or agmatidine in
                 # archaea, which are given the same decoding weight.
@@ -845,42 +869,56 @@ class Affinitizer:
                 continue
             elif anticodon[0] == 'A':
                 # Check for modification of A34 to I, which is detected as G in tRNA-seq reads.
-                # tRNA-Arg-ACG is the only bacterial tRNA known to contain I34. No archaeal tRNAs
-                # are known to contain I34. I34 has been found in 8 eukaryotic tRNAs. As far as I
-                # know, the I modification is pervasive at position 34 in the tRNAs that have it, so
-                # presence of G34 in the seed consensus sequence is assumed to be 100% modification.
+                # tRNA-Arg-ACG and tRNA-Leu-AAG are the only bacterial tRNAs known to contain I34.
+                # No archaeal tRNAs are known to contain I34. I34 has been found in 8 eukaryotic
+                # tRNAs. As far as I know, the I modification is pervasive at position 34 in the
+                # tRNAs that have it, so presence of G34 in the seed consensus sequence is assumed
+                # to be 100% modification.
                 if seed_wobble_nucleotide == 'G':
                     effective_wobble_nucleotides.append('I')
                     continue
             effective_wobble_nucleotides.append(anticodon[0])
+
         trna_gene_hits_df['effective_wobble_nucleotide'] = effective_wobble_nucleotides
         trna_gene_hits_df = trna_gene_hits_df.drop(['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
-        # Drop duplicate rows representing hits between the same seed and different genes with different sequences.
-        # This should only occur if the seed is a partial length tRNA, and the genes differ beyond the 5' end of the seed.
-        # However, confirm that the hits yielded the same anticodon wobble nucleotide, just in case I'm missing something.
+
+        # Drop duplicate rows (preserve a single row) representing hits between the same tRNA-seq
+        # seed and tRNA genes with different sequences. This should only occur if the seed is a
+        # partial read of the tRNA, and the genes differ beyond the 5' end of the seed. However,
+        # confirm that the hits yielded the same anticodon wobble nucleotide, just in case I'm
+        # missing something.
         trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
-        if trna_gene_hits_df.groupby('seed_contig_name').ngroups != trna_gene_hits_df.groupby(['seed_contig_name', 'effective_wobble_nucleotide']).ngroups:
+        if trna_gene_hits_df.groupby('seed_contig_name').ngroups != trna_gene_hits_df.groupby(
+            ['seed_contig_name', 'effective_wobble_nucleotide']).ngroups:
             confusing_df = trna_gene_hits_df.groupby('seed_contig_name').filter(lambda seed_df: len(seed_df) > 1)
-            raise ConfigError("A strange circumstance has occurred where a seed linked to genes "
+            raise ConfigError("A strange circumstance has occurred where a tRNA-seq seed linked to tRNA genes "
                               "with different sequences was found to have different effective wobble nucleotides. "
                               f"Here are the entries for the seeds in question:\n{confusing_df.to_string()}")
 
         seeds_df = trna_gene_hits_df.merge(coverage_df, how='inner', on='seed_contig_name')
-        # Perhaps there could be a scenario where isoacceptors differ in their effective wobble
-        # nucleotide: say one is modified to I and the other is kept A. This oddity should be noted.
-        if seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']).ngroups:
-            confusing_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) > 1)
-            self.run.warning("A very strange scenario has been found in which apparent seed isoacceptors "
-                             "differ in their anticodon wobble nucleotide. For example, in one seed, "
-                             "the nucleotide could be A and in the other it is modified to I in the seed. "
-                             "Here are the entries for the seeds in question: "
-                             f"{confusing_df.to_string()}")
-            seeds_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
-        seeds_df = seeds_df.drop('seed_contig_name', axis=1)
-        isoacceptors_df = seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide', 'sample_name'], as_index=False).agg('sum')
 
+        # Perhaps isoacceptors in the same bin could differ in their effective wobble nucleotide:
+        # say one is modified to I and the other is kept A. This oddity should be noted.
+        if self.genomic_collection_name:
+            if seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seeds_df.groupby(
+                ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']).ngroups:
+                confusing_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+                    lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) > 1)
+                self.run.warning("A very strange circumstance has been found in which apparent tRNA-seq seed isoacceptors "
+                                 "from the same bin differ in their anticodon wobble nucleotide. "
+                                 "For example, in one seed, the nucleotide could be A while in the other it is modified to I. "
+                                 f"Here are the entries for the seeds in question: {confusing_df.to_string()}")
+                seeds_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+                    lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
+
+        seeds_df = seeds_df.drop('seed_contig_name', axis=1)
+        isoacceptors_df = seeds_df.groupby(
+            ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide', 'sample_name'], as_index=False).agg('sum')
+
+        # Remove bins lacking a diversity of isoacceptors.
         prefilter_bin_names = set(isoacceptors_df['bin_name'])
-        isoacceptors_df = isoacceptors_df.groupby('bin_name').filter(lambda bin_df: bin_df.groupby(['decoded_amino_acid', 'anticodon']).ngroups >= self.min_isoacceptors)
+        isoacceptors_df = isoacceptors_df.groupby('bin_name').filter(
+            lambda bin_df: bin_df.groupby(['decoded_amino_acid', 'anticodon']).ngroups >= self.min_isoacceptors)
         removed_bin_names = set(prefilter_bin_names).difference(set(isoacceptors_df['bin_name']))
         if removed_bin_names:
             self.info.warning(f"The following bins did not meet the bin isoacceptor threshold of {self.min_isoacceptors}: {', '.join(removed_bin_names)}")
