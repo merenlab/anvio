@@ -747,5 +747,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "enzymes-list-for-module": {
+        "name": "ENZYMES LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
     }
 }

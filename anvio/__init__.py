@@ -930,8 +930,8 @@ D = {
                      "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
                      "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
-    'enzymes-txt': (
-            ['-e', '--enzymes-txt'],
+    'enzymes-list-for-module': (
+            ['-e', '--enzymes-list-for-module'],
             {'default': None,
              'metavar': 'FILE_PATH',
              'help': "A TAB-delimited flat text file that lists the enzymes in your module (one enzyme per line). "
@@ -962,7 +962,7 @@ D = {
              'metavar': 'DEFINITION',
              'type': str,
              'help': "The definition string of the module in terms of enzyme identifiers, formatted in the KEGG fashion. "
-                     "All enzymes in the definition should be present in the enzymes-txt file. See help pages "
+                     "All enzymes in the definition should be present in the enzymes-list-for-module file. See help pages "
                      "for instructions on creating the definition."}
                 ),
     'module-class': (

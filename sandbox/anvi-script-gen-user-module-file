@@ -26,7 +26,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __provides__ = ["user-modules-data"]
-__requires__ = ["enzymes-txt"]
+__requires__ = ["enzymes-list-for-module"]
 __description__ = ("This script generates a user-defined modules file from a tab-delimited file of enzymes and other input parameters.")
 
 run = terminal.Run()
@@ -34,7 +34,7 @@ progress = terminal.Progress()
 
 def main(args):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    enzyme_txt_path = A('enzymes_txt')
+    enzyme_txt_path = A('enzymes_list_for_module')
     entry = A('module_entry')
     name = A('module_name')
     class_str = A('module_class')
@@ -127,16 +127,17 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupR = parser.add_argument_group('REQUIRED INPUT', "Everything you NEED to make a module definition.")
-    groupR.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt', {'required': True,}))
+    groupR.add_argument(*anvio.A('enzymes-list-for-module'), **anvio.K('enzymes-list-for-module', {'required': True,}))
     groupR.add_argument(*anvio.A('module-entry'), **anvio.K('module-entry'))
     groupR.add_argument(*anvio.A('module-name'), **anvio.K('module-name'))
     groupR.add_argument(*anvio.A('module-class'), **anvio.K('module-class'))
 
     groupD = parser.add_argument_group('OPTIONAL - MODULE DEFINITION', "If you don't pass a module definition, anvi'o will "
-                                                                       "make each enzyme in the enzymes-txt file a distinct "
-                                                                       "step in the module. Useful if you are not defining a "
-                                                                       "metabolic pathway, but rather a characteristic set of "
-                                                                       "genes (ie, transporters, tRNA modification enzymes, etc).")
+                                                                       "make each enzyme in the enzymes-list-for-module file "
+                                                                       "a distinct step in the module. Useful if you are not "
+                                                                       "defining a metabolic pathway, but rather a "
+                                                                       "characteristic set of genes (ie, transporters, "
+                                                                       "tRNA modification enzymes, etc).")
     groupD.add_argument(*anvio.A('module-definition'), **anvio.K('module-definition'))
 
     groupK = parser.add_argument_group('OPTIONAL - KEGG DATA', "If you want anvi'o to fill in the ORTHOLOGY of "
