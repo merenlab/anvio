@@ -8,6 +8,8 @@ KEGG is a useful system for functional classification: translational affinity ca
 
 When analyzing samples with multiple populations (a metagenome rather than a single genome), a %(collection)s of bins will be inferred from the %(trnaseq-contigs-db)s, as a %(collection)s should have been specified in running %(anvi-integrate-trnaseq)s to link tRNA transcripts to genes in each population. This %(collection)s likewise constrains the functional genes analyzed by the present program in each genome.
 
+If the (meta)genomic %(contigs-db) does not either represent a single genome or a metagenome with collection specified when running %(anvi-integrate-trnaseq)s, this program will produce irrational results.
+
 ## Translational affinity metric
 
 ### Wobble weights

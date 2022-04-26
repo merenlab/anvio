@@ -714,8 +714,6 @@ class Affinitizer:
             self.nonreference_sample_names = self.nonreference_sample_names.split(',')
         self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
 
-        self.genomic_collection_name = self.trnaseq_contigs_db_info.get_self_table()['genomic_collection_name']
-
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
@@ -899,17 +897,16 @@ class Affinitizer:
 
         # Perhaps isoacceptors in the same bin could differ in their effective wobble nucleotide:
         # say one is modified to I and the other is kept A. This oddity should be noted.
-        if self.genomic_collection_name:
-            if seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seeds_df.groupby(
-                ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']).ngroups:
-                confusing_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
-                    lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) > 1)
-                self.run.warning("A very strange circumstance has been found in which apparent tRNA-seq seed isoacceptors "
-                                 "from the same bin differ in their anticodon wobble nucleotide. "
-                                 "For example, in one seed, the nucleotide could be A while in the other it is modified to I. "
-                                 f"Here are the entries for the seeds in question: {confusing_df.to_string()}")
-                seeds_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
-                    lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
+        if seeds_df.groupby(['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seeds_df.groupby(
+            ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']).ngroups:
+            confusing_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+                lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) > 1)
+            self.run.warning("A very strange circumstance has been found in which apparent tRNA-seq seed isoacceptors "
+                             "from the same bin differ in their anticodon wobble nucleotide. "
+                             "For example, in one seed, the nucleotide could be A while in the other it is modified to I. "
+                             f"Here are the entries for the seeds in question: {confusing_df.to_string()}")
+            seeds_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+                lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
 
         seeds_df = seeds_df.drop('seed_contig_name', axis=1)
         isoacceptors_df = seeds_df.groupby(
