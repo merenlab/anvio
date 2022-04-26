@@ -671,6 +671,8 @@ class Integrator(object):
 
 
 class Affinitizer:
+    """Using the `go` method, relates changes in tRNA-seq seed abundances to the codon usage of gene functions."""
+
     default_min_coverage = 10
     default_min_isoacceptors = 4
     default_rarefaction_limit = 0
@@ -702,6 +704,9 @@ class Affinitizer:
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
         self.genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path)
 
+        # Find the names of the samples to analyze in addition to the reference sample: the
+        # "nonreference" samples. By default, this will be every other sample, but a subset of
+        # available samples can also be used.
         if self.nonreference_sample_names == None:
             self.nonreference_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
             self.nonreference_sample_names.remove(self.reference_sample_name)
@@ -711,6 +716,8 @@ class Affinitizer:
 
 
     def sanity_check(self):
+        """Check the feasibility of args from initialization."""
+
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
             raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
@@ -768,6 +775,8 @@ class Affinitizer:
 
 
     def go(self):
+        """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
+
         isoacceptors_df = self.load_isoacceptor_data()
         if len(isoacceptors_df) == 0:
             return
