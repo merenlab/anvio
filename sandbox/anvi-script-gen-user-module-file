@@ -27,7 +27,7 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __provides__ = ["user-modules-data"]
 __requires__ = ["enzymes-list-for-module"]
-__description__ = ("This script generates a user-defined modules file from a tab-delimited file of enzymes and other input parameters.")
+__description__ = ("This script generates a user-defined module file from a tab-delimited file of enzymes and other input parameters.")
 
 run = terminal.Run()
 progress = terminal.Progress()
