@@ -622,18 +622,22 @@ class Integrator(object):
 
 
     def update_trnaseq_contigs_database(self, hits_df, unmodified_nt_df):
+        """Add information on tRNA gene associations to the tRNA-seq contigs database."""
+
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
 
         # Erase the table contents: if this table was already filled out in a previous run, then
         # `self.sanity_check` would catch this and force the user to `--just-do-it`.
         trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
 
+        # Update metadata tracking (meta)genomic associations.
         trnaseq_contigs_db.set_meta_value('genomic_contigs_db_project_name', self.genomic_contigs_db_info.hash)
         trnaseq_contigs_db.set_meta_value('genomic_contigs_db_hash', self.genomic_contigs_db_info.project_name)
         if self.genomic_profile_db_info:
             trnaseq_contigs_db.set_meta_value('genomic_profile_db_hash', self.genomic_profile_db_info.hash)
             trnaseq_contigs_db.set_meta_value('genomic_collections_name', self.collection_name)
 
+        # Assemble the rows of the table.
         table_entries = []
         hit_id = 0
         for row in hits_df.itertuples(index=False):
@@ -666,7 +670,7 @@ class Integrator(object):
         trnaseq_contigs_db._exec_many(f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES ({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
         trnaseq_contigs_db.disconnect()
 
-        self.run.info_single(f"In total, {hit_id} tRNA seeds were linked to tRNA genes.")
+        self.run.info_single(f"In total, {hit_id} tRNA-seq seeds were linked to tRNA genes.")
 
 
 class Affinitizer:
