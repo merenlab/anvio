@@ -737,6 +737,11 @@ class Affinitizer:
         if 'modules_db_hash' not in genomic_contigs_db_info.get_self_table():
             raise ConfigError(f"It appears that genes have not been annotated by KOfams in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'. "
                               "Please run `anvi-run-kegg-kofams` on the database and try again.")
+        if 'KEGG_BRITE' not in genomic_contigs_db_info.get_self_table()['gene_function_sources'].split(','):
+            raise ConfigError("The version of the Modules database that was used in `anvi-run-kegg-kofams` does not include KEGG BRITE annotations. "
+                              "The calculation of functional affinity makes use of the functional classification of gene orthologs in BRITE hierarchies. "
+                              "Please update the Modules database by rerunning `anvi-setup-kegg-kofams`, "
+                              f"and then rerun `anvi-run-kegg-kofams` on the (meta)genomics contigs database, '{self.genomic_contigs_db_path}'.")
 
         filesnpaths.is_file_exists(self.codon_frequencies_txt_path)
 
