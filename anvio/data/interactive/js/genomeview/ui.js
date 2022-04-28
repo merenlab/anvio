@@ -590,7 +590,6 @@ function showTabularModal(){
             <th>Contig</th>
             <th>Source</th>
             <th>Deepdive</th>
-            <th>Glow</th>
             <th>Color</th>
           </thead>
           <tbody id="${genome}-table-body">
