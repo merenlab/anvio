@@ -116,6 +116,20 @@
           <div class="modal-body" >
             <div class="container-fluid">
               <ul class="nav nav-tabs" id="tabular-modal-nav-tabs"></ul>
+              <div id="modal-multiselect-content" class="tab-content" role="dialog">
+                <div class="modal-multiselect-col">
+                  <button class="btn btn-default p-3">Glow selected in sequence</button>
+                  <button class="btn btn-default p-3">Export selected as contig.db</button>
+                </div>
+                <div>
+                  <input type='text' placeholder='metadata tag'/>
+                  <button class="btn btn-default">Add metadata tag to selected</button>
+                </div>
+                <div>
+                  <div id="multiselect-picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
+                  <button class="btn btn-default">Color selected</button>
+                </div>
+              </div>
               <div id="modal-tab-content" class="tab-content" role="dialog"></div>
             </div>
           </div>
