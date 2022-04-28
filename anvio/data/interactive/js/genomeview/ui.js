@@ -530,7 +530,7 @@ function showToolTip(event){
       </thead>
       <tbody>
         <tr>
-          <td>  ${event.target.geneID}</td>
+          <td> ${event.target.geneID}</td>
           <td> ${event.target.gene?.source}</td>
           <td> ${event.target.gene.stop - event.target.gene.start}</td>
           <td> ${event.target.gene.direction}</td>
