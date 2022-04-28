@@ -507,9 +507,9 @@ function showToolTip(event){
     Object.entries(event.target.functions).map(func => {
       totalAnnotationsString += `
       <tr>
-      <td>${func[0]}</td>
-      <td>${func[1] ? func[1][0] : 'n/a'}</td>
-      <td>${func?.[1]?.[1]}</td>
+        <td>${func[0]}</td>
+        <td>${func[1] ? func[1][0] : 'n/a'}</td>
+        <td>${func?.[1]?.[1]}</td>
       </tr>
       `
     })
