@@ -321,13 +321,13 @@ class Integrator(object):
         associated_genomic_collection_name = trnaseq_contigs_db_self_table['genomic_collection_name']
         if not self.overwrite_table and associated_genomic_contigs_db_hash != None:
             if associated_genomic_collection_name:
-                additional_message = f" A collection named {associated_genomic_collection_name} was used."
+                additional_message = f" A collection named '{associated_genomic_collection_name}' was used."
             else:
                 additional_message = ""
             raise ConfigError(f"The tRNA-seq contigs database at '{self.trnaseq_contigs_db_path}' "
                               "has already been associated with tRNA genes from a (meta)genomic contigs database "
-                              f"with the project name, {associated_genomic_contigs_db_project_name}, "
-                              f"and hash ID, {associated_genomic_contigs_db_hash}.{additional_message} "
+                              f"with the project name, '{associated_genomic_contigs_db_project_name}', "
+                              f"and hash ID, '{associated_genomic_contigs_db_hash}'.{additional_message} "
                               f"`anvi-integrate-trnaseq` can be run with the flag `--just-do-it` to overwrite the existing data.")
 
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
