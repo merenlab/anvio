@@ -33,9 +33,6 @@ function setEventListeners(){
     }
   })
 
-  canvas.on('mouse:out', (event) => {
-    $('#tooltip-body').html('').hide()
-  })
   // panning
   canvas.on('mouse:down', function (opt) {
     var evt = opt.e;
