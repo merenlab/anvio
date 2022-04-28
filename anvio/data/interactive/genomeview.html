@@ -508,7 +508,30 @@
         style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSEOVER</span>
     </div>
     <div id="mouseover-panel">
-      <h1>mouse</h1>
+      <h2>Gene Call</h2>
+      <table class="table table-striped" style="width: 100%; text-align: center;">
+        <thead>
+          <th>ID</th>
+          <th>Source</th>
+          <th>Length</th>
+          <th>Direction</th>
+          <th>Start</th>
+          <th>Stop</th>
+          <th>Call type</th>
+        </thead>
+        <tbody id='mouseover-panel-table-body'>
+        </tbody>
+      </table>
+      <h2>Annotations</h2>
+      <table class="table table-striped" style="width: 100%; text-align: center;">
+        <thead>
+          <th>Source</th>
+          <th>Accession</th>
+          <th>Annotation</th>
+        </thead>
+        <tbody id="mouseover-panel-annotations-table-body">
+        </tbody>
+      </table>
     </div>
     <!-- LOAD STATE -->
     <div class="modal fade" id="modLoadState" style="display: none">
