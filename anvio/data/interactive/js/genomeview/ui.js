@@ -142,6 +142,16 @@ function setEventListeners(){
       toggleSettingsPanel();
     }
   });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 77 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // M = 77
+      toggleRightPanel('#mouseover-panel')
+    }
+  });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 81 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Q = 81
+      toggleRightPanel('#query-panel')
+    }
+  });
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGenomeSpacing($(this).val());
