@@ -302,15 +302,13 @@ function setEventListeners(){
   })
 }
 function showDeepDiveToolTip(event){
-
   $('.canvas-container').dblclick(function(){
     if($("#deepdive-tooltip-body").is(":visible")){
       $("#deepdive-tooltip-body").hide()
     }
   })
 
-  $('#tooltip-body').html('').hide() // empty out & hide any previous tooltip instances
-  $('#deepdive-tooltip-body').html('').hide()
+  $('#deepdive-modal-tab-content').html('')
   let totalMetadataString = String()
   let totalAnnotationsString = String()
   let metadataLabel = String()
@@ -343,21 +341,32 @@ function showDeepDiveToolTip(event){
     })
   }
 
-  $('#deepdive-tooltip-body').show().append(`
+  $('#deepdive-modal-body').modal('show')
+  $('#deepdive-modal-tab-content').append(`
   <span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
   <h2>Gene Call</h2>
   <table class="table table-striped" style="width: 100%; text-align: center;">
-  <thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th></thead>
-  <tbody>
-  <tr><td>  ${event.target.geneID}
-  </td><td> ${event.target.gene?.source}
-  </td><td> ${event.target.gene.stop - event.target.gene.start}
-  </td><td> ${event.target.gene.direction}
-  </td><td> ${event.target.gene.start}
-  </td><td> ${event.target.gene.stop}
-  </td><td> ${event.target.gene?.call_type}
-  </td><td> ${event.target.gene?.complete_gene_call}
-  </td></tr></tbody></table>;
+    <thead>
+      <th>ID</th>
+      <th>Source</th>
+      <th>Length</th>
+      <th>Direction</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Call type</th>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${event.target.geneID}</td>
+        <td>${event.target.gene?.source}</td>
+        <td>${event.target.gene.stop - event.target.gene.start}</td>
+        <td>${event.target.gene.direction}</td>
+        <td>${event.target.gene.start}</td>
+        <td>${event.target.gene.stop}</td>
+        <td>${event.target.gene?.call_type}</td>
+      </tr>
+    </tbody>
+  </table>;
 
   <button type="button" id="gene-dna-sequence-button"class="btn btn-default btn-sm" >DNA</button>
   <button type="button" id="gene-aa-sequence-button" class="btn btn-default btn-sm" >AA</button>
@@ -395,8 +404,7 @@ function showDeepDiveToolTip(event){
   <tbody>;
   ${totalAnnotationsString}
   </tbody></table>;
-  <button type="button" class="btn btn-default btn-sm" onClick="$('#deepdive-tooltip-body').html('').hide()">close</>
-  `).css({'position' : 'absolute', 'left' : window.innerWidth/2 -200, 'top' : window.innerHeight/2 -200, 'max-width': '600px'}) // display deepdive tooltip roughly centered in viewport
+  `)
 
   $('#metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
