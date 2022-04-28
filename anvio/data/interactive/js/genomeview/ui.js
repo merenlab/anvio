@@ -398,12 +398,15 @@ function showDeepDiveToolTip(event){
 
   <h2>Annotations</h2>;
   <table class="table table-striped">;
-  <thead><th>Source</th>;
-  <th>Accession</th>;
-  <th>Annotation</th></thead>;
-  <tbody>;
-  ${totalAnnotationsString}
-  </tbody></table>;
+    <thead>
+      <th>Source</th>;
+      <th>Accession</th>;
+      <th>Annotation</th>
+    </thead>;
+    <tbody>;
+      ${totalAnnotationsString}
+    </tbody>
+  </table>;
   `)
 
   $('#metadata-query').on('click', function(){
