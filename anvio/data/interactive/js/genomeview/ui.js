@@ -564,6 +564,7 @@ function show_sequence_modal(title, content) {
 function showTabularModal(){
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
   var genomesObj = Object()
+  var functionSourcesArr = Array()
 
   arrows.map(arrow => {
     if(!genomesObj[arrow['genomeID']]){
@@ -571,6 +572,18 @@ function showTabularModal(){
     } else {
       genomesObj[arrow['genomeID']].push(arrow)
     }
+    if(arrow['functions']){
+      Object.keys(arrow['functions']).forEach(source => {
+        if(!functionSourcesArr.includes(source)){
+          functionSourcesArr.push(source)
+        }
+      })
+    }
+  })
+
+  let sourcesString = String()
+  functionSourcesArr.map(s => {
+    sourcesString += `<th>${s}<th>`
   })
 
   Object.keys(genomesObj).map((genome, idx) => {
@@ -588,7 +601,7 @@ function showTabularModal(){
             <th>Stop</th>
             <th>Direction</th>
             <th>Contig</th>
-            <th>Source</th>
+            {sourcesString}
             <th>Deepdive</th>
             <th>Color</th>
           </thead>
@@ -599,8 +612,18 @@ function showTabularModal(){
     `)
   })
   Object.entries(genomesObj).map((genome, idx) => {
-    let totalTableString = ''
+    let totalTableString = String()
+    let totalAnnotationsString = String()
     genome[1].forEach(gene => {
+      console.log(gene)
+      if(gene['functions']){
+        Object.entries(gene['functions']).forEach(func => {
+          totalAnnotationsString += `
+            <td>${func[1] ? func[1][0] : 'n/a'} || ${func?.[1]?.[1]}</td>
+          `
+        })
+      }
+
       totalTableString += `
       <tr>
         <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
@@ -609,7 +632,7 @@ function showTabularModal(){
         <td>${gene['gene']['stop']}</td>
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
-        <td>${gene['gene']['source']}</td>
+        {totalAnnotationsString}
         <td><button class="btn btn-default btn-sm" onclick="">Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
