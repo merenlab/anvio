@@ -262,3 +262,10 @@ a{
 #tabular-modal-body{
     overflow-y: scroll;
 }
+
+.modal-multiselect-col{
+    display: flex;
+    flex-direction: column;
+    width: 40%;
+    margin: 15px;
+}
