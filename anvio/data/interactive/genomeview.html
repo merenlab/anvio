@@ -164,49 +164,6 @@
               </tr>
             </thead>
             <tbody id="tbody_genomes"></tbody>
-            <tbody id="tbody_bottom">
-              <tr style="height: 30px">
-                <td colspan="9">
-                  <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit
-                    attributes for multiple layers</h4>
-                </td>
-              </tr>
-              <tr>
-                <td></td>
-                <td><input class="select_layer" placeholder="Select Layer" size="12"></td>
-                <td>
-                  <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF"
-                    style="background-color: #FFFFFF"></div>
-                  <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF">
-                  </div>
-                </td>
-                <td style="width: 50px;">
-                  <select class="type_multiple" style="width: 50px;" class="type">
-                    <option value="">Select</option>
-                    <option value="" disabled>-----Numerical Types-----</option>
-                    <option value="bar">Bar</option>
-                    <option value="intensity">Intensity</option>
-                    <option value="line">Line</option>
-                    <option value="" disabled>-----Categorical Types-----</option>
-                    <option value="color">Color</option>
-                    <option value="text">Text</option>
-                  </select>
-                </td>
-                <td>
-                  <select class="normalization_multiple">
-                    <option value="">Select</option>
-                    <option value="none">none</option>
-                    <option value="sqrt">sqrt</option>
-                    <option value="log">log</option>
-                  </select>
-                </td>
-                <td><input class="input-height-multiple" size="3"></input></td>
-                <td class="column-margin"><input class="input-margin-multiple" size="3"></input></td>
-                <td><input class="input-min-multiple" size="4"></input></td>
-                <td><input class="input-max-multiple" size="4"></input></td>
-                <td><input type="checkbox" class="select_all"></td>
-              </tr>
-            </tbody>
           </table>
         </div>
 
@@ -257,24 +214,6 @@
             <tr>
               <td><button id="alignRulerBtn" type="button" class="btn btn-primary btn-xs" onclick="drawer.alignRulers()"
                   class="btn btn-outline-primary">Align genome rulers</button></td>
-            </tr>
-          </tbody>
-        </table>
-        <span class="settings-header">Bookmarks</span>
-        <table id="bookmarksTable" style="margin-bottom: 20px;">
-          <tbody>
-            <tr id="create_bookmark">
-              <td><input id="create_bookmark_input" class="form-control input-sm" type="text"
-                  placeholder="New bookmark title" style="margin-bottom: 15px;" size="4"></td>
-            <tr id="show_scale">
-              <td><textarea id="create_bookmark_description" class="form-control input-sm" type="text"
-                  placeholder="New bookmark description" style="margin-bottom: 15px; height: 85px;" size="8"></textarea>
-              </td>
-            </tr>
-            <tr id="show_scale">
-              <td style="float: right"><button onclick='createBookmark()'>New Bookmark from Current Position</button>
-              </td>
-            </tr>
             </tr>
           </tbody>
         </table>
