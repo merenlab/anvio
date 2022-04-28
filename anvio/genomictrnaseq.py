@@ -686,6 +686,7 @@ class Affinitizer:
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
         self.seeds_specific_txt_path = A('seeds_specific_txt')
         self.genomic_contigs_db_path = A('contigs_db')
+        self.codon_frequencies_path = A('codon_frequencies_txt')
         self.reference_sample_name = A('reference_sample')
         self.nonreference_sample_names = A('sample_subset')
         self.min_coverage = A('min_coverage')
@@ -736,6 +737,8 @@ class Affinitizer:
         if 'modules_db_hash' not in genomic_contigs_db_info.get_self_table():
             raise ConfigError(f"It appears that genes have not been annotated by KOfams in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'. "
                               "Please run `anvi-run-kegg-kofams` on the database and try again.")
+
+        filesnpaths.is_file_exists(self.codon_frequencies_txt_path)
 
         available_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
         # Check for the existence of the reference sample.
