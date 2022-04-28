@@ -917,6 +917,8 @@ class Affinitizer:
                 lambda isoacceptor_df: len(isoacceptor_df['effective_wobble_nucleotide'].unique()) == 1)
 
         seeds_df = seeds_df.drop('seed_contig_name', axis=1)
+
+        # Aggregate seeds representing isoacceptors in a genome, summing their coverages.
         isoacceptors_df = seeds_df.groupby(
             ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide', 'sample_name'], as_index=False).agg('sum')
 
