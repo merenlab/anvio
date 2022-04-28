@@ -500,8 +500,8 @@ function showDeepDiveToolTip(event){
 }
 
 function showToolTip(event){
-  console.log('show')
-  $('#mouseover-panel-body').html('')
+  $('#mouseover-panel-table-body').html('')
+  $('#mouseover-panel-annotations-table-body').html('')
   let totalAnnotationsString = ''
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
@@ -514,46 +514,18 @@ function showToolTip(event){
       `
     })
   }
-  $('#mouseover-panel-body').append(`
-    <h2>Gene Call</h2>
-    <table class="table table-striped" style="width: 100%; text-align: center;">
-      <thead>
-        <th>ID</th>
-        <th>Source</th>
-        <th>Length</th>
-        <th>Direction</th>
-        <th>Start</th>
-        <th>Stop</th>
-        <th>Call type</th>
-        <th>Complete</th>
-        <th>% in split</th>
-      </thead>
-      <tbody>
-        <tr>
-          <td> ${event.target.geneID}</td>
-          <td> ${event.target.gene?.source}</td>
-          <td> ${event.target.gene.stop - event.target.gene.start}</td>
-          <td> ${event.target.gene.direction}</td>
-          <td> ${event.target.gene.start}</td>
-          <td> ${event.target.gene.stop}</td>
-          <td> ${event.target.gene?.call_type}</td>
-          <td> ${event.target.gene?.complete_gene_call}</td>
-          <td> ${event.target.gene?.percentage_in_split?.toFixed(2) + '%'}</td>
-        </tr>
-      </tbody>
-    </table>;
-    <h2>Annotations</h2>;
-    <table class="table table-striped">;
-      <thead>
-        <th>Source</th>;
-        <th>Accession</th>;
-        <th>Annotation</th>
-      </thead>;
-      <tbody>;
-        ${totalAnnotationsString}
-      </tbody>
-    </table>
-    `).css({'position' : 'absolute', 'left' : event.e.clientX, 'top' : event.e.clientY, 'max-width': '600px' })
+  $('#mouseover-panel-table-body').append(`
+    <tr>
+      <td> ${event.target.geneID}</td>
+      <td> ${event.target.gene?.source}</td>
+      <td> ${event.target.gene.stop - event.target.gene.start}</td>
+      <td> ${event.target.gene.direction}</td>
+      <td> ${event.target.gene.start}</td>
+      <td> ${event.target.gene.stop}</td>
+      <td> ${event.target.gene?.call_type}</td>
+    </tr>
+  `)
+  $('#mouseover-panel-annotations-table-body').append(totalAnnotationsString)
 }
 
 function show_sequence_modal(title, content) {
