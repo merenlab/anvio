@@ -936,6 +936,23 @@ class Affinitizer:
 
 
     def get_isoacceptor_abundances(self, isoacceptors_df):
+        """Get isoacceptor abundance data.
+
+        The keys of the returned dictionary are bin names and the values are tuples of length 2.
+        There is a value for each isoacceptor + nonreference sample, i.e., isoacceptor 1 + sample X,
+        isoacceptor 1 + sample X, isoacceptor 2 + sample Y, etc.
+
+        The tuple contains 1) a list and 2) a numpy array with items for each of the processed
+        isoacceptor + nonreference sample rows. The list contains tuples of length 3: item 1)
+        decoded amino acid, 2) anticodon, and 3) effective anticodon wobble position 34 nucleotide.
+        Each item in the numpy array is the ratio of seed abundance in the nonreference versus
+        reference sample. Abundance is based on coverage of the 3' discriminator nucleotide: the
+        most accurate representation of abundance comes from the 3' end of the seed, as many reads
+        can be 3' tRNA fragments resulting from truncation of reverse transcription. Example:
+        Isoacceptor 1 has an abundance of 1% in sample X and an abundance of 0.5% in the reference
+        sample; the ratio is 1% / 0.5% = 2.
+        """
+
         isoacceptor_abundance_dict = {}
         for bin_name, bin_df in isoacceptors_df.groupby('bin_name'):
             reference_sample_df = bin_df[bin_df['sample_name'] == self.reference_sample_name]
