@@ -604,7 +604,7 @@ function showTabularModal(){
     genome[1].forEach(gene => {
       totalTableString += `
       <tr>
-        <td><input class="form-check-input" type='checkbox'></input></td>
+        <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
         <td>${gene['gene']['stop']}</td>
@@ -612,7 +612,6 @@ function showTabularModal(){
         <td>${gene['gene']['contig']}</td>
         <td>${gene['gene']['source']}</td>
         <td><button class="btn btn-default btn-sm" onclick="">Deep Dive</button></td>
-        <td><button class="btn btn-default btn-sm" onclick="drawer.prepareModalToGlowGene(${genome[0]}, ${gene['geneID']})">Glow in Sequence</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
     })
@@ -643,6 +642,27 @@ function showTabularModal(){
       //   gene.fill = this.value;
       // });
   });
+}
+
+function gatherTabularModalSelectedItems(action){
+  let targetedGenes = []
+  $('#modal-tab-content :checked').each(function(){
+    let [genome, gene] = $(this).val().split('-')
+    targetedGenes.push({genomeID: genome, geneID: gene})
+  })
+
+  switch (action) {
+    case 'glow':
+      drawer.glowGenes(targetedGenes)
+      $('#tabular-modal-body').fadeOut(1000).delay(3000).fadeIn(1000)
+      break;
+    case 'color':
+      break;
+    case 'metadata':
+      break;
+    default:
+      break;
+  }
 }
 
 function showLassoMenu(selected_genes, x, y) {
