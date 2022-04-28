@@ -615,7 +615,6 @@ function showTabularModal(){
     let totalTableString = String()
     let totalAnnotationsString = String()
     genome[1].forEach(gene => {
-      console.log(gene)
       if(gene['functions']){
         Object.entries(gene['functions']).forEach(func => {
           totalAnnotationsString += `
@@ -633,7 +632,7 @@ function showTabularModal(){
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
         {totalAnnotationsString}
-        <td><button class="btn btn-default btn-sm" onclick="">Deep Dive</button></td>
+        <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
     })
@@ -685,6 +684,10 @@ function gatherTabularModalSelectedItems(action){
     default:
       break;
   }
+}
+
+function transitionTabularModalToDeepdive(event){
+  console.log(event.target.id)
 }
 
 function showLassoMenu(selected_genes, x, y) {
