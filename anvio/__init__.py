@@ -3465,6 +3465,13 @@ D = {
              'help': "A tab-delimited text file containing modification data on tRNA seeds. "
                      "`anvi-tabulate-trnaseq` generates this file from anvi'o tRNA-seq databases."}
     ),
+    'codon-frequencies-txt': (
+            ['--codon-frequencies-txt', '-f'],
+            {'metavar': 'TEXT_FILE',
+             'required': True,
+             'help': "A tab-delimited text file containing raw codon frequencies (counts not normalized in any way) from genes. "
+                     "`anvi-get-codon-frequencies` generates this file from an anvi'o contigs database containing gene calls."}
+    ),
     'stats-to-summarize': (
             ['--stats-to-summarize', '-S'],
             {'default': None,
