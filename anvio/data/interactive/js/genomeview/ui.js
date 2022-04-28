@@ -687,7 +687,16 @@ function gatherTabularModalSelectedItems(action){
 }
 
 function transitionTabularModalToDeepdive(event){
-  console.log(event.target.id)
+  let [genomeID, geneID] = event.target.id.split('-')
+  let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)
+
+  // this object generation is to mimick the expected behavior of a click event that the deepdive tooltip expects
+  let generatedEventObj = {}
+  generatedEventObj.target = {}
+  generatedEventObj.target.gene = genomeOfInterest[0][1]['genes']['dna'][geneID]
+  generatedEventObj.target.functions = genomeOfInterest[0][1]['genes']['functions'][geneID]
+  $('#tabular-modal-body').modal('hide')
+  showDeepDiveToolTip(generatedEventObj)
 }
 
 function showLassoMenu(selected_genes, x, y) {
