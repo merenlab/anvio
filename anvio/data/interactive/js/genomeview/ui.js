@@ -601,7 +601,7 @@ function showTabularModal(){
             <th>Stop</th>
             <th>Direction</th>
             <th>Contig</th>
-            {sourcesString}
+            ${sourcesString}
             <th>Deepdive</th>
             <th>Color</th>
           </thead>
@@ -616,9 +616,12 @@ function showTabularModal(){
     let totalAnnotationsString = String()
     genome[1].forEach(gene => {
       if(gene['functions']){
-        Object.entries(gene['functions']).forEach(func => {
+        Object.entries(gene['functions']).forEach((func, idx) => {
           totalAnnotationsString += `
-            <td>${func[1] ? func[1][0] : 'n/a'} || ${func?.[1]?.[1]}</td>
+            <td>
+              ${func[1] ? func[1][0].slice(0,20) : 'n/a'} || ${func?.[1]?.[1].slice(0,20)} <button class="btn" type="button" data-toggle="collapse" data-target="#collapse-${idx}" aria-expanded="false" aria-controls="collapse-${idx}">▼</button>
+              <div class="collapse" id="collapse-${idx}">${func?.[1]?.[0]}|| ${func?.[1]?.[1]}</div>
+            </td>
           `
         })
       }
@@ -631,7 +634,7 @@ function showTabularModal(){
         <td>${gene['gene']['stop']}</td>
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
-        {totalAnnotationsString}
+        ${totalAnnotationsString}
         <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
