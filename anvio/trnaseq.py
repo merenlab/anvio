@@ -322,9 +322,9 @@ class UniqueTransferredProfileSequence(UniqueFullProfileSequence):
         self.num_extrap_5prime_nts = 0
         self.has_His_G = replacement_dict['has_His_G']
         self.alpha_start = None if replacement_dict['alpha_start_from_T_3prime'] is None else stop_T_in_U + replacement_dict['alpha_start_from_T_3prime']
-        self.alpha_stop = None if replacement_dict['alpha_stop_from_T_3prime'] is None else stop_T_in_U - replacement_dict['alpha_stop_from_T_3prime']
-        self.beta_start = None if replacement_dict['beta_start_from_T_3prime'] is None else stop_T_in_U - replacement_dict['beta_start_from_T_3prime']
-        self.beta_stop = None if replacement_dict['beta_stop_from_T_3prime'] is None else stop_T_in_U - replacement_dict['beta_stop_from_T_3prime']
+        self.alpha_stop = None if replacement_dict['alpha_stop_from_T_3prime'] is None else stop_T_in_U + replacement_dict['alpha_stop_from_T_3prime']
+        self.beta_start = None if replacement_dict['beta_start_from_T_3prime'] is None else stop_T_in_U + replacement_dict['beta_start_from_T_3prime']
+        self.beta_stop = None if replacement_dict['beta_stop_from_T_3prime'] is None else stop_T_in_U + replacement_dict['beta_stop_from_T_3prime']
         self.anticodon_string = replacement_dict['anticodon_string']
         self.anticodon_aa = replacement_dict['anticodon_aa']
         self.contains_anticodon = replacement_dict['contains_anticodon']
