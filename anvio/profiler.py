@@ -333,6 +333,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_reads_kept = 0
         self.description_file_path = A('description')
 
+        if self.fetch_filter:
+            valid_fetch_filters = [k for k in constants.fetch_filters.keys() if k]
+
+            if self.fetch_filter not in valid_fetch_filters:
+                raise ConfigError(f"Your fetch filter '{self.fetch_filter}' is not among those anvi'o knows about :/ If you "
+                                  f"would like to try again with a different one, here is a list for your consideration: "
+                                  f"{', '.join(valid_fetch_filters)}.")
+
         # these are the views this class will be filling in:
         self.essential_data_fields_for_anvio_profiles = copy.deepcopy(constants.essential_data_fields_for_anvio_profiles)
 
