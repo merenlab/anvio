@@ -7645,7 +7645,6 @@ class ResultTabulator(object):
             feature_start_in_seq = None
             feature_stop_in_seq = None
             feature_ordinal_start = None
-            feature_ordinal_stop = None
 
             tabulated_contig_spec_covs = [[] for sample_index in sample_range]
             if do_nonspec:
