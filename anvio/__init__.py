@@ -960,6 +960,50 @@ D = {
                      "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
                      "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
+    'enzymes-list-for-module': (
+            ['-e', '--enzymes-list-for-module'],
+            {'default': None,
+             'metavar': 'FILE_PATH',
+             'help': "A TAB-delimited flat text file that lists the enzymes in your module (one enzyme per line). "
+                     "There are three required columns: an 'enzyme' column that contains the identifier for the enzyme, "
+                     "a 'source' column that contains the annotation source of the enzyme, and an 'orthology' column "
+                     "that contains the functional annotation of the enzyme. Note that the orthology column can be left "
+                     "blank IIF the annotation source is 'KOfam'."}
+                ),
+    'module-entry': (
+            ['-I', '--module-entry'],
+            {'default': None,
+             'metavar': 'ENTRY_ID',
+             'type': str,
+             'required': True,
+             'help': "The entry ID for the module. Should be one 'word' (underscores and dashes allowed), and unique to the module."}
+                ),
+    'module-name': (
+            ['-n', '--module-name'],
+            {'default': None,
+             'metavar': 'NAME',
+             'type': str,
+             'required': True,
+             'help': "The name of the module (an arbitrary string - spaces allowed). "}
+                ),
+    'module-definition': (
+            ['-d', '--module-definition'],
+            {'default': None,
+             'metavar': 'DEFINITION',
+             'type': str,
+             'help': "The definition string of the module in terms of enzyme identifiers, formatted in the KEGG fashion. "
+                     "All enzymes in the definition should be present in the enzymes-list-for-module file. See help pages "
+                     "for instructions on creating the definition."}
+                ),
+    'module-class': (
+            ['-c', '--module-class'],
+            {'default': None,
+             'metavar': 'CLASS',
+             'type': str,
+             'required': True,
+             'help': "The class of the module. Should be one string with three sections (class, category, subcategory) "
+                     "separated by semi-colons."}
+                ),
     'kegg-archive': (
             ['--kegg-archive'],
             {'default': None,
@@ -2615,6 +2659,17 @@ D = {
                      "through a module) be added to your output files. In long-format mode, it will be an additional column. "
                      "In matrix mode, it will be an additional matrix file."}
                 ),
+    'include-kos-not-in-kofam': (
+            ['--include-kos-not-in-kofam'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
+                     "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
+                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
+                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
+                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
+                     "can use it with all input types."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -3096,7 +3151,7 @@ D = {
             'help': "By default, this program will use pathwise completeness of a module to determine if it "
                     "is present in a sample or not. To make it use stepwise completeness instead, provide this "
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
-                    "pathwise vs stepwise completeness."} 
+                    "pathwise vs stepwise completeness."}
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],

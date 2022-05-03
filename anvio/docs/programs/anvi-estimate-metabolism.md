@@ -182,6 +182,14 @@ If you wish to only estimate for your own metabolic modules, you can skip estima
 anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/directory --only-user-modules
 {{ codestop }}
 
+### Including KEGG Orthologs not in KOfam
+
+Sometimes, your input data may have annotations for KOs that are not in the KOfam profiles that we use for annotation. This can happen if you are using %(enzymes-txt)s, or if you have imported external annotations with the source name `KOfam`. By default, we don't consider these annotations, and you will probably see an error message. However, (as suggested in that message) you can explicitly include these non-KOfam annotations into the analysis by providing the flag `--include-kos-not-in-kofam`, like so:
+
+{{ codestart }}
+anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s --include-kos-not-in-kofam
+{{ codestop }}
+
 ## Output options
 This program has two types of output files: long-format (tab-delimited) output files and matrices. The long-format output is the default. If you are using multi-mode to work with multiple samples, you can request matrix output by using the flag `--matrix-format`.
 

@@ -327,7 +327,7 @@ class KeggContext(object):
                                   "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
-    def setup_ko_dict(self):
+    def setup_ko_dict(self, exclude_threshold=True):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
@@ -345,6 +345,11 @@ class KeggContext(object):
         This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
         Here is an example of the dictionary structure:
         self.ko_dict["K00001"]["threshold"] = 329.57
+
+        PARAMETERS
+        ==========
+        exclude_threshold : Boolean
+            If this is true, we remove KOs without a bitscore threshold from the ko_dict
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
@@ -364,7 +369,10 @@ class KeggContext(object):
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
-        [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        if exclude_threshold:
+            [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+        else:
+            self.run.warning("FYI, we are including KOfams that do not have a bitscore threshold in the analysis.")
 
 
     def get_ko_skip_list(self):
@@ -2038,6 +2046,7 @@ class KeggEstimatorArgs():
         self.only_complete = True if A('only_complete') else False
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
+        self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -2283,9 +2292,8 @@ class KeggEstimatorArgs():
         if isinstance(mod_definition, list):
             mod_definition = " ".join(mod_definition)
 
-        # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-        mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
-        acc_list = re.split(r'\s+', mod_definition)
+        acc_list = module_definition_to_enzyme_accessions(mod_definition)
+
         # remove anything that is not an enzyme and sanity check for weird characters
         mods_to_remove = set()
         for a in acc_list:
@@ -2644,7 +2652,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
-            self.setup_ko_dict()
+            self.setup_ko_dict(exclude_threshold=self.exclude_kos_no_threshold)
             annotation_source_set = set(['KOfam'])
 
             # check for kegg modules db
@@ -3028,7 +3036,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
             because we need access to the self.ko_dict
             """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict:
+            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict and self.exclude_kos_no_threshold:
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -3039,6 +3047,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     for m in mods_it_is_in:
                         if knum[0] != 'M':
                             bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+
+                if anvio.DEBUG:
+                    if self.exclude_kos_no_threshold:
+                        self.run.warning(f"We cannot find an entry for KO {knum} in the `ko_list.txt` file downloaded "
+                                         f"from KEGG. What this means is that you are somehow using KOfam annotations "
+                                         f"that are different from the current version of KOfam on your computer (this can "
+                                         f"happen with --enzymes-txt input). Because we are not considering these annotations, "
+                                         f"you may get KeyErrors downstream. You can force the inclusion of these KOfams by "
+                                         f"re-running this program with the --include-kos-not-in-kofam flag.")
+
                 continue
 
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
@@ -3059,6 +3077,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                              "contigs_to_genes" : {}
                                              }
             else:
+                # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
+                if ko not in bin_level_ko_dict:
+                    raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
+                                      f"annotated in your data. This usually happens when you are using `KOfam` annotations that are "
+                                      f"different from the set of profiles we use to annotate in `anvi-run-kegg-kofams` (most typically, "
+                                      f"this will happen with --enzymes-txt input, but it can also happen if you imported external KOfam "
+                                      f"annotations with the source name `KOfam`). If you want to include these enzymes in this analysis, "
+                                      f"you will have to re-run this program with the flag --include-kos-not-in-kofam. If you just now "
+                                      f"realized that it is a bad idea to include these enzymes, then you'll have to re-do your annotations "
+                                      f"or remove them from your input --enzymes-txt file.")
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
@@ -5927,7 +5955,7 @@ class ModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
-                                  
+
             if not self.skip_brite_hierarchies and not self.brite_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
@@ -8074,3 +8102,14 @@ class KeggModuleEnrichment(KeggContext):
                                                                  progress=self.progress)
 
         return enrichment_stats
+
+
+## STATIC FUNCTIONS
+def module_definition_to_enzyme_accessions(mod_definition):
+    """Parses a module definition string into a list of enzyme accessions."""
+
+    # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
+    mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+    acc_list = re.split(r'\s+', mod_definition)
+
+    return acc_list

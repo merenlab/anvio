@@ -31,10 +31,14 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install .
-    - name: "Run component tests for metagenomics-full"
+    - name: "Run component tests for general metagenomics tasks"
       shell: bash -l {0}
       run: |
         anvi-self-test --suite metagenomics-full --no-interactive
+    - name: "Run component tests for metabolism framework"
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite metabolism --no-interactive
     - name: "Migrate ancient anvi'o databases"
       shell: bash -l {0}
       run: |
