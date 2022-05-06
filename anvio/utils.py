@@ -1494,7 +1494,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
     try:
-        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+        gene_caller_ids_set = set([int(float(g)) for g in gene_caller_ids_set])
     except:
         g = gene_caller_ids_set.pop()
         raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is "
