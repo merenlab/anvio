@@ -288,8 +288,8 @@ class KeggContext(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
-        self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = A('user_modules')
+        self.kegg_data_dir = os.path.abspath(A('kegg_data_dir') or self.default_kegg_dir)
+        self.user_input_dir = os.path.abspath(A('user_modules')) if A('user_modules') else None
         self.only_user_modules = A('only_user_modules')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
@@ -537,9 +537,6 @@ class KeggSetup(KeggContext):
         filesnpaths.is_program_exists('hmmpress')
 
         if not self.user_input_dir:
-            # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
-            if '/' not in self.kegg_data_dir:
-                self.kegg_data_dir += '/'
 
             if not args.reset and not anvio.DEBUG and not skip_init:
                 self.is_database_exists(fail_if_exists=(not self.only_database))
@@ -584,8 +581,6 @@ class KeggSetup(KeggContext):
             self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
-            if '/' not in self.user_input_dir:
-                self.user_input_dir += '/'
             filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
 
             self.check_user_input_dir_format()
