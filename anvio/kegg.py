@@ -4049,7 +4049,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 combo_element = previous_str[-1]
                 if combo_element == ',': # OR
                     step_copy_num += (prev_copy + sub_copy_num)
-                if combo_element == ' ': # AND
+                if combo_element == ' ' or combo_element == '+': # AND
                     step_copy_num += min(prev_copy,sub_copy_num)
 
             # handle anything following parentheses
@@ -4062,7 +4062,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 combo_element = step_string[close_parens_idx+1]
                 if combo_element == ',': # OR
                     step_copy_num += (sub_copy_num + post_copy)
-                if combo_element == ' ': # AND
+                if combo_element == ' ' or combo_element == '+': # AND
                     step_copy_num += min(sub_copy_num,post_copy)
 
             # handle edge case where parentheses circles entire step
