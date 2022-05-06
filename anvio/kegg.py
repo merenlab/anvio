@@ -318,13 +318,13 @@ class KeggContext(object):
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if self.__class__.__name__ in ['KeggSetup']:
-            if A('reset') and A('kegg_data_dir') and not self.user_input_dir:
-                raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
-                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
-                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                                  "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
-                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
+                raise ConfigError(f"You are attempting to set up KEGG in a non-default data directory ({self.kegg_data_dir}) which already exists. "
+                                  f"To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
+                                  f"directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                                  f"directory and replace it with the KEGG archive data, then please remove the directory yourself using "
+                                  f"a command like `rm -r {self.kegg_data_dir}`. We are sorry to make you go through this extra trouble, but it really is "
+                                  f"the safest way to handle things.")
 
 
     def setup_ko_dict(self, exclude_threshold=True):
@@ -1392,14 +1392,7 @@ class KeggSetup(KeggContext):
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
-            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
-                raise ConfigError("You are attempting to set up KEGG from a KEGG data archive in a non-default data directory (%s) which already exists. "
-                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
-                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                                  "directory and replace it with the KEGG archive data, then please remove the directory yourself using "
-                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
-            elif os.path.exists(self.kegg_data_dir):
+            if os.path.exists(self.kegg_data_dir):
                 shutil.rmtree(self.kegg_data_dir)
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
