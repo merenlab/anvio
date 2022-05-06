@@ -4082,9 +4082,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             elif ' ' in step_string or '+' in step_string: # AND - combine copy numbers using min()
                 and_splits = step_string.replace('+', ' ').split(' ')
-                min_step_count = 10000 # arbitrarily large number to ensure first s is always the minimum
+                min_step_count = None
                 for s in and_splits:
                     s_count = self.get_step_copy_number(s, enzyme_hit_counts)
+                    if not min_step_count:
+                        min_step_count = s_count # make first step the minimum
                     min_step_count = min(min_step_count, s_count)
                 return min_step_count
 
