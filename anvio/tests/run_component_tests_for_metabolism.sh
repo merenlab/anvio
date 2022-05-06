@@ -16,6 +16,14 @@ cd $output_dir/metabolism_test
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-dbs-quickly
 
+# generate a temporary directory to store anvi-setup-kegg-kofams output,
+# and remove it immediately to make sure it doesn't exist:
+kegg_data_dir=`mktemp -d`
+rm -rf $kegg_data_dir
+
+INFO "Setting up KEGG data"
+anvi-setup-kegg-kofams --kegg-data-dir $kegg_data_dir
+
 ## BASIC TESTS
 INFO "Estimating metabolism on a single contigs database"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db \
@@ -318,3 +326,6 @@ anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
                                   -o enrichment_ungrouped.txt \
                                   --no-progress
 SHOW_FILE enrichment_ungrouped.txt
+
+# clean up
+rm -rf $kegg_data_dir
