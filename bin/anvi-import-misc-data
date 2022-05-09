@@ -37,8 +37,11 @@ def main(args):
                           "database (--pan-or-profile-db)")
 
     if d['contigs_db'] and d['pan_or_profile_db']:
-        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
-                          "db (--pan-or-profile-db). Please provide only one.")
+        if d['contigs_mode']:
+            pass
+        else:
+            raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                              "db (--pan-or-profile-db). Please provide only one.")
 
     MiscDataTableFactory(args).populate_from_file(args.data_file)
 
