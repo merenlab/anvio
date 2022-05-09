@@ -71,6 +71,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.skip_check_names = A('skip_check_names')
         self.target_data_group = self.target_data_group_set_by_user or 'default'
 
+        # optional arguments to keep track of
+        self.contigs_mode = A('contigs_mode')
+        self.contigs_db_path = A('contigs_db')
+
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
                               "contain any database :/ Even though any of the following argument names would "
