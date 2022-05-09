@@ -748,6 +748,20 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         return additional_data_keys, d
 
 
+    def update_input_data_dict_with_split_names(self, data_dict):
+        """Takes data dict with contig names, turns it into data dict with split names"""
+        utils.is_profile_db_and_contigs_db_compatible(self.db_path, self.contigs_db_path)
+
+        contig_name_to_split_names_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
+
+        new_data_dict = {}
+        for contig_name in data_dict:
+            for split_name in contig_name_to_split_names_dict[contig_name]:
+                new_data_dict[split_name] = data_dict[contig_name]
+
+        return new_data_dict
+
+
     def add(self, data_dict, data_keys_list, skip_check_names=False):
         """Function to add data into the item additional data table.
 
