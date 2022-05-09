@@ -791,6 +791,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               "check your flags to make sure you are targeting the right data table. If you are a programmer, "
                               "you are fired." % (self.target_table, self.db_type))
 
+        # here we will check for a name conversion request between contig names to split names.
+        # this is only necessery if we are adding `items` data and if we are in contigs mode.
+        if self.target_table == 'items' and self.contigs_mode:
+            data_dict = self.update_input_data_dict_with_split_names(data_dict)
+
         self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
 
         self.run.warning(None, "New data for '%s' in data group '%s'" % (self.target_table, self.target_data_group), lc="yellow")
