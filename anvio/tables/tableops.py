@@ -8,10 +8,8 @@ import os
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
