@@ -85,7 +85,10 @@ class PfamSetup(object):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
+        if args.reset:
+            filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=True, dont_warn=True)
+        else:
+            filesnpaths.gen_output_directory(self.pfam_data_dir)
 
         self.resolve_database_url()
         self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
