@@ -26,6 +26,9 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
+pp = terminal.pretty_print
+
+
 class AdditionalAndOrderDataBaseClass(Table, object):
     """This is a base class for common operations between order and additional data classes."""
 
@@ -955,6 +958,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
         except:
             pass
 
+        # nothing in db?
         if not len(items_in_db):
             raise ConfigError("No item names found in your target database. This is normal if you are working with "
                               "a blank profile database. But in that case, you need to include `skip_check_names=True` "
@@ -962,23 +966,29 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                               "code only accessible thorugh API calls, if you are a user and seeing this please get in "
                               "touch with anvi'o developers.")
 
+        # there are items in data but not in db?
         items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
         if len(items_in_data_but_not_in_db):
-            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which "
-                              "that they are not in the %s database you are working with (which means bad news)). "
-                              "Since there is no reason to add additional data for items that do not exist in your "
-                              "database, anvi'o will stop you right there. Please fix your data and come again. In "
-                              "case you want to see a random item that is only in your data, here is one: %s. Stuff "
-                              "in your db looks like this: %s." \
-                                    % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
-                                       items_in_data_but_not_in_db.pop(),
-                                       items_in_db.pop() if items_in_db else "No entries found in database"))
+            if len(items_in_data_but_not_in_db) == len(items_in_data):
+                items_desc_text = (f"None of the {pp(len(items_in_data))} item names in your additional data are matching "
+                                   f"to those that are in the {self.db_type} you are working with")
+            else:
+                items_desc_text = (f"{pp(len(items_in_data_but_not_in_db))} of {pp(len(items_in_data))} entries in your "
+                                   f"additional data seem to be ONLY in your additional data, and not in your database")
 
+            raise ConfigError(f"Well. {items_desc_text} :/ Since there is no reason to add additional data for items "
+                              f"that do not exist in your database, anvi'o will stop you right there. Please fix your "
+                              f"data and come again. In case you want to see a random item that is only in your data, "
+                              f"here is one: '{items_in_data_but_not_in_db.pop()}'. Item names in your db generally "
+                              f"looks like this: '{items_in_db.pop()}'. If you are working with contigs names instead "
+                              f"of split names, perhaps you need the `--contigs-mode` flag?")
+
+        # there are items in db but not in data?
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):
-            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s "
-                             "database. Just wanted to make sure you know what's up, but we cool." \
-                                % (len(items_in_db) - len(items_in_db_but_not_in_data), len(items_in_db), self.db_type))
+            self.run.warning(f"Your input contains additional data for only {pp(len(items_in_db) - len(items_in_db_but_not_in_data))} "
+                             f"of {pp(len(items_in_db))} total number of items in your {self.db_type} database. "
+                             f"Just wanted to make sure you know what's up, but we cool.")
 
 
 class TableForLayerAdditionalData(AdditionalDataBaseClass):
