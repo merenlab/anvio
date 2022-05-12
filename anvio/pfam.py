@@ -155,13 +155,21 @@ class PfamSetup(object):
                 raise ConfigError(f"Unfortunately, we failed to download the file {file_name}, please re-run setup "
                                   "with the --reset flag.")
 
-            hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
+            file_path = os.path.join(self.pfam_data_dir, file_name)
+            hash_on_disk = utils.get_file_md5(file_path)
             expected_hash = checksums[file_name]
 
-            if not expected_hash == hash_on_disk:
+            if expected_hash != hash_on_disk:
+                self.run.warning("This means the downloaded file is not matching to the file on the server :/", header='BAD HASH :(')
+
+                self.run.info("Local file path", file_path, mc="red")
+                self.run.info('Local hash', hash_on_disk, mc="red")
+                self.run.info('Remote hash', expected_hash, mc="red")
+
                 raise ConfigError(f"Please re-run setup with --reset, the file hash for {file_name} doesn't match to the hash "
-                                  "we expected. If you continue to get this error after doing that, try removing the entire "
-                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again (without the --reset flag).")
+                                  f"we expected. If you continue to get this error after doing that, try removing the entire "
+                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again "
+                                  f"(without the --reset flag).")
 
 
     def decompress_files(self):
