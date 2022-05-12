@@ -581,9 +581,6 @@ class HMMProfile(object):
             emission = emission_line.split()
 
             # These are not used currently but maybe someday will be
-            insertion = insertion_line.split()
-            state = state_line.split()
-
             assign_type = lambda x, t: t(x) if x != '-' else '-'
             profile['MATCH_STATES']['MATCH_STATE'].append(int(emission.pop(0)))
             profile['MATCH_STATES']['CS'].append(assign_type(emission.pop(-1), str))
