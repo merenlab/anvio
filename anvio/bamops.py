@@ -1150,7 +1150,7 @@ class GetReadsFromBAM:
 
             # this will serve as a unique id per read
             counter = 0
-            has_unknown_mate = {}
+            unknown_mate_tracker_dict = {}
             unknown_mate_defline_to_counter = {}
             if self.split_R1_and_R2:
                 for contig_id, start, stop in contig_start_stops:
@@ -1167,32 +1167,32 @@ class GetReadsFromBAM:
                         if not read.is_paired:
                             short_reads_dict['UNPAIRED'][counter] = D(read.query_sequence)
 
-                        elif defline in has_unknown_mate:
+                        elif defline in unknown_mate_tracker_dict:
                             # `read`s mate has already been read. so assign the read and the mate
                             # to their respective 'R1' and 'R2' dictionaries, then remove the mate
-                            # from has_unknown_mate since its mate is now known.
+                            # from unknown_mate_tracker_dict since its mate is now known.
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
 
-                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline] 
+                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline]
 
                             # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
-                                short_reads_dict[mate_DIRECTION][counter] = D(has_unknown_mate[counter_for_unknown_mate])
+                                short_reads_dict[mate_DIRECTION][counter] = D(unknown_mate_tracker_dict[defline]['seq'])
                                 short_reads_dict[read_DIRECTION][counter] = D(utils.rev_comp(read.query_sequence))
                             else:
-                                short_reads_dict[mate_DIRECTION][counter] = D(utils.rev_comp(has_unknown_mate[counter_for_unknown_mate]))
+                                short_reads_dict[mate_DIRECTION][counter] = D(utils.rev_comp(unknown_mate_tracker_dict[defline]['seq']))
                                 short_reads_dict[read_DIRECTION][counter] = D(read.query_sequence)
 
-                            del has_unknown_mate[counter_for_unknown_mate]
+                            del unknown_mate_tracker_dict[defline]
                             del unknown_mate_defline_to_counter[defline]
 
                         else:
-                            has_unknown_mate[counter] = D(read.query_sequence)
+                            unknown_mate_tracker_dict[defline] = D(read.query_sequence)
                             unknown_mate_defline_to_counter[defline] = counter
 
 
-                short_reads_dict['UNPAIRED'].update(has_unknown_mate)
+                short_reads_dict['UNPAIRED'].update(unknown_mate_tracker_dict)
             else:
                 for contig_id, start, stop in contig_start_stops:
                     # sanity check for the stop position
