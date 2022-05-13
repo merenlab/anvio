@@ -1100,10 +1100,25 @@ class GetReadsFromBAM:
 
 
     def get_short_reads_dict(self, contig_start_stops):
-        """Gets short reads from BAM files, literally"""
+        """Gets short reads from BAM files, literally.
+
+        If `contig_start_stops` is None, the function will learn the contig names in the first
+        BAM file and generate a `contig_start_stops` list.
+        """
 
         self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]), nl_before=1)
         self.run.info('Fetch filter', self.fetch_filter, nl_after=1, mc=('red' if not self.fetch_filter else 'green'))
+
+        # if the user has provided no `contig_start_stops`, then we will have to recover all contig names
+        # from the BAM file and use them as our target.
+        if not contig_start_stops:
+            bam_file_path_to_recover_contig_names_from = self.input_bam_files[0]
+            self.progress.new('Recovering contig names')
+            self.progress.update(f"from {bam_file_path_to_recover_contig_names_from} ...")
+            bam_file_object = BAMFileObject(bam_file_path_to_recover_contig_names_from)
+            contig_start_stops = [(contig_name, 0, sys.maxsize) for contig_name in bam_file_object.references]
+            bam_file_object.close()
+            self.progress.end()
 
         # prepare the dictionary to be returned
         short_reads_dict = {}
