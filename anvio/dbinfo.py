@@ -127,7 +127,7 @@ class DBInfo(ABC):
             # Return the respective class that __init__ should be called for
             return super().__new__(dbinfo_classes[db_type])
 
-        raise NotImplementedError(f"db_type {db_type} has no entry in dbinfo_classes")
+        raise NotImplementedError(f"Database type `{db_type}` at `{path}` has no entry in dbinfo_classes")
 
 
     def __init__(self, path):
