@@ -726,6 +726,35 @@ anvi-delete-misc-data -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                       --just-do-it \
                       --no-progress
 
+INFO "Getting all short reads from BAM files for all samples"
+anvi-get-short-reads-from-bam $output_dir/SAMPLE-01.bam $output_dir/SAMPLE-02.bam $output_dir/SAMPLE-03.bam \
+                              -o $output_dir/all_short_reads_from_SAMPLE_bam_files.fa \
+                              --no-progress
+
+INFO "Getting all short reads from BAM files for split and gzipped"
+anvi-get-short-reads-from-bam $output_dir/SAMPLE-01.bam $output_dir/SAMPLE-02.bam $output_dir/SAMPLE-03.bam \
+                              -O $output_dir/all_short_reads_split \
+                              --split-R1-and-R2 \
+                              --gzip-output \
+                              --no-progress
+
+INFO "Getting short reads from BAM files that match to a specific region in a specific contig"
+anvi-get-short-reads-from-bam $output_dir/SAMPLE-01.bam $output_dir/SAMPLE-02.bam $output_dir/SAMPLE-03.bam \
+                              --target-contig 204_10M_MERGED.PERFECT.gz.keep_contig_878 \
+                              --target-region-start 100 \
+                              --target-region-end 101 \
+                              -o $output_dir/all_short_reads_matching_to_contig.fa \
+                              --no-progress
+
+INFO "Getting short reads from BAM files matching to contigs in a specific bin"
+anvi-get-short-reads-from-bam $output_dir/SAMPLE-01.bam $output_dir/SAMPLE-02.bam $output_dir/SAMPLE-03.bam \
+                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                              -c $output_dir/CONTIGS.db \
+                              -C CONCOCT \
+                              -b Bin_1 \
+                              -o $output_dir/all_short_reads_matching_to_CONCOCT_Bin_1_contigs.fa \
+                              --no-progress
+
 INFO "Get linkmers from all BAM files for some distant positions"
 anvi-report-linkmers --contigs-and-positions $files/distant_positions_for_linkmers.txt \
                      -i $output_dir/*.bam \
@@ -955,7 +984,6 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 INFO "A dry run to fill in anvi'o dbs"
 curdir=`pwd`
 cd $output_dir
-anvi-interactive --dry-run --no-progress
 anvi-display-pan --dry-run --no-progress
 cd $curdir
 
