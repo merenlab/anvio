@@ -50,7 +50,6 @@ except Exception:
 # and do all the other boring stuff.
 
 import os
-import sys
 import json
 import copy
 

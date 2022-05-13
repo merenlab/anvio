@@ -3095,6 +3095,7 @@ class VariabilityFixationIndex(object):
 
         if not self.min_coverage_in_each_sample:
             self.min_coverage_in_each_sample = min_cov_default
+            self.args.min_coverage_in_each_sample = min_cov_default
             self.run.warning("--min-coverage-in-each-sample is a required parameter. Anvi'o has set this "
                              "to %d on your behalf." % min_cov_default)
 

@@ -85,7 +85,10 @@ class PfamSetup(object):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
+        if args.reset:
+            filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=True, dont_warn=True)
+        else:
+            filesnpaths.gen_output_directory(self.pfam_data_dir)
 
         self.resolve_database_url()
         self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
@@ -152,13 +155,21 @@ class PfamSetup(object):
                 raise ConfigError(f"Unfortunately, we failed to download the file {file_name}, please re-run setup "
                                   "with the --reset flag.")
 
-            hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
+            file_path = os.path.join(self.pfam_data_dir, file_name)
+            hash_on_disk = utils.get_file_md5(file_path)
             expected_hash = checksums[file_name]
 
-            if not expected_hash == hash_on_disk:
+            if expected_hash != hash_on_disk:
+                self.run.warning("This means the downloaded file is not matching to the file on the server :/", header='BAD HASH :(')
+
+                self.run.info("Local file path", file_path, mc="red")
+                self.run.info('Local hash', hash_on_disk, mc="red")
+                self.run.info('Remote hash', expected_hash, mc="red")
+
                 raise ConfigError(f"Please re-run setup with --reset, the file hash for {file_name} doesn't match to the hash "
-                                  "we expected. If you continue to get this error after doing that, try removing the entire "
-                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again (without the --reset flag).")
+                                  f"we expected. If you continue to get this error after doing that, try removing the entire "
+                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again "
+                                  f"(without the --reset flag).")
 
 
     def decompress_files(self):
@@ -581,9 +592,6 @@ class HMMProfile(object):
             emission = emission_line.split()
 
             # These are not used currently but maybe someday will be
-            insertion = insertion_line.split()
-            state = state_line.split()
-
             assign_type = lambda x, t: t(x) if x != '-' else '-'
             profile['MATCH_STATES']['MATCH_STATE'].append(int(emission.pop(0)))
             profile['MATCH_STATES']['CS'].append(assign_type(emission.pop(-1), str))

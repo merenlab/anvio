@@ -288,8 +288,8 @@ class KeggContext(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default data directory will be called KEGG and will store the KEGG Module data as well
         self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
-        self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
-        self.user_input_dir = A('user_modules')
+        self.kegg_data_dir = os.path.abspath(A('kegg_data_dir') or self.default_kegg_dir)
+        self.user_input_dir = os.path.abspath(A('user_modules')) if A('user_modules') else None
         self.only_user_modules = A('only_user_modules')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
@@ -318,13 +318,13 @@ class KeggContext(object):
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
         if self.__class__.__name__ in ['KeggSetup']:
-            if A('reset') and A('kegg_data_dir') and not self.user_input_dir:
-                raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
-                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
-                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                                  "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
-                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
+                raise ConfigError(f"You are attempting to set up KEGG in a non-default data directory ({self.kegg_data_dir}) which already exists. "
+                                  f"To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
+                                  f"directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                                  f"directory and replace it with the KEGG archive data, then please remove the directory yourself using "
+                                  f"a command like `rm -r {self.kegg_data_dir}`. We are sorry to make you go through this extra trouble, but it really is "
+                                  f"the safest way to handle things.")
 
 
     def setup_ko_dict(self, exclude_threshold=True):
@@ -537,9 +537,6 @@ class KeggSetup(KeggContext):
         filesnpaths.is_program_exists('hmmpress')
 
         if not self.user_input_dir:
-            # this is to avoid a strange os.path.dirname() bug that returns nothing if the input doesn't look like a path
-            if '/' not in self.kegg_data_dir:
-                self.kegg_data_dir += '/'
 
             if not args.reset and not anvio.DEBUG and not skip_init:
                 self.is_database_exists(fail_if_exists=(not self.only_database))
@@ -584,8 +581,6 @@ class KeggSetup(KeggContext):
             self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
-            if '/' not in self.user_input_dir:
-                self.user_input_dir += '/'
             filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
 
             self.check_user_input_dir_format()
@@ -1397,14 +1392,7 @@ class KeggSetup(KeggContext):
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
-            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
-                raise ConfigError("You are attempting to set up KEGG from a KEGG data archive in a non-default data directory (%s) which already exists. "
-                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
-                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
-                                  "directory and replace it with the KEGG archive data, then please remove the directory yourself using "
-                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
-            elif os.path.exists(self.kegg_data_dir):
+            if os.path.exists(self.kegg_data_dir):
                 shutil.rmtree(self.kegg_data_dir)
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
@@ -4061,7 +4049,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 combo_element = previous_str[-1]
                 if combo_element == ',': # OR
                     step_copy_num += (prev_copy + sub_copy_num)
-                if combo_element == ' ': # AND
+                if combo_element == ' ' or combo_element == '+': # AND
                     step_copy_num += min(prev_copy,sub_copy_num)
 
             # handle anything following parentheses
@@ -4074,7 +4062,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 combo_element = step_string[close_parens_idx+1]
                 if combo_element == ',': # OR
                     step_copy_num += (sub_copy_num + post_copy)
-                if combo_element == ' ': # AND
+                if combo_element == ' ' or combo_element == '+': # AND
                     step_copy_num += min(sub_copy_num,post_copy)
 
             # handle edge case where parentheses circles entire step
@@ -4094,9 +4082,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             elif ' ' in step_string or '+' in step_string: # AND - combine copy numbers using min()
                 and_splits = step_string.replace('+', ' ').split(' ')
-                min_step_count = 10000 # arbitrarily large number to ensure first s is always the minimum
+                min_step_count = None
                 for s in and_splits:
                     s_count = self.get_step_copy_number(s, enzyme_hit_counts)
+                    if not min_step_count:
+                        min_step_count = s_count # make first step the minimum
                     min_step_count = min(min_step_count, s_count)
                 return min_step_count
 

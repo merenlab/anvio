@@ -1494,7 +1494,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
     try:
-        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+        gene_caller_ids_set = set([int(float(g)) for g in gene_caller_ids_set])
     except:
         g = gene_caller_ids_set.pop()
         raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is "
@@ -2703,25 +2703,21 @@ def get_bin_name_from_item_name(anvio_db_path, item_name, collection_name=None):
     return rows
 
 
-def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
-    """
-    Returns a dict for contig name to split name conversion.
+def get_contig_name_to_splits_dict(contigs_db_path):
+    """Returns a dict for contig name to split name conversion"""
 
-    Here are the proper source of the input params:
+    is_contigs_db(contigs_db_path)
 
-        contigs_basic_info_dict = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
-        splits_basic_info_dict  = database.get_table_as_dict(t.splits_info_table_name)
-    """
-    contig_name_to_splits_dict = {}
+    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
 
-    for split_name in splits_basic_info_dict:
-        parent = splits_basic_info_dict[split_name]['parent']
-        if parent in contig_name_to_splits_dict:
-            contig_name_to_splits_dict[parent].append(split_name)
-        else:
-            contig_name_to_splits_dict[parent] = [split_name]
+    contig_name_to_split_names_dict = {}
+    for split_name, contig_name in contigs_db.get_some_columns_from_table(t.splits_info_table_name, "split, parent"):
+        if contig_name not in contig_name_to_split_names_dict:
+            contig_name_to_split_names_dict[contig_name] = set([])
 
-    return contig_name_to_splits_dict
+        contig_name_to_split_names_dict[contig_name].add(split_name)
+
+    return contig_name_to_split_names_dict
 
 
 def check_sample_id(sample_id):
