@@ -1225,6 +1225,15 @@ class GetReadsFromBAM:
         return short_reads_dict
 
 
+    def get_all_short_reads_from_bam(self):
+        """A route to get all short reads from BAM files without anvi'o files or specific contigs"""
+
+
+        self.run.info('Mode', "Nothing is provided -- will report all reads", mc="green")
+
+        return self.get_short_reads_dict(contig_start_stops=None)
+
+
     def get_short_reads_for_contig_and_range(self):
         """A route get short reads based on the contig name and/or start/stop positions defined by the user"""
 
@@ -1318,7 +1327,7 @@ class GetReadsFromBAM:
         elif self.target_contig:
             short_reads_dict = self.get_short_reads_for_contig_and_range()
         else:
-            raise ConfigError("Anvi'o needs an adult :(")
+            short_reads_dict = self.get_all_short_reads_from_bam()
 
         return short_reads_dict
 
