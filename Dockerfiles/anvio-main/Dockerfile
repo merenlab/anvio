@@ -12,7 +12,7 @@
 #
 
 FROM continuumio/miniconda3:4.11.0
-ENV ANVIO_VERSION "7.1_dev"
+ENV ANVIO_VERSION "7.1_main_0522"
 
 SHELL ["/bin/bash", "--login", "-c"]
 
