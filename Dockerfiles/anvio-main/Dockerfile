@@ -11,43 +11,52 @@
 #     BUILDKIT_PROGRESS=plain docker build -t meren/anvio:$ANVIO_VERSION .
 #
 
-FROM continuumio/miniconda3:4.9.2
-ENV ANVIO_VERSION "7.1_dev"
+FROM continuumio/miniconda3:4.11.0
+ENV ANVIO_VERSION "7.1_main_0522"
+
+SHELL ["/bin/bash", "--login", "-c"]
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
 
-RUN conda create -n anvioenv python=3.6
+# Create a conda environment for anvi'o, activate it, and make sure it will
+# always be activated
+RUN conda create -n anvioenv python=3.7
+RUN conda init bash
+RUN conda activate anvioenv
+RUN echo "conda activate anvioenv" >> ~/.bashrc
+
+# Activate environment variables
+ENV PATH /opt/conda/envs/anvioenv/bin:$PATH
+ENV CONDA_DEFAULT_ENV anvioenv
+ENV CONDA_PREFIX /opt/conda/envs/anvioenv
+
+# fun stuff
+RUN conda install -y conda-build
+RUN conda install -y conda-verify
 
 # Install nano early on so the container has
 # something to edit files if debug is necessary
 RUN conda install -y nano
 
-# Activate environment
-ENV PATH /opt/conda/envs/anvioenv/bin:$PATH
-ENV CONDA_DEFAULT_ENV anvioenv
-ENV CONDA_PREFIX /opt/conda/envs/anvioenv
+# Install mamba
+RUN conda install -y -c conda-forge mamba
 
-RUN echo "conda activate anvioenv" >> ~/.bashrc
+# Setup the environment
+RUN mamba install -y -c bioconda -c conda-forge python=3.7 \
+        sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond \
+        blast megahit spades bowtie2 tbb=2020.3 bwa graphviz \
+        "samtools >=1.9" trimal iqtree trnascan-se fasttree vmatch \
+        r-base r-tidyverse r-optparse r-stringi r-magrittr
 
-RUN conda install -y conda-build
-RUN conda install -y conda-verify
+# try this, too. it may also fail to install. which is OK:
+RUN mamba install -y -c bioconda fastani
 
-COPY conda-recipe /tmp/conda-recipe
+# install qvalue
+RUN Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
 
-# build and install anvio-minimal
-RUN conda-build /tmp/conda-recipe/anvio-minimal
-RUN conda index /opt/conda/envs/anvioenv/conda-bld/
-RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
-RUN conda build purge-all
-
-# build and install anvio meta package. please note that the next line is quite a memory
-# intensive step. if your docker build command is getting killed abruptly, you may want
-# to increase the memory docker allowed to use (from the docker preferences or otherwise).
-RUN conda-build /tmp/conda-recipe/anvio
-RUN conda index /opt/conda/envs/anvioenv/conda-bld/
-RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
-RUN conda build purge-all
+# Install anvi'o from pip
+RUN pip install git+https://github.com/merenlab/anvio.git
 
 # Install METABAT and DAS_TOOL
 RUN conda install metabat2 das_tool
@@ -56,9 +65,6 @@ RUN conda install metabat2 das_tool
 RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools mummer samtools perl libssl-dev
 RUN conda install cython
 RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
-
-# Install BINSANITY
-RUN pip install git+https://github.com/edgraham/BinSanity.git
 
 # Install MAXBIN2 (installing fraggenescan will require cpanm, and we also need IDBA-UD)
 RUN conda install -c bioconda perl-app-cpanminus
@@ -72,11 +78,7 @@ RUN echo 'export PATH=/opt/FragGeneScan1.31:$PATH' >> ~/.bashrc
 RUN echo 'export PATH=/opt/MaxBin-2.2.7:$PATH' >> ~/.bashrc
 
 # Install some helper tools
-RUN pip install virtualenv
 RUN apt-get install vim util-linux -yy
-
-# this one is too painful to install through Conda
-RUN Rscript -e 'install.packages(c("optparse"), repos="https://cran.rstudio.com")'
 
 # Cutify the environment
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o v$ANVIO_VERSION :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
