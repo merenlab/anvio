@@ -149,7 +149,7 @@ rule anvi_get_sequences_for_hmm_hits:
     input:
         done_file = rules.filter_hmm_hits_by_query_coverage.output.done,
     output:
-        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa.done")),
+        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.done")),
         faa = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa"),
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.fna"),
     threads: M.T('anvi_get_sequences_for_hmm_hits')
