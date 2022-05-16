@@ -287,9 +287,13 @@ rule cat_external_gene_calls_file:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_all.tsv"),
     threads: M.T('cat_external_gene_calls_file')
     run:
+        col_names = ["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]
         with open(output.external_gene_calls_all, "a") as external_gene_calls_all:
+                external_gene_calls_all.write('\t'.join(col_names) + "\n")
                 for f in input.external_gene_calls_renamed:
-                    external_gene_calls_all.write(open(f).read())
+                    file = open(f).read().splitlines(True)
+                    external_gene_calls_all.writelines(file[1:])
+                    # external_gene_calls_all.writelines(line + '\n' for line in file[1:]) # write without header
 
 
 rule cluster_X_percent_sim_mmseqs:
@@ -835,8 +839,8 @@ rule anvi_scg_taxonomy:
 
 
 if M.samples_txt_file:
-    # DEFAULT-MODE with read recruitment
-    include: "rules/default_mode.smk"
+    # PROFILE-MODE with read recruitment
+    include: "rules/profile_mode.smk"
 else:
     # TREE-MODE
     include: "rules/tree_mode.smk"
