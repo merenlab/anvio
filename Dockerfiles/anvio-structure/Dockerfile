@@ -43,13 +43,14 @@ RUN conda install -y nano
 RUN conda install -y -c conda-forge mamba
 
 # Install anvi'o 7.1 packages
-RUN mamba install -y -c bioconda -c conda-forge -c salilab -c schrodinger python=3.6 \
+# NOTE R 3.6.1 or maybe 3.6.3 is desired
+RUN mamba install -y -c bioconda -c conda-forge -c salilab python=3.6 \
         "sqlite>=3.31.1" prodigal mcl muscle=3.8.1551 hmmer \
         diamond blast megahit spades bowtie2 tbb=2019.8 bwa \
         samtools=1.9 centrifuge trimal iqtree trnascan-se \
-        r-base r-stringi r-tidyverse r-magrittr r-optparse \
+        r-base=3.6.1 r-stringi r-tidyverse r-magrittr r-optparse \
         bioconductor-qvalue fasttree vmatch fastani \
-        dssp=3.0.0 paml rstudio modeller
+        dssp=3.0.0 paml modeller
 
 # install pymol
 RUN mamba install -c schrodinger pymol
@@ -59,10 +60,6 @@ RUN Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"
 
 # Setup APT
 RUN apt-get update
-
-# necessary stuff for rstudio
-RUN apt-get install -y python3-opencv libegl1
-RUN pip install opencv-python
 
 ##############################################################
 # Install anvi'o from pip
@@ -80,7 +77,7 @@ RUN anvi-setup-pfams --pfam-version 33.1
 RUN anvi-setup-ncbi-cogs --cog-version COG20
 
 ##############################################################
-# install anvi'o structure dependencies
+# install dependencies for the reproducible workflow
 ##############################################################
 RUN pip install xlrd==1.2.0 openpyxl==3.0.9 prody==2.0.1 tmscoring 'iminuit<2'
 
@@ -100,7 +97,7 @@ RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
 RUN apt-get install vim util-linux -yy
 
 # Cutify the environment
-RUN echo "export PS1=\"\[\e[0m\e[41m\e[1;30m\] :: anvi'o v7.1 STRUCTURE :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
+RUN echo "export PS1=\"\[\e[0m\e[41m\e[1;31m\] :: anvi'o v7.1 STRUCTURE :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
 
 CMD /bin/bash -l
 
