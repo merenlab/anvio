@@ -308,7 +308,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         for HMM in self.HMM_source_dict.keys():
 
             if not self.samples_txt_file:
-                # Just making trees
+                # TREE-MODE
                 target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
                 target_files.append(target_file)
                 
@@ -325,7 +325,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_files.append(target_file)
             
             else:
-                # Making trees AND profiling SCGs
+                # PROFILE-MODE
                 target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_profile.done")
                 target_files.append(target_file)
 
