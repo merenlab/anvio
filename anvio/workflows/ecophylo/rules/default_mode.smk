@@ -283,7 +283,7 @@ rule anvi_import_everything_metagenome:
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported.done")),
+        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_profile.done")),
 
     threads: M.T('anvi_import_state')
     run:

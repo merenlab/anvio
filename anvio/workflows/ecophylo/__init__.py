@@ -318,12 +318,15 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_tree.done")
+                target_files.append(target_file)
+
+                target_file = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt")
                 target_files.append(target_file)
             
             else:
                 # Making trees AND profiling SCGs
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_profile.done")
                 target_files.append(target_file)
 
                 target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
