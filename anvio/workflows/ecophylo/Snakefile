@@ -530,7 +530,8 @@ rule count_num_sequences_filtered:
     input:
         step1 = rules.combine_sequence_data.output.NT_all,
         step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
-        step3 = rules.remove_sequences_with_X_percent_gaps.output
+        step3 = rules.remove_sequences_with_X_percent_gaps.output,
+        clustering_thresholds = expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{{HMM}}", "{clustering_threshold}", "{{HMM}}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"), clustering_threshold = M.clustering_param_space_list_strings),
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
     run:
@@ -550,12 +551,21 @@ rule count_num_sequences_filtered:
         with open(input.step3[0]) as fasta:
             step3_num_seqs = count_num_sequences(fasta)
 
+        clustering_threshold_attributes_list = []
+        for file in input.clustering_thresholds:
+            path = file
+            threshold = file.split("/")[3]
+            with open(file) as fasta:
+                num_seqs = count_num_sequences(fasta)
+            clustering_threshold_attributes = [str(threshold), str(num_seqs), path]
+            clustering_threshold_attributes_list.append(clustering_threshold_attributes)
+
         with open(output[0], 'w') as f:
             col_names = ["rule_name", "num_sequences_left", "rel_path"]
-            step1 = ["num_input_seqs", str(step1_num_seqs), input.step1]
-            step2 = ["num_input_seqs", str(step2_num_seqs), input.step2]
-            step3 = ["num_input_seqs", str(step3_num_seqs), input.step3[0]]
-            lines = [col_names, step1, step2, step3]
+            step1 = ["combine_sequence_data", str(step1_num_seqs), input.step1]
+            step2 = ["cluster_X_percent_sim_mmseqs", str(step2_num_seqs), input.step2]
+            step3 = ["remove_sequences_with_X_percent_gaps", str(step3_num_seqs), input.step3[0]]
+            lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
             for line in lines:
                 f.write('\t'.join(line) + '\n')
 
