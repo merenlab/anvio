@@ -76,9 +76,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
 
-        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'additional_params']
-        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id']
+        rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
+        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'clustering_threshold_for_OTUs', 'additional_params']
+        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
@@ -95,7 +95,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'hmm_list': 'hmm_list.txt',
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
-            'anvi_run_hmms_hmmsearch': {'threads': 5},
+            'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
             'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
             'anvi_get_sequences_for_hmm_hits': {'threads': 2},
             'simplify_names_from_hmm_hits': {'threads': 2},
