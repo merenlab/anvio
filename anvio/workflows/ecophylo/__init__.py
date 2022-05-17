@@ -102,7 +102,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 5},
             'cat_external_gene_calls_file': {'threads': 2},
-            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94},
+            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97]},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
             'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
@@ -300,12 +300,25 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
                               f"Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
 
+        # Parse clustering parameter speace
+        self.clustering_param_space = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'clustering_threshold_for_OTUs'])
+        self.clustering_param_space_list_strings = [str(clustering_threshold).split(".")[1] + "_percent" for clustering_threshold in self.clustering_param_space]
+        self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
+
         self.target_files = self.get_target_files()
 
     def get_target_files(self):
         target_files = []
 
         for HMM in self.HMM_source_dict.keys():
+
+            # Clustering parameter space
+            for clustering_threshold in self.clustering_param_space_list_strings:
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{clustering_threshold}", f"{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta")
+                target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{clustering_threshold}", f"{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
+                target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE

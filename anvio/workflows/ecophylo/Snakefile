@@ -325,6 +325,31 @@ rule cluster_X_percent_sim_mmseqs:
                                     --min-seq-id {params.min_seq_id} >> {log} 2>&1")
 
 
+rule cluster_X_percent_sim_mmseqs_OTUs:
+    """
+    Cluster extracted proteins within percent ID parameter space provided by user. This will 
+    help identify clustering thresholds for OTU like analyses.
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}_{clustering_threshold}.log")
+    input: rules.combine_sequence_data.output.NT_all
+    output: 
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
+        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
+    params:
+        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR"),
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-tmp"),
+    threads: M.T('cluster_X_percent_sim_mmseqs')
+    run:
+        min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
+        shell("mmseqs easy-cluster {input} \
+                                    {params.output_prefix} \
+                                    {params.mmseqs_tmp} \
+                                    --threads {threads} \
+                                    --min-seq-id {min_seq_id} >> {log} 2>&1")
+
+
 if M.cluster_representative_method == "cluster_rep_with_coverages":
     rule anvi_profile_blitz:
         """
