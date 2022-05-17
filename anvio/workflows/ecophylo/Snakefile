@@ -511,13 +511,14 @@ rule remove_sequences_with_X_percent_gaps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_sequences_with_X_percent_gaps_{HMM}.log")
     input: rules.trim_alignment.output
-    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
+    output: 
+        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
     params:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
 	run:
-		shell("anvi-script-reformat-fasta {input} -o {output} \
+		shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
 									              --max-percentage-gaps {params.max_percentage_gaps} \
 									              --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
 
@@ -530,7 +531,7 @@ rule count_num_sequences_filtered:
     input:
         step1 = rules.combine_sequence_data.output.NT_all,
         step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
-        step3 = rules.remove_sequences_with_X_percent_gaps.output,
+        step3 = rules.remove_sequences_with_X_percent_gaps.output.fasta,
         clustering_thresholds = expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{{HMM}}", "{clustering_threshold}", "{{HMM}}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"), clustering_threshold = M.clustering_param_space_list_strings),
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
@@ -542,14 +543,8 @@ rule count_num_sequences_filtered:
                     num_seqs += 1
             return num_seqs
 
-        with open(input.step1) as fasta:
-            step1_num_seqs = count_num_sequences(fasta)
-
-        with open(input.step2) as fasta:
-            step2_num_seqs = count_num_sequences(fasta)
-
-        with open(input.step3[0]) as fasta:
-            step3_num_seqs = count_num_sequences(fasta)
+        input_files_list = [input.step1, input.step2, input.step3]
+        num_seqs_list = [count_num_sequences(open(fasta)) for fasta in input_files_list]
 
         clustering_threshold_attributes_list = []
         for file in input.clustering_thresholds:
@@ -562,9 +557,9 @@ rule count_num_sequences_filtered:
 
         with open(output[0], 'w') as f:
             col_names = ["rule_name", "num_sequences_left", "rel_path"]
-            step1 = ["combine_sequence_data", str(step1_num_seqs), input.step1]
-            step2 = ["cluster_X_percent_sim_mmseqs", str(step2_num_seqs), input.step2]
-            step3 = ["remove_sequences_with_X_percent_gaps", str(step3_num_seqs), input.step3[0]]
+            step1 = ["combine_sequence_data", str(num_seqs_list[0]), input.step1]
+            step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), input.step2]
+            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.step3[0]]
             lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
             for line in lines:
                 f.write('\t'.join(line) + '\n')
