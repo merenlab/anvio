@@ -559,7 +559,7 @@ rule count_num_sequences_filtered:
             col_names = ["rule_name", "num_sequences_left", "rel_path"]
             step1 = ["combine_sequence_data", str(num_seqs_list[0]), input.step1]
             step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), input.step2]
-            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.step3[0]]
+            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.step3]
             lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
             for line in lines:
                 f.write('\t'.join(line) + '\n')
