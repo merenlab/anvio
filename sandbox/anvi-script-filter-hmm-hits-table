@@ -161,6 +161,10 @@ class FilterHmmHitsTable(object):
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
 
+
+        print(self.df[["gene_callers_id", "hmm_start", "hmm_stop", "gene_start", "gene_stop"]])
+        sys.exit()
+
         self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
         self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
