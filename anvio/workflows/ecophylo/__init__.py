@@ -84,7 +84,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params', 'snakemake_additional_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -288,6 +288,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # Decide to clusterize metagenomic workflow
         self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
         self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'cluster_submission_params'])
+        self.snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
 
         # Pick clustering method
         self.cluster_representative_method = self.get_param_value_from_config(['cluster_representative_method', 'method'])

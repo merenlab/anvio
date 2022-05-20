@@ -12,8 +12,8 @@ import anvio.utils as u
 import anvio.workflows as w
 
 from Bio import SeqIO
-from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
 __author__ = "Matthew S. Schechter"
