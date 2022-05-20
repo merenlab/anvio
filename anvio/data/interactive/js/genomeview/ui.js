@@ -79,7 +79,7 @@ function setEventListeners(){
     var gid = opt.target ? opt.target.groupID : null;
     if (gid == null) return;
 
-    if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && arrowStyle == 3)) canvas.sendBackwards(opt.target);
+    if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && settings['display']?.['arrowStyle'] == 3)) canvas.sendBackwards(opt.target);
     if (this.shades) {
       drawer.clearShades();
       this.shades = false;
@@ -314,20 +314,24 @@ function showDeepDiveToolTip(event){
   let metadataLabel = String()
   let button = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query Sequence for matches</button>`
 
-  let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
-  const createMetadataContent = () => {
-    geneMetadata.map(metadata => {
-      metadataLabel = metadata.label
+  if(settings['display']?.['metadata']){
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
+    const createMetadataContent = () => {
+      geneMetadata.map(metadata => {
+        metadataLabel = metadata.label
 
-      totalMetadataString += `
-      <tr>
-      <td>${metadata.label}</td>
-      <td>${metadata.type == 'tag'? button : 'n/a'}</td>
-      </tr>
-      `
-    })
+        totalMetadataString += `
+        <tr>
+        <td>${metadata.label}</td>
+        <td>${metadata.type == 'tag'? button : 'n/a'}</td>
+        </tr>
+        `
+      })
+    }
+    createMetadataContent()
+  } else { // create metadata array on first tooltip load if none exists
+    settings['display']['metadata'] = []
   }
-  createMetadataContent()
 
   if(event.target.functions){
     Object.entries(event.target.functions).map(func => {
