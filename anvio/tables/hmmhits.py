@@ -178,7 +178,7 @@ class TablesForHMMHits(Table):
                                   f"identifies Ribosomal RNAs in contigs, but for that you would have to explicitly ask for it by using the "
                                   f"additional parameter '--installed-hmm-profile PROFILE_NAME_HERE').")
 
-            self.run.info('Alphabet/context target found', '%s:%s' % (alphabet, context))
+            self.run.info('Alphabet/context target found', f"{alphabet}:{context}")
 
             if context == 'CONTIG' and alphabet != 'RNA':
                 have_hmm_sources_with_non_RNA_contig_context =True
@@ -210,6 +210,11 @@ class TablesForHMMHits(Table):
                                                            rna_alphabet=True if alphabet=='RNA' else False)
 
                     target_files_dict[f'{alphabet}:CONTIG'] = target_file_path
+
+        # now we know our sequences
+        self.run.info('Target sequences determined',
+                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}" \
+                                    for target, file_path in target_files_dict.items()]))
 
         if have_hmm_sources_with_non_RNA_contig_context:
             # in that case, we should remind people what's up.
