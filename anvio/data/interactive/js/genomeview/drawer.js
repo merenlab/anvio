@@ -794,7 +794,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
   $('#query-results-span').append(`<select class="form-control" id="query-results-select"></select>`)
   $('#query-results-select').append(new Option('Show All', 'all'))
   Object.keys(distinctQueryMatches).map(k => {
-    $('#query-results-select').append(new Option(k, k))
+    $('#query-results-select').append(new Option(k.length > 80? k.slice(0,80) + '...' : k, k))
   })
   $('#query-results-select').on('change', function(){
     $('#query-results-table').empty()
