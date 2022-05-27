@@ -737,6 +737,7 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
 
 GenomeDrawer.prototype.queryFunctions = function () {
   $('#query-results-table').empty()
+  $('#query-results-span').empty()
   let query = $('#function_search_query').val().toLowerCase()
   let category = $('#function_search_category').val()
   let distinctQueryMatches = Object()
