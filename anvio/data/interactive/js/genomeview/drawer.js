@@ -752,7 +752,6 @@ GenomeDrawer.prototype.queryFunctions = function () {
   }
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
-      console.log(key, value);
       if (value[category]?.[0].toLowerCase().includes(query) || value[category]?.[1].toLowerCase().includes(query)) {
         let glowObject = {
           genomeID: genome[0],
