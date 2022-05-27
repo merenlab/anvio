@@ -797,30 +797,52 @@ GenomeDrawer.prototype.queryFunctions = function () {
     $('#query-results-select').append(new Option(k, k))
   })
   $('#query-results-select').on('change', function(){
-    console.log(this.value)
+    $('#query-results-table').empty()
+    let matchedQuery = this.value
+    if(matchedQuery == 'all'){
+      renderAllGenes()
+    } else {
+      glowPayload.filter(gene => gene['matchedQuery'] == matchedQuery).map(gene => {
+        let genomeOfInterest = settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+        let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+        let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+        $('#query-results-table').append(`
+          <tr>
+            <td>${gene['geneID']}</td>
+            <td>${gene['genomeID']}</td>
+            <td>${start}</td>
+            <td>${end}</td>
+            <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
+          </tr>
+        `)
+      })
+    }
   })
   let lowestStart, highestEnd = null
-  if(genomeMax > 35000){
-    glowPayload.map(gene => {
-      let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
-      let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
-      let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-      if (start < lowestStart || lowestStart == null) lowestStart = start
-      if (end > highestEnd || highestEnd == null) highestEnd = end
-      $('#query-results-table').append(`
-        <tr>
-          <td>${gene['geneID']}</td>
-          <td>${gene['genomeID']}</td>
-          <td>${start}</td>
-          <td>${end}</td>
-          <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
-        </tr>
-      `)
-    })
-  } else {
-    lowestStart = 0
-    highestEnd = genomeMax
+  function renderAllGenes(){
+    if(genomeMax > 35000){
+      glowPayload.map(gene => {
+        let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
+        let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
+        let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
+        if (start < lowestStart || lowestStart == null) lowestStart = start
+        if (end > highestEnd || highestEnd == null) highestEnd = end
+        $('#query-results-table').append(`
+          <tr>
+            <td>${gene['geneID']}</td>
+            <td>${gene['genomeID']}</td>
+            <td>${start}</td>
+            <td>${end}</td>
+            <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
+          </tr>
+        `)
+      })
+    } else {
+      lowestStart = 0
+      highestEnd = genomeMax
+    }
   }
+  renderAllGenes()
 
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
   zoomOut('partial', lowestStart, highestEnd)
