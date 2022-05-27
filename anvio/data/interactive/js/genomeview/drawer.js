@@ -764,7 +764,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
           foundInGenomes[genome[0]] = true
         }
         if(!(value[category]?.[0].toLowerCase() in distinctQueryMatches)){
-          distinctQueryMatches[value[category]?.[0].toLowerCase()] = true
+          distinctQueryMatches[value[category]?.[0]] = true
         }
       }  // check for accession and annotation values separately, as we want to capture the match for sorting results
       else if (value[category]?.[1].toLowerCase().includes(query)) {
@@ -778,7 +778,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
           foundInGenomes[genome[0]] = true
         }
         if(!(value[category]?.[1].toLowerCase() in distinctQueryMatches)){
-          distinctQueryMatches[value[category]?.[1].toLowerCase()] = true
+          distinctQueryMatches[value[category]?.[1]] = true
         }
       }
     }
