@@ -758,13 +758,13 @@ GenomeDrawer.prototype.queryFunctions = function () {
         let glowObject = {
           genomeID: genome[0],
           geneID: key,
-          matchedQuery: value[category]?.[0]
+          matchedQuery: value[category][0]
         }
         glowPayload.push(glowObject)
         if (!(genome[0] in foundInGenomes)) {
           foundInGenomes[genome[0]] = true
         }
-        if(!(value[category]?.[0].toLowerCase() in distinctQueryMatches)){
+        if(!(value[category][0].toLowerCase() in distinctQueryMatches)){
           distinctQueryMatches[value[category]?.[0]] = true
         }
       }  // check for accession and annotation values separately, as we want to capture the exact match for sorting results
@@ -772,21 +772,19 @@ GenomeDrawer.prototype.queryFunctions = function () {
         let glowObject = {
           genomeID: genome[0],
           geneID: key,
-          matchedQuery: value[category]?.[1]
+          matchedQuery: value[category][1]
         }
         glowPayload.push(glowObject)
         if (!(genome[0] in foundInGenomes)) {
           foundInGenomes[genome[0]] = true
         }
-        if(!(value[category]?.[1].toLowerCase() in distinctQueryMatches)){
+        if(!(value[category][1].toLowerCase() in distinctQueryMatches)){
           distinctQueryMatches[value[category]?.[1]] = true
         }
       }
     }
   })
 
-  console.log(glowPayload)
-  console.log(distinctQueryMatches)
   if (glowPayload.length < 1) {
     alert(`No hits were found matching ${query} in ${category}`)
     return
