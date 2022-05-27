@@ -757,7 +757,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
         let glowObject = {
           genomeID: genome[0],
           geneID: key,
-          matchedQuery: value[category]?.[0].toLowerCase()
+          matchedQuery: value[category]?.[0]
         }
         glowPayload.push(glowObject)
         if (!(genome[0] in foundInGenomes)) {
@@ -770,7 +770,8 @@ GenomeDrawer.prototype.queryFunctions = function () {
       else if (value[category]?.[1].toLowerCase().includes(query)) {
         let glowObject = {
           genomeID: genome[0],
-          geneID: key
+          geneID: key,
+          matchedQuery: value[category]?.[1]
         }
         glowPayload.push(glowObject)
         if (!(genome[0] in foundInGenomes)) {
