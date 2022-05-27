@@ -767,7 +767,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
         if(!(value[category]?.[0].toLowerCase() in distinctQueryMatches)){
           distinctQueryMatches[value[category]?.[0]] = true
         }
-      }  // check for accession and annotation values separately, as we want to capture the match for sorting results
+      }  // check for accession and annotation values separately, as we want to capture the exact match for sorting results
       else if (value[category]?.[1].toLowerCase().includes(query)) {
         let glowObject = {
           genomeID: genome[0],
