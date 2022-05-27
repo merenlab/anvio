@@ -739,8 +739,9 @@ GenomeDrawer.prototype.queryFunctions = function () {
   $('#query-results-table').empty()
   let query = $('#function_search_query').val().toLowerCase()
   let category = $('#function_search_category').val()
-  let glowPayload = []
-  let foundInGenomes = {}
+  let distinctQueryMatches = Object()
+  let glowPayload = Array()
+  let foundInGenomes = Object()
 
   if (!query || !category) {
     alert('please provide values for function category and/or query')
@@ -752,7 +753,21 @@ GenomeDrawer.prototype.queryFunctions = function () {
   }
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
-      if (value[category]?.[0].toLowerCase().includes(query) || value[category]?.[1].toLowerCase().includes(query)) {
+      if (value[category]?.[0].toLowerCase().includes(query)) {
+        let glowObject = {
+          genomeID: genome[0],
+          geneID: key,
+          matchedQuery: value[category]?.[0].toLowerCase()
+        }
+        glowPayload.push(glowObject)
+        if (!(genome[0] in foundInGenomes)) {
+          foundInGenomes[genome[0]] = true
+        }
+        if(!(value[category]?.[0].toLowerCase() in distinctQueryMatches)){
+          distinctQueryMatches[value[category]?.[0].toLowerCase()] = true
+        }
+      }  // check for accession and annotation values separately, as we want to capture the match for sorting results
+      else if (value[category]?.[1].toLowerCase().includes(query)) {
         let glowObject = {
           genomeID: genome[0],
           geneID: key
@@ -761,9 +776,15 @@ GenomeDrawer.prototype.queryFunctions = function () {
         if (!(genome[0] in foundInGenomes)) {
           foundInGenomes[genome[0]] = true
         }
+        if(!(value[category]?.[1].toLowerCase() in distinctQueryMatches)){
+          distinctQueryMatches[value[category]?.[1].toLowerCase()] = true
+        }
       }
     }
   })
+
+  console.log(glowPayload)
+  console.log(distinctQueryMatches)
   if (glowPayload.length < 1) {
     alert(`No hits were found matching ${query} in ${category}`)
     return
