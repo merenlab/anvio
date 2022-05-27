@@ -790,6 +790,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
     alert(`No hits were found matching ${query} in ${category}`)
     return
   }
+  $('#query-results-span').append(`<select class="form-control" id="query-results-select"></select>`)
   let lowestStart, highestEnd = null
   if(genomeMax > 35000){
     glowPayload.map(gene => {
