@@ -257,20 +257,13 @@ function processState(stateName, stateData) {
     settings['display'] = stateData['display']
   }
 
-  // if (stateData.hasOwnProperty('genome-spacing')){
-  //   settings['display']['genome-spacing'] = stateData['genome-spacing']
-  // }
-
   if (stateData?.['display']?.['arrow-style']){
-    // settings['display']['arrow-style'] = stateData['arrow-style']
     $('#arrow_style').val(stateData['arrow-style'])
   } else {
-    // settings['display']['arrow-style'] = '1' // default
     $('#arrow_style').val(settings['display']['arrow-style'])
   }
 
   if (stateData?.['display']?.['bookmarks']) {
-    // settings['display']['bookmarks'] = stateData['bookmarks']
     settings['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
     })
@@ -280,25 +273,7 @@ function processState(stateName, stateData) {
     respondToBookmarkSelect() // set listener for user bookmark selection
   }
 
-  // if (stateData.hasOwnProperty('metadata')) {
-  //   settings['display']['metadata'] = stateData['display']['metadata']
-  // } else {
-  //   settings['display']['metadata'] = []
-  // }
-
-  // if (stateData.hasOwnProperty('user-gene-labels')){
-  //   settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
-  // }
-
-  // if(stateData.hasOwnProperty('gene-set-labels')){
-  //   settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
-  // }
-  // if (stateData.hasOwnProperty('gene-label-source')){
-  //   settings['display']['gene-label-source'] = stateData['gene-label-source']
-  // }
-
   if (stateData?.['display']?.['link-gene-label-color-source']){
-    // settings['display']['link-gene-label-color-source'] = stateData['link-gene-label-color-source']
     $('#link_gene_label_color_source').prop('checked', settings['display']['link-gene-label-color-source'])
   }
 
