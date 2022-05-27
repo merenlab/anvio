@@ -795,6 +795,9 @@ GenomeDrawer.prototype.queryFunctions = function () {
   Object.keys(distinctQueryMatches).map(k => {
     $('#query-results-select').append(new Option(k, k))
   })
+  $('#query-results-select').on('change', function(){
+    console.log(this.value)
+  })
   let lowestStart, highestEnd = null
   if(genomeMax > 35000){
     glowPayload.map(gene => {
