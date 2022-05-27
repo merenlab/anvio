@@ -184,47 +184,49 @@ function serializeSettings() {
   // then we update them as necessary below in processState
   let state = {}
 
-  state['genome-spacing'] = $('#genome_spacing').val()
-  state['order-method'] = $('#genome_order_select').val()
-  state['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked')
-  state['genome-scale-interval'] = $('#genome_scale_interval').val()
-  state['arrow-style'] = $('#arrow_style').val()
   state['group-layer-order'] = settings['group-layer-order']
-  state['bookmarks'] = settings['display']['bookmarks']
   state['genome-order'] = settings['genomeData']['genomes']
   state['display'] = settings['display']
-  state['gene-link-style'] = $('#link_style').val()
-  state['gene-shade-style'] = $('#shade_by').val()
-  state['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
-  state['genome-label-size'] = $('#genome_label').val()
-  state['genome-label-color'] = $('#genome_label_color').attr(':color')
-  state['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
-  state['gene-label-size'] = $('#gene_label').val()
-  state['gene-label-color'] = $('#gene_label_color').attr(':color')
-  state['gene-text-position'] = $('#gene_text_pos').val()
-  state['gc-window-size'] = $('#gc_window_size').val()
-  state['gc-step-size'] = $('#gc_step_size').val()
-  state['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
-  state['gene-color-order'] = $('#gene_color_order').val()
-  state['gene-label-source'] = $('#gene_label_source').val()
-  state['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
-  state['annotation-color-dict'] = []
+  state['display']['bookmarks'] = settings['display']['bookmarks']
+  state['display']['metadata'] = settings['display']['metadata']
+
+  state['display']['order-method'] = $('#genome_order_select').val()
+  state['display']['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked')
+  state['display']['genome-scale-interval'] = $('#genome_scale_interval').val()
+  state['display']['genome-spacing'] = $('#genome_spacing').val()
+  state['display']['arrow-style'] = $('#arrow_style').val()
+  state['display']['gene-link-style'] = $('#link_style').val()
+  state['display']['gene-shade-style'] = $('#shade_by').val()
+  state['display']['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
+  state['display']['genome-label-size'] = $('#genome_label').val()
+  state['display']['genome-label-color'] = $('#genome_label_color').attr(':color')
+  state['display']['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
+  state['display']['gene-label-size'] = $('#gene_label').val()
+  state['display']['gene-label-color'] = $('#gene_label_color').attr(':color')
+  state['display']['gene-text-position'] = $('#gene_text_pos').val()
+  state['display']['gc-window-size'] = $('#gc_window_size').val()
+  state['display']['gc-step-size'] = $('#gc_step_size').val()
+  state['display']['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
+  state['display']['gene-color-order'] = $('#gene_color_order').val()
+  state['display']['gene-label-source'] = $('#gene_label_source').val()
+  state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
+  state['display']['annotation-color-dict'] = []
 
   $('.annotation_color').each((idx, row) => {
     let color = $(row).attr('color')
     let id = ($(row).attr('id').split('_')[1])
-    state['annotation-color-dict'].push({
+    state['display']['annotation-color-dict'].push({
       id : id,
       color : color
     })
   })
 
-  state['display']['metadata'] = settings['display']['metadata']
   return state
 }
 
 function processState(stateName, stateData) {
   settings['state-name'] = stateName
+  console.log('processing this state obj', stateData)
 
   calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
@@ -251,24 +253,24 @@ function processState(stateName, stateData) {
     settings['genomeData']['genomes'] = stateData['genome-order']
   }
 
-  if (stateData.hasOwnProperty('display')) {
+  if (stateData?.['display']) {
     settings['display'] = stateData['display']
   }
 
-  if (stateData.hasOwnProperty('genome-spacing')){
-    settings['display']['genome-spacing'] = stateData['genome-spacing']
-  }
+  // if (stateData.hasOwnProperty('genome-spacing')){
+  //   settings['display']['genome-spacing'] = stateData['genome-spacing']
+  // }
 
-  if (stateData.hasOwnProperty('arrow-style')){
-    settings['display']['arrow-style'] = stateData['arrow-style']
+  if (stateData?.['display']?.['arrow-style']){
+    // settings['display']['arrow-style'] = stateData['arrow-style']
     $('#arrow_style').val(stateData['arrow-style'])
   } else {
-    settings['display']['arrow-style'] = '1' // default
+    // settings['display']['arrow-style'] = '1' // default
     $('#arrow_style').val(settings['display']['arrow-style'])
   }
 
-  if (stateData.hasOwnProperty('bookmarks')) {
-    settings['display']['bookmarks'] = stateData['bookmarks']
+  if (stateData?.['display']?.['bookmarks']) {
+    // settings['display']['bookmarks'] = stateData['bookmarks']
     settings['display']['bookmarks'].map(bookmark => {
       $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
     })
@@ -278,25 +280,25 @@ function processState(stateName, stateData) {
     respondToBookmarkSelect() // set listener for user bookmark selection
   }
 
-  if (stateData.hasOwnProperty('metadata')) {
-    settings['display']['metadata'] = stateData['display']['metadata']
-  } else {
-    settings['display']['metadata'] = []
-  }
+  // if (stateData.hasOwnProperty('metadata')) {
+  //   settings['display']['metadata'] = stateData['display']['metadata']
+  // } else {
+  //   settings['display']['metadata'] = []
+  // }
 
-  if (stateData.hasOwnProperty('user-gene-labels')){
-    settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
-  }
+  // if (stateData.hasOwnProperty('user-gene-labels')){
+  //   settings['display']['labels']['gene-labels'] = stateData['user-gene-labels']
+  // }
 
-  if(stateData.hasOwnProperty('gene-set-labels')){
-    settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
-  }
-  if (stateData.hasOwnProperty('gene-label-source')){
-    settings['display']['gene-label-source'] = stateData['gene-label-source']
-  }
+  // if(stateData.hasOwnProperty('gene-set-labels')){
+  //   settings['display']['labels']['set-labels'] = stateData['gene-set-labels']
+  // }
+  // if (stateData.hasOwnProperty('gene-label-source')){
+  //   settings['display']['gene-label-source'] = stateData['gene-label-source']
+  // }
 
-  if (stateData.hasOwnProperty('link-gene-label-color-source')){
-    settings['display']['link-gene-label-color-source'] = stateData['link-gene-label-color-source']
+  if (stateData?.['display']?.['link-gene-label-color-source']){
+    // settings['display']['link-gene-label-color-source'] = stateData['link-gene-label-color-source']
     $('#link_gene_label_color_source').prop('checked', settings['display']['link-gene-label-color-source'])
   }
 
