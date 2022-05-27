@@ -737,7 +737,7 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
 
 GenomeDrawer.prototype.queryFunctions = function () {
   $('#query-results-table').empty()
-  let query = $('#function_search_query').val()
+  let query = $('#function_search_query').val().toLowerCase()
   let category = $('#function_search_category').val()
   let glowPayload = []
   let foundInGenomes = {}
@@ -753,7 +753,7 @@ GenomeDrawer.prototype.queryFunctions = function () {
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
       console.log(key, value);
-      if (value[category]?.[0].includes(query) || value[category]?.[1].includes(query)) {
+      if (value[category]?.[0].toLowerCase().includes(query) || value[category]?.[1].toLowerCase().includes(query)) {
         let glowObject = {
           genomeID: genome[0],
           geneID: key
