@@ -8,21 +8,17 @@ is done using query and/or target coverage
 
 import sys
 import os
-import numpy as np
 import pandas as pd
 
 import anvio
 import anvio.data.hmm
-import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
-import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
-from anvio.argparse import ArgumentParser
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.errors import ConfigError, FilesNPathsError
 
