@@ -251,6 +251,9 @@ class FilterHmmHitsTable(object):
     def import_domtblout(self):
         """Import the domtblout file from hmmsearch then calculate query and target coverage"""
 
+        if self.merge_partial_hits_within_X_nts:
+            self.merge_partial_hits()
+
         colnames_coltypes_list = list(zip(*self.dom_table_columns))
         colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
