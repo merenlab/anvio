@@ -63,6 +63,34 @@ class FilterHmmHitsTable(object):
         else:
             self.sources = anvio.data.hmm.sources
 
+        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
+        self.dom_table_columns = [
+            ('gene_callers_id',  int),   #  0  target name
+            ('target_accession', str),   #  1  target accession
+            ('gene_length',      int),   #  2  tlen
+            ('hmm_name',         str),   #  3  query name
+            ('hmm_id',           str),   #  4  accession
+            ('hmm_length',       int),   #  5  qlen
+            ('evalue',           float), #  6  E-value (full sequence)
+            ('bitscore',         float), #  7  score (full sequence)
+            ('bias',             float), #  8  bias (full sequence)
+            ('match_num',        int),   #  9  # (this domain)
+            ('num_matches',      int),   # 10  of (this domain)
+            ('dom_c_evalue',     float), # 11  c-Evalue (this domain)
+            ('dom_i_evalue',     float), # 12  i-Evalue (this domain)
+            ('dom_bitscore',     str),   # 13  score (this domain)
+            ('dom_bias',         float), # 14  bias (this domain)
+            ('hmm_start',        int),   # 15  from (hmm coord)
+            ('hmm_stop',         int),   # 16  to (hmm coord)
+            ('gene_start',       int),   # 17  from (ali coord)
+            ('gene_stop',        int),   # 18  to (ali coord)
+            ('env_to',           str),   # 19  from (env coord)
+            ('env_from',         str),   # 10  to (env coord)
+            ('mean_post_prob',   float), # 21  acc
+            ('description',      str),   # 22  description of target
+        ]
+
+
     def sanity_checks(self):
         """Sanity checks for program inputs."""
 
@@ -114,36 +142,11 @@ class FilterHmmHitsTable(object):
 
     def import_domtblout(self):
         """Import the domtblout file from hmmsearch then calculate query and target coverage"""
-        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
-        col_info = [
-            ('gene_callers_id',  int),   # target name
-            ('target_accession', str),   # target accession
-            ('gene_length',      int),   # tlen
-            ('hmm_name',         str),   # query name
-            ('hmm_id',           str),   # accession
-            ('hmm_length',       int),   # qlen
-            ('evalue',           float), # E-value (full sequence)
-            ('bitscore',         float), # score (full sequence)
-            ('bias',             float), # bias (full sequence)
-            ('match_num',        int),   # # (this domain)
-            ('num_matches',      int),   # of (this domain)
-            ('dom_c_evalue',     float), # c-Evalue (this domain)
-            ('dom_i_evalue',     float), # i-Evalue (this domain)
-            ('dom_bitscore',     str),   # score (this domain)
-            ('dom_bias',         float), # bias (this domain)
-            ('hmm_start',        int),   # from (hmm coord)
-            ('hmm_stop',         int),   # to (hmm coord)
-            ('gene_start',       int),   # from (ali coord)
-            ('gene_stop',        int),   # to (ali coord)
-            ('env_to',           str),   # from (env coord)
-            ('env_from',         str),   # to (env coord)
-            ('mean_post_prob',   float), # acc
-            ('description',      str),   # description of target
-        ]
+
+        colnames_coltypes_list = list(zip(*self.dom_table_columns))
+        colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
         try:
-            colnames_coltypes_list = list(zip(*col_info))
-            colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
             self.df=pd.read_csv(self.domtblout,
                             delim_whitespace=True,
