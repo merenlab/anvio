@@ -3817,7 +3817,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         if missing_files:
             raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
                               f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
-                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
+                              f"for details: https://anvio.org/help/{anvio.anvio_version_for_help_docs}/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
