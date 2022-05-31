@@ -4194,6 +4194,11 @@ def get_yaml_as_dict(file_path):
 def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
+    if anvio.DEBUG:
+        run.warning(None, header="DOWNLOADING FILE", overwrite_verbose=True, nl_before=1)
+        run.info('Source URL', url, overwrite_verbose=True)
+        run.info('Output path', output_file_path, overwrite_verbose=True, nl_after=1)
+
     try:
         if check_certificate:
             response = urllib.request.urlopen(url)
