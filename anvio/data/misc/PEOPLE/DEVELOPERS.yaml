@@ -68,7 +68,7 @@
   orcid: 0000-0002-6473-0921
   email: kiefl.evan@gmail.com
   avatar: ekiefl.jpg
-  bio: "Computational biologist and software developer with a research focus on developing analysis and visualization strategies for complex multi-'omics data, particularly at the intersection of structural biology and metagenomics."
+  bio: "Computational biologist and software developer. For my PhD I studied how selective pressures shape the evolution of proteins in naturally occurring microbial populations."
   intellectual-contributions:
     - contribution: "Spearheaded the development of protein structure prediction, analysis, and visualization capabilities within anvi'o"
     - contribution: "Redesigned mission-critical code related to metagenomic workflows, decreasing compute times from >100 hours to <1 hour for terabyte-scale analyses"
@@ -76,10 +76,13 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Bioinformatician
+      inst: AbCellera
+      inst_link: https://www.abcellera.com/
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
-      current: true
 
 - github: mschecht
   name: Matthew Schechter
