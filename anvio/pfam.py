@@ -90,6 +90,7 @@ class PfamSetup(object):
         else:
             filesnpaths.gen_output_directory(self.pfam_data_dir)
 
+
         self.resolve_database_url()
         self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
 
@@ -111,7 +112,15 @@ class PfamSetup(object):
 
 
     def get_remote_version(self):
-        content = read_remote_file(self.database_url + '/Pfam.version.gz')
+        input_file = os.path.join(self.pfam_data_dir, '/Pfam.version.gz')
+        if os.path.exists(input_file):
+            try:
+                with gzip.open(input_file,'rt') as f:
+                    content = f.read()
+            except gzip.BadGzipFile as err:
+                raise Exception ("BadGzipFile", input_file)
+        else:
+            content = read_remote_file(self.database_url + '/Pfam.version.gz')
 
         # below we are parsing this, not so elegant.
         # Pfam release       : 31.0
@@ -124,13 +133,16 @@ class PfamSetup(object):
 
         self.run.info("Found Pfam version", "%s (%s)" % (version, release_date))
 
-
     def download(self, hmmpress_files=True):
         self.run.info("Database URL", self.database_url)
 
         for file_name in self.files:
-            utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
+            local_file = os.path.join(self.pfam_data_dir, file_name)
+            if not os.path.exists(local_file):
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
+            else:
+                self.run.info("found local file", file_name)
 
         self.confirm_downloaded_files()
         self.decompress_files()
@@ -139,14 +151,21 @@ class PfamSetup(object):
 
 
     def confirm_downloaded_files(self):
-        try:
-            checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
-            checksums = {}
-        except:
-            self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
-            return
+        chksums_file = os.path.join(self.pfam_data_dir, 'md5_checksums')
+        if os.path.exists(chksums_file): 
+            self.run.info("found local file", 'md5_checksums')
+            with open(chksums_file,'r') as fh:
+                checksums_file = fh.read() 
+        else:
+            try:
+                checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
+            except:
+                self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
+                return
 
+        checksums = {}
         for line in checksums_file.split('\n'):
+            if not line: continue
             checksum, file_name = [item.strip() for item in line.strip().split()]
             checksums[file_name] = checksum
 
@@ -155,21 +174,13 @@ class PfamSetup(object):
                 raise ConfigError(f"Unfortunately, we failed to download the file {file_name}, please re-run setup "
                                   "with the --reset flag.")
 
-            file_path = os.path.join(self.pfam_data_dir, file_name)
-            hash_on_disk = utils.get_file_md5(file_path)
+            hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
             expected_hash = checksums[file_name]
 
-            if expected_hash != hash_on_disk:
-                self.run.warning("This means the downloaded file is not matching to the file on the server :/", header='BAD HASH :(')
-
-                self.run.info("Local file path", file_path, mc="red")
-                self.run.info('Local hash', hash_on_disk, mc="red")
-                self.run.info('Remote hash', expected_hash, mc="red")
-
+            if not expected_hash == hash_on_disk:
                 raise ConfigError(f"Please re-run setup with --reset, the file hash for {file_name} doesn't match to the hash "
-                                  f"we expected. If you continue to get this error after doing that, try removing the entire "
-                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again "
-                                  f"(without the --reset flag).")
+                                  "we expected. If you continue to get this error after doing that, try removing the entire "
+                                  f"Pfams data directory ({self.pfam_data_dir}) manually and running setup again (without the --reset flag).")
 
 
     def decompress_files(self):
@@ -592,6 +603,9 @@ class HMMProfile(object):
             emission = emission_line.split()
 
             # These are not used currently but maybe someday will be
+            insertion = insertion_line.split()
+            state = state_line.split()
+
             assign_type = lambda x, t: t(x) if x != '-' else '-'
             profile['MATCH_STATES']['MATCH_STATE'].append(int(emission.pop(0)))
             profile['MATCH_STATES']['CS'].append(assign_type(emission.pop(-1), str))
