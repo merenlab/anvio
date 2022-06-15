@@ -298,7 +298,7 @@ function setEventListeners(){
     if(event.target && event.target.id === 'arrow'){
       showDeepDiveToolTip(event)
     }
-    $('#lasso-menu-body').empty().hide();
+    $('#lasso-modal-body').modal('hide')
   })
 }
 function showDeepDiveToolTip(event){
@@ -709,7 +709,7 @@ function transitionTabularModalToDeepdive(event){
 function showLassoMenu(selected_genes, x, y) {
   //x = 600;
   //y = 200;
-
+  console.log('hi')
   let start, stop, length;
   let showSetLabel = false;
   if(selected_genes.every(obj => obj.genomeID == selected_genes[0].genomeID)) {
@@ -720,26 +720,23 @@ function showLassoMenu(selected_genes, x, y) {
   } else {
     start = stop = length = "N/A";
   }
-
-  $('#lasso-menu-body').empty().show().append(
-    `<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>
+  $('#lasso-modal-body').modal('show')
+  $('#lasso-modal-content').empty().append(
+    `
     <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px; background: white"> \
-        <tr><td>Start</td><td>${start}</td></tr> \
-        <tr><td>Stop</td><td>${stop}</td></tr> \
-        <tr><td>Length</td><td>${length}</td></tr> \
-        <tr><td>Gene count</td><td>${selected_genes.length}</td></tr> \
-        <tr><td>Corresponding gene call</td><td>FILLER</td></tr> \
-        <tr><td>Coverage</td><td>FILLER</td></tr> \
-      </table>';
+      <tr><td>Start</td><td>${start}</td></tr> \
+      <tr><td>Stop</td><td>${stop}</td></tr> \
+      <tr><td>Length</td><td>${length}</td></tr> \
+      <tr><td>Gene count</td><td>${selected_genes.length}</td></tr> \
+    </table>';
 
-      <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
-      <br><br>
-      <input id="create_gene_set_label" class="form-control input-sm" type="text" placeholder="New gene set label" style="margin-bottom: 15px; display:${showSetLabel?"block":"none"}" size="4">
+    <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
+    <br><br>
+    <input id="create_gene_set_label" class="form-control input-sm" type="text" placeholder="New gene set label" style="margin-bottom: 15px; display:${showSetLabel ? "block" : "none"}" size="4">
 
-      <button type="button" class="btn btn-default btn-sm" onClick="$('#lasso-menu-body').empty().hide()">Close</>
-      <button type="button" id="lasso-done" class="btn btn-default btn-sm" style="float:right" onClick="applyLasso()">Apply</button>
-      `
-    ).css({'position' : 'absolute', 'left' : x, 'top' : y});
+    <button type="button" id="lasso-done" class="btn btn-default btn-sm" style="float:right" onClick="applyLasso()">Apply</button>
+    `
+  )
 
     $('#picker_lasso').colpick({
       layout: 'hex',
