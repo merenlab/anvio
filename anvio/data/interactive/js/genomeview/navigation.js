@@ -48,8 +48,8 @@
       newStart = 0
       newEnd = genomeMax
     } else if(type && type == 'partial'){
-      newStart = start
-      newEnd = end
+      newStart = start - 10000
+      newEnd = end + 10000
     }else {
       let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
       newStart = start - genomeMax/50;
@@ -60,9 +60,9 @@
       drawer.draw()
         return;
       }
-      if(newStart < 0) newStart = 0;
-      if(newEnd > genomeMax) newEnd = genomeMax;
     }
+    if(newStart < 0) newStart = 0;
+    if(newEnd > genomeMax) newEnd = genomeMax;
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition());
