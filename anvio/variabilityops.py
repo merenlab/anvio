@@ -1444,7 +1444,7 @@ class VariabilitySuper(VariabilityFilter, object):
         # Since the elements are of type str, the sum operator concatenates the strings together.
         # Finally, if the coverage of the most common item is equal to the total coverage, we pair
         # the most common item with itself.
-        self.data.loc[entry_ids, self.competing_items] = np.sum(np.sort(items_first_and_second.values, axis=1), axis=1) # V/\
+        self.data.loc[entry_ids, self.competing_items] = np.sum(np.sort(items_first_and_second, axis=1), axis=1) # V/\
         self.data.loc[self.data.index.isin(entry_ids) & (self.data["coverage"] == self.data[self.items].max(axis=1)), self.competing_items] = self.data["consensus"]*2
 
         # Loop through each SSM, filling each corresponding column entry by entry using the `apply`
@@ -3095,6 +3095,7 @@ class VariabilityFixationIndex(object):
 
         if not self.min_coverage_in_each_sample:
             self.min_coverage_in_each_sample = min_cov_default
+            self.args.min_coverage_in_each_sample = min_cov_default
             self.run.warning("--min-coverage-in-each-sample is a required parameter. Anvi'o has set this "
                              "to %d on your behalf." % min_cov_default)
 

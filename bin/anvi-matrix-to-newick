@@ -4,7 +4,7 @@
 import sys
 
 import anvio
-import anvio.utils as utils 
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.clustering as clustering
 
@@ -46,7 +46,7 @@ def main(args):
     progress.new('Analyzing input file')
     clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage=args.linkage,
                                     distance=args.distance, transpose=args.transpose, progress=progress,
-                                    items_order_file_path=args.items_order_file)
+                                    items_order_file_path=args.items_order_file, pad_with_zeros=True)
     progress.end()
     run.info('Output newick', args.output_file)
     if args.items_order_file:

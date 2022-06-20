@@ -9,7 +9,14 @@ import copy
 import shutil
 import argparse
 import numpy as np
-import multiprocessing
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from collections import OrderedDict
 
@@ -326,6 +333,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.total_reads_kept = 0
         self.description_file_path = A('description')
 
+        if self.fetch_filter:
+            valid_fetch_filters = [k for k in constants.fetch_filters.keys() if k]
+
+            if self.fetch_filter not in valid_fetch_filters:
+                raise ConfigError(f"Your fetch filter '{self.fetch_filter}' is not among those anvi'o knows about :/ If you "
+                                  f"would like to try again with a different one, here is a list for your consideration: "
+                                  f"{', '.join(valid_fetch_filters)}.")
+
         # these are the views this class will be filling in:
         self.essential_data_fields_for_anvio_profiles = copy.deepcopy(constants.essential_data_fields_for_anvio_profiles)
 
@@ -573,7 +588,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for contig in self.contigs:
             for split in contig.splits:
                 for gene_callers_id in split.SCV_profiles:
-
                     # We reorder to the profiles in the order they will appear in the output table
                     split.SCV_profiles[gene_callers_id] = OrderedDict(
                         [(col, split.SCV_profiles[gene_callers_id][col]) for col in t.variable_codons_table_structure]
@@ -640,7 +654,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.sample_id = 's' + self.sample_id
 
                 if self.fetch_filter:
-                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper()}"
+                    self.sample_id = f"{self.sample_id}_{self.fetch_filter.upper().replace('-', '_').replace('.', '_').replace(' ', '_')}"
 
                 utils.check_sample_id(self.sample_id)
             if self.serialized_profile_path:
@@ -1045,8 +1059,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
             if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
-                    (received_contigs, self.num_contigs))
+                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                 self.store_contigs_buffer()
                 for c in self.contigs:
                     for split in c.splits:
@@ -1059,7 +1072,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 del self.contigs[:]
                 gc.collect()
 
-        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
+        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
@@ -1177,9 +1190,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     mem_diff = mem_tracker.get_last_diff()
 
                 self.progress.increment(received_contigs)
-                msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
-                self.progress.update(msg)
-
+                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
 
                 # Here you're about to witness the poor side of Python (or our use of it). Although
                 # we couldn't find any refs to these objects, garbage collecter kept them in the
@@ -1187,8 +1198,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # objects to try to relieve the memory by encouraging the garbage collector to
                 # realize what's up. Afterwards, we explicitly call the garbage collector
                 if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                    self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
-                        (received_contigs, self.num_contigs))
+                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                     self.store_contigs_buffer()
                     for c in self.contigs:
                         for split in c.splits:
@@ -1215,7 +1225,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.terminate()
 
-        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
+        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 

@@ -10,8 +10,8 @@ import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
 
@@ -32,9 +32,13 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-def main(args):
+def sanity_check(args):
     if args.gene_cluster_id and args.gene_cluster_ids_file:
-        raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
+        raise ConfigError('You should either declare a single gene cluster name or a set of gene cluster names in a file, but not both :/')
+
+    if args.gene_cluster_id and args.split_output_per_gene_cluster:
+        raise ConfigError("If you are providing a single gene cluster id via `--gene-cluster-id`, then you don't "
+                          "need to use the flag `--split-output-per-gene-cluster`.")
 
     if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
         raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or '
@@ -42,8 +46,36 @@ def main(args):
                           'mixed. If you need to know what collections are available in the pan database, use the flag '
                           '`--list-collections`.')
 
-    if not args.output_file:
-        args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'gene-cluster-alignments-output-with-an-ugly-name.fa')
+    if args.output_file and args.split_output_per_gene_cluster:
+        raise ConfigError("The parameter `--output-file` is incompatible with the flag `--split-output-per-gene-cluster`. Why? "
+                          "Because when you declare `--split-output-per-gene-cluster`, anvi'o reports many output files and "
+                          "assigns the name of each ")
+
+    if args.split_output_per_gene_cluster and args.concatenate_gene_clusters and args.partition_file:
+        raise ConfigError("You can't ask anvi'o to produce split output files per concatenated gene cluster, and offer an output for "
+                          "a partition file. Why? Because anvi'o developers are lazy, and thought now one would ever need it really. "
+                          "But if you managed ot run into this error, please let an anvi'o developer know online and they will "
+                          "implement something for it.")
+
+    if args.split_output_per_gene_cluster:
+        if not args.output_file_prefix:
+            args.output_file_prefix = os.getcwd() + '/'
+        else:
+            if args.output_file_prefix.startswith('/'):
+                pass
+            elif args.output_file_prefix.endswith('/'):
+                pass
+            elif args.output_file_prefix.find('/') > -1:
+                args.output_file_prefix = os.path.abspath('/'.join(args.output_file_prefix.split('/')[:-1])) + '/' + args.output_file_prefix.split('/')[-1] + '_'
+            else:
+                args.output_file_prefix = os.getcwd() + '/' + args.output_file_prefix + '_'
+
+        filesnpaths.is_output_dir_writable(os.path.dirname(args.output_file_prefix))
+    else:
+        if not args.output_file:
+            args.output_file = os.path.join(os.path.abspath(os.getcwd()), 'GENE-CLUSTER-ALIGNMENTS.fa')
+
+        filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
 
     if not args.concatenate_gene_clusters and args.align_with:
         raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner. "
@@ -53,10 +85,14 @@ def main(args):
     if not args.concatenate_gene_clusters and args.partition_file:
         raise ConfigError("Partition files are only relevant when you use the flag `--concatenate-gene-clusters`.")
 
-    filesnpaths.is_output_file_writable(args.output_file)
     filesnpaths.is_output_file_writable(args.partition_file) if args.partition_file else None
 
+    return args
+
+
+def main(args):
     gene_cluster_ids = set([])
+
     if args.collection_name or args.list_collections or args.list_bins:
         progress.new('Initializing')
         progress.update('...')
@@ -64,8 +100,8 @@ def main(args):
         progress.end()
 
         if not args.bin_id:
-            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag "
-                              "`--list-bins`.")
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you "
+                              "want? Use the flag `--list-bins`.")
 
         pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
         collection_dict = pan.collections.get_collection_dict(args.collection_name)
@@ -86,8 +122,9 @@ def main(args):
     else:
         run.info('Mode', 'Working with all gene clusters.')
 
-    pan = dbops.PanSuperclass(args)
+    pan = dbops.PanSuperclass(args, r=terminal.Run(verbose=False))
     pan.init_gene_clusters(gene_cluster_ids)
+    pan.run = run
 
     # this will simply return pan.gene_clusters if there are no filters requested
     filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
@@ -101,17 +138,35 @@ def main(args):
         run.info_single("Dry run, eh? Well. Your dry run is done!")
         sys.exit(0)
 
-    if args.concatenate_gene_clusters:
-        pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                               output_file_path=args.output_file,
-                                                               report_DNA_sequences=args.report_DNA_sequences,
-                                                               align_with=args.align_with,
-                                                               separator=args.separator,
-                                                               partition_file_path=args.partition_file)
-    else:
-        pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
-                                                     output_file_path=args.output_file,
-                                                     report_DNA_sequences=args.report_DNA_sequences)
+
+    if args.output_file:
+        if args.concatenate_gene_clusters:
+            pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                                   output_file_path=args.output_file,
+                                                                   report_DNA_sequences=args.report_DNA_sequences,
+                                                                   align_with=args.align_with,
+                                                                   separator=args.separator,
+                                                                   partition_file_path=args.partition_file)
+        else:
+            pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
+                                                         output_file_path=args.output_file,
+                                                         report_DNA_sequences=args.report_DNA_sequences)
+    elif args.split_output_per_gene_cluster:
+        if args.concatenate_gene_clusters:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                                       output_file_path=output_file_path,
+                                                                       report_DNA_sequences=args.report_DNA_sequences,
+                                                                       align_with=args.align_with,
+                                                                       separator=args.separator,
+                                                                       partition_file_path=args.partition_file)
+        else:
+            for gene_cluster_name in filtered_gene_clusters_dict:
+                output_file_path = f"{args.output_file_prefix}{gene_cluster_name}.fa"
+                pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict={gene_cluster_name: filtered_gene_clusters_dict[gene_cluster_name]},
+                                                             output_file_path=output_file_path,
+                                                             report_DNA_sequences=args.report_DNA_sequences)
 
 
 if __name__ == '__main__':
@@ -121,56 +176,63 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupB = parser.add_argument_group('OUTPUT', "You get to chose an output file name to report things. The default will be\
-                                       an ugly name. So, be explicit.")
-    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file',{'metavar':'FASTA'}))
-    groupB.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
+    groupB = parser.add_argument_group('OUTPUT OPTION #1: SINGLE FILE', "Here you get to chose an output file name to report things. LUCKY YOU.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'metavar':'FASTA'}))
 
-    groupC = parser.add_argument_group('SELECTION', "Which gene clusters should be reported. You can ask for a single gene cluster,\
+    groupC = parser.add_argument_group('OUTPUT OPTION #2: MULTIPLE FILES', "Here you can ask anvi'o to report multiple FASTA files, where each gene cluster "
+                                       "goes into its own unique FASTA file. If you declare teh flag `--split-output-per-gene-cluster`, anvi'o "
+                                       "will store each gene cluster into your work directory, using the gene cluster name as the output file name. "
+                                       "You can use the `--output-file-prefix` parameter to store them in a different directory and/or with specific "
+                                       "file name prefixes.")
+    groupC.add_argument(*anvio.A('split-output-per-gene-cluster'), **anvio.K('split-output-per-gene-cluster'))
+    groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+
+    groupD = parser.add_argument_group('SELECTION', "Which gene clusters should be reported. You can ask for a single gene cluster,\
                                        or multiple ones listed in a file, or you can use a collection and bin name to list gene clusters\
                                        of interest. If you give nothing, this program will export alignments for every single gene cluster\
                                        found in the profile database (and this is called 'customer service').")
-    groupC.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
-    groupC.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
-    groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupD.add_argument(*anvio.A('gene-cluster-id'), **anvio.K('gene-cluster-id'))
+    groupD.add_argument(*anvio.A('gene-cluster-ids-file'), **anvio.K('gene-cluster-ids-file'))
+    groupD.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    groupD.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
 
-    groupD = parser.add_argument_group('ADVANCED FILTERS', "If you are here you must be looking for ways to specify\
+    groupE = parser.add_argument_group('ADVANCED FILTERS', "If you are here you must be looking for ways to specify\
                                         exactly what you want from that database of gene clusters. These filters will\
                                         be applied to what your previous selections reported.")
-    groupD.add_argument(*anvio.A('min-num-genomes-gene-cluster-occurs'), **anvio.K('min-num-genomes-gene-cluster-occurs'))
-    groupD.add_argument(*anvio.A('max-num-genomes-gene-cluster-occurs'), **anvio.K('max-num-genomes-gene-cluster-occurs'))
-    groupD.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
-    groupD.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
-    groupD.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
-    groupD.add_argument(*anvio.A('min-functional-homogeneity-index'), **anvio.K('min-functional-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
-    groupD.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
-    groupD.add_argument(*anvio.A('min-combined-homogeneity-index'), **anvio.K('min-combined-homogeneity-index'))
-    groupD.add_argument(*anvio.A('max-combined-homogeneity-index'), **anvio.K('max-combined-homogeneity-index'))
-    groupD.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
+    groupE.add_argument(*anvio.A('min-num-genomes-gene-cluster-occurs'), **anvio.K('min-num-genomes-gene-cluster-occurs'))
+    groupE.add_argument(*anvio.A('max-num-genomes-gene-cluster-occurs'), **anvio.K('max-num-genomes-gene-cluster-occurs'))
+    groupE.add_argument(*anvio.A('min-num-genes-from-each-genome'), **anvio.K('min-num-genes-from-each-genome'))
+    groupE.add_argument(*anvio.A('max-num-genes-from-each-genome'), **anvio.K('max-num-genes-from-each-genome'))
+    groupE.add_argument(*anvio.A('max-num-gene-clusters-missing-from-genome'), **anvio.K('max-num-gene-clusters-missing-from-genome'))
+    groupE.add_argument(*anvio.A('min-functional-homogeneity-index'), **anvio.K('min-functional-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-functional-homogeneity-index'), **anvio.K('max-functional-homogeneity-index'))
+    groupE.add_argument(*anvio.A('min-geometric-homogeneity-index'), **anvio.K('min-geometric-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-geometric-homogeneity-index'), **anvio.K('max-geometric-homogeneity-index'))
+    groupE.add_argument(*anvio.A('min-combined-homogeneity-index'), **anvio.K('min-combined-homogeneity-index'))
+    groupE.add_argument(*anvio.A('max-combined-homogeneity-index'), **anvio.K('max-combined-homogeneity-index'))
+    groupE.add_argument(*anvio.A('add-into-items-additional-data-table'), **anvio.K('add-into-items-additional-data-table'))
 
-    groupE = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
-    groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    groupE.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
+    groupF = parser.add_argument_group('OTHER STUFF', "Yes. Stuff that are not like the ones above.")
+    groupF.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
+    groupF.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    groupF = parser.add_argument_group('PHYLOGENOMICS', "Get separately aligned and concatenated sequences for phylogenomics.")
-    groupF.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
-    groupF.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
-    groupF.add_argument(*anvio.A('separator'), **anvio.K('separator'))
-    groupF.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
-    groupF.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
+    groupG = parser.add_argument_group('PHYLOGENOMICS', "Get separately aligned and concatenated sequences for phylogenomics.")
+    groupG.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
+    groupG.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
+    groupG.add_argument(*anvio.A('separator'), **anvio.K('separator'))
+    groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
+    groupG.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
 
-    groupG = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
-    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupH = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
+    groupH.add_argument(*anvio.A('report-DNA-sequences'), **anvio.K('report-DNA-sequences'))
+    groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupH.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
 
     args = parser.get_args(parser)
 
     try:
-        main(args)
+        main(sanity_check(args))
     except ConfigError as e:
         print(e)
         sys.exit(-1)

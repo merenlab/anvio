@@ -8,9 +8,9 @@ If you are adding a new anvi'o developer or contributor into either
 of these YAML files, please send a PR with the relevant changes,
 which include,
 
-* Edit `DEVELOPERS.yaml` **or** `CONTRIBUTORS.yaml` files to add
-a new entry for the new person (please benefit from previous examples).
-* Add a new photo under the the `AVATARS` directory. It should be
+* **Edit `DEVELOPERS.yaml` _or_ `CONTRIBUTORS.yaml` files to add
+a new entry** for the new person (please benefit from previous examples).
+* **Add a new photo** under the the `AVATARS` directory. It should be
 a 900px x 900px head-shot (see previous examples).
 
 Most fields are optional, but please note that every person mentioned
@@ -27,9 +27,9 @@ Feel free to use this **template** for new entries:
   web: (http://your-web-page)
   avatar: (your-avatar.png that is in the AVATARS directory)
   email: (email address)
-  linkedin: (linkedin username)
-  orcid: (ORCiD, not the url, just the numbers)
-  bio: "A one-sentence short and descriptive bio -- see examples"
+  linkedin: (linkedin username -- if there is one)
+  orcid: (ORCiD, not the url, just the numbers -- if there is one)
+  bio: "A one-sentence short and descriptive bio -- see examples at https://anvio.org/#people"
   affiliations:
     - title: (your title: Graduate Student / Post-doctoral scientist / Assistant Professor / etc)
       inst: (name of the institution you are affiliated with)

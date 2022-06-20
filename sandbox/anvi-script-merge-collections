@@ -8,7 +8,6 @@ import sys
 
 import anvio
 import anvio.utils as u
-import anvio.dbops as dbops
 import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
@@ -47,8 +46,7 @@ def main(args):
 
     sources = sorted(input_dicts.keys())
 
-    contigs_db = dbops.ContigsSuperclass(args)
-    contig_name_to_splits = u.get_contig_name_to_splits_dict(contigs_db.splits_basic_info, contigs_db.contigs_basic_info)
+    contig_name_to_splits = u.get_contig_name_to_splits_dict(args.contigs_db)
 
     combined_dict = {}
     for contig_name in contig_names:

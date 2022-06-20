@@ -1,4 +1,4 @@
-A type of database containing information from either A) the [KEGG MODULE database](https://www.genome.jp/kegg/module.html), or B) user-defined metabolic modules, for use in metabolism estimation and/or functional annotation of KEGG Orthologs (KOs).
+A type of database containing information from either A) the [KEGG MODULE database](https://www.genome.jp/kegg/module.html) and [KEGG BRITE database](https://www.genome.jp/kegg/brite.html), or B) user-defined metabolic modules, for use in metabolism estimation and/or functional annotation of KEGG Orthologs (KOs).
 
 These databases are part of the %(kegg-data)s and %(user-modules-data)s directories. You can get one on your computer by running %(anvi-setup-kegg-kofams)s or %(anvi-setup-user-modules)s. Programs that rely on this type of database include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
 
@@ -29,9 +29,26 @@ The `data_value` and `data_definition` columns hold the information correspondin
 
 Finally, some rows of data originate from the same line in the original KEGG MODULE text file; these rows will have the same number in the `line` column. Perhaps this is a useless field. But it is there.
 
+### The BRITE hierarchies table
+
+In database version 4 or later, there is the option to include KEGG BRITE data in the modules database when setting one up using %(anvi-setup-kegg-kofams)s. If this is done, the database will include a table called `brite_hierarchies` which stores the set of functional hierarchies that each KEGG Ortholog belongs to. It will look like this:
+
+|**hierarchy_accession**|**hierarchy_name**|**ortholog_accession**|**ortholog_name**|**categorization**|
+|:--|:--|:--|:--|:--|
+|ko00001|KEGG Orthology (KO)|K00844|HK; hexokinase [EC:2.7.1.1]|09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]|
+|ko00001|KEGG Orthology (KO)|K00844|HK; hexokinase [EC:2.7.1.1]|09100 Metabolism>>>09101 Carbohydrate metabolism>>>00051 Fructose and mannose metabolism [PATH:ko00051]|
+|ko00001|KEGG Orthology (KO)|K00844|HK; hexokinase [EC:2.7.1.1]|09100 Metabolism>>>09101 Carbohydrate metabolism>>>00052 Galactose metabolism [PATH:ko00052]|
+|ko00001|KEGG Orthology (KO)|K00844|HK; hexokinase [EC:2.7.1.1]|09100 Metabolism>>>09101 Carbohydrate metabolism>>>00500 Starch and sucrose metabolism [PATH:ko00500]|
+|ko00001|KEGG Orthology (KO)|K00844|HK; hexokinase [EC:2.7.1.1]|09100 Metabolism>>>09101 Carbohydrate metabolism>>>00520 Amino sugar and nucleotide sugar metabolism [PATH:ko00520]|
+| (...) | (...) | (...) | (...) | (...) |
+
+These data are coming from the JSON files describing each BRITE hierarchy that can be downloaded from the [KEGG BRITE website](https://www.genome.jp/kegg/brite.html). For an example, [click here](https://www.genome.jp/kegg-bin/show_brite?ko00001.keg).
+
+The first four columns in this table are hopefully self-explanatory from the column names. In the `categorization` column, different functional categorization levels are separated by the `>>>` character.
+
 ### The database hash value
 
-In the `self` table of this database, there is an entry called `hash`. This string is a hash of the contents of the database, and it allows us to identify the version of the data within the database. This value is important for ensuring that the same MODULES.db is used both for annotating a contigs database with %(anvi-run-kegg-kofams)s and for estimating metabolism on that contigs database with %(anvi-estimate-metabolism)s.
+In the `self` table of this database, there is an entry called `hash`. This string is a hash of the contents of the database (specifically, it is a hash of the module and enzyme accessions in the database), and it allows us to identify the version of the data within the database. This value is important for ensuring that the same MODULES.db is used both for annotating a contigs database with %(anvi-run-kegg-kofams)s and for estimating metabolism on that contigs database with %(anvi-estimate-metabolism)s.
 
 You can easily check the hash value by running the following:
 
@@ -111,7 +128,7 @@ from anvio import kegg
 args = argparse.Namespace()
 # CHANGE THIS PATH IF YOU WANT TO LOAD A MODULES DB AT A NON-DEFAULT LOCATION
 path_to_db = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db')
-db = kegg.KeggModulesDatabase(path_to_db, args)
+db = kegg.ModulesDatabase(path_to_db, args)
 ```
 Once you have done this, you can start to use the helper functions. For example, the following function will return a list of all paths through a module:
 ```python

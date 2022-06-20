@@ -751,7 +751,8 @@ class GenbankToAnvio:
                 continue
 
             # do we have AA sequences in this?
-            aa_sequences_present = True if 'translation' in genes[0].qualifiers else False
+            if 'translation' in genes[0].qualifiers:
+                aa_sequences_present = True
 
             if aa_sequences_present and self.omit_aa_sequences_column:
                 aa_sequences_present = False

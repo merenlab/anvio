@@ -40,7 +40,7 @@ What happens if you don't have a hierarchical clustering dendrogram, but you sti
 * You can import external binning results using %(anvi-import-collection)s, or manually identify contigs of interest, and use %(anvi-import-collection)s to create a collection of a smaller number of contigs. You can then use %(anvi-refine)s to visualize contigs in a single bin, or use %(anvi-split)s to first generate a split profile for your contigs to visualize your smaller dataset using %(anvi-interactive)s.
 
 
-### Visualizing *bins* instead of contigs
+### Collection mode: Visualizing *bins* instead of contigs
 
 By default, when run on a profile database that resulted from a metagenomic workflow, %(anvi-interactive)s will initiate each contig as a separate item and organize them based on the clustering dendrograms provided to it (either automatically or by the user). But if there is a %(collection)s stored in the profile database, it is also possible to run %(anvi-interactive)s on a specific collection, during which anvi'o will use the underlying contig data to calculate summary statistics for each bin before displaying them. In collection mode, each item of your central plot will not represent a contig, but a bin within your collection. This is how the collection mode can be initialized in comparison to the default mode:
 
@@ -52,7 +52,7 @@ anvi-interactive -p %(profile-db)s \
 
 The clustering of %(bin)ss in this case based on their distribution across samples will be done automatically on-the-fly. See the note on this mode in [the metagenomic workflow](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-interactive) for more information.
 
-### Visualizing *genes* instead of contigs
+### Genes mode: Visualizing *genes* instead of contigs
 
 You can also start the interactive interface in "gene mode", in which each item of the central tree is a gene instead of a split or contig (or bin like in "collection mode").
 
@@ -74,9 +74,9 @@ In this view you can order genes based on their distributions patterns across me
 
 You can also visit [this page](http://merenlab.org/tutorials/infant-gut/#the-gene-mode-studying-distribution-patterns-at-the-gene-level) to see another practical example from the Infant Gut tutorial.
 
-## Running anvi-interactive in manual mode
+## Manual mode: visualize anything
 
-You can initiate the anvi'o interactive interface in manual mode to run it on *ad hoc* data (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)).
+You can initiate the anvi'o interactive interface in manual mode to run it on *ad hoc* tabular data (here is [a tutorial on this](http://merenlab.org/tutorials/interactive-interface/)).
 
 Anvi'o interactive interface is initiated with the flag `--manual-mode` and then by providing *any* of the following types of files individually or together:
 
@@ -87,7 +87,7 @@ When doing this kind of run, anvi'o does not expect you to have a profile databa
 
 ## Extending anvi'o displays
 
-You can extend any %(anvi-interactive)s display with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.
+You can extend any %(interactive)s display in anvi'o with additional data related to your project through the program %(anvi-import-misc-data)s. [This article](https://merenlab.org/2017/12/11/additional-data-tables/) describes a detailed use of this program.
 
 While the use of %(anvi-import-misc-data)s is the most effective way to improve anvi'o displays, you can also use the parameter `--additional-layers` to provide a TAB-delimited file (%(misc-data-items-txt)s) that contains additional layers of information over your items.
 

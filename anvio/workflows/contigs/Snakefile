@@ -21,7 +21,7 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-this_workflow_is_inherited_by_another = False if 'workflows/contigs' in workflow.included[0] else True
+this_workflow_is_inherited_by_another = False if 'anvio/workflows/contigs' in str(workflow.included[0].abspath()) else True
 if not this_workflow_is_inherited_by_another:
     # don't be confused, child. when things come to this point, the variable `config`
     # is already magically filled in by snakemake:
@@ -493,7 +493,7 @@ rule gen_external_genome_file:
                 f.write("%s\t%s\n" % (name, path))
 
 
-if 'workflows/contigs' in workflow.included[0]:
+if 'anvio/workflows/contigs' in str(workflow.included[0].abspath()):
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

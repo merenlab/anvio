@@ -85,7 +85,11 @@ class PfamSetup(object):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
+        if args.reset:
+            filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=True, dont_warn=True)
+        else:
+            filesnpaths.gen_output_directory(self.pfam_data_dir)
+
 
         self.resolve_database_url()
         self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
@@ -108,7 +112,15 @@ class PfamSetup(object):
 
 
     def get_remote_version(self):
-        content = read_remote_file(self.database_url + '/Pfam.version.gz')
+        input_file = os.path.join(self.pfam_data_dir, '/Pfam.version.gz')
+        if os.path.exists(input_file):
+            try:
+                with gzip.open(input_file,'rt') as f:
+                    content = f.read()
+            except gzip.BadGzipFile as err:
+                raise Exception ("BadGzipFile", input_file)
+        else:
+            content = read_remote_file(self.database_url + '/Pfam.version.gz')
 
         # below we are parsing this, not so elegant.
         # Pfam release       : 31.0
@@ -121,13 +133,16 @@ class PfamSetup(object):
 
         self.run.info("Found Pfam version", "%s (%s)" % (version, release_date))
 
-
     def download(self, hmmpress_files=True):
         self.run.info("Database URL", self.database_url)
 
         for file_name in self.files:
-            utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
+            local_file = os.path.join(self.pfam_data_dir, file_name)
+            if not os.path.exists(local_file):
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.pfam_data_dir, file_name), progress=self.progress, run=self.run)
+            else:
+                self.run.info("found local file", file_name)
 
         self.confirm_downloaded_files()
         self.decompress_files()
@@ -136,14 +151,21 @@ class PfamSetup(object):
 
 
     def confirm_downloaded_files(self):
-        try:
-            checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
-            checksums = {}
-        except:
-            self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
-            return
+        chksums_file = os.path.join(self.pfam_data_dir, 'md5_checksums')
+        if os.path.exists(chksums_file): 
+            self.run.info("found local file", 'md5_checksums')
+            with open(chksums_file,'r') as fh:
+                checksums_file = fh.read() 
+        else:
+            try:
+                checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
+            except:
+                self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
+                return
 
+        checksums = {}
         for line in checksums_file.split('\n'):
+            if not line: continue
             checksum, file_name = [item.strip() for item in line.strip().split()]
             checksums[file_name] = checksum
 

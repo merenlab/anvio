@@ -45,8 +45,6 @@ anvi-compute-functional-enrichment-in-pan -p %(pan-db)s\
 
 The %(pan-db)s must contain at least one categorical data layer in %(misc-data-layers)s, and you must choose one of these categories to define your pan-groups with the `--category-variable` parameter. You can see available variables with %(anvi-show-misc-data)s program with the parameters `-t layers --debug`.
 
-Note that by default any genomes not in a category will be ignored; you can instead include these in the analysis by using the flag `--include-ungrouped`.
-
 The %(genomes-storage-db)s must have at least one functional annotation source, and you must choose one of these sources with the `--annotation-source`. If you do not know which functional annotation sources are available in your %(genomes-storage-db)s, you can use the `--list-annotation-sources` parameter to find out.
 
 ### Additional options

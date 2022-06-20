@@ -1362,6 +1362,34 @@ class AggregateFunctions:
                                                                                       progress=self.progress)
 
 
+    def report_functions_across_genomes(self, output_file_prefix, quiet=False):
+        """Reports text files for functions across genomes data"""
+
+        output_file_path_for_frequency_view = f"{os.path.abspath(output_file_prefix)}-FREQUENCY.txt"
+        output_file_path_for_presence_absence_view = f"{os.path.abspath(output_file_prefix)}-PRESENCE-ABSENCE.txt"
+
+        filesnpaths.is_output_file_writable(output_file_path_for_frequency_view)
+        filesnpaths.is_output_file_writable(output_file_path_for_presence_absence_view)
+
+        with open(output_file_path_for_frequency_view, 'w') as frequency_output, open(output_file_path_for_presence_absence_view, 'w') as presence_absence_output:
+            layer_names = sorted(list(self.layer_names_considered))
+            frequency_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
+            presence_absence_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
+
+            for key in self.functions_across_layers_frequency:
+                function = self.hash_to_function_dict[key][self.function_annotation_source]
+
+                frequency_data = [f"{self.functions_across_layers_frequency[key][l] if l in self.functions_across_layers_frequency[key] else 0}" for l in layer_names]
+                frequency_output.write('\t'.join([key] + frequency_data + [function]) + '\n')
+
+                presence_absence_data = [f"{self.functions_across_layers_presence_absence[key][l] if l in self.functions_across_layers_presence_absence[key] else 0}" for l in layer_names]
+                presence_absence_output.write('\t'.join([key] + presence_absence_data + [function]) + '\n')
+
+        if not quiet:
+            self.run.info('Functions across genomes (frequency)', output_file_path_for_frequency_view)
+            self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
+
+
     def report_functions_per_group_stats(self, output_file_path, quiet=False):
         """A function to summarize functional occurrence for groups of genomes.
 
