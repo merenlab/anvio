@@ -9,6 +9,7 @@ import pandas as pd
 
 import anvio
 import anvio.utils as u
+import anvio.tables as t
 import anvio.workflows as w
 
 from Bio import SeqIO
@@ -44,24 +45,29 @@ rule anvi_run_hmms_hmmsearch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
     input:
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "{sample_name}-{HMM}-contigs-hmmsearch.done"),
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "contigs-hmmsearch.done"),
+        hmm_hits_record = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "hmm_hits_record.txt")
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
     run:
+        import anvio.db as db
+
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
         hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch")
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch/hmm.domtable")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch", "hmm.domtable")
+        hmm_hits_record = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch", "hmm_hits_record.txt")
 
-        if M.metagenomes:
-            if wildcards.sample_name in M.metagenomes_name_list:
-                threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
-        else:
-            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
+        # Adjust threads for anvi-run-hmms depending on type of assembly
+        # if M.metagenomes:
+        #     if wildcards.sample_name in M.metagenomes_name_list:
+        #         threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
+        # else:
+        #     threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
 
-        # Run different HMM search depending on whether a HMM is internal or external because anvio
+        # Change HMM search params depending on whether a HMM is internal or external because anvio
         if HMM_source in M.internal_HMM_sources:
             if not os.path.exists(domtblout):
                 print(f"Running internal HMM dataset: {HMM_source}")
@@ -72,12 +78,9 @@ rule anvi_run_hmms_hmmsearch:
                                     --domain-hits-table \
                                     --just-do-it \
                                     -T {threads} >> {log} 2>&1")
-            else:
-                pass
 
-            # Load contigsDB
-            contigs_db = ContigsDatabase(contigsDB)
             # Check if anvi-run-scg-taxonomy has been run
+            contigs_db = ContigsDatabase(contigsDB)
             scg_taxonomy_was_run_value = contigs_db.meta['scg_taxonomy_was_run']
 
             if scg_taxonomy_was_run_value != 1:
@@ -93,8 +96,35 @@ rule anvi_run_hmms_hmmsearch:
                                     --domain-hits-table \
                                     --just-do-it \
                                     -T {threads} >> {log} 2>&1")
-            else:
-                pass
+        
+
+        """
+        Create hmm_hits_record.txt which stores how hits each HMM model has in the contigsDB.
+        With this txt file we can find out which contigsDBs have successful hits from the 
+        HMM models in hmm_list.txt. If they do NOT have hits, then there is no need to post-process
+        the hmm_hits
+        
+
+        Briefly, we will then use this hmm_hits_record.txt to conditionally run the following rules:
+        - filter_hmm_hits_by_query_coverage
+        - anvi_get_sequences_for_hmm_hits
+        - simplify_names_from_hmm_hits
+        """
+
+        # Create hmm_hits_record.txt which stores how hits each HMM model has in the contigsDB
+        db = db.DB(contigsDB, anvio.__contigs__version__, read_only=True)
+        hmm_sources_dict = db.get_table_as_dict(t.hmm_hits_info_table_name)
+        hmm_sources = sorted(list(hmm_sources_dict.keys()))
+
+        col_names = ["contigsDB", "hmm_source", "number_of_models", "number_of_hits"]
+        with open(output.hmm_hits_record, "a") as f:
+            f.write('\t'.join(col_names) + '\n')
+            for source in hmm_sources:
+                num_models = len(hmm_sources_dict[source]['genes'].split(','))
+                num_hits = db.get_row_counts_from_table(t.hmm_hits_table_name, where_clause=f'source="{source}"')
+                row = [wildcards.sample_name, source, str(num_models), str(num_hits)]    
+                f.write('\t'.join(row) + '\n')
+
         
         shell("touch {output.done}")
 
@@ -109,6 +139,7 @@ rule filter_hmm_hits_by_query_coverage:
     log: os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_query_coverage-{sample_name}-{HMM}.log")
     input:
         done = rules.anvi_run_hmms_hmmsearch.output.done,
+        hmm_hits_record = rules.anvi_run_hmms_hmmsearch.output.hmm_hits_record
     output:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "{sample_name}-{HMM}-filter_hmm_hits.done")
     params:
