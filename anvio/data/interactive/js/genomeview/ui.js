@@ -587,14 +587,23 @@ function showTabularModal(){
 
   handleAnnotationSourceSelect = (target) => {
     if($(target).is(":checked")){
-      $('#tabular-modal-table-header-tr').append(`<th id='th-source-${target.value}'>${target.value}</th>`)
       Object.entries(genomesObj).map(genome => {
+        $(`#${genome[0]}-tabular-modal-table-header-tr`).append(`<th id='th-source-${genome[0]}-${target.value}'>${target.value}</th>`)
         genome[1].forEach(gene => {
-          $(`#table-row-${gene['geneID']}`).append(`<td>cheese</td>`)
+          if(gene?.['functions']?.[target.value]){
+            $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-${target.value}'>${gene['functions'][target.value][1]}</td>`)
+          } else {
+            $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-${target.value}'>n/a</td>`)
+          }
         })
       })
     } else {
-      $(`#th-source-${target.value}`).remove()
+      Object.entries(genomesObj).map(genome => {
+        $(`#th-source-${genome[0]}-${target.value}`).remove()
+        genome[1].forEach(gene => {
+          $(`#${genome[0]}-${gene['geneID']}-${target.value}`).remove()
+        })
+      })
     }
   }
 
@@ -618,7 +627,7 @@ function showTabularModal(){
         <h3>${genome}</h3>
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead id='tabular-modal-table-head'>
-            <tr id='tabular-modal-table-header-tr'>
+            <tr id='${genome}-tabular-modal-table-header-tr'>
               <th><input class="form-check-input" type='checkbox'></input> Select</th>
               <th>Gene ID</th>
               <th>Start</th>
@@ -651,7 +660,7 @@ function showTabularModal(){
       }
 
       totalTableString += `
-      <tr id='table-row-${gene['geneID']}'>
+      <tr id='${genome[0]}-table-row-${gene['geneID']}'>
         <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
