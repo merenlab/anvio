@@ -585,9 +585,28 @@ function showTabularModal(){
     }
   })
 
+  handleAnnotationSourceSelect = (target) => {
+    if($(target).is(":checked")){
+      $('#tabular-modal-table-header-tr').append(`<th id='th-source-${target.value}'>${target.value}</th>`)
+      Object.entries(genomesObj).map(genome => {
+        genome[1].forEach(gene => {
+          $(`#table-row-${gene['geneID']}`).append(`<td>cheese</td>`)
+        })
+      })
+    } else {
+      $(`#th-source-${target.value}`).remove()
+    }
+  }
+
   let sourcesString = String()
   functionSourcesArr.map(s => {
     sourcesString += `<th>${s}<th>`
+    $('#tabular-modal-annotation-checkboxes').append(
+      `
+      <input type='checkbox' name=${s} value=${s} onclick='handleAnnotationSourceSelect(this)'/>
+      <label for=${s}>${s}</label><br>
+      `
+    )
   })
 
   Object.keys(genomesObj).map((genome, idx) => {
@@ -598,16 +617,17 @@ function showTabularModal(){
       <div id="${genome}" class="tab-pane fade in ${idx == 0 ? 'active' : ''}">
         <h3>${genome}</h3>
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
-          <thead>
-            <th><input class="form-check-input" type='checkbox'></input> Select</th>
-            <th>Gene ID</th>
-            <th>Start</th>
-            <th>Stop</th>
-            <th>Direction</th>
-            <th>Contig</th>
-            ${sourcesString}
-            <th>Deepdive</th>
-            <th>Color</th>
+          <thead id='tabular-modal-table-head'>
+            <tr id='tabular-modal-table-header-tr'>
+              <th><input class="form-check-input" type='checkbox'></input> Select</th>
+              <th>Gene ID</th>
+              <th>Start</th>
+              <th>Stop</th>
+              <th>Direction</th>
+              <th>Contig</th>
+              <th>Deepdive</th>
+              <th>Color</th>
+            </tr>
           </thead>
           <tbody id="${genome}-table-body">
           </tbody>
@@ -631,14 +651,13 @@ function showTabularModal(){
       }
 
       totalTableString += `
-      <tr>
+      <tr id='table-row-${gene['geneID']}'>
         <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
         <td>${gene['gene']['stop']}</td>
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
-        ${totalAnnotationsString}
         <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
       </tr>`
