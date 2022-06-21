@@ -607,9 +607,8 @@ function showTabularModal(){
     }
   }
 
-  let sourcesString = String()
+  $('#tabular-modal-annotation-checkboxes').empty()
   functionSourcesArr.map(s => {
-    sourcesString += `<th>${s}<th>`
     $('#tabular-modal-annotation-checkboxes').append(
       `
       <input type='checkbox' name=${s} value=${s} onclick='handleAnnotationSourceSelect(this)'/>
