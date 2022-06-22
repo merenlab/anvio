@@ -32,6 +32,7 @@ rule make_metagenomics_config_file:
         config_dict['bowtie']['threads'] = 5
         config_dict['bowtie_build']['threads'] = 5
         config_dict['anvi_gen_contigs_database']['threads'] = 5
+        config_dict['anvi_profile']['--profile-SCVs'] = True 
 
         if M.clusterize_metagenomics_workflow == True:
             config_dict['bowtie']['threads'] = 10
