@@ -18,6 +18,12 @@ cd $output_dir/workflow_test
 
 INFO "Creating a default config for ecophylo workflow"
 anvi-run-workflow -w ecophylo --get-default-config default-config.json
+sed 's|external-genomes.txt||' default-config.json > only-metagenomes-txt-config.json
+sed 's|metagenomes.txt||' default-config.json > only-external-genomes-txt-config.json
+sed 's|samples\.txt||' default-config.json > no-samples-txt-config.json
+sed 's|external-genomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-metagenomes-txt-config.json
+sed 's|metagenomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-external-genomes-txt-config.json
+
 
 INFO "Generating r1 and r2 short reads for samples"
 mkdir -p output
@@ -65,6 +71,12 @@ anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-grap
 
 INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json -A --dry-run
+
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only metagenomes.txt"
+anvi-run-workflow -w ecophylo -c no-samples-only-metagenomes-txt-config.json -A --dry-run
+
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only external-genomes.txt"
+anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json -A --dry-run
 
 INFO "Running ecophylo workflow - no samples.txt"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
