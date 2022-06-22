@@ -81,6 +81,7 @@ def main(args):
         bool(args.function_table_output)) != 1:
         raise ConfigError("One of `--output-file`, `--gene-table-output`, or "
                           "`--function-table-output` must be provided.")
+    args.return_functions = bool(args.function_table_output)
 
     # A generic output file is always assumed to be a per-gene table.
     if args.output_file:
@@ -91,6 +92,7 @@ def main(args):
         multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, run=run)
         frequency_df = multigenome_codon_usage.get_frequencies(
             from_function_sources=from_function_sources,
+            return_functions=args.return_functions,
             return_amino_acids=args.amino_acid,
             function_accessions=args.function_accessions_dict,
             function_names=args.function_names_dict,
@@ -109,6 +111,7 @@ def main(args):
         single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
         frequency_df = single_genome_codon_usage.get_frequencies(
             from_function_sources=from_function_sources,
+            return_functions=args.return_functions,
             return_amino_acids=args.amino_acid,
             gene_caller_ids=args.gene_caller_ids,
             function_accessions=args.function_accessions_dict,
@@ -132,11 +135,12 @@ def main(args):
         else:
             table_output = args.function_table_output
         frequency_df.to_csv(table_output, sep='\t')
+        if args.sum:
+            run.info("Gene sum output", table_output)
+        elif args.average:
+            run.info("Gene average output", table_output)
     elif args.function_table_output:
-        # Collapse the gene frequency table into a function frequency table.
-        frequency_df = frequency_df.droplevel('gene_caller_id')
-        function_frequency_df = frequency_df.groupby(['source', 'accession', 'name']).sum()
-        function_frequency_df.to_csv(args.function_table_output, sep='\t')
+        frequency_df.to_csv(args.function_table_output, sep='\t')
         run.info("Function table output", args.function_table_output)
     else:
         frequency_df.to_csv(args.gene_table_output, sep='\t')

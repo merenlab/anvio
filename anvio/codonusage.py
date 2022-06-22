@@ -3,6 +3,7 @@
 """Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 
 
+import inspect
 import argparse
 import numpy as np
 import pandas as pd
@@ -195,6 +196,7 @@ class SingleGenomeCodonUsage(object):
 
     def get_frequencies(self,
                         from_function_sources=False,
+                        return_functions=False,
                         return_amino_acids=False,
                         gene_caller_ids=None,
                         function_accessions=None,
@@ -211,7 +213,7 @@ class SingleGenomeCodonUsage(object):
                         min_gene_fraction=1,
                         label_amino_acids=False):
         """
-        Get absolute (default) or relative codon or amino acid frequencies from genes.
+        Get absolute (default) or relative codon or amino acid frequencies from genes or functions.
 
         Relative codon frequencies can be normalized per-amino acid to all synonymous codons.
 
@@ -230,6 +232,10 @@ class SingleGenomeCodonUsage(object):
             `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
             hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
             general 'Ribosome' would each have rows in the output table.
+        return_functions : bool, optional
+            If True (default False), output frequency tables contain function rather than gene
+            results in each row. Returning per-gene results when also considering functions by using
+            `--from-function-sources` facilitates analysis of per-gene variability within functions.
         return_amino_acids : bool, optional
             If True (default False), output frequency table columns are decoded amino acids (plus
             STP) rather than codons. Synonymous codon frequencies are summed to produce the amino
@@ -350,11 +356,13 @@ class SingleGenomeCodonUsage(object):
         >>> self.get_frequencies(
             as_synonymous=True, gene_min_codons=300, min_amino_acids=5, min_gene_fraction=0.9)
 
-        Return the synonymous (per-amino acid) relative frequencies of genes annotated by KEGG
-        KOfams and BRITE. Remove genes <300 codons, then remove amino acids with <5 codons in ≥90%
-        of remaining genes, then remove genes with <300 codons remaining.
+        Return the synonymous (per-amino acid) relative frequencies of KEGG KOfam and BRITE
+        functions. This command removes genes <300 codons, then removes amino acids with <5 codons
+        in ≥90% of remaining genes, then removes genes with <300 codons remaining, then sums gene
+        frequencies in functions, then calculates synonymous relative frequencies in functions.
         >>> self.get_frequencies(
             from_function_sources=['KOfam', 'KEGG_BRITE'],
+            return_functions=True,
             as_synonymous=True,
             gene_min_codons=300,
             min_amino_acids=5,
@@ -465,9 +473,6 @@ class SingleGenomeCodonUsage(object):
             gene_codon_frequency_df,
             input_min_codons=gene_min_codons,
             filter_input_codon_count=filter_gene_length)
-        if gene_min_codons:
-            self.run.info_single(f"{len(gene_codon_frequency_df)} CDS longer than "
-                                 f"{gene_min_codons} codons")
 
         # Filter functions by the total length of their genes. Gene/function pairs with fewer than
         # the required number of codons in the function are removed.
@@ -494,14 +499,10 @@ class SingleGenomeCodonUsage(object):
         need_to_filter_codons_in_gene_function_codon_frequency_table = True
         if ((drop_amino_acids or min_amino_acids) and
             (gene_min_codons and filter_gene_remaining_codons)):
-            self.run.info_single(f"{len(gene_codon_frequency_df)} CDS with ≥{gene_min_codons} "
-                                 "codons remaining after dropping codons")
-
             # Filter functions by total codons remaining. Gene/function pairs with fewer than the
             # required number of codons in the function are removed.
             if function_sources:
-                gene_function_codon_frequency_df = \
-                    gene_function_df[gene_codon_frequency_df.columns].merge(
+                gene_function_codon_frequency_df = gene_function_df.merge(
                     gene_codon_frequency_df, how='inner', on='gene_caller_id')
                 gene_function_codon_frequency_df = gene_function_codon_frequency_df.set_index(
                     ['source', 'accession', 'name', 'gene_caller_id'])
@@ -518,6 +519,9 @@ class SingleGenomeCodonUsage(object):
                 drop_amino_acids=drop_amino_acids,
                 min_amino_acids=min_amino_acids,
                 min_fraction=min_gene_fraction)
+
+        if gene_min_codons:
+            self.run.info_single(f"{len(gene_codon_frequency_df)} CDS remaining after codon count filters")
 
         # GET OUTPUTS WITH NO CONSIDERATION OF FUNCTIONS
         ################################################
@@ -625,9 +629,12 @@ class SingleGenomeCodonUsage(object):
 
         # GET OUTPUTS WITH CONSIDERATION OF FUNCTIONS
         #############################################
-        get_table = lambda method: method(gene_function_codon_frequency_df,
-                                          label_amino_acids=label_amino_acids,
-                                          output_amino_acids=return_amino_acids)
+        get_table = lambda method: method(
+            (gene_function_codon_frequency_df.groupby(['source', 'accession', 'name']).sum()
+             if return_functions else
+             gene_function_codon_frequency_df.sort_values(['source', 'accession', 'name'])),
+            label_amino_acids=label_amino_acids,
+            output_amino_acids=return_amino_acids)
         ### Absolute frequencies
         if (not as_relative_frequency and
             function_sources and
@@ -651,9 +658,8 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_synonymous_codon_rel_frequency_table)
 
         # Remove duplicate occurrences of genes before summing or averaging frequencies of all genes
-        # in the function source. Regarding KEGG BRITE, a gene can be in nested categories and
-        # different hierarchies. Regarding other sources, a gene can have different annotations,
-        # e.g., different KOfam assignments.
+        # in the function source. A gene can have different annotations, e.g., different KOfam
+        # assignments. In KEGG BRITE, a gene can be in nested categories and different hierarchies.
         gene_function_codon_frequency_df = \
             gene_function_codon_frequency_df.reset_index().drop_duplicates(
                 subset='gene_caller_id', ignore_index=True).set_index(
@@ -1132,7 +1138,7 @@ class MultiGenomeCodonUsage(GenomeDescriptions):
         """
 
 
-class MultiGenomeCodonUsage(GenomeDescriptions):
+class MultiGenomeCodonUsage(object):
     """This object processes codon usage data from multiple internal and/or external genomes."""
 
     def __init__(self, args, run=run, progress=progress):
@@ -1151,50 +1157,51 @@ class MultiGenomeCodonUsage(GenomeDescriptions):
         self.function_sources = A('function_sources')
         self.use_shared_function_sources = A('shared_function_sources')
 
+        self.preload_genomes = A('preload-genomes') or False
+
         self.run = run
         self.progress = progress
 
-        GenomeDescriptions.__init__(self, args, run=self.run, progress=self.progress)
-        self.load_genomes_descriptions(init=False)
+        descriptions = GenomeDescriptions(args, run=self.run, progress=self.progress)
+        descriptions.load_genomes_descriptions(init=False)
 
         if (self.function_sources and
             self.use_shared_function_sources and
-            self.function_annotation_sources_some_genomes_miss):
+            descriptions.function_annotation_sources_some_genomes_miss):
             raise ConfigError(
                 "Of the requested function annotation sources, the following were not run on every "
-                f"genome: {', '.join(self.function_annotation_sources_some_genomes_miss)}")
+                f"genome: {', '.join(descriptions.function_annotation_sources_some_genomes_miss)}")
 
-        self.genome_codon_usage_dict = {}
+        # Store information on accessing the genomes.
+        self.genome_info_dict = {}
+        for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+            self.genome_info_dict[genome_name] = genome_info = {}
+            genome_info['contigs_db'] = genome_dict['contigs_db_path']
+            genome_info['profile_db'] = genome_dict['profile_db_path']
+            genome_info['collection_name'] = genome_dict['collection_id']
+            genome_info['bin_id'] = genome_dict['bin_id']
+            genome_info['function_sources'] = self.function_sources
+        for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+            self.genome_info_dict[genome_name] = genome_info = {}
+            genome_info['contigs_db'] = genome_dict['contigs_db_path']
+            genome_info['function_sources'] = self.function_sources
 
-        # Initialize a `SingleGenomeCodonUsage` object for each genome.
-        genome_codon_usage_args_template = argparse.Namespace()
-        for arg, value in args.__dict__.items():
-            if arg in ['internal_genomes',
-                       'external_genomes',
-                       'gene_table_output',
-                       'function_table_output',
-                       'shared_function_sources']:
-                continue
-            genome_codon_usage_args_template.__dict__[arg] = value
-        for genome_name, genome_dict in self.internal_genomes_dict.items():
-            self.run.info("Initializing internal genome", genome_name)
-            genome_codon_usage_args = deepcopy(genome_codon_usage_args_template)
-            genome_codon_usage_args.__dict__['contigs_db'] = genome_dict['contigs_db_path']
-            genome_codon_usage_args.__dict__['profile_db'] = genome_dict['profile_db_path']
-            genome_codon_usage_args.__dict__['collection_name'] = genome_dict['collection_id']
-            genome_codon_usage_args.__dict__['bin_id'] = genome_dict['bin_id']
-            self.genome_codon_usage_dict[genome_name] = \
-                SingleGenomeCodonUsage(genome_codon_usage_args)
-        for genome_name, genome_dict in self.external_genomes_dict.items():
-            self.run.info("Initializing external genome", genome_name)
-            genome_codon_usage_args = deepcopy(genome_codon_usage_args_template)
-            genome_codon_usage_args.__dict__['contigs_db'] = genome_dict['contigs_db_path']
-            self.genome_codon_usage_dict[genome_name] = \
-                SingleGenomeCodonUsage(genome_codon_usage_args)
+        # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
+        # all of the SingleGenomeCodonUsage objects into memory, allowing methods to save time by
+        # immediately accessing their frequency tables. When this argument is False,
+        # SingleGenomeCodonUsage objects are loaded into memory as needed when each genome is
+        # processed.
+        self.genome_codon_usage_dict = None
+        if self.preload_genomes:
+            self.genome_codon_usage_dict = {}
+            for genome_name, genome_info in self.genome_info_dict.items():
+                self.genome_codon_usage_dict[genome_name] = SingleGenomeCodonUsage(
+                    argparse.Namespace(**genome_info))
 
 
     def get_frequencies(self,
                         from_function_sources=False,
+                        return_functions=False,
                         return_amino_acids=False,
                         function_accessions=None,
                         function_names=None,
@@ -1209,30 +1216,38 @@ class MultiGenomeCodonUsage(GenomeDescriptions):
                         min_amino_acids=0,
                         min_gene_fraction=0,
                         label_amino_acids=False):
-        """The SingleGenomeCodonUsage docstring has descriptions of each parameter."""
-        gene_codon_frequency_dfs = []
-        for genome_name, single_genome_codon_usage in self.genome_codon_usage_dict.items():
-            self.run.info("Getting frequencies from genome", genome_name)
-            gene_codon_frequency_df = single_genome_codon_usage.get_frequencies(
-                from_function_sources=from_function_sources,
-                return_amino_acids=return_amino_acids,
-                function_accessions=function_accessions,
-                function_names=function_names,
-                as_relative_frequency=as_relative_frequency,
-                as_synonymous=as_synonymous,
-                sum_genes=sum_genes,
-                average_genes=average_genes,
-                gene_min_codons=gene_min_codons,
-                function_min_codons=function_min_codons,
-                min_codon_filter=min_codon_filter,
-                drop_amino_acids=drop_amino_acids,
-                min_amino_acids=min_amino_acids,
-                min_gene_fraction=min_gene_fraction,
-                label_amino_acids=label_amino_acids)
-            gene_codon_frequency_df['genome'] = genome_name
-            new_index_columns = ['genome'] + list(gene_codon_frequency_df.index.names)
-            gene_codon_frequency_df = \
-                gene_codon_frequency_df.reset_index().set_index(new_index_columns)
-            gene_codon_frequency_dfs.append(gene_codon_frequency_df)
+        """
+        Get absolute (default) or relative codon or amino acid frequencies from genes or functions
+        in one or more genomes.
 
-        return pd.concat(gene_codon_frequency_dfs)
+        See the SingleGenomeCodonUsage docstring for descriptions of each parameter.
+        """
+        args = {}
+        arg_info = inspect.getargvalues(inspect.currentframe())
+        for param in arg_info.args:
+            if param == 'self':
+                continue
+            args[param] = arg_info.locals[param]
+        frequency_table_generator = self._get_genome_frequency_table(args)
+        frequency_dfs = []
+        for genome_name in self.genome_info_dict:
+            frequency_df = next(frequency_table_generator)
+
+            frequency_df.insert(0, 'genome', genome_name)
+            new_index_columns = ['genome'] + list(frequency_df.index.names)
+            frequency_df = frequency_df.reset_index().set_index(new_index_columns)
+
+            frequency_dfs.append(frequency_df)
+        return pd.concat(frequency_dfs)
+
+
+    def _get_genome_frequency_table(self, args):
+        """This generator yields a frequency table from each genome."""
+        for genome_name, genome_info in self.genome_info_dict.items():
+            if self.preload_genomes:
+                genome_codon_usage = self.genome_codon_usage_dict[genome_name]
+            else:
+                genome_codon_usage = SingleGenomeCodonUsage(
+                    argparse.Namespace(**genome_info))
+            frequency_df = genome_codon_usage.get_frequencies(**args)
+            yield frequency_df
