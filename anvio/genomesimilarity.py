@@ -416,7 +416,7 @@ class Dereplicate:
         if self.representative_method == 'Qscore':
             missing_completion = False
             for genome in full_dict:
-                if not full_dict[genome].get('percent_completion') or not full_dict[genome].get('percent_redundancy'):
+                if 'percent_completion' not in full_dict[genome] or 'percent_redundancy' not in full_dict[genome]:
                     self.representative_method = 'centrality'
                     missing_completion = genome
 
