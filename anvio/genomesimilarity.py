@@ -767,8 +767,12 @@ class GenomeSimilarity:
 
     def get_fasta_sequences_dir(self):
         if self.genome_desc:
-            # init=False so that no complaint if there are no SCGs
-            self.genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
+            if self.representative_method == "Qscore":
+                # if representative method is Qscrore, we need SCG information to be included
+                self.genome_desc.load_genomes_descriptions(skip_functions=True, init=True)
+            else:
+                # init=False so that no complaint if there are no SCGs
+                self.genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
 
         self.temp_dir,\
         self.hash_to_name,\
