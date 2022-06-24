@@ -643,6 +643,7 @@ class GenomeSimilarity:
         self.pan_db = A('pan_db', null)
         self.output_dir_exists = A('output_dir_exists', null)
         self.just_do_it = A('just_do_it', null)
+        self.representative_method = A('representative_method', null)
 
         if (self.internal_genomes or self.external_genomes):
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
