@@ -534,55 +534,31 @@ class Dereplicate:
         self.clusters[from_cluster] -= self.clusters[from_cluster]
 
 
-    def pick_best_of_two(self, one, two):
-        if not one and not two:
-            return None
-        elif not one and len(two) == 1:
-            return two[0]
-        elif not two and len(one) == 1:
-            return one[0]
-
-        best_one = self.pick_representative_with_largest_Qscore(one)
-        best_two = self.pick_representative_with_largest_Qscore(two)
-
-        if not best_one and best_two:
-            return best_two
-        elif not best_two and best_one:
-            return best_one
-
-        try:
-            score1 = self.genomes_info_dict[best_one]['percent_completion'] - self.genomes_info_dict[best_one]['percent_redundancy']
-        except:
-            raise ConfigError("At least one of your genomes does not contain completion or redundancy estimates. Here is an example: %s." % best_one)
-        try:
-            score2 = self.genomes_info_dict[best_two]['percent_completion'] - self.genomes_info_dict[best_two]['percent_redundancy']
-        except:
-            raise ConfigError("At least one of your genomes does not contain completion or redundancy estimates. Here is an example: %s." % best_two)
-
-        if score1 > score2:
-            return best_one
-        elif score2 > score1:
-            return best_two
-        else:
-            len1 = self.genomes_info_dict[best_one]['total_length']
-            len2 = self.genomes_info_dict[best_two]['total_length']
-
-            if len2 > len1:
-                return best_two
-            else:
-                return best_one
-
-
     def pick_representative_with_largest_Qscore(self, cluster):
+        """This function will return the a genome in a cluster with highest substantive completion esitmate.
+
+        If there are multiple genomes with the same substantive completion estimate, then it will return the
+        longest one. If there are multiple that has the same substantive completion estimate AND length, then
+        it will return the first one.
+        """
+
         if not cluster:
             return None
-        elif len(cluster) == 1:
+
+        if len(cluster) == 1:
             return cluster[0]
 
-        medium = int(len(cluster) / 2)
-        best = self.pick_best_of_two(cluster[:medium], cluster[medium:])
+        # get all substantive completion and lenght values for genomes within the cluster
+        substantive_completion_and_length_values = [(g, self.genomes_info_dict[g]['percent_completion'] - self.genomes_info_dict[g]['percent_redundancy'], self.genomes_info_dict[g]['total_length']) for g in cluster]
 
-        return best
+        # calculate the maximum substantive completion value found
+        max_substantive_completion = max([e[1] for e in substantive_completion_and_length_values])
+        
+        # get all the genomes with that exact completion value, sorted by their length (in case there are more than one genomes with identical completion estimates)
+        genomes_with_max_substantive_completion = sorted([e for e in substantive_completion_and_length_values if e[1] == max_substantive_completion], key=lambda x: x[2], reverse=True)
+
+        # return the first one (which is supposed to be the longest one)
+        return genomes_with_max_substantive_completion[0][0]
 
 
     def pick_representative_with_largest_genome(self, cluster):
