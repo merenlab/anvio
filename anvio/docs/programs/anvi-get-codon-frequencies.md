@@ -46,7 +46,7 @@ Options can be mixed and matched, with there being relatively few incompatible o
 
 | Get | Options |
 | --- | ------- |
-| Codon frequencies | |
+| Codon absolute frequencies | |
 | Codon relative frequencies | `--relative` |
 | [Synonymous (per-amino acid) codon relative frequencies](#synonymous-codon-relative-frequencies) | `--synonymous` |
 | Amino acid frequencies | `--amino-acid` |
@@ -65,7 +65,7 @@ Options can be mixed and matched, with there being relatively few incompatible o
 | [All KEGG BRITE categories](#brite-hierarchies) | `--function-sources KEGG_BRITE` |
 | All KEGG KOfams and all Pfams | `--function-sources KOfam Pfam` |
 | [Certain KEGG BRITE categories](#brite-hierarchies) | `--function-sources KEGG_BRITE --function-names Ribosome Ribosome>>>Ribosomal proteins` |
-| Certain KEGG KOfam accessions | `--function-sources KOfam --function-accessions K00001 K00002` |
+| [Certain KEGG KOfam accessions](#inputs) | `--function-sources KOfam --function-accessions K00001 K00002` |
 | [Certain BRITE categories and KOfam accessions](#inputs) | `--functions-txt path/to/functions_table.txt` |
 
 ### Frequencies from _selections of genes_
@@ -107,7 +107,9 @@ This flag returns the relative frequency of each codon among the codons encoding
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --sum --amino-acid --relative
 {{ codestop }}
 
-These options operate on genes; when used with a function option, `--average` subsets the genes annotated by the functions of interest and calculates the average frequency across genes rather than functions (sums of genes with functional annotation). For example, the following command calculates the average synonymous relative frequency across genes annotated by KEGG KOfams.
+The first column of the output table has the header, 'gene_caller_ids', and the value, 'all', indicating that the data is aggregated across genes.
+
+`--sum` and `--average` operate on genes. When used with a function option, the program subsets the genes annotated by the functions of interest. With `--average`, it calculates the average frequency across genes rather than functions (sums of genes with functional annotation). For example, the following command calculates the average synonymous relative frequency across genes annotated by KEGG KOfams.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --average --synonymous --function-sources KOfam
@@ -121,7 +123,17 @@ Using `--output-file` is equivalent to `--gene-table-output` rather than `--func
 
 #### Inputs
 
-There are multiple options to define which functions and sources should be used. `--function-sources` without arguments uses all available sources that had been used to annotate genes. `--function-accessions` and `--function-names` select functions from a single provided source. To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for `source`.
+There are multiple options to define which functions and sources should be used. `--function-sources` without arguments uses all available sources that had been used to annotate genes.
+
+`--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options.
+
+{{ codestart }}
+anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources COG14_FUNCTION --function-accessions COG0004 COG0005 --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
+{{ codestart }}
+
+To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for `source`.
+
+By default, selected function accessions or names do not need to be present in the input genomes; the program will return data for any selected accessions or names that annotated genes. This behavior can be changed using the flag, `--expect-functions`, so that the program will throw an error when any of the selected accessions or names are absent.
 
 #### BRITE hierarchies
 
