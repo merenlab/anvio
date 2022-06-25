@@ -43,6 +43,7 @@ def main(args):
     prefix = A('prefix')
     report_file_path = A('report_file')
     call_MAGs = A('call_MAGs')
+    exclude_bins = A('exclude_bins')
     min_completion_for_MAG = A('min_completion_for_MAG')
     max_redundancy_for_MAG = A('max_redundancy_for_MAG')
     size_for_MAG = A('size_for_MAG')
@@ -70,8 +71,18 @@ def main(args):
 
     filesnpaths.is_output_file_writable(report_file_path)
 
+    if exclude_bins and not call_MAGs:
+        raise ConfigError("You can use the flag `--exclude-bins` only if you are also calling MAGs "
+                          "(`--call-MAGs`). If this is not clear to you why it is the case, please "
+                          "take a look at the help menu (and hope for the best).")
+
     if min_completion_for_MAG < 0:
         raise ConfigError("Minimum completion value can't be negative because that's not how math works.")
+
+    if min_completion_for_MAG > 100:
+        raise ConfigError("A minimum completion score for a MAG that is over 100%? Anvi'o is impressed with "
+                          "your expectations from your MAGs, but it cannot accept anything above 100% for "
+                          "minimum completion :(")
 
     if max_redundancy_for_MAG < 0:
         raise ConfigError("You must choose a maximum redundancy value that is at least 0.")
@@ -165,9 +176,11 @@ def main(args):
                 bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
         else:
             bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
+
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
-    progress.end()
+
+    progress.update('Finalizing the report...')
 
     new_collection_dict = {}
     new_bins_info_dict = {}
@@ -175,7 +188,13 @@ def main(args):
     counter = 0
     report = open(report_file_path, 'w')
     report.write('old_bin_name\tnew_bin_name\tcompletion\tredundancy\tsize_in_Mbp\n')
-    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in MAGs_sorted_by_completion + bins_sorted_by_completion:
+
+    if exclude_bins:
+        list_of_bins_in_the_workings = MAGs_sorted_by_completion
+    else:
+        list_of_bins_in_the_workings = MAGs_sorted_by_completion + bins_sorted_by_completion
+
+    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in list_of_bins_in_the_workings:
         counter += 1
         new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
@@ -186,7 +205,32 @@ def main(args):
         report.write('%s\t%s\t%.2f\t%.2f\t%.2f\n' % (bin_name, new_bin_name, completion, redundancy, size_in_Mbp))
 
     report.close()
-    run.info('Report', '%s' % (report_file_path))
+
+    progress.end()
+
+    if call_MAGs and exclude_bins:
+        if len(bins_sorted_by_completion) == 0:
+            run.warning(f"You have used the flag `--exclude-bins`, so anvi'o was determined to not include "
+                        f"any of the bins in your previous collection '{collection_name_to_read}' that did "
+                        f"not match to your criteria to call MAGs in your new collection. Although everyting "
+                        f"in your original collection ended up being called a MAG, so everything ended up "
+                        f"being reported anyway.", header="EXCLUDE BINS FLAG WARNING", lc="yellow")
+        elif len(bins_sorted_by_completion) == 1:
+            run.warning(f"You have used the flag `--exclude-bins`, and anvi'o found a single bin in your "
+                        f"original collection '{collection_name_to_read}' that did not match your `--call-MAGs` "
+                        f"criteria. So you will not have the bin '{bins_sorted_by_completion[0][0]}' in your "
+                        f"new collection.", header="EXCLUDE BINS FLAG WARNING", lc="yellow")
+        else:
+            bins_no_longer_with_us = ', '.join([f"'{e[0]}'" for e in bins_sorted_by_completion])
+            run.warning(f"You have used the flag `--exclude-bins` to exclude bins that were not up to your "
+                        f".. standards. As a result, anvi'o excluded {len(bins_sorted_by_completion)} bins "
+                        f"found in your original collection '{collection_name_to_read}', and they will not "
+                        f"appear in your new collection '{collection_name_to_write}'. Here is a list of their "
+                        f"names, just so you take a moment to reflect on their journey which has come to an end "
+                        f"in this this project (hunger games styla): {bins_no_longer_with_us}.",
+                        header="EXCLUDE BINS FLAG WARNING", lc="yellow")
+
+    run.info('Report file', '%s' % (report_file_path))
 
     if dry_run:
         run.warning('This was a dry run. So nothing is updated in the profile database, but now there is '
@@ -196,11 +240,12 @@ def main(args):
 
         return
 
-    collections_table = TablesForCollections(profile_db_path)
+    collections_table = TablesForCollections(profile_db_path, run=terminal.Run(verbose=False))
     collections_table.append(collection_name_to_write, new_collection_dict, new_bins_info_dict)
 
-    run.info('Rename', 'All %d bins in the collection "%s" is renamed, and stored under the collection\
-                        name "%s".' % (counter, collection_name_to_read, collection_name_to_write))
+    run.info_single(f"All {counter} bins in the collection '{collection_name_to_read}' is renamed, and "
+                    f"stored under the collection name '{collection_name_to_write}'.", nl_before=1,
+                    nl_after=1, mc="green")
 
 
 if __name__ == '__main__':
@@ -209,51 +254,55 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "Standard stuff")
-    groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")
-    groupC = parser.add_argument_group('MAG OPTIONS', "If you want to call some bins 'MAGs' because you are so cool")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
-    groupA.add_argument('--collection-to-read', default = None,
-                  help = "Collection name to read from. Anvi'o will not overwrite an existing collection, instead,\
-                          it will create a copy of your collection with new bin names.")
-    groupA.add_argument('--collection-to-write', default = None,
-                  help = "The new collection name. Give it a nice, fancy name.")
+    groupA.add_argument('--collection-to-read', default = None, help = "Collection name to read from. "
+                            "Anvi'o will not overwrite an existing collection, instead, it will create "
+                            "a copy of your collection with new bin names.")
+    groupA.add_argument('--collection-to-write', default = None, help = "The new collection name. Give "
+                            "it a nice, fancy name.")
 
-    groupB.add_argument('--prefix', default = None,
-                  help = "Prefix for the bin names. Must be a single word, composed\
-                          of digits and numbers. The use of the underscore character is OK,\
-                          but that's about it (fine, the use of the dash character is OK, too\
-                          but no more!). If the prefix is 'PREFIX', each bin will be renamed\
-                          as 'PREFIX_XXX_00001, PREFIX_XXX_00002', and so on, in the order of\
-                          percent completion minus percent redundancy (what we call, 'substantive\
-                          completion'). The 'XXX' part will either be 'Bin', or 'MAG depending on\
-                          other parameters you use. Keep reading.")
-    groupB.add_argument('--report-file', metavar = 'REPORT_FILE_PATH', default = None, \
-                        help = "This file will report each name change event, so you can trace back\
-                                the original names of renamed bins later.")
+    groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")
+    groupB.add_argument('--prefix', default = None, help = "Prefix for the bin names. Must be a "
+                            "single word, composed of digits and numbers. The use of the underscore "
+                            "character is OK, but that's about it (fine, the use of the dash character "
+                            "is OK, too but no more!). If the prefix is 'PREFIX', each bin will be "
+                            "renamed as 'PREFIX_XXX_00001, PREFIX_XXX_00002', and so on, in the order "
+                            "of percent completion minus percent redundancy (what we call, 'substantive "
+                            "completion'). The 'XXX' part will either be 'Bin', or 'MAG depending on "
+                            "other parameters you use. Keep reading.")
+    groupB.add_argument('--report-file', metavar = 'REPORT_FILE_PATH', default = None, help = "This file "
+                            "will report each name change event, so you can trace back the original names "
+                            "of renamed bins later.")
     groupB.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
-    groupB.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run', {'help': 'When used does NOT update the\
-                                profile database, just creates the report file so you can view how things\
-                                will be renamed.'}))
+    groupB.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run', {'help': "When used does NOT update the "
+                            "profile database, just creates the report file so you can view how things "
+                            "will be renamed."}))
 
-    groupC.add_argument('--call-MAGs', default=False, action="store_true", \
-                        help = "This program by default rename your bins as 'PREFIX_Bin_00001', 'PREFIX_Bin_00002'\
-                                and so on. If you use this flag, it will name the ones that meet the criteria\
-                                described by MAG-related flags as 'PREFIX_MAG_00001', 'PREFIX_MAG_00002', and\
-                                so on. The ones that do not get to be named as MAGs will remain as bins.")
-    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, \
-                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their completion estimate is\
-                              above this (the default is %(default)d), and the redundancy estimate is\
-                              less than --max-redundancy-for-MAG.")
-    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, \
-                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate is\
-                              below this (the default is %(default)d) and the completion estimate is above\
-                              --min-completion-for-MAG.")
-    groupC.add_argument('--size-for-MAG', default=0.0, type=float, metavar='MEGABASEPAIRS',\
-                        help="If --call-MAGs flag is used, call any bin a 'MAG' if their redundancy estimate\
-                              is less than --max-redundancy-for-MAG, AND THEIR SIZE IS LARGER THAN THIS VALUE\
-                              REGARDLESS OF THE COMPLETION ESTIMATE. The default behavior is to not care about\
-                              this at all.")
+    groupC = parser.add_argument_group('MAG OPTIONS', "If you want to call some bins 'MAGs' because you are so cool")
+    groupC.add_argument('--call-MAGs', default=False, action="store_true", help = "This program by default "
+                            "rename your bins as 'PREFIX_Bin_00001', 'PREFIX_Bin_00002' and so on. If you "
+                            "use this flag, it will name the ones that meet the criteria described by "
+                            "MAG-related flags as 'PREFIX_MAG_00001', 'PREFIX_MAG_00002', and so on. The "
+                            "ones that do not get to be named as MAGs will remain as bins.")
+    groupC.add_argument('--min-completion-for-MAG', default=70, type=float, help="If --call-MAGs flag is "
+                            "used, call any bin a 'MAG' if their completion estimate is above this (the "
+                            "default is %(default)d), and the redundancy estimate is less than "
+                            "--max-redundancy-for-MAG.")
+    groupC.add_argument('--max-redundancy-for-MAG', default=10, type=float, help="If --call-MAGs flag is "
+                            "used, call any bin a 'MAG' if their redundancy estimate is below this (the "
+                            "default is %(default)d) and the completion estimate is above --min-completion-for-MAG.")
+    groupC.add_argument('--size-for-MAG', default=0.0, type=float, metavar='MEGABASEPAIRS', help="If --call-MAGs "
+                            "flag is used, call any bin a 'MAG' if their redundancy estimate is less than "
+                            "--max-redundancy-for-MAG, AND THEIR SIZE IS LARGER THAN THIS VALUE REGARDLESS OF THE "
+                            "COMPLETION ESTIMATE. The default behavior is to not care about this at all.")
+    groupC.add_argument('--exclude-bins', default=False, action="store_true", help="Exclude bins that don't match "
+                            "any of your criteria to call MAGs. By default, your new collection will include "
+                            "every single item in your original collection. But if you are calling MAGs with "
+                            "the `--call-MAGs` flag AND would like to keep only those that are determined to "
+                            "be a MAG, you can use this flag and all the 'bins' would then be excluded from "
+                            "your new collection, leaving you with only the 'good' stuff.")
+
     args = parser.get_args(parser)
 
     try:

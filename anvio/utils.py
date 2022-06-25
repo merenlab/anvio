@@ -1823,7 +1823,7 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
             CURRENT += 1
         else:
             stretches_to_merge.append(stretches[CURRENT:NEXT])
-            CURRENT = NEXT + 1
+            CURRENT = NEXT
 
     # here the array `stretches_to_merge` contains all the lists of
     # stretches that need to be merged.
