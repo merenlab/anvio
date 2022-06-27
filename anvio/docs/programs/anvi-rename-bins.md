@@ -2,7 +2,7 @@ This program **creates a new %(collection)s from the %(bin)ss in another collect
 
 ### Renaming all bins in a collection
 
-Let's say you have a %(collection)s called `MY_COLLECTION`, which has four bins that are named poorly (which can happen due to decisions made by automatic binning tools, or after a few steps of manual refinement): `Bin_1_2_1`, `Bin_2`, `Bin_3_1_1`, and `Bin_4`. In an instance like this, running the program %(anvi-rename-bins)s the following way will standardize these bin names with a prefix specific to your project: 
+Let's say you have a %(collection)s called `MY_COLLECTION`, which has four bins that are named poorly (which can happen due to decisions made by automatic binning tools, or after a few steps of manual refinement): `Bin_1_2_1`, `Bin_2`, `Bin_3_1_1`, and `Bin_4`. In an instance like this, running the program %(anvi-rename-bins)s the following way will standardize these bin names with a prefix specific to your project:
 
 {{ codestart }}
 anvi-rename-bins -c %(contigs-db)s \
@@ -36,7 +36,7 @@ Now, the %(collection)s `SURFACE_OCEAN_MAGS` will include  `SURFACE_OCEAN_MAG_00
 
 In addition to minimum completion estimate, you can also adjust the maximum redundancy value, minimum size to call MAGs. Please see the help menu for all parameters and their descriptions. 
 
-### Exclude bins that are not MAGs 
+### Exclude bins that are not MAGs
 
 When you use the flag `--call-MAGs`, anvi'o identifies those bins that could be considered 'MAGs' based on your specific criteria. But regardles of whether an original bin remains a bin, or tagged as a MAG, everything in your original collection will end up in your new collection. The flag `--exclude-bins` enable you to filter out those that end up not being tagged as MAGs:
 
@@ -55,3 +55,17 @@ anvi-rename-bins -c %(contigs-db)s \
 With the addition of the flag `--exclude-bins` to the same command, the %(collection)s `SURFACE_OCEAN_MAGS` will no longer include %(bin)ss `SURFACE_OCEAN_Bin_00003` and `SURFACE_OCEAN_Bin_00004`.
 
 See also the program %(anvi-delete-collection)s.
+
+### The report file
+
+Following is an example reporting output file anvi'o will generate at the file path declared with the parameter `--report-file`:
+
+|**old_bin_name**|**new_bin_name**|**SCG_domain**|**completion**|**redundancy**|**size_in_Mbp**|
+|:--|:--|:--|:--|:--|:--|
+|Bin_2|p800_MAG_00001|eukarya|61.45|7.23|26.924911|
+|Bin_1|p800_MAG_00002|bacteria|98.59|8.45|1.612349|
+|Bin_3|p800_Bin_00003|blank|0.00|0.00|0.103694|
+|Bin_5|p800_Bin_00004|blank|0.00|0.00|0.128382|
+|Bin_4|p800_Bin_00005|bacteria|1.41|0.00|0.378418|
+
+The column `SCG_domain` will explain which collection of single-copy core genes were used to generate these completion/redundancy estimates. The absence of any domain prediction for any given bin will be marked with the keyrowd `blank`.
