@@ -175,15 +175,15 @@ def main(args):
         if call_MAGs:
             if p_redundancy < max_redundancy_for_MAG:
                 if p_completion >= min_completion_for_MAG:
-                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                    MAGs_sorted_by_completion.append((bin_name, domain, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
                 elif size_for_MAG and size_in_Mbp >= size_for_MAG:
-                    MAGs_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
+                    MAGs_sorted_by_completion.append((bin_name, domain, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'MAG'),)
                 else:
-                    bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
+                    bins_sorted_by_completion.append((bin_name, domain, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
             else:
-                bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
+                bins_sorted_by_completion.append((bin_name, domain, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
         else:
-            bins_sorted_by_completion.append((bin_name, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
+            bins_sorted_by_completion.append((bin_name, domain, substantive_completion, p_completion, p_redundancy, size_in_Mbp, 'Bin'),)
 
     MAGs_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
     bins_sorted_by_completion.sort(key=operator.itemgetter(1), reverse=True)
@@ -195,22 +195,22 @@ def main(args):
 
     counter = 0
     report = open(report_file_path, 'w')
-    report.write('old_bin_name\tnew_bin_name\tcompletion\tredundancy\tsize_in_Mbp\n')
+    report.write('old_bin_name\tnew_bin_name\tSCG_domain\tcompletion\tredundancy\tsize_in_Mbp\n')
 
     if exclude_bins:
         list_of_bins_in_the_workings = MAGs_sorted_by_completion
     else:
         list_of_bins_in_the_workings = MAGs_sorted_by_completion + bins_sorted_by_completion
 
-    for bin_name, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in list_of_bins_in_the_workings:
+    for bin_name, domain, substantive_completion, completion, redundancy, size_in_Mbp, bin_type in list_of_bins_in_the_workings:
         counter += 1
-        new_bin_name = '%s_%s_%05d' % (prefix, bin_type, counter)
+        new_bin_name = f"{prefix}_{bin_type}_{counter:05}"
         new_collection_dict[new_bin_name] = copy.deepcopy(collection_dict[bin_name])
 
         if bin_name in bins_info_dict:
             new_bins_info_dict[new_bin_name] = copy.deepcopy(bins_info_dict[bin_name])
 
-        report.write('%s\t%s\t%.2f\t%.2f\t%.2f\n' % (bin_name, new_bin_name, completion, redundancy, size_in_Mbp))
+        report.write(f"{bin_name}\t{new_bin_name}\t{domain}\t{completion:.2f}\t{redundancy:.2f}\t{size_in_Mbp}\n")
 
     report.close()
 
