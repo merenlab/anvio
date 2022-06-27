@@ -152,14 +152,22 @@ def main(args):
         progress.update('%d in %d' % (counter, total_num_bins))
         p_completion, p_redundancy, domain, domain_probabilities, info_text, d = completeness.get_info_for_splits(set(collection_dict[bin_name]))
 
-        l = []
-        for domain in d:
-            for scg_collection_name in d[domain]:
-                l.append((d[domain][scg_collection_name]['percent_completion'], domain, scg_collection_name),)
-        _, domain, scg_collection_name = sorted(l, reverse=True)[0]
+        if domain == 'blank':
+            # if the domain is 'blank', it most likely means that our random forest classifier
+            # was not certain about the domain because the genome bin wish highly incomplete
+            # for a reliable prediction. in that case we will use the most reasonable C/R
+            # estimate based on the highest C and set the domain to that for reporting.
+            l = []
+            for domain in d:
+                for scg_collection_name in d[domain]:
+                    l.append((d[domain][scg_collection_name]['percent_completion'], domain, scg_collection_name),)
+            _, domain, scg_collection_name = sorted(l, reverse=True)[0]
 
-        p_completion = d[domain][scg_collection_name]['percent_completion']
-        p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
+            if d[domain][scg_collection_name]['percent_completion'] > 0.0:
+                p_completion = d[domain][scg_collection_name]['percent_completion']
+                p_redundancy = d[domain][scg_collection_name]['percent_redundancy']
+            else:
+                domain = 'blank'
 
         size_in_Mbp = sum([contigs_db.splits_basic_info[split_name]['length'] for split_name in set(collection_dict[bin_name])]) / 1000000.0
         substantive_completion = p_completion - p_redundancy
