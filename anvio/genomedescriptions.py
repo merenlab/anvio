@@ -1444,6 +1444,11 @@ class AggregateFunctions:
                               "is associated with all groups you have defined. There is nothing much anvi'o can work with "
                               "here. If you think this is a mistake, please let us know.")
 
+        if len(d) < 2:
+            raise ConfigError("Oh, dear. It seems only one function is differentially present across the genome "
+                              "groups you have defined. There is nothing much anvi'o can work with "
+                              "here. If you think this is a mistake, please let us know.")
+
         static_column_names = ['key', 'function', 'accession', 'associated_groups']
         dynamic_column_names = []
         [dynamic_column_names.extend([f'p_{g}', f'N_{g}']) for g in group_names]
