@@ -3355,12 +3355,14 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
         comp = comparison_array[i] # The codon to be compared against
         num_nonsyn, num_syn = 0, 0
 
-        if comp < 0:
-            # No sense talking about synonymity relative to a stop codon or codon containing N
-            num_nonsyns.append(np.nan)
-            num_syns.append(np.nan)
+        cov = coverage[i]
+
+        if cov <= 0 or comp < 0:
+            # No sense talking about synonymity relative to a stop codon or codon containing N,
+            # or deal with positions with no sensible coverage
+            num_nonsyns.append(0)
+            num_syns.append(0)
         else:
-            cov = coverage[i]
 
             for codon in codon_nums:
                 if codon == comp:
@@ -3368,7 +3370,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
                     # differ from the reference codon
                     continue
 
-                contribution = counts_array[i, codon]/cov
+                contribution = counts_array[i, codon] / cov
 
                 if is_synonymous[comp, codon]:
                     num_syn += contribution
