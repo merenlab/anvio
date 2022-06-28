@@ -1408,6 +1408,10 @@ class AggregateFunctions:
         group_counts = dict([(g, len(self.layer_groups[g])) for g in group_names])
 
         d = {}
+        num_skipped = 0 # keep track of how many functions we skip reporting on
+
+        key_hash_represents = "accession" if self.aggregate_based_on_accession else "function"
+        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s found across {len(group_names)} groups", len(self.functions_across_groups_presence_absence.keys()))
 
         for key_hash in self.functions_across_groups_presence_absence:
             # learn which groups are associated with this function
@@ -1415,6 +1419,7 @@ class AggregateFunctions:
 
             # if the function is associated with all groups, simply skip that entry
             if len(associated_groups) == num_groups:
+                num_skipped += 1
                 continue
 
             function = self.hash_to_function_dict[key_hash][self.function_annotation_source]
@@ -1430,6 +1435,9 @@ class AggregateFunctions:
                     d[key_hash][f"p_{group_name}"] = self.functions_across_groups_presence_absence[key_hash][group_name] / group_counts[group_name]
                 else:
                     d[key_hash][f"p_{group_name}"] = 0
+
+        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s associated with all groups and SKIPPED", num_skipped)
+        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s in final occurrence table", len(d))
 
         if not len(d):
             raise ConfigError("Something weird is happening here :( It seems every single function across your genomes "
