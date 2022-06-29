@@ -1195,7 +1195,11 @@ class LocusSplitter:
                                   skip_hierarchical_clustering=False,
                                   output_dir=profile_output_dir,
                                   sample_name=os.path.basename(output_path_prefix))
-        profiler.BAMProfiler(args, r=self.run_object)._run()
+        profiler.BAMProfiler(args, r=terminal.Run(verbose=False), p=self.progress)._run()
+
+        # while we are at it, let's add a default collection to the resulting blank profile
+        TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=terminal.Run(verbose=False), progress=self.progress).add_default_collection_to_db(contigs_db_path=locus_output_db_path)
+ 
 
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the
