@@ -1149,7 +1149,6 @@ class LocusSplitter:
         # business sorted.
         profile_output_dir = output_path_prefix + '-PROFILE'
         filesnpaths.check_output_directory(profile_output_dir)
-        filesnpaths.gen_output_directory(profile_output_dir)
 
         # sort out the contigs database output path
         filesnpaths.is_output_file_writable(locus_output_db_path, ok_if_exists=False)
