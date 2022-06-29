@@ -5,12 +5,8 @@
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.terminal as terminal
 
 from anvio.argparse import ArgumentParser
-from anvio.tables import splits_info_table_name
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
 
@@ -25,10 +21,6 @@ __provides__ = ["collection", "bin"]
 __requires__ = ["pan-db", "profile-db", "contigs-db"]
 __description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with "
                    "a bin named 'EVERYTHING' that describes all items available in the profile database")
-
-pp = terminal.pretty_print
-run = terminal.Run()
-progress = terminal.Progress()
 
 
 if __name__ == '__main__':
