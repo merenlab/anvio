@@ -451,6 +451,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
+        if self.blank:
+            # if we are about to generate a blank profile, there is no
+            # SNV profiling
+            self.skip_SNV_profiling = True
+
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
             self.skip_INDEL_profiling = True
