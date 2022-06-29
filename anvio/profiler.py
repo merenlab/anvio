@@ -385,17 +385,27 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
+        # store our run object. 'why?', you may ask. well, keep reading.
+        my_run = self.run
+
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
-        # the line below is kind of out of place, but it is necessary. here is why: we don't want to
-        # see any run messages from ContigsSuper in profiler output. But when we pass a `run=null_run`
-        # to the the class, due to inheritance, it also modifies our own `self.run` with the null one
-        # so here we basically re-engage our `self.run` (funny detail, no one cares, but I do because
-        # I have no friends):
-        self.run = terminal.Run(width=50)
+        # restore our run object. OK. take deep breath. because you are a good programmer, you have
+        # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
+        # of place. that voice is right, but the voice doesn't know the struggles of poor souls that
+        # had to resort to a solution like this. You see, we don't want to see any run messages from
+        # ContigsSuper in profiler output. But when we pass a `run=null_run` to the the class, due to
+        # inheritance, it also modifies our own `self.run` with the null one, making the profilesuper
+        # go all quiet. so here we basically need to re-engage our `self.run`. But then if the user
+        # actually ASKED for ProfileSuper to be quiet, then we can't simply just inherit another Run
+        # object and move on with our lives in a single line right here. We in fact need to store our
+        # previous run object and then re-engage that one instead of a brand new one. There you have
+        # it (yes. funny detail, no one cares, but I do because I have no friends -- IF YOU ARE
+        # READING THESE LINES YOU ARE AUTOMATICALLY MY FRIEND, so SORRY):
+        self.run = my_run
 
         self.bam = None
         self.contigs = []
