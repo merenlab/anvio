@@ -2008,8 +2008,15 @@ class VariabilitySuper(VariabilityFilter, object):
                                            column_names = gene_coverage_columns,
                                            func_args = (gene_cov_dict,))
 
-        # this guy piggybacks in this method
-        self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        # this guy piggybacks in this method. the following like ensures that if there are genes
+        # with 0 coverage, the code doesn't explode with a ZeroDivisionError, and instead, puts
+        # a 0 for the mean_normalized_coverage column for that gene. this is what we were doing
+        # here at some point:
+        #
+        #     >>> self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        #
+        # which killed anvi'o: before: https://github.com/merenlab/anvio/issues/1948.
+        self.data['mean_normalized_coverage'] = self.data['coverage'].divide(self.data['gene_coverage']).replace(np.inf, 0)
         self.data.loc[self.data['gene_coverage'] == -1, 'mean_normalized_coverage'] = -1
 
         self.progress.end()
