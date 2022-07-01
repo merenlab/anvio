@@ -378,8 +378,17 @@ function showDeepDiveToolTip(event){
   <button type="button" id="gene-blastn-at-refseq-button" class="btn btn-default btn-sm">blastn @ refseq_genomic</button>
   <button type="button" id="gene-blastx-at-nr-button"class="btn btn-default btn-sm" >blastx @ nr</button>
   <button type="button" id="gene-blastx-at-refseq-button" class="btn btn-default btn-sm">blastx @ refseq_genomic</button>
-
   <br>
+
+  <h2>Visible Geen Range</h2>
+  <label for='hide-range-low'>Downstream Visible Gene Range</label>
+  <input type='number' id='hide-range-low'  min='1' />
+  <label for='hide-range-high'>Upstream Visible Gene Range</label>
+  <input type='number' id='hide-range-high' min='1'/>
+  <br>
+  <button id='gene-visibility-range-set' class="btn btn-default btn-sm" >Set Visible Range</button>
+  <br>
+
   <h2>color</h2>
   <div id="picker_tooltip" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
   <p>set gene arrow color</p>
@@ -415,6 +424,10 @@ function showDeepDiveToolTip(event){
 
   $('#metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
+  })
+
+  $('#gene-visibility-range-set').click(function(){
+    setGeneVisibilityRange(event.target.geneID, event.target.genomeID)
   })
 
   $('#gene-dna-sequence-button').on('click', function(){
@@ -1202,4 +1215,30 @@ function buildGeneLabelsSelect(){
   // while we're here, we add 'metadata' to the function_search_category dropdown select
   // TODO refactor naming convention to sequence_search_category, bc we're not just querying functions!
   $('#function_search_category').append(new Option('metadata', 'metadata'))
+}
+
+function setGeneVisibilityRange(targetGene, targetGenome){
+  let genomeOfInterest = settings['genomeData']['genomes'].filter(genome => genome[0] == targetGenome)
+  let maxGeneID = Object.keys(genomeOfInterest[0][1]['genes']['dna']).length
+  settings['display']['hidden'][targetGenome] = {}
+  let startingPoint = parseInt(targetGene)
+  let lowRangeStart = startingPoint - parseInt($('#hide-range-low').val())
+  let highRangeStart = startingPoint + parseInt($('#hide-range-high').val())
+
+  lowRangeStart < 0 ? lowRangeStart = 0 : null
+  highRangeStart > parseInt(maxGeneID) ? highRangeStart = maxGeneID : null
+
+  for(let i = lowRangeStart; i >= 0; i--){
+    settings['display']['hidden'][targetGenome][i] = true
+  }
+  for(let i = highRangeStart; i <= parseInt(maxGeneID); i++){
+    settings['display']['hidden'][targetGenome][i] = true
+  }
+  $('#deepdive-modal-body').modal('toggle');
+  drawer.draw()
+}
+
+function showAllHiddenGenes(){
+  settings['display']['hidden'] = {}
+  drawer.draw()
 }

@@ -120,6 +120,7 @@ function loadAdditionalDataLayers(){
       settings['additional-data-layers']['layers'].push('ruler') // add ruler by default
       settings['group-layer-order'] = ['Genome', 'Ruler']
       settings['display'] = {}
+      settings['display']['hidden'] = {}
       settings['display']['colors'] = {}
       settings['display']['colors']['genes'] = {}
       settings['display']['layers'] = {}
