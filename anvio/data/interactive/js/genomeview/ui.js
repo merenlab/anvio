@@ -382,9 +382,9 @@ function showDeepDiveToolTip(event){
 
   <h2>Visible Geen Range</h2>
   <label for='hide-range-low'>Downstream Visible Gene Range</label>
-  <input type='number' id='hide-range-low'  min='1' />
+  <input type='number' id='hide-range-low'  min='1' step='1'/>
   <label for='hide-range-high'>Upstream Visible Gene Range</label>
-  <input type='number' id='hide-range-high' min='1'/>
+  <input type='number' id='hide-range-high' min='1' step='1'/>
   <br>
   <button id='gene-visibility-range-set' class="btn btn-default btn-sm" >Set Visible Range</button>
   <br>
