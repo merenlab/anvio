@@ -500,7 +500,7 @@ class VariabilitySuper(VariabilityFilter, object):
         np.seterr(invalid='ignore')
         self.args = args
 
-        if args.engine not in variability_engines:
+        if self.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
