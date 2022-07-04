@@ -1973,11 +1973,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if not self.compute_gene_coverage_stats:
             return
 
-        # Initialize the profile super FIXME This bastard spits out
-        #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
-        #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
-        # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
-        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
+        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path), r=terminal.Run(verbose=False), p=self.progress)
 
         self.progress.new('Computing gene coverage stats')
         self.progress.update('... {consider --skip-gene-coverage-stats if taking too long}')
