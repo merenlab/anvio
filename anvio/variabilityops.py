@@ -2928,7 +2928,7 @@ class VariabilityNetwork:
         null = lambda x: x
         self.input_file_path = A('input_file', null)
         self.samples_information_path = A('samples_information', null)
-        self.max_num_unique_positions = A('max_num_unique_positions', int)
+        self.max_num_unique_positions = A('max_num_unique_positions', int) or 0
         self.output_file_path = A('output_file', null)
 
         filesnpaths.is_output_file_writable(self.output_file_path)
