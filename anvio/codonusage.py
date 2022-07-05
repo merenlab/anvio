@@ -34,12 +34,14 @@ run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(verbose=False)
 
+pp = terminal.pretty_print
+
 translation_table = constants.AA_to_codons
-nonstop_translation_table = {aa: co for aa, co in constants.AA_to_codons.items() if aa != 'STP'}
+nonstop_translation_table = {aa: co for aa, co in translation_table.items() if aa != 'STP'}
 decoding_table = constants.codon_to_AA
 
 # CAI is the Codon Adaptation Index of Sharp and Li (1987).
-# Delta is the likelihood ratio of Ran and Higgs (2012).
+# Delta is from Ran and Higgs (2012, Eq. 6).
 cub_metrics = ['cai', 'delta']
 # The following CUB metrics rely upon comparison to a set of reference genes.
 reference_dependent_cub_metrics = ['cai', 'delta']
@@ -49,8 +51,8 @@ reference_dependent_cub_metrics = ['cai', 'delta']
 ignored_decodings_in_cub = ['Met', 'Trp', 'STP']
 ignored_codons_in_cub = [None]
 for decoding in ignored_decodings_in_cub:
-    ignored_codons_in_cub += constants.AA_to_codons[decoding]
-synonymous_codon_dict = {aa: co for aa, co in constants.AA_to_codons.items()
+    ignored_codons_in_cub += translation_table[decoding]
+synonymous_codon_dict = {aa: co for aa, co in translation_table.items()
                          if aa not in ignored_decodings_in_cub}
 
 
@@ -190,8 +192,8 @@ class SingleGenomeCodonUsage(object):
 
         if skipped_noncoding_gene_caller_ids:
             self.run.warning(
-                f"{len(skipped_noncoding_gene_caller_ids)} of {len(self.gene_caller_ids)} genes "
-                "were non-coding and not added to the codon frequency table.")
+                f"{pp(len(skipped_noncoding_gene_caller_ids))} of {pp(len(self.gene_caller_ids))} "
+                "genes were non-coding and not added to the codon frequency table.")
 
 
     def get_frequencies(self,
@@ -222,8 +224,8 @@ class SingleGenomeCodonUsage(object):
         ----------
         from_function_sources : bool, str, or iterable of str, optional
             Select genes with functional annotations. With this argument, the first four columns of
-            the returned table contain, respectively, gene caller IDs, function annotation sources,
-            function accessions, and function names. There is a row for each gene/function
+            the returned table contain, respectively, function annotation sources, function
+            accessions, function names, and gene caller IDs. There is a row for each gene/function
             combination in the table, and each row for the same gene contains the same frequency
             values. When this argument is True, use all available functional annotation sources in
             the SingleGenomeCodonUsage object. When this argument is a string, select the source
@@ -232,7 +234,7 @@ class SingleGenomeCodonUsage(object):
             'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
             `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
             hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
-            general 'Ribosome' would each have rows in the output table.
+            general 'Ribosome' would each have rows in the output table. By default None.
         return_functions : bool, optional
             If True (default False), output frequency tables contain function rather than gene
             results in each row. Returning per-gene results when also considering functions by using
@@ -241,16 +243,17 @@ class SingleGenomeCodonUsage(object):
             If True (default False), output frequency table columns are decoded amino acids (plus
             STP) rather than codons. Synonymous codon frequencies are summed to produce the amino
             acid frequencies.
-        gene_caller_ids : None, optional
+        gene_caller_ids : iterable, optional
             Genes with the given IDs are selected for analysis. This parameter can be used alongside
             `function_accessions` and `function_names`. By default None.
-        function_accessions : None, optional
+        function_accessions : dict, optional
             Genes annotated with the given function accessions are selected for analysis. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
             'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
-            parameter can be used alongside `gene_caller_ids` and `function_names`. Note that
-            'KEGG_BRITE' does not have function accessions. By default None.
-        function_names : None, optional
+            parameter can be used alongside `gene_caller_ids` and `function_names`.  Note that
+            'KEGG_BRITE' does not use individual function accessions but overarching hierarchy
+            accessions that include multiple functions. By default None.
+        function_names : dict, optional
             Genes annotated with the given function names are selected for analysis. The argument
             must be a dict keyed by function annotation source (e.g., 'KOfam', 'COG20_FUNCTION',
             'Pfam') and with values being lists of function names. Unlike `function_accessions`,
@@ -258,8 +261,8 @@ class SingleGenomeCodonUsage(object):
             level of the hierarchy, such as ['Ribosome>>>Ribosomal proteins', 'Transcription
             machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. This parameter can be
             used alongside `gene_caller_ids` and `function_accessions`. By default None.
-        expect_functions : False, optional
-            If True (default False), an error will be raised if any `function_accessions` or
+        expect_functions : bool, optional
+            If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
         relative : bool, optional
             If True (default False), return relative rather than absolute codon frequencies.
@@ -463,11 +466,11 @@ class SingleGenomeCodonUsage(object):
                 "would be done.")
 
         if gene_subsetting:
-            self.run.info_single(f"{len(gene_codon_frequency_df)} of {len(self.gene_caller_ids)} "
-                                 "CDS selected from the genome",
+            self.run.info_single(f"{pp(len(gene_codon_frequency_df))} of "
+                                 f"{pp(len(self.gene_caller_ids))} CDS selected from the genome",
                                  nl_after=1)
         else:
-            self.run.info_single(f"{len(gene_codon_frequency_df)} CDS in the genome",
+            self.run.info_single(f"{pp(len(gene_codon_frequency_df))} CDS in the genome",
                                  nl_after=1)
 
         # FILTER GENES/FUNCTIONS AND CODONS USING ADDITIONAL PARAMETERS
@@ -525,13 +528,13 @@ class SingleGenomeCodonUsage(object):
                 min_fraction=min_gene_fraction)
 
         if gene_min_codons:
-            self.run.info_single(f"{len(gene_codon_frequency_df)} CDS remaining after codon count "
-                                 "filters",
+            self.run.info_single(f"{pp(len(gene_codon_frequency_df))} CDS remaining after codon "
+                                 "count filters",
                                  nl_after=1)
 
         if min_amino_acids:
             if gene_min_codons and min_codon_filter != 'remaining':
-                min_gene_length_message = '≥' + str(gene_min_codons) + ' codon'
+                min_gene_length_message = '≥' + pp(str(gene_min_codons)) + ' codon'
             else:
                 min_gene_length_message = ''
             dynamically_dropped_amino_acids = set()
@@ -540,7 +543,7 @@ class SingleGenomeCodonUsage(object):
                     dynamically_dropped_amino_acids.add(amino_acid)
             self.run.warning(
                 "Codons for the following amino acids were dropped as they did not meet the "
-                f"threshold of {min_amino_acids} codons in {min_gene_fraction * 100}% of "
+                f"threshold of {pp(min_amino_acids)} codons in {min_gene_fraction * 100}% of "
                 f"{min_gene_length_message} CDS: {', '.join(dynamically_dropped_amino_acids)}")
 
         # GET OUTPUTS WITH NO CONSIDERATION OF FUNCTIONS
@@ -1135,81 +1138,658 @@ class SingleGenomeCodonUsage(object):
 
         return average_synonymous_codon_rel_frequency_df
 
-        if len(function_sources) == 1:
-            function_codon_frequency_df = method(
-                self.function_codon_frequency_dict[function_sources[0]], **kwargs)
-        else:
-            source_codon_frequency_dfs = []
-            for function_source in function_sources:
-                source_codon_frequency_df = method(
-                    self.function_codon_frequency_dict[function_source], **kwargs)
-                source_codon_frequency_df = source_codon_frequency_df.reset_index()
-                source_codon_frequency_df['source'] = function_source
-                source_codon_frequency_dfs.append(function_codon_frequency_df)
 
-            function_codon_frequency_df = pd.concat(source_codon_frequency_dfs, ignore_index=True)
-            function_codon_frequency_df = function_codon_frequency_df.set_index(
-                ['source', 'accession', 'function'])
-
-        return function_codon_frequency_df
-
-
-    def _get_function_codon_dict(self, method, function_sources, **kwargs):
-        function_codon_frequency_dict = {}
-        for function_source in function_sources:
-            function_codon_frequency_dict[function_source] = method(
-                self.function_codon_frequency_dict[function_source], **kwargs)
-        return function_codon_frequency_dict
-
-
-    def _get_amino_acid_table(self, codon_df):
-        aa_df = pd.DataFrame()
-        for amino_acid, codons in default_translation_table.items():
-            try:
-                aa_df[amino_acid] = codon_df[codons].sum(axis=1)
-            except KeyError:
-                # This occurs when `ignore_stop_codons` was used in generating the codon table.
-                pass
-        return aa_df
-
-
-    def _get_amino_acid_dict(self, codon_dict):
-        aa_dict = {}
-        for function_source, function_codon_df in codon_dict:
-            aa_dict[function_source] = self._get_amino_acid_table(function_codon_df)
-        return aa_dict
-
-
-    def get_relative_codon_frequency_table(self, function_source):
-        pass
-
-
-    def get_relative_codon_frequency_table_normalized_by_amino_acid(self):
-        pass
-
-
-class MultiGenomeCodonUsage(GenomeDescriptions):
-    """This object processes codon usage data for multiple genomes."""
-
-    def __init__(self, args, run=run, progress=progress):
-        """Initialize from internal and/or external genomes, which must contain gene calls.
+    def get_codon_usage_bias(self,
+                             metrics=None,
+                             from_function_sources=None,
+                             gene_caller_ids=None,
+                             function_accessions=None,
+                             function_names=None,
+                             expect_functions=False,
+                             omnibias=False,
+                             reference_gene_caller_ids=None,
+                             reference_function_accessions=None,
+                             reference_function_names=None,
+                             expect_reference_functions=False,
+                             gene_min_codons=0,
+                             function_min_codons=0,
+                             min_codon_filter='both',
+                             drop_amino_acids=['STP'],
+                             min_amino_acids=0,
+                             min_gene_fraction=1,
+                             query_min_analyzed_codons=100,
+                             reference_exclude_amino_acid_count=5,
+                             reference_min_codons=100):
+        """
+        Get codon usage bias (CUB) of genes or functions.
 
         Parameters
         ----------
-        args : _type_
-            _description_
-        run : _type_, optional
-            _description_, by default run
-        progress : _type_, optional
-            _description_, by default progress
+        metrics : {'cai', 'delta'}, optional
+            CUB metric, with valid choices being 'cai' (Codon Adaptation Index of Sharp and Li,
+            1987) and 'delta' (Ran and Higgs, 2012, Eq. 6). The default of None calculates all
+            available CUB metrics. For CUB metrics that require reference genes, the default
+            behavior in the absence of supplied reference genes/functions or omnibias mode is to use
+            the summed composition of ribosomal proteins defined by KEGG KOfams/BRITE.
+        from_function_sources : bool, str, or iterable of str, optional
+            Select genes with functional annotations, using their summed codon frequencies to
+            calculate function CUB values. With this argument, the first three columns of the
+            returned table contain, respectively, function annotation sources, function accessions,
+            and function names. When this argument is True, use all available functional annotation
+            sources in the SingleGenomeCodonUsage object. When this argument is a string, select the
+            source given by the string, e.g., 'KOfam', 'COG20_FUNCTION', 'Pfam'. When this argument
+            is an iterable, select a subset of sources given by its strings, e.g., ['KOfam',
+            'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
+            `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
+            hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
+            general 'Ribosome' would each have rows in the output table. By default None.
+        gene_caller_ids : iterable, optional
+            Genes with the given IDs are selected for calculation of CUB. This parameter can be
+            used alongside `function_accessions` and `function_names`. By default None.
+        function_accessions : dict, optional
+            Genes annotated with the given function accessions are selected for calculation of CUB.
+            The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
+            'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
+            parameter can be used alongside `gene_caller_ids` and `function_names`.  Note that
+            'KEGG_BRITE' does not use individual function accessions but overarching hierarchy
+            accessions that include multiple functions. By default None.
+        function_names : dict, optional
+            Genes annotated with the given function names are selected for calculation of CUB. The
+            argument must be a dict keyed by function annotation source (e.g., 'KOfam',
+            'COG20_FUNCTION', 'Pfam') and with values being lists of function names. Unlike
+            `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
+            (categorizations) given to an arbitrary level of the hierarchy, such as
+            ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
+            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
+            `gene_caller_ids` and `function_accessions`. By default None.
+        expect_functions : bool, optional
+            If True (default False), an error will be raised if any given `function_accessions` or
+            `function_names` are not annotated in the input genome.
+        omnibias : bool, optional
+            If True (default False), use every gene or function as a separate reference rather than
+            defining a set of reference genes or functions. The resulting table of gene x gene (or
+            function x function) CUB values is like a distance matrix of the similarity of gene
+            codon compositions.
+        reference_gene_caller_ids : iterable, optional
+            Genes with the given IDs are selected for the reference set. The parameter can be used
+            alongside `reference_function_accessions` and `reference_function_names`. By default
+            None.
+        reference_function_accessions : dict, optional
+            Genes annotated with the given function accessions are selected for the reference set.
+            The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
+            'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
+            parameter can be used alongside `reference_gene_caller_ids` and `function_names`. Note
+            that 'KEGG_BRITE' does not use individual function accessions but overarching hierarchy
+            accessions that include multiple functions. By default None.
+        reference_function_names : dict, optional
+            Genes annotated with the given function names are selected for the reference set. The
+            argument must be a dict keyed by function annotation source (e.g., 'KOfam',
+            'COG20_FUNCTION', 'Pfam') and with values being lists of function names. Unlike
+            `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
+            (categorizations) given to an arbitrary level of the hierarchy, such as
+            ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
+            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
+            `gene_caller_ids` and `function_accessions`. By default, {'KEGG_BRITE':
+            ['Ribosome>>>Ribosomal proteins']}.
+        expect_reference_functions : bool, optional
+            If True (default False), an error will be raised if any given
+            `reference_function_accessions` or `reference_function_names` are not annotated in the
+            input genome.
 
-        Raises
-        ------
-        ConfigError
-            _description_
-        ConfigError
-            _description_
+        Additional Parameters
+        ---------------------
+        These parameters filter genes and codons in CUB calculations.
+
+        The gene codon frequency table is the input to the CUB calculation. Here is the order of
+        all possible filters for \"queries\":
+        gene codon frequency table ->
+            drop genes on codon length ->
+            drop gene/function pairs on the total length of remaining genes defining the function ->
+            drop codons of defined amino acids ->
+            dynamically drop codons of rarer amino acids ->
+            drop genes on remaining codon frequency ->
+            drop gene/function pairs on the codon sum of remaining genes defining the function ->
+        filtered gene codon frequency table
+
+        There is a filter, `query_min_analyzed_codons`, that excludes queries based on the number of
+        codons participating in CUB analysis.
+
+        There are two filters, 'reference_exclude_amino_acid_count' and 'reference_min_codons', that
+        are applied to the reference gene set.
+
+        gene_min_codons : int, optional
+            Ignore genes with fewer than this number of codons. By default 0.
+        function_min_codons : int, optional
+            Ignore gene/function pairs when the function has fewer than this number of codons. Genes
+            are filtered by codon count before functions, so the total length of remaining genes
+            annotated by the function is considered. By default 0.
+        min_codon_filter : {"length", "remaining", "both"}, optional
+            This argument arises from the ambiguity of filters that remove genes and functions by
+            number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to the
+            filters that drop codons (`--exclude/include-amino-acids` and
+            `--exclude-amino-acid-count/fraction`). Genes (and functions) can be filtered by their
+            full length, e.g., genes shorter than 300 codons are ignored. They can also be
+            filtered by the number of codons remaining after dropping codons. The codon length
+            filter followed by dropping codons can result in genes and functions with fewer codons
+            than the original codon threshold -- thus the option of both 'length' and 'remaining'
+            filters to ensure that total codon frequencies always meet the minimum codon threshold.
+            'both' is needed as an option in addition to 'remaining' so dynamic codon filtering by
+            `--exclude-amino-acid-count/fraction` operates on genes that passed the first length
+            filter.
+        drop_amino_acids : iterable, optional
+            Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala). By
+            default, the value, ['STP'], excludes stop codons from CUB calculations.
+        min_amino_acids : int, optional
+            Use this argument together with `min_gene_fraction`. Remove codons for amino acids (and
+            STP) that are less numerous than `min_amino_acids` in a `min_gene_fraction` of genes.
+            For example, say `min_amino_acids` is 5 and `min_gene_fraction` is 0.9. If there are
+            fewer than 5 codons for an amino acid/STP in ≥90% of genes, then the amino acid's codons
+            are removed. By default 0.
+        min_gene_fraction : float, optional
+            Use this argument together with `min_amino_acids`. This argument defines the fraction of
+            genes in which a decoded amino acid must be found at the threshold frequency of
+            `min_amino_acids` for the amino acid's codons to be removed. By default 1.
+        query_min_analyzed_codons : int, optional
+            Only allow CUB to calculated for a query if has at least this number of synonymous
+            codons that will be analyzed. For reference-dependent CUB metrics, analyzed codons are
+            those with reference compositions. By default 100.
+        reference_exclude_amino_acid_count : int, optional
+            Exclude codons for amino acids with fewer than this many codons in the set of reference
+            genes. This does not apply in `omnibias` mode. By default 5.
+        reference_min_codons : int, optional
+            Only allow CUB to be calculated using a reference if it has at least this number of
+            codons. This filter applies after excluding codons for individual amino acids using
+            `reference_exclude_amino_acid_count`. By default 100.
+
+        Returns
+        -------
+        dict of pandas.core.frame.DataFrame objects
+            Each dict key is the name of a CUB metric (from `metrics`), and each value is a
+            corresponding table of CUB data.
         """
+        metrics = self._establish_cub_metrics(metrics)
+        reference_metrics = []
+        nonreference_metrics = []
+        for metric in metrics:
+            if metric in reference_dependent_cub_metrics:
+                reference_metrics.append(metric)
+            else:
+                nonreference_metrics.append(metric)
+
+        # Check that proper arguments were provided given the metrics.
+        if reference_metrics:
+            if (omnibias and
+                (reference_gene_caller_ids or
+                 reference_function_accessions or
+                 reference_function_names or
+                 expect_reference_functions or
+                 reference_exclude_amino_acid_count or
+                 reference_min_codons)):
+                raise ConfigError(
+                    "Omnibias mode cannot be used when defined gene/function references are also "
+                    "used. The following arguments are only relevant to defined references: "
+                    "`reference_gene_caller_ids`, `reference_function_accessions`, "
+                    "`reference_function_names`, `expect_reference_functions`, "
+                    "`reference_exclude_amino_acid_count`, and `reference_min_codons`.")
+        else:
+            if (omnibias or
+                reference_gene_caller_ids or
+                reference_function_accessions or
+                reference_function_names or
+                expect_reference_functions or
+                reference_exclude_amino_acid_count or
+                reference_min_codons):
+                raise ConfigError(
+                    "The provided CUB metrics do not involve comparison of gene/function codon "
+                    "compositions. The following arguments are only relevant to "
+                    "reference-dependent metrics: `omnibias`, `reference_gene_caller_ids`, "
+                    "`reference_function_accessions`, `reference_function_names`, "
+                    "`expect_reference_functions`, `reference_exclude_amino_acid_count`, and "
+                    "`reference_min_codons`.")
+
+        # Get a reference codon composition when using reference-dependent metrics and not in
+        # omnibias mode.
+        if not reference_metrics or omnibias:
+            reference_codon_frequency_df = None
+        else:
+            # The default reference genes are KOfams classified as ribosomal proteins in BRITE.
+            if reference_function_names is None:
+                if 'KEGG_BRITE' not in self.function_sources:
+                    raise ConfigError(
+                        f"Reference-dependent metrics ({', '.join(reference_metrics)}) were "
+                        "requested without defined reference genes. By default, reference genes "
+                        "are KEGG KOfams classified as ribosomal proteins in BRITE. However, "
+                        "'KEGG_BRITE' is not among the function annotation sources run on the "
+                        "genome. This can be rectified by rerunning `anvi-run-kegg-kofams`.")
+                reference_function_names = {'KEGG_BRITE': ['Ribosome>>>Ribosomal proteins']}
+
+            reference_codon_frequency_df = self.get_frequencies(
+                gene_caller_ids=reference_gene_caller_ids,
+                function_accessions=reference_function_accessions,
+                function_names=reference_function_names,
+                expect_functions=expect_reference_functions,
+                sum_genes=True,
+                drop_amino_acids=ignored_decodings_in_cub)
+
+            # In the absence of a set of reference genes for the genome, generate a DataFrame with
+            # an index and header but no data.
+            if len(reference_codon_frequency_df) == 0:
+                found_reference_genes = False
+            else:
+                found_reference_genes = True
+
+            # Remove codons for rarer amino acids (columns) from the reference set.
+            if found_reference_genes and reference_exclude_amino_acid_count:
+                reference_drop_amino_acids = []
+                reference_drop_codons = []
+                for amino_acid, codons in translation_table.items():
+                    if (reference_codon_frequency_df[codons].sum().sum()
+                        < reference_exclude_amino_acid_count):
+                        reference_drop_amino_acids.append(amino_acid)
+                        reference_drop_codons += codons
+                reference_codon_frequency_df = \
+                    reference_codon_frequency_df.drop(reference_drop_codons, axis=1)
+
+                self.run.warning(
+                    "The following amino acids do not meet the threshold of "
+                    f"{reference_exclude_amino_acid_count} codons in the reference gene set, "
+                    "and so the codons were excluded from the reference: "
+                    f"{', '.join(reference_drop_codons)}")
+
+            # If there aren't enough codons total remaining in the reference set, remove the data
+            # from the DataFrame, leaving just an index and header.
+            if found_reference_genes and reference_min_codons:
+                total_codon_count = reference_codon_frequency_df.sum().sum()
+                if total_codon_count < reference_min_codons:
+                    reference_codon_frequency_df = reference_codon_frequency_df.drop('all')
+
+                    self.run.warning(
+                        f"The reference gene set has {pp(total_codon_count)} codons, not "
+                        f"meeting the minimum codon threshold of {pp(reference_min_codons)}.")
+
+            absent_amino_acids = []
+            for amino_acid, codons in translation_table.items():
+                if len(codons) == 1:
+                    continue
+                try:
+                    if reference_codon_frequency_df[codons].sum().sum() == 0:
+                        absent_amino_acids.append(amino_acid)
+                except KeyError:
+                    continue
+                reference_codon_frequency_df = reference_codon_frequency_df.drop(codons, axis=1)
+            if absent_amino_acids:
+                self.run.warning("Codons for the following multi-codon amino acids were not "
+                                 f"detected in the reference set: {', '.join(absent_amino_acids)}")
+
+            # If the absolute frequency table has no data, then the synonymous relative frequency
+            # table will also not have data.
+            reference_synonymous_codon_rel_frequency_series = \
+                self._get_synonymous_codon_rel_frequency_table(
+                    reference_codon_frequency_df).squeeze()
+
+            if len(reference_synonymous_codon_rel_frequency_series) == 0:
+                self.run.warning("No reference codon composition was established.")
+
+        query_codon_frequency_df = self.get_frequencies(
+            from_function_sources=from_function_sources,
+            return_functions=bool(from_function_sources),
+            gene_caller_ids=gene_caller_ids,
+            function_accessions=function_accessions,
+            function_names=function_names,
+            expect_functions=expect_functions,
+            gene_min_codons=gene_min_codons,
+            function_min_codons=function_min_codons,
+            min_codon_filter=min_codon_filter,
+            drop_amino_acids=drop_amino_acids,
+            min_amino_acids=min_amino_acids,
+            min_gene_fraction=min_gene_fraction)
+
+        if omnibias:
+            reference_codon_frequency_df = query_codon_frequency_df
+
+        if 'delta' in metrics:
+            # Reference codon weights in the computation of delta involve comparison of the
+            # reference codon set to the overall codon set, which here is taken from all genes in
+            # the input dataset.
+            overall_codon_frequency_df = self.get_frequencies(sum_genes=True)
+        else:
+            overall_codon_frequency_df = None
+
+        cub_table_dict = {}
+
+        for metric in reference_metrics:
+            if metric == 'cai':
+                cub_df = self._get_cai_table(
+                    query_codon_frequency_df,
+                    reference_codon_frequency_df,
+                    query_min_codons=query_min_analyzed_codons,
+                    reference_min_codons=reference_min_codons)
+                if omnibias:
+                    cub_df.columns = reference_codon_frequency_df.index
+                else:
+                    cub_df.columns = ['CAI']
+            elif metric == 'delta':
+                cub_df = self._get_delta_table(
+                    query_codon_frequency_df,
+                    reference_codon_frequency_df,
+                    overall_codon_frequency_df,
+                    query_min_codons=query_min_analyzed_codons,
+                    reference_min_codons=reference_min_codons)
+                if omnibias:
+                    cub_df.columns = reference_codon_frequency_df.index
+                else:
+                    cub_df.columns = ['Delta']
+
+            cub_table_dict[metric] = cub_df
+
+            # Print the number of query-reference comparisons that were thrown out.
+            if omnibias:
+                possible_comparison_count = \
+                    len(query_codon_frequency_df) * len(reference_codon_frequency_df) / 2
+            else:
+                possible_comparison_count = len(query_codon_frequency_df)
+            unperformed_comparison_count = cub_df.isna().sum().sum()
+            self.run.warning(f"{pp(unperformed_comparison_count)} of "
+                             f"{pp(possible_comparison_count)} query-reference comparisons did "
+                             "not meet the minimum codon threshold in either query or reference "
+                             "and so did not yield a CUB value.")
+
+        # Calculate CUB using metrics that do not depend on a reference codon composition.
+        for metric in nonreference_metrics:
+            # No reference-independent CUB metrics have been programmed yet.
+            pass
+
+        return cub_table_dict
+
+
+    def _establish_cub_metrics(self, metrics):
+        """Establishes CUB metrics for `get_codon_usage_bias`."""
+        if metrics is None:
+            metrics = cub_metrics
+        else:
+            for metric in metrics:
+                unrecognized_metrics = []
+                if metric not in cub_metrics:
+                    unrecognized_metrics.append(metric)
+                if unrecognized_metrics:
+                    raise ConfigError("The following CUB metrics are not recognized: "
+                                      f"{', '.join(unrecognized_metrics)}. Here are the available "
+                                      f"CUB metrics: {', '.join(cub_metrics)}")
+        return metrics
+
+
+    def _get_cai_table(self,
+                       query_codon_frequency_df,
+                       reference_codon_frequency_df,
+                       query_min_codons=0,
+                       reference_min_codons=0):
+        """Get a table of CAI (Sharp and Li, 1987) values for each query x reference comparison.
+
+        Calculation of CAI:
+        reference_codon_weight =
+            ln(reference_codon_frequency / reference_max_synonymous_codon_frequency)
+        weighted_codon_count = ∑(codon_frequency * reference_codon_weight)
+        CAI = exp(weighted_codon_count / codon_count)
+
+        CAI is maximum (1) when all of the codons in the query are the most abundant synonymous
+        codons in the reference, and minimum (0-1) when all of the codons in the query are the least
+        abundant synonymous codons in the reference.
+
+        Parameters
+        ----------
+        query_codon_frequency_df : pandas.core.frame.DataFrame
+            This frequency table has a row per item (gene/function) to be compared to each reference
+            codon composition and a column per codon.
+        reference_codon_frequency_df : pandas.core.frame.DataFrame
+            This frequency table has a row per reference composition and a column per codon.
+        query_min_codons : int, optional
+            A row of the query table must contain at least this number of codons with a reference
+            codon weight for CAI to be calculated. By default 0.
+        reference_min_codons : int, optional
+            A row of the reference table must contain at least this number of synonymous codons to
+            be used as a reference. By default 0.
+
+        Returns
+        -------
+        pandas.core.frame.DataFrame
+            This CUB table has the same row index as the input query table and a column per input
+            reference. With a single reference codon composition, this table has a single column.
+        """
+        reference_weight_series_list = self._get_cai_reference_weights(
+            reference_codon_frequency_df, reference_min_codons=reference_min_codons)
+
+        cai_rows = []
+        for _, query_codon_frequency_series in query_codon_frequency_df.iterrows():
+            # Check that the query row meets the minimum codon threshold.
+            if query_codon_frequency_series.sum() < query_min_codons:
+                cai_rows.append([np.nan] * len(reference_weight_series_list))
+                continue
+
+            cai_row = []
+            for reference_weight_series in reference_weight_series_list:
+                query_codons_with_reference_frequency_series = query_codon_frequency_series[
+                    reference_weight_series.index]
+
+                # Check that the number of query codons with a reference meets the minimum codon
+                # threshold.
+                if query_codons_with_reference_frequency_series.sum() < query_min_codons:
+                    cai_row.append(np.nan)
+                    continue
+
+                weighted_codon_count = query_codons_with_reference_frequency_series.dot(
+                    reference_weight_series)
+                cai_row.append(np.exp(
+                    weighted_codon_count / query_codons_with_reference_frequency_series.sum()))
+            cai_rows.append(cai_row)
+
+        # The returned table has a column per reference and default integer column names.
+        return pd.DataFrame(cai_rows, index=query_codon_frequency_df.index)
+
+
+    def _get_cai_reference_weights(self, codon_frequency_df, reference_min_codons=100):
+        """Get reference codon weights needed for calculation of CAI.
+
+        A CAI reference weight is calculated as the natural log of the frequency of a codon divided
+        by the maximum frequency of synonymous codons.
+
+        Parameters
+        ----------
+        codon_frequency_df : pandas.core.frame.DataFrame
+            This is the reference codon frequency table.
+        reference_min_codons : int, optional
+            If a row of `codon_frequency_df` contains fewer than this number of synonymous codons,
+            then the returned series is empty. By default 0.
+
+        Returns
+        -------
+        list of pandas.core.series.Series
+            This is a list of reference weight series for each row of the input table. Each series
+            has a codon index ordered like the input table. If there are fewer reference codons than
+            `reference_min_codons`, then the series will be empty. If a group of synonymous codons
+            has zero frequency, then these codons are dropped in the series. Hence the returned
+            series can be of unequal length.
+        """
+        reference_weight_series_list = []
+        for _, codon_frequency_series in codon_frequency_df.iterrows():
+            reference_weight_dict = {}
+            retained_frequency = 0
+            for codons in synonymous_codon_dict.values():
+                try:
+                    synonymous_codon_frequency_series = codon_frequency_series[codons]
+                except KeyError:
+                    # Treat one missing codon in the table as the absence of all synonymous codons.
+                    continue
+                max_frequency = max(synonymous_codon_frequency_series)
+
+                retained_frequency += sum(codon_frequency_series[codons])
+
+                for codon in codons:
+                    codon_frequency = codon_frequency_series[codon]
+                    if codon_frequency == 0:
+                        # Do not record reference weights for codons with zero frequency, as the log
+                        # is undefined.
+                        continue
+                    reference_weight_dict[codon] = np.log(codon_frequency / max_frequency)
+
+            # Check for an invalid input row with fewer codons than allowed in a reference.
+            if retained_frequency < reference_min_codons:
+                reference_weight_dict = {codon: np.nan for codon in reference_weight_dict}
+
+            # Codons without reference weights are absent from the series index.
+            reference_weight_series = pd.Series(reference_weight_dict)
+            reference_weight_series = reference_weight_series[reference_weight_series.index.intersection(codon_frequency_df.columns)]
+            reference_weight_series_list.append(reference_weight_series)
+
+        return reference_weight_series_list
+
+
+    def _get_delta_table(self,
+                         query_codon_frequency_df,
+                         reference_codon_frequency_df,
+                         overall_codon_frequency_df,
+                         query_min_codons=0,
+                         reference_min_codons=0):
+        """
+        Get a table of delta (Ran and Higgs, 2012, Eq. 6) values for each query x reference
+        comparison.
+
+        Calculation of delta:
+        reference_codon_weight = ln(
+            reference_codon_synonymous_relative_frequency /
+            overall_codon_synonymous_relative_frequency)
+        weighted_codon_count = ∑(codon_frequency * reference_codon_weight)
+        delta = weighted_codon_count / codon_count
+
+        Delta and CAI differ in the calculation of reference codon weights. Whereas CAI compares
+        reference codon frequency to the maximum frequency of synonymous reference codons, delta
+        compares reference codon synonymous frequency to the overall synonymous frequency of the
+        codon in the genome. When the query and reference sets are the same, delta is a likelihood
+        ratio evaluating the distinctness of the set from the genome as a whole. Delta ranges from
+        (-∞, +∞), with more positive values being more similar to the reference.
+
+        Parameters
+        ----------
+        query_codon_frequency_df : pandas.core.frame.DataFrame
+            This frequency table has a row per item (gene/function) to be compared to each reference
+            codon composition and a column per codon.
+        reference_codon_frequency_df : pandas.core.frame.DataFrame
+            This frequency table has a row per reference composition and a column per codon.
+        overall_codon_frequency_df : pandas.core.frame.DataFrame
+            This frequency table has a single row of summed frequencies across all genes in the
+            genome, with a column per codon.
+        query_min_codons : int, optional
+            A row of the query table must contain at least this number of codons with a reference
+            codon weight for delta to be calculated. By default 0.
+        reference_min_codons : int, optional
+            A row of the reference table must contain at least this number of synonymous codons to
+            be used as a reference. By default 0.
+
+        Returns
+        -------
+        pandas.core.frame.DataFrame
+            This CUB table has the same row index as the input query table and a column per input
+            reference. With a single reference codon composition, this table has a single column.
+        """
+        reference_weight_series_list = self._get_delta_reference_weights(
+            reference_codon_frequency_df,
+            overall_codon_frequency_df,
+            reference_min_codons=reference_min_codons)
+
+        delta_rows = []
+        for _, query_codon_frequency_series in query_codon_frequency_df.iterrows():
+            # Check that the query row meets the minimum codon threshold.
+            if query_codon_frequency_series.sum() < query_min_codons:
+                delta_rows.append([np.nan] * len(reference_weight_series_list))
+                continue
+
+            delta_row = []
+            for reference_weight_series in reference_weight_series_list:
+                query_codons_with_reference_frequency_series = query_codon_frequency_series[
+                    reference_weight_series.index]
+
+                # Check that the number of query codons with a reference meets the minimum codon
+                # threshold.
+                if query_codons_with_reference_frequency_series.sum() < query_min_codons:
+                    delta_row.append(np.nan)
+                    continue
+
+                weighted_codon_count = query_codons_with_reference_frequency_series.dot(
+                    reference_weight_series)
+                delta_row.append(
+                    weighted_codon_count / query_codons_with_reference_frequency_series.sum())
+            delta_rows.append(delta_row)
+
+        # The returned table has a column per reference and default integer column names.
+        return pd.DataFrame(delta_rows, index=query_codon_frequency_df.index)
+
+
+    def _get_delta_reference_weights(self,
+                                     reference_codon_frequency_df,
+                                     overall_codon_frequency_df,
+                                     reference_min_codons=100):
+        """Get reference codon weights needed for calculation of delta.
+
+        A delta reference weight is calculated as the natural log of the synonymous relative
+        frequency of a codon in the reference set divided by that of a codon in the genome as a
+        whole.
+
+        Parameters
+        ----------
+        reference_codon_frequency_df : pandas.core.frame.DataFrame
+            This is the reference codon frequency table.
+        overall_codon_frequency_df : pandas.core.frame.DataFrame
+            This is the summed frequency table, with one row, of the genome as a whole.
+        reference_min_codons : int, optional
+            If a row of `reference_codon_frequency_df` contains fewer than this number of synonymous
+            codons, then the returned series is empty. By default 0.
+
+        Returns
+        -------
+        list of pandas.core.series.Series
+            This is a list of reference weight series for each row of the reference table. Each
+            series has a codon index ordered like the input table. If there are fewer reference
+            codons than `reference_min_codons`, then the series will be empty. If a group of
+            synonymous codons has zero frequency, then these codons are dropped in the series. Hence
+            the returned series can be of unequal length.
+        """
+        reference_synonymous_codon_rel_frequency_df = \
+            self._get_synonymous_codon_rel_frequency_table(reference_codon_frequency_df)
+        overall_synonymous_codon_rel_frequency_series = \
+            self._get_synonymous_codon_rel_frequency_table(overall_codon_frequency_df).squeeze()
+
+        reference_weight_series_list = []
+        reference_codon_frequency_rows = \
+            reference_codon_frequency_df.iterrows()
+        reference_synonymous_codon_rel_frequency_rows = \
+            reference_synonymous_codon_rel_frequency_df.iterrows()
+        while reference_codon_frequency_rows:
+            _, reference_codon_frequency_series = next(reference_codon_frequency_rows)
+            _, reference_synonymous_codon_rel_frequency_series = next(
+                reference_synonymous_codon_rel_frequency_rows)
+
+            # Divide reference by overall synonymous relative frequencies. No codons should be
+            # present in the overall but not the reference series, but drop such codons yielding NaN
+            # just in case.
+            normalized_synonymous_codon_rel_frequency_series = \
+                reference_synonymous_codon_rel_frequency_series.div(
+                    overall_synonymous_codon_rel_frequency_series).dropna()
+            # Do not record reference weights for codons with zero frequency, as the log is
+            # undefined.
+            normalized_synonymous_codon_rel_frequency_series = \
+                normalized_synonymous_codon_rel_frequency_series[
+                    normalized_synonymous_codon_rel_frequency_series > 0]
+
+            # Ignore references with fewer than the threshold number of codons.
+            retained_frequency = reference_codon_frequency_series[
+                normalized_synonymous_codon_rel_frequency_series.index].sum()
+            if retained_frequency < reference_min_codons:
+                reference_weight_series = pd.Series()
+            else:
+                reference_weight_series = np.log(normalized_synonymous_codon_rel_frequency_series)
+
+            reference_weight_series_list.append(reference_weight_series)
+
+        return reference_weight_series_list
 
 
 class MultiGenomeCodonUsage(object):
@@ -1289,13 +1869,13 @@ class MultiGenomeCodonUsage(object):
                         min_codon_filter='both',
                         drop_amino_acids=None,
                         min_amino_acids=0,
-                        min_gene_fraction=0,
+                        min_gene_fraction=1,
                         label_amino_acids=False):
         """
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions
         in one or more genomes.
 
-        See the SingleGenomeCodonUsage docstring for descriptions of each parameter.
+        See the SingleGenomeCodonUsage.get_frequencies docstring for descriptions of each parameter.
         """
         args = {}
         arg_info = inspect.getargvalues(inspect.currentframe())
@@ -1326,4 +1906,58 @@ class MultiGenomeCodonUsage(object):
                 genome_codon_usage = SingleGenomeCodonUsage(
                     argparse.Namespace(**genome_info))
             frequency_df = genome_codon_usage.get_frequencies(**args)
+
             yield frequency_df
+
+
+    def get_codon_usage_bias(self,
+                             metrics=None,
+                             from_function_sources=None,
+                             function_accessions=None,
+                             function_names=None,
+                             expect_functions=False,
+                             omnibias=False,
+                             reference_function_source=None,
+                             reference_function_accessions=None,
+                             reference_function_names=None,
+                             expect_reference_functions=False,
+                             gene_min_codons=0,
+                             function_min_codons=0,
+                             min_codon_filter='both',
+                             drop_amino_acids=None,
+                             min_amino_acids=0,
+                             min_gene_fraction=1,
+                             query_min_analyzed_codons=100,
+                             reference_exclude_amino_acid_count=5,
+                             reference_min_codons=100):
+        """
+        Get CUB from genes or functions in one or more genomes.
+
+        See the SingleGenomeCodonUsage.get_frequencies docstring for descriptions of each parameter.
+        """
+        args = {}
+        arg_info = inspect.getargvalues(inspect.currentframe())
+        for param in arg_info.args:
+            if param == 'self':
+                continue
+            args[param] = arg_info.locals[param]
+        cub_table_dict_generator = self._get_cub_table_dict(args)
+        cub_table_master_dict = {}
+        for genome_name in self.genome_info_dict:
+            self.run.info("Genome", genome_name)
+            cub_table_master_dict[genome_name] = next(cub_table_dict_generator)
+
+        return cub_table_master_dict
+
+
+    def _get_genome_frequency_table(self, args):
+        """This generator yields a CUB table dict from each genome."""
+        for genome_name, genome_info in self.genome_info_dict.items():
+            if self.preload_genomes:
+                genome_codon_usage = self.genome_codon_usage_dict[genome_name]
+            else:
+                genome_codon_usage = SingleGenomeCodonUsage(
+                    argparse.Namespace(**genome_info))
+            cub_table_dict = genome_codon_usage.get_codon_usage_bias(**args)
+
+            yield cub_table_dict

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Return frequency statistics for codons and amino acids from genomes, genes, and functions."""
+"""Get codon or amino acid frequency statistics from genomes, genes, and functions."""
 
 import sys
 import pandas as pd
@@ -9,6 +9,7 @@ import anvio
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.codonusage as codonusage
+import anvio.filesnpaths as filesnpaths
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -27,13 +28,32 @@ __requires__ = ['contigs-db',
                 'internal-genomes',
                 'external-genomes']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt']
-__description__ = ("Get codon or amino acid frequencies of genes or functions.")
+__description__ = (
+    "Get codon or amino acid frequency statistics from genomes, genes, and functions.")
 
 
 run = terminal.Run()
 
 
 def main(args):
+    """Prepare arguments to get codon frequencies."""
+
+    if (bool(args.output_file) +
+        bool(args.gene_table_output) +
+        bool(args.function_table_output)) != 1:
+        raise ConfigError("One and only one of `--output-file`, `--gene-table-output`, or "
+                          "`--function-table-output` must be provided.")
+    args.return_functions = bool(args.function_table_output)
+
+    # A generic output file is always assumed to be a per-gene table.
+    if args.output_file:
+        args.gene_table_output = args.output_file
+
+    if args.gene_table_output:
+        filesnpaths.is_output_file_writable(args.gene_table_output, ok_if_exists=False)
+    if args.function_table_output:
+        filesnpaths.is_output_file_writable(args.function_table_output, ok_if_exists=False)
+
     if args.function_sources is None:
         from_function_sources = False
     elif len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
@@ -45,6 +65,10 @@ def main(args):
         from_function_sources = True
     else:
         from_function_sources = args.function_sources
+
+    if (args.function_accessions or args.function_names) and args.select_functions_txt:
+        raise ConfigError("`--function-accessions` and `--function-names` should not be used with "
+                          "`--select-functions-txt`.")
 
     # Select function sources and functions of interest.
     args.function_accessions_dict = {}
@@ -63,6 +87,7 @@ def main(args):
                 args.function_names_dict[function_source].append(function_name)
             except KeyError:
                 args.function_names_dict[function_source] = [function_name]
+
     parse_select_functions_table(args)
 
     if args.include_amino_acids and args.exclude_amino_acids:
@@ -78,18 +103,7 @@ def main(args):
             else:
                 args.exclude_amino_acids.append(amino_acid)
 
-    if (bool(args.output_file) +
-        bool(args.gene_table_output) +
-        bool(args.function_table_output)) != 1:
-        raise ConfigError("Only one of `--output-file`, `--gene-table-output`, and "
-                          "`--function-table-output` must be provided.")
-    args.return_functions = bool(args.function_table_output)
-
-    # A generic output file is always assumed to be a per-gene table.
-    if args.output_file:
-        args.gene_table_output = args.output_file
-
-    # Get gene frequency tables
+    # Get gene frequency tables.
     if args.internal_genomes or args.external_genomes:
         multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, run=run)
         frequency_df = multigenome_codon_usage.get_frequencies(
@@ -163,8 +177,8 @@ def parse_select_functions_table(args):
     for row in select_functions_df.itertuples(index=False):
         if not row.source:
             raise ConfigError(
-                "Each row of the select functions table must have a source entry, as functions can "
-                "come from different functional annotation sources.")
+                "Each row of the select functions table must have a source entry, as functions are "
+                "allowed to come from different function annotation sources.")
 
         if not row.accession and not row.name:
             raise ConfigError(
@@ -195,9 +209,9 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group(
         'SINGLE GENOME INPUTS',
-        "Get frequencies from genes or functions in a single genome. A contigs database can be "
-        "provided alone as an \"external\" genome. An \"internal\" genome (bin) can be provided by "
-        "also providing a profile database, collection name, and bin ID.")
+        "Get CUB from genes or functions in a single genome. A contigs database can be "
+        "provided alone as an \"external\" genome. An \"internal\" genome (bin) also requires a "
+        "profile database, collection name, and bin ID.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
@@ -218,7 +232,7 @@ if __name__ == '__main__':
         "genes are analyzed, one of two possible files can be produced: a table of frequencies per "
         "gene or per function, using `--gene-table-output` or `--function-table-output`, "
         "respectively. The per-function table can be derived from the per-gene table by summing "
-        "genes with the same functional annotation, which are found in columns 2-4.")
+        "genes with the same function annotation, which are found in columns 2-4.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupC.add_argument(
         '--gene-table-output',
@@ -278,39 +292,38 @@ if __name__ == '__main__':
         '--function-accessions', nargs='+',
         help="Return frequencies for functions with these accessions from the source provided in "
              "`--function-sources`. To get accessions from multiple sources, instead use "
-             "`--select-functions-txt`. This argument can be used in conjunction with "
-             "`--function-names`.")
+             "`--select-functions-txt`.")
     groupE.add_argument(
         '--function-names', nargs='+',
         help="Return frequencies for functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead "
-             "use `--select-functions-txt`. This argument can be used in conjunction with "
-             "`--function-accessions`.")
+             "use `--select-functions-txt`.")
     groupE.add_argument(
         '--select-functions-txt',
-        help="Functions to select can be listed in this tab-delimited file of three columns. The "
+        help="Selected functions can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
              "in every row, and either an accession or name, or both, should also be in a row. "
-             "Column names should not be provided.")
+             "The file should not have a header of column names.")
     groupE.add_argument(
         '--expect-functions',
         default=False,
         action='store_true',
         help="By default, functions provided by `--function-accessions`, `--function-names`, and "
              "`--select-functions-txt` need not be annotated in the input genomes. With this flag, "
-             "an error will be raised if any of the functions are not present.")
+             "an error will be raised if any of the functions are not present in an input genome.")
     groupE.add_argument(
         '--shared-function-sources', default=False, action='store_true',
-        help="When analyzing multiple genomes, do not consider function annotation sources that "
-             "were not run on every genome.")
+        help="Use this flag to exclude function annotation sources that were not run on every "
+             "input genome.")
 
     groupF = parser.add_argument_group(
         'FILTER GENES, FUNCTIONS, CODONS',
-        "Filtering the genes/functions and codons that are analyzed and reported can improve the "
-        "statistical utility of relative frequency data. Genes/functions can be filtered by the "
-        "number of codons they contain. Codons can be selected a priori, and rarer codons can be "
-        "dynamically excluded.")
+        "Genes/functions can be filtered by the number of codons they contain, e.g., ignore genes "
+        "shorter than 300 codons. Codons can be selected a priori, e.g., ignore Ala codons, or "
+        "rarer codons can be excluded, e.g., ignore amino acids that are decoded by ≤3 codons in "
+        "≥90%% of genes. Filters can improve the statistical utility of codon relative frequency "
+        "data.")
     groupF.add_argument(
         '--gene-min-codons', type=int, default=0,
         help="Set the minimum number of codons required in a gene. When functions are returned "
@@ -320,7 +333,8 @@ if __name__ == '__main__':
         '--function-min-codons', type=int, default=0,
         help="Set the minimum number of codons required in a function. Genes with fewer than "
              "`--gene-min-codons` are first removed, and then functional groups of the remaining "
-             "genes with fewer than `--function-min-codons` are removed.")
+             "genes with fewer than `--function-min-codons` are removed. This filter only applies "
+             "when returning functions.")
     groupF.add_argument(
         '--exclude-amino-acids', nargs='+',
         help="Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
@@ -333,9 +347,9 @@ if __name__ == '__main__':
     groupF.add_argument(
         '--exclude-amino-acid-count', type=int, default=0,
         help="Remove codons for amino acids (and STP) that are less numerous than the given "
-             "argument in a the fraction of genes given by `--exclude-amino-acid-fraction`. For "
-             "example, say this argument is 5 and `--exclude-amino-acid-fraction` is 0.9: if there "
-             "are fewer than 5 codons for an amino acid/STP in ≥90%% of genes, then the amino "
+             "argument in the fraction of genes given by `--exclude-amino-acid-fraction`. For "
+             "example, say this argument is 3 and `--exclude-amino-acid-fraction` is 0.9: if there "
+             "are fewer than 3 codons for an amino acid/STP in ≥90%% of genes, then the amino "
              "acid's codons are removed.")
     groupF.add_argument(
         '--exclude-amino-acid-fraction', type=float, default=1,
