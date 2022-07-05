@@ -2927,6 +2927,37 @@ class VariabilityNetwork:
         self.max_num_unique_positions = A('max_num_unique_positions', int) or 0
         self.output_file_path = A('output_file', null)
 
+        # if you change something here, please don't forget to update
+        # the file at `anvio/docs/programs/anvi-gen-variability-network.md`
+        self.competing_NT_calculators = {
+             'default':
+                {'f': lambda e: e['competing_nts'],
+                 'description': ("Returns the default competing nucleotides column from the variability "
+                                 "as calculated by anvi'o during profiling.")},
+             'noise-robust':
+                {'f': lambda e: e['competing_nts'] if float(e['departure_from_consensus']) > 0.1 else ''.join(sorted(e['consensus'] + e['reference'])),
+                 'description': ("When depearture from consenus for a given nt position is close to zero, "
+                                 "which means the nt position is almost fixed in the environment the default "
+                                 "way to calculate competing nucleotides can yield noisy results simply due "
+                                 "to the fact that the secon most frequenty nucleotide can be driven by "
+                                 "artifacts (such as sequencing error) than biology. For instance, if a given "
+                                 "position that is represented by a nucleotide `G` in the reference has SNV "
+                                 "frequencies of {'A': 1000, 'T': 1, 'C': 0, 'G': 0} in one sample and "
+                                 "{'A': 1000, 'T': 0, 'C': 1, 'G': 0} in the other, the competing nucletoides "
+                                 "for this position in the variability table will be `AT` and `AC`, respectively. "
+                                 "However, some applications, in which competitive nucleotides are used as categorigal "
+                                 "variables to associate samples, may require a more robust apprach. The `noise-robust` "
+                                 "alternative would yield `AG` and `AG` for this position in both samples.")}
+        }
+
+        self.include_competing_NTs = A('include_competing_NTs', null) or 'default'
+
+        if self.include_competing_NTs not in self.competing_NT_calculators:
+            known_calculators = ', '.join([f'"{m}"' for m in self.competing_NT_calculators])
+            raise ConfigError(f"The method you asked for anvi'o to use to determine competing nucleotides is not "
+                              f"among those that anvi'o knows about :/ You asked for '{self.include_competing_NTs}'. "
+                              f"Anvi'o knows about: {known_calculators}.")
+
         filesnpaths.is_output_file_writable(self.output_file_path)
 
         if self.samples_information_path:
@@ -2947,6 +2978,10 @@ class VariabilityNetwork:
 
 
     def generate(self):
+        if self.include_competing_NTs:
+            competing_NT_calculator = self.competing_NT_calculators[self.include_competing_NTs]['f']
+            self.run.info("Competing NT calculator enabled", self.include_competing_NTs)
+
         if not self.data:
             raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
                                "haven't filled in the variable positions data into the class.")
@@ -2966,7 +3001,11 @@ class VariabilityNetwork:
                                    "however, you are missing these ones from your samples information: %s."\
                                                 % (', '.join(samples_missing_in_information_dict)))
 
-        self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
+        if self.include_competing_NTs:
+            self.unique_variable_nt_positions = set([f"{e['corresponding_gene_call']}_{e['pos']}_{competing_NT_calculator(e)}" for e in list(self.data.values())])
+        else:
+            self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
+
         self.run.info('unique_variable_nt_positions', '%d found.' % (len(self.unique_variable_nt_positions)))
 
         if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
@@ -2984,10 +3023,15 @@ class VariabilityNetwork:
         self.progress.update('Updating the dictionary with data')
         for entry in list(self.data.values()):
             sample_id = entry['sample_id']
-            pos = entry['unique_pos_identifier']
-            frequency = entry['departure_from_reference']
 
-            samples_dict[sample_id][pos] = float(frequency)
+            if self.include_competing_NTs:
+                variable_position = f"{entry['corresponding_gene_call']}_{entry['pos']}_{competing_NT_calculator(entry)}"
+            else:
+                variable_position = entry['unique_pos_identifier']
+
+            edge_weight = entry['departure_from_reference']
+
+            samples_dict[sample_id][variable_position] = float(edge_weight)
 
         self.progress.update('Generating the network file')
         utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
