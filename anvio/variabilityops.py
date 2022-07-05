@@ -500,7 +500,7 @@ class VariabilitySuper(VariabilityFilter, object):
         np.seterr(invalid='ignore')
         self.args = args
 
-        if args.engine not in variability_engines:
+        if self.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
@@ -1973,11 +1973,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if not self.compute_gene_coverage_stats:
             return
 
-        # Initialize the profile super FIXME This bastard spits out
-        #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
-        #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
-        # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
-        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
+        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path), r=terminal.Run(verbose=False), p=self.progress)
 
         self.progress.new('Computing gene coverage stats')
         self.progress.update('... {consider --skip-gene-coverage-stats if taking too long}')
@@ -2008,8 +2004,15 @@ class VariabilitySuper(VariabilityFilter, object):
                                            column_names = gene_coverage_columns,
                                            func_args = (gene_cov_dict,))
 
-        # this guy piggybacks in this method
-        self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        # this guy piggybacks in this method. the following like ensures that if there are genes
+        # with 0 coverage, the code doesn't explode with a ZeroDivisionError, and instead, puts
+        # a 0 for the mean_normalized_coverage column for that gene. this is what we were doing
+        # here at some point:
+        #
+        #     >>> self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        #
+        # which killed anvi'o: before: https://github.com/merenlab/anvio/issues/1948.
+        self.data['mean_normalized_coverage'] = self.data['coverage'].divide(self.data['gene_coverage']).replace(np.inf, 0)
         self.data.loc[self.data['gene_coverage'] == -1, 'mean_normalized_coverage'] = -1
 
         self.progress.end()
@@ -2921,7 +2924,7 @@ class VariabilityNetwork:
         null = lambda x: x
         self.input_file_path = A('input_file', null)
         self.samples_information_path = A('samples_information', null)
-        self.max_num_unique_positions = A('max_num_unique_positions', int)
+        self.max_num_unique_positions = A('max_num_unique_positions', int) or 0
         self.output_file_path = A('output_file', null)
 
         filesnpaths.is_output_file_writable(self.output_file_path)
@@ -3355,12 +3358,15 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
         comp = comparison_array[i] # The codon to be compared against
         num_nonsyn, num_syn = 0, 0
 
-        if comp < 0:
-            # No sense talking about synonymity relative to a stop codon or codon containing N
-            num_nonsyns.append(np.nan)
-            num_syns.append(np.nan)
+        cov = coverage[i]
+
+        if cov <= 0 or comp < 0:
+            # No sense talking about synonymity relative to a stop codon or codon containing N,
+            # or deal with positions with no sensible coverage. See the the following issue
+            # for the details of what made `cov <= 0` necessary: https://github.com/merenlab/anvio/issues/1948
+            num_nonsyns.append(0)
+            num_syns.append(0)
         else:
-            cov = coverage[i]
 
             for codon in codon_nums:
                 if codon == comp:
@@ -3368,7 +3374,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
                     # differ from the reference codon
                     continue
 
-                contribution = counts_array[i, codon]/cov
+                contribution = counts_array[i, codon] / cov
 
                 if is_synonymous[comp, codon]:
                     num_syn += contribution

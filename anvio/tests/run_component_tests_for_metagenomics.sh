@@ -240,7 +240,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
                   -s NusB \
-                  --overwrite-output-destinations \
+                  --force-overwrite \
                   --no-progress
 
 INFO "Export genomic locus using functional annotation search (multiple; 2 expected)"
@@ -248,7 +248,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
                   -s NusB,'Glutamine amidotransferase class-I' \
-                  --overwrite-output-destinations \
+                  --force-overwrite \
                   --no-progress
 
 INFO "Export genomic locus using functional annotation search in flank-mode"
@@ -256,7 +256,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   --flank-mode  \
                   -s NusB,rpoz \
-                  --overwrite-output-destinations \
+                  --force-overwrite \
                   --no-progress
 
 INFO "Export only Pfam annotations"
