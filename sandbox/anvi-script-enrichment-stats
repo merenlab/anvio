@@ -210,6 +210,15 @@ pvalues_df <- df_unique %>%
 # find the maximum lambda for qvalue
 # reasons for this change documented at https://github.com/merenlab/anvio/issues/1383
 max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+if (max_lambda < 0.05) {
+    stop(sprintf("Unfortunately, the maximum lambda for q-value estimation is < 0.05. This \
+         value is coming from the p-values in the enrichment test, so something in \
+         your data is making those p-values low. This sometimes happens when you \
+         have a very short input file (your input file has %s rows). Regardless, \
+         a possible solution is for you to pick your own max lambda that is >= 0.05, \
+         and provide it to the program calling this script by using the \
+         --qlambda parameter.", nrow(df_in)))
+}
 lambdas <- seq(0.05, max_lambda, 0.05)
 
 # obtain an estimate of the proportion of features that are truly null
