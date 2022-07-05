@@ -99,7 +99,9 @@ option_list <- list(
   make_option(c("--output"),
               help = "Output file name"),
   make_option(c("--input"),
-              help = "Input file name")
+              help = "Input file name"),
+  make_option(c("--qlambda"),
+              help = "Optional parameter. The maximum lambda for q-value estimation.")
 )
 parser <- OptionParser(option_list = option_list,
                        description = "Hypothesis testing for 'enrichment' claims. Fits a GLM and computes the Rao Test statistic as an enrichment score.")
