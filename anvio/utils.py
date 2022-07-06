@@ -1178,7 +1178,8 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
-def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None, run=run, progress=progress):
+def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None,
+                                    qlambda=None, run=run, progress=progress):
     """This function runs the enrichment analysis implemented by Amy Willis.
 
     Since the enrichment analysis is an R script, we interface with that program by
@@ -1193,6 +1194,8 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         script.
     enrichment_output_file_path, str file path
         An optional output file path for the enrichment analysis.
+    qlambda : float
+        An optional fraction that sets the maximum lambda for q-value
 
     Returns
     =======
@@ -1224,14 +1227,19 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     run.warning(None, header="AMY's ENRICHMENT ANALYSIS 🚀", lc="green")
     run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
     run.info("Functional enrichment output file path: ", enrichment_output_file_path)
+    if anvio.DEBUG:
+        run.info("User set max lambda for q-values: ", qlambda)
     run.info("Temporary log file (use `--debug` to keep): ", log_file_path, nl_after=2)
 
     # run enrichment script
     progress.new('Functional enrichment analysis')
     progress.update("Running Amy's enrichment")
-    run_command(['anvi-script-enrichment-stats',
+    enrichment_command = ['anvi-script-enrichment-stats',
                  '--input', f'{functional_occurrence_stats_input_file_path}',
-                 '--output', f'{enrichment_output_file_path}'], log_file_path)
+                 '--output', f'{enrichment_output_file_path}']
+    if qlambda:
+        enrichment_command += ['--qlambda', f'{qlambda}']
+    run_command(enrichment_command, log_file_path)
     progress.end()
 
     if not filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
