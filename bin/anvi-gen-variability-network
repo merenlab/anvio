@@ -18,10 +18,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = []
-__requires__ = ["variability-profile"]
+__requires__ = ["variability-profile-txt"]
 __resources__ = [("This program in the Infant Gut Tutorial", "https://merenlab.org/tutorials/infant-gut/#visualizing-snv-profiles-as-a-network")]
-__description__ = ("A program to generate a network description from an anvi'o variability profile "
-                   "(potentially outdated program)")
+__description__ = ("Generate a network description from an anvi'o variability profile.")
 
 
 if __name__ == '__main__':
