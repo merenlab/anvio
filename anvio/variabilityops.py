@@ -2950,15 +2950,16 @@ class VariabilityNetwork:
                                  "alternative would yield `AG` and `AG` for this position in both samples.")}
         }
 
-        self.include_competing_NTs = A('include_competing_NTs', null) or 'default'
+        self.include_competing_NTs = A('include_competing_NTs', null)
 
-        if self.include_competing_NTs not in self.competing_NT_calculators:
+        if self.include_competing_NTs and self.include_competing_NTs not in self.competing_NT_calculators:
             known_calculators = ', '.join([f'"{m}"' for m in self.competing_NT_calculators])
             raise ConfigError(f"The method you asked for anvi'o to use to determine competing nucleotides is not "
                               f"among those that anvi'o knows about :/ You asked for '{self.include_competing_NTs}'. "
                               f"Anvi'o knows about: {known_calculators}.")
 
-        filesnpaths.is_output_file_writable(self.output_file_path)
+        if self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
 
         if self.samples_information_path:
             filesnpaths.is_file_tab_delimited(self.samples_information_path)
@@ -2978,9 +2979,19 @@ class VariabilityNetwork:
 
 
     def generate(self):
+        """Where the magic happens"""
+
         if self.include_competing_NTs:
+            # if the user requests competing NTs to be included, then we need a calculator for that
             competing_NT_calculator = self.competing_NT_calculators[self.include_competing_NTs]['f']
+
+            # another convenience here is the following lambda function that will generate a
+            # label for a given SNV entry
+            D = lambda e: f"{competing_NT_calculator(e)}_{e['pos']}_{e['corresponding_gene_call'] if e['corresponding_gene_call'] != '-1' else 'NA'}"
+
             self.run.info("Competing NT calculator enabled", self.include_competing_NTs)
+        else:
+            D = None
 
         if not self.data:
             raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
@@ -3002,7 +3013,7 @@ class VariabilityNetwork:
                                                 % (', '.join(samples_missing_in_information_dict)))
 
         if self.include_competing_NTs:
-            self.unique_variable_nt_positions = set([f"{e['corresponding_gene_call']}_{e['pos']}_{competing_NT_calculator(e)}" for e in list(self.data.values())])
+            self.unique_variable_nt_positions = set([D(e) for e in list(self.data.values())])
         else:
             self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
 
@@ -3025,7 +3036,7 @@ class VariabilityNetwork:
             sample_id = entry['sample_id']
 
             if self.include_competing_NTs:
-                variable_position = f"{entry['corresponding_gene_call']}_{entry['pos']}_{competing_NT_calculator(entry)}"
+                variable_position = D(entry)
             else:
                 variable_position = entry['unique_pos_identifier']
 
