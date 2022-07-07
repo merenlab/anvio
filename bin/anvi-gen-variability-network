@@ -6,6 +6,7 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import VariabilityNetwork
@@ -26,13 +27,41 @@ __description__ = ("Generate a network description from an anvi'o variability pr
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument('-i', '--input-file', metavar = 'VARIABILITY_PROFILE', required = True,
-                        help = "The anvi'o variability profile. Please see `anvi-gen-variability-profile` to\
-                                generate one.")
-    parser.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
+    import argparse
+    VN = VariabilityNetwork(argparse.Namespace())
+    competing_NT_calculator_options = [f"'{k}'" for k in VN.competing_NT_calculators]
+
+    groupA = parser.add_argument_group('INPUT', 'What goes in..')
+    groupA.add_argument('-i', '--input-file', metavar='VARIABILITY_PROFILE', required=True,
+                        help="The anvi'o variability profile. Please see `anvi-gen-variability-profile` to "
+                             "generate one.")
+    groupB = parser.add_argument_group('OUTPUT', 'What comes out..')
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'network.gexf'}))
+
+    groupC = parser.add_argument_group('ADDITIONAL PARAMS', 'More options for the wise.')
+    groupC.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
+    groupC.add_argument('--include-competing-NTs', metavar='OPTION', default=False, required=False,
+                        help ="Whether anvi'o should use competing nucleotides, rather than unique positions for "
+                              "variable nucleotides (which is the default behavior), to define the nodes in the "
+                              "network. If you would like that, then you will need to explicitly ask for a calculator "
+                              "for competing nuclotides. The available options are the following: {competing_NT_calculator_options}. "
+                              "If you would like to learn about these options before choosing one of them (as "
+                              "you should), please first use the flag `--list-competing-NT-calculators` (in which "
+                              "case the program will list descriptions for these options and exit.")
+    groupC.add_argument('--list-competing-NT-calculators', default=False, action="store_true",
+                        help ="List options and their descriptions that can be used with `--include-competing-NTs`.")
 
     args = parser.get_args(parser)
+
+    if args.list_competing_NT_calculators:
+        run = terminal.Run()
+
+        run.warning("Following are the available options for competing NT calculations:",
+                    header="COMPETING NT CALCULATORS", lc="green")
+        for calculator_option in VN.competing_NT_calculators:
+            run.info(f"'{calculator_option}'", VN.competing_NT_calculators[calculator_option]['description'], nl_after=1)
+
+        sys.exit()
 
     try:
         variable_nt_positions = VariabilityNetwork(args)
