@@ -139,6 +139,7 @@
       inst: School of Biotechnology and Biomolecular Sciences - University of New South Wales
       inst_link: https://www.babs.unsw.edu.au/
       current: true
+
 - github: dutter
   name: Dan Utter
   twitter: bajenak
@@ -152,9 +153,9 @@
       inst: California Institute of Technology
       inst_link: https://www.caltech.edu
       current: true
+
 - github: HMorrison
   name: Hilary Morrison
-  twitter: none
   web: https://www.mbl.edu/research/faculty-and-whitman-scientists/Hilary%20Morrison
   avatar: bio-morrison.jpg
   email: hmorrison1981@gmail.com
