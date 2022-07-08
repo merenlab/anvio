@@ -33,6 +33,18 @@ if __name__ == '__main__':
                 '(doi:10.1038/nmeth.3176), unless you use it with --use-ncbi-blast flag, and MCL '
                 '(http://micans.org/mcl/ and doi:10.1007/978-1-61779-361-5_15)', lc = 'yellow')
 
+    # some footwork to help with the help menus:
+    if panops.additional_param_sets_for_sequence_search['diamond']:
+        DIAMOND = f"the following parameters: \"{panops.additional_param_sets_for_sequence_search['diamond']}\""
+    else:
+        DIAMOND = "nothing as the default additional parameters for DIAMOND is empty."
+
+    if panops.additional_param_sets_for_sequence_search['ncbi_blast']:
+        NCBI_BLAST = f"the following parameters: \"{panops.additional_param_sets_for_sequence_search['ncbi_blast']}\""
+    else:
+        NCBI_BLAST = "nothing, as the default additional parameters for the NCBI BLAST is empty."
+
+
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
@@ -49,6 +61,7 @@ if __name__ == '__main__':
                                 partial gene calls from the analysis (whether a gene call is partial or not is an information that comes directly\
                                 from the gene caller used to identify genes during the generation of the contigs database).")
 
+
     groupB = parser.add_argument_group('GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
                                 "within the gene pool of input genomes. If you don't change anything in this section, things will work fine, and anvi'o will "
                                 "use DIAMOND by default to accomplish the search with default parameters anvi'o developers set for you. But please go "
@@ -56,6 +69,17 @@ if __name__ == '__main__':
     groupB.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
                                 "but if you'd like to use the good ol' blastp by the NCBI instead, it can't stop you.")
     groupB.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
+    groupB.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
+                                f"anvi'o has some defaults for whichever approach you choose to use for your sequence search, you can assume full control "
+                                f"over what is passed to the search program. Put anything you wish anvi'o to send your search program in double quotes, and "
+                                f"they will be passed to the program. If you don't use this parameter, in addition to the additional parameters anvi'o will "
+                                f"use to call your search algorithm of preference, anvi'o will pass to DIAMOND {DIAMOND}, and to the NCBI blast {NCBI_BLAST}. "
+                                f"If you use this parameter, it will completely overwrite what you see above. This means, if you are about to use DIAMOND "
+                                f"and would like to enable sensitive mode for DIAMOND along with the current anvi'o default additional parameter for it, then "
+                                f"you should set this parameter like this manually: --additional-params-for-seq-search "
+                                f"\"{panops.additional_param_sets_for_sequence_search['diamond']} --sensitive\". DO NOT EVER FORGET THE DOUBLE QUOTES, unless "
+                                f"you hate your computer and want to see it melting beforey our eyes.")
+
 
     groupB = parser.add_argument_group('GENE CLUSTER FORMATION: RESOLVING NETWORK', "The second step in this workflow is to use the sequence search results "
                                 "to determine gene clusters. Which is a straightforward step thanks to the MCL algorithm. The following parameters are there "
