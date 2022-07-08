@@ -54,6 +54,8 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 aligners = Aligners()
 
+additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
+                                             'ncbi_blast': ''}
 
 class Pangenome(object):
     def __init__(self, args=None, run=run, progress=progress):
@@ -87,6 +89,8 @@ class Pangenome(object):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
+
+        self.additional_params_for_seq_search = A('additional-params-for-seq-search')
 
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
@@ -139,6 +143,7 @@ class Pangenome(object):
                        'default_view': 'gene_cluster_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
                        'diamond_sensitive': self.sensitive,
+                       'additional_params_for_seq_search': additional_params_for_seq_search,
                        'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
@@ -240,6 +245,7 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
+        diamond.additional_params = self.additional_params_for_seq_search
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
@@ -258,6 +264,7 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         blast.names_dict = unique_AA_sequences_names_dict
+        blast.additional_params = self.additional_params_for_seq_search
         blast.log_file_path = self.log_file_path
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
