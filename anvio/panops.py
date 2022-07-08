@@ -90,7 +90,8 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
-        self.additional_params_for_seq_search = A('additional-params-for-seq-search')
+        self.additional_params_for_seq_search = A('additional_params_for_seq_search')
+        self.additional_params_for_seq_search_processed = False
 
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
@@ -143,7 +144,7 @@ class Pangenome(object):
                        'default_view': 'gene_cluster_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
                        'diamond_sensitive': self.sensitive,
-                       'additional_params_for_seq_search': additional_params_for_seq_search,
+                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
                        'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
@@ -240,12 +241,40 @@ class Pangenome(object):
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
+    def process_additional_params(self):
+        """Process user-requested additional params for sequence search with defaults
+
+        This is a bit complicated as there are those additional parameter sets used by
+        anvi'o (which are defined in `additional_param_sets_for_sequence_search`), and
+        there are those that may or may not be passed by the user. To reconcile all,
+        we first need to determine which algorithm they are using (i.e., diamond or
+        ncbi-blast, which are the only two options we offer at the time this function
+        was written), and then see if tey passed any 'additional additional' params to
+        this instance.
+        """
+
+        if self.additional_params_for_seq_search is not None:
+            # the user set something (or unset everything by passing ""): we obey
+            pass
+        else:
+            if self.use_ncbi_blast:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['ncbi_blast']
+            else:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['diamond']
+
+        self.additional_params_for_seq_search_processed = True
+
+
     def run_diamond(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
         diamond = Diamond(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
-        diamond.additional_params = self.additional_params_for_seq_search
+        diamond.additional_params_for_blastp = self.additional_params_for_seq_search
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
 
@@ -255,6 +284,10 @@ class Pangenome(object):
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
         self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
                          "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
                          "We are unsure about whether the slight increase in sensitivity may justify significant "
@@ -264,7 +297,7 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         blast.names_dict = unique_AA_sequences_names_dict
-        blast.additional_params = self.additional_params_for_seq_search
+        blast.additional_params_for_blast = self.additional_params_for_seq_search
         blast.log_file_path = self.log_file_path
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
@@ -893,6 +926,9 @@ class Pangenome(object):
 
 
     def process(self):
+        # start by processing the additional params user may have passed for the blast step
+        self.process_additional_params()
+
         # load genomes from genomes storage
         self.load_genomes()
 
