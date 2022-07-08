@@ -81,7 +81,6 @@ class Pangenome(object):
         self.min_percent_identity = A('min_percent_identity')
         self.gene_cluster_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
-        self.sensitive = A('sensitive')
         self.minbit = A('minbit')
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
@@ -143,7 +142,6 @@ class Pangenome(object):
                        'mcl_inflation': self.mcl_inflation,
                        'default_view': 'gene_cluster_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
-                       'diamond_sensitive': self.sensitive,
                        'additional_params_for_seq_search': self.additional_params_for_seq_search,
                        'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
@@ -277,8 +275,6 @@ class Pangenome(object):
         diamond.additional_params_for_blastp = self.additional_params_for_seq_search
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
-
-        diamond.sensitive = self.sensitive
 
         return diamond.get_blast_results()
 

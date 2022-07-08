@@ -55,7 +55,6 @@ class Diamond:
             self.run.log_file_path = 'diamond-log-file.txt'
 
         self.additional_params_for_blastp = ""
-        self.sensitive = False
 
         # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
@@ -121,7 +120,6 @@ class Diamond:
 
     def blastp(self):
         self.run.warning(None, header="DIAMOND BLASTP", lc="green")
-        self.run.info("Mode", "Sensitive" if self.sensitive else "Fast")
         self.run.info("Additional params for blastp", self.additional_params_for_blastp, mc='green')
 
         cmd_line = ['diamond',
@@ -132,8 +130,6 @@ class Diamond:
                     '-t', self.tmp_dir,
                     '-p', self.num_threads,
                     '--outfmt', *self.outfmt.split()]
-
-        cmd_line.append('--sensitive') if self.sensitive else None
 
         if self.additional_params_for_blastp:
             cmd_line.extend(self.additional_params_for_blastp.split())
@@ -170,8 +166,6 @@ class Diamond:
                     '-p', self.num_threads,
                     '--outfmt', *self.outfmt.split()]
 
-        cmd_line.append('--sensitive') if self.sensitive else None
-
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
 
@@ -201,15 +195,12 @@ class Diamond:
     def blastp_stdin(self, sequence):
         self.run.warning(None, header="DIAMOND BLASTP STDIN", lc="green")
         self.run.info("Additional params for blastp", self.additional_params_for_blastp, mc='green')
-        self.run.info('Mode', 'Sensitive' if self.sensitive else 'Fast')
 
         cmd_line = ['diamond',
                     'blastp',
                     '-d', self.target_fasta,
                     '-p', self.num_threads,
                     '--outfmt', *self.outfmt.split()]
-
-        cmd_line.append('--sensitive') if self.sensitive else None
 
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
@@ -237,15 +228,12 @@ class Diamond:
     def blastp_stdin_multi(self, multisequence):
         self.run.warning(None, header="DIAMOND BLASTP STDIN MULTI", lc="green")
         self.run.info("Additional params for blastp", self.additional_params_for_blastp, mc='green')
-        self.run.info('Mode', 'Sensitive' if self.sensitive else 'Fast')
 
         cmd_line = ['diamond',
                     'blastp',
                     '-d', self.target_fasta,
                     '-p', self.num_threads,
                     '--outfmt', *self.outfmt.split()]
-
-        cmd_line.append('--sensitive') if self.sensitive else None
 
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])

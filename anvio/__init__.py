@@ -1409,15 +1409,6 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
-    'sensitive': (
-            ['--sensitive'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "DIAMOND sensitivity. With this flag you can instruct DIAMOND to be 'sensitive', rather than 'fast' "
-                     "during the search. It is likely the search will take remarkably longer. But, hey, if you are doing "
-                     "it for your final analysis, maybe it should take longer and be more accurate. This flag is only "
-                     "relevant if you are running DIAMOND."}
-                ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',

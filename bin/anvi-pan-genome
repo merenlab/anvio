@@ -68,7 +68,6 @@ if __name__ == '__main__':
                                 "through each parameter anyway to have an idea regarding what is available to you to play with.")
     groupB.add_argument('--use-ncbi-blast', default = False, action = 'store_true', help = "This program uses DIAMOND by default (and you should, too), "
                                 "but if you'd like to use the good ol' blastp by the NCBI instead, it can't stop you.")
-    groupB.add_argument(*anvio.A('sensitive'), **anvio.K('sensitive'))
     groupB.add_argument('--additional-params-for-seq-search', type=str, metavar = "CMD LINE PARAMS", help = "OK. This is very important. While "
                                 f"anvi'o has some defaults for whichever approach you choose to use for your sequence search, you can assume full control "
                                 f"over what is passed to the search program. Put anything you wish anvi'o to send your search program in double quotes, and "
