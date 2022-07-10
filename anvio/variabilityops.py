@@ -2926,6 +2926,8 @@ class VariabilityNetwork:
         self.samples_information_path = A('samples_information', null)
         self.max_num_unique_positions = A('max_num_unique_positions', int) or 0
         self.output_file_path = A('output_file', null)
+        self.edge_variable = A('edge_variable', null) or 'departure_from_reference'
+        self.export_as_matrix = A('as_matrix', null)
 
         # if you change something here, please don't forget to update
         # the file at `anvio/docs/programs/anvi-gen-variability-network.md`
@@ -2939,7 +2941,7 @@ class VariabilityNetwork:
                  'description': ("When depearture from consenus for a given nt position is close to zero, "
                                  "which means the nt position is almost fixed in the environment the default "
                                  "way to calculate competing nucleotides can yield noisy results simply due "
-                                 "to the fact that the secon most frequenty nucleotide can be driven by "
+                                 "to the fact that the second most frequenty nucleotide can be driven by "
                                  "artifacts (such as sequencing error) than biology. For instance, if a given "
                                  "position that is represented by a nucleotide `G` in the reference has SNV "
                                  "frequencies of {'A': 1000, 'T': 1, 'C': 0, 'G': 0} in one sample and "
@@ -3040,12 +3042,18 @@ class VariabilityNetwork:
             else:
                 variable_position = entry['unique_pos_identifier']
 
-            edge_weight = entry['departure_from_reference']
+            edge_weight = entry[self.edge_variable]
 
             samples_dict[sample_id][variable_position] = float(edge_weight)
 
         self.progress.update('Generating the network file')
-        utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
+        unique_variable_nt_positions = sorted(list(self.unique_variable_nt_positions))
+        if self.export_as_matrix:
+            temp_file_path = filesnpaths.get_temp_file_path()
+            utils.store_dict_as_TAB_delimited_file(samples_dict, headers=['items'] + unique_variable_nt_positions, output_path=temp_file_path)
+            utils.transpose_tab_delimited_file(temp_file_path, output_file_path=self.output_file_path, remove_after=True)
+        else:
+            utils.gen_gexf_network_file(unique_variable_nt_positions, samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
 
         self.run.info('network_description', self.output_file_path)
