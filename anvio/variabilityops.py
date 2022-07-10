@@ -2991,9 +2991,10 @@ class VariabilityNetwork:
             # label for a given SNV entry
             D = lambda e: f"{competing_NT_calculator(e)}_{e['pos']}_{e['corresponding_gene_call'] if e['corresponding_gene_call'] != '-1' else 'NA'}"
 
-            self.run.info("Competing NT calculator enabled", self.include_competing_NTs)
+            self.run.info("Competing NT calculator enabled?", f"Yes, and it will use the apprach '{self.include_competing_NTs}'", mc='green')
         else:
             D = None
+            self.run.info("Competing NT calculator enabled?", "No")
 
         if not self.data:
             raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
@@ -3003,7 +3004,11 @@ class VariabilityNetwork:
             raise ConfigError("Max number of unique positions cannot be less than 0.. Obviously :/")
 
         self.samples = sorted(list(set([e['sample_id'] for e in list(self.data.values())])))
-        self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
+        num_samples = len(self.samples)
+        if num_samples > 5:
+            self.run.info('Samples found', f"A total of {len(self.samples)}. Here is the first five: {', '.join(self.samples[0:5])} ...")
+        else:
+            self.run.info('Samples found', f"A total of {len(self.samples)}: {', '.join(self.samples)}")
 
         if self.samples_information_dict:
             samples_missing_in_information_dict = [s for s in self.samples if s not in self.samples_information_dict]
@@ -3019,7 +3024,7 @@ class VariabilityNetwork:
         else:
             self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
 
-        self.run.info('unique_variable_nt_positions', '%d found.' % (len(self.unique_variable_nt_positions)))
+        self.run.info('Unique variable NT positions', f"{len(self.unique_variable_nt_positions)}.")
 
         if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
             self.unique_variable_nt_positions = set(random.sample(self.unique_variable_nt_positions, self.max_num_unique_positions))
@@ -3056,7 +3061,7 @@ class VariabilityNetwork:
             utils.gen_gexf_network_file(unique_variable_nt_positions, samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
 
-        self.run.info('network_description', self.output_file_path)
+        self.run.info('Output file', self.output_file_path)
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):

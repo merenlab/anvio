@@ -45,13 +45,13 @@ if __name__ == '__main__':
     groupC = parser.add_argument_group('ADDITIONAL PARAMS', 'More options for the wise.')
     groupC.add_argument(*anvio.A('max-num-unique-positions'), **anvio.K('max-num-unique-positions'))
     groupC.add_argument('--include-competing-NTs', metavar='OPTION', default=False, required=False,
-                        help ="Whether anvi'o should use competing nucleotides, rather than unique positions for "
-                              "variable nucleotides (which is the default behavior), to define the nodes in the "
-                              "network. If you would like that, then you will need to explicitly ask for a calculator "
-                              "for competing nuclotides. The available options are the following: {competing_NT_calculator_options}. "
-                              "If you would like to learn about these options before choosing one of them (as "
-                              "you should), please first use the flag `--list-competing-NT-calculators` (in which "
-                              "case the program will list descriptions for these options and exit.")
+                        help =f"Whether anvi'o should use competing nucleotides, rather than unique positions for "
+                              f"variable nucleotides (which is the default behavior), to define the nodes in the "
+                              f"network. If you would like that, then you will need to explicitly ask for a calculator "
+                              f"for competing nuclotides. The available options are the following: {', '.join(competing_NT_calculator_options)}. "
+                              f"If you would like to learn about these options before choosing one of them (as "
+                              f"you should), please first use the flag `--list-competing-NT-calculators` (in which "
+                              f"case the program will list descriptions for these options and exit.")
     groupC.add_argument('--edge-variable', metavar='OPTION', default="departure_from_reference", required=False,
                         help ="In the output anvi'o will connect SNVs to samples using edges, weights of which will be "
                             "defined by this variable.")
