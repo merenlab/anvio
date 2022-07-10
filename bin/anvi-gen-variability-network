@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = ["variability-profile-xml"]
 __requires__ = ["variability-profile-txt"]
-__resources__ = [("This program in the Infant Gut Tutorial", "https://merenlab.org/tutorials/infant-gut/#visualizing-snv-profiles-as-a-network")]
+__resources__ = [("An applicatio of this program in the  Infant Gut Tutorial", "https://merenlab.org/tutorials/infant-gut/#visualizing-snv-profiles-as-a-network")]
 __description__ = ("Generate a network description from an anvi'o variability profile.")
 
 
