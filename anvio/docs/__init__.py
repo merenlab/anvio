@@ -556,6 +556,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "variability-profile-xml": {
+        "name": "VARIABILITY NETWORK",
+        "type": "XML",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "codon-frequencies-txt": {
         "name": "CODON FREQUENCIES",
         "type": "TXT",
