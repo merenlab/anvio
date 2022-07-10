@@ -2977,8 +2977,31 @@ class VariabilityNetwork:
             self.data = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
             self.progress.end()
 
-            self.run.info('input_file', '%d entries read' % len(self.data))
+            # while we are here, we can quickly check whether the `self.edge_variable` is actually
+            # an appropriate one. this is done once again in the function `generate`. it is intentional
+            # and to make sure we both have an early check, and one that is later if the programmer gets
+            # an instant of this class without the data file..
+            self.is_edge_variable_appropriate()
 
+            self.run.info('Input file', '%d entries read' % len(self.data))
+
+
+    def is_edge_variable_appropriate(self):
+        """Chekcs whether the user-defined edge-weight variable occurs in variability data"""
+        an_entry = list(self.data.values())[0]
+
+        if self.edge_variable not in an_entry:
+            somewhat_stupid_options = ['sample_id', 'split_name', 'contig_name', 'competing_nts',
+                                       'reference', 'consensus', 'unique_pos_identifier_str']
+            possible_edge_variables = ', '.join([f"'{v}'" for v in an_entry.keys() if v not in somewhat_stupid_options])
+            raise ConfigError(f"The edge weight variable `{self.edge_variable}` does not seem to be among those "
+                              f"that are represented within the variability data :/ Here is a list of the variables "
+                              f"you could choose from (although not each one of them will be equally useful to serve as "
+                              f"edge weights in the resulting network, but anvi'o leaves the responsibility to choose "
+                              f"something relevant completely to you and will not scrutinize your decision): "
+                              f"{possible_edge_variables}.")
+        else:
+            return True
 
     def generate(self):
         """Where the magic happens"""
@@ -2999,6 +3022,11 @@ class VariabilityNetwork:
         if not self.data:
             raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
                                "haven't filled in the variable positions data into the class.")
+
+        # now we certainly have self.data, so it is a good time to check the edge weight
+        # variable
+        self.is_edge_variable_appropriate()
+        self.run.info("Edge variable", f"'{self.edge_variable}'")
 
         if self.max_num_unique_positions < 0:
             raise ConfigError("Max number of unique positions cannot be less than 0.. Obviously :/")
