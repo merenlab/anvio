@@ -101,7 +101,7 @@ def main(args):
                 pfam_accession_ids.remove(accession)
         else:
             raise ConfigError("Anvi'o couldn't downlaod any of your accession ids. This could be due to bad "
-                              "accession ids that don't exist on PFAM database, or bad internet connectoin "
+                              "accession ids that don't exist on PFAM database, or bad internet connection "
                               "on either side :/")
 
     # make sure all models have the GA cutoff defined

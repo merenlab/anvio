@@ -385,17 +385,27 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
+        # store our run object. 'why?', you may ask. well, keep reading.
+        my_run = self.run
+
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
-        # the line below is kind of out of place, but it is necessary. here is why: we don't want to
-        # see any run messages from ContigsSuper in profiler output. But when we pass a `run=null_run`
-        # to the the class, due to inheritance, it also modifies our own `self.run` with the null one
-        # so here we basically re-engage our `self.run` (funny detail, no one cares, but I do because
-        # I have no friends):
-        self.run = terminal.Run(width=50)
+        # restore our run object. OK. take deep breath. because you are a good programmer, you have
+        # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
+        # of place. that voice is right, but the voice doesn't know the struggles of poor souls that
+        # had to resort to a solution like this. You see, we don't want to see any run messages from
+        # ContigsSuper in profiler output. But when we pass a `run=null_run` to the the class, due to
+        # inheritance, it also modifies our own `self.run` with the null one, making the profilesuper
+        # go all quiet. so here we basically need to re-engage our `self.run`. But then if the user
+        # actually ASKED for ProfileSuper to be quiet, then we can't simply just inherit another Run
+        # object and move on with our lives in a single line right here. We in fact need to store our
+        # previous run object and then re-engage that one instead of a brand new one. There you have
+        # it (yes. funny detail, no one cares, but I do because I have no friends -- IF YOU ARE
+        # READING THESE LINES YOU ARE AUTOMATICALLY MY FRIEND, so SORRY):
+        self.run = my_run
 
         self.bam = None
         self.contigs = []
@@ -450,6 +460,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update('Creating a new single profile database with contigs hash "%s" ...' % self.a_meta['contigs_db_hash'])
         self.profile_db_path = self.generate_output_destination('PROFILE.db')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
+        if self.blank:
+            # if we are about to generate a blank profile, there is no
+            # SNV profiling
+            self.skip_SNV_profiling = True
 
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
@@ -588,7 +603,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for contig in self.contigs:
             for split in contig.splits:
                 for gene_callers_id in split.SCV_profiles:
-
                     # We reorder to the profiles in the order they will appear in the output table
                     split.SCV_profiles[gene_callers_id] = OrderedDict(
                         [(col, split.SCV_profiles[gene_callers_id][col]) for col in t.variable_codons_table_structure]
@@ -1060,8 +1074,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
             if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
-                    (received_contigs, self.num_contigs))
+                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                 self.store_contigs_buffer()
                 for c in self.contigs:
                     for split in c.splits:
@@ -1074,7 +1087,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 del self.contigs[:]
                 gc.collect()
 
-        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
+        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
@@ -1192,9 +1205,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     mem_diff = mem_tracker.get_last_diff()
 
                 self.progress.increment(received_contigs)
-                msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
-                self.progress.update(msg)
-
+                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
 
                 # Here you're about to witness the poor side of Python (or our use of it). Although
                 # we couldn't find any refs to these objects, garbage collecter kept them in the
@@ -1202,8 +1213,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # objects to try to relieve the memory by encouraging the garbage collector to
                 # realize what's up. Afterwards, we explicitly call the garbage collector
                 if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                    self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
-                        (received_contigs, self.num_contigs))
+                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                     self.store_contigs_buffer()
                     for c in self.contigs:
                         for split in c.splits:
@@ -1230,7 +1240,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.terminate()
 
-        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
+        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 

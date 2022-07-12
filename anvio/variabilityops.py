@@ -500,7 +500,7 @@ class VariabilitySuper(VariabilityFilter, object):
         np.seterr(invalid='ignore')
         self.args = args
 
-        if args.engine not in variability_engines:
+        if self.engine not in variability_engines:
             raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
@@ -1973,11 +1973,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if not self.compute_gene_coverage_stats:
             return
 
-        # Initialize the profile super FIXME This bastard spits out
-        #       Auxiliary Data ...............................: Found: SAR11/AUXILIARY-DATA.db (v. 2)
-        #       Profile Super ................................: Initialized with all 1393 splits: SAR11/PROFILE.db (v. 27)
-        # and it isn't silenced even if self.Run(verbose=False) is passed to the VariabilitySuper class
-        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path))
+        profile_super = dbops.ProfileSuperclass(argparse.Namespace(profile_db = self.profile_db_path), r=terminal.Run(verbose=False), p=self.progress)
 
         self.progress.new('Computing gene coverage stats')
         self.progress.update('... {consider --skip-gene-coverage-stats if taking too long}')
@@ -2008,8 +2004,15 @@ class VariabilitySuper(VariabilityFilter, object):
                                            column_names = gene_coverage_columns,
                                            func_args = (gene_cov_dict,))
 
-        # this guy piggybacks in this method
-        self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        # this guy piggybacks in this method. the following like ensures that if there are genes
+        # with 0 coverage, the code doesn't explode with a ZeroDivisionError, and instead, puts
+        # a 0 for the mean_normalized_coverage column for that gene. this is what we were doing
+        # here at some point:
+        #
+        #     >>> self.data['mean_normalized_coverage'] = self.data['coverage'] / self.data['gene_coverage']
+        #
+        # which killed anvi'o: before: https://github.com/merenlab/anvio/issues/1948.
+        self.data['mean_normalized_coverage'] = self.data['coverage'].divide(self.data['gene_coverage']).replace(np.inf, 0)
         self.data.loc[self.data['gene_coverage'] == -1, 'mean_normalized_coverage'] = -1
 
         self.progress.end()
@@ -2921,10 +2924,44 @@ class VariabilityNetwork:
         null = lambda x: x
         self.input_file_path = A('input_file', null)
         self.samples_information_path = A('samples_information', null)
-        self.max_num_unique_positions = A('max_num_unique_positions', int)
+        self.max_num_unique_positions = A('max_num_unique_positions', int) or 0
         self.output_file_path = A('output_file', null)
+        self.edge_variable = A('edge_variable', null) or 'departure_from_reference'
+        self.export_as_matrix = A('as_matrix', null)
 
-        filesnpaths.is_output_file_writable(self.output_file_path)
+        # if you change something here, please don't forget to update
+        # the file at `anvio/docs/programs/anvi-gen-variability-network.md`
+        self.competing_NT_calculators = {
+             'default':
+                {'f': lambda e: e['competing_nts'],
+                 'description': ("Returns the default competing nucleotides column from the variability "
+                                 "as calculated by anvi'o during profiling.")},
+             'noise-robust':
+                {'f': lambda e: e['competing_nts'] if float(e['departure_from_consensus']) > 0.1 else ''.join(sorted(e['consensus'] + e['reference'])),
+                 'description': ("When depearture from consenus for a given nt position is close to zero, "
+                                 "which means the nt position is almost fixed in the environment the default "
+                                 "way to calculate competing nucleotides can yield noisy results simply due "
+                                 "to the fact that the second most frequenty nucleotide can be driven by "
+                                 "artifacts (such as sequencing error) than biology. For instance, if a given "
+                                 "position that is represented by a nucleotide `G` in the reference has SNV "
+                                 "frequencies of {'A': 1000, 'T': 1, 'C': 0, 'G': 0} in one sample and "
+                                 "{'A': 1000, 'T': 0, 'C': 1, 'G': 0} in the other, the competing nucletoides "
+                                 "for this position in the variability table will be `AT` and `AC`, respectively. "
+                                 "However, some applications, in which competitive nucleotides are used as categorigal "
+                                 "variables to associate samples, may require a more robust apprach. The `noise-robust` "
+                                 "alternative would yield `AG` and `AG` for this position in both samples.")}
+        }
+
+        self.include_competing_NTs = A('include_competing_NTs', null)
+
+        if self.include_competing_NTs and self.include_competing_NTs not in self.competing_NT_calculators:
+            known_calculators = ', '.join([f'"{m}"' for m in self.competing_NT_calculators])
+            raise ConfigError(f"The method you asked for anvi'o to use to determine competing nucleotides is not "
+                              f"among those that anvi'o knows about :/ You asked for '{self.include_competing_NTs}'. "
+                              f"Anvi'o knows about: {known_calculators}.")
+
+        if self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
 
         if self.samples_information_path:
             filesnpaths.is_file_tab_delimited(self.samples_information_path)
@@ -2940,19 +2977,66 @@ class VariabilityNetwork:
             self.data = utils.get_TAB_delimited_file_as_dictionary(self.input_file_path)
             self.progress.end()
 
-            self.run.info('input_file', '%d entries read' % len(self.data))
+            # while we are here, we can quickly check whether the `self.edge_variable` is actually
+            # an appropriate one. this is done once again in the function `generate`. it is intentional
+            # and to make sure we both have an early check, and one that is later if the programmer gets
+            # an instant of this class without the data file..
+            self.is_edge_variable_appropriate()
 
+            self.run.info('Input file', '%d entries read' % len(self.data))
+
+
+    def is_edge_variable_appropriate(self):
+        """Chekcs whether the user-defined edge-weight variable occurs in variability data"""
+        an_entry = list(self.data.values())[0]
+
+        if self.edge_variable not in an_entry:
+            somewhat_stupid_options = ['sample_id', 'split_name', 'contig_name', 'competing_nts',
+                                       'reference', 'consensus', 'unique_pos_identifier_str']
+            possible_edge_variables = ', '.join([f"'{v}'" for v in an_entry.keys() if v not in somewhat_stupid_options])
+            raise ConfigError(f"The edge weight variable `{self.edge_variable}` does not seem to be among those "
+                              f"that are represented within the variability data :/ Here is a list of the variables "
+                              f"you could choose from (although not each one of them will be equally useful to serve as "
+                              f"edge weights in the resulting network, but anvi'o leaves the responsibility to choose "
+                              f"something relevant completely to you and will not scrutinize your decision): "
+                              f"{possible_edge_variables}.")
+        else:
+            return True
 
     def generate(self):
+        """Where the magic happens"""
+
+        if self.include_competing_NTs:
+            # if the user requests competing NTs to be included, then we need a calculator for that
+            competing_NT_calculator = self.competing_NT_calculators[self.include_competing_NTs]['f']
+
+            # another convenience here is the following lambda function that will generate a
+            # label for a given SNV entry
+            D = lambda e: f"{competing_NT_calculator(e)}_{e['pos']}_{e['corresponding_gene_call'] if e['corresponding_gene_call'] != '-1' else 'NA'}"
+
+            self.run.info("Competing NT calculator enabled?", f"Yes, and it will use the apprach '{self.include_competing_NTs}'", mc='green')
+        else:
+            D = None
+            self.run.info("Competing NT calculator enabled?", "No")
+
         if not self.data:
             raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
                                "haven't filled in the variable positions data into the class.")
+
+        # now we certainly have self.data, so it is a good time to check the edge weight
+        # variable
+        self.is_edge_variable_appropriate()
+        self.run.info("Edge variable", f"'{self.edge_variable}'")
 
         if self.max_num_unique_positions < 0:
             raise ConfigError("Max number of unique positions cannot be less than 0.. Obviously :/")
 
         self.samples = sorted(list(set([e['sample_id'] for e in list(self.data.values())])))
-        self.run.info('samples', '%d found: %s.' % (len(self.samples), ', '.join(self.samples)))
+        num_samples = len(self.samples)
+        if num_samples > 5:
+            self.run.info('Samples found', f"A total of {len(self.samples)}. Here is the first five: {', '.join(self.samples[0:5])} ...")
+        else:
+            self.run.info('Samples found', f"A total of {len(self.samples)}: {', '.join(self.samples)}")
 
         if self.samples_information_dict:
             samples_missing_in_information_dict = [s for s in self.samples if s not in self.samples_information_dict]
@@ -2963,8 +3047,12 @@ class VariabilityNetwork:
                                    "however, you are missing these ones from your samples information: %s."\
                                                 % (', '.join(samples_missing_in_information_dict)))
 
-        self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
-        self.run.info('unique_variable_nt_positions', '%d found.' % (len(self.unique_variable_nt_positions)))
+        if self.include_competing_NTs:
+            self.unique_variable_nt_positions = set([D(e) for e in list(self.data.values())])
+        else:
+            self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
+
+        self.run.info('Unique variable NT positions', f"{len(self.unique_variable_nt_positions)}.")
 
         if self.max_num_unique_positions and len(self.unique_variable_nt_positions) > self.max_num_unique_positions:
             self.unique_variable_nt_positions = set(random.sample(self.unique_variable_nt_positions, self.max_num_unique_positions))
@@ -2981,16 +3069,27 @@ class VariabilityNetwork:
         self.progress.update('Updating the dictionary with data')
         for entry in list(self.data.values()):
             sample_id = entry['sample_id']
-            pos = entry['unique_pos_identifier']
-            frequency = entry['departure_from_reference']
 
-            samples_dict[sample_id][pos] = float(frequency)
+            if self.include_competing_NTs:
+                variable_position = D(entry)
+            else:
+                variable_position = entry['unique_pos_identifier']
+
+            edge_weight = entry[self.edge_variable]
+
+            samples_dict[sample_id][variable_position] = float(edge_weight)
 
         self.progress.update('Generating the network file')
-        utils.gen_gexf_network_file(sorted(list(self.unique_variable_nt_positions)), samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
+        unique_variable_nt_positions = sorted(list(self.unique_variable_nt_positions))
+        if self.export_as_matrix:
+            temp_file_path = filesnpaths.get_temp_file_path()
+            utils.store_dict_as_TAB_delimited_file(samples_dict, headers=['items'] + unique_variable_nt_positions, output_path=temp_file_path)
+            utils.transpose_tab_delimited_file(temp_file_path, output_file_path=self.output_file_path, remove_after=True)
+        else:
+            utils.gen_gexf_network_file(unique_variable_nt_positions, samples_dict, self.output_file_path, sample_mapping_dict=self.samples_information_dict)
         self.progress.end()
 
-        self.run.info('network_description', self.output_file_path)
+        self.run.info('Output file', self.output_file_path)
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
@@ -3355,12 +3454,15 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
         comp = comparison_array[i] # The codon to be compared against
         num_nonsyn, num_syn = 0, 0
 
-        if comp < 0:
-            # No sense talking about synonymity relative to a stop codon or codon containing N
-            num_nonsyns.append(np.nan)
-            num_syns.append(np.nan)
+        cov = coverage[i]
+
+        if cov <= 0 or comp < 0:
+            # No sense talking about synonymity relative to a stop codon or codon containing N,
+            # or deal with positions with no sensible coverage. See the the following issue
+            # for the details of what made `cov <= 0` necessary: https://github.com/merenlab/anvio/issues/1948
+            num_nonsyns.append(0)
+            num_syns.append(0)
         else:
-            cov = coverage[i]
 
             for codon in codon_nums:
                 if codon == comp:
@@ -3368,7 +3470,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
                     # differ from the reference codon
                     continue
 
-                contribution = counts_array[i, codon]/cov
+                contribution = counts_array[i, codon] / cov
 
                 if is_synonymous[comp, codon]:
                     num_syn += contribution

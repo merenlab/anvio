@@ -156,6 +156,9 @@ class DBInfo(ABC):
         if not os.path.exists(path):
             raise ConfigError(f"There is nothing at '{path}' :/")
 
+        if os.path.isdir(path):
+            raise ConfigError(f"But this is no file?! This is ah directory! :(")
+
         try:
             with DB(path, None, ignore_version=True) as database:
                 if 'self' not in database.get_table_names():

@@ -1,14 +1,16 @@
-An anvi'o database that **contains key information about the mapping of short reads *from multiple samples* to your contigs.** 
+An anvi'o database that **contains key information about the mapping of short reads *from multiple samples* to your contigs.**
 
-You can think of this as a extension of a %(contigs-db)s that contains information about how your contigs align with each of your samples. The vast majority of programs that use a profile database will also ask for the contigs database associated with it. 
+You can think of this as a extension of a %(contigs-db)s that contains information about how your contigs align with each of your samples. The vast majority of programs that use a profile database will also ask for the contigs database associated with it.
 
-A profile database contains information about how short reads map to the contigs in a %(contigs-db)s. Specificially, for each sample, a profile database contains
+A profile database contains information about how short reads map to the contigs in a %(contigs-db)s. Specifically, for each sample, a profile database contains
 * the coverage and abundance per nucleotide position for each contig
 * variants of various kinds (single-nucleotide, single-codon, and single-amino acid)
 * structural variants (ex. insertions and deletions)
-These terms are explained on the [anvi'o vocabulary page](http://merenlab.org/vocabulary/)
+These terms are explained on the [anvi'o vocabulary page.](http://merenlab.org/vocabulary/)
 
-This information is neccessary to run anvi'o programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s. You can also interact with a profile database using programs like %(anvi-interactive)s.
+![Contents of the contigs and profile databases](../../images/contigs-profile-db.png)
+
+This information is necessary to run anvi'o programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s. You can also interact with a profile database using programs like %(anvi-interactive)s.
 
 Technically, "profile-db" refers to a profile database that contains the data from several samples -- in other words, the result of running %(anvi-merge)s on several %(single-profile-db)s. However, since a %(single-profile-db)s has a lot of the functionality of a profile-db, it might be easier to think of a profile database as a header referring to both single-profile-dbs and profile-dbs (which can also be called a merged-profile-dbs). For simplicity's sake, since most users are dealing with multiple samples, the name was shortened to just profile-db. The following are a list of differences in functionality between a single profile database and a merged profile database:
 * You can run %(anvi-cluster-contigs)s or %(anvi-mcg-classifier)s on only a merged profile database (or profile-db), since they look at the allignment data in many samples

@@ -9,22 +9,31 @@
   skype: a.murat.eren
   bio: "Computer scientist and microbial ecologist interested in undersatnding mechanisms by which microbes interact with their surroundings, evolve, disperse, and respond to environmental change."
   affiliations:
+    - title: Professor
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
+    - title: Professor
+      inst: Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research
+      inst_link: https://awi.de
+      current: true
+    - title: Professor
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
     - title: Fellow
       inst: Marine Biological Laboratory
-      inst_link: http://www.mbl.edu/research/mbl-fellows/a-murat-eren/
+      inst_link: http://www.mbl.edu/
       current: true
     - title: Fellow
       inst: Alfred P. Sloan Fondation
       inst_link: https://sloan.org/grant-detail/9260
-      current: true
     - title: Assistant Professor
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
     - title: Committee on Microbiology
       inst: The Biomedical Sciences Cluster at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/
-      current: true
     - title: Post-doctoral Scientist
       inst: Marine Biological Laboratory
       inst_link: https://mbl.edu
@@ -68,7 +77,7 @@
   orcid: 0000-0002-6473-0921
   email: kiefl.evan@gmail.com
   avatar: ekiefl.jpg
-  bio: "Computational biologist and software developer with a research focus on developing analysis and visualization strategies for complex multi-'omics data, particularly at the intersection of structural biology and metagenomics."
+  bio: "Computational biologist and software developer. For my PhD I studied how selective pressures shape the evolution of proteins in naturally occurring microbial populations."
   intellectual-contributions:
     - contribution: "Spearheaded the development of protein structure prediction, analysis, and visualization capabilities within anvi'o"
     - contribution: "Redesigned mission-critical code related to metagenomic workflows, decreasing compute times from >100 hours to <1 hour for terabyte-scale analyses"
@@ -76,10 +85,13 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Bioinformatician
+      inst: AbCellera
+      inst_link: https://www.abcellera.com/
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
-      current: true
 
 - github: mschecht
   name: Matthew Schechter

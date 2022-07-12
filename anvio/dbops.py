@@ -4508,10 +4508,29 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position] = 8
                 continue
 
-            # if the gene stop is identical to the contig length,
-            # just move on:
-            if stop == contig_length:
-                continue
+            # if the gene stop is identical to the contig length, we have to carefully assess
+            # this situation. if we simply say,
+            #
+            #   >>> if stop == contig_length:
+            #   >>>     continue
+            #
+            # then contigs that are solely composed of genes (i.e., gene = contig) ends up being
+            # treated as intergenic regions. but if we skip this step, or say something like
+            # this,
+            #
+            #   >>> if stop == contig_length + 1:
+            #   >>>     continue
+            #
+            # then anvi'o explodes and dies a fiery death as explained at,
+            #
+            #    https://github.com/merenlab/anvio/issues/1943
+            #
+            # SO MUCH HISTORY HERE, BUT WE PAY OUR RISPEKS TO THOSE WHO SHARE REPRODUCIBLE TEST CASES.
+            if stop == contig_length: # checking fo #1661
+                if stop - start == contig_length: # realizing that it is #1943
+                    pass # thanking the gene and sending it along.
+                else: # finding out that it actually is #1661
+                    continue # NEXT
 
             if gene_call['direction'] == 'f':
                 for nt_position in range(start, stop, 3):
