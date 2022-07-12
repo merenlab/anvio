@@ -152,10 +152,10 @@ class FilterHmmHitsTable(object):
         temp_file_path = self.domtblout + '.tmp'
 
         self.run.warning(f"You requested anvi'o to merge partial hits for a given gene by the same "
-                         f"model first if the distance betwen independent stretches of coverage is "
+                         f"model if the distance between independent stretches of coverage is "
                          f"less than {self.merge_partial_hits_within_X_nts} nucleotides. Before "
-                         f"moving forward, anvi'o will first create a copy of the original input table "
-                         f"and store an updated version of the input table with merged hits. For "
+                         f"moving forward, anvi'o will first create a copy of the original domtblout input table "
+                         f"and store an updated version of the input table with merged hits for "
                          f"downstream analyses to use.",
                          header="MERGING PARTIAL HITS FIRST", lc='green')
 
