@@ -22,7 +22,7 @@ auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
 trnaseq_db_version = "2"
-workflow_config_version = "2"
+workflow_config_version = "3"
 metabolic_modules_db_version = "4"
 
 versions_for_db_types = {'contigs': contigs_db_version,
