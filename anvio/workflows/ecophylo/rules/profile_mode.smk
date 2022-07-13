@@ -29,6 +29,7 @@ rule make_metagenomics_config_file:
         config_dict['anvi_run_scg_taxonomy']['run'] = False
         config_dict['iu_filter_quality_minoche']['run'] = False
         config_dict['anvi_profile']['--min-contig-length'] = 0
+        config_dict['anvi_profile']['--profile-SCVs'] = True
         config_dict['bowtie']['threads'] = 5
         config_dict['bowtie_build']['threads'] = 5
         config_dict['anvi_gen_contigs_database']['threads'] = 5

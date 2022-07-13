@@ -10,6 +10,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -39,8 +40,8 @@ def main(args):
     # place to perform this check before its too much CPU time has already passed (see #1430 for an actual
     # user complaint):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    if A('output_dir') and not A('delete_output_directory_if_exists') and os.path.exists(A('output_dir')):
-        raise ConfigError("The output directory '%s' already exists and anvi'o is not prepared to remove it just because." % A('output_dir'))
+    if A('output_dir'):
+        filesnpaths.check_output_directory(A('output_dir'))
 
     # k, gud. lets move on with business.
     db_type = utils.get_db_type(args.pan_or_profile_db)

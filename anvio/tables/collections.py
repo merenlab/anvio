@@ -208,3 +208,33 @@ class TablesForCollections(Table):
             db_entries_for_contigs.append(tuple([collection_name, contig_name, split_to_bin_name[split_name]]))
 
         return db_entries_for_contigs
+
+
+    def add_default_collection_to_db(self, contigs_db_path=None, collection_name="DEFAULT", bin_name="EVERYTHING"):
+        """A helper function to add a default collection to a given database that describes all items in a single bin"""
+
+        utils.is_pan_or_profile_db(self.db_path)
+
+        if utils.get_db_type(self.db_path) == 'profile' and utils.is_blank_profile(self.db_path):
+            if not contigs_db_path:
+                raise ConfigError("OK, so anvi'o actually can't add a 'default' collection into a 'blank profile database' such as "
+                                  "yours). The main reason behind this is that a blank profile databases do not know about "
+                                  "the items names they pretend to know. Why? Well, it is a long story, BUT FORTUNATELY, you can "
+                                  "recover from this by providing the contigs database your blank profile is associated with, in "
+                                  "which case things will likely work.")
+            else:
+                utils.is_profile_db_and_contigs_db_compatible(self.db_path, contigs_db_path)
+                contigs_db = db.DB(contigs_db_path, t.contigs_db_version)
+                all_items = contigs_db.get_single_column_from_table(t.splits_info_table_name, 'split')
+                contigs_db.disconnect()
+        else:
+            if contigs_db_path:
+                run.warning("You should provide a contigs database to this script only if you are working with an anvi'o blank "
+                            "profile database, which doesn't seem to be the case here. Anvi'o did think about raising an error "
+                            "and killing your awesome analysis on its track in the name of being explicit, but then it decided "
+                            "to ignore it for this once. Basically, the contigs database you provided will not be utilized for "
+                            "anything.")
+
+            all_items = utils.get_all_item_names_from_the_database(self.db_path)
+
+        self.append(collection_name, {bin_name: all_items})
