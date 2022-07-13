@@ -582,6 +582,7 @@ function showTabularModal(){
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
   var genomesObj = Object()
   var functionSourcesArr = Array()
+  console.log(settings)
 
   arrows.map(arrow => {
     if(!genomesObj[arrow['genomeID']]){
@@ -648,6 +649,7 @@ function showTabularModal(){
               <th>Contig</th>
               <th>Deepdive</th>
               <th>Color</th>
+              <th>Hidden?</th>
             </tr>
           </thead>
           <tbody id="${genome}-table-body">
@@ -681,6 +683,7 @@ function showTabularModal(){
         <td>${gene['gene']['contig']}</td>
         <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
+        <td><input class="form-hidden-check-input" id="${genome[0]}-${gene['geneID']}-hidden" value="${genome[0]}-${gene['geneID']}" type='checkbox' ${settings['display']['hidden']?.[genome[0]]?.[gene['geneID']] ? 'checked' : null}></input></td>
       </tr>`
     })
     $(`#${genome[0]}-table-body`).append(totalTableString)
