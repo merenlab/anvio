@@ -14,7 +14,7 @@ cp $files/data/input_files/*.txt                        $output_dir/metabolism_t
 cd $output_dir/metabolism_test
 
 INFO "Migrating all databases"
-anvi-migrate *db --migrate-dbs-quickly
+anvi-migrate *db --migrate-quickly
 
 # generate a temporary directory to store anvi-setup-kegg-kofams output,
 # and remove it immediately to make sure it doesn't exist:

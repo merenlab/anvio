@@ -12,7 +12,7 @@ cd $output_dir/
 
 INFO "Migrating the contigs database (quetly)"
 anvi-migrate 02_CONTIGS/CONTIGS.db \
-             --migrate-dbs-quickly \
+             --migrate-quickly \
              --quiet
 
 INFO "Generating single profile databases with '--fetch-filter inversions' (quietly)"
