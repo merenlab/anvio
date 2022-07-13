@@ -31,13 +31,11 @@ class Migrater(object):
     def __init__(self, args):
         self.args = args
         self.db_path = args.db_path
-        self.db_type = None
+        self.db_type = 'Unknown'
         self.db_version = None
         self.target_version = None
 
         filesnpaths.is_file_exists(self.db_path)
-        self.get_db_meta()
-        self.get_target_version()
 
         if not args.migrate_dbs_safely and not args.migrate_dbs_quickly:
             raise ConfigError("You must choose either `--migrate-dbs-safely` or `--migrate-dbs-quickly`. Anvi'o would "
@@ -53,18 +51,6 @@ class Migrater(object):
             self.sqlite_version = utils.get_command_output_from_shell("sqlite3 --version")[0].decode("utf-8").split(' ')[0].split('.')
         except:
             self.sqlite_version = None
-
-        run.info('Database Path', self.db_path)
-        run.info('Detected Type', self.db_type)
-        run.info('Current Version', self.db_version)
-        run.info('Target Version', self.target_version)
-
-        if args.migrate_dbs_safely:
-           run.info('Migration mode', "Safe", mc="green")
-        else:
-           run.info('Migration mode', "Adventurous", mc="red")
-
-        run.info('SQLite Version', '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/', nl_after=1, nl_before=1)
 
         if not (int(self.sqlite_version[0]) >= 3 and int(self.sqlite_version[1]) >= 30):
             if not args.just_do_it:
@@ -139,6 +125,9 @@ class Migrater(object):
 
 
     def get_db_meta(self):
+        if not self.is_good_to_go():
+            return
+
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
             raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
                               "But if you sure that, this is in fact an anvi'o database or config file "
@@ -154,12 +143,9 @@ class Migrater(object):
                 pass
 
 
-        if self.db_path.endswith('GENOMES.h5'):
-            utils.check_h5py_module()
-            import h5py
-
         try:
             if self.db_path.endswith('GENOMES.h5'):
+                import h5py
                 fp = h5py.File(self.db_path, 'r')
 
                 self.db_type = 'genomestorage'
@@ -167,6 +153,8 @@ class Migrater(object):
 
                 fp.close()
             elif self.db_path.endswith('json') or file_is_config:
+                # the file is a json file, but is it a config file for an anvi'o workflow?
+                # here we will test it by looking for `workflow_name` in the JSON data.
                 import anvio.workflows as w
                 self.db_type = 'config'
                 workflow_name, config_version = w.get_workflow_name_and_version_from_config(self.db_path, dont_raise=True)
@@ -178,9 +166,11 @@ class Migrater(object):
                 self.db_version = int(db_conn.get_meta_value('version'))
 
                 db_conn.disconnect()
-        except:
-            raise ConfigError('Are you sure "%s" is a database or config file? Because, you know, probably '
-                               'it is not at all.' % self.db_path)
+        except Exception as e:
+            raise ConfigError(f"Anvi'o had a problem with `{self.db_path}` :( Here is the error: '{e}'")
+
+        # now we know about the target anvi'o artifact, we can fill in the version.
+        self.get_target_version()
 
 
     def get_target_version(self):
@@ -224,8 +214,18 @@ class Migrater(object):
 
 
     def process(self):
-        tasks = []
+        run.warning(None, header="NEW MIGRATION TASK", lc='cyan')
+        if not self.is_good_to_go():
+            return
 
+        self.get_db_meta()
+
+        if not self.is_something_to_migrate():
+            return
+
+        self.print_info()
+
+        tasks = []
 
         # if we are in safe mode, we will first copy the db
         if self.safe_mode:
