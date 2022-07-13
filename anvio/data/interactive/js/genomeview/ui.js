@@ -748,7 +748,7 @@ function transitionTabularModalToDeepdive(event){
 
 function exportTabularModalToCSV(){
 
-  // function to strip out UI columns before processing
+  // TODO function to strip out UI columns before processing
   let titles = new Array;
   let data = new Array;
   let active = $("div#modal-tab-content div.active")[0].id
