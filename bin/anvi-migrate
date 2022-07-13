@@ -79,6 +79,65 @@ class Migrater(object):
                 run.warning("Anvi'o is skipping the version number check for SQLite. Brace yourself for impact?")
 
 
+    def print_info(self):
+        run.info('Input file path', self.db_path)
+        run.info('Input file type', self.db_type)
+        run.info('Current Version', self.db_version)
+        run.info('Target Version', self.target_version)
+
+        if args.migrate_dbs_safely:
+           run.info('Migration mode', "Safe", mc="green")
+        else:
+           run.info('Migration mode', "Adventurous", mc="red")
+
+        run.info('SQLite Version', '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/', nl_after=1, nl_before=1)
+
+
+    def is_good_to_go(self):
+        """Basic checks to make sure file types and so on looks correct"""
+        # let's start with very basics
+        if os.path.isdir(self.db_path):
+            run.info('Input file path', self.db_path, mc='red')
+            run.warning("This is a directory, and yet the training of the members of the migration headquarters "
+                        "of anvi'o only covers files. MOVING ON.", header='NOPE: LA DIRECTORY', lc='yellow')
+
+        # check file extensions to make sure we're clear with this.
+        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
+            run.info('Input file path', self.db_path)
+            run.info('Input file type', self.db_type)
+            run.warning(f"This program only works with files that end with `.db` or `.json` extensions. "
+                        f"But if you are sure that your input file at `{self.db_path}` is indeed an anvi'o "
+                        f"database or config file you can use the flag `--just-do-it` at your own risk.",
+                        header="NOPE: LA FILE EXTENSION", lc='yellow')
+
+            return False
+
+        # make sure we have the Python module for HDF is present if we have an .h5 file
+        if self.db_path.endswith('GENOMES.h5'):
+            utils.check_h5py_module()
+
+        # if we have a JSON file, we have to make sure a few things to say we're good to go
+        if self.db_path.endswith('json') or self.db_path.endswith('JSON'):
+            # does it look like a JSON file?
+            filesnpaths.is_file_json_formatted(self.db_path)
+
+            # does it look like an anvi'o config file?
+            import json
+            with open(self.db_path) as json_file:
+                json_content = json.load(json_file)
+                if 'workflow_name' not in json_content:
+                    run.info('Input file path', self.db_path)
+                    run.info('Input file type', self.db_type, mc='red')
+
+                    run.info_single("Your input file is a proper JSON file, but it doesn't look like an anvi'o workflow "
+                                    "since nowhere in it there is a variable called `workflow_name`. So, there is nothing "
+                                    "anvi'o can do with this.", nl_before=1)
+
+                    return False
+
+        return True
+
+
     def get_db_meta(self):
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
             raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
