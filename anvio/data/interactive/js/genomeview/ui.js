@@ -746,6 +746,67 @@ function transitionTabularModalToDeepdive(event){
   showDeepDiveToolTip(generatedEventObj)
 }
 
+function exportTabularModalToCSV(){
+
+  // function to strip out UI columns before processing
+  let titles = new Array;
+  let data = new Array;
+  let active = $("div#modal-tab-content div.active")[0].id
+
+  $(`#${active} th`).each(function() {
+    titles.push($(this).text());
+  });
+
+  $(`#${active} td`).each(function() {
+    data.push($(this).text());
+  });
+
+  let CSVString = prepCSVRow(titles, titles.length, '');
+  CSVString = prepCSVRow(data, titles.length, CSVString);
+  let downloadLink = document.createElement("a");
+  let blob = new Blob(["\ufeff", CSVString]);
+  let url = URL.createObjectURL(blob);
+  downloadLink.href = url;
+  downloadLink.download = `${active}-tabular-modal-table.csv`;
+  downloadLink.click()
+  console.log(CSVString)
+}
+
+function prepCSVRow(arr, columnCount, initial) { // https://stackoverflow.com/questions/40428850/how-to-export-data-from-table-to-csv-file-using-jquery
+  var row = ''; // this will hold data
+  var delimeter = ','; // data slice separator, in excel it's `;`, in usual CSv it's `,`
+  var newLine = '\r\n'; // newline separator for CSV row
+
+  /*
+   * Convert [1,2,3,4] into [[1,2], [3,4]] while count is 2
+   * @param _arr {Array} - the actual array to split
+   * @param _count {Number} - the amount to split
+   * return {Array} - splitted array
+   */
+  function splitArray(_arr, _count) {
+    var splitted = [];
+    var result = [];
+    _arr.forEach(function(item, idx) {
+      if ((idx + 1) % _count === 0) {
+        splitted.push(item);
+        result.push(splitted);
+        splitted = [];
+      } else {
+        splitted.push(item);
+      }
+    });
+    return result;
+  }
+  var plainArr = splitArray(arr, columnCount);
+  plainArr.forEach(function(arrItem) {
+    arrItem.forEach(function(item, idx) {
+      row += item + ((idx + 1) === arrItem.length ? '' : delimeter);
+    });
+    row += newLine;
+  });
+  return initial + row;
+}
+
 function showLassoMenu(selected_genes, x, y) {
   //x = 600;
   //y = 200;
