@@ -44,7 +44,7 @@ class Migrater(object):
                               "jeopardy.")
 
         if args.migrate_safely and args.migrate_quickly:
-            raise ConfigError("Please don't ask anvi'o to migrate your databases both safely and quickly :/")
+            raise ConfigError("Please don't ask anvi'o to migrate your files both safely and quickly :/")
 
         self.safe_mode = args.migrate_safely
 
@@ -60,7 +60,7 @@ class Migrater(object):
                                   "a look at the output of the command 'sqlite3 --version' on your terminal). "
                                   "You can skip this check if you use the argument `--just-do-it` with your "
                                   "command. In which case we strongly recommend you to use `--migrate-safely` "
-                                  "flag since it will be likely for you to lose your database if something goes "
+                                  "flag since it will be likely for you to lose your file if something goes "
                                   "wrong downstream." % '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/')
             else:
                 run.warning("Anvi'o is skipping the version number check for SQLite. Brace yourself for impact?")
@@ -180,7 +180,7 @@ class Migrater(object):
         if self.artifact_type in t.versions_for_db_types:
             version = int(t.versions_for_db_types[self.artifact_type])
         else:
-            raise ConfigError("Anvi'o does not have any version information about this ('%s') database type" % self.artifact_type)
+            raise ConfigError(f"Anvi'o does not have any version information about the type '{self.artifact_type}'.")
 
         if args.target_version:
             target = int(args.target_version)
@@ -233,7 +233,7 @@ class Migrater(object):
         # if we are in safe mode, we will first copy the artifact file
         if self.safe_mode:
             progress.new("Migration preparation")
-            progress.update("Copying the original db for safety ...")
+            progress.update("Copying the original file for safety ...")
             artifact_file_name = os.path.basename(self.artifact_path)
             temp_file_path = filesnpaths.get_temp_file_path() + artifact_file_name
             shutil.copy(self.artifact_path, temp_file_path)
@@ -245,8 +245,7 @@ class Migrater(object):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
             if not self.artifact_type in migration_scripts or not script_name in migration_scripts[self.artifact_type]:
-                raise ConfigError("Anvi'o can not find a migrate script required "
-                   "for this operation. (DB Type: %s, Script name: %s) " % (self.artifact_type, script_name))
+                raise ConfigError("Anvi'o can not find a migrate script required for this operation. (Artifact Type: %s, Script name: %s) " % (self.artifact_type, script_name))
 
             tasks.append(script_name)
 
@@ -260,10 +259,10 @@ class Migrater(object):
                     os.remove(temp_file_path)
 
                     progress.reset()
-                    raise ConfigError("Something went wrong during the migration of your database :( But anvi'o was able to restore your "
-                                      "original database, and stored the unfinished upgrade in the same directory with the '.broken' "
+                    raise ConfigError("Something went wrong during the migration of your file :( But anvi'o was able to restore your "
+                                      "original artifact, and stored the unfinished upgrade in the same directory with the '.broken' "
                                       "in case you may need it for debugging purposes. Please feel free to get in touch with the "
-                                      "developers, who may ask you to make available the original database to reproduce the problem. This "
+                                      "developers, who may ask you to make available the original file to reproduce the problem. This "
                                       "was the original error message that caused this: '%s'." % e)
                 else:
                     progress.reset()
@@ -271,7 +270,7 @@ class Migrater(object):
                     shutil.move(self.artifact_path, self.artifact_path + '.broken')
 
                     raise ConfigError("Anvi'o has very bad news for you :( Your migration failed, and anvi'o has no backups to restore your "
-                                      "original database. The current database is likely in a broken state, and you will unlkely going to be "
+                                      "original file. The current artifact is likely in a broken state, and you will unlkely going to be "
                                       "able to use it. So anvi'o renamed it by adding a prefix '.broken' to its file name. We are very sorry "
                                       "for this error (and anvi'o will certainly not put salt on the wound by reminding you that you could "
                                       "have avoided it by using the `--migrate-safely` flag): \"%s\"." % e)
@@ -296,9 +295,9 @@ class Migrater(object):
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('INPUTS', "You will literally give us any anvi'o database.")
-    groupA.add_argument('input', metavar = 'DATABASE(S)', nargs='+', help = "Anvi'o database or config file(s) for migration. If "
-                        "you proved many of them by running something like `anvi-migrate *.db *.json`, anvi'o will try to migrate "
+    groupA = parser.add_argument_group('INPUTS', "You will literally give us anything.")
+    groupA.add_argument('input', metavar = 'FILE(S)', nargs='+', help = "One or more files to migrate. If you unleash the program on "
+                        "many files by running something like `anvi-migrate *.db *.json`, anvi'o will try to migrate "
                         "all of the files that match to your filters.")
 
     groupB = parser.add_argument_group('SAFETY', "It is up to you. Safe things take much longer and boring. Unsafe things "
@@ -314,7 +313,8 @@ if __name__ == '__main__':
 
     try:
         if len(args.input) > 1 and args.target_version:
-            raise ConfigError("You have to provide single database to use --target-version parameter. You have provided %d databases." % len(args.input))
+            raise ConfigError(f"You have to provide a single file to use with the `--target-version` parameter. "
+                              f"You have provided {len(args.input)} :/")
 
         for artifact_path in args.input:
             args_for_single_artifact = copy.deepcopy(args)
