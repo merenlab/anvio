@@ -202,6 +202,27 @@ class Migrater(object):
         self.target_version = int(version)
 
 
+    def is_something_to_migrate(self):
+        """Test if there is anything worth migrating."""
+
+        if not self.db_version:
+            self.get_db_meta()
+
+            if not self.db_version():
+                raise ConfigError("Anvi'o needs an adult :( PS: if you are the programmer, you are the adult, and your code "
+                                  "should have never made it here.")
+
+        if self.target_version == self.db_version:
+            run.info('Input file path', self.db_path)
+            run.info('Input file type', self.db_type)
+
+            run.info_single(f"Your {self.db_type} looks good and needs no updatin' ☘️", nl_before=1, mc="green")
+
+            return False
+
+        return True
+
+
     def process(self):
         tasks = []
 
