@@ -769,7 +769,6 @@ function exportTabularModalToCSV(){
   downloadLink.href = url;
   downloadLink.download = `${active}-tabular-modal-table.csv`;
   downloadLink.click()
-  console.log(CSVString)
 }
 
 function prepCSVRow(arr, columnCount, initial) { // https://stackoverflow.com/questions/40428850/how-to-export-data-from-table-to-csv-file-using-jquery
