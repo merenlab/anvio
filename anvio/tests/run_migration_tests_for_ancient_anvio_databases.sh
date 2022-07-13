@@ -21,7 +21,7 @@ cd $output_dir
 #INFO "[$TEST] Unpacking"
 #tar -zxvf P214-MERGED.tar.gz && cd P214-MERGED/
 #INFO "[$TEST] Migrating databases"
-#anvi-migrate *db --migrate-dbs-safely
+#anvi-migrate *db --migrate-safely
 #INFO "[$TEST] Downloading state"
 #curl -L http://merenlab.org/files/P-214-state.json -o P-214-state.json
 #INFO "[$TEST] Importing state"
@@ -47,7 +47,7 @@ INFO "[$TEST] Unpacking"
 tar -zxvf TARA_ANW_MAG_00006.tar.gz && cd TARA_ANW_MAG_00006
 gzip -d AUXILIARY-DATA.h5.gz
 INFO "[$TEST] Migrating databases"
-anvi-migrate PROFILE.db CONTIGS.db --migrate-dbs-safely
+anvi-migrate PROFILE.db CONTIGS.db --migrate-quickly
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
