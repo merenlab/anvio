@@ -1170,6 +1170,8 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
             // TODO: save new color once state is implemented
             //state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
+            if(!settings.display.colors.genes.annotations[fn_type]) settings.display.colors.genes.annotations[fn_type] = {};
+            settings.display.colors.genes.annotations[fn_type][category] = '#' + hex;
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
