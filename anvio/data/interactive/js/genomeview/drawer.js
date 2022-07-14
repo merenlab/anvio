@@ -433,6 +433,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   // TODO: use state instead of hardcoded color pickers
 
   // check if gene is highlighted
+  // possibly deprecated - requires new table for user-defined colors
   let pickerCode = genomeID + '-' + geneID;
   if ($('#picker_' + pickerCode).length > 0) {
     color = $('#picker_' + pickerCode).attr('color');

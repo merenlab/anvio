@@ -62,7 +62,7 @@ var canvas;
 var genomeLabelsCanvas;
 var brush;
 var drawer
-var color_db;
+var color_db; // functional annotation type currently being used to color genes
 var counts; // stores # occurences for each category in the current function type
 var genomeData;
 
@@ -123,6 +123,7 @@ function loadAdditionalDataLayers(){
       settings['display']['hidden'] = {}
       settings['display']['colors'] = {}
       settings['display']['colors']['genes'] = {}
+      settings['display']['colors']['genes']['annotations'] = {}
       settings['display']['layers'] = {}
       settings['display']['labels'] = {}
       settings['display']['labels']['set-labels'] = {}
