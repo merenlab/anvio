@@ -76,23 +76,12 @@ function getCagForType(geneFunctions, fn_type) {
 }
 
 /*
- *  @returns target gene's category code for a given functional annotation type.
+ *  @returns target gene's category code for a given functional annotation type,
+ *            given genomeID and geneID.
  */
-function getCagForType(geneFunctions, fn_type) {
-  switch(fn_type) {
-    case 'COG_CATEGORY':
-    case 'COG14_CATEGORY':
-    case 'COG20_CATEGORY':
-      return geneFunctions && geneFunctions[fn_type] && geneFunctions[fn_type][1][0] != 'X' ? geneFunctions[fn_type][1][0] : null;
-    case 'KEGG_CLASS':
-      return geneFunctions && geneFunctions[fn_type] ? getCategoryForKEGGClass(gene.functions[fn_type][1]) : null;
-    default:
-      let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][0] : null;
-      if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
-      if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
-      if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
-      return out;
-  }
+function getCagForID(genomeID, geneID, fn_type) {
+  let funs = settings.genomeData.genomes.find(x => x[0]==genomeID)[1].genes.functions[geneID];
+  return getCagForType(funs, fn_type);
 }
 
 function appendColorRow(label, cagCode, color, prepend=false) {
