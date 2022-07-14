@@ -3,7 +3,7 @@
 
 """
 This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
-is done using query and/or target coverage
+is done using model and/or gene coverage
 """
 
 import sys
@@ -47,8 +47,8 @@ class FilterHmmHitsTable(object):
         self.contigs_db_path=A("contigs_db")
         self.domtblout=A("domain_hits_table")
         self.hmm_source=A("hmm_source")
-        self.target_coverage=A("target_coverage")
-        self.query_coverage=A("query_coverage")
+        self.gene_coverage=A("gene_coverage")
+        self.model_coverage=A("model_coverage")
         self.list_hmm_sources=A("list_hmm_sources")
         self.hmm_profile_dir=A("hmm_profile_dir")
         self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
@@ -249,7 +249,7 @@ class FilterHmmHitsTable(object):
 
 
     def import_domtblout(self):
-        """Import the domtblout file from hmmsearch then calculate query and target coverage"""
+        """Import the domtblout file from hmmsearch then calculate model and gene coverage"""
 
         if self.merge_partial_hits_within_X_nts:
             self.merge_partial_hits()
@@ -272,20 +272,20 @@ class FilterHmmHitsTable(object):
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
 
-        self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
-        self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+        self.df['model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
 
     def filter_domtblout(self):
-        """Filter the hmm_hits table based on query and/or target coverage"""
+        """Filter the hmm_hits table based on model and/or gene coverage"""
 
         # Filtering conditions
-        if self.query_coverage and self.target_coverage:
-            df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
-        elif self.target_coverage:
-            df_filtered = self.df[self.df['target_coverage'] > float(self.target_coverage)]
-        elif self.query_coverage:
-            df_filtered = self.df[self.df['query_coverage'] > float(self.query_coverage)]
+        if self.model_coverage and self.gene_coverage:
+            df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) & (self.df['gene_coverage'] > float(self.gene_coverage))]
+        elif self.gene_coverage:
+            df_filtered = self.df[self.df['gene_coverage'] > float(self.gene_coverage)]
+        elif self.model_coverage:
+            df_filtered = self.df[self.df['model_coverage'] > float(self.model_coverage)]
         else:
             df_filtered = self.df.copy()
 
@@ -294,7 +294,7 @@ class FilterHmmHitsTable(object):
         self.run.info("Num filtered", self.df.shape[0] - df_filtered.shape[0])
 
         # Reformat domtblout back to original
-        df_final = df_filtered.drop(columns=['query_coverage', 'target_coverage'])
+        df_final = df_filtered.drop(columns=['model_coverage', 'gene_coverage'])
 
         domtblout_tmp_out = filesnpaths.get_temp_file_path()
         df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
