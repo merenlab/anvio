@@ -500,6 +500,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   }
 
   var arrow = new fabric.Path(arrowPathStr);
+  let genomeOfInterest = settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)
   arrow.set({
     id: 'arrow',
     groupID: genomeID,
@@ -509,6 +510,8 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
     hasBorders: false,
     lockScaling: true,
     opacity: settings['display']['hidden']?.[genomeID]?.[geneID] ? .2 : 1.0,
+    aaSequence: genomeOfInterest[0][1]['genes']['aa'][geneID]['sequence'],
+    dnaSequence: genomeOfInterest[0][1]['genes']['dna'][geneID]['sequence'],
     gene: gene,
     functions: functions,
     geneID: geneID,
