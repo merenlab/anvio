@@ -431,11 +431,11 @@ function showDeepDiveToolTip(event){
   })
 
   $('#gene-dna-sequence-button').on('click', function(){
-    show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence'])
+    show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID], event.target.geneID, event.target.genomeID)
   })
 
   $('#gene-aa-sequence-button').on('click', function(){
-    show_sequence_modal('AA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['aa'][event.target.geneID]['sequence'])
+    show_sequence_modal('AA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['aa'][event.target.geneID], event.target.geneID, event.target.genomeID)
   })
 
   $('#gene-blastx-at-nr-button').on('click', function(){
@@ -555,10 +555,21 @@ function showToolTip(event){
   $('#mouseover-panel-annotations-table-body').append(totalAnnotationsString)
 }
 
-function show_sequence_modal(title, content) {
+function show_sequence_modal(title, gene, geneID, genomeID) {
  // remove previous modal window
   $('.modal-sequence').modal('hide');
   $('.modal-sequence').remove();
+
+  let header, content
+  if(title == 'DNA Sequence'){
+    header = `>${geneID}|contig:${gene['contig']}|start:${gene['start']}|stop:${gene['stop']}|direction:${gene['direction']}|rev_compd:${gene['rev_compd']}|length:${gene['length']}`
+    content = header + '\n' + gene['sequence']
+  } else if (title == 'AA Sequence' ){
+    // get header data from equivalent gene dna object, as gene aa object only contains sequence
+    let dna_gene_obj = settings['genomeData']['genomes'].filter(g => g[0] == genomeID)[0][1]['genes']['dna'][geneID]
+    header = `>${geneID}|contig:${dna_gene_obj['contig']}|start:${dna_gene_obj['start']}|stop:${dna_gene_obj['stop']}|direction:${dna_gene_obj['direction']}|rev_compd:${dna_gene_obj['rev_compd']}|length:${dna_gene_obj['length']}`
+    content = header + '\n' + gene['sequence']
+  }
 
   $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
       <div class="modal-dialog"> \
@@ -568,7 +579,7 @@ function show_sequence_modal(title, content) {
                   <h4 class="modal-title">' + title + '</h4> \
               </div> \
               <div class="modal-body"> \
-                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + content + '</textarea> \
               </div> \
               <div class="modal-footer"> \
                   <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
