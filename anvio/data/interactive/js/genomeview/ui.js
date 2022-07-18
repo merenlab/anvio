@@ -600,17 +600,6 @@ function showTabularModal(){
     }
   })
 
-  // handleSequenceSourceSelect = (target, type) => {
-  //   if(target.is(':checked'){
-  //     // Object.entries(genomesObj).map(genome => {
-  //     //   $(`#${genome[0]}-tabular-modal-table-header-tr`).append(`<th id='th-source-${genome[0]}-${type}'>${type}</th>`)
-  //     //   genome[1].forEach(gene => {
-  //     //     $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-${target.value}'>${gene['functions'][target.value][1]}</td>`)
-  //     //   })
-  //   //   })
-  //   // })
-  // }
-
   handleSequenceSourceSelect = (target, type) => {
     if($(target).is(':checked')){
       Object.entries(genomesObj).map(genome => {
@@ -658,7 +647,7 @@ function showTabularModal(){
 
   handleGeneShowHideToggle = (target) => {
     let [genomeID, geneID] = target.value.split('-')
-
+    let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
     if($(target).is(':checked')){
       if(genomeID in settings['display']['hidden']){
         settings['display']['hidden'][genomeID][geneID] = true
@@ -666,9 +655,14 @@ function showTabularModal(){
         settings['display']['hidden'][genomeID] = {}
         settings['display']['hidden'][genomeID][geneID] = true
       }
+      arrow.opacity = 0.1
     } else {
       delete settings['display']['hidden'][genomeID][geneID]
+      arrow.opacity = 1
     }
+    // re-render arrow objects with updated opacity values
+    arrow.dirty = true
+    canvas.renderAll()
   }
 
   $('#tabular-modal-annotation-checkboxes').empty()
