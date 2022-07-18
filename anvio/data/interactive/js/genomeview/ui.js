@@ -616,15 +616,18 @@ function showTabularModal(){
       Object.entries(genomesObj).map(genome => {
         $(`#${genome[0]}-tabular-modal-table-header-tr`).append(`<th id='th-source-${genome[0]}-${type}'>${type}</th>`)
         genome[1].forEach(gene => {
-          // $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td>${gene[type]}</td>`)
-          console.log(settings[genomeData][genomes])
+          if(type == 'dna'){
+            $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-sequence'>${gene['dnaSequence']}</td>`)
+          } else if(type == 'aa'){
+            $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-sequence'>${gene['aaSequence']}</td>`)
+          }
         })
       })
     } else {
       Object.entries(genomesObj).map(genome => {
         $(`#th-source-${genome[0]}-${type}`).remove()
         genome[1].forEach(gene => {
-          // $(`#${genome[0]}-${gene['geneID']}-${target.value}`).remove()
+          $(`#${genome[0]}-${gene['geneID']}-sequence`).remove()
         })
       })
 
