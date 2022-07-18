@@ -175,7 +175,7 @@ function setEventListeners(){
   });
   $('#gene_color_order').on('change', function () {
     color_db = $(this).val();
-    generateColorTable(null, color_db); // TODO: include highlight_genes, fn_colors etc from state
+    generateColorTable(settings.display.colors.genes.annotations[color_db], color_db); // TODO: include highlight_genes, fn_colors etc from state
 
     if(link_gene_label_color_source){
       $('#gene_label_source').val($(this).val())
@@ -210,7 +210,7 @@ function setEventListeners(){
     if(link_gene_label_color_source){
       color_db = $(this).val();
       $('#gene_color_order').val($(this).val())
-      generateColorTable(null, color_db)
+      generateColorTable(settings.display.colors.genes.annotations[color_db], color_db)
     }
     drawer.draw()
   })
@@ -224,7 +224,7 @@ function setEventListeners(){
   })
   $('#show_only_cags_in_window').on('change', function () {
     filter_gene_colors_to_window = !filter_gene_colors_to_window;
-    generateColorTable(null, color_db);
+    generateColorTable(settings.display.colors.genes.annotations[color_db], color_db);
   });
   $('#thresh_count').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
@@ -512,7 +512,9 @@ function showDeepDiveToolTip(event){
         gene.fill = `#${hex}`
         gene.dirty = true
         if(!settings['display']['colors']['genes']?.[event.target.genomeID]?.[event.target.geneID]){
-          settings['display']['colors']['genes'][event.target.genomeID] = []
+          if(!settings['display']['colors']['genes'][event.target.genomeID]) {
+            settings['display']['colors']['genes'][event.target.genomeID] = [];
+          }
           settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
         } else {
           settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
@@ -1201,11 +1203,27 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
   }
 
   $('#tbody_function_colors').empty();
-  Object.keys(db).forEach(category =>
-    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category])
-  );
+  Object.keys(db).forEach(category => {
+    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category]);
+    $('#picker_' + getCleanCagCode(category)).colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+            // TODO: save new color once state is implemented
+            //state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+            if(!settings.display.colors.genes.annotations[fn_type]) settings.display.colors.genes.annotations[fn_type] = {};
+            settings.display.colors.genes.annotations[fn_type][category] = '#' + hex;
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+  });
 
-  $('.colorpicker').colpick({
+  /*$('.colorpicker').colpick({
       layout: 'hex',
       submit: 0,
       colorScheme: 'light',
@@ -1218,7 +1236,8 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
-  });
+      settings['display']['colors']['genes']['annotations'][fn_type][category] = '#' + hex;
+  });*/
 
   if(highlight_genes) {
     let genomes = Object.entries(settings['genomeData']['genomes']).map(g => g[1][0]);
@@ -1261,6 +1280,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
 function resetFunctionColors(fn_colors=null) {
   // TODO: this should reset color dictionaries in state and then redraw table, once state is implemented
   if($('#gene_color_order') == null) return;
+  delete settings['display']['colors']['genes']['annotations'][color_db];
   generateColorTable(fn_colors, color_db);
 }
 

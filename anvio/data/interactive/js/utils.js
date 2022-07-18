@@ -64,6 +64,15 @@ function getCagForType(geneFunctions, fn_type) {
   return out;
 }
 
+/*
+ *  @returns target gene's category code for a given functional annotation type,
+ *            given genomeID and geneID.
+ */
+function getCagForID(genomeID, geneID, fn_type) {
+  let funs = settings.genomeData.genomes.find(x => x[0]==genomeID)[1].genes.functions[geneID];
+  return getCagForType(funs, fn_type);
+}
+
 function appendColorRow(label, cagCode, color, prepend=false) {
   let code = getCleanCagCode(cagCode);
   var tbody_content =

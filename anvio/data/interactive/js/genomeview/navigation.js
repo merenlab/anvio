@@ -69,6 +69,16 @@
     brush.event(d3.select(".brush").transition());
   }
 
+  async function zoomOutAndWait(type, start, end, time) {
+    zoomOut(type, start, end);
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve();
+      }, time);
+    });
+  }
+
 /*
  *  Resets viewport if outside bounds of the view window, with padding on each end
  */
