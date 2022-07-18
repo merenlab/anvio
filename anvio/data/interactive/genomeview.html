@@ -120,8 +120,9 @@
                 <div class="modal-multiselect-col">
                   <button class="btn btn-default p-3" onclick="gatherTabularModalSelectedItems('glow')">Glow selected in sequence</button>
                   <button class="btn btn-default p-3">Export selected as contig.db</button>
-                  <button class="btn btn-default p-3" id="export-tabular-modal-csv" onclick="exportTabularModalToCSV()">Export table as CSV</button>
+                  <button class="btn btn-default p-3" id="export-tabular-modal-csv" onclick="exportTabularModalToTSV()">Export table as TSV</button>
                 </div>
+                <div id="tabular-modal-sequence-checkboxes"></div>
                 <div>
                   <input type='text' placeholder='metadata tag'/>
                   <button class="btn btn-default">Add metadata tag to selected</button>

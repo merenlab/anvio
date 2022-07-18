@@ -582,7 +582,6 @@ function showTabularModal(){
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow')
   var genomesObj = Object()
   var functionSourcesArr = Array()
-  console.log(settings)
 
   arrows.map(arrow => {
     if(!genomesObj[arrow['genomeID']]){
@@ -598,6 +597,37 @@ function showTabularModal(){
       })
     }
   })
+
+  // handleSequenceSourceSelect = (target, type) => {
+  //   if(target.is(':checked'){
+  //     // Object.entries(genomesObj).map(genome => {
+  //     //   $(`#${genome[0]}-tabular-modal-table-header-tr`).append(`<th id='th-source-${genome[0]}-${type}'>${type}</th>`)
+  //     //   genome[1].forEach(gene => {
+  //     //     $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td id='${genome[0]}-${gene['geneID']}-${target.value}'>${gene['functions'][target.value][1]}</td>`)
+  //     //   })
+  //   //   })
+  //   // })
+  // }
+
+  handleSequenceSourceSelect = (target, type) => {
+    if($(target).is(':checked')){
+      Object.entries(genomesObj).map(genome => {
+        $(`#${genome[0]}-tabular-modal-table-header-tr`).append(`<th id='th-source-${genome[0]}-${type}'>${type}</th>`)
+        genome[1].forEach(gene => {
+          // $(`#${genome[0]}-table-row-${gene['geneID']}`).append(`<td>${gene[type]}</td>`)
+          console.log(settings[genomeData][genomes])
+        })
+      })
+    } else {
+      Object.entries(genomesObj).map(genome => {
+        $(`#th-source-${genome[0]}-${type}`).remove()
+        genome[1].forEach(gene => {
+          // $(`#${genome[0]}-${gene['geneID']}-${target.value}`).remove()
+        })
+      })
+
+    }
+  }
 
   handleAnnotationSourceSelect = (target) => {
     if($(target).is(":checked")){
@@ -631,6 +661,18 @@ function showTabularModal(){
     )
   })
 
+  $('#tabular-modal-sequence-checkboxes').empty()
+  $('#tabular-modal-sequence-checkboxes').append(
+	`
+	<label for="'tabular-dna-seq-checkbox">DNA Sequence</label>
+	<input type='checkbox' id='tabular-dna-seq-checkbox' onclick="handleSequenceSourceSelect(this, 'dna')"/>
+	<br>
+	<label for="'tabular-aa-seq-checkbox" onclick="handleSequenceSourceSelect(this, 'aa')">AA Sequence</label>
+	<input type='checkbox' id='tabular-aa-seq-checkbox' onclick="handleSequenceSourceSelect(this, 'aa')"/>
+	<br>
+	`
+  )
+
   Object.keys(genomesObj).map((genome, idx) => {
     $('#tabular-modal-nav-tabs').append(`
       <li class="${idx == 0 ? 'active' : ''}"><a data-toggle="tab" href="#${genome}">${genome}</a></li>
@@ -642,7 +684,7 @@ function showTabularModal(){
           <thead id='tabular-modal-table-head'>
             <tr id='${genome}-tabular-modal-table-header-tr'>
               <th><input class="form-check-input" type='checkbox'></input> Select</th>
-              <th>Gene ID</th>
+              <th>Gene Caller ID</th>
               <th>Start</th>
               <th>Stop</th>
               <th>Direction</th>
@@ -749,7 +791,7 @@ function transitionTabularModalToDeepdive(event){
   showDeepDiveToolTip(generatedEventObj)
 }
 
-function exportTabularModalToCSV(){
+function exportTabularModalToTSV(){
 
   // TODO function to strip out UI columns before processing
   let titles = new Array;
@@ -764,19 +806,19 @@ function exportTabularModalToCSV(){
     data.push($(this).text());
   });
 
-  let CSVString = prepCSVRow(titles, titles.length, '');
-  CSVString = prepCSVRow(data, titles.length, CSVString);
+  let CSVString = prepTSVRow(titles, titles.length, '');
+  CSVString = prepTSVRow(data, titles.length, CSVString);
   let downloadLink = document.createElement("a");
   let blob = new Blob(["\ufeff", CSVString]);
   let url = URL.createObjectURL(blob);
   downloadLink.href = url;
-  downloadLink.download = `${active}-tabular-modal-table.csv`;
+  downloadLink.download = `${active}-tabular-modal-table.tsv`;
   downloadLink.click()
 }
 
-function prepCSVRow(arr, columnCount, initial) { // https://stackoverflow.com/questions/40428850/how-to-export-data-from-table-to-csv-file-using-jquery
+function prepTSVRow(arr, columnCount, initial) { // https://stackoverflow.com/questions/40428850/how-to-export-data-from-table-to-csv-file-using-jquery
   var row = ''; // this will hold data
-  var delimeter = ','; // data slice separator, in excel it's `;`, in usual CSv it's `,`
+  var delimeter = '\t'; // data slice separator, in excel it's `;`, in usual CSv it's `,`
   var newLine = '\r\n'; // newline separator for CSV row
 
   /*
