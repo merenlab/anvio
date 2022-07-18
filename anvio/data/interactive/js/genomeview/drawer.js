@@ -738,7 +738,7 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
   $('#genome_scale_interval').val(scaleInterval);
 }
 
-GenomeDrawer.prototype.queryFunctions = function () {
+GenomeDrawer.prototype.queryFunctions = async function () {
   $('#query-results-table').empty()
   $('#query-results-span').empty()
   let query = $('#function_search_query').val().toLowerCase()
@@ -846,12 +846,11 @@ GenomeDrawer.prototype.queryFunctions = function () {
   renderAllGenes()
 
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
-  zoomOut('partial', lowestStart, highestEnd)
-  console.log(glowPayload);
+  await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload)
 }
 
-GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
+GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
   $('#query-results-table').empty()
   let glowPayload = Array()
   let foundInGenomes = Object()
@@ -891,7 +890,7 @@ GenomeDrawer.prototype.queryMetadata = function(metadataLabel){
     lowestStart = 0
     highestEnd = genomeMax
   }
-  zoomOut('partial', lowestStart, highestEnd)
+  await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload)
 }
 
