@@ -656,6 +656,21 @@ function showTabularModal(){
     }
   }
 
+  handleGeneShowHideToggle = (target) => {
+    let [genomeID, geneID] = target.value.split('-')
+
+    if($(target).is(':checked')){
+      if(genomeID in settings['display']['hidden']){
+        settings['display']['hidden'][genomeID][geneID] = true
+      } else {
+        settings['display']['hidden'][genomeID] = {}
+        settings['display']['hidden'][genomeID][geneID] = true
+      }
+    } else {
+      delete settings['display']['hidden'][genomeID][geneID]
+    }
+  }
+
   $('#tabular-modal-annotation-checkboxes').empty()
   functionSourcesArr.map(s => {
     $('#tabular-modal-annotation-checkboxes').append(
@@ -730,7 +745,11 @@ function showTabularModal(){
         <td>${gene['gene']['contig']}</td>
         <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
         <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
-        <td><input class="form-hidden-check-input" id="${genome[0]}-${gene['geneID']}-hidden" value="${genome[0]}-${gene['geneID']}" type='checkbox' ${settings['display']['hidden']?.[genome[0]]?.[gene['geneID']] ? 'checked' : null}></input></td>
+        <td><input class="form-hidden-check-input"
+                   id="${genome[0]}-${gene['geneID']}-hidden" value="${genome[0]}-${gene['geneID']}"
+                   onclick='handleGeneShowHideToggle(this)'
+                   type='checkbox' ${settings['display']['hidden']?.[genome[0]]?.[gene['geneID']] ? 'checked' : null}>
+        </input></td>
       </tr>`
     })
     $(`#${genome[0]}-table-body`).append(totalTableString)
