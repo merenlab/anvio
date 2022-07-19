@@ -374,7 +374,6 @@ rule anvi_run_ncbi_cogs:
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
         cog_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cog-data-dir'),
-        sensitive = M.get_rule_param('anvi_run_ncbi_cogs', '--sensitive'),
         temporary_dir_path = M.get_rule_param('anvi_run_ncbi_cogs', '--temporary-dir-path'),
         search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
     threads: M.T('anvi_run_ncbi_cogs')
@@ -382,7 +381,6 @@ rule anvi_run_ncbi_cogs:
     shell: w.r("""anvi-run-ncbi-cogs -c {input.contigs} \
                                      -T {threads} \
                                      {params.cog_data_dir} \
-                                     {params.sensitive} \
                                      {params.temporary_dir_path} \
                                      {params.search_with} >> {log} 2>&1""")
 
