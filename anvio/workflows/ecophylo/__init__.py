@@ -38,7 +38,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Snakemake rules
         self.rules.extend(['anvi_run_hmms_hmmsearch',
-                           'filter_hmm_hits_by_query_coverage',
+                           'filter_hmm_hits_by_model_coverage',
                            'process_hmm_hits',
                            'combine_sequence_data',
                            'anvi_get_external_gene_calls_file',
@@ -76,7 +76,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_query_coverage'] = ['--query-coverage', 'clustering_threshold_for_OTUs', 'additional_params']
+        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', 'clustering_threshold_for_OTUs', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
@@ -95,7 +95,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'filter_hmm_hits_by_query_coverage': {'threads': 5, '--query-coverage': 0.8},
+            'filter_hmm_hits_by_model_coverage': {'threads': 5, '--model-coverage': 0.8},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 5},
@@ -338,9 +338,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_files.append(target_file)
 
                 target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_tree.done")
-                target_files.append(target_file)
-
-                target_file = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt")
                 target_files.append(target_file)
             
             else:
