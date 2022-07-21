@@ -248,6 +248,8 @@ rule make_anvio_state_file:
 
         single_dict = {}
 
+        mean_coverage_dict = {}
+
         percent_identity = {
             "normalization": "none",
             "min": {
@@ -260,8 +262,15 @@ rule make_anvio_state_file:
                 }
         }
 
+        cluster_size = {
+            "normalization": "none"
+        }
+
         single_dict['percent_identity'] = percent_identity 
+        mean_coverage_dict['percent_identity'] = percent_identity 
+        mean_coverage_dict['cluster_size'] = cluster_size 
         views_dict['single'] = single_dict
+        views_dict['mean_coverage'] = mean_coverage_dict
         state_dict['views'] = views_dict
 
         with open(output.state_file, "w") as outfile:
