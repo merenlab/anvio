@@ -5,6 +5,7 @@
 import os
 import sys
 import anvio
+import argparse
 import pandas as pd
 
 import anvio
@@ -17,6 +18,8 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.genomedescriptions import GenomeDescriptions
+from anvio.genomedescriptions import MetagenomeDescriptions
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 
 
@@ -32,6 +35,7 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 class EcoPhyloWorkflow(WorkflowSuperClass):
+
 
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ecophylo')
@@ -123,7 +127,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             })
 
         # Directory structure for Snakemake workflow
-
+        self.dirs_dict.update({"HOME": "ECOPHYLO_WORKFLOW"})
         self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS"})
         self.dirs_dict.update({"MSA": "ECOPHYLO_WORKFLOW/03_MSA"})
@@ -148,73 +152,53 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
-        self.names_dirs = []
         self.contigsDB_name_path_dict = {}
-        self.contigsDB_name_dir_dict = {}
         self.contigsDB_name_bam_dict = {}
 
         # Load metagenomes.txt
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
 
         if self.metagenomes:
-            filesnpaths.is_file_exists(self.metagenomes)
-            try:
-                self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
-                self.metagenomes_name_list = self.metagenomes_df.name.to_list()
-                for name in self.metagenomes_name_list:
-                    if " " in name:
-                        raise ConfigError("One of the names in your metagenomes.txt file contains spaces. "
-                                          "The EcoPhylo workflow will have a hard time with this, please "
-                                          "only use underscores in your metagenome names.")
-                    else:
-                        continue
-                self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
-                self.metagenomes_dirname_list = [os.path.dirname(x) for x in self.metagenomes_path_list]
-                self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_df.name, self.metagenomes_df.contigs_db_path)))
-                if 'bam' in self.metagenomes_df.columns:
-                    self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_df.name, self.metagenomes_df.bam)))
-                    self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
-                self.names_list.extend(self.metagenomes_name_list)
+            args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']))
+            g = MetagenomeDescriptions(args)
+            g.load_metagenome_descriptions(skip_sanity_check=True)
+            self.metagenomes_dict = g.metagenomes_dict
+            self.metagenomes_name_list = list(self.metagenomes_dict.keys())
+            self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
+            self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
 
-            except IndexError as e:
-                raise ConfigError("The metagenomes.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.metagenomes_df, e))
+            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+            if 'bam' in self.metagenomes_df.columns:
+                self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
+                self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
+            self.names_list.extend(self.metagenomes_name_list)
 
         # Load external-genomes.txt
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
         
         if self.external_genomes:
-            filesnpaths.is_file_exists(self.external_genomes)
-            try:
-                self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
-                self.external_genomes_names_list = self.external_genomes_df.name.to_list()
-                for name in self.external_genomes_names_list:
-                    if " " in name:
-                        raise ConfigError("One of the names in your external-genomes.txt file contains spaces. "
-                                          "The EcoPhylo workflow will have a hard time with this, please "
-                                          "only use underscores in your genome names.")
-                    else:
-                        continue
-                self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
-                self.external_genomes_dirname_list = [os.path.dirname(x) for x in self.external_genomes_path_list]
-                self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
-                if 'bam' in self.external_genomes_df.columns:
-                    self.contigsDB_name_bam_dict.update(dict(zip(self.external_genomes_df.name, self.external_genomes_df.bam)))
-                self.names_list.extend(self.external_genomes_names_list)
+            
+            args = argparse.Namespace(external_genomes=self.external_genomes)
+            genome_descriptions = GenomeDescriptions(args)
+            genome_descriptions.load_genomes_descriptions()
+            self.external_genomes_dict = genome_descriptions.external_genomes_dict
+            self.external_genomes_names_list = list(self.external_genomes_dict.keys())
+            self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
+            self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
 
-            except IndexError as e:
-                raise ConfigError("The external-genomes.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: '%s'" % (self.external_genomes_df, e))
-        else:
-            self.external_genomes_names_list = []
 
+            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
+            if 'bam' in self.external_genomes_df.columns:
+                self.contigsDB_name_bam_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_df.bam)))
+                self.external_genomes_profiles_list = self.external_genomes_df.bam.to_list()
+            self.names_list.extend(self.external_genomes_names_list)
 
         # Concatenate metagenomes.txt and external-genomes.txt
         contigsDB_name_path_list = list(self.contigsDB_name_path_dict.items())
         contigsDB_name_path_df = pd.DataFrame(contigsDB_name_path_list, columns=['name', 'contigs_db_path'])
-        combined_genomes_df_path = "combined_genomes.txt"
+        self.combined_genomes_df_path = "ECOPHYLO_WORKFLOW/combined_genomes.txt"
         
-        contigsDB_name_path_df.to_csv(combined_genomes_df_path, \
+        contigsDB_name_path_df.to_csv(self.combined_genomes_df_path, \
                                       sep="\t", \
                                       index=False, \
                                       header=True)
@@ -231,6 +215,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
         if self.hmm_list_path: 
             filesnpaths.is_file_exists(self.hmm_list_path)
+            filesnpaths.is_file_tab_delimited(self.hmm_list_path)
             try:
                 HMM_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
                 self.HMM_source_dict = dict(zip(HMM_df.name, HMM_df.source))
@@ -312,6 +297,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clustering_threshold_dict = dict(zip(self.clustering_param_space_list_strings, self.clustering_param_space))
 
         self.target_files = self.get_target_files()
+
 
     def get_target_files(self):
         target_files = []
