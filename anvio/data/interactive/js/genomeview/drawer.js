@@ -584,7 +584,7 @@ GenomeDrawer.prototype.shadeGeneClusters = function (geneClusters, colors) {
  *    (1) [{genomeID: gid_1, geneID: [id_1, id_2, ...]}, ...]
  *    (2) [{genomeID: gid_1, geneID: id_1}, ...]
  */
-GenomeDrawer.prototype.glowGenes = function (geneParams) {
+GenomeDrawer.prototype.glowGenes = function (geneParams, indefinite=false, timeInterval=5000) {
   // convert geneParams format (1) to format (2)
   if (Array.isArray(geneParams[0].geneID)) {
     let newParams = [];
@@ -594,20 +594,50 @@ GenomeDrawer.prototype.glowGenes = function (geneParams) {
     geneParams = newParams;
   }
 
+  this.removeAllGeneGlows();
+
   var shadow = new fabric.Shadow({
     color: 'red',
     blur: 30
   });
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && geneParams.some(g => g.genomeID == obj.genomeID && g.geneID == obj.geneID));
+
+  if(indefinite) {
+    settings['display']['glowAnimationID'] = setInterval(function () {
+      for(arrow of arrows) {
+        arrow.set('shadow', shadow);
+        arrow.animate('shadow.blur', shadow.blur == 0 ? 30 : 0, {
+          duration: timeInterval,
+          onChange: canvas.renderAll.bind(canvas),
+          onComplete: function () { /*arrow.shadow = null*/ },
+          easing: fabric.util.ease['easeInOutCubic']
+        });
+      }
+      canvas.renderAll.bind(canvas)
+    }, timeInterval+100);
+  }
+
   for (arrow of arrows) {
     arrow.set('shadow', shadow);
     arrow.animate('shadow.blur', 0, {
-      duration: 5000,
+      duration: timeInterval,
       onChange: canvas.renderAll.bind(canvas),
-      onComplete: function () { arrow.shadow = null; },
+      onComplete: function () {},
       easing: fabric.util.ease['easeInQuad']
     });
   }
+  canvas.renderAll();
+}
+
+/*
+ *  Removes all active gene glow effects.
+ */
+GenomeDrawer.prototype.removeAllGeneGlows = function () {
+  clearInterval(settings['display']['glowAnimationID']);
+  settings['display']['glowAnimationID'] = null;
+  canvas.getObjects().filter(obj => obj.id == 'arrow' && obj.shadow).forEach(arrow => {
+    delete arrow.shadow;
+  });
   canvas.renderAll();
 }
 
