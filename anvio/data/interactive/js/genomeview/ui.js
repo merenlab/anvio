@@ -739,7 +739,10 @@ function showTabularModal(){
           `
         })
       }
-
+      let geneHex
+      if(settings['display']['colors']['genes']?.[genome[0]]?.[gene['geneID']]){
+        geneHex = settings['display']['colors']['genes']?.[genome[0]]?.[gene['geneID']]
+      }
       totalTableString += `
       <tr id='${genome[0]}-table-row-${gene['geneID']}'>
         <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
@@ -749,7 +752,7 @@ function showTabularModal(){
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
         <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
-        <td><div id="picker-tabular-modal" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div></td>
+        <td><div id="${gene['geneID']}-${genome[0]}-picker-tabular-modal" class="colorpicker" color="${geneHex ? geneHex : '#808080'}" background-color="${geneHex ? geneHex : '#808080'}" style="background-color: ${geneHex ? geneHex : '#808080'}; margin-right:16px; margin-left:16px"></div></td>
         <td><input class="form-hidden-check-input"
                    id="${genome[0]}-${gene['geneID']}-hidden" value="${genome[0]}-${gene['geneID']}"
                    onclick='handleGeneShowHideToggle(this)'
@@ -769,20 +772,22 @@ function showTabularModal(){
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
 
-        // if(!settings['display']['colors']['genes'][selected_genes[0].genomeID])
-        //   settings['display']['colors']['genes'][selected_genes[0].genomeID] = {};
-        // selected_genes.forEach(gene => {
-        //   gene.fill = '#' + hex;
-        //   gene.dirty = true;
-        //   settings['display']['colors']['genes'][selected_genes[0].genomeID][gene.geneID] = '#' + hex;
-        // });
+        let [geneID, genomeID] = [el.id.split('-')[0], el.id.split('-')[1]]
+
+        if(settings['display']['colors']['genes']?.[genomeID]?.[geneID]){
+          settings['display']['colors']['genes'][genomeID][geneID] = '#' + hex
+        } else {
+          settings['display']['colors']['genes'][genomeID] = {}
+          settings['display']['colors']['genes'][genomeID][geneID] = '#' + hex
+        }
+
+        let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
+        arrow.fill = '#' + hex
+        arrow.dirty = true
         canvas.renderAll();
     }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
-      // selected_genes.forEach(gene => {
-      //   gene.fill = this.value;
-      // });
   });
 }
 
@@ -883,7 +888,6 @@ function prepTSVRow(arr, columnCount, initial) { // https://stackoverflow.com/qu
 function showLassoMenu(selected_genes, x, y) {
   //x = 600;
   //y = 200;
-  console.log('hi')
   let start, stop, length;
   let showSetLabel = false;
   if(selected_genes.every(obj => obj.genomeID == selected_genes[0].genomeID)) {
