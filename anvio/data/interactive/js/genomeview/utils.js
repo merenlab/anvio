@@ -168,7 +168,7 @@ function calcXBounds() {
  *  @returns array of functional annotation types from table in `genomeData`
  */
 function getFunctionalAnnotations() {
-  return Object.keys(genomeData?.genomes?.[0]?.[1]?.genes?.functions[0]);
+  return Object?.keys(genomeData?.genomes?.[0]?.[1]?.genes?.functions[0]);
 }
 
 /*
