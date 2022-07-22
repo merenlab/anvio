@@ -1,9 +1,9 @@
 .container {
-    width: 95%; 
+    width: 95%;
     align-content: center;
     margin: 0 auto 20px auto;
-    background: rgba(255,255,255,0.5);
-    box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
     padding: 20px 30px;
     touch-action: none;
 }
@@ -12,11 +12,11 @@ svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
     font-weight: 700;
-    text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
 }
 
 g.scale g.brush rect.background {
-    fill: rgba(0,0,0,.1);
+    fill: rgba(0, 0, 0, .1);
 }
 
 g.scale g.axis path {
@@ -27,7 +27,8 @@ g.scale g.axis line {
     stroke-opacity: .5;
 }
 
-.axis path, .axis line {
+.axis path,
+.axis line {
     fill: none;
     stroke: #aaa;
     shape-rendering: crispEdges;
@@ -39,25 +40,26 @@ g.scale g.axis line {
     shape-rendering: crispEdges;
 }
 
-g.scale rect.background{
-    fill: rgb(200,200,255);
+g.scale rect.background {
+    fill: rgb(200, 200, 255);
     visibility: visible !important;
     pointer-events: all;
 }
 
-#tooltip-body{
+#tooltip-body {
     background-color: white;
     opacity: 100%;
     border-style: solid;
     border-width: 3px;
-    padding : 10px;
+    padding: 10px;
 }
-#deepdive-tooltip-body{
+
+#deepdive-tooltip-body {
     background-color: white;
     opacity: 100%;
     border-style: solid;
     border-width: 3px;
-    padding : 10px;
+    padding: 10px;
 }
 
 
@@ -75,6 +77,7 @@ g.scale rect.background{
     right: 0px;
     z-index: 999;
 }
+
 #toggle-panel-query {
     position: fixed;
     height: 100px;
@@ -106,7 +109,7 @@ g.scale rect.background{
 }
 
 #settings-panel {
-  	display: none;
+    display: none;
     top: 0px;
     right: 0px;
     position: fixed;
@@ -116,31 +119,31 @@ g.scale rect.background{
     opacity: 0.9;
     width: 530px;
     padding: 20px;
-    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     overflow-y: scroll;
     z-index: 999;
     color: black;
 }
 
 #query-panel {
-  	display: none;
+    display: none;
     top: 0px;
     right: 0px;
     position: fixed;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
     border-left: 1px solid #D3D3D3;
-    opacity: 0.9;
+    opacity: 0.95;
     width: 530px;
     padding: 20px;
-    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     overflow-y: scroll;
     z-index: 999;
     color: black;
 }
 
 #mouseover-panel {
-  	display: none;
+    display: none;
     top: 0px;
     right: 0px;
     position: fixed;
@@ -150,7 +153,7 @@ g.scale rect.background{
     opacity: 0.9;
     width: 530px;
     padding: 20px;
-    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     overflow-y: scroll;
     z-index: 999;
     color: black;
@@ -174,12 +177,12 @@ g.scale rect.background{
 }
 
 #settings-section-info-SNV-warning {
-  display: none;
-  color: red;
+    display: none;
+    color: red;
 }
 
 #settings-panel code {
-	padding: 1.4px 2px;
+    padding: 1.4px 2px;
     font-size: 90%;
     color: #c7254e;
     background-color: #f3f3f3;
@@ -199,9 +202,11 @@ g.scale rect.background{
 .toggle-panel-settings-pos {
     right: 530px !important;
 }
+
 .toggle-panel-query-pos {
     right: 530px !important;
 }
+
 .toggle-panel-mouseover-pos {
     right: 530px !important;
 }
@@ -219,51 +224,50 @@ g.scale rect.background{
     border-right: 1px solid #D3D3D3;
 }
 
-.sidebar-footer > .btn {
+.sidebar-footer>.btn {
     width: 50%;
 }
 
-body{
+body {
     font-family: 'Lato', Arial, serif;
     font-weight: 300;
     font-size: 14px;
-    color: #888;
     -webkit-font-smoothing: antialiased;
 }
 
-a{
+a {
     color: #722;
     text-decoration: none;
 }
 
-#labelAndMainContainer{
+#labelAndMainContainer {
     display: flex;
     flex-direction: row;
 }
 
-#labelAndDropdownContainer{
+#labelAndDropdownContainer {
     border-style: solid;
     border-width: 1;
     padding: 15px;
     margin: 5px;
 }
 
-#scaleContainer{
+#scaleContainer {
     border-style: solid;
     border-width: 3px;
     background: white;
     padding: 15px;
     margin: 5px;
     position: fixed;
-    bottom : 25px; 
-    background-color: rgba(255,255,255, 0.8);
+    bottom: 25px;
+    background-color: rgba(255, 255, 255, 0.8);
 }
 
-#tabular-modal-body{
+#tabular-modal-body {
     overflow-y: scroll;
 }
 
-.modal-multiselect-col{
+.modal-multiselect-col {
     display: flex;
     flex-direction: column;
     width: 40%;
