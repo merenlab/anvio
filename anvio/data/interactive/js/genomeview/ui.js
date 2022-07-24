@@ -1397,4 +1397,3 @@ function setGeneVisibilityRange(targetGene, targetGenome){
 function showAllHiddenGenes(){
   settings['display']['hidden'] = {}
   drawer.draw()
-}}
