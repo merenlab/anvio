@@ -628,8 +628,6 @@ GenomeDrawer.prototype.glowGenes = function (geneParams, indefinite=false, timeI
  *  Removes all active gene glow effects.
  */
 GenomeDrawer.prototype.removeAllGeneGlows = function () {
-  clearInterval(settings['display']['glowAnimationID']);
-  settings['display']['glowAnimationID'] = null;
   canvas.getObjects().filter(obj => obj.id == 'arrow' && obj.shadow).forEach(arrow => {
     arrow.set('stroke', 'gray');
     delete arrow.shadow;
