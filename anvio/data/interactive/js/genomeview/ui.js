@@ -800,7 +800,6 @@ function gatherTabularModalSelectedItems(action){
 
   switch (action) {
     case 'glow':
-      drawer.glowGenes(targetedGenes, true)
       $('#tabular-modal-body').fadeOut(1000).delay(3000).fadeIn(1000)
       break;
     case 'color':
