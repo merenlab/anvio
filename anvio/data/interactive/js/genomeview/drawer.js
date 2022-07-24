@@ -603,18 +603,13 @@ GenomeDrawer.prototype.glowGenes = function (geneParams, indefinite=false, timeI
   var arrows = canvas.getObjects().filter(obj => obj.id == 'arrow' && geneParams.some(g => g.genomeID == obj.genomeID && g.geneID == obj.geneID));
 
   if(indefinite) {
-    settings['display']['glowAnimationID'] = setInterval(function () {
-      for(arrow of arrows) {
-        arrow.set('shadow', shadow);
-        arrow.animate('shadow.blur', shadow.blur == 0 ? 30 : 0, {
-          duration: timeInterval,
-          onChange: canvas.renderAll.bind(canvas),
-          onComplete: function () { /*arrow.shadow = null*/ },
-          easing: fabric.util.ease['easeInOutCubic']
-        });
-      }
-      canvas.renderAll.bind(canvas)
-    }, timeInterval+100);
+    for(arrow of arrows) {
+      shadow.blur = 20;
+      arrow.set('stroke', 'black');
+      arrow.set('shadow', shadow);
+    }
+    canvas.renderAll();
+    return;
   }
 
   for (arrow of arrows) {
@@ -636,6 +631,7 @@ GenomeDrawer.prototype.removeAllGeneGlows = function () {
   clearInterval(settings['display']['glowAnimationID']);
   settings['display']['glowAnimationID'] = null;
   canvas.getObjects().filter(obj => obj.id == 'arrow' && obj.shadow).forEach(arrow => {
+    arrow.set('stroke', 'gray');
     delete arrow.shadow;
   });
   canvas.renderAll();
@@ -880,7 +876,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
 
   $('#function-query-results-statement').text(`Retreived ${glowPayload.length} hit(s) from ${Object.keys(foundInGenomes).length} genomes`)
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
-  this.glowGenes(glowPayload)
+  this.glowGenes(glowPayload, true)
 }
 
 GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
@@ -924,11 +920,11 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
     highestEnd = genomeMax
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
-  this.glowGenes(glowPayload)
+  this.glowGenes(glowPayload, true)
 }
 
 GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
     let stop = genomeMax > 35000 ? 35000 : genomeMax
     zoomOut('partial', start, stop)
-}
+}}
