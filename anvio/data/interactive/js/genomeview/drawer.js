@@ -841,6 +841,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
             <td>${start}</td>
             <td>${end}</td>
             <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
+            <td><button onclick="goToGene(${gene['genomeID']}[0]['id'],${gene['geneID']},${start},${end})">go to</button</td>
           </tr>
         `)
       })
@@ -861,7 +862,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
             <td>${gene['genomeID']}</td>
             <td>${start}</td>
             <td>${end}</td>
-            <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
+            <td><button onclick="goToGene(${gene['genomeID']}[0]['id'],${gene['geneID']},${start},${end})">go to</button</td>
           </tr>
         `)
       })
@@ -909,7 +910,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
           <td>${gene['genomeID']}</td>
           <td>${start}</td>
           <td>${end}</td>
-          <td><button onclick="zoomOut('partial', ${start}, ${end})">go to</button</td>
+          <td><button onclick="goToGene(${gene['genomeID']}[0]['id'],${gene['geneID']},${start},${end})">go to</button</td>
         </tr>
       `)
     })

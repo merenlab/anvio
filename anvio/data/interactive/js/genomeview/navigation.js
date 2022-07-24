@@ -79,6 +79,11 @@
     });
   }
 
+  async function goToGene(genomeID, geneID, start, end) {
+    await zoomOutAndWait('partial', start, end, 500);
+    drawer.glowGenes([{genomeID: genomeID, geneID: geneID}]);
+  }
+
 /*
  *  Resets viewport if outside bounds of the view window, with padding on each end
  */
