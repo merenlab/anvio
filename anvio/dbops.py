@@ -3859,7 +3859,7 @@ class PanDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
+        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls', \
                     'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
             try:
                 self.meta[key] = int(self.meta[key])
