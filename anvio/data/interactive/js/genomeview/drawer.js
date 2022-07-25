@@ -881,7 +881,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
   $('#query-results-table').empty()
   let glowPayload = Array()
   let foundInGenomes = Object()
-  let matches = settings['display']['metadata'].filter( m => m.label.includes(metadataLabel))
+  let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
   matches.map(metadata => {
     glowPayload.push({
       geneID: metadata.gene,
