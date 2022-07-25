@@ -57,7 +57,7 @@ rule anvi_run_hmms_hmmsearch:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
-        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", "{wildcards.HMM}-dom-hmmsearch")
+        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.HMM}-dom-hmmsearch")
 
         if M.metagenomes:
             if wildcards.sample_name in M.metagenomes_name_list:
@@ -127,7 +127,7 @@ rule filter_hmm_hits_by_model_coverage:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", "{wildcards.HMM}-dom-hmmsearch", "hmm.domtable")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.HMM}-dom-hmmsearch", "hmm.domtable")
         fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}")
         if not os.path.exists(fasta_output_dir):
             os.mkdir(fasta_output_dir)
@@ -188,7 +188,7 @@ rule process_hmm_hits:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", "{wildcards.HMM}-dom-hmmsearch", "hmm.domtable")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.HMM}-dom-hmmsearch", "hmm.domtable")
         fasta_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}")
         if not os.path.exists(fasta_output_dir):
             os.mkdir(fasta_output_dir)
@@ -965,7 +965,7 @@ rule anvi_scg_taxonomy:
         misc_data = rules.make_misc_data.output.misc_data_final,
         reformat_file = rules.combine_sequence_data.output.reformat_report_all,
     params:
-        combined_genomes_txt = "combined_genomes.txt",
+        combined_genomes_txt = M.combined_genomes_df_path,
         taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_estimate_scg_taxonomy_results"),
         taxonomy_long = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp"),
