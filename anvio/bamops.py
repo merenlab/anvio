@@ -39,6 +39,176 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
+class PairedEndTemplateDist:
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.bam_file_path = A('bam_file')
+        self.min_frequency_of_tlen = A('min_template_length_frequency') or 10
+        self.max_tlen_to_consider = A('max_template_length_to_consider') or 500000
+        self.output_file_path = A('output_file') or 'TEMPLATE-LENGTH-STATS.txt'
+        self.plot_data = A('plot_data')
+
+        self.run.info('BAM file', self.bam_file_path)
+
+        self.template_lengths = {}
+
+
+    def process(self):
+        filesnpaths.is_file_bam_file(self.bam_file_path)
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+
+        bam = BAMFileObject(self.bam_file_path, 'rb')
+        self.contig_names = bam.references
+        self.contig_lengths = bam.lengths
+
+        self.progress.new('Initializing')
+        self.progress.update('Counting num contigs ...')
+        num_contigs = len(self.contig_names)
+        self.progress.update('Counting num reads ...')
+        num_reads = bam.count()
+        self.progress.end()
+
+        self.run.info('Number of contigs', pp(num_contigs))
+        self.run.info('Number of reads', pp(num_reads))
+        self.run.info('Minimum template length frequency', pp(self.min_frequency_of_tlen))
+        self.run.info('Maximum template length to consider', pp(self.max_tlen_to_consider), nl_after=1)
+
+        self.progress.new("Bleep bloop", progress_total_items=num_reads)
+        self.progress.update('...')
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        for j in range(0, num_contigs):
+            contig_name = self.contig_names[j]
+
+            template_lengths_counter = Counter()
+
+            num_reads_processed = 0
+            for read in bam.fetch_only(contig_name):
+                num_reads_processed += 1
+
+                if read.is_paired and not read.mate_is_unmapped and read.tlen != 0:
+                    template_lengths_counter[abs(read.tlen)] += 1
+
+                if num_reads_processed % 100000 == 0:
+                    if mem_tracker.measure():
+                        mem_usage = mem_tracker.get_last()
+                        mem_diff = mem_tracker.get_last_diff()
+
+                    self.progress.increment(increment_to=num_reads_processed)
+                    self.progress.update(f"READ {pp(num_reads_processed)}/{pp(num_reads)} :: CONTIG {pp(j+1)}/{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+
+            # remove rarely occuring template lengths
+            tlens_to_discard = [tlen for tlen in template_lengths_counter if template_lengths_counter[tlen] < self.min_frequency_of_tlen or tlen > self.max_tlen_to_consider]
+            [template_lengths_counter.pop(tlen) for tlen in tlens_to_discard]
+
+            # code below looks dumb, b/c we first count frequencies using a Counter,
+            # and then turn it into a huge Python array by adding each tlen as many
+            # times as it was observed. but in fact this is faster than `.append()`
+            # for an array, or adding numbers to a numpy array. LOOK I HAM AS CONFUSE
+            # AS U R, BUT I HAS TESTED IT.
+            self.template_lengths[contig_name] = []
+            for tlen in template_lengths_counter:
+                self.template_lengths[contig_name].extend([tlen] * template_lengths_counter[tlen])
+
+        self.progress.end()
+
+        contigs_without_tlen_data = [c for c in self.template_lengths if not len(self.template_lengths[c])]
+        if len(contigs_without_tlen_data) == num_contigs:
+            raise ConfigError("So. None of your contigs seem to have any template length data, which suggests that "
+                              "either the reads that were mapped to your sequences to generate this BAM file were "
+                              "single reads rather than paired-end reads, or you set a crazy high `--min-tlen-frequency` "
+                              "value even though you didn't have a large number of reads in your BAM file. WHICH ONE "
+                              "IS IT, FLORIAN, WHICH ONE?")
+        elif len(contigs_without_tlen_data) < num_contigs:
+            self.run.warning(f"Some of your contigs, {pp(len(contigs_without_tlen_data))} of {pp(num_contigs)} to "
+                             f"be precise, did not seem to have any template lenght data. There are many reasons "
+                             f"this could happen, including a very high `--min-tlen-frequency` parameter for BAM files "
+                             f"with small number of reads. But since there are some contigs that seem to have proper paired-"
+                             f"end reads with template lengths, anvi'o will continue reporting and put zeros for "
+                             f"contigs that have no data in output files.")
+        else:
+            # we're golden
+            pass
+
+        if self.output_file_path:
+            self.report()
+
+        if self.plot_data:
+            self.plot_histogram()
+
+
+    def report(self):
+        stats = {}
+
+        self.progress.new("Summarizing data for reporting", progress_total_items=len(self.contig_names))
+        for contig_name in self.template_lengths:
+            self.progress.update(f"{contig_name}", increment=True)
+
+            if len(self.template_lengths[contig_name]):
+                # the following class was designed for coverage stats, but it does a large part
+                # of what we need to learn for these np arrays, so why not:
+                arr = np.array(self.template_lengths[contig_name])
+                C = utils.CoverageStats(arr, skip_outliers=True)
+
+                stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
+                                      'num_reads_considered': len(arr),
+                                      'mean'     : f"{C.mean:.4}",
+                                      'mean_Q2Q3': f"{C.mean_Q2Q3:.4}",
+                                      'median'   : f"{C.median}",
+                                      'min'      : f"{C.min}",
+                                      'max'      : f"{C.max}",
+                                      'std'      : f"{C.std:.4}"}
+            else:
+                stats[contig_name] = {'length': self.contig_lengths[self.contig_names.index(contig_name)],
+                                      'num_reads_considered': 0,
+                                      'mean'     : "",
+                                      'mean_Q2Q3': "",
+                                      'median'   : "",
+                                      'min'      : "",
+                                      'max'      : "",
+                                      'std'      : ""}
+
+        self.progress.end()
+
+        headers = ['contig', 'length', 'num_reads_considered', 'mean', 'mean_Q2Q3', 'median', 'min', 'max', 'std']
+        utils.store_dict_as_TAB_delimited_file(stats, self.output_file_path, headers=headers)
+
+        self.run.info('Output file', self.output_file_path, nl_after=1)
+
+
+    def plot_histogram(self, num_bins=50):
+        try:
+            import plotext as plt
+        except:
+            self.run.warning("You don't have the `plotext` library to plot data :/ You can "
+                             "install it by running `pip install plotext` in your anvi'o "
+                             "environment.", header="NO PLOT FOR YOU :(")
+            return
+
+        self.progress.new("Bleep bloop")
+        self.progress.update('Merging all tlens from all contigs ...')
+        tlens_across_all_contigs = []
+        for contig_name in self.template_lengths:
+            tlens_across_all_contigs.extend(self.template_lengths[contig_name])
+        self.progress.end()
+
+        self.run.info_single("All the data are ready for plotting, if you are lucky, you "
+                             "should see a histogram of tlen distributions below.", nl_after=1)
+
+        plt.clp()
+        plt.title(f"The overall distribution of pair1 and pair2 distances in {os.path.basename(self.bam_file_path)}")
+        plt.xlabel("Template length")
+        plt.ylabel("Frequency")
+        plt.hist(tlens_across_all_contigs, num_bins)
+        plt.plotsize(progress.terminal_width, 40)
+        plt.show()
+
 
 class BAMFileObject(pysam.AlignmentFile):
     def __init__(self, *args):
@@ -814,12 +984,22 @@ class GetReadsFromBAM:
         self.args = args
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # groupA inputs (all the anvi'o files)
         self.input_bam_files = A('input_bams')
         self.profile_db_path = A('profile_db')
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file_path = A('bin_ids_file')
+
+        # grouB inputs (all the ad hoc requests)
+        self.target_contig = A('target_contig')
+        self.target_region_start = A('target_region_start')
+        self.target_region_end = A('target_region_end')
+
+        # we can has fetch filters?
+        self.fetch_filter = A('fetch_filter')
+
         self.output_file_path = A('output_file')
         self.output_file_prefix = A('output_file_prefix')
         self.gzip = A('gzip_output')
@@ -828,46 +1008,257 @@ class GetReadsFromBAM:
         self.bins = set([])
         self.split_names_of_interest = set([])
 
-        self.initialized = False
+
+    def sanity_check(self):
+        """A function to ensure everything is order given the `args`"""
+
+        ##############################################################
+        # make sure BAM files are legit
+        ##############################################################
+        bad_bam_files = []
+        error_message = None
+        for bam_file_path in self.input_bam_files:
+            try:
+                bam_file_object = BAMFileObject(bam_file_path)
+                bam_file_object.close()
+            except ConfigError as e:
+                bad_bam_files.append(bam_file_path)
+                error_message = e
+
+        if len(bad_bam_files):
+            raise ConfigError('Samtools is not happy with some of your bam files. The following '
+                              'file(s) do not look like proper BAM files [here is the actual '
+                              'error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
+
+        ##############################################################
+        # make sure the input files look OK.
+        ##############################################################
+        if self.profile_db_path or self.contigs_db_path:
+            ##############################################################
+            # the user has chosen the anvi'o files path
+            ##############################################################
+            if self.target_contig:
+                raise ConfigError("If you choose to go with anvi'o databases to determine which short reads "
+                                  "to get from your BAM files, then you can't also provide a target contig "
+                                  "name.")
+
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        elif self.target_contig:
+            ##############################################################
+            # the user has chosen the ad hoc inputs path
+            ##############################################################
+            if self.profile_db_path or self.collection_name or self.bin_id or self.bin_ids_file_path:
+                raise ConfigError("If you choose to go with an ad hoc contig name to get your short reads for, "
+                                  "you can't also provide anvi'o databases, collections, or bin names. Stop "
+                                  "confusing anvi'o :(")
+
+        ##############################################################
+        # make sure output files are OK
+        ##############################################################
+        if self.output_file_prefix and self.output_file_path:
+            raise ConfigError("You must either use the parameter output file name, or output file prefix.")
+
+        if self.output_file_prefix and not self.split_R1_and_R2:
+            raise ConfigError("Output file prefix parameter is only relevant when you want to split R1 reads "
+                              "from R2 reads and so on.")
+
+        if self.split_R1_and_R2 and not self.output_file_prefix:
+            raise ConfigError("If you wish R1 and R2 reads to be reported in separate FASTA files, \
+                               you need to provide an output file prefix so anvi'o can generate\
+                               multiple output files that start with it (i.e., PREFIX_R1.fa, PREFIX_R2.fa\
+                               PREFIX_UNPAIRED.fa).")
+
+        if self.split_R1_and_R2:
+            filesnpaths.is_output_file_writable(self.output_file_prefix + '_R1.fa')
+        elif self.output_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
+        else:
+            filesnpaths.is_output_file_writable('short_reads.fa')
 
 
-    def init(self):
-        utils.is_contigs_db(self.contigs_db_path)
+    def get_short_reads_dict(self, contig_start_stops):
+        """Gets short reads from BAM files, literally.
 
-        self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]))
+        If `contig_start_stops` is None, the function will learn the contig names in the first
+        BAM file and generate a `contig_start_stops` list.
+        """
 
-        d = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.bins = list(d.keys())
+        self.run.info('Input BAM file(s)', ', '.join([os.path.basename(f) for f in self.input_bam_files]), nl_before=1)
+        self.run.info('Fetch filter', self.fetch_filter, nl_after=1, mc=('red' if not self.fetch_filter else 'green'))
 
-        for split_names in list(d.values()):
-            self.split_names_of_interest.update(split_names)
+        # if the user has provided no `contig_start_stops`, then we will have to recover all contig names
+        # from the BAM file and use them as our target.
+        if not contig_start_stops:
+            bam_file_path_to_recover_contig_names_from = self.input_bam_files[0]
+            self.progress.new('Recovering contig names')
+            self.progress.update(f"from {bam_file_path_to_recover_contig_names_from} ...")
+            bam_file_object = BAMFileObject(bam_file_path_to_recover_contig_names_from)
+            contig_start_stops = [(contig_name, 0, sys.maxsize) for contig_name in bam_file_object.references]
+            bam_file_object.close()
+            self.progress.end()
 
-        self.run.info('Collection ID', self.collection_name)
-        self.run.info('Bin(s)', ', '.join(self.bins))
-        self.run.info('Number of splits', pp(len(self.split_names_of_interest)))
+        # prepare the dictionary to be returned
+        short_reads_dict = {}
+        if self.split_R1_and_R2:
+            short_reads_dict['R1'] = {}
+            short_reads_dict['R2'] = {}
+            short_reads_dict['UNPAIRED'] = {}
+        else:
+            short_reads_dict['all'] = {}
 
-        self.initialized = True
+        self.progress.new("Recovering short reads")
+
+        # at this point contig_start_stops knows every contig we are interested in, and
+        # their start and stop positions based on what split ids were requested. we
+        # shall go through each bam file the user is interested, and get those short reads
+        # that map to regions of interest:
+        for bam_file_path in self.input_bam_files:
+            bam_file_name = filesnpaths.get_name_from_file_path(bam_file_path)
+
+            bam_file_object = BAMFileObject(bam_file_path)
+            bam_file_object.fetch_filter = self.fetch_filter
+
+            for contig_id, start, stop in contig_start_stops:
+                if contig_id not in bam_file_object.references:
+                    raise ConfigError(f"The contig name '{contig_id}' is not in the BAM file at '{bam_file_path}' :(")
+
+            self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
+
+            '''here's what's available in the read objects below:
+
+            ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
+             'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
+             'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
+             'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
+             'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm',
+             'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend',
+             'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
+             'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
+             'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
+             'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
+             'template_length', 'tid', 'tlen']'''
+
+            D = lambda sequence: {'seq': sequence, 'contig': contig_id, 'start': str(read.get_reference_positions()[0]), 'stop': str(read.get_reference_positions()[-1]), 'bam': bam_file_name, 'read': read.query_name}
+
+            # this will serve as a unique id per read
+            counter = 0
+            unknown_mate_tracker_dict = {}
+            unknown_mate_defline_to_counter = {}
+            if self.split_R1_and_R2:
+                for contig_id, start, stop in contig_start_stops:
+
+                    # learn contig length & ensure the stop position is not longer than the contig length
+                    contig_length = bam_file_object.lengths[bam_file_object.references.index(contig_id)]
+                    stop = contig_length if stop > contig_length else stop
+
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
+                        counter += 1
+
+                        defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
+
+                        if not read.is_paired:
+                            short_reads_dict['UNPAIRED'][counter] = D(read.query_sequence)
+
+                        elif defline in unknown_mate_tracker_dict:
+                            # `read`s mate has already been read. so assign the read and the mate
+                            # to their respective 'R1' and 'R2' dictionaries, then remove the mate
+                            # from unknown_mate_tracker_dict since its mate is now known.
+                            read_DIRECTION = 'R1' if read.is_read1 else 'R2'
+                            mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
+
+                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline]
+
+                            # rev_comp either R1 or R2 to match the original short reads orientation
+                            if read.is_reverse:
+                                short_reads_dict[mate_DIRECTION][counter] = D(unknown_mate_tracker_dict[defline]['seq'])
+                                short_reads_dict[read_DIRECTION][counter] = D(utils.rev_comp(read.query_sequence))
+                            else:
+                                short_reads_dict[mate_DIRECTION][counter] = D(utils.rev_comp(unknown_mate_tracker_dict[defline]['seq']))
+                                short_reads_dict[read_DIRECTION][counter] = D(read.query_sequence)
+
+                            del unknown_mate_tracker_dict[defline]
+                            del unknown_mate_defline_to_counter[defline]
+
+                        else:
+                            unknown_mate_tracker_dict[defline] = D(read.query_sequence)
+                            unknown_mate_defline_to_counter[defline] = counter
 
 
-    def get_short_reads_for_splits_dict(self):
-        if not self.initialized:
-            raise ConfigError('The `GetReadsFromBAM` class is not initialized :/ Ad hoc use of this class is '
-                              'OK, but in that case you should set `self.initialized` to True, and provide '
-                              'the split names of interest manually.')
+                short_reads_dict['UNPAIRED'].update(unknown_mate_tracker_dict)
+            else:
+                for contig_id, start, stop in contig_start_stops:
+                    # sanity check for the stop position
+                    contig_length = bam_file_object.lengths[bam_file_object.references.index(contig_id)]
+                    stop = contig_length if stop > contig_length else stop
+
+                    for read in bam_file_object.fetch_only(contig_id, start, stop):
+                        counter += 1
+                        short_reads_dict['all'][counter] = D(read.query_sequence)
+
+            bam_file_object.close()
+
+        self.progress.end()
+
+        return short_reads_dict
+
+
+    def get_all_short_reads_from_bam(self):
+        """A route to get all short reads from BAM files without anvi'o files or specific contigs"""
+
+
+        self.run.info('Mode', "Nothing is provided -- will report all reads", mc="green")
+
+        return self.get_short_reads_dict(contig_start_stops=None)
+
+
+    def get_short_reads_for_contig_and_range(self):
+        """A route get short reads based on the contig name and/or start/stop positions defined by the user"""
+
+        if not self.target_contig:
+            raise ConfigError("You can't be here without a target contig name :/")
+
+        self.run.info('Mode', "Contig name provided by the user", mc="green")
+        self.run.info('Contig name', self.target_contig)
+        self.run.info('Target region start', self.target_region_start if self.target_region_start else "Start from the beginning")
+        self.run.info('Target region end', self.target_region_end if self.target_region_end else "Go all the way to the end of the contig")
+
+        contig_start_stops = [(self.target_contig, self.target_region_start or 0, self.target_region_end or sys.maxsize)]
+
+        return self.get_short_reads_dict(contig_start_stops)
+
+
+    def get_short_reads_through_anvio_files(self, split_names_of_interest=None):
+        """A route get short reads based on anvi'o collection/bin names or for a given splits dict"""
+
+        if split_names_of_interest:
+            # programmer passed the split names of interest manually
+            self.split_names_of_interest = split_names_of_interest
+            self.run.info('Mode', "Split names are passed to the function as a variable", mc="green")
+        elif len(self.split_names_of_interest) > 0:
+            # programmer passed the split names of interest by setting a member variable
+            self.run.info('Mode', "Split names are passed as a class member variable", mc="green")
+        else:
+            # we will recover split names of interest from anvi'o files
+            self.run.info('Mode', "Recovering split names from anvi'o files", mc="green")
+            self.run.info('Profile DB', self.profile_db_path)
+            self.run.info('Contigs DB', self.contigs_db_path)
+            self.run.info('Collection ID', self.collection_name)
+
+            d = ccollections.GetSplitNamesInBins(self.args).get_dict()
+            self.bins = list(d.keys())
+
+            for split_names in list(d.values()):
+                self.split_names_of_interest.update(split_names)
+
+            self.run.info('Bin(s)', ', '.join(self.bins))
 
         if not len(self.split_names_of_interest):
             raise ConfigError("The split names of interest set is empty. This should have never happened. Good "
                               "job.")
-
-        short_reads_for_splits_dict = {}
-        if self.split_R1_and_R2:
-            short_reads_for_splits_dict['R1'] = {}
-            short_reads_for_splits_dict['R2'] = {}
-            short_reads_for_splits_dict['UNPAIRED'] = {}
         else:
-            short_reads_for_splits_dict['all'] = {}
+            self.run.info('Number of splits', pp(len(self.split_names_of_interest)), nl_after=1)
 
-        self.progress.new('Accessing reads')
+        self.progress.new('Identifying contig start/stops')
         self.progress.update('Reading splits info from the contigs database ...')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
@@ -894,88 +1285,44 @@ class GetReadsFromBAM:
                                            splits_basic_info[first_split]['start'],
                                            splits_basic_info[last_split]['end']),)
 
-        # at this point contig_start_stops knows every contig we are interested in, and
-        # their start and stop positions based on what split ids were requested. we
-        # shall go through each bam file the user is interested, and get those short reads
-        # that map to regions of interest:
-        for bam_file_path in self.input_bam_files:
-            bam_file_name = filesnpaths.get_name_from_file_path(bam_file_path)
-
-            bam_file_object = BAMFileObject(bam_file_path)
-
-            self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
-
-            '''here's what's available in the read objects below:
-
-            ['aend', 'alen', 'aligned_pairs', 'bin', 'blocks', 'cigar', 'cigarstring', 'cigartuples', 'compare',
-             'flag', 'get_aligned_pairs', 'get_blocks', 'get_overlap', 'get_reference_positions', 'get_tag',
-             'get_tags', 'has_tag', 'infer_query_length', 'inferred_length', 'is_duplicate', 'is_paired',
-             'is_proper_pair', 'is_qcfail', 'is_read1', 'is_read2', 'is_reverse', 'is_secondary', 'is_supplementary',
-             'is_unmapped', 'isize', 'mapping_quality', 'mapq', 'mate_is_reverse', 'mate_is_unmapped', 'mpos', 'mrnm',
-             'next_reference_id', 'next_reference_start', 'opt', 'overlap', 'pnext', 'pos', 'positions', 'qend',
-             'qlen', 'qname', 'qqual', 'qstart', 'qual', 'query', 'query_alignment_end', 'query_alignment_length',
-             'query_alignment_qualities', 'query_alignment_sequence', 'query_alignment_start', 'query_length',
-             'query_name', 'query_qualities', 'query_sequence', 'reference_end', 'reference_id', 'reference_length',
-             'reference_start', 'rlen', 'rname', 'rnext', 'seq', 'setTag', 'set_tag', 'set_tags', 'tags',
-             'template_length', 'tid', 'tlen']'''
-
-            has_unknown_mate = {}
-            if self.split_R1_and_R2:
-                for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
-
-                        defline = '_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])
-
-                        if not read.is_paired:
-                            short_reads_for_splits_dict['UNPAIRED'][defline] = read.query_sequence
-
-                        elif defline in has_unknown_mate:
-                            # `read`s mate has already been read. so assign the read and the mate
-                            # to their respective 'R1' and 'R2' dictionaries, then remove the mate
-                            # from has_unknown_mate since its mate is now known.
-                            read_DIRECTION = 'R1' if read.is_read1 else 'R2'
-                            mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
-
-                            # rev_comp either R1 or R2 to match the original short reads orientation 
-                            if read.is_reverse:
-                                short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
-                                short_reads_for_splits_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
-                            else:
-                                short_reads_for_splits_dict[mate_DIRECTION][defline] = utils.rev_comp(has_unknown_mate[defline])
-                                short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
-
-                            del has_unknown_mate[defline]
-
-                        else:
-                            has_unknown_mate[defline] = read.query_sequence
-                short_reads_for_splits_dict['UNPAIRED'].update(has_unknown_mate)
-            else:
-                for contig_id, start, stop in contig_start_stops:
-                    for read in bam_file_object.fetch(contig_id, start, stop):
-                        short_reads_for_splits_dict['all']['_'.join([contig_id, str(start), str(stop), read.query_name, bam_file_name])] = read.query_sequence
-            bam_file_object.close()
-
         self.progress.end()
 
-        return short_reads_for_splits_dict
+        return self.get_short_reads_dict(contig_start_stops)
 
 
-    def store_short_reads_for_splits(self):
+    def get_short_reads(self):
+        """Function that determines different routes to get short reads.
+
+        A broker of sorts. If you have a nicely prepared `args` object, this is the function
+        you should be using.
+        """
+
         self.sanity_check()
 
-        if not self.sanity_checked:
-            raise ConfigError("store_short_reads_for_splits :: Cannot be called before running sanity_check")
+        if self.profile_db_path or self.contigs_db_path:
+            short_reads_dict = self.get_short_reads_through_anvio_files()
+        elif self.target_contig:
+            short_reads_dict = self.get_short_reads_for_contig_and_range()
+        else:
+            short_reads_dict = self.get_all_short_reads_from_bam()
 
-        short_reds_for_splits_dict = self.get_short_reads_for_splits_dict()
+        return short_reads_dict
+
+
+    def store_short_reads(self):
+        short_reads_dict = self.get_short_reads()
 
         self.progress.new("Storing reads")
         self.progress.update("...")
 
         if self.split_R1_and_R2:
-            for read_type in sorted(list(short_reds_for_splits_dict.keys())):
-                output_file_path = '%s_%s.fa' % (self.output_file_prefix, read_type)
+            for read_type in sorted(list(short_reads_dict.keys())):
+                output_file_path = f"{self.output_file_prefix}_{read_type}.fa"
+                with open(output_file_path, 'w') as output:
+                    for entry_id in short_reads_dict[read_type]:
+                        e = short_reads_dict[read_type][entry_id]
+                        output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
-                utils.store_dict_as_FASTA_file(short_reds_for_splits_dict[read_type], output_file_path)
                 if self.gzip:
                     utils.gzip_compress_file(output_file_path)
                     output_file_path = output_file_path + ".gz"
@@ -983,11 +1330,15 @@ class GetReadsFromBAM:
                 self.run.info('Output file for %s' % read_type, output_file_path, progress=self.progress)
 
             self.progress.end()
-            self.run.info('Num paired-end reads stored', pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
-            self.run.info('Num unpaired reads stored', pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
+            self.run.info('Num paired-end reads stored', pp(len(short_reads_dict['R1'])), mc='green', nl_before=1)
+            self.run.info('Num unpaired reads stored', pp(len(short_reads_dict['UNPAIRED'])), mc='green')
         else:
             output_file_path = self.output_file_path or 'short_reads.fa'
-            utils.store_dict_as_FASTA_file(short_reds_for_splits_dict['all'], output_file_path)
+
+            with open(output_file_path, 'w') as output:
+                for entry_id in short_reads_dict['all']:
+                    e = short_reads_dict['all'][entry_id]
+                    output.write(f">{entry_id} read_id:{e['read']}|bam:{e['bam']}|contig:{e['contig']}|start:{e['start']}|stop:{e['stop']}\n{e['seq']}\n")
 
             if self.gzip:
                 utils.gzip_compress_file(output_file_path)
@@ -995,46 +1346,7 @@ class GetReadsFromBAM:
 
             self.progress.end()
             self.run.info('Output file for all short reads',output_file_path)
-            self.run.info('Num reads stored', pp(len(short_reds_for_splits_dict['all'])), mc='green')
-
-
-    def sanity_check(self):
-        bad_bam_files = []
-        error_message = None
-        for bam_file_path in self.input_bam_files:
-            try:
-                bam_file_object = BAMFileObject(bam_file_path)
-                bam_file_object.close()
-            except ConfigError as e:
-                bad_bam_files.append(bam_file_path)
-                error_message = e
-
-        if len(bad_bam_files):
-            raise ConfigError('Samtools is not happy with some of your bam files. The following '
-                              'file(s) do not look like proper BAM files [here is the actual '
-                              'error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
-
-        if self.output_file_prefix and self.output_file_path:
-            raise ConfigError("You must either use the parameter output file name, or output file prefix.")
-
-        if self.output_file_prefix and not self.split_R1_and_R2:
-            raise ConfigError("Output file prefix parameter is only relevant when you want to split R1 reads "
-                              "from R2 reads and so on.")
-
-        if self.split_R1_and_R2 and not self.output_file_prefix:
-            raise ConfigError("If you wish R1 and R2 reads to be reported in separate FASTA files, \
-                               you need to provide an output file prefix so anvi'o can generate\
-                               multiple output files that start with it (i.e., PREFIX_R1.fa, PREFIX_R2.fa\
-                               PREFIX_UNPAIRED.fa).")
-
-        if self.split_R1_and_R2:
-            filesnpaths.is_output_file_writable(self.output_file_prefix + '_R1.fa')
-        elif self.output_file_path:
-            filesnpaths.is_output_file_writable(self.output_file_path)
-        else:
-            filesnpaths.is_output_file_writable('short_reads.fa')
-
-        self.sanity_checked = True
+            self.run.info('Num reads stored', pp(len(short_reads_dict['all'])), mc='green')
 
 
 class ReadsMappingToARange:
@@ -1287,5 +1599,3 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
-
-

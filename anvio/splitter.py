@@ -705,7 +705,6 @@ class LocusSplitter:
         self.use_hmm = A('use_hmm')
         self.hmm_sources = A('hmm_sources') or set([])
         self.annotation_sources = A('annotation_sources')
-        self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
@@ -1118,22 +1117,10 @@ class LocusSplitter:
         # we will generate a blank profile database at the end of this. let's get the directory
         # business sorted.
         profile_output_dir = output_path_prefix + '-PROFILE'
-        if os.path.exists(profile_output_dir):
-            if self.overwrite_output_destinations:
-                filesnpaths.shutil.rmtree(profile_output_dir)
-            else:
-                raise ConfigError("The directory %s exists, which kinda messes things up here. Either remove "
-                                  "it manually, or use the flag  --overwrite-output-destinations so anvi'o can "
-                                  "do it for you." % profile_output_dir)
+        filesnpaths.check_output_directory(profile_output_dir)
 
         # sort out the contigs database output path
-        if filesnpaths.is_file_exists(locus_output_db_path, dont_raise=True):
-            if self.overwrite_output_destinations:
-                os.remove(locus_output_db_path)
-            else:
-                raise ConfigError("There is already a contigs database at the output file path :( Either remove it first,\
-                                   or use the --overwrite-output-destinations flag to give anvi'o full authority to wipe\
-                                   your disk.")
+        filesnpaths.is_output_file_writable(locus_output_db_path, ok_if_exists=False)
 
         # do we need to reverse complement this guy? if yes, we will take care of the contigs sequence and
         # gene calls here, and remember this for later.
@@ -1175,7 +1162,11 @@ class LocusSplitter:
                                   skip_hierarchical_clustering=False,
                                   output_dir=profile_output_dir,
                                   sample_name=os.path.basename(output_path_prefix))
-        profiler.BAMProfiler(args, r=self.run_object)._run()
+        profiler.BAMProfiler(args, r=terminal.Run(verbose=False), p=self.progress)._run()
+
+        # while we are at it, let's add a default collection to the resulting blank profile
+        TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=terminal.Run(verbose=False), progress=self.progress).add_default_collection_to_db(contigs_db_path=locus_output_db_path)
+ 
 
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the

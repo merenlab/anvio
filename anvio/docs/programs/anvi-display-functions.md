@@ -4,6 +4,9 @@ It is a powerful way to analyze differentially occurring functions for any sourc
 
 Currently, %(anvi-display-functions)s can work with any combination of genomes from %(external-genomes)s, %(internal-genomes)s, and %(genomes-storage-db)s.
 
+{:.notice}
+If you are only interested in a text output, see the program %(anvi-script-gen-function-matrix-across-genomes)s that can report %(functions-across-genomes-txt)s files.
+
 ### Quick & Simple Run
 
 The simplest way to run this program is as follows:

@@ -11,5 +11,6 @@ Once created, a single profile database is almost interchangable with a %(profil
 * You cannot run %(anvi-cluster-contigs)s or %(anvi-mcg-classifier)s on a single profile db, since these two programs look at the alignment data in many samples. 
 * You can run %(anvi-import-taxonomy-for-layers)s on a single profile database but not a merged one. 
 * You can only run %(anvi-merge)s on a single profile database.
+* You can only run %(anvi-report-inversions)s using single profile database created with the inversion fetch filter.
 
 If you want to look at the contents of a single profile database, you can do so using %(anvi-interactive)s. 

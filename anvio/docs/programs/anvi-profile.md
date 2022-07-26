@@ -58,7 +58,7 @@ Keep in mind that if you plan to merge your resulting %(single-profile-db)s with
 
 To profile only contigs within a specific length, you can use the flags `--min-contig-length` and `-max-contig-length`. By default, the minimum length for analysis is 1000 and there is no maximum length. You can also profile only contigs that have a certain average coverage with the flag `--min-mean-coverage`. 
 
-#### Specifications for your BAM file
+### Filter reads
 
 You can also ignore reads in your BAM file with a percent identity to the reference less than some threshold using the flag `--min-percent-identity`.  By default, all reads are used. 
 
@@ -69,6 +69,22 @@ anvi-profile -c Ross_sea_contigs.db  \
             -i bam_file.bam \
             --min-contig-length 2000 \
             --min-percent-identity 95 
+{{ codestop }}
+
+By default, anvi'o fetches all reads from the bam file. With `--fetch-filter` you can determine which reads from a bam file will be used for profiling. The current filters are:
+
+* `double-forwards`: only paired-end reads with both R1 and R2 with a 'forward' orientation,
+* `double-reverses`: only paired-end reads with both R1 and R2 with a 'reverse' orientation,
+* `inversions`: only paired-end reads with both R1 and R2 either 'forward' or 'reverse' and a maximum insert size of 2000 nts,
+* `single-mapped-reads`: only single mapped reads (mate is unmapped),
+* `distant-pairs-1K`: only paired-end reads with a minimum 1000 nts insert size.
+
+For example, the following code only considers 'inversions' reads:
+
+{{ codestart }}
+anvi-profile -c Ross_sea_contigs.db \
+             -i bam_file.bam \
+             --fetch-filter inversions
 {{ codestop }}
 
 ### Hierarchical Clustering 

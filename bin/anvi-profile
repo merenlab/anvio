@@ -21,7 +21,7 @@ __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "c
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
 __provides__ = ['single-profile-db', 'misc-data-items-order', 'variability-profile']
-__description__ = ("The flagship anvi'o proram to profile a BAM file. Running this program on a BAM file "
+__description__ = ("The flagship anvi'o program to profile a BAM file. Running this program on a BAM file "
                    "will quantify coverages per nucleotide position in read recruitment results and will "
                    "average coverage and detection data per contig. It will also calculate single-nucleotide, "
                    "single-codon, and single-amino acid variants, as well as structural variants, such as "

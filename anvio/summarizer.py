@@ -782,6 +782,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # I am not sure whether this is the best place to do this,
         T = lambda x: 'True' if x else 'False'
 
+        J = lambda x: x in self.p_meta and self.p_meta[x] != None
+
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),
                                                      ('Version', self.p_meta['version']),
@@ -795,7 +797,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                      ('SCVs profiled', T(self.p_meta['SCVs_profiled'])),
                                                      ('IN/DELs profiled', T(self.p_meta['INDELs_profiled'])),
                                                      ('Report variability full', T(self.p_meta['report_variability_full'])),
-                                                     ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability']))),
+                                                     ('Min coverage for variability', humanize_n(int(self.p_meta['min_coverage_for_variability'])) if J('min_coverage_for_variability') else 'NA'),
                                                     ],
                                          'contigs': [
                                                         ('Project name', self.a_meta['project_name']),

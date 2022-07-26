@@ -425,7 +425,10 @@ def tar_extract_file(input_file_path, output_file_path=None, keep_original=True)
 
 
 class CoverageStats:
-    """This class should replace `coverage_c` function in bamops"""
+    """A class to return coverage stats for an array of nucleotide level coverages.
+
+    FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+    """
 
     def __init__(self, coverage, skip_outliers=False):
         self.min = np.amin(coverage)
@@ -446,7 +449,7 @@ class CoverageStats:
         if skip_outliers:
             self.is_outlier = None
         else:
-            self.is_outlier = utils.get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+            self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
 
 class RunInDirectory(object):
@@ -655,7 +658,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None, do_not_close_file_obj=False):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -677,6 +681,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
         If True, file object will not be closed after writing the dictionary to the file
+    do_not_write_key_column: boolean
+        If True, the first column (keys of the dictionary) will not be written to the file. For use in
+        instances when the key is meaningless or arbitrary.
 
     Returns
     =======
@@ -702,9 +709,15 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             raise ConfigError("Your header item conversion dict is missing keys for one or "
                               "more headers :/ Here is a list of those that do not have any "
                               "entry in the dictionary you sent: '%s'." % (', '.join(missing_headers)))
-        header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
+        if do_not_write_key_column:
+            header_text = '\t'.join([header_item_conversion_dict[h] for h in headers[1:]])
+        else:
+            header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
     else:
-        header_text = '\t'.join(headers)
+        if do_not_write_key_column:
+            header_text = '\t'.join(headers[1:])
+        else:
+            header_text = '\t'.join(headers)
 
     if anvio.AS_MARKDOWN:
         tab = '\t'
@@ -730,7 +743,10 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                   "missing.")
 
     for k in keys_order:
-        line = [str(k)]
+        if do_not_write_key_column:
+            line = []
+        else:
+            line = [str(k)]
         for header in headers[1:]:
             try:
                 val = d[k][header]
@@ -1065,7 +1081,7 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
@@ -1101,13 +1117,17 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         if rows_to_return and row_name not in rows_to_return:
                 continue
         id_to_sample_dict[id_counter] = row_name
-        fields = line.strip().split('\t')[1:]
+        fields = line.strip('\n').split('\t')[1:]
+
+        # long story.
+        if pad_with_zeros:
+            fields = [0] + fields + [0]
 
         try:
             if fields_of_interest:
-                vector = [float(fields[i]) for i in fields_of_interest]
+                vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
-                vector = [float(f) for f in fields]
+                vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
 
@@ -1288,24 +1308,31 @@ def check_R_packages_are_installed(required_package_dict):
             missing_packages.append(lib)
 
     if missing_packages:
-        raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
-                          "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
-                          "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
-                          "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
-                          "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
-                          "should be able to install these packages by running the following commands: %(conda)s. But if this option "
-                          "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
-                          "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
-                          "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
-                          "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
-                          "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
-                          "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
-                          "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
-                          "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
-                          "be much more helpful solving the issue. Apologies for the frustration. R frustrates everyone." % \
-                                                                  {'missing': ', '.join(missing_packages),
-                                                                   'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
-                                                                   'example': missing_packages[0]})
+        if len(missing_packages) == 1 and 'qvalue' in missing_packages:
+            raise ConfigError("It seems you're struggling with the R package `qvalue`. It can be a pain to install. In our experience "
+                              "best way to install this package is to do it through Bioconductor directly. For that, please "
+                              "copy-paste this command as a single line into your terminal and run it: "
+                              "Rscript -e 'install.packages(\"BiocManager\", repos=\"https://cran.rstudio.com\"); BiocManager::install(\"qvalue\")'")
+        else:
+            raise ConfigError("The following R packages are required in order to run this, but seem to be missing or broken: '%(missing)s'. "
+                              "If you have installed anvi'o through conda, BEFORE ANYTHING ELSE we would suggest you to run the command "
+                              "Rscript -e \"update.packages(repos='https://cran.rstudio.com')\" in your terminal. This will try to update "
+                              "all R libraries on your conda environment and will likely solve this problem. If it doesn't work, then you "
+                              "will need to try a bit harder, so here are some pointers: if you are using conda, in an ideal world you"
+                              "should be able to install these packages by running the following commands: %(conda)s. But if this option "
+                              "doesn't seem to be working for you, then you can also try to install the problem libraries directly through R, "
+                              "for instance by typing in your terminal, Rscript -e 'install.packages(\"%(example)s\", "
+                              "repos=\"https://cran.rstudio.com\")' and see if it will address the installation issue. UNFORTUNATELY, in "
+                              "some cases you may continue to see this error despite the fact that you have these packages installed :/ It "
+                              "would most likely mean that some other issues interfere with their proper usage during run-time. If you have "
+                              "these packages installed but you continue seeing this error, please run in your terminal Rscript -e "
+                              "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
+                              "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
+                              "be much more helpful solving the issue. If none of the solutions offered here worked for you, feel free to "
+                              "come to anvi'o Slack and ask around -- others may already have a solution for it already. Apologies for the "
+                              "frustration. R frustrates everyone." % {'missing': ', '.join(missing_packages),
+                                                                       'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
+                                                                       'example': missing_packages[0]})
     else:
         os.remove(log_file)
 
@@ -1467,7 +1494,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
     try:
-        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+        gene_caller_ids_set = set([int(float(g)) for g in gene_caller_ids_set])
     except:
         g = gene_caller_ids_set.pop()
         raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is "
@@ -1596,36 +1623,6 @@ def get_GC_content_for_FASTA_entries(file_path):
 
 def get_GC_content_for_sequence(sequence):
     return Composition(sequence).GC_content
-
-
-def get_GC_content_for_sequence_as_an_array(sequence, sliding_window_length=100, interval=5):
-    """Unlike `get_GC_content_for_sequence`, this function returns an array for each nt position"""
-
-    if len(sequence) < sliding_window_length:
-        raise ConfigError("The sequence you are try to compute GC content for is shorter than the "
-                          "sliding window length set for this calculation. This is not OK.")
-
-    if interval < 1 or interval > sliding_window_length:
-        raise ConfigError("Your interval can't be smaller than 1 or longer than the sliding window "
-                          "length.")
-
-    sequence = sequence.upper()
-
-    gc_array = []
-    for i in range(0, len(sequence) - sliding_window_length, interval):
-        window = sequence[i:i+sliding_window_length]
-
-        gc = sum(window.count(x) for x in ["G", "C"])
-        at = sum(window.count(x) for x in ["A", "T"])
-
-        try:
-            gc_content = gc / (gc + at)
-        except ZeroDivisionError:
-            gc_content = 0.0
-
-        gc_array.extend([gc_content] * interval)
-
-    return gc_array
 
 
 def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_it=False):
@@ -1777,6 +1774,117 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
             os.remove(f)
 
     return dest_file
+
+
+def get_stretches_for_numbers_list(numbers_list, discard_singletons=False):
+    """Takes a array of numbers, and turns reports back stretches
+
+    For example, for a `numbers_list` that looks like this:
+
+        >>> [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 99]
+
+    This function will return the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    If the user chooses to `discard_singletons`, then for the same input list,
+    they will get the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    The output of this function can be the input of `merge_stretches` function.
+    """
+
+    if not len(numbers_list):
+        return []
+
+    numbers_list = sorted(numbers_list)
+
+    stretches = []
+    groups = it.groupby(numbers_list, key=lambda item, c=it.count():item-next(c))
+
+    for k, g in groups:
+        stretch = list(g)
+
+        if discard_singletons and len(stretch) == 1:
+            continue
+
+        stretches.append((stretch[0], stretch[-1]), )
+
+    return stretches
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches=0):
+    """A function to merge stretches of indices in an array.
+
+    It takes an array, `stretches`, that looks like this:
+
+        >>> [(3, 9), (14, 27), (32, 36), (38, 42)]
+
+    And returns an array like this, if `min_distance_between_independent_stretches`, say, 3:
+
+        >>> [(3, 9), (14, 27), (32, 42)]
+
+    If all you have is an array of numbers rather than stretches to be merbed, see
+    the function `get_stretches_for_numbers_list`.
+    """
+
+    if not len(stretches):
+        return None
+
+    if not isinstance(stretches[0], tuple):
+        raise ConfigError("This function expect a list of tuples :/")
+
+    STRETCHES_FINAL = stretches
+    STRETCHES_CURRENT = stretches
+
+    while 1:
+        stretches_to_merge = []
+
+        CURRENT = 0
+        START, END = 0, 1
+        while 1:
+            if not len(STRETCHES_CURRENT):
+                break
+
+            NEXT = CURRENT + 1
+
+            if NEXT == len(STRETCHES_CURRENT):
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                break
+
+            while 1:
+                if NEXT > len(STRETCHES_CURRENT):
+                    break
+
+                if STRETCHES_CURRENT[NEXT][START] - STRETCHES_CURRENT[CURRENT][END] < min_distance_between_independent_stretches:
+                    NEXT = NEXT + 1
+
+                    if NEXT == len(STRETCHES_CURRENT):
+                        break
+                else:
+                    break
+
+            if NEXT > len(STRETCHES_CURRENT):
+                break
+            elif NEXT - CURRENT == 1:
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                CURRENT += 1
+            else:
+                stretches_to_merge.append(STRETCHES_CURRENT[CURRENT:NEXT])
+                CURRENT = NEXT
+
+        # here the array `stretches_to_merge` contains all the lists of
+        # stretches that need to be merged.
+        STRETCHES_MERGED = [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+
+        if STRETCHES_FINAL == STRETCHES_MERGED:
+            break
+        else:
+            STRETCHES_FINAL = STRETCHES_MERGED
+            STRETCHES_CURRENT = STRETCHES_MERGED
+
+    return STRETCHES_FINAL
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -2652,25 +2760,21 @@ def get_bin_name_from_item_name(anvio_db_path, item_name, collection_name=None):
     return rows
 
 
-def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
-    """
-    Returns a dict for contig name to split name conversion.
+def get_contig_name_to_splits_dict(contigs_db_path):
+    """Returns a dict for contig name to split name conversion"""
 
-    Here are the proper source of the input params:
+    is_contigs_db(contigs_db_path)
 
-        contigs_basic_info_dict = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
-        splits_basic_info_dict  = database.get_table_as_dict(t.splits_info_table_name)
-    """
-    contig_name_to_splits_dict = {}
+    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
 
-    for split_name in splits_basic_info_dict:
-        parent = splits_basic_info_dict[split_name]['parent']
-        if parent in contig_name_to_splits_dict:
-            contig_name_to_splits_dict[parent].append(split_name)
-        else:
-            contig_name_to_splits_dict[parent] = [split_name]
+    contig_name_to_split_names_dict = {}
+    for split_name, contig_name in contigs_db.get_some_columns_from_table(t.splits_info_table_name, "split, parent"):
+        if contig_name not in contig_name_to_split_names_dict:
+            contig_name_to_split_names_dict[contig_name] = set([])
 
-    return contig_name_to_splits_dict
+        contig_name_to_split_names_dict[contig_name].add(split_name)
+
+    return contig_name_to_split_names_dict
 
 
 def check_sample_id(sample_id):
@@ -3202,15 +3306,88 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
+def get_bams_and_profiles_txt_as_data(file_path):
+    """bams-and-profiles.txt is an anvi'o artifact with four columns.
+
+    This function will sanity check one, process it, and return data.
+
+    Updates to this function may require changes in the artifact description at
+    anvio/docs/artifacts/bams-and-profiles-txt.md
+    """
+
+    COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
+
+    if not filesnpaths.is_file_tab_delimited(file_path, dont_raise=True):
+        raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
+                          f"The file you have at '{file_path}' is nothing of that sorts.")
+
+    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if not set(expected_columns).issubset(set(columns_found)):
+        raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
+                          f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
+
+    names = COLUMN_DATA('name')
+    if len(set(names)) != len(names):
+        raise ConfigError("Every name listed in the `names` column in a bams and profiles txt must be unique :/ "
+                          "You have some redundant names in yours.")
+
+    contigs_db_paths = COLUMN_DATA('contigs_db_path')
+    if len(set(contigs_db_paths)) != 1:
+        raise ConfigError("All single profiles in bams and profiles file must be associated with the same "
+                          "contigs database. Meaning, you have to use the same contigs database path for "
+                          "every entry. Confusing? Yes. Still a rule? Yes.")
+
+    profile_db_paths = COLUMN_DATA('profile_db_path')
+    if len(set(profile_db_paths)) != len(profile_db_paths):
+        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+
+    bam_file_paths = COLUMN_DATA('bam_file_path')
+    if len(set(bam_file_paths)) != len(bam_file_paths):
+        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+
+    contigs_db_path = contigs_db_paths[0]
+    profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
+    for sample_name in profiles_and_bams:
+        profiles_and_bams[sample_name].pop('contigs_db_path')
+        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+
+    # this file can optionally contain `r1` and `r2` for short reads
+    for raw_reads in ['r1', 'r2']:
+        if raw_reads in columns_found:
+            file_paths = COLUMN_DATA(raw_reads)
+            if '' in file_paths:
+                raise ConfigError("If you are using r1/r2 columns in your `bams-and-profiles-txt` file, then you "
+                                  "must have a valid file path for every single sample. In your current file there "
+                                  "are some blank ones. Sorry.")
+            missing_files = [f for f in file_paths if not os.path.exists(f)]
+            if len(missing_files):
+                raise ConfigError(f"Anvi'o could not find some of the {raw_reads.upper()} files listed in your "
+                                  f"`bams-and-profiles-txt` at {file_path} where they were supposed to be: "
+                                  f"{missing_files}.")
+
+    return contigs_db_path, profiles_and_bams
+
+
 def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
 
     filesnpaths.is_file_tab_delimited(file_path)
 
-    expected_columns = ['sample', 'r1', 'r2']
+    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
+
+    if columns_found[0] == 'sample':
+        expected_columns = ['sample', 'r1', 'r2']
+    elif columns_found[0] == 'name':
+        expected_columns = ['name', 'r1', 'r2']
+    else:
+        raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
+
     possible_columns = expected_columns + ['group']
 
-    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
     extra_columns = set(columns_found).difference(set(possible_columns))
 
     if not set(expected_columns).issubset(set(columns_found)):
@@ -3218,9 +3395,10 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
 
     if len(extra_columns):
         run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
-                    f"{', '.join(extra_columns)}. It is not a deal breaker, so anvi'o will continue with "
-                    f"business, but we wanted you to be aware of the fact that your input file does not "
-                    f"fully match anvi'o expectations from this file type.")
+                    f"{', '.join(extra_columns)} compared to what is expected of a `samples-txt` file, "
+                    f"which is absolutely fine. You're reading this message becasue anvi'o wanted to "
+                    f"make sure you know that it knows that it is the case. Classic anvi'o virtue "
+                    f"signaling.", lc="yellow")
 
     samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
 
@@ -3670,7 +3848,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
-    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
+    R = lambda f: open(os.path.join(source, f), 'r').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]
@@ -3686,7 +3864,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         if missing_files:
             raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
                               f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
-                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
+                              f"for details: https://anvio.org/help/{anvio.anvio_version_for_help_docs}/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
@@ -3950,11 +4128,6 @@ def is_profile_db(db_path):
     return True
 
 
-def is_genome_view_db(db_path):
-    dbi(db_path, expecting='genome-view')
-    return True
-
-
 def is_structure_db(db_path):
     dbi(db_path, expecting='structure')
     return True
@@ -4008,15 +4181,25 @@ def is_profile_db_merged(profile_db_path):
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
+    # let's make sure we did get some paths
+    if not profile_db_path or not contigs_db_path:
+        if not profile_db_path and not contigs_db_path:
+            missing = 'any paths for profile-db or contigs-db'
+        else:
+            missing = 'a profile-db path' if not profile_db_path else 'a contigs-db path'
+
+        raise ConfigError(f"A function in anvi'o was about to see if the profile-db and the contigs-db someone "
+                          f"wanted to work with were compatible with one another, but it was called without "
+                          f"{missing} :/")
+
     pdb = dbi(profile_db_path)
     cdb = dbi(contigs_db_path)
 
     if cdb.hash != pdb.hash:
-        raise ConfigError('The contigs database and the profile database does not '
-                          'seem to be compatible. More specifically, this contigs '
-                          'database is not the one that was used when %s generated '
-                          'this profile database (%s != %s).'\
-                               % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
+        raise ConfigError(f"The contigs database and the profile database at '{profile_db_path}' "
+                          f"does not seem to be compatible. More specifically, this contigs "
+                          f"database is not the one that was used when %s generated this profile "
+                          f"database (%s != %s)." % ('anvi-merge' if pdb.merged else 'anvi-profile', cdb.hash, pdb.hash))
     return True
 
 
@@ -4067,6 +4250,11 @@ def get_yaml_as_dict(file_path):
 
 def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
+
+    if anvio.DEBUG:
+        run.warning(None, header="DOWNLOADING FILE", overwrite_verbose=True, nl_before=1)
+        run.info('Source URL', url, overwrite_verbose=True)
+        run.info('Output path', output_file_path, overwrite_verbose=True, nl_after=1)
 
     try:
         if check_certificate:
@@ -4482,3 +4670,54 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+def split_by_delim_not_within_parens(d, delims, return_delims=False):
+    """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+    This function exists because regular expressions don't handle nested parentheses very well.
+
+    The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
+    instead of the list of splits in this situation)
+
+    PARAMETERS
+    ==========
+    d : str
+        string to split
+    delims : str or list of str
+        a single delimiter, or a list of delimiters, to split on
+    return_delims : boolean
+        if this is true then the list of delimiters found between each split is also returned
+
+    RETURNS
+    =======
+    If parentheses are unbalanced in the string, this function returns False. Otherwise:
+    splits : list
+        strings that were split from d
+    delim_list : list
+        delimiters that were found between each split (only returned if return_delims is True)
+    """
+
+    parens_level = 0
+    last_split_index = 0
+    splits = []
+    delim_list = []
+    for i in range(len(d)):
+        # only split if not within parentheses
+        if d[i] in delims and parens_level == 0:
+            splits.append(d[last_split_index:i])
+            delim_list.append(d[i])
+            last_split_index = i + 1 # we add 1 here to skip the space
+        elif d[i] == "(":
+            parens_level += 1
+        elif d[i] == ")":
+            parens_level -= 1
+
+        # if parentheses become unbalanced, return False to indicate this
+        if parens_level < 0:
+            return False
+    splits.append(d[last_split_index:len(d)])
+
+    if return_delims:
+        return splits, delim_list
+    return splits

@@ -80,10 +80,22 @@ ANVIO_ARTIFACTS ={
         "name": "BAM FILE",
         "type": "BAM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "bam-stats-txt": {
         "name": "BAM STATS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "bams-and-profiles-txt": {
+        "name": "BAMS AND PROFILES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "markdown-txt": {
+        "name": "MARKDOWN TXT",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -322,6 +334,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "palindromes-txt": {
+        "name": "PALINDROMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "inversions-txt": {
+        "name": "INVERSIONS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
@@ -367,6 +391,18 @@ ANVIO_ARTIFACTS ={
     "kegg-functions": {
         "name": "KOFAM FUNCTIONS",
         "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "functions-across-genomes-txt": {
+        "name": "FUNCTIONS ACROSS GENOMES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "hmm-hits-across-genomes-txt": {
+        "name": "HMM HITS ACROSS GENOMES",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -490,6 +526,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "variability-profile-xml": {
+        "name": "VARIABILITY NETWORK",
+        "type": "XML",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "codon-frequencies-txt": {
         "name": "CODON FREQUENCIES",
         "type": "TXT",
@@ -598,12 +640,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "hmm-hits-matrix-txt": {
-        "name": "HMM HITS MATRIX",
-        "type": "TXT",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "pn-ps-data": {
         "name": "PN/PS OUTPUT",
         "type": "CONCEPT",
@@ -663,5 +699,17 @@ ANVIO_ARTIFACTS ={
         "type" : "DISPLAY",
         "provided_by_anvio" : True,
         "provided_by_user" : False
+    },
+    "enzymes-txt": {
+        "name": "ENZYMES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "enzymes-list-for-module": {
+        "name": "ENZYMES LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
     }
 }

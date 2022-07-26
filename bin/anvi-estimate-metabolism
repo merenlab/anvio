@@ -75,6 +75,8 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupC.add_argument(*anvio.A('include-zeros'), **anvio.K('include-zeros'))
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
+    groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
+    groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
 
     groupL = parser.add_argument_group('OUTPUT - LONG-FORMAT OPTIONS', "Parameters for controlling long-format output (the default).")
     groupL.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))

@@ -134,6 +134,37 @@ ContextMenu = function(options) {
                 this.menu_items['inspect']['action'](node, layer, 'gene', false);
             }
         },
+        'open_in_legends': {
+            'title': 'Change category color(s)',
+            'action': (node, layer, param) => {
+                if (!$('#panel-left').is(':visible')) {
+                    toggleLeftPanel()
+                }
+                $($('.nav-tabs a').eq(3)).tab('show')
+
+                let splitHTML = layerdata_title[node.label][layer[0] -1].split('</td>')
+                let legend = extractContent(splitHTML[0]).toLowerCase()
+                let query = extractContent(splitHTML[1])
+                let legendIndex = Number()
+
+                var all = $(".ui-accordion-header").map(function() {
+                    return this.innerHTML;
+                }).get();
+                all.map((i, idx) => {
+                    if(i.toLowerCase().includes(legend.replaceAll('_', ' '))){
+                        legendIndex = idx
+                    }
+                })
+                $( ".ui-accordion" ).accordion( "option", "active", legendIndex );
+                $( `#${legend.replaceAll('_','-').replaceAll(' ','-')}-query-input`).val(query)
+
+                function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
+                    var span = document.createElement('span');
+                    span.innerHTML = s;
+                    return span.textContent || span.innerText;
+                };
+            }
+        },
         'get_hmm_sequence': {
             'title': 'Inspect gene',
             'action': (node, layer, param) => {
@@ -415,7 +446,22 @@ ContextMenu.prototype.BuildMenu = function() {
             if (this.layer) {
                 menu.push('select_layer');
                 menu.push('unselect_layer');
+
+                // only show 'open in legends' option when target layer contains categorical data
+                let splitHTML = layerdata_title[this.node.label][this.layer[0] -1].split('</td>')
+                let legend = extractContent(splitHTML[0]).toLowerCase()
+                let matchedLayerIndex = layerdata[0].map(l => l.toLowerCase()).indexOf(legend).toString()
+                if(Object.keys(categorical_data_colors).includes(matchedLayerIndex)){
+                    menu.push('divider');
+                    menu.push('open_in_legends')
+                }
                 menu.push('divider');
+
+                function extractContent(s) { // reference https://stackoverflow.com/questions/28899298/extract-the-text-out-of-html-string-using-javascript
+                    var span = document.createElement('span');
+                    span.innerHTML = s;
+                    return span.textContent || span.innerText;
+                };
             }
 
             // getting back sequences for things

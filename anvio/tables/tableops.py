@@ -8,10 +8,8 @@ import os
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
@@ -57,8 +55,6 @@ class Table(object):
         self.version = version
         self.next_available_id = {}
 
-        self.splits_info = None
-        self.contigs_info = None
         self.split_length = None
         self.genes_are_called = None
 
@@ -67,18 +63,18 @@ class Table(object):
 
         database = db.DB(self.db_path, version)
         self.db_type = database.get_meta_value('db_type')
-
         if not simple and self.db_type == 'contigs':
             # FIXME: a better design is required. the salient point is, "Table" must serve for both profile db
             # and contigs db calls.
             self.split_length = database.get_meta_value('split_length')
-            self.genes_are_called = database.get_meta_value('genes_are_called')
             self.contigs_info = database.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
             self.splits_info = database.get_table_as_dict(t.splits_info_table_name)
-            self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.splits_info, self.contigs_info)
+            self.genes_are_called = database.get_meta_value('genes_are_called')
             self.gene_calls_dict = None
-
         database.disconnect()
+
+        if not simple and self.db_type == 'contigs':
+            self.contig_name_to_splits = utils.get_contig_name_to_splits_dict(self.db_path)
 
 
     def next_id(self, table):
