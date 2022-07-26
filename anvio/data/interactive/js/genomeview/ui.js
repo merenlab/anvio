@@ -708,15 +708,15 @@ function showTabularModal(){
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead id='tabular-modal-table-head'>
             <tr id='${genome}-tabular-modal-table-header-tr'>
-              <th><input class="form-check-input" type='checkbox'></input> Select</th>
+              <th id="${genome}-select"><input class="form-check-input" type='checkbox'></input>Select</th>
               <th>Gene Caller ID</th>
               <th>Start</th>
               <th>Stop</th>
               <th>Direction</th>
               <th>Contig</th>
-              <th>Deepdive</th>
-              <th>Color</th>
-              <th>Hidden?</th>
+              <th id="${genome}-deepdive">Deepdive</th>
+              <th id="${genome}-color">Color</th>
+              <th id="${genome}-hidden">Hidden?</th>
             </tr>
           </thead>
           <tbody id="${genome}-table-body">
@@ -745,15 +745,15 @@ function showTabularModal(){
       }
       totalTableString += `
       <tr id='${genome[0]}-table-row-${gene['geneID']}'>
-        <td><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
+        <td class='select'><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
         <td>${gene['gene']['stop']}</td>
         <td>${gene['gene']['direction']}</td>
         <td>${gene['gene']['contig']}</td>
-        <td><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
-        <td><div id="${gene['geneID']}-${genome[0]}-picker-tabular-modal" class="colorpicker" color="${geneHex ? geneHex : '#808080'}" background-color="${geneHex ? geneHex : '#808080'}" style="background-color: ${geneHex ? geneHex : '#808080'}; margin-right:16px; margin-left:16px"></div></td>
-        <td><input class="form-hidden-check-input"
+        <td class='deepdive'><button class="btn btn-default btn-sm" id="${genome[0]}-${gene['geneID']}" onclick=transitionTabularModalToDeepdive(event)>Deep Dive</button></td>
+        <td class='color'><div id="${gene['geneID']}-${genome[0]}-picker-tabular-modal" class="colorpicker" color="${geneHex ? geneHex : '#808080'}" background-color="${geneHex ? geneHex : '#808080'}" style="background-color: ${geneHex ? geneHex : '#808080'}; margin-right:16px; margin-left:16px"></div></td>
+        <td class='hidden?'><input class="form-hidden-check-input"
                    id="${genome[0]}-${gene['geneID']}-hidden" value="${genome[0]}-${gene['geneID']}"
                    onclick='handleGeneShowHideToggle(this)'
                    type='checkbox' ${settings['display']['hidden']?.[genome[0]]?.[gene['geneID']] ? 'checked' : null}>
@@ -833,10 +833,16 @@ function exportTabularModalToTSV(){
   let active = $("div#modal-tab-content div.active")[0].id
 
   $(`#${active} th`).each(function() {
+    if(['Select', 'Color', 'Hidden?', 'Deepdive'].includes($(this).text())){
+      return
+    }
     titles.push($(this).text());
   });
 
   $(`#${active} td`).each(function() {
+    if(['select', 'color', 'hidden?', 'deepdive'].includes($(this).attr('class'))){
+      return
+    }
     data.push($(this).text());
   });
 
@@ -1397,3 +1403,4 @@ function setGeneVisibilityRange(targetGene, targetGenome){
 function showAllHiddenGenes(){
   settings['display']['hidden'] = {}
   drawer.draw()
+}
