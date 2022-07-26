@@ -81,6 +81,7 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
     }
   })
 
+  canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + orderIndex));
   this.addGroupBorder(yOffset, orderIndex)
 }
 
@@ -95,6 +96,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
   let height = spacing + 60
 
   let rect = new fabric.Rect({
+    id: 'groupBorder' + orderIndex,
     top: top,
     left: left,
     width: width,
