@@ -435,7 +435,7 @@ class Run:
             self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
-    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, subsequent_indentation=True, progress=None):
+    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, pretty_indentation=True, progress=None):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -443,7 +443,7 @@ class Run:
             raise TerminalError("the `info_single` function does not know how to deal with a level of %d :/" % level)
 
         if cut_after:
-            if subsequent_indentation:
+            if pretty_indentation:
                 subsequent_indent = ''.join([' '] * len(self.single_line_prefixes[level]))
                 message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after, subsequent_indent=subsequent_indent)), mc)
             else:
