@@ -187,7 +187,7 @@ class ArgumentParser(argparse.ArgumentParser):
     def sanity_check(self, args):
         """Simple sanity checks for global arguments"""
 
-        # make sure num threads are not 0 or negative.
+        # make sure num threads are not 0 or negative. 
         if args and 'num_threads' in args:
             try:
                 args.num_threads = int(args.num_threads)
@@ -208,8 +208,6 @@ class ArgumentParser(argparse.ArgumentParser):
         to see can still be sorted out.
         """
 
-        allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown', '--tmp-dir', '--display-db-calls']
-
         args, unknown = parser.parse_known_args()
 
         self.sanity_check(args)
@@ -222,8 +220,8 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # if there are any args in the unknown that we do not expect to find
         # we we will make argparse complain about those.
-        if len([f for f in unknown if f not in allowed_ad_hoc_flags]):
-            for f in allowed_ad_hoc_flags:
+        if len([f for f in unknown if f not in self.anvio_allowed_ad_hoc_flags]):
+            for f in self.anvio_allowed_ad_hoc_flags:
                 # handle non-boolean flags
                 if f in ['--tmp-dir']:
                     parser.add_argument(f)
@@ -404,3 +402,5 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                 self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
 
         return self.args
+
+

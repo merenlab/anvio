@@ -12,4 +12,4 @@ Here is an example %(groups-txt)s file:
 |(...)|(...)|
 
 {:.warning}
-If you are passing this file to the program %(anvi-compute-functional-enrichment)s with the "INPUT OPTION #2: ESTIMATED METABOLISM", the names in the `sample` column must match those in the "modules" mode output file that you provide to the %(anvi-compute-functional-enrichment)s program via the `--modules-txt` parameter. If you know that the sample names match but you are still getting errors, you might need to specify which column in the "modules" mode output contains those sample names using the `--sample-header` parameter of %(anvi-compute-functional-enrichment)s.
+If you are passing this file to the program %(anvi-compute-metabolic-enrichment)s, the names in the `sample` column must match those in the "modules" mode output file that you provide to the program via the `--modules-txt` parameter. If you know that the sample names match but you are still getting errors, you might need to specify which column in the "modules" mode output contains those sample names using the `--sample-header` parameter.

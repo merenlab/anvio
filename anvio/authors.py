@@ -3,7 +3,6 @@
 """A library to process anvi'o authors file"""
 
 import os
-import sys
 
 import anvio
 import anvio.utils as utils
@@ -23,7 +22,7 @@ __status__ = "Development"
 
 
 class AnvioAuthors:
-    def __init__(self, authors_yaml_file_path=os.path.join(os.path.dirname(anvio.__file__), 'data/misc/AUTHORS/AUTHORS.yaml'), skip_init=False, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, authors_yaml_file_path=os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PEOPLE/DEVELOPERS.yaml'), skip_init=False, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 

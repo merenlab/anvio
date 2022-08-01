@@ -25,13 +25,16 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-COVERAGE_DTYPE = 'uint16'
-COVERAGE_MAX_VALUE = np.iinfo(COVERAGE_DTYPE).max
+DEFAULT_COVERAGE_DTYPE = 'uint16'
+DEFAULT_COVERAGE_MAX_VALUE = np.iinfo(DEFAULT_COVERAGE_DTYPE).max
+TRNASEQ_COVERAGE_DTYPE = 'uint32'
+TRNASEQ_COVERAGE_MAX_VALUE = np.iinfo(TRNASEQ_COVERAGE_DTYPE).max
 
 class AuxiliaryDataForSplitCoverages(object):
-    def __init__(self, db_path, db_hash, create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, db_hash, db_variant='unknown', create_new=False, ignore_hash=False, run=run, progress=progress, quiet=False):
         self.db_type = 'auxiliary data for coverages'
         self.db_hash = str(db_hash)
+        self.db_variant = str(db_variant)
         self.version = anvio.__auxiliary_data_version__
         self.db_path = db_path
         self.quiet = quiet
@@ -40,6 +43,8 @@ class AuxiliaryDataForSplitCoverages(object):
         self.coverage_entries = []
         self.create_new = create_new
 
+        self.coverage_dtype = TRNASEQ_COVERAGE_DTYPE if db_variant == 'trnaseq' else DEFAULT_COVERAGE_DTYPE
+        self.coverage_max_value = TRNASEQ_COVERAGE_MAX_VALUE if db_variant == 'trnaseq' else DEFAULT_COVERAGE_MAX_VALUE
         self.db = db.DB(self.db_path, self.version, new_database=self.create_new)
 
         if self.create_new:

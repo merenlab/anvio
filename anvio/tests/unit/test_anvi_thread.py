@@ -47,3 +47,6 @@ class AnviThreadSavesReturnCodesTestCase(unittest.TestCase):
         thread = run_script_in_thread(self.command_runner, self.failing_script)
 
         self.assertEqual(thread.target_return_value, self.failing_exit_code)
+
+if __name__ == '__main__':
+    unittest.main()

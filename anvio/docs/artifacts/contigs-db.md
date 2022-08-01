@@ -2,7 +2,7 @@ A contigs database is an anvi'o database that **contains key information associa
 
 In a way, **an anvi'o contigs database is a modern, more talented form of a FASTA file**, where you can store additional information about your sequences in it and others can query and use it. Information storage and access is primarily done by anvi'o programs, however, it can also be done through the command line interface or programmatically.
 
-The information a contigs database contains about its sequences include the positions of open reading frames, tetra-nucleotide frequencies, functional and taxonomic annotations, information on individual nucleotide or amino acid positions, and more.
+The information a contigs database contains about its sequences can include the positions of open reading frames, tetra-nucleotide frequencies, functional and taxonomic annotations, information on individual nucleotide or amino acid positions, and more.
 
 Here is a graphic that shows what sort of information goes into the contigs database (and also the %(profile-db)s):
 
