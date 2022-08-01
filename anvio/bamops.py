@@ -222,7 +222,24 @@ class BAMFileObject(pysam.AlignmentFile):
 
         filesnpaths.is_file_bam_file(self.input_bam_path)
 
+        self.fetch_filter = None
+
         pysam.AlignmentFile.__init__(self)
+
+
+    def fetch_only(self, contig_name, start=None, end=None, *args, **kwargs):
+        """A wrapper function for `bam.fetch()`.
+
+        Having a single function enables global application of `fetch_filters` to reads
+        reported from a BAM file.
+        """
+
+        for read in self.fetch(contig_name, start, end):
+            if self.fetch_filter:
+                if constants.fetch_filters[self.fetch_filter](read):
+                    yield read
+            else:
+                yield read
 
 
     def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
@@ -232,12 +249,15 @@ class BAMFileObject(pysam.AlignmentFile):
         defined region so that they fit inside the start and stop.
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None or read.query_sequence is None:
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
+            if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
                 # mapping software decided it did not want to include a cigar string for this read.
-                # The origin of why query sequence would be None is unkown.
+                # The origin of why query sequence would be None is unkown. Alternatively, this read
+                # has a query sequence, has a cigar string (and therefore mapped), but for some
+                # reason pysam has given the read the attribute read.is_unmapped == True. We choose
+                # not to work with such a read (see https://github.com/merenlab/anvio/issues/1821)
                 continue
 
             read = Read(read)
@@ -280,12 +300,15 @@ class BAMFileObject(pysam.AlignmentFile):
             percent_id_cutoff=95.0
         """
 
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None or read.query_sequence is None:
+        for read in self.fetch_only(contig_name, start, end, *args, **kwargs):
+            if read.is_unmapped or read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
                 # mapping software decided it did not want to include a cigar string for this read.
-                # The origin of why query sequence would be None is unkown.
+                # The origin of why query sequence would be None is unkown. Alternatively, this read
+                # has a query sequence, has a cigar string (and therefore mapped), but for some
+                # reason pysam has given the read the attribute read.is_unmapped == True. We choose
+                # not to work with such a read (see https://github.com/merenlab/anvio/issues/1821)
                 continue
 
             read = Read(read)
@@ -345,7 +368,7 @@ class BAMFileObject(pysam.AlignmentFile):
         reads_checked = 0
 
         for contig_name in self.references:
-            for read in self.fetch(contig_name):
+            for read in self.fetch_only(contig_name):
                 if read.cigartuples is None:
                     # if it didn't map we forgive it for not having an MD tag
                     continue
@@ -726,7 +749,7 @@ class Coverage:
     def _fetch_iterator(self, bam, contig_name, start, end):
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
-        for read in bam.fetch(contig_name, start, end):
+        for read in bam.fetch_only(contig_name, start, end):
             if read.cigartuples is None or read.query_sequence is None:
                 # This read either has no associated cigar string or no query sequence. If cigar
                 # string is None, this means it did not align but is in the BAM file anyways, or the
@@ -1599,3 +1622,5 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
+
+

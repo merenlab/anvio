@@ -2,16 +2,18 @@ Output text files produced by %(anvi-estimate-metabolism)s that describe the pre
 
 Depending on the output options used when running %(anvi-estimate-metabolism)s, these files will have different formats. This page describes and provides examples of the various output file types.
 
+Please note that the examples below show only KEGG data, but user-defined metabolic pathways (%(user-metabolism)s) can also be included in this output!
+
 ### How to get to this output
 ![A beautiful workflow of metabolism reconstruction in anvi'o](../../images/metabolism_reconstruction.png)
 
 ## Long-format output modes
 
-The long-format output option produces tab-delimited files. Each line in the file (except for the header) is indexed by an integer in the `unique_id` column. Different output "modes" will result in output files with different information.
+The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information.
 
 ### 'Modules' Mode
 
-The `modules` mode output file will have the suffix `modules.txt`. Each line in the file will represent information about a KEGG module in a given genome, bin, or contig of a metagenome assembly. Here is one example, produced by running metabolism estimation on the [Infant Gut dataset](http://merenlab.org/tutorials/infant-gut/):
+The 'modules' mode output file will have the suffix `modules.txt`. Each line in the file will represent information about a metabolic module in a given genome, bin, or contig of a metagenome assembly. Here is one example, produced by running metabolism estimation on the _Enterococcus_ external genomes in the [Infant Gut dataset](http://merenlab.org/tutorials/infant-gut/):
 
 |**module**|**genome_name**|**db_name**|**module_name**|**module_class**|**module_category**|**module_subcategory**|**module_definition**|**stepwise_module_completeness**|**stepwise_module_is_complete**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**proportion_unique_enzymes_present**|**enzymes_unique_to_module**|**unique_enzymes_hit_counts**|**enzyme_hits_in_module**|**gene_caller_ids_in_module**|**warnings**|
 |:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
@@ -22,7 +24,8 @@ The `modules` mode output file will have the suffix `modules.txt`. Each line in 
 
 What are the data in each of these columns?
 
-- `unique_id`: a unique integer to identify the row
+- `module`: the module identifier for a metabolic pathway (from the KEGG MODULE database or from user-defined modules)
+- `genome_name`/`bin_name`/`contig_name`: the identifier for the current sample, whether that is a genome, bin, or contig from a metagenome assembly
 - `db_name`: the name of the contigs database from which this data comes (only appears in output from multi-mode, in which multiple DBs are processed at once)
 - `module_name`/`module_class`/`module_category`/`module_subcategory`/`module_definition`: metabolic pathway information, from the KEGG MODULE database or from user-defined metabolic modules
 - `stepwise_module_completeness`/`pathwise_module_completeness`: a fraction between 0 and 1 indicating the proportion of steps in the metabolic pathway that have an associated enzyme annotation. There are currently two strategies for defining the 'steps' in a metabolic pathway - 'stepwise' and 'pathwise'. To learn how these numbers are calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#technical-details)
@@ -142,24 +145,24 @@ Note that in this output mode, `stepwise_module_completeness` and `stepwise_modu
 
 If you use the flag `--add-copy-number`, this output mode will gain an additional column, `step_copy_number`, which describes the number of copies of the current step. To calculate this value, we look at the number of annotations for each alternative enzyme in the step and figure out how many different versions of the step we can make by combining different annotations. For more details, check out [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-stepwise-completenesscopy-number-calculated).
 
-### 'KOfam Hits' Mode
+### Enzyme 'Hits' Mode
 
-The `kofam_hits` output file will have the suffix `kofam_hits.txt`. Unlike the previous mode, this output will include ALL KO hits, regardless of whether the KO belongs to a KEGG Module or not. However, since only a subset of these KOs belong to modules, this output does not include module-related information like paths and module completeness.
+The 'hits' output file will have the suffix `hits.txt`. Unlike the previous mode, this output will include ALL enzyme hits (from all annotation sources used for metabolism estimation), regardless of whether the enzyme belongs to a metabolic module or not. Since only a subset of these enzymes belong to modules, this output does not include module-related information like paths and module completeness.
 
 Here is an example of this output mode (also from the Infant Gut dataset):
 
-unique_id | db_name | genome_name | ko | gene_caller_id | contig | modules_with_ko | definition
-|:--|:--|:--|:--|:--|:--|:--|:--|
-0 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00845 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00892,M00909 | glucokinase [EC:2.7.1.2]
-1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01810 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00114,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9]
-2 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00850 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
-(...) |(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+enzyme | genome_name | db_name | gene_caller_id | contig | modules_with_enzyme | enzyme_definition
+|:--|:--|:--|:--|:--|:--|:--|
+K25026 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00909 | glucokinase [EC:2.7.1.2]
+K01810 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9]
+K00850 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
+(...) |(...)|(...)|(...)|(...)|(...)|(...)|
 
 Here are the descriptions of any new columns not yet discussed in the previous sections:
 
-- `ko`: a KO that was annotated in the contigs database
-- `modules_with_ko`: the KEGG modules (if any) that this KO belongs to
-- `definition`: the function of this KO (typically the enzyme name and EC number)
+- `enzyme`: an enzyme that was annotated in the contigs database
+- `modules_with_enzyme`: the modules (if any) that this enzyme belongs to
+- `enzyme_definition`: the function of this enzyme (often includes the enzyme name and EC number)
 
 **Coverage and detection values in the output**
 

@@ -48,6 +48,7 @@ if __name__ == '__main__':
                         help = 'Sorted and indexed BAM file to analyze. Takes a long time depending on the\
                                 length of the file and parameters used for profiling.')
 
+    groupJ = parser.add_argument_group('FILTERS', 'Choose which reads to work (or not to work) with like a pro.')
     groupM = parser.add_argument_group('EXTRAS', 'Things that are not mandatory, but can be useful if/when declared.')
     groupX = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Do you want your splits to be clustered? Yes? No?\
                                         Maybe? Remember: By default, anvi-profile will not perform hierarchical clustering\
@@ -62,6 +63,11 @@ if __name__ == '__main__':
 
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupI.add_argument(*anvio.A('blank-profile'), **anvio.K('blank-profile'))
+    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
+                            'Ignore any reads with a percent identity to the reference less '
+                            'than this number, e.g. 95. If not provided, all reads in the BAM '
+                            'file will be used (and things will run faster).', 'default': None}))
+    groupJ.add_argument(*anvio.A('fetch-filter'), **anvio.K('fetch-filter'))
     groupM.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupM.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupM.add_argument(*anvio.A('sample-name'), **anvio.K('sample-name'))
@@ -69,10 +75,6 @@ if __name__ == '__main__':
     groupM.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupM.add_argument(*anvio.A('skip-INDEL-profiling'), **anvio.K('skip-INDEL-profiling'))
     groupM.add_argument(*anvio.A('profile-SCVs'), **anvio.K('profile-SCVs'))
-    groupM.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
-                            'Ignore any reads with a percent identity to the reference less '
-                            'than this number, e.g. 95. If not provided, all reads in the BAM '
-                            'file will be used (and things will run faster).', 'default': None}))
     groupM.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupX.add_argument(*anvio.A('cluster-contigs'), **anvio.K('cluster-contigs'))
     groupX.add_argument(*anvio.A('skip-hierarchical-clustering'), **anvio.K('skip-hierarchical-clustering'))

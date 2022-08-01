@@ -87,6 +87,7 @@ class Pangenome(object):
         self.description_file_path = A('description')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
+        self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
@@ -714,6 +715,21 @@ class Pangenome(object):
         if len(self.genomes) < 2:
             raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
                     % len(self.genomes))
+
+        if len(self.genomes) > 100:
+            if self.enforce_the_analysis_of_excessive_number_of_genomes:
+                self.run.warning(f"Because you asked for it, anvi'o WILL analyze your {pp(len(self.genomes))} genomes. Perhaps it will "
+                                 f"fail, but it will fail while trying.", header="YOU HAVE USED YOUR AUTHORITY ⚔️")
+            else:
+                raise ConfigError(f"Sorry for making you wait this long to tell you this, but you have a total of {pp(len(self.genomes))} "
+                                  f"genomes to process, and anvi'o may not be the best platform to do that. The anvi'o pangenomics workflow "
+                                  f"is designed for interactive and in-depth investigations of microbial pangenomes. While one can "
+                                  f"certainly perform an in-depth investigation of their {pp(len(self.genomes))} genomes by turning them "
+                                  f"into a pangenome, they will unlikely manage to do it with anvi'o with more than about 100 genomes. "
+                                  f"We can't stop you if you insist running a pangenomic analyses on your genomes ANYWAY. For instance, "
+                                  f"you can easily force anvi'o to start the analysis using the flag `--I-know-this-is-not-a-good-idea`. "
+                                  f"But by using that flag, you will be forfeiting your privilege to complain to anvi'o developers if "
+                                  f"something goes wrong with your analyses :)")
 
         if self.skip_alignments and self.align_with:
             raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "

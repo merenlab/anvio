@@ -19,7 +19,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsDatabase
+from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import MetagenomeDescriptions
 
@@ -211,6 +211,9 @@ class SanityCheck(object):
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
+                if self.sequences_file_path_prefix:
+                    filesnpaths.is_output_file_writable(self.sequences_file_path_prefix)
+
                 if self.raw_output or self.matrix_format:
                     raise ConfigError("Haha in this mode you can't ask for the raw output or matrix format .. yet (we know that "
                                       "the parameter space of this program is like a mine field and we are very upset about it "
@@ -331,6 +334,7 @@ class SCGTaxonomyArgs(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.sequences_file_path_prefix = A('report_scg_sequences_file_prefix')
         self.per_scg_output_file = A('per_scg_output_file')
         self.all_hits_output_file_path = A('all_hits_output_file')
         self.output_file_prefix = A('output_file_prefix')
@@ -350,6 +354,7 @@ class SCGTaxonomyArgs(object):
             # very cute. we shall make that happen.
             self.metagenomes = None
             self.output_file_path = None
+            self.sequences_file_path_prefix = None
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
@@ -461,7 +466,68 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_for_metagenomes()
 
+        if self.sequences_file_path_prefix:
+            self.store_sequences_for_items_multi(scg_taxonomy_super_dict_multi)
+
         self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+
+    def store_sequences_for_items_multi(self, scg_taxonomy_super_dict_multi):
+        """Report sequences for items if possible"""
+
+        if self.ctx.focus != 'scgs':
+            raise ConfigError("This function is only tested in SCGs mode. If you need to report "
+                              "sequences for taxonomy items reported in other foci, please get in "
+                              "touch with anvi'o developers.")
+
+        if not self.scg_name_for_metagenome_mode:
+            raise ConfigError("You can't ask anvi'o to store sequences for SCGs unless you are "
+                              "working with a specific SCG name :(")
+
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+        import argparse
+
+        dna_sequences_output_file_path = self.sequences_file_path_prefix + '_DNA.fa'
+        amino_acid_sequences_output_file_path = self.sequences_file_path_prefix + '_AA.fa'
+
+        if self.just_do_it:
+            pass
+        elif os.path.exists(dna_sequences_output_file_path) or os.path.exists(amino_acid_sequences_output_file_path):
+            raise ConfigError(f"Anvi'o has detected you already have files {dna_sequences_output_file_path} or {amino_acid_sequences_output_file_path} "
+                               "and does not want to overwrite them. If you do want to overwrite them, then run the `--just-do-it` flag.")
+
+        aa_sequences_output = open(amino_acid_sequences_output_file_path,'w')
+        dna_sequences_output = open(dna_sequences_output_file_path,'w')
+
+        for metagenome_name, v in d.items():
+            contigs_db_path = self.metagenomes[metagenome_name]['contigs_db_path']
+
+            args_for_contigsDB = argparse.Namespace()
+            args_for_contigsDB.contigs_db = contigs_db_path
+            c = ContigsSuperclass(args_for_contigsDB, r=run_quiet)
+
+            gene_caller_ids = [values['gene_callers_id'] for values in v.values()]
+
+            gene_caller_ids_list, sequences_dict = c.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
+
+            if not len(gene_caller_ids_list):
+                raise ConfigError("Something that should have never happened, happened :/ Please re-run the same command with "
+                                  "`--debug` and send the Traceback to an anvi'o developer.")
+
+
+            contigs_db_name = c.a_meta['project_name_str']
+
+            with open(amino_acid_sequences_output_file_path, 'a+') as aa_sequences_output, open(dna_sequences_output_file_path, 'a+') as dna_sequences_output:
+                for header, entry in d[metagenome_name].items():
+                    dna_sequence = sequences_dict[entry['gene_callers_id']]['sequence']
+                    amino_acid_sequence = sequences_dict[entry['gene_callers_id']]['aa_sequence']
+
+                    aa_sequences_output.write(f">{header}\n{amino_acid_sequence}\n")
+                    dna_sequences_output.write(f">{header}\n{dna_sequence}\n")
+
+        self.run.info("DNA sequences for SCGs", dna_sequences_output_file_path, nl_before=1)
+        self.run.info("AA sequences for SCGs", amino_acid_sequences_output_file_path)
 
 
     def get_print_friendly_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi, as_data_frame=False):
@@ -523,6 +589,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         for metagenome_name in scg_taxonomy_super_dict_multi:
             args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
+            args.name = metagenome_name
 
             if self.metagenome_mode:
                 args.metagenome_mode = True
@@ -715,7 +782,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
 
-        header = ['metagenome_name', 'gene_name', 'gene_callers_id', 'percent_identity']
+        header = ['identifier', 'metagenome_name', 'gene_name', 'gene_callers_id', 'percent_identity']
 
         if self.compute_scg_coverages:
             header += ['coverage']
@@ -728,7 +795,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             for metagenome_name in d:
                 for gene_name in d[metagenome_name]:
-                    output.write('\t'.join([metagenome_name] + [str(d[metagenome_name][gene_name][h]) for h in header[1:]]) + '\n')
+                    output.write('\t'.join([gene_name] + [metagenome_name] + [str(d[metagenome_name][gene_name][h]) for h in header[2:]]) + '\n')
 
         self.run.info("Raw output", output_file_path)
 
@@ -944,6 +1011,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck, TaxonomyEstimator
         self.collection_name = A('collection_name')
         self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
         self.bin_id = A('bin_id')
+        self.name = A('name')
 
         SCGTaxonomyArgs.__init__(self, self.args)
 
@@ -1252,7 +1320,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, Popul
 
         self.ctx = ctx
 
-        self.max_target_seqs = int(A('max_num_target_sequences')) or 20
+        self.max_target_seqs = int(A('max_num_target_sequences')) if A('max_num_target_sequences') else 20
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
         self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
 

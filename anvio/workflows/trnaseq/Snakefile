@@ -12,8 +12,8 @@ from anvio.workflows.trnaseq import TRNASeqWorkflow
 from anvio.errors import ConfigError
 
 
-__author__ = "Samuel Miller"
-__copyright__ = "Copyright 2017, The anvio Project"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -229,43 +229,57 @@ rule anvi_trnaseq:
             os.remove(decompressed_fasta)
 
 
-rule anvi_convert_trnaseq_database:
+rule anvi_merge_trnaseq:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_convert_trnaseq_database.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_merge_trnaseq.log")
     input: expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "IDENT.done"), sample_name=M.sample_names)
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "CONVERT.done"))
-    threads: M.T('anvi_convert_trnaseq_database')
+    threads: M.T('anvi_merge_trnaseq')
     params:
-        trnaseq_db_paths = expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}-TRNASEQ.db"), sample_name=M.sample_names),
-        project_name = M.get_rule_param('anvi_convert_trnaseq_database', '--project-name'),
-        output_dir = os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])),
-        max_reported_trna_seeds = M.get_rule_param('anvi_convert_trnaseq_database', '--max-reported-trna-seeds'),
-        overwrite_output_destinations = M.get_rule_param('anvi_convert_trnaseq_database', '--overwrite-output-destinations'),
-        description = M.get_rule_param('anvi_convert_trnaseq_database', '--description'),
-        feature_threshold = M.get_rule_param('anvi_convert_trnaseq_database', '--feature-threshold'),
-        preferred_treatment = M.get_rule_param('anvi_convert_trnaseq_database', '--preferred-treatment'),
-        nonspecific_output = M.get_rule_param('anvi_convert_trnaseq_database', '--nonspecific-output'),
-        min_variation = M.get_rule_param('anvi_convert_trnaseq_database', '--min-variation'),
-        min_third_fourth_nt = M.get_rule_param('anvi_convert_trnaseq_database', '--min-third-fourth-nt'),
-        min_indel_fraction = M.get_rule_param('anvi_convert_trnaseq_database', '--min-indel-fraction'),
-        distance = M.get_rule_param('anvi_convert_trnaseq_database', '--distance'),
-        linkage = M.get_rule_param('anvi_convert_trnaseq_database', '--linkage')
-    shell: "anvi-convert-trnaseq-database {params.trnaseq_db_paths} --output-dir {params.output_dir} {params.project_name} {params.max_reported_trna_seeds} {params.overwrite_output_destinations} {params.description} {params.feature_threshold} {params.preferred_treatment} {params.nonspecific_output} {params.min_variation} {params.min_third_fourth_nt} {params.min_indel_fraction} {params.distance} {params.linkage} -T {threads} >> {log} 2>&1"
+        trnaseq_dbs = expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "{sample_name}-TRNASEQ.db"), sample_name=M.sample_names),
+        project_name = M.get_rule_param('anvi_merge_trnaseq', '--project-name'),
+        output_dir = os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])),
+        max_reported_trna_seeds = M.get_rule_param('anvi_merge_trnaseq', '--max-reported-trna-seeds'),
+        overwrite_output_destinations = M.get_rule_param('anvi_merge_trnaseq', '--overwrite-output-destinations'),
+        description = M.get_rule_param('anvi_merge_trnaseq', '--description'),
+        feature_threshold = M.get_rule_param('anvi_merge_trnaseq', '--feature-threshold'),
+        preferred_treatment = M.get_rule_param('anvi_merge_trnaseq', '--preferred-treatment'),
+        nonspecific_output = M.get_rule_param('anvi_merge_trnaseq', '--nonspecific-output'),
+        min_variation = M.get_rule_param('anvi_merge_trnaseq', '--min-variation'),
+        min_third_fourth_nt = M.get_rule_param('anvi_merge_trnaseq', '--min-third-fourth-nt'),
+        min_indel_fraction = M.get_rule_param('anvi_merge_trnaseq', '--min-indel-fraction'),
+        distance = M.get_rule_param('anvi_merge_trnaseq', '--distance'),
+        linkage = M.get_rule_param('anvi_merge_trnaseq', '--linkage')
+    shell: "anvi-merge-trnaseq {params.trnaseq_dbs} --output-dir {params.output_dir} {params.project_name} {params.max_reported_trna_seeds} {params.overwrite_output_destinations} {params.description} {params.feature_threshold} {params.preferred_treatment} {params.nonspecific_output} {params.min_variation} {params.min_third_fourth_nt} {params.min_indel_fraction} {params.distance} {params.linkage} -T {threads} >> {log} 2>&1"
 
 
 rule anvi_run_trna_taxonomy:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_trna_taxonomy.log")
-    input: rules.anvi_convert_trnaseq_database.output
+    input: rules.anvi_merge_trnaseq.output
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
     threads: M.T('anvi_run_trna_taxonomy')
     params:
-        contigs_db_path = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'CONTIGS.db'),
+        contigs_db = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])), 'CONTIGS.db'),
         min_percent_identity = M.get_rule_param('anvi_run_trna_taxonomy', '--min-percent-identity'),
         max_num_target_sequences = M.get_rule_param('anvi_run_trna_taxonomy', '--max-num-target-sequences'),
         write_buffer_size = M.get_rule_param('anvi_run_trna_taxonomy', '--write-buffer-size'),
-        all_hits_output_file = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_convert_trnaseq_database', '--project-name'])), 'TAXONOMY-HITS.txt')
-    shell: "anvi-run-trna-taxonomy -c {params.contigs_db_path} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -T {threads} >> {log} 2>&1"
+        all_hits_output_file = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])), 'TAXONOMY-HITS.txt')
+    shell: "anvi-run-trna-taxonomy -c {params.contigs_db} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -T {threads} >> {log} 2>&1"
+
+
+rule anvi_tabulate_trnaseq:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_tabulate_trnaseq.log")
+    input: rules.anvi_run_trna_taxonomy.output
+    output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TABULATE.done"))
+    params:
+        contigs_db = os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])), 'CONTIGS.db'),
+        specific_profile_db = os.path.join(os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])), 'SPECIFIC_COVERAGE'), 'PROFILE.db'),
+        nonspecific_profile_db = os.path.join(os.path.join(os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])), 'NONSPECIFIC_COVERAGE'), 'PROFILE.db'),
+        output_dir = os.path.join(dirs_dict['CONVERT_DIR'], M.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])),
+        overwrite_output_destinations = M.get_rule_param('anvi_tabulate_trnaseq', '--overwrite-output-destinations')
+    shell: "anvi-tabulate-trnaseq -c {params.contigs_db} -s {params.specific_profile_db} -n {params.nonspecific_profile_db} --output-dir {params.output_dir} {params.overwrite_output_destinations} >> {log} 2>&1"
 
 
 if 'anvio/workflows/trnaseq' in str(workflow.included[0].abspath()):

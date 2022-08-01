@@ -188,6 +188,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
 
+        if len(self.samples_information.index) < 2 and self.references_mode:
+            raise ConfigError("The metagenomics workflow needs to have at least 2 metagenomes in a samples.txt to be in reference mode.")
+
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'])
         if self.references_for_removal_txt:

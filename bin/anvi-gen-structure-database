@@ -23,10 +23,9 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
 __requires__ = ['contigs-db', 'pdb-db']
 __provides__ = ['structure-db']
-__description__ = ("Identifies genes in your contigs database that encode proteins that are "
-                   "homologous to proteins with solved structures. If sufficiently similar "
-                   "homologs are identified, they are used as structural templates to predict "
-                   "the 3D structure of proteins in your contigs database")
+__description__ = ("Creates a database of protein structures. Predict protein structures using "
+                   "template-based homology modelling of genes in your contigs database, or import "
+                   "pre-computed PDB structures you already have.")
 
 
 @terminal.time_program
@@ -55,6 +54,9 @@ if __name__ == '__main__':
     groupO = parser.add_argument_group('OUTPUT', 'Output file and output style.')
     groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
+
+    groupI = parser.add_argument_group('NON-MODELLER OPTIONS', 'Alternatives to using MODELLER')
+    groupI.add_argument(*anvio.A('external-structures'), **anvio.K('external-structures'))
 
     groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
     groupM.add_argument("--num-models", "-N", type=int, default=1, help = \
