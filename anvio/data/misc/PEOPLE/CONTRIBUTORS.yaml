@@ -140,3 +140,29 @@
       inst_link: https://www.babs.unsw.edu.au/
       current: true
 
+- github: dutter
+  name: Dan Utter
+  twitter: bajenak
+  web: https://dutter.github.io
+  avatar: bio-dutter.jpg
+  email: bajenak@gmail.com
+  orcid: 0000-0003-3322-7108
+  bio: "Microbial ecologist interested in the evolution and maintenance of diversity in complex natural communities, mostly using bioinformatics"
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: California Institute of Technology
+      inst_link: https://www.caltech.edu
+      current: true
+
+- github: HMorrison
+  name: Hilary Morrison
+  web: https://www.mbl.edu/research/faculty-and-whitman-scientists/Hilary%20Morrison
+  avatar: bio-morrison.jpg
+  email: hmorrison1981@gmail.com
+  orcid: 0000-0003-0281-326X
+  bio: "A long and winding road to microbial ecology"
+  affiliations:
+    - title: Senior Scientist
+      inst: Marine Biological Laboratory
+      inst_link: https://www.mbl.edu
+      current: true

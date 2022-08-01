@@ -31,9 +31,9 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-slave_mode = False if 'workflows/metagenomics' in workflow.included[0] else True
+this_workflow_is_inherited_by_another = False if 'anvio/workflows/metagenomics' in str(workflow.included[0].abspath()) else True
 
-if not slave_mode:
+if not this_workflow_is_inherited_by_another:
     # it is important that this comes before the include statement since
     # M is defined here and will also be used in the contigs workflow
     M = MetagenomicsWorkflow(argparse.Namespace(config=config))
@@ -1284,7 +1284,7 @@ rule anvi_cluster_contigs:
                                        {params.additional_params} >> {log} 2>&1""")
 
 
-if 'workflows/metagenomics' in workflow.included[0]:
+if 'anvio/workflows/metagenomics' in str(workflow.included[0].abspath()):
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

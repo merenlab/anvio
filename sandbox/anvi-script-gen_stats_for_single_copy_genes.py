@@ -12,11 +12,6 @@ any later version.
 Please read the COPYING file.
 """
 
-__requires__ = ["contigs-db"]
-__provides__ = ["genes-stats"]
-__authors__ = ['meren']
-__description__ = "A simple script to generate info from search tables, given a contigs-db"
-
 import sys
 from anvio.argparse import ArgumentParser
 
@@ -24,6 +19,10 @@ import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 
+__description__ = "A simple script to generate info from search tables, given a contigs-db"
+__requires__ = ["contigs-db"]
+__provides__ = ["genes-stats"]
+__authors__ = ['meren']
 
 run = terminal.Run()
 progress = terminal.Progress()

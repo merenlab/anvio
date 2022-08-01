@@ -119,7 +119,7 @@ def get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, 
 
 def create_newick_file_from_matrix_file(observation_matrix_path, output_file_path, linkage=constants.linkage_method_default,
                          distance=constants.distance_metric_default, norm='l1', progress=progress, transpose=False,
-                         items_order_file_path=None):
+                         items_order_file_path=None, pad_with_zeros=False):
     is_distance_and_linkage_compatible(distance, linkage)
     filesnpaths.is_file_exists(observation_matrix_path)
     filesnpaths.is_file_tab_delimited(observation_matrix_path)
@@ -128,7 +128,7 @@ def create_newick_file_from_matrix_file(observation_matrix_path, output_file_pat
     if items_order_file_path:
         filesnpaths.is_output_file_writable(items_order_file_path)
 
-    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose)
+    id_to_sample_dict, sample_to_id_dict, header, vectors = utils.get_vectors_from_TAB_delim_matrix(observation_matrix_path, transpose=transpose, pad_with_zeros=pad_with_zeros)
 
     vectors = np.array(vectors)
 

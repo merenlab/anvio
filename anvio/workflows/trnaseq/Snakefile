@@ -268,7 +268,7 @@ rule anvi_run_trna_taxonomy:
     shell: "anvi-run-trna-taxonomy -c {params.contigs_db_path} {params.min_percent_identity} {params.max_num_target_sequences} {params.write_buffer_size} --all-hits-output-file {params.all_hits_output_file} -T {threads} >> {log} 2>&1"
 
 
-if 'workflows/trnaseq' in workflow.included[0]:
+if 'anvio/workflows/trnaseq' in str(workflow.included[0].abspath()):
     # Check if all program dependencies are met.
     # For this line to be effective, there should be an initial dry run step --
     # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.
