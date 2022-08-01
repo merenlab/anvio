@@ -451,6 +451,8 @@ class BinSplitter(summarizer.Bin, XSplitter):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.compress_auxiliary_data = A('compress_auxiliary_data')
 
+        self.db_variant = str(utils.get_db_variant(self.profile_db_path))
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
         self.clustering_configs = constants.clustering_configs['merged']
@@ -564,10 +566,12 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         bin_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(new_auxiliary_profile_data_path,
                                                                                 self.contigs_db_hash,
+                                                                                db_variant=self.db_variant,
                                                                                 create_new=True)
 
         parent_profile_auxiliary = auxiliarydataops.AuxiliaryDataForSplitCoverages(parent_auxiliary_profile_data_path,
-                                                                                   self.summary.a_meta['contigs_db_hash'])
+                                                                                   self.summary.a_meta['contigs_db_hash'],
+                                                                                   db_variant=self.db_variant)
 
         for split_name in self.split_names:
             sample_coverages = parent_profile_auxiliary.get(split_name)
@@ -943,10 +947,6 @@ class LocusSplitter:
             >>> '/path/to/dir/file_name_prefix.fa'
             >>> '/path/to/dir/file_name_prefix.db'
 
-        FIXME Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
-        then you have more then how to choose which contig to cut out?????????
-
-        NOTE ^^^ has this FIXME been addressed? It looks like this _is_ checked, and raises an error - Evan
         """
 
         if gene_callers_id is not None and not isinstance(gene_callers_id, int):
@@ -985,8 +985,8 @@ class LocusSplitter:
                                                                        ))
 
             gene_caller_ids = list(gene_caller_ids_flank_pair)
-            first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
-            gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
+            gene_callers_id = gene_caller_ids[0] # just for getting contig name from contigDB
+
 
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
@@ -1000,12 +1000,47 @@ class LocusSplitter:
 
         # Query for gene_call, contig_name, and genes_in_contig_sorted
         gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
+
+        # if in flank mode check that both search terms are NOT on the same contig
+        if self.is_in_flank_mode:
+            contig_name_1 = self.contigs_db.genes_in_contigs_dict[gene_caller_ids[0]]['contig']
+            contig_name_2 = self.contigs_db.genes_in_contigs_dict[gene_caller_ids[1]]['contig']
+            if contig_name_1 != contig_name_2:
+                raise ConfigError(f"Soooooo it turns out that the flanking genes you picked "
+                                  f"are found on two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
+                                  f"a smaller piece of DNA for you :/")
+            
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
-        genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
 
+        # Sort by gene start position
+        genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]), key=lambda tup: tup[1])
+
+        # Here we run Default-mode and cut out the locus based on the anchor gene_callers_id (index) and
+        # cut + self.num_genes_list[0] and - self.num_genes_list[1] around it
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
-        premature = False
 
+        if not self.is_in_flank_mode:
+            counter = 0
+            for gcid,start,stop in genes_in_contig_sorted:
+                if gcid == gene_callers_id:
+                    anchor_gene_index = counter
+                counter = counter + 1
+
+
+            gene_1 = anchor_gene_index - self.num_genes_list[0] * D()
+            gene_2 = anchor_gene_index + self.num_genes_list[1] * D()
+            first_gene_of_the_block = min(gene_1, gene_2)
+            last_gene_of_the_block = max(gene_1, gene_2)
+
+        if self.is_in_flank_mode:
+            counter = 0
+            anchor_gene_index_flank_pair = []
+            for gene in genes_in_contig_sorted:
+                if gene[0] in gene_caller_ids:
+                    anchor_gene_index_flank_pair.append(counter)
+                counter = counter + 1
+            first_gene_of_the_block, last_gene_of_the_block = sorted(anchor_gene_index_flank_pair)
+            
         # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
@@ -1013,20 +1048,11 @@ class LocusSplitter:
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
-        # Here we run Default-mode and cut out the locus based on the anchor gene_callers_id and
-        # cut + self.num_genes_list[0] and - self.num_genes_list[1] arount it
-        if not self.is_in_flank_mode:
-            gene_1 = gene_callers_id - self.num_genes_list[0] * D()
-            gene_2 = gene_callers_id + self.num_genes_list[1] * D()
-            first_gene_of_the_block = min(gene_1, gene_2)
-            last_gene_of_the_block = max(gene_1, gene_2)
+        # getting gene indexes for the first and last genes in the contig
+        last_gene_in_contig = len(genes_in_contig_sorted) - 1
+        first_gene_in_contig = 0
 
-        self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
-
-        # getting the ids for the first and last genes in the contig
-        last_gene_in_contig = genes_in_contig_sorted[-1][0]
-        first_gene_in_contig = genes_in_contig_sorted[0][0]
-
+        premature = False
         if last_gene_of_the_block > last_gene_in_contig:
             last_gene_of_the_block = last_gene_in_contig
             premature = True
@@ -1041,10 +1067,14 @@ class LocusSplitter:
         elif premature and not self.remove_partial_hits:
             self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow", nl_before=1, nl_after=1)
 
-        self.run.info("First and last gene of the locus (final)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
+        self.run.info("First and last gene of the locus ", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
-        locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
-        locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
+        # convert gene position indexes to gene-callers-ids
+        first_gene_of_the_block_gene_callers_id = genes_in_contig_sorted[first_gene_of_the_block][0]
+        last_gene_of_the_block_gene_callers_id = genes_in_contig_sorted[last_gene_of_the_block][0]
+
+        locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block_gene_callers_id]['start']
+        locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block_gene_callers_id]['stop']
 
         # being a performance nerd here yes
         contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True, skip_rowid_prepend=True) \
@@ -1056,13 +1086,14 @@ class LocusSplitter:
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
         # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
-        # genes in teh gene calls dict.
+        # genes in the gene calls dict.
         locus_gene_calls_dict = {}
         for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
-            locus_gene_calls_dict[g] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[g])
-            excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
-            locus_gene_calls_dict[g]['start'] -= excess
-            locus_gene_calls_dict[g]['stop'] -= excess
+            gci = genes_in_contig_sorted[g][0]
+            locus_gene_calls_dict[gci] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[gci])
+            excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block_gene_callers_id]['start']
+            locus_gene_calls_dict[gci]['start'] -= excess
+            locus_gene_calls_dict[gci]['stop'] -= excess
 
         self.run.info("Locus gene call start/stops excess (nts)", excess)
 
@@ -1137,7 +1168,7 @@ class LocusSplitter:
             gene_calls = new_gene_calls
 
 
-        # write the sequene as a temporary FASTA file since the design of ContigsDatabase::create
+        # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
         with open(locus_sequence_fasta, 'w') as f:
             f.write('>%s\n%s\n' % (contig_name, sequence))
@@ -1153,6 +1184,8 @@ class LocusSplitter:
                                   split_length=sys.maxsize,
                                   kmer_size=4,
                                   external_gene_calls=locus_external_gene_calls)
+        #FIXME: it would be great if anvio could give a warning about internal stop codons
+        # rather than killing the whole export-locus interation
         dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
 
         # while we are at it, here we generate a blank profile, too. so visualization of the
@@ -1197,7 +1230,7 @@ class LocusSplitter:
 
         ############################################################################################
         # DO AMINO ACID SEQUENCES -- we are using external gene calls to generate the new contigs
-        #                            database, but amino acid sequnces are kept in a different table
+        #                            database, but amino acid sequences are kept in a different table
         #                            and anvi'o checks whether provided gene calls resolve to amino
         #                            acid sequences with proper starts and stops. if not, it skips
         #                            them. but amino acid sequences for each gene call was stored

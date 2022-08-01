@@ -128,6 +128,7 @@ max_num_items_for_hierarchical_clustering = 20000
 # we use uint16 as dtype for numpy arrays when we work on & store coverages
 # which has limit of 65536, so this constant needs to be smaller than that.
 # If you change this value please change all dtypes.
+# (This does not apply to the tRNA-seq workflow, which stores coverages as uint32.)
 max_depth_for_coverage = 60000
 
 # default methods for hierarchical cluster analyses
@@ -318,6 +319,28 @@ AA_to_codons = Counter({'Ala': ['GCA', 'GCC', 'GCG', 'GCT'],
                         'Trp': ['TGG'],
                         'Tyr': ['TAC', 'TAT'],
                         'Val': ['GTA', 'GTC', 'GTG', 'GTT']})
+
+AA_to_anticodons = Counter({'Ala': ['AGC', 'CGC', 'GGC', 'TGC'],
+                            'Arg': ['ACG', 'CCG', 'CCT', 'GCG', 'TCG', 'TCT'],
+                            'Asn': ['ATT', 'GTT'],
+                            'Asp': ['ATC', 'GTC'],
+                            'Cys': ['ACA', 'GCA'],
+                            'Gln': ['CTG', 'TTG'],
+                            'Glu': ['CTC', 'TTC'],
+                            'Gly': ['ACC', 'CCC', 'GCC', 'TCC'],
+                            'His': ['ATG', 'GTG'],
+                            'Ile': ['AAT', 'GAT', 'TAT'],
+                            'Leu': ['AAG', 'CAA', 'CAG', 'GAG', 'TAA', 'TAG'],
+                            'Lys': ['CTT', 'TTT'],
+                            'Met': ['CAT'],
+                            'Phe': ['AAA', 'GAA'],
+                            'Pro': ['AGG', 'CGG', 'GGG', 'TGG'],
+                            'STP': ['CTA', 'TCA', 'TTA'],
+                            'Ser': ['ACT', 'AGA', 'CGA', 'GCT', 'GGA', 'TGA'],
+                            'Thr': ['AGT', 'CGT', 'GGT', 'TGT'],
+                            'Trp': ['CCA'],
+                            'Tyr': ['ATA', 'GTA'],
+                            'Val': ['AAC', 'CAC', 'GAC', 'TAC']})
 
 AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D',
                                     'Cys': 'C', 'Gln': 'Q', 'Glu': 'E', 'Gly': 'G',
