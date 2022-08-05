@@ -133,8 +133,8 @@ def main(args):
             function_min_codons=args.function_min_codons,
             min_codon_filter=args.min_codon_filter,
             drop_amino_acids=args.exclude_amino_acids,
-            min_amino_acids=args.exclude_amino_acid_count,
-            min_gene_fraction=args.exclude_amino_acid_fraction,
+            sequence_min_amino_acids=args.sequence_min_amino_acids,
+            pansequence_min_amino_acids=args.pansequence_min_amino_acids,
             query_min_analyzed_codons=args.query_min_analyzed_codons,
             reference_exclude_amino_acid_count=args.reference_exclude_amino_acid_count,
             reference_min_analyzed_codons=args.reference_min_analyzed_codons):
@@ -187,8 +187,8 @@ def main(args):
             function_min_codons=args.function_min_codons,
             min_codon_filter=args.min_codon_filter,
             drop_amino_acids=args.exclude_amino_acids,
-            min_amino_acids=args.exclude_amino_acid_count,
-            min_gene_fraction=args.exclude_amino_acid_fraction,
+            sequence_min_amino_acids=args.sequence_min_amino_acids,
+            pansequence_min_amino_acids=args.pansequence_min_amino_acids,
             query_min_analyzed_codons=args.query_min_analyzed_codons,
             reference_exclude_amino_acid_count=args.reference_exclude_amino_acid_count,
             reference_min_analyzed_codons=args.reference_min_analyzed_codons)
