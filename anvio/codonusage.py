@@ -737,9 +737,6 @@ class SingleGenomeCodonUsage(object):
             sum_genes):
             return get_table(self._get_summed_rel_frequency_table)
         ### Synonymous relative frequencies
-        # get_table = lambda method: self._get_frequency_table(
-        #     gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
-        #         label_amino_acids=label_amino_acids)
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
