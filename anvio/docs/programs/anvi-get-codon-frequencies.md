@@ -1,12 +1,12 @@
 This program **calculates codon or amino acid frequencies from genes or functions**.
 
-A range of options allow calculation of different frequency statistics. This program is "maximalist," in that it has many options that do the equivalent of a couple extra commands in R or pandas -- because we (not you) tend to be lazy and prone to mistakes.
+A range of options allows calculation of different frequency statistics. This program is "maximalist," in that it has many options that do the equivalent of a couple extra commands in R or pandas -- because we (not you) tend to be lazy and prone to mistakes.
 
 ## Basic commands
 
 ### Gene frequencies
 
-This command produces a table of codon frequencies from coding sequences in the contigs database, with the first column of the table before frequency data containing gene caller IDs. The decoded amino acid is included in each codon column name.
+This command produces a table of codon frequencies from coding sequences in the contigs database. The first column of the table contains gene caller IDs and subsequent columns contain frequency data. The decoded amino acid is included in each codon column name with the flag, `--header-amino-acids`.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output.txt --header-amino-acids
@@ -38,9 +38,7 @@ anvi-get-codon-frequencies -i path/to/internal_genomes.txt -e path/to/external_g
 
 ## Option examples
 
-Tables show the options to get the requested statistics.
-
-Options can be mixed and matched, with there being relatively few incompatible options.
+The following tables show the options to get the requested results.
 
 ### _Different_ frequency statistics
 
@@ -66,7 +64,7 @@ Options can be mixed and matched, with there being relatively few incompatible o
 | All KEGG KOfams and all Pfams | `--function-sources KOfam Pfam` |
 | [Certain KEGG BRITE categories](#brite-hierarchies) | `--function-sources KEGG_BRITE --function-names Ribosome Ribosome>>>Ribosomal proteins` |
 | [Certain KEGG KOfam accessions](#inputs) | `--function-sources KOfam --function-accessions K00001 K00002` |
-| [Certain BRITE categories and KOfam accessions](#inputs) | `--functions-txt path/to/functions_table.txt` |
+| [Certain BRITE categories and KOfam accessions](#inputs) | `--select-functions-txt path/to/select_functions.txt` |
 
 ### Frequencies from _selections of genes_
 
@@ -74,24 +72,22 @@ Options can be mixed and matched, with there being relatively few incompatible o
 | --- | ------- |
 | From contigs database | `--contigs-db path/to/contigs.db` |
 | From collection of internal genomes | `--contigs-db path/to/contigs.db --profile-db path/to/profile.db --collection-name my_bins` |
-| From certain listed bins | `--contigs-db path/to/contigs.db --profile-db path/to/profile.db --bin-names-list my_first_bin,my_second_bin` |
-| From certain bins listed in a file | `--contigs-db path/to/contigs.db --profile-db path/to/profile.db --bin-ids-file path/to/bin_list.txt` |
+| From internal genome | `--contigs-db path/to/contigs.db --profile-db path/to/profile.db --collection-name my_bins --bin-id my_bin` |
+| From internal genomes listed in a file | `--internal-genomes path/to/genomes.txt` |
 | From external genomes (contigs databases) listed in a file | `--external-genomes path/to/genomes.txt` |
-| With certain gene IDs | `--gene-caller-ids 1,2,500` |
-| With certain gene IDs or genes annotated with certain KOfams | `--gene-caller-ids 1,2,500 --function-sources KOfam --function-accessions K00001` |
+| With certain gene IDs | `--gene-caller-ids 0 2 500` |
+| With certain gene IDs or genes annotated with certain KOfams | `--gene-caller-ids 0 2 500 --function-sources KOfam --function-accessions K00001` |
 
 ### _Filtering genes and codons_ that are analyzed and reported
 
 | Get | Options |
 | --- | ------- |
 | [Exclude genes shorter than 300 codons](#gene-length-and-codon-count) | `--gene-min-codons 300` |
-| [Exclude functions with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude genes shorter than 300 codons from contributing to function codon frequencies](#function-codon-count) | `--gene-min-codons 300 --function-sources` |
+| [Exclude functions with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
 | [Only include certain codons](#codons) | `--include-amino-acids Leu Ile` |
 | [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9` |
-| [Exclude genes with <300 codons after dynamically filtering codons based on all genes of ANY length](#gene-length-and-codon-count) | `--gene-min-codons 300 --exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9 --min-codon-filter remaining` |
-| [Exclude genes with lengths <300 codons before but not after dynamically filtering codons](#gene-length-and-codon-count) dynamically filtering codons | `--gene-min-codons 300 --exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9 --min-codon-filter length` |
 
 ## Option details
 
@@ -125,19 +121,19 @@ Using `--output-file` is equivalent to `--gene-table-output` rather than `--func
 
 There are multiple options to define which functions and sources should be used. `--function-sources` without arguments uses all available sources that had been used to annotate genes.
 
-`--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options.
+`--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options to select COG functions.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources COG14_FUNCTION --function-accessions COG0004 COG0005 --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
 {{ codestart }}
 
-To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for `source`.
+To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for source.
 
-By default, selected function accessions or names do not need to be present in the input genomes; the program will return data for any selected accessions or names that annotated genes. This behavior can be changed using the flag, `--expect-functions`, so that the program will throw an error when any of the selected accessions or names are absent.
+By default, selected function accessions or names do not need to be present in the input genomes; the program will return data for any selected function accessions or names that annotated genes. This behavior can be changed using the flag, `--expect-functions`, so that the program will throw an error when any of the selected accessions or names are absent.
 
 #### BRITE hierarchies
 
-Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams). For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
+Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams). For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources KEGG_BRITE
@@ -149,7 +145,7 @@ anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --f
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons and the single codons encoding Met and Trp are excluded by default from calculation of synonymous codon relative frequencies (`--synonymous`). Relative frequencies across codons in a gene (`--relative`) are calculated for the selected amino acids, so the following option would return a table of codon frequencies relative to the codons encoding the selected nonpolar amino acids: `--include-amino-acids Gly Ala Val Leu Met Ile`.
 
-Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies, e.g., 0.5 GCC and 0.5 GCT for Ala may be statistically insignificant for a gene with 1 GCC and 1 GCT; even more meaningless would be 1.0 GCC and 0.0 GCT for a gene with 1 GCC and 0 GCT. Two options used in tandem remove rarer amino acids across the dataset, `--exclude-amino-acid-count` and `--exclude-amino-acid-fraction`. These set a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with the arguments, `--exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9`.
+Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies. For example, 0.5 AAT and 0.5 AAC for Asn may be statistically insignificant for a gene with 1 AAT and 1 AAC; even more meaningless would be 1.0 AAT and 0.0 AAC for a gene with 1 AAT and 0 AAC. Two options used in tandem remove rarer amino acids across the dataset, `--exclude-amino-acid-count` and `--exclude-amino-acid-fraction`. These set a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with the arguments, `--exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9`.
 
 #### Gene length and codon count
 

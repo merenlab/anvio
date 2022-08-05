@@ -88,7 +88,7 @@ def main(args):
             except KeyError:
                 args.function_names_dict[function_source] = [function_name]
 
-    parse_select_functions_table(args)
+    from_function_sources = parse_select_functions_table(args, from_function_sources)
 
     if args.include_amino_acids and args.exclude_amino_acids:
         raise ConfigError(
@@ -102,6 +102,9 @@ def main(args):
                 continue
             else:
                 args.exclude_amino_acids.append(amino_acid)
+
+    args.pansequence_min_amino_acids = [int(args.pansequence_min_amino_acids[0]),
+                                        float(args.pansequence_min_amino_acids[1])]
 
     # Get gene frequency tables.
     if args.internal_genomes or args.external_genomes:
@@ -121,8 +124,8 @@ def main(args):
             function_min_codons=args.function_min_codons,
             min_codon_filter=args.min_codon_filter,
             drop_amino_acids=args.exclude_amino_acids,
-            min_amino_acids=args.exclude_amino_acid_count,
-            min_gene_fraction=args.exclude_amino_acid_fraction,
+            sequence_min_amino_acids=args.sequence_min_amino_acids,
+            pansequence_min_amino_acids=args.pansequence_min_amino_acids,
             label_amino_acids=args.header_amino_acids)
     else:
         single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
@@ -142,8 +145,8 @@ def main(args):
             function_min_codons=args.function_min_codons,
             min_codon_filter=args.min_codon_filter,
             drop_amino_acids=args.exclude_amino_acids,
-            min_amino_acids=args.exclude_amino_acid_count,
-            min_gene_fraction=args.exclude_amino_acid_fraction,
+            sequence_min_amino_acids=args.sequence_min_amino_acids,
+            pansequence_min_amino_acids=args.pansequence_min_amino_acids,
             label_amino_acids=args.header_amino_acids)
 
     # Write output tables.
@@ -165,14 +168,27 @@ def main(args):
         run.info("Gene table output", args.gene_table_output)
 
 
-def parse_select_functions_table(args):
+def parse_select_functions_table(args, from_function_sources):
     """Select genes for the frequency analysis from functions specified in a tabular file."""
     if not args.select_functions_txt:
-        return
+        return from_function_sources
 
     select_functions_df = pd.read_csv(
-        args.select_functions_txt, sep='\t', header=None, columns=['source', 'accession', 'name'])
+        args.select_functions_txt, sep='\t', header=None, names=['source', 'accession', 'name'])
     select_functions_df = select_functions_df.fillna('')
+
+    if args.function_sources is None:
+        args.function_sources = []
+        from_function_sources = []
+    if args.function_sources == True:
+        pass
+    else:
+        # Add the sources from the file to the list of all function sources to check for and load in
+        # the genomes.
+        for source in select_functions_df['source'].unique():
+            if source not in args.function_sources:
+                args.function_sources.append(source)
+                from_function_sources.append(source)
 
     for row in select_functions_df.itertuples(index=False):
         if not row.source:
@@ -202,6 +218,8 @@ def parse_select_functions_table(args):
                 args.function_names_dict[row.source].append(row.name)
             except KeyError:
                 args.function_names_dict[row.source] = [row.name]
+
+    return from_function_sources
 
 
 if __name__ == '__main__':
@@ -345,18 +363,20 @@ if __name__ == '__main__':
         help="This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
              "acids are analyzed and reported.")
     groupF.add_argument(
-        '--exclude-amino-acid-count', type=int, default=0,
+        '--sequence-min-amino-acids', type=int, default=0,
         help="Remove codons for amino acids (and STP) that are less numerous than the given "
-             "argument in the fraction of genes given by `--exclude-amino-acid-fraction`. For "
-             "example, say this argument is 3 and `--exclude-amino-acid-fraction` is 0.9: if there "
-             "are fewer than 3 codons for an amino acid/STP in ≥90%% of genes, then the amino "
-             "acid's codons are removed.")
+             "argument. For example, if the argument is 5, and a gene or function query has 4 "
+             "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
+             "will have missing values in Asn columns.")
     groupF.add_argument(
-        '--exclude-amino-acid-fraction', type=float, default=1,
-        help="Use this argument together with `--exclude-amino-acid-count`. This argument defines "
-             "the fraction of genes in which a decoded amino acid must be found at the threshold "
-             "frequency of `--exclude-amino-acid-count` for the amino acid's codons to be "
-             "retained.")
+        '--pansequence-min-amino-acids', nargs=2, default=[0, 1.0],
+        help="The first value of the argument is a positive integer representing a minimum number "
+             "of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a number "
+             "between 0 and 1 representing a fraction of genes -- 'min_gene_fraction'. Remove "
+             "codons for amino acids (and STP) that are less numerous than 'min_amino_acids' in a "
+             "'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and "
+             "'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for an amino "
+             "acid/STP in ≥90%% of genes, then the columns for these codons are dropped.")
     groupF.add_argument(
         '--min-codon-filter', choices=['length', 'remaining', 'both'], default='both',
         help="This argument arises from the ambiguity of filters that remove genes and functions "
