@@ -382,16 +382,16 @@ if __name__ == '__main__':
         '--min-codon-filter', choices=['length', 'remaining', 'both'], default='both',
         help="This argument arises from the ambiguity of filters that remove genes and functions "
              "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
-             "the filters that drop codons (`--exclude/include-amino-acids` and "
-             "`--exclude-amino-acid-count/fraction`). Genes (and functions) can be filtered by "
+             "filters that drop codons (`--exclude/include-amino-acids` and "
+             "`--pansequence-min-amino-acids`). Genes (and functions) can be filtered by "
              "their full length, e.g., genes shorter than 300 codons are ignored. They can also be "
              "filtered by the number of codons remaining after dropping codons. The codon length "
              "filter followed by dropping codons can result in genes and functions with fewer "
              "codons than the original codon threshold -- thus the option of both \"length\" and "
              "\"remaining\" filters to ensure that total codon frequencies in the output always "
              "meet the minimum codon threshold. \"both\" is needed as an option in addition to "
-             "\"remaining\" so dynamic codon filtering by `--exclude-amino-acid-count/fraction` "
-             "operates on genes that passed the first length filter.")
+             "\"remaining\" so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
+             "on genes that passed the first length filter.")
 
     args = parser.get_args(parser)
 
