@@ -364,10 +364,11 @@ if __name__ == '__main__':
              "acids are analyzed and reported.")
     groupF.add_argument(
         '--sequence-min-amino-acids', type=int, default=0,
-        help="Remove codons for amino acids (and STP) that are less numerous than the given "
+        help="Do not report codons for amino acids (and STP) that are less numerous than the given "
              "argument. For example, if the argument is 5, and a gene or function query has 4 "
              "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
-             "will have missing values in Asn columns.")
+             "will have missing values in Asn columns. This filter occurs at the end of the "
+             "analysis before writing results and so does not affect prior calculations.")
     groupF.add_argument(
         '--pansequence-min-amino-acids', nargs=2, default=[0, 1.0],
         help="The first value of the argument is a positive integer representing a minimum number "
