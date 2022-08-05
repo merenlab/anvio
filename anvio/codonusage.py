@@ -727,8 +727,7 @@ class SingleGenomeCodonUsage(object):
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
-                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
-                ).droplevel(1).dropna(how='all'),
+                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             output_amino_acids=return_amino_acids,
             label_amino_acids=label_amino_acids)
         if (relative and
@@ -739,8 +738,7 @@ class SingleGenomeCodonUsage(object):
         ### Synonymous relative frequencies
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
-                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
-                ).droplevel(1).dropna(how='all'),
+                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
             relative and
@@ -752,8 +750,7 @@ class SingleGenomeCodonUsage(object):
         # Codon results averaged across genes annotated by a function source:
         ### Absolute frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby(
-                'source').apply(method).droplevel(1).dropna(how='all'),
+            gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
             sequence_min_amino_acids=sequence_min_amino_acids,
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
@@ -764,8 +761,7 @@ class SingleGenomeCodonUsage(object):
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
-                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
-                ).droplevel(1).dropna(how='all'),
+                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
             relative and
@@ -776,8 +772,7 @@ class SingleGenomeCodonUsage(object):
         ### Synonymous relative frequencies
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
-                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
-                ).droplevel(1).dropna(how='all'),
+                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
             relative and
@@ -789,8 +784,7 @@ class SingleGenomeCodonUsage(object):
         # Amino acid results averaged across genes annotated by a function source:
         ### Absolute frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby(
-                'source').apply(method).droplevel(1).dropna(how='all'),
+            gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
             sequence_min_amino_acids=sequence_min_amino_acids,
             output_amino_acids=return_amino_acids)
         if (return_amino_acids and
@@ -801,8 +795,7 @@ class SingleGenomeCodonUsage(object):
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
-                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)
-                ).droplevel(1).dropna(how='all'),
+                partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             output_amino_acids=return_amino_acids)
         if (return_amino_acids and
             relative and
@@ -1145,10 +1138,11 @@ class SingleGenomeCodonUsage(object):
         except KeyError:
             mask_df = None
         codon_rel_frequency_df = codon_frequency_df.div(codon_frequency_df.sum(axis=1), axis=0)
+        drop_index = codon_rel_frequency_df[codon_rel_frequency_df.isna().all(axis=1)].index
         if mask_df is not None:
             codon_rel_frequency_df = codon_rel_frequency_df[mask_df]
         # Drop rows with zero frequency.
-        codon_rel_frequency_df = codon_rel_frequency_df.dropna(how='all')
+        codon_rel_frequency_df = codon_rel_frequency_df.drop(drop_index)
         return codon_rel_frequency_df
 
 
@@ -1177,9 +1171,11 @@ class SingleGenomeCodonUsage(object):
                 continue
             synonymous_codon_rel_frequency_df[codons] = aa_codon_frequency_df.div(
                 aa_codon_frequency_df.sum(axis=1), axis=0)
+        drop_index = synonymous_codon_rel_frequency_df[
+            synonymous_codon_rel_frequency_df.isna().all(axis=1)].index
         if mask_df is not None:
             synonymous_codon_rel_frequency_df = synonymous_codon_rel_frequency_df[mask_df]
-        synonymous_codon_rel_frequency_df = synonymous_codon_rel_frequency_df.dropna(how='all')
+        synonymous_codon_rel_frequency_df = synonymous_codon_rel_frequency_df.drop(drop_index)
         return synonymous_codon_rel_frequency_df
 
 
