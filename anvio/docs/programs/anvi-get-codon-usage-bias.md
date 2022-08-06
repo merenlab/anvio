@@ -90,15 +90,16 @@ The following tables show the options to get the requested results.
 | [Exclude genes shorter than 300 codons from contributing to function queries](#function-codon-count) | `--gene-min-codons 300 --function-sources` |
 | [Exclude function queries with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
-| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9` |
-| [Exclude queries with <300 codons in the CUB calculation](#query-length) | `--query-min-analyzed-codons 300` |
+| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
+| [Exclude queries with <300 codons involved in the CUB calculation](#analyzed-query-codon-count) | `--query-min-analyzed-codons 300` |
 
 ### _Filtering genes and codons_ in analyzed references
 
 | Get | Options |
 | --- | ------- |
 | Codons with a frequency <20 are excluded from the reference and CUB calculation | `--reference-exclude-amino-acid-count 20` |
-| Exclude references with <300 codons in the CUB calculation | `--reference-min-analyzed-codons 300` |
+| Exclude references with <300 codons involved in the CUB calculation | `--reference-min-analyzed-codons 300` |
 
 ## Option details
 
@@ -150,10 +151,32 @@ Use `--reference-gene-caller-ids` for select genes to be in the custom reference
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons are excluded by default from CUB calculations. Codons encoding a single amino acid (Met and Trp) do not factor into CUB calculations. Example: exclude Ala, Arg, and stop codons with `--exclude-amino-acids Ala Arg STP`.
 
-Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as 𝛿, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. Two options used in tandem remove rarer amino acids from queries: `--exclude-amino-acid-count` and `--exclude-amino-acid-fraction`. These set a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with the arguments, `--exclude-amino-acid-count 5 --exclude-amino-acid-fraction 0.9`.
+Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as 𝛿, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with the arguments, `--pansequence-min-amino-acids 5 0.9`.
+
+Codons for rarer amino acids within each gene or function query can be excluded from the CUB calculation with `--sequence-min-amino-acids`. For example, amino acids with <5 codons in a query will be excluded from the analysis with `--sequence-min-amino-acids 5`.
 
 #### Gene length and codon count
 
+Genes with fewer than a minimum number of codons can be ignored in the CUB analysis. `--gene-min-codons` sets the minimum number of codons required in a gene, and this filter can be applied before and/or after the removal of rarer codons. Applied before, `--gene-min-codons` filters genes by length; applied after, it filters genes by codons remaining after removing rarer codons. `--min-codon-filter` can take three possible arguments: `length`, `remaining`, or, by default when codons are removed, `both`, which applies the `--gene-min-codons` filter both before and after codon removal.
+
+It may seem redundant for `remaining` and `both` to both be possibilities, but this is due to the possibility of dynamic amino acid exclusion using `--pansequence-min-amino-acids`. Amino acids are removed based on their frequency in a proportion of genes, so removing shorter genes by length before removing amino acids can affect which amino acids are dynamically excluded.
+
+| Get | Options |
+| --- | ------- |
+| [Exclude genes shorter than 300 codons from queries](#gene-length-and-codon-count) | `--gene-min-codons 300` |
+| [Exclude genes shorter than 300 codons from contributing to function queries](#function-codon-count) | `--gene-min-codons 300 --function-sources` |
+| [Exclude function queries with <300 codons](#function-codon-count) | `--function-min-codons 300` |
+| [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
+| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
+| [Exclude queries with <300 codons involved in the CUB calculation](#query-length) | `--query-min-analyzed-codons 300` |
+
 #### Function codon count
 
-#### Query length
+Functions with fewer than a minimum number of codons can be ignored in the CUB analysis using `--function-min-codons`. Function codon count filters occur after gene codon count filters: the set of genes contributing to function codon frequency can be restricted by applying `--gene-min-codons`.
+
+#### Analyzed query codon count
+
+Filters removing codons from a gene or function query reduce the codon count factoring into the CUB calculation. `--query-min-analyzed-codons` ignores queries in the CUB calculation that have fewer than a minimum number of codons remaining. For example, `--query-min-analyzed-codons 300` ensures that after removing codons by `--exclude-amino-acids`, `--pansequence-min-amino-acids`, and/or `--sequence-min-amino-acids`, queries must have 300 codons involved in the CUB calculation.
+
+
