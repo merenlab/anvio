@@ -193,6 +193,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.external_genomes_profiles_list = self.external_genomes_df.bam.to_list()
             self.names_list.extend(self.external_genomes_names_list)
 
+        else:
+            self.external_genomes_names_list = []
+
         # Concatenate metagenomes.txt and external-genomes.txt
         contigsDB_name_path_list = list(self.contigsDB_name_path_dict.items())
         contigsDB_name_path_df = pd.DataFrame(contigsDB_name_path_list, columns=['name', 'contigs_db_path'])
