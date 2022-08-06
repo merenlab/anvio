@@ -385,7 +385,8 @@ parse_split_coverages <- function(opts) {
   logger$debug("Reading split_coverages")
   split_coverages <- read.table(opts$infile,
                                 header = TRUE,
-                                sep = "\t")
+                                sep = "\t",
+                                stringsAsFactors = TRUE)
 
   logger$debug("Checking split_coverages")
   ## Check split coverage header rows
