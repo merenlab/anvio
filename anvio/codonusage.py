@@ -1665,10 +1665,10 @@ class SingleGenomeCodonUsage(object):
 
             # Print the number of query-reference comparisons that were thrown out.
             if omnibias:
-                possible_comparison_count = \
-                    int(len(query_codon_frequency_df) * len(reference_codon_frequency_df) / 2)
+                # This includes "self-comparisons," reported in the matrix diagonal.
+                possible_comparison_count = int(len(cub_df) ** 2 / 2)
             else:
-                possible_comparison_count = len(query_codon_frequency_df)
+                possible_comparison_count = len(cub_df)
             unperformed_comparison_count = int(cub_df.isna().sum().sum())
             if unperformed_comparison_count:
                 self.run.warning(
