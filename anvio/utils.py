@@ -1776,7 +1776,45 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
-def merge_stretches(stretches, min_distance_between_independent_stretches):
+def get_stretches_for_numbers_list(numbers_list, discard_singletons=False):
+    """Takes a array of numbers, and turns reports back stretches
+
+    For example, for a `numbers_list` that looks like this:
+
+        >>> [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 99]
+
+    This function will return the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    If the user chooses to `discard_singletons`, then for the same input list,
+    they will get the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    The output of this function can be the input of `merge_stretches` function.
+    """
+
+    if not len(numbers_list):
+        return []
+
+    numbers_list = sorted(numbers_list)
+
+    stretches = []
+    groups = it.groupby(numbers_list, key=lambda item, c=it.count():item-next(c))
+
+    for k, g in groups:
+        stretch = list(g)
+
+        if discard_singletons and len(stretch) == 1:
+            continue
+
+        stretches.append((stretch[0], stretch[-1]), )
+
+    return stretches
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches=0):
     """A function to merge stretches of indices in an array.
 
     It takes an array, `stretches`, that looks like this:
@@ -1787,47 +1825,66 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
 
         >>> [(3, 9), (14, 27), (32, 42)]
 
+    If all you have is an array of numbers rather than stretches to be merbed, see
+    the function `get_stretches_for_numbers_list`.
     """
-    stretches_to_merge = []
 
-    # The following state machine determines which entries in a given array
-    # should be merged
-    CURRENT = 0
-    START, END = 0, 1
+    if not len(stretches):
+        return None
+
+    if not isinstance(stretches[0], tuple):
+        raise ConfigError("This function expect a list of tuples :/")
+
+    STRETCHES_FINAL = stretches
+    STRETCHES_CURRENT = stretches
+
     while 1:
-        if not len(stretches):
-            break
+        stretches_to_merge = []
 
-        NEXT = CURRENT + 1
-
-        if NEXT == len(stretches):
-            stretches_to_merge.append([stretches[CURRENT]])
-            break
-
+        CURRENT = 0
+        START, END = 0, 1
         while 1:
-            if NEXT > len(stretches):
+            if not len(STRETCHES_CURRENT):
                 break
 
-            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
-                NEXT = NEXT + 1
+            NEXT = CURRENT + 1
 
-                if NEXT == len(stretches):
+            if NEXT == len(STRETCHES_CURRENT):
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                break
+
+            while 1:
+                if NEXT > len(STRETCHES_CURRENT):
                     break
-            else:
+
+                if STRETCHES_CURRENT[NEXT][START] - STRETCHES_CURRENT[CURRENT][END] < min_distance_between_independent_stretches:
+                    NEXT = NEXT + 1
+
+                    if NEXT == len(STRETCHES_CURRENT):
+                        break
+                else:
+                    break
+
+            if NEXT > len(STRETCHES_CURRENT):
                 break
+            elif NEXT - CURRENT == 1:
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                CURRENT += 1
+            else:
+                stretches_to_merge.append(STRETCHES_CURRENT[CURRENT:NEXT])
+                CURRENT = NEXT
 
-        if NEXT > len(stretches):
+        # here the array `stretches_to_merge` contains all the lists of
+        # stretches that need to be merged.
+        STRETCHES_MERGED = [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+
+        if STRETCHES_FINAL == STRETCHES_MERGED:
             break
-        elif NEXT - CURRENT == 1:
-            stretches_to_merge.append([stretches[CURRENT]])
-            CURRENT += 1
         else:
-            stretches_to_merge.append(stretches[CURRENT:NEXT])
-            CURRENT = NEXT
+            STRETCHES_FINAL = STRETCHES_MERGED
+            STRETCHES_CURRENT = STRETCHES_MERGED
 
-    # here the array `stretches_to_merge` contains all the lists of
-    # stretches that need to be merged.
-    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+    return STRETCHES_FINAL
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -3791,7 +3848,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
-    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
+    R = lambda f: open(os.path.join(source, f), 'r').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]

@@ -1409,15 +1409,6 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
-    'sensitive': (
-            ['--sensitive'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "DIAMOND sensitivity. With this flag you can instruct DIAMOND to be 'sensitive', rather than 'fast' "
-                     "during the search. It is likely the search will take remarkably longer. But, hey, if you are doing "
-                     "it for your final analysis, maybe it should take longer and be more accurate. This flag is only "
-                     "relevant if you are running DIAMOND."}
-                ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
@@ -2935,25 +2926,25 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
-    'migrate-dbs-safely': (
-            ['--migrate-dbs-safely'],
+    'migrate-safely': (
+            ['--migrate-safely'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will first create a copy of your original database. If something "
-                     "goes wrong, it will restore the original. If everything works, it will remove the old copy. "
-                     "IF YOU HAVE DATABASES THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM THIS "
-                     "OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM. But still. Safety is safe."}
+             'help': "If you chose this, anvi'o will first create a copy of your input file, and if something "
+                     "goes wrong, it will restore the original. If everything works fine, it will remove the copy. "
+                     "IF YOU HAVE ANVI'O ARTIFACTS THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM, "
+                     "THIS OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM :/ But still. Safety is safe."}
                 ),
-    'migrate-dbs-quickly': (
-            ['--migrate-dbs-quickly'],
+    'migrate-quickly': (
+            ['--migrate-quickly'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will migrate your databases in place. It will be much faster (and arguably "
-                     "more fun) than the safe option, but if something goes wrong, you will lose data. During the first "
-                     "five years of anvi'o development not a single user lost data using our migration scripts as far as "
-                     "we know. But there is always a first, and today might be your lucky day."}
+             'help': "If you chose this, anvi'o will migrate your artifats in place. It will be much faster (and arguably "
+                     "more fun since #YOLO) than the safe option, but if something goes wrong, you will lose data. "
+                     "During the first five years of anvi'o development not, a single user lost data using our migration "
+                     "scripts as far as we know. But there is always a first, and today might be your lucky day."}
                 ),
     'module-completion-threshold': (
             ['--module-completion-threshold'],

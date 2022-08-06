@@ -5,7 +5,6 @@
 """
 
 import os
-import sys
 import gzip
 import glob
 import shutil
@@ -59,7 +58,6 @@ class COGs:
         self.contigs_db_path = A('contigs_db')
         self.search_with = A('search_with') or 'diamond'
         self.temp_dir_path = A('temporary_dir_path')
-        self.sensitive = A('sensitive')
 
         self.log_file_path = None
 
@@ -358,7 +356,6 @@ class COGs:
         diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
         diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
 
-        diamond.sensitive = self.sensitive
         diamond.max_target_seqs = 1
 
         diamond.blastp()

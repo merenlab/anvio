@@ -168,7 +168,7 @@ INFO "Filtering hmm_hits using target coverage"
 anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
                                   --domain-hits-table $output_dir/hmm.domtable \
                                   --hmm-source Bacteria_71 \
-                                  --target-coverage 0.9 \
+                                  --model-coverage 0.9 \
                                   --no-progress
 
 INFO "Listing all available HMM sources in the contigs database"
