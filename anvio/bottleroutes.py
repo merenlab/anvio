@@ -182,8 +182,8 @@ class BottleApplication(Bottle):
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/store_variability',                  callback=self.store_variability, method='POST')
         self.route('/data/store_structure_as_pdb',             callback=self.store_structure_as_pdb, method='POST')
-        self.route('/data/get_gene_function_info/<gene_callers_id:int>', callback=self.get_gene_function_info)
-        self.route('/data/get_model_info/<gene_callers_id:int>', callback=self.get_model_info)
+        self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
+        self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
@@ -495,7 +495,7 @@ class BottleApplication(Bottle):
 
                 return json.dumps((state_dict, self.interactive.p_meta['item_orders'][default_order], self.interactive.views[default_view]))
 
-        return json.dumps('')
+        return json.dumps("")
 
 
     def charts(self, order_name, item_name):
@@ -555,9 +555,11 @@ class BottleApplication(Bottle):
 
         data['state'] = state
 
+        db_variant = str(self.interactive.contigs_db_variant)
         try:
             auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                     self.interactive.p_meta['contigs_db_hash'])
+                                                                                     self.interactive.p_meta['contigs_db_hash'],
+                                                                                     db_variant=db_variant)
             coverages = auxiliary_coverages_db.get(split_name)
             auxiliary_coverages_db.close()
 
@@ -741,8 +743,10 @@ class BottleApplication(Bottle):
 
         layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
 
+        db_variant = str(self.interactive.contigs_db_variant)
         auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.interactive.auxiliary_data_path,
-                                                                                 self.interactive.p_meta['contigs_db_hash'])
+                                                                                 self.interactive.p_meta['contigs_db_hash'],
+                                                                                 db_variant=db_variant)
         coverages = auxiliary_coverages_db.get(split_name)
         auxiliary_coverages_db.close()
 

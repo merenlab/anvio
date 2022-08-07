@@ -1199,6 +1199,10 @@ class ContigsSuperclass(object):
                 # dict properly so the FASTA file and the external gene calls file correspond to each other
                 gene_call['header'] = '%s_%d' % (gene_call['contig'], gene_callers_id)
                 gene_call['contig'] = gene_call['header']
+
+                if not flank_length:
+                    gene_call['start'] = 0
+                    gene_call['stop'] = gene_call['length']
             else:
                 if simple_headers:
                     gene_call['header'] = '%d' % (gene_callers_id)
@@ -1269,28 +1273,32 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False):
+    def gen_GFF3_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, gene_annotation_source=None):
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list)
 
         name_template = '' if simple_headers else ';Name={contig} {start} {stop} {direction} {rev_compd} {length}'
 
-        # let's see if there are functions
+        # let's see the situation with functions
+        if gene_annotation_source and not self.a_meta['gene_function_sources']:
+            raise ConfigError("The code came all the way here with a `gene_annotation_source` but without the proper contigs db configuration o_O "
+                              "Anvi'o needs an adult :(")
+
+        if not gene_annotation_source and self.a_meta['gene_function_sources']:
+            self.run.warning(f"You didn't ask for functions to be included in your GFF output file, but anvi'o found "
+                             f"in your contigs database all these in case you would like to include one of them via "
+                             f"the parameter `--annotation-source`: {', '.join(self.a_meta['gene_function_sources'])}",
+                             header="THE MORE YOU KNOW 🌈", lc='yellow')
+
         gene_functions_found = False
-        if self.a_meta['gene_function_sources'] and 'COG20_FUNCTION' in self.a_meta['gene_function_sources']:
-            self.init_functions(requested_sources=["COG20_FUNCTION"])
-            gene_functions_found = True
-            self.run.warning("Anvi'o found gene function annotations by `COG20_FUNCTION` in your contigs database "
-                             "and will include that information in the output GFF file (anvi'o also admits that "
-                             "it is looking for `COG20_FUNCTION` instead of an annotation source of your choice due to "
-                             "the laziness of its developers. If you would like to be able to choose a different "
-                             "annotation source, please let the developers know and they will parameterize this option).",
-                             header="FUNCTIONS FOUND 🎊", lc="green")
-        else:
-            self.run.warning("Just so you know: anvi'o wanted to include functions for your genes into the GFF file "
-                             "but your contigs database does not seem to include annotations from `COG20_FUNCTION`. "
-                             "You can ignore this message if you don't care. But if you would like your GFF file to "
-                             "include functions for your genes, you can run `anvi-run-ncbi-cogs` on your contigs db "
-                             "and re-run this command to have an output file with functions :)")
+        if gene_annotation_source and self.a_meta['gene_function_sources']:
+            if gene_annotation_source in self.a_meta['gene_function_sources']:
+                self.init_functions(requested_sources=[gene_annotation_source])
+                gene_functions_found = True
+                self.run.warning(f"Anvi'o found gene function annotations by '{gene_annotation_source}' in your contigs database "
+                                 f"and will include that information in the output GFF file.", header="FUNCTIONS FOUND 🎊", lc="green")
+            else:
+                raise ConfigError(f"The function annotation source you have requested ('{gene_annotation_source}') does not "
+                                  f"seem to be in this contigs database :/ Here is what we have: {', '.join(self.a_meta['gene_function_sources'])}")
 
         self.progress.new('Storing sequences')
         self.progress.update('...')
@@ -1300,15 +1308,22 @@ class ContigsSuperclass(object):
                 entry = sequences_dict[gene_callers_id]
                 strand = entry['direction'].replace('f','+').replace('r','-')
 
+                if entry['source'] == 'Transfer_RNAs':
+                    seq_type = "tRNA"
+                elif entry['source'].startswith('Ribosomal_RNA'):
+                    seq_type = "rRNA"
+                else:
+                    seq_type = "CDS"
+
                 entry_id = '___'.join([self.a_meta['project_name_str'], str(gene_callers_id)])
                 attributes = f"ID={entry_id}"
                 if gene_functions_found:
                     if gene_callers_id in self.gene_function_calls_dict:
-                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id]['COG20_FUNCTION']
+                        accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
                         accession, function = accession.split('!!!')[0], function.split('!!!')[0]
-                        attributes += f";Name={accession};db_xref=COG20:{accession};product={function}"
+                        attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
 
-                output.write(f"{entry['contig']}\t.\tCDS\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
+                output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
                 output.write(name_template.format(entry))
                 output.write('\n')
 
@@ -1617,14 +1632,19 @@ class PanSuperclass(object):
 
         while True:
             gene_cluster_name = input_queue.get(True)
+
             funct_index = {}
             geo_index = {}
-            indices_dict = {}
-            gene_cluster = {}
-            gene_cluster[gene_cluster_name] = gene_clusters_dict[gene_cluster_name]
+
+            gene_cluster = {gene_cluster_name: gene_clusters_dict[gene_cluster_name]}
+            indices_dict = {'gene cluster': gene_cluster_name}
 
             try:
                 funct_index, geo_index, combined_index = homogeneity_calculator.get_homogeneity_dicts(gene_cluster)
+
+                indices_dict['functional'] = funct_index[gene_cluster_name]
+                indices_dict['geometric'] = geo_index[gene_cluster_name]
+                indices_dict['combined'] = combined_index[gene_cluster_name]
             except:
                 if gene_cluster_name not in gene_clusters_failed_to_align:
                     progress.reset()
@@ -2447,35 +2467,22 @@ class PanSuperclass(object):
 
 
     def init_gene_clusters(self, gene_cluster_ids_to_focus=set([])):
-        """Initialize key gene cluster dictionaries.
+        """Initializes the gene_clusters dictionary (only for `gene_cluster_ids_to_focus` if necessary).
 
-        The most essential dictionary generated by this fucntion is the `gene_clusters`
-        dictionary that can also be intialized exclusively for `gene_cluster_ids_to_focus`.
-        The structure of `gene_clusters` look like this:
+           At the end, the structure of this dictionary looks like this:
 
-               >>> {
-               >>>  'gene_cluster_1': {'Genome_1': [gene_1, gene_2, (...)],
-               >>>                     'Genome_2': [],
-               >>>                     'Genome_3': [gene_1, gene_2],
-               >>>                     (...)}
-               >>>  'gene_cluster_2': {(...)},
-               >>>  (...)
-               >>> }
+               {
+                'gene_cluster_1': {'Genome_1': [gene_1, gene_2, (...)],
+                                   'Genome_2': [],
+                                   'Genome_3': [gene_1, gene_2],
+                                   (...)}
+                'gene_cluster_2': {(...)},
+                (...)
+               }
 
-        In addition, another helper dictionary that translates from genome names and gene
-        caller ids to gene cluster names, `gene_callers_id_to_gene_cluster`, is also
-        populated here based on the contents of the `gene_clusters` dictionary. The structure
-        of this dictionary looks like this:
-
-               >>> {
-               >>>  'Genome_1': {'gene_1': 'gene_cluster_x', 'gene_2': 'gene_cluster_y', (...)},
-               >>>  'Genome_2': {'gene_1': 'gene_cluster_z', 'gene_2': 'gene_cluster_x', (...)},
-               >>>  'Genome_3': {'gene_1': 'gene_cluster_x', 'gene_2': 'gene_cluster_m', (...)},
-               >>>  (...)
-               >>> }
-
-        This function also initializes alignment summaries for each gene in each gene cluster and
-        populates `self.gene_clusters_gene_alignments`.
+          This function also initializes alignment summaries for each gene
+          in each gene cluster. That information is stored in the dict
+          `self.gene_clusters_gene_alignments`.
         """
 
         self.progress.new('Initializing gene clusters')
@@ -2795,7 +2802,20 @@ class ProfileSuperclass(object):
             # if self.split_names_of_interest is defined upstream somewhere,
             # but if we ALSO have a collection name here, we want to recover those
             # split names relevant to the collection name later. so in this case,
-            # we will OVERWRITE this variable, which is kind of dangerous.
+            # we will OVERWRITE this variable, which is kind of dangerous. IF this is
+            # causing you headache and sets your split names of interest to null, the
+            # best way to avoid this is to set the collection_name in your args to None,
+            # initialize the ProfileSuper, and then set it back to its original value
+            # after (which has been the case in the refine mode in anvio/interactive.py).
+            if hasattr(self, 'split_names_of_interest'):
+                self.run.warning("Note for programmers: even though the ProfileSuper was initialized with "
+                                 "`self.split_names_of_interest`, the contents of that variable just got "
+                                 "set to `set([])` becasue the context also had `self.collection_name` in "
+                                 "it. If you are concerned about this, read the comments in the code where "
+                                 "this warning is shown. If you are a user, there probably is nothing for "
+                                 "you to be concerned about (unless things go haywire downstream, in which "
+                                 "case our sincere condolences).")
+
             self.split_names_of_interest = set([])
 
         if A('split_names_of_interest'):
@@ -2866,6 +2886,7 @@ class ProfileSuperclass(object):
         self.progress.update('Setting profile self data dict')
         self.p_meta = profile_db.meta
 
+        self.p_meta['db_variant'] = str(utils.get_db_variant(self.profile_db_path))
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
@@ -2923,7 +2944,8 @@ class ProfileSuperclass(object):
         else:
             self.auxiliary_profile_data_available = True
             self.split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
-                                                                                         self.p_meta['contigs_db_hash'])
+                                                                                         self.p_meta['contigs_db_hash'],
+                                                                                         db_variant=self.p_meta['db_variant'])
 
         if self.collection_name and self.bin_names and len(self.bin_names) == 1 and not skip_consider_gene_dbs:
             self.progress.update('Accessing the genes database')
@@ -3590,6 +3612,14 @@ class ProfileSuperclass(object):
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
+        # if SNVs are not profiled, we should not have a view for `variability`. See the issue #1845.
+        # FIXME for future generations: if SNVs are skipped, we should even have an entry in the views
+        # table for `variability` :/ but fixing that would require a migration script for profile dbs,
+        # and the person who is implementing this workaround is simply being lazy --do better, and
+        # address this the right way:
+        if not self.p_meta['SNVs_profiled']:
+            views_table.pop('variability')
+
         self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
             self.progress.update('for %s' % view)
@@ -3651,15 +3681,20 @@ class ProfileDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'min_coverage_for_variability',
+        for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled',
                     'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'num_splits', 'total_length']:
+                    'min_coverage_for_variability', 'max_contig_length', 'num_splits', 'total_length']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
         self.samples = set([s.strip() for s in self.meta['samples'].split(',')])
+        for key in ['min_percent_identity', 'min_indel_fraction']:
+            try:
+                self.meta[key] = float(self.meta[key])
+            except:
+                pass
 
 
         # open the database
@@ -3837,8 +3872,8 @@ class PanDatabase:
             except:
                 pass
 
-        self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',') if len(s.strip())]
-        self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',') if len(s.strip())]
+        self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
+        self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
         self.genomes = self.internal_genomes + self.external_genomes
 
         # open the database
@@ -3966,7 +4001,7 @@ class ContigsDatabase:
         return 'hash' + str('%08x' % random.randrange(16**8))
 
 
-    def touch(self):
+    def touch(self, db_variant='unknown'):
         """Creates an empty contigs database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
@@ -3998,6 +4033,9 @@ class ContigsDatabase:
         self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
+
+        if db_variant == 'trnaseq':
+            self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
 
         return self.db
 
@@ -4257,7 +4295,7 @@ class ContigsDatabase:
             skip_mindful_splitting = True
 
         # create a blank contigs database on disk, and set the self.db
-        self.touch()
+        self.touch(db_variant)
 
         # know thyself
         self.db.set_meta_value('db_type', 'contigs')
@@ -4632,7 +4670,6 @@ class GenomeViewDatabase:
 
     def touch(self):
         """Creates an empty genome view database on disk, and sets `self.db` to access to it.
-
         At some point self.db.disconnect() must be called to complete the creation of the new db."""
 
         is_db_ok_to_create(self.db_path, self.db_type)
@@ -5039,12 +5076,15 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
     matching_item_order_names = [item_order for item_order in item_orders_dict if item_order.lower().split(':')[0] == default_item_order_requested.lower()]
 
     if not len(matching_item_order_names):
-        default_item_order = list(item_orders_dict.keys())[0]
-        run.warning('`get_default_item_order_name` function is concerned, because nothing in the item_orders '
-                    'dict matched to the desired order class "%s". So the order literally set to "%s" '
-                    '(a class of "%s") randomly as the default order. Good luck :/' % (default_item_order_requested,
-                                                                                 default_item_order,
-                                                                                 default_item_order.split(':')[0]))
+        if 'mean_coverage:euclidean:ward' in item_orders_dict:
+            default_item_order = 'mean_coverage:euclidean:ward'
+        else:
+            default_item_order = list(item_orders_dict.keys())[0]
+            run.warning('`get_default_item_order_name` function is concerned, because nothing in the item_orders '
+                        'dict matched to the desired order class "%s". So the order literally set to "%s" '
+                        '(a class of "%s") randomly as the default order. Good luck :/' % (default_item_order_requested,
+                                                                                     default_item_order,
+                                                                                     default_item_order.split(':')[0]))
         return default_item_order
     elif len(matching_item_order_names) == 1:
         return matching_item_order_names[0]
