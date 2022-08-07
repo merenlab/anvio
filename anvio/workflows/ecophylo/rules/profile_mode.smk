@@ -29,6 +29,7 @@ rule make_metagenomics_config_file:
         config_dict['anvi_run_scg_taxonomy']['run'] = False
         config_dict['iu_filter_quality_minoche']['run'] = False
         config_dict['anvi_profile']['--min-contig-length'] = 0
+        config_dict['anvi_profile']['--profile-SCVs'] = True
         config_dict['bowtie']['threads'] = 5
         config_dict['bowtie_build']['threads'] = 5
         config_dict['anvi_gen_contigs_database']['threads'] = 5
@@ -54,7 +55,8 @@ rule run_metagenomics_workflow:
     output:
         done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     params:
-        HPC_string = M.metagenomics_workflow_HPC_string
+        HPC_string = M.metagenomics_workflow_HPC_string,
+        snakemake_additional_params = M.snakemake_additional_params 
     threads: M.T('run_metagenomics_workflow')
     run:
 
@@ -68,12 +70,12 @@ rule run_metagenomics_workflow:
         shell("mkdir -p METAGENOMICS_WORKFLOW/00_LOGS && touch {log}")
 
         if M.clusterize_metagenomics_workflow == True:
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             HPC_string = params.HPC_string
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{HPC_string}\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{HPC_string}\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         else:
-            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A --rerun-incomplete --latency-wait 100 --keep-going && cd -")
+            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A {params.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going && cd -")
         
 
 rule add_default_collection:
@@ -283,7 +285,7 @@ rule anvi_import_everything_metagenome:
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported.done")),
+        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_profile.done")),
 
     threads: M.T('anvi_import_state')
     run:

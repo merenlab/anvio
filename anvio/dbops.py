@@ -280,10 +280,10 @@ class ContigsSuperclass(object):
         if len(gene_caller_ids_of_interest):
             if len(split_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'split names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'split names of interest'
             elif len(contig_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'contig names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'contig names of interest'
         elif len(split_names_of_interest):
             if len(contig_names_of_interest):
                 too_many_args = True
@@ -309,7 +309,7 @@ class ContigsSuperclass(object):
 
         if subset_provided and not len(contig_names_of_interest):
             raise ConfigError("Anvi'o was trying to identify the contig names of interest in `init_contig_sequences` "
-                              "and then after a few steps there was no contig names of interest at all :( Something "
+                              "and then after a few steps there were no contig names of interest at all :( Something "
                               "fishy happened, and code is Jon Snow.")
 
         self.progress.new('Loading contig sequences')
@@ -2990,6 +2990,9 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
+        # make sure the GENES directory exists.
+        filesnpaths.gen_output_directory(os.path.dirname(self.genes_db_path), progress=self.progress, run=self.run, delete_if_exists=False, dont_warn=False)
+
         # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
 
@@ -3856,7 +3859,7 @@ class PanDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
+        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls', \
                     'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
             try:
                 self.meta[key] = int(self.meta[key])
@@ -4506,10 +4509,29 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position] = 8
                 continue
 
-            # if the gene stop is identical to the contig length,
-            # just move on:
-            if stop == contig_length:
-                continue
+            # if the gene stop is identical to the contig length, we have to carefully assess
+            # this situation. if we simply say,
+            #
+            #   >>> if stop == contig_length:
+            #   >>>     continue
+            #
+            # then contigs that are solely composed of genes (i.e., gene = contig) ends up being
+            # treated as intergenic regions. but if we skip this step, or say something like
+            # this,
+            #
+            #   >>> if stop == contig_length + 1:
+            #   >>>     continue
+            #
+            # then anvi'o explodes and dies a fiery death as explained at,
+            #
+            #    https://github.com/merenlab/anvio/issues/1943
+            #
+            # SO MUCH HISTORY HERE, BUT WE PAY OUR RISPEKS TO THOSE WHO SHARE REPRODUCIBLE TEST CASES.
+            if stop == contig_length: # checking fo #1661
+                if stop - start == contig_length: # realizing that it is #1943
+                    pass # thanking the gene and sending it along.
+                else: # finding out that it actually is #1661
+                    continue # NEXT
 
             if gene_call['direction'] == 'f':
                 for nt_position in range(start, stop, 3):

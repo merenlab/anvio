@@ -87,7 +87,7 @@ class WorkflowSuperClass:
                 raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
                                   f"of date (your version: {self.config['config_version']}; up-to-date version: "
                                   f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
-                                  f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
+                                  f"--migrate-safely` and it will be updated. Then re-run the command producing "
                                   f"this error message.")
 
         self.rules = []

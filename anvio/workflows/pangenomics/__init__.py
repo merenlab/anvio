@@ -64,7 +64,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
                      "--minbit", "--mcl-inflation", "--min-occurrence",\
-                     "--min-percent-identity", "--sensitive", "--description",\
+                     "--min-percent-identity", "--description",\
                      "--overwrite-output-destinations", "--skip-hierarchical-clustering",\
                      "--enforce-hierarchical-clustering", "--distance", "--linkage"]
         self.rule_acceptable_params_dict['anvi_pan_genome'] = pan_params

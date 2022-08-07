@@ -3,26 +3,22 @@
 
 """
 This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
-is done using query and/or target coverage
+is done using model and/or gene coverage
 """
 
 import sys
 import os
-import numpy as np
 import pandas as pd
 
 import anvio
 import anvio.data.hmm
-import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
-import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
-from anvio.argparse import ArgumentParser
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -51,10 +47,11 @@ class FilterHmmHitsTable(object):
         self.contigs_db_path=A("contigs_db")
         self.domtblout=A("domain_hits_table")
         self.hmm_source=A("hmm_source")
-        self.target_coverage=A("target_coverage")
-        self.query_coverage=A("query_coverage")
+        self.gene_coverage=A("gene_coverage")
+        self.model_coverage=A("model_coverage")
         self.list_hmm_sources=A("list_hmm_sources")
         self.hmm_profile_dir=A("hmm_profile_dir")
+        self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
 
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
@@ -66,6 +63,34 @@ class FilterHmmHitsTable(object):
         else:
             self.sources = anvio.data.hmm.sources
 
+        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
+        self.dom_table_columns = [
+            ('gene_callers_id',  int),   #  0  target name
+            ('target_accession', str),   #  1  target accession
+            ('gene_length',      int),   #  2  tlen
+            ('hmm_name',         str),   #  3  query name
+            ('hmm_id',           str),   #  4  accession
+            ('hmm_length',       int),   #  5  qlen
+            ('evalue',           float), #  6  E-value (full sequence)
+            ('bitscore',         float), #  7  score (full sequence)
+            ('bias',             float), #  8  bias (full sequence)
+            ('match_num',        int),   #  9  # (this domain)
+            ('num_matches',      int),   # 10  of (this domain)
+            ('dom_c_evalue',     float), # 11  c-Evalue (this domain)
+            ('dom_i_evalue',     float), # 12  i-Evalue (this domain)
+            ('dom_bitscore',     str),   # 13  score (this domain)
+            ('dom_bias',         float), # 14  bias (this domain)
+            ('hmm_start',        int),   # 15  from (hmm coord)
+            ('hmm_stop',         int),   # 16  to (hmm coord)
+            ('gene_start',       int),   # 17  from (ali coord)
+            ('gene_stop',        int),   # 18  to (ali coord)
+            ('env_to',           str),   # 19  from (env coord)
+            ('env_from',         str),   # 10  to (env coord)
+            ('mean_post_prob',   float), # 21  acc
+            ('description',      str),   # 22  description of target
+        ]
+
+
     def sanity_checks(self):
         """Sanity checks for program inputs."""
 
@@ -74,6 +99,27 @@ class FilterHmmHitsTable(object):
 
         filesnpaths.is_file_exists(self.domtblout)
         self.run.info("Domtblout Path", self.domtblout)
+
+        if not self.model_coverage or self.gene_coverage:
+            raise ConfigError("You didn't provide anvi-script-filter-hmm-hits-table with either a "
+                              "--model-coverage or --gene-coverage. Please provide at least one "
+                              "so anvi'o can filter hmm_hits for you :)")
+
+        if self.model_coverage:
+            if self.model_coverage < 0:
+                raise ConfigError(f"--model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.model_coverage}")
+            if self.model_coverage > 1:
+                raise ConfigError(f"--model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.model_coverage}")
+
+        if self.gene_coverage:
+            if self.gene_coverage < 0:
+                raise ConfigError(f"--gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.gene_coverage}")
+            if self.gene_coverage > 1:
+                raise ConfigError(f"--gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.gene_coverage}")
 
         if not self.hmm_source:
             raise ConfigError("Please provide a hmm-source :)")
@@ -115,38 +161,124 @@ class FilterHmmHitsTable(object):
             os.remove(filtered_domtblout_path)
 
 
+    def merge_partial_hits(self):
+        """Merge all partial hits in a DOM table for the same source HMM and target gene.
+
+        Parts of the same model can hit multiple distinct regions of the same gene, resulting
+        in independent entries in teh DOM table output file. This funtion merges those
+        independent hits into a single one if they are close enough to one another.
+        """
+
+        orig_file_path = self.domtblout + '.orig'
+        temp_file_path = self.domtblout + '.tmp'
+
+        self.run.warning(f"You requested anvi'o to merge partial hits for a given gene by the same "
+                         f"model if the distance between independent stretches of coverage is "
+                         f"less than {self.merge_partial_hits_within_X_nts} nucleotides. Before "
+                         f"moving forward, anvi'o will first create a copy of the original domtblout input table "
+                         f"and store an updated version of the input table with merged hits for "
+                         f"downstream analyses to use.",
+                         header="MERGING PARTIAL HITS FIRST", lc='green')
+
+        AVG = lambda x: str(sum([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]) / len(line_nums_to_be_merged))
+        MIN = lambda x: str(min([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]))
+        MAX = lambda x: str(max([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]))
+
+        unique_gene_model_pairs = {}
+        with open(self.domtblout) as dom_table:
+            dom_table_entries = [l.strip('\n').split(maxsplit=len(self.dom_table_columns) - 1) for l in dom_table.readlines()]
+
+            for i in range(0, len(dom_table_entries)):
+                entry = dom_table_entries[i]
+
+                # basically the concatenated gene callers id and model name
+                idx = f"{entry[0]}_{entry[3]}"
+
+                if idx not in unique_gene_model_pairs:
+                    unique_gene_model_pairs[idx] = []
+
+                unique_gene_model_pairs[idx].append(i)
+
+        with open(temp_file_path, 'w') as output:
+            for hits in unique_gene_model_pairs.values():
+                if len(hits) == 1:
+                    # if we are here, it means there is a single hit in the output file for
+                    # a given gene/model, thus, it will just go into the output file as is
+                    output.write('\t'.join(dom_table_entries[hits[0]]) + '\n')
+                else:
+                    # if we are here, it means there are more than oen hits in the output
+                    # file for a given gene/model. we will figure out whether we can merge them.
+
+                    # here we identify independent stretches of gene start / stop positions for
+                    # each hit
+                    gene_start_ind = [l[0] for l in self.dom_table_columns].index('gene_start')
+                    gene_stop_ind = [l[0] for l in self.dom_table_columns].index('gene_stop')
+                    stretches = [(int(dom_table_entries[hit][gene_start_ind]), int(dom_table_entries[hit][gene_stop_ind])) for hit in hits]
+
+                    # merge each strech of the gene covered by the model into longer segments if they are
+                    # closer to one another more than `self.merge_partial_hits_within_X_nts`
+                    merged_stretches = utils.merge_stretches(stretches, min_distance_between_independent_stretches=self.merge_partial_hits_within_X_nts)
+
+
+                    # now the challenge is to turn these stretches wit hstart-stop positions into actual
+                    # line numbers. first, we will figure out which line number in hits correspond to which
+                    # start position of the gene.
+                    start_position_to_line_number = []
+                    for i in range(0, len(stretches)):
+                        start_position_to_line_number.append((stretches[i][0], hits[i]),)
+
+                    # next, we will identify which line numbers should be merged, which will be
+                    # described by `m`, a list of lists.
+                    list_of_line_nums_to_be_merged = []
+                    start_position_of_merged_stretches = [m[0] for m in merged_stretches]
+                    for start_pos, line_number in start_position_to_line_number:
+                        if start_pos in start_position_of_merged_stretches:
+                            list_of_line_nums_to_be_merged.append([line_number])
+                        else:
+                            list_of_line_nums_to_be_merged[-1].append(line_number)
+
+                    if anvio.DEBUG:
+                        self.run.info('Hits', hits)
+                        self.run.info('Stretches', stretches)
+                        self.run.info('Merged stretches', merged_stretches)
+                        self.run.info('ST/STP pos to line num', start_position_to_line_number)
+                        self.run.info('Line numbers to merge', list_of_line_nums_to_be_merged, nl_after=2)
+
+                    # in the next few lines, we turn lines that look like the following:
+                    #
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '2', '5', '9.5e-24', '4.2e-20', '68.8', '0.0', '347', '513', '387', '542', '384', '546', '0.90', '-']
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '3', '5', '9.9e-10', '4.3e-06', '22.4', '0.0', '661', '711', '610', '660', '543', '663', '0.81', '-']
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '4', '5', '2.2e-19', '9.7e-16', '54.4', '0.0', '743', '846', '760', '861', '754', '871', '0.87', '-']
+                    #
+                    # into something like this, and write it into our output file (see the start / stop positions of colums
+                    # that matter):
+                    #
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '1', '1', '9.5e-24', '4.2e-20', '68.8', '0.0', '347', '846', '387', '861', '384', '871', '0.86', '-']
+                    #
+                    for line_nums_to_be_merged in list_of_line_nums_to_be_merged:
+                        FIRSTLINE = dom_table_entries[line_nums_to_be_merged[0]]
+                        LASTTLINE = dom_table_entries[line_nums_to_be_merged[-1]]
+                        NEW_LINE = FIRSTLINE[0:9] + ['1', '1'] + [MIN(11), MIN(12), MAX(13), AVG(14), FIRSTLINE[15], LASTTLINE[16], FIRSTLINE[17], LASTTLINE[18], FIRSTLINE[19], LASTTLINE[20], AVG(21), LASTTLINE[22]]
+
+                        output.write('\t'.join(NEW_LINE) + '\n')
+
+        utils.shutil.move(self.domtblout, orig_file_path)
+        utils.shutil.move(temp_file_path, self.domtblout)
+        self.run.info("Original input table is moved to", orig_file_path, mc="green")
+        self.run.info("Merged table is now at", self.domtblout, mc="green")
+        self.run.info_single('=' * self.run.width, level=0, nl_after=2, mc="green")
+
+
     def import_domtblout(self):
-        """Import the domtblout file from hmmsearch then calculate query and target coverage"""
-        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
-        col_info = [
-            ('gene_callers_id',  int),   # target name
-            ('target_accession', str),   # target accession
-            ('gene_length',      int),   # tlen
-            ('hmm_name',         str),   # query name
-            ('hmm_id',           str),   # accession
-            ('hmm_length',       int),   # qlen
-            ('evalue',           float), # E-value (full sequence)
-            ('bitscore',         float), # score (full sequence)
-            ('bias',             float), # bias (full sequence)
-            ('match_num',        int),   # # (this domain)
-            ('num_matches',      int),   # of (this domain)
-            ('dom_c_evalue',     float), # c-Evalue (this domain)
-            ('dom_i_evalue',     float), # i-Evalue (this domain)
-            ('dom_bitscore',     str),   # score (this domain)
-            ('dom_bias',         float), # bias (this domain)
-            ('hmm_start',        int),   # from (hmm coord)
-            ('hmm_stop',         int),   # to (hmm coord)
-            ('gene_start',       int),   # from (ali coord)
-            ('gene_stop',        int),   # to (ali coord)
-            ('env_to',           str),   # from (env coord)
-            ('env_from',         str),   # to (env coord)
-            ('mean_post_prob',   float), # acc
-            ('description',      str),   # description of target
-        ]
+        """Import the domtblout file from hmmsearch then calculate model and gene coverage"""
+
+        if self.merge_partial_hits_within_X_nts:
+            self.merge_partial_hits()
+
+        colnames_coltypes_list = list(zip(*self.dom_table_columns))
+        colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
         try:
-            colnames_coltypes_list = list(zip(*col_info))
-            colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
 
             self.df=pd.read_csv(self.domtblout,
                             delim_whitespace=True,
@@ -161,20 +293,20 @@ class FilterHmmHitsTable(object):
                               f"Please look at this error message to find out what happened: "
                               f"{e}")
 
-        self.df['query_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
-        self.df['target_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+        self.df['model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
 
 
     def filter_domtblout(self):
-        """Filter the hmm_hits table based on query and/or target coverage"""
+        """Filter the hmm_hits table based on model and/or gene coverage"""
 
         # Filtering conditions
-        if self.query_coverage and self.target_coverage:
-            df_filtered = self.df[(self.df['query_coverage'] > float(self.query_coverage)) & (self.df['target_coverage'] > float(self.target_coverage))]
-        elif self.target_coverage:
-            df_filtered = self.df[self.df['target_coverage'] > float(self.target_coverage)]
-        elif self.query_coverage:
-            df_filtered = self.df[self.df['query_coverage'] > float(self.query_coverage)]
+        if self.model_coverage and self.gene_coverage:
+            df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) & (self.df['gene_coverage'] > float(self.gene_coverage))]
+        elif self.gene_coverage:
+            df_filtered = self.df[self.df['gene_coverage'] > float(self.gene_coverage)]
+        elif self.model_coverage:
+            df_filtered = self.df[self.df['model_coverage'] > float(self.model_coverage)]
         else:
             df_filtered = self.df.copy()
 
@@ -183,7 +315,7 @@ class FilterHmmHitsTable(object):
         self.run.info("Num filtered", self.df.shape[0] - df_filtered.shape[0])
 
         # Reformat domtblout back to original
-        df_final = df_filtered.drop(columns=['query_coverage', 'target_coverage'])
+        df_final = df_filtered.drop(columns=['model_coverage', 'gene_coverage'])
 
         domtblout_tmp_out = filesnpaths.get_temp_file_path()
         df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
@@ -247,13 +379,22 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('hmm-source'), **anvio.K('hmm-source'))
     parser.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
-    parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
-    parser.add_argument('--target-coverage',
-                        help=" (ali_coord_to - ali_coord_from)/target_length")
-    parser.add_argument('--query-coverage',
-                        help=" (hmm_coord_to - hmm_coord_from)/hmm_length")
+    parser.add_argument('--domain-hits-table', metavar='PATH', help="Please provide the path to the domain-table-output. "
+                        "You can get this file from running anvi-run-hmms with the flag --domain-hits-table.")
+    parser.add_argument('--gene-coverage',type=float, help="Percent of the gene that is covered by the profile HMM after hmmsearch. "
+                        "This is the formula using the domtblout from hmmsearch: (ali_coord_to - ali_coord_from)/target_length")
+    parser.add_argument('--model-coverage', type=float, help="Percent of the profile HMM model that is covered by the gene after hmmsearch. "
+                        "This is the formula using the domtblout from hmmsearch: (hmm_coord_to - hmm_coord_from)/hmm_length")
+    parser.add_argument('--merge-partial-hits-within-X-nts', metavar='LENGTH', default=0, type=int, help="Filtering HMM hits based on "
+                        "target or query coverage can be difficult when a gene is covered by multiple independent hits of a single "
+                        "model. In these cases, the best way forward is to merge independent hits if they are close enough (for "
+                        "instance, if model X covers a gene A between nucleotide positions 0 and 100, and then again between "
+                        "nucleotide positions 105 and 200, one would like to merge those two hits into a single one before "
+                        "calculating the approximate coverage of the gene by the model). If you set this parameter to any distance, "
+                        "anvi'o will first merge independent hits for the same gene/model that are closer to each other than that "
+                        "distance.")
 
-    args, unknown = parser.parse_known_args()
+    args = parser.get_args(parser)
 
     try:
         main(args)

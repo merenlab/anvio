@@ -148,12 +148,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "enzymes-txt": {
-        "name": "ENZYMES TXT",
-        "type": "TXT",
-        "provided_by_anvio": False,
-        "provided_by_user":True
-    },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
@@ -562,6 +556,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "variability-profile-xml": {
+        "name": "VARIABILITY NETWORK",
+        "type": "XML",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "codon-frequencies-txt": {
         "name": "CODON FREQUENCIES",
         "type": "TXT",
@@ -771,5 +771,17 @@ ANVIO_ARTIFACTS ={
         "type" : "DISPLAY",
         "provided_by_anvio" : True,
         "provided_by_user" : False
+    },
+    "enzymes-txt": {
+        "name": "ENZYMES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
+    },
+    "enzymes-list-for-module": {
+        "name": "ENZYMES LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user":True
     }
 }

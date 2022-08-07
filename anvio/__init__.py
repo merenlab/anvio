@@ -50,7 +50,6 @@ except Exception:
 # and do all the other boring stuff.
 
 import os
-import sys
 import json
 import copy
 
@@ -966,6 +965,50 @@ D = {
                      "run estimation on your user-defined metabolism data (ie, it will NOT use KEGG at all). "
                      "The default is to run on both KEGG and user data when --user-modules is provided."}
                 ),
+    'enzymes-list-for-module': (
+            ['-e', '--enzymes-list-for-module'],
+            {'default': None,
+             'metavar': 'FILE_PATH',
+             'help': "A TAB-delimited flat text file that lists the enzymes in your module (one enzyme per line). "
+                     "There are three required columns: an 'enzyme' column that contains the identifier for the enzyme, "
+                     "a 'source' column that contains the annotation source of the enzyme, and an 'orthology' column "
+                     "that contains the functional annotation of the enzyme. Note that the orthology column can be left "
+                     "blank IIF the annotation source is 'KOfam'."}
+                ),
+    'module-entry': (
+            ['-I', '--module-entry'],
+            {'default': None,
+             'metavar': 'ENTRY_ID',
+             'type': str,
+             'required': True,
+             'help': "The entry ID for the module. Should be one 'word' (underscores and dashes allowed), and unique to the module."}
+                ),
+    'module-name': (
+            ['-n', '--module-name'],
+            {'default': None,
+             'metavar': 'NAME',
+             'type': str,
+             'required': True,
+             'help': "The name of the module (an arbitrary string - spaces allowed). "}
+                ),
+    'module-definition': (
+            ['-d', '--module-definition'],
+            {'default': None,
+             'metavar': 'DEFINITION',
+             'type': str,
+             'help': "The definition string of the module in terms of enzyme identifiers, formatted in the KEGG fashion. "
+                     "All enzymes in the definition should be present in the enzymes-list-for-module file. See help pages "
+                     "for instructions on creating the definition."}
+                ),
+    'module-class': (
+            ['-c', '--module-class'],
+            {'default': None,
+             'metavar': 'CLASS',
+             'type': str,
+             'required': True,
+             'help': "The class of the module. Should be one string with three sections (class, category, subcategory) "
+                     "separated by semi-colons."}
+                ),
     'kegg-archive': (
             ['--kegg-archive'],
             {'default': None,
@@ -1372,15 +1415,6 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
-    'sensitive': (
-            ['--sensitive'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "DIAMOND sensitivity. With this flag you can instruct DIAMOND to be 'sensitive', rather than 'fast' "
-                     "during the search. It is likely the search will take remarkably longer. But, hey, if you are doing "
-                     "it for your final analysis, maybe it should take longer and be more accurate. This flag is only "
-                     "relevant if you are running DIAMOND."}
-                ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
@@ -1563,6 +1597,27 @@ D = {
             ['--contig-name'],
             {'metavar': 'CONTIG_NAME',
              'help': "Contig name."}
+                ),
+    'target-contig': (
+            ['--target-contig'],
+            {'metavar': 'CONTIG_NAME',
+             'default': None,
+             'type': str,
+             'help': "Contig name of interest."}
+                ),
+    'target-region-start': (
+            ['--target-region-start'],
+            {'metavar': 'NUCLEOTIDE_POSITION',
+             'default': None,
+             'type': int,
+             'help': "The start position of the region of interest."}
+                ),
+    'target-region-end': (
+            ['--target-region-end'],
+            {'metavar': 'NUCLEOTIDE_POSITION',
+             'default': None,
+             'type': int,
+             'help': "The end position of the region of interest."}
                 ),
     'program': (
             ['--program'],
@@ -2609,6 +2664,17 @@ D = {
                      "through a module) be added to your output files. In long-format mode, it will be an additional column. "
                      "In matrix mode, it will be an additional matrix file."}
                 ),
+    'include-kos-not-in-kofam': (
+            ['--include-kos-not-in-kofam'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
+                     "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
+                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
+                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
+                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
+                     "can use it with all input types."}
+                ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
             {'metavar': 'USERS_DATA_DIR',
@@ -2875,25 +2941,25 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
-    'migrate-dbs-safely': (
-            ['--migrate-dbs-safely'],
+    'migrate-safely': (
+            ['--migrate-safely'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will first create a copy of your original database. If something "
-                     "goes wrong, it will restore the original. If everything works, it will remove the old copy. "
-                     "IF YOU HAVE DATABASES THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM THIS "
-                     "OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM. But still. Safety is safe."}
+             'help': "If you chose this, anvi'o will first create a copy of your input file, and if something "
+                     "goes wrong, it will restore the original. If everything works fine, it will remove the copy. "
+                     "IF YOU HAVE ANVI'O ARTIFACTS THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM, "
+                     "THIS OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM :/ But still. Safety is safe."}
                 ),
-    'migrate-dbs-quickly': (
-            ['--migrate-dbs-quickly'],
+    'migrate-quickly': (
+            ['--migrate-quickly'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will migrate your databases in place. It will be much faster (and arguably "
-                     "more fun) than the safe option, but if something goes wrong, you will lose data. During the first "
-                     "five years of anvi'o development not a single user lost data using our migration scripts as far as "
-                     "we know. But there is always a first, and today might be your lucky day."}
+             'help': "If you chose this, anvi'o will migrate your artifats in place. It will be much faster (and arguably "
+                     "more fun since #YOLO) than the safe option, but if something goes wrong, you will lose data. "
+                     "During the first five years of anvi'o development not, a single user lost data using our migration "
+                     "scripts as far as we know. But there is always a first, and today might be your lucky day."}
                 ),
     'module-completion-threshold': (
             ['--module-completion-threshold'],
@@ -3090,7 +3156,7 @@ D = {
             'help': "By default, this program will use pathwise completeness of a module to determine if it "
                     "is present in a sample or not. To make it use stepwise completeness instead, provide this "
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
-                    "pathwise vs stepwise completeness."} 
+                    "pathwise vs stepwise completeness."}
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],

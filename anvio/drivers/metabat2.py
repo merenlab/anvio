@@ -121,6 +121,7 @@ class MetaBAT2:
             '-o', bin_prefix,
             '--cvExt',
             '-l',
+            '-t', threads,
             *utils.serialize_args(args)]
 
 

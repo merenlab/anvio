@@ -1495,7 +1495,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
     try:
-        gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
+        gene_caller_ids_set = set([int(float(g)) for g in gene_caller_ids_set])
     except:
         g = gene_caller_ids_set.pop()
         raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is "
@@ -1791,7 +1791,45 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
-def merge_stretches(stretches, min_distance_between_independent_stretches):
+def get_stretches_for_numbers_list(numbers_list, discard_singletons=False):
+    """Takes a array of numbers, and turns reports back stretches
+
+    For example, for a `numbers_list` that looks like this:
+
+        >>> [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 99]
+
+    This function will return the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    If the user chooses to `discard_singletons`, then for the same input list,
+    they will get the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    The output of this function can be the input of `merge_stretches` function.
+    """
+
+    if not len(numbers_list):
+        return []
+
+    numbers_list = sorted(numbers_list)
+
+    stretches = []
+    groups = it.groupby(numbers_list, key=lambda item, c=it.count():item-next(c))
+
+    for k, g in groups:
+        stretch = list(g)
+
+        if discard_singletons and len(stretch) == 1:
+            continue
+
+        stretches.append((stretch[0], stretch[-1]), )
+
+    return stretches
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches=0):
     """A function to merge stretches of indices in an array.
 
     It takes an array, `stretches`, that looks like this:
@@ -1802,47 +1840,66 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
 
         >>> [(3, 9), (14, 27), (32, 42)]
 
+    If all you have is an array of numbers rather than stretches to be merbed, see
+    the function `get_stretches_for_numbers_list`.
     """
-    stretches_to_merge = []
 
-    # The following state machine determines which entries in a given array
-    # should be merged
-    CURRENT = 0
-    START, END = 0, 1
+    if not len(stretches):
+        return None
+
+    if not isinstance(stretches[0], tuple):
+        raise ConfigError("This function expect a list of tuples :/")
+
+    STRETCHES_FINAL = stretches
+    STRETCHES_CURRENT = stretches
+
     while 1:
-        if not len(stretches):
-            break
+        stretches_to_merge = []
 
-        NEXT = CURRENT + 1
-
-        if NEXT == len(stretches):
-            stretches_to_merge.append([stretches[CURRENT]])
-            break
-
+        CURRENT = 0
+        START, END = 0, 1
         while 1:
-            if NEXT > len(stretches):
+            if not len(STRETCHES_CURRENT):
                 break
 
-            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
-                NEXT = NEXT + 1
+            NEXT = CURRENT + 1
 
-                if NEXT == len(stretches):
+            if NEXT == len(STRETCHES_CURRENT):
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                break
+
+            while 1:
+                if NEXT > len(STRETCHES_CURRENT):
                     break
-            else:
+
+                if STRETCHES_CURRENT[NEXT][START] - STRETCHES_CURRENT[CURRENT][END] < min_distance_between_independent_stretches:
+                    NEXT = NEXT + 1
+
+                    if NEXT == len(STRETCHES_CURRENT):
+                        break
+                else:
+                    break
+
+            if NEXT > len(STRETCHES_CURRENT):
                 break
+            elif NEXT - CURRENT == 1:
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                CURRENT += 1
+            else:
+                stretches_to_merge.append(STRETCHES_CURRENT[CURRENT:NEXT])
+                CURRENT = NEXT
 
-        if NEXT > len(stretches):
+        # here the array `stretches_to_merge` contains all the lists of
+        # stretches that need to be merged.
+        STRETCHES_MERGED = [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+
+        if STRETCHES_FINAL == STRETCHES_MERGED:
             break
-        elif NEXT - CURRENT == 1:
-            stretches_to_merge.append([stretches[CURRENT]])
-            CURRENT += 1
         else:
-            stretches_to_merge.append(stretches[CURRENT:NEXT])
-            CURRENT = NEXT + 1
+            STRETCHES_FINAL = STRETCHES_MERGED
+            STRETCHES_CURRENT = STRETCHES_MERGED
 
-    # here the array `stretches_to_merge` contains all the lists of
-    # stretches that need to be merged.
-    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+    return STRETCHES_FINAL
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -2718,25 +2775,21 @@ def get_bin_name_from_item_name(anvio_db_path, item_name, collection_name=None):
     return rows
 
 
-def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
-    """
-    Returns a dict for contig name to split name conversion.
+def get_contig_name_to_splits_dict(contigs_db_path):
+    """Returns a dict for contig name to split name conversion"""
 
-    Here are the proper source of the input params:
+    is_contigs_db(contigs_db_path)
 
-        contigs_basic_info_dict = database.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
-        splits_basic_info_dict  = database.get_table_as_dict(t.splits_info_table_name)
-    """
-    contig_name_to_splits_dict = {}
+    contigs_db = db.DB(contigs_db_path, get_required_version_for_db(contigs_db_path))
 
-    for split_name in splits_basic_info_dict:
-        parent = splits_basic_info_dict[split_name]['parent']
-        if parent in contig_name_to_splits_dict:
-            contig_name_to_splits_dict[parent].append(split_name)
-        else:
-            contig_name_to_splits_dict[parent] = [split_name]
+    contig_name_to_split_names_dict = {}
+    for split_name, contig_name in contigs_db.get_some_columns_from_table(t.splits_info_table_name, "split, parent"):
+        if contig_name not in contig_name_to_split_names_dict:
+            contig_name_to_split_names_dict[contig_name] = set([])
 
-    return contig_name_to_splits_dict
+        contig_name_to_split_names_dict[contig_name].add(split_name)
+
+    return contig_name_to_split_names_dict
 
 
 def check_sample_id(sample_id):
@@ -3810,7 +3863,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
-    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
+    R = lambda f: open(os.path.join(source, f), 'r').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]
@@ -3826,7 +3879,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
         if missing_files:
             raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
                               f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
-                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
+                              f"for details: https://anvio.org/help/{anvio.anvio_version_for_help_docs}/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
@@ -4143,6 +4196,17 @@ def is_profile_db_merged(profile_db_path):
 
 
 def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
+    # let's make sure we did get some paths
+    if not profile_db_path or not contigs_db_path:
+        if not profile_db_path and not contigs_db_path:
+            missing = 'any paths for profile-db or contigs-db'
+        else:
+            missing = 'a profile-db path' if not profile_db_path else 'a contigs-db path'
+
+        raise ConfigError(f"A function in anvi'o was about to see if the profile-db and the contigs-db someone "
+                          f"wanted to work with were compatible with one another, but it was called without "
+                          f"{missing} :/")
+
     pdb = dbi(profile_db_path)
     cdb = dbi(contigs_db_path)
 
@@ -4201,6 +4265,11 @@ def get_yaml_as_dict(file_path):
 
 def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
+
+    if anvio.DEBUG:
+        run.warning(None, header="DOWNLOADING FILE", overwrite_verbose=True, nl_before=1)
+        run.info('Source URL', url, overwrite_verbose=True)
+        run.info('Output path', output_file_path, overwrite_verbose=True, nl_after=1)
 
     try:
         if check_certificate:

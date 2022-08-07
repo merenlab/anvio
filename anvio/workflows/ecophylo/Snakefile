@@ -12,8 +12,8 @@ import anvio.utils as u
 import anvio.workflows as w
 
 from Bio import SeqIO
-from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
 __author__ = "Matthew S. Schechter"
@@ -44,17 +44,21 @@ rule anvi_run_hmms_hmmsearch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
     input:
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch/contigs-hmmsearch.done"),
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "{sample_name}-{HMM}-contigs-hmmsearch.done"),
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['trim_alignment', 'additional_params'])
-    threads: M.T('anvi_run_hmms_hmmsearch')
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
-        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch")
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch/hmm.domtable")
+        hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch/hmm.domtable")
+
+        if wildcards.sample_name in M.metagenomes_name_list:
+            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
+        else:
+            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
 
         # Run different HMM search depending on whether a HMM is internal or external because anvio
         if HMM_source in M.internal_HMM_sources:
@@ -105,17 +109,16 @@ rule filter_hmm_hits_by_query_coverage:
     input:
         done = rules.anvi_run_hmms_hmmsearch.output.done,
     output:
-        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-DB_filtered.done")
+        done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-{HMM}-dom_hmmsearch", "{sample_name}-{HMM}-filter_hmm_hits.done")
     params:
         query_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', '--query-coverage']),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_query_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_query_coverage')
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
         HMM_dir = os.path.join(M.HMM_path_dict[wildcards.HMM])
         HMM_source = M.HMM_source_dict[wildcards.HMM]
-        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{HMM_source}-dom_hmmsearch/hmm.domtable")
+        domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}-dom_hmmsearch/hmm.domtable")
 
         if HMM_source in M.internal_HMM_sources:
             shell(f"anvi-script-filter-hmm-hits-table -c {contigsDB} \
@@ -150,7 +153,7 @@ rule anvi_get_sequences_for_hmm_hits:
     input:
         done_file = rules.filter_hmm_hits_by_query_coverage.output.done,
     output:
-        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa.done")),
+        done = touch(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.done")),
         faa = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.faa"),
         fna = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}-{HMM}-hmm_hits.fna"),
     threads: M.T('anvi_get_sequences_for_hmm_hits')
@@ -288,9 +291,13 @@ rule cat_external_gene_calls_file:
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_all.tsv"),
     threads: M.T('cat_external_gene_calls_file')
     run:
+        col_names = ["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version", "aa_sequence"]
         with open(output.external_gene_calls_all, "a") as external_gene_calls_all:
+                external_gene_calls_all.write('\t'.join(col_names) + "\n")
                 for f in input.external_gene_calls_renamed:
-                    external_gene_calls_all.write(open(f).read())
+                    file = open(f).read().splitlines(True)
+                    external_gene_calls_all.writelines(file[1:])
+                    # external_gene_calls_all.writelines(line + '\n' for line in file[1:]) # write without header
 
 
 rule cluster_X_percent_sim_mmseqs:
@@ -316,6 +323,31 @@ rule cluster_X_percent_sim_mmseqs:
                                     {params.mmseqs_tmp} \
                                     --threads {threads} \
                                     --min-seq-id {params.min_seq_id} >> {log} 2>&1")
+
+
+rule cluster_X_percent_sim_mmseqs_OTUs:
+    """
+    Cluster extracted proteins within percent ID parameter space provided by user. This will 
+    help identify clustering thresholds for OTU like analyses.
+    """
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}_{clustering_threshold}.log")
+    input: rules.combine_sequence_data.output.NT_all
+    output: 
+        fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
+        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
+    params:
+        output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR"),
+        mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-tmp"),
+    threads: M.T('cluster_X_percent_sim_mmseqs')
+    run:
+        min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
+        shell("mmseqs easy-cluster {input} \
+                                    {params.output_prefix} \
+                                    {params.mmseqs_tmp} \
+                                    --threads {threads} \
+                                    --min-seq-id {min_seq_id} >> {log} 2>&1")
 
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
@@ -479,13 +511,14 @@ rule remove_sequences_with_X_percent_gaps:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_sequences_with_X_percent_gaps_{HMM}.log")
     input: rules.trim_alignment.output
-    output: os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
+    output: 
+        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
     params:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
 	run:
-		shell("anvi-script-reformat-fasta {input} -o {output} \
+		shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
 									              --max-percentage-gaps {params.max_percentage_gaps} \
 									              --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
 
@@ -498,7 +531,8 @@ rule count_num_sequences_filtered:
     input:
         step1 = rules.combine_sequence_data.output.NT_all,
         step2 = rules.cluster_X_percent_sim_mmseqs.output.fasta,
-        step3 = rules.remove_sequences_with_X_percent_gaps.output
+        step3 = rules.remove_sequences_with_X_percent_gaps.output.fasta,
+        clustering_thresholds = expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{{HMM}}", "{clustering_threshold}", "{{HMM}}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"), clustering_threshold = M.clustering_param_space_list_strings),
     output: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], "{HMM}", "{HMM}_stats.tsv")
     threads: M.T('count_num_sequences_filtered')
     run:
@@ -509,21 +543,24 @@ rule count_num_sequences_filtered:
                     num_seqs += 1
             return num_seqs
 
-        with open(input.step1) as fasta:
-            step1_num_seqs = count_num_sequences(fasta)
+        input_files_list = [input.step1, input.step2, input.step3]
+        num_seqs_list = [count_num_sequences(open(fasta)) for fasta in input_files_list]
 
-        with open(input.step2) as fasta:
-            step2_num_seqs = count_num_sequences(fasta)
-
-        with open(input.step3[0]) as fasta:
-            step3_num_seqs = count_num_sequences(fasta)
+        clustering_threshold_attributes_list = []
+        for file in input.clustering_thresholds:
+            path = file
+            threshold = file.split("/")[3]
+            with open(file) as fasta:
+                num_seqs = count_num_sequences(fasta)
+            clustering_threshold_attributes = [str(threshold), str(num_seqs), path]
+            clustering_threshold_attributes_list.append(clustering_threshold_attributes)
 
         with open(output[0], 'w') as f:
             col_names = ["rule_name", "num_sequences_left", "rel_path"]
-            step1 = ["num_input_seqs", str(step1_num_seqs), input.step1]
-            step2 = ["num_input_seqs", str(step2_num_seqs), input.step2]
-            step3 = ["num_input_seqs", str(step3_num_seqs), input.step3[0]]
-            lines = [col_names, step1, step2, step3]
+            step1 = ["combine_sequence_data", str(num_seqs_list[0]), input.step1]
+            step2 = ["cluster_X_percent_sim_mmseqs", str(num_seqs_list[1]), input.step2]
+            step3 = ["remove_sequences_with_X_percent_gaps", str(num_seqs_list[2]), input.step3]
+            lines = [col_names, step1, step2, step3] + clustering_threshold_attributes_list 
             for line in lines:
                 f.write('\t'.join(line) + '\n')
 
@@ -836,8 +873,8 @@ rule anvi_scg_taxonomy:
 
 
 if M.samples_txt_file:
-    # DEFAULT-MODE with read recruitment
-    include: "rules/default_mode.smk"
+    # PROFILE-MODE with read recruitment
+    include: "rules/profile_mode.smk"
 else:
     # TREE-MODE
     include: "rules/tree_mode.smk"

@@ -26,16 +26,21 @@ jobs:
         conda info -a
         conda install -y mamba
         mamba install -y python=${{ matrix.python-version }} sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree r-base r-tidyverse r-optparse r-stringi r-magrittr
+        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
     - uses: actions/checkout@v2
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
         pip install .
-    - name: "Test minimal functionality"
+    - name: "Run component tests for general metagenomics tasks"
       shell: bash -l {0}
       run: |
-        anvi-self-test --suite mini --no-interactive
-    - name: "Test database migrations"
+        anvi-self-test --suite metagenomics-full --no-interactive
+    - name: "Run component tests for metabolism framework"
+      shell: bash -l {0}
+      run: |
+        anvi-self-test --suite metabolism --no-interactive
+    - name: "Migrate ancient anvi'o databases"
       shell: bash -l {0}
       run: |
         anvi-self-test --suite database-migrations
