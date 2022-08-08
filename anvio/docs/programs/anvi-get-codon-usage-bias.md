@@ -90,7 +90,7 @@ The following tables show the options to get the requested results.
 | [Exclude genes shorter than 300 codons from contributing to function queries](#function-codon-count) | `--gene-min-codons 300 --function-sources` |
 | [Exclude function queries with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
-| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Exclude codons for amino acids with <5 codons in >90%% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
 | [Exclude queries with <300 codons involved in the CUB calculation](#analyzed-query-codon-count) | `--query-min-analyzed-codons 300` |
 
@@ -123,7 +123,7 @@ By default, selected function accessions or names do not need to be present in i
 
 #### BRITE hierarchies
 
-Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams). For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. CUB can be calculated for function queries at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns CUB values for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
+Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. CUB can be calculated for function queries at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns CUB values for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
 anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output_table.txt --function-sources KEGG_BRITE
@@ -151,7 +151,7 @@ Use `--reference-gene-caller-ids` for select genes to be in the custom reference
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons are excluded by default from CUB calculations. Codons encoding a single amino acid (Met and Trp) do not factor into CUB calculations. Example: exclude Ala, Arg, and stop codons with `--exclude-amino-acids Ala Arg STP`.
 
-Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as 𝛿, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with the arguments, `--pansequence-min-amino-acids 5 0.9`.
+Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as 𝛿, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90%% of genes will be excluded from the analysis with the arguments, `--pansequence-min-amino-acids 5 0.9`.
 
 Codons for rarer amino acids within each gene or function query can be excluded from the CUB calculation with `--sequence-min-amino-acids`. For example, amino acids with <5 codons in a query will be excluded from the analysis with `--sequence-min-amino-acids 5`.
 
@@ -167,7 +167,7 @@ It may seem redundant for `remaining` and `both` to both be possibilities, but t
 | [Exclude genes shorter than 300 codons from contributing to function queries](#function-codon-count) | `--gene-min-codons 300 --function-sources` |
 | [Exclude function queries with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
-| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Exclude codons for amino acids with <5 codons in >90%% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
 | [Exclude queries with <300 codons involved in the CUB calculation](#query-length) | `--query-min-analyzed-codons 300` |
 

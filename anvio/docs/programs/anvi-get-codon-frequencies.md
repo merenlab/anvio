@@ -87,7 +87,7 @@ The following tables show the options to get the requested results.
 | [Exclude functions with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
 | [Only include certain codons](#codons) | `--include-amino-acids Leu Ile` |
-| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Exclude codons for amino acids with <5 codons in >90%% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
 
 ## Option details
@@ -126,7 +126,7 @@ There are multiple options to define which functions and sources should be used.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources COG14_FUNCTION --function-accessions COG0004 COG0005 --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
-{{ codestart }}
+{{ codestop }}
 
 To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for source.
 
@@ -134,7 +134,7 @@ By default, selected function accessions or names do not need to be present in t
 
 #### BRITE hierarchies
 
-Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams). For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
+Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources KEGG_BRITE
@@ -146,7 +146,7 @@ anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --f
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons and the single codons encoding Met and Trp are excluded by default from calculation of synonymous codon relative frequencies (`--synonymous`). Relative frequencies across codons in a gene (`--relative`) are calculated for the selected amino acids, so the following option would return a table of codon frequencies relative to the codons encoding the selected nonpolar amino acids: `--include-amino-acids Gly Ala Val Leu Met Ile`.
 
-Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies. For example, 0.5 AAT and 0.5 AAC for Asn may be statistically insignificant for a gene with 1 AAT and 1 AAC; even more meaningless would be 1.0 AAT and 0.0 AAC for a gene with 1 AAT and 0 AAC. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with `--pansequence-min-amino-acids 5 0.9`.
+Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies. For example, 0.5 AAT and 0.5 AAC for Asn may be statistically insignificant for a gene with 1 AAT and 1 AAC; even more meaningless would be 1.0 AAT and 0.0 AAC for a gene with 1 AAT and 0 AAC. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90%% of genes will be excluded from the analysis with `--pansequence-min-amino-acids 5 0.9`.
 
 Codons for rarer amino acids within each gene or function row can be excluded in the results table (replaced by NaN) with `--sequence-min-amino-acids`. This parameter only affects how the results are displayed. For example, amino acids with <5 codons in each row will be discarded in the results table with `--sequence-min-amino-acids 5`.
 
