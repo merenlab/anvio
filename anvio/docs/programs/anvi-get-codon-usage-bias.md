@@ -11,15 +11,18 @@ Some CUB metrics depend on a reference codon composition while others are refere
 This command produces a table of CUB values from coding sequences in the contigs database. The first column of the table contains gene caller IDs and each subsequent column contains values for a CUB metric, e.g., the Codon Adaptation Index (CAI) of [Sharp and Li, 1987](https://academic.oup.com/nar/article-abstract/15/3/1281/1166844?redirectedFrom=fulltext) and 𝛿 of [Ran and Higgs, 2012](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0051652).  CUB metrics that rely upon a reference codon composition, such as CAI and 𝛿, establish this composition from genes in the genome that are annotated as ribosomal proteins by KEGG KOfams/BRITE. Certain parameters have default values to increase the statistical significance of results (`--query-min-analyzed-codons`, `--reference-exclude-amino-acid-count`, `--reference-min-analyzed-codons`).
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output.txt
 {{ codestop }}
 
 ### CUB of functions
 
-This command produces a table of CUB values for functions rather than genes. By using `--function-sources` without any arguments, the output will include every function from every source used to annotate the genome, e.g., 'KOfam', 'KEGG_BRITE', 'Pfam'. The first four columns of the table before CUB values contain, respectively, gene caller IDs, function sources, accessions, and names.
+This command produces a table of CUB values for functions rather than genes. By using `--function-sources` without any arguments, the output will include every %(functions)s source available in a given %(contigs-db)s, e.g., `KOfam`, `KEGG_BRITE`, `Pfam` (you can always see the complete list of %(functions)s in *your* %(contigs-db)s by running the program %(anvi-db-info)s on it). The first four columns of the table before CUB values contain, respectively, gene caller IDs, function sources, accessions, and names.
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt --function-sources
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output.txt \
+                          --function-sources
 {{ codestop }}
 
 ### Custom CUB reference gene set
@@ -27,7 +30,9 @@ anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt --function
 This command establishes a CUB reference codon composition from genes with functional annotations defined a supplemental file. This file should be headerless, tab-delimited, and have three columns of function annotation sources (required), function accessions, and function names (either an accession or name is required).
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt --select-reference-functions-txt path/to/select-reference-functions.txt
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output.txt \
+                          --select-reference-functions-txt path/to/select-reference-functions.txt
 {{ codestop }}
 
 ### "Omnibias" CUB
@@ -35,15 +40,19 @@ anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt --select-r
 In reference-dependent CUB metrics, genes or functions are compared to a reference codon composition, such as from ribosomal proteins. "Omnibias" mode compares each gene/function "query" not to a single reference, but to each other gene/function. This generates a square distance-like matrix of CUB values that can be used to cluster genes/functions by their biases relative to one another. The output path given in the command is modified to create an output file of the omnibias matrix for each CUB metric.
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output.txt --omnibias
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output.txt \
+                          --omnibias
 {{ codestop }}
 
 ### CUB from multiple internal and external genomes
 
-This command produces a CUB table per genome, modifying the output path given in the command to create a separate output file per genome.
+This command produces a CUB table per genome, modifying the output path given in the command to create a separate output file per genome. Collection of genomes can be provided as %(internal-genomes)s, %(external-genomes)s, or both:
 
 {{ codestart }}
-anvi-get-codon-usage-bias -i path/to/internal-genomes.txt -e path/to/external-genomes.txt -o path/to/output.txt
+anvi-get-codon-usage-bias -i %(internal-genomes)s \
+                          -e %(external-genomes)s \
+                          -o path/to/output.txt
 {{ codestop }}
 
 ## Option examples
@@ -114,7 +123,11 @@ There are multiple options to define which functions and sources should be used 
 `--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options to select COG functions.
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output_table.txt --function-sources COG14_FUNCTION --function-accessions COG0004 COG0005 --function-names "Ammonia channel protein AmtB" "Purine nucleoside phorphorylase"
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output_table.txt \
+                          --function-sources COG14_FUNCTION \
+                          --function-accessions COG0004 COG0005 \
+                          --function-names "Ammonia channel protein AmtB" "Purine nucleoside phorphorylase"
 {{ codestop }}
 
 To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for source.
@@ -126,7 +139,9 @@ By default, selected function accessions or names do not need to be present in i
 Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. CUB can be calculated for function queries at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns CUB values for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
-anvi-get-codon-usage-bias -c path/to/contigs.db -o path/to/output_table.txt --function-sources KEGG_BRITE
+anvi-get-codon-usage-bias -c %(contigs-db)s \
+                          -o path/to/output_table.txt \
+                          --function-sources KEGG_BRITE
 {{ codestop }}
 
 ### Custom reference

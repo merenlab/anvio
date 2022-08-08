@@ -16,7 +16,7 @@ anvi-get-codon-frequencies -c %(contigs-db)s \
 
 ### Function frequencies
 
-This command produces a table of function frequencies rather than gene frequencies. By using `--function-sources` without any arguments, the output will include every %(function)s source available in a given %(contigs-db)s, e.g., `KOfam`, `KEGG_BRITE`, `Pfam` (you can always see the complete list of %(function)s in *your* %(contigs-db)s by running the program %(anvi-db-info)s on it). The first four columns of the table before frequency data contain, respectively, gene caller IDs, function sources, accessions, and names.
+This command produces a table of function frequencies rather than gene frequencies. By using `--function-sources` without any arguments, the output will include every %(functions)s source available in a given %(contigs-db)s, e.g., `KOfam`, `KEGG_BRITE`, `Pfam` (you can always see the complete list of %(functions)s in *your* %(contigs-db)s by running the program %(anvi-db-info)s on it). The first four columns of the table before frequency data contain, respectively, gene caller IDs, function sources, accessions, and names.
 
 {{ codestart }}
 anvi-get-codon-frequencies -c %(contigs-db)s \
