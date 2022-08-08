@@ -170,6 +170,10 @@ class SingleGenomeCodonUsage(object):
 
     def _make_gene_codon_frequency_table(self):
         """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
+
+        self.progress.new("Recovering codon frequency data")
+        self.progress.update("...")
+
         gene_codon_frequencies = []
         skipped_noncoding_gene_caller_ids = []
         coding_gene_caller_ids = []
@@ -201,6 +205,8 @@ class SingleGenomeCodonUsage(object):
         gene_codon_frequency_df.index = coding_gene_caller_ids
         gene_codon_frequency_df.index.name = 'gene_caller_id'
         self.gene_codon_frequency_df = gene_codon_frequency_df
+
+        self.progress.end()
 
         self.noncoding_gene_count = len(skipped_noncoding_gene_caller_ids)
         if self.noncoding_gene_count:
