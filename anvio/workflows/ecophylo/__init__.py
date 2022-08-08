@@ -155,8 +155,15 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.contigsDB_name_path_dict = {}
         self.contigsDB_name_bam_dict = {}
 
-        # Load metagenomes.txt
+        # Load input files
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
+        self.external_genomes = self.get_param_value_from_config(['external_genomes'])
+        self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
+        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+
+        if not self.metagenomes or not self.external_genomes:
+            raise ConfigError('Please provide at least a metagenomes.txt or external-genomes.txt in your '
+                              'EcoPhylo config file.')
 
         if self.metagenomes:
             args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']))
@@ -173,8 +180,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
             self.names_list.extend(self.metagenomes_name_list)
 
-        # Load external-genomes.txt
-        self.external_genomes = self.get_param_value_from_config(['external_genomes'])
         
         if self.external_genomes:
             
@@ -214,8 +219,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
 
-        # Load HMM list
-        self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
         if self.hmm_list_path: 
             filesnpaths.is_file_exists(self.hmm_list_path)
             filesnpaths.is_file_tab_delimited(self.hmm_list_path)
@@ -244,8 +247,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal HMMs here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
 
-        # Load samples.txt
-        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
         if self.samples_txt_file:
             filesnpaths.is_file_tab_delimited(self.samples_txt_file)
 
