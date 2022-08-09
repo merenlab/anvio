@@ -273,6 +273,29 @@ rule make_anvio_state_file:
         views_dict['mean_coverage'] = mean_coverage_dict
         state_dict['views'] = views_dict
 
+        # samples-layer-order
+        samples_layers_dict = {
+            "default": {
+                "num_INDELs_reported": {
+                    "height": 0,
+                },
+                "total_reads_kept": {
+                    "height": 0,
+                },
+                "num_SCVs_reported": {
+                    "height": 0,
+                },
+                "num_SNVs_reported": {
+                    "height": 0,
+                },
+                "total_reads_mapped": {
+                    "height": 0,
+                },
+            }
+        }
+        
+        state_dict['samples-layers'] = samples_layers_dict
+
         with open(output.state_file, "w") as outfile:
                 json.dump(state_dict, outfile, indent=4)
 
