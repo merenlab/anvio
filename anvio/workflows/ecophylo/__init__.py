@@ -161,7 +161,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
 
-        if not self.metagenomes or not self.external_genomes:
+        if not self.metagenomes and not self.external_genomes:
             raise ConfigError('Please provide at least a metagenomes.txt or external-genomes.txt in your '
                               'EcoPhylo config file.')
 
