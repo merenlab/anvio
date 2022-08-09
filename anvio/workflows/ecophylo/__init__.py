@@ -165,6 +165,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             raise ConfigError('Please provide at least a metagenomes.txt or external-genomes.txt in your '
                               'EcoPhylo config file.')
 
+        if not self.hmm_list_path:
+            raise ConfigError('Please provide a path to an hmm_list.txt')
+
         if self.metagenomes:
             args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']))
             g = MetagenomeDescriptions(args)
@@ -263,7 +266,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
         else:
             self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
-                             f"to profile the ecology and will just be making trees for now!")
+                             f"to profile the ecology of your proteins and will just be making trees for now!")
         
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
