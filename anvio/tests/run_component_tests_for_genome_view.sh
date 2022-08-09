@@ -11,7 +11,6 @@ cp $files/mock_data_for_pangenomics/*.db $output_dir
 
 INFO "Generating an external genomes file for DBs"
 anvi-script-gen-genomes-file --input-dir $output_dir \
-                             --name-prefix G0 \
                              -o $output_dir/external-genomes.txt
 
 INFO "Running genome view"
