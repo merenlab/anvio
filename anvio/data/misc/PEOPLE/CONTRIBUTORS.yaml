@@ -170,7 +170,7 @@
 - github: Lamm-a
   name: Robert Murphy
   web: https://www1.bio.ku.dk/english/staff/?pure=en/persons/670045
-  avatar: (your-avatar.png that is in the AVATARS directory)
+  avatar: no-avatar.png
   email: robert.murphy@bio.ku.dk
   linkedin: robert-murphy-b36475105
   orcid: 0000-0002-0850-5439
@@ -178,5 +178,5 @@
   affiliations:
     - title: PhD Student
       inst: Section of Ecology and Evolution - University of Copenhagen
-      inst_link: (the link to the institution or group page)
-      current: (if this is a 'current' affiliation, put the word true here, if not, remove the line completely)
+      inst_link: https://www.socialsymbioticevolution.com/
+      current: true
