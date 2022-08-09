@@ -3,24 +3,19 @@
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
 import os
-import sys
 import anvio
 import argparse
 import pandas as pd
 
 import anvio
 import anvio.data.hmm
-import anvio.utils as u
-import anvio.genomedescriptions as gd
 import anvio.terminal as terminal
-import anvio.workflows as w
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.genomedescriptions import MetagenomeDescriptions
-from anvio.workflows.metagenomics import MetagenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -35,8 +30,6 @@ __email__ = "mschechter@uchicago.edu"
 run = terminal.Run()
 
 class EcoPhyloWorkflow(WorkflowSuperClass):
-
-
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='ecophylo')
 
@@ -182,7 +175,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
                 self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
             self.names_list.extend(self.metagenomes_name_list)
-
         
         if self.external_genomes:
             
