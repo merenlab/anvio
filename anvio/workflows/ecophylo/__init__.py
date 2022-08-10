@@ -223,8 +223,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.HMM_path_dict = dict(zip(HMM_df.name, HMM_df.path))
 
             except AttributeError as e:
-                raise ConfigError("The hmm_list.txt file, '%s', does not appear to be properly formatted. "
-                                  "This is the error from trying to load it: %s" % (self.hmm_list_path, e))
+                raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
+                                  f"This is the error from trying to load it: {self.hmm_list_path}")
 
             if any("-" in s for s in self.HMM_source_dict.keys()):
                 raise ConfigError(f"Please do not use "-" in your external HMM names in: "
