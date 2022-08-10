@@ -604,7 +604,6 @@ SHOW_FILE $output_dir/sequence-motifs-in-profile.txt
 INFO "Generating normalized codon frequencies for all genes in the contigs database"
 anvi-get-codon-frequencies -c $output_dir/CONTIGS.db \
                            -o $output_dir/CODON_frequencies_for_the_contigs_db.txt \
-                           --merens-codon-normalization \
                            --no-progress
 SHOW_FILE $output_dir/CODON_frequencies_for_the_contigs_db.txt
 
