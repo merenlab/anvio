@@ -249,11 +249,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
                 self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
             except IndexError as e:
-                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                                "This is what we know: '%s'" % (self.samples_txt_file, e))
+                raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
+                                  f"This is what we know: {self.samples_txt_file}")
             if 'sample' not in list(self.samples_information.columns):
-                raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                                "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
+                raise ConfigError(f"Looks like your samples_txt file, {self.samples_txt_file}, is not properly formatted. "
+                                  f"We are not sure what's wrong, but we can't find a column with title 'sample'.")
 
             self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
         else:
