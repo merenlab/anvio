@@ -175,6 +175,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
                 self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
             self.names_list.extend(self.metagenomes_name_list)
+
+        else:
+            self.metagenomes_name_list = []
         
         if self.external_genomes:
             
@@ -214,33 +217,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
 
-        if self.hmm_list_path: 
-            filesnpaths.is_file_exists(self.hmm_list_path)
-            filesnpaths.is_file_tab_delimited(self.hmm_list_path)
-            try:
-                HMM_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
-                self.HMM_source_dict = dict(zip(HMM_df.name, HMM_df.source))
-                self.HMM_path_dict = dict(zip(HMM_df.name, HMM_df.path))
-
-            except AttributeError as e:
-                raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
-                                  f"This is the error from trying to load it: {self.hmm_list_path}")
-
-            if any("-" in s for s in self.HMM_source_dict.keys()):
-                raise ConfigError(f"Please do not use "-" in your external HMM names in: "
-                                  f"{self.hmm_list_path}. It will make our lives "
-                                  f"easier with Snakemake wildcards :)")
-
-        # FIXME: this line prints the list of HMM_sources to stdout and I don't want that
-        self.internal_HMM_sources = list(anvio.data.hmm.sources.keys())
-
-        for HMM, HMM_path in self.HMM_source_dict.items():
-            if HMM_path == "INTERNAL":
-                if self.HMM_source_dict[HMM] not in self.internal_HMM_sources:
-                    HMM_source = self.HMM_source_dict[HMM]
-                    raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
-                                      f"Please double check {self.hmm_list_path} to see if you spelled it right or "
-                                      f"please checkout the default internal HMMs here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
+        self.init_hmm_list_txt()
 
         if self.samples_txt_file:
             filesnpaths.is_file_tab_delimited(self.samples_txt_file)
@@ -301,7 +278,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         target_files = []
 
-        for HMM in self.HMM_source_dict.keys():
+        for HMM in self.HMM_dict.keys():
 
             # Clustering parameter space
             for clustering_threshold in self.clustering_param_space_list_strings:
@@ -340,3 +317,50 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_files.append(target_file)
         
         return target_files
+    
+    def init_hmm_list_txt(self):
+        filesnpaths.is_file_exists(self.hmm_list_path)
+        filesnpaths.is_file_tab_delimited(self.hmm_list_path)
+        
+        try:
+            HMM_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
+        except AttributeError as e:
+            raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
+                              f"This is the error from trying to load it: {self.hmm_list_path}")
+
+        HMM_list_txt_columns = ['name', 'source', 'path']
+
+        for column_name in HMM_list_txt_columns:
+            if column_name not in list(HMM_df.columns):
+                raise ConfigError(f"Looks like your hmm-list.txt file, {self.hmm_list_path}, is not properly formatted. "
+                                  f"We are not sure what's wrong, but we can't find a column with title '{column_name}'."
+                                  f"Please make sure you have a tsv with the column names: {HMM_list_txt_columns}")
+
+        self.HMM_dict = HMM_df.set_index('name').to_dict('index')
+
+        if any("-" in s for s in self.HMM_dict.keys()):
+            raise ConfigError(f"Please do not use "-" in your external HMM names in: "
+                              f"{self.hmm_list_path}. It will make our lives "
+                              f"easier with Snakemake wildcards :)")
+
+        # FIXME: this line prints the list of HMM_sources to stdout and I don't want that
+        self.internal_HMM_sources = list(anvio.data.hmm.sources.keys())
+
+        for HMM in self.HMM_dict.keys():
+            HMM_source = self.HMM_dict[HMM]['source']
+            HMM_path = self.HMM_dict[HMM]['path']
+
+            if HMM_source == "INTERNAL":
+                if HMM_source not in self.internal_HMM_sources:
+                    raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
+                                      f"Please double check {self.hmm_list_path} to see if you spelled it right or "
+                                      f"please checkout the default internal HMMs here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
+
+            if not filesnpaths.is_file_exists(HMM_path, dont_raise=True):
+                if HMM_path == 'INTERNAL':
+                    pass
+                else:
+                    raise ConfigError(f"The path to your HMM {HMM} does not exist: {HMM_path}. "
+                                      f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
+                                      f"If the HMM you want to use is in an internal anvi'o HMM collection e.g. Bacteria_71 "
+                                      f"please put 'INTERNAL' for the path.")

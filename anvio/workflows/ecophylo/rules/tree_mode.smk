@@ -15,7 +15,7 @@ rule make_anvio_state_file_tree:
     threads: M.T('make_anvio_state_file')
     run:
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        HMM_source = M.HMM_dict[wildcards.HMM]['source']
 
         # Read in misc data headers for layer_order
 
@@ -215,7 +215,7 @@ rule anvi_import_everything_tree:
 
         shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        HMM_source = M.HMM_dict[wildcards.HMM]['source']
         
         if HMM_source in M.internal_HMM_sources:
             shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")

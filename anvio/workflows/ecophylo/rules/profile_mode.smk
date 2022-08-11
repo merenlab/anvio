@@ -129,7 +129,7 @@ rule make_anvio_state_file:
     threads: M.T('make_anvio_state_file')
     run:
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        HMM_source = M.HMM_dict[wildcards.HMM]['source']
 
         # Read in misc data headers for layer_order
         if HMM_source in M.internal_HMM_sources:
@@ -318,19 +318,18 @@ rule anvi_import_everything_metagenome:
         profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_profile.done")),
-
+        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
     run:
-        state = os.path.join("ECOPHYLO_WORKFLOW", "{wildcards.HMM}_ECOPHYLO_WORKFLOW_state.json")
+        state = os.path.join("ECOPHYLO_WORKFLOW", f"{wildcards.HMM}_ECOPHYLO_WORKFLOW_state.json")
 
-        shell(f"anvi-import-state -p {params.profileDB} -s {state} -n default")
+        shell("anvi-import-state -p {params.profileDB} -s {state} -n default")
 
         shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
 
         shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        HMM_source = M.HMM_dict[wildcards.HMM]['source']
         
         if HMM_source in M.internal_HMM_sources:
             shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
