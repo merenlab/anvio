@@ -827,15 +827,18 @@ class GenbankToAnvio:
                 # storing gene product annotation if present
                 if "product" in gene.qualifiers:
                     function = gene.qualifiers["product"][0]
-                    # trying to capture all different ways proteins are listed as hypothetical and setting to same thing so can prevent from adding to output functions table below
-                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical", "conserved hypotheticals", "Conserved hypothetical protein"]:
-                        function = "hypothetical protein"
+                    # trying to capture all different ways proteins are listed as hypothetical and
+                    # setting to same thing so can prevent from adding to output functions table below
+                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical",
+                                    "conserved hypotheticals", "Conserved hypothetical protein"]:
+                        function = None
                 else:
-                    function = "hypothetical protein"
+                    function = None
 
-                # if present, adding gene name to product annotation (so long as not a hypothetical, sometimes these names are useful, sometimes they are not):
+                # if present, adding gene name to product annotation (so long as not a hypothetical,
+                # sometimes these names are useful, sometimes they are not):
                 if "gene" in gene.qualifiers:
-                    if function not in "hypothetical protein":
+                    if function:
                         gene_name=str(gene.qualifiers["gene"][0])
                         function = function + " (" + gene_name + ")"
 
@@ -866,7 +869,7 @@ class GenbankToAnvio:
                                                               'e_value': 0}
                     num_genes_with_functions += 1
 
-                # increment the gene callers id fo rthe next
+                # increment the gene callers id for the next
                 self.gene_callers_id += 1
 
         if num_genbank_records_processed == 0:
