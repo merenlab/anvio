@@ -56,6 +56,11 @@ if __name__ == '__main__':
                             "use that information directly, instead of trying to predict the translated sequences itself. "
                             "If you would like this program to not report amino acid sequences even when they present and use "
                             "anvi'o to predict translated sequences later, you can use this flag.")
+    groupC.add_argument("--include-locus-tags-as-functions", default=False, action="store_true", help="When anvi'o processes "
+                            "genes in a GenBank file, it will assign new gene caller ids to each entry. Using this flag will "
+                            "will instruct anvi'o to add a new 'function' source in the annotation of each gene call so the "
+                            "the user can trace back a given gene call to the original locus tag number in the GenBank file.")
+
 
     args = parser.get_args(parser)
 
