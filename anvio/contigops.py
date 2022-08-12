@@ -728,7 +728,7 @@ class GenbankToAnvio:
 
         output_fasta = {}
         output_gene_calls = {}
-        output_functions = {}
+        output_functions = []
         num_genbank_records_processed = 0
         num_genes_found = 0
         num_genes_reported = 0
@@ -862,11 +862,12 @@ class GenbankToAnvio:
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
-                if "hypothetical protein" not in function:
-                    output_functions[self.gene_callers_id] = {'source': self.source,
-                                                              'accession': accession,
-                                                              'function': function,
-                                                              'e_value': 0}
+                if function:
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': self.source,
+                                             'accession': accession,
+                                             'function': function,
+                                             'e_value': 0})
                     num_genes_with_functions += 1
 
                 # increment the gene callers id for the next
@@ -931,9 +932,10 @@ class GenbankToAnvio:
                                                    self.output_gene_calls_path,
                                                    headers=header_for_external_gene_calls)
 
-            utils.store_dict_as_TAB_delimited_file(output_functions,
-                                                   self.output_functions_path,
-                                                   headers=header_for_functions)
+            with open(self.output_functions_path, 'w') as output_functions_file:
+                for entry in output_functions:
+                    functions_text = '\t'.join([f"{entry[k]}" for k in header_for_functions])
+                    output_functions_file.write(f"{functions_text}\n")
 
             self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
