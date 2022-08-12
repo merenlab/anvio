@@ -664,6 +664,7 @@ class GenbankToAnvio:
         self.source = A('annotation_source') or 'NCBI_PGAP'
         self.version = A('annotation_version') or 'v4.6'
         self.omit_aa_sequences_column = A('omit_aa_sequences_column') or False
+        self.include_locus_tags_as_functions = A('include_locus_tags_as_functions')
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
@@ -870,6 +871,14 @@ class GenbankToAnvio:
                                              'e_value': 0})
                     num_genes_with_functions += 1
 
+                if self.include_locus_tags_as_functions and "locus_tag" in gene.qualifiers:
+                    locus_tag = gene.qualifiers["locus_tag"][0]
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': 'GENBANK_LOCUS_TAG',
+                                             'accession': locus_tag,
+                                             'function': locus_tag,
+                                             'e_value': 0})
+
                 # increment the gene callers id for the next
                 self.gene_callers_id += 1
 
@@ -883,6 +892,7 @@ class GenbankToAnvio:
         self.run.info('Num genes reported', num_genes_reported, mc='green')
         self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
         self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
+        self.run.info('Locus tags included in functions output?', "Yes" if self.include_locus_tags_as_functions else "No", mc='green')
         self.run.info('Num partial genes', num_partial_genes, mc='cyan')
         self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
 
