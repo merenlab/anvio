@@ -6,7 +6,7 @@
  *           A. Murat Eren <a.murat.eren@gmail.com>
  *
  * Copyright 2015-2021, The anvi'o project (http://anvio.org)
-
+ *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either
@@ -278,9 +278,11 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
         let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
         let radius
         let maxRadius = supportValueData.maxRadius
+        let rangeLow = parseFloat(supportValueData.numberRange[0])
+        let rangeHigh = parseFloat(supportValueData.numberRange[1])
 
         function calculatePercentile(){ // calculate percentile of data point in range
-            return (p.branch_support - parseInt(supportValueData.numberRange[0])) / (parseInt(supportValueData.numberRange[1]) - parseInt(supportValueData.numberRange[0]))
+            return (p.branch_support - rangeLow) / (rangeHigh - rangeLow)
         }
 
         function setDetails(percentile){
@@ -296,7 +298,6 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
 
         function makeCircle(){ // time to make the gravy
             setDetails(calculatePercentile())
-            console.log(calculatePercentile())
 
             circle.setAttribute('cx', p.xy.x)
             circle.setAttribute('cy', p.xy.y)
@@ -439,7 +440,7 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family
     text.appendChild(textNode);
     var svg = document.getElementById(svg_id);
     svg.appendChild(text);
-    
+
     // trim long text
 
     if (maxLength > 0)
