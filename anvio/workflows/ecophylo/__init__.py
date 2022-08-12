@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
+from distutils.command.config import config
 import os
 import anvio
 import argparse
@@ -9,6 +10,7 @@ import pandas as pd
 
 import anvio
 import anvio.data.hmm
+import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -350,7 +352,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             HMM_source = self.HMM_dict[HMM]['source']
             HMM_path = self.HMM_dict[HMM]['path']
 
-            if HMM_source == "INTERNAL":
+            if HMM_path == "INTERNAL":
                 if HMM_source not in self.internal_HMM_sources:
                     raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
@@ -364,3 +366,15 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                       f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
                                       f"If the HMM you want to use is in an internal anvi'o HMM collection e.g. Bacteria_71 "
                                       f"please put 'INTERNAL' for the path.")
+            
+            if HMM_path != "INTERNAL":
+                sources = u.get_HMM_sources_dictionary([HMM_path])
+                
+                for source,value in sources.items():
+                    gene = value['genes']
+                    if HMM_source != source:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {HMM} to this: {source}")
+                    if len(gene) > 1:
+                        raise ConfigError("EcoPhylo can only work with one gene at a time in a HMM directory (at the moment)")
+                    if HMM != gene[0]:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {HMM} to this: {gene[0]}")

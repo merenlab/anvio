@@ -71,12 +71,12 @@ rule anvi_run_hmms_hmmsearch:
             if not os.path.exists(domtblout):
                 print(f"Running internal HMM dataset: {HMM_source}")
                 shell("anvi-run-hmms -c {contigsDB} \
-                                    --hmmer-program hmmsearch \
-                                    --hmmer-output-dir {hmmer_output_dir} \
-                                    -I {HMM_source} \
-                                    --domain-hits-table \
-                                    --just-do-it \
-                                    -T {threads} >> {log} 2>&1")
+                                     --hmmer-program hmmsearch \
+                                     --hmmer-output-dir {hmmer_output_dir} \
+                                     --installed-hmm-profile {HMM_source} \
+                                     --domain-hits-table \
+                                     --just-do-it \
+                                     -T {threads} >> {log} 2>&1")
 
             # Load contigsDB
             contigs_db = ContigsDatabase(contigsDB)
@@ -90,12 +90,12 @@ rule anvi_run_hmms_hmmsearch:
             if not os.path.exists(domtblout):
                 print(f"Running external HMM dataset: {wildcards.HMM}")
                 shell("anvi-run-hmms -c {contigsDB} \
-                                    --hmmer-program hmmsearch \
-                                    --hmm-profile-dir {HMM_dir} \
-                                    --hmmer-output-dir {hmmer_output_dir} \
-                                    --domain-hits-table \
-                                    --just-do-it \
-                                    -T {threads} >> {log} 2>&1")
+                                     --hmmer-program hmmsearch \
+                                     --hmm-profile-dir {HMM_dir} \
+                                     --hmmer-output-dir {hmmer_output_dir} \
+                                     --domain-hits-table \
+                                     --just-do-it \
+                                     -T {threads} >> {log} 2>&1")
         
         
 
@@ -353,6 +353,7 @@ rule combine_sequence_data:
         HMM_source = M.HMM_dict[wildcards.HMM]['source']
 
         contigsDB_with_hmm_hits = []
+        contigsDB_with_hmm_NO_hits = []
         for hmm_hits in input.hmm_hits:
             df = pd.read_csv(hmm_hits, sep='\t')
             df = df[df.source == HMM_source]
@@ -360,6 +361,14 @@ rule combine_sequence_data:
             if wildcards.HMM in gene_name_list:
                 contigsDB = hmm_hits.split("/")[2].split("-")[0]
                 contigsDB_with_hmm_hits.append(contigsDB)
+            else:
+                contigsDB = hmm_hits.split("/")[2].split("-")[0]
+                contigsDB_with_hmm_NO_hits.append(contigsDB)
+        
+        outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_HMM_hit_{wildcards.HMM}.log") 
+        with open(outfile, "a") as outfile:
+            for element in contigsDB_with_hmm_NO_hits:
+                outfile.write(element + '/n')
         
         NT_list = []
         AA_list = []
@@ -406,23 +415,21 @@ rule cluster_X_percent_sim_mmseqs:
         NT_all = rules.combine_sequence_data.output.NT_all
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
-        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv")
+        mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv"),
+        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.done"))
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-tmp"),
         min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
-        import os
-        import anvio
+        # Exit workflow if we couldn't find any hmm-hits
+        from Bio import SeqIO
 
-        from anvio.errors import ConfigError
-
-        # check if size of file is 0
-        if os.stat(input.NT_all).st_size == 0:
-            raise ConfigError('')
-        else:
-            print('File is not empty')
+        fasta_dict = SeqIO.index(input.NT_all, "fasta")
+        if len(fasta_dict) == 0:
+            raise ConfigError(f"anvi'o and the EcoPhylo workflow are sad to announce that the "
+                              f"HMM, {wildcards.HMM}, was not not found in any of your contigsDBs")
             
         shell(f"mmseqs easy-cluster {input} \
                                     {params.output_prefix} \
@@ -439,7 +446,9 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}_{clustering_threshold}.log")
-    input: rules.combine_sequence_data.output.NT_all
+    input: 
+        NT_all = rules.combine_sequence_data.output.NT_all,
+        done = rules.cluster_X_percent_sim_mmseqs.output.done
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
@@ -449,7 +458,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
-        shell("mmseqs easy-cluster {input} \
+        shell("mmseqs easy-cluster {input.NT_all} \
                                    {params.output_prefix} \
                                    {params.mmseqs_tmp} \
                                    --threads {threads} \
