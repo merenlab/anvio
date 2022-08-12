@@ -943,9 +943,11 @@ class GenbankToAnvio:
                                                    headers=header_for_external_gene_calls)
 
             with open(self.output_functions_path, 'w') as output_functions_file:
+                header_text = '\t'.join(header_for_functions)
+                output_functions_file.write(f"{header_text}\n")
                 for entry in output_functions:
-                    functions_text = '\t'.join([f"{entry[k]}" for k in header_for_functions])
-                    output_functions_file.write(f"{functions_text}\n")
+                    entry_text = '\t'.join([f"{entry[k]}" for k in header_for_functions])
+                    output_functions_file.write(f"{entry_text}\n")
 
             self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
