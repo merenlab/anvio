@@ -664,6 +664,7 @@ class GenbankToAnvio:
         self.source = A('annotation_source') or 'NCBI_PGAP'
         self.version = A('annotation_version') or 'v4.6'
         self.omit_aa_sequences_column = A('omit_aa_sequences_column') or False
+        self.include_locus_tags_as_functions = A('include_locus_tags_as_functions')
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
@@ -728,7 +729,7 @@ class GenbankToAnvio:
 
         output_fasta = {}
         output_gene_calls = {}
-        output_functions = {}
+        output_functions = []
         num_genbank_records_processed = 0
         num_genes_found = 0
         num_genes_reported = 0
@@ -827,15 +828,18 @@ class GenbankToAnvio:
                 # storing gene product annotation if present
                 if "product" in gene.qualifiers:
                     function = gene.qualifiers["product"][0]
-                    # trying to capture all different ways proteins are listed as hypothetical and setting to same thing so can prevent from adding to output functions table below
-                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical", "conserved hypotheticals", "Conserved hypothetical protein"]:
-                        function = "hypothetical protein"
+                    # trying to capture all different ways proteins are listed as hypothetical and
+                    # setting to same thing so can prevent from adding to output functions table below
+                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical",
+                                    "conserved hypotheticals", "Conserved hypothetical protein"]:
+                        function = None
                 else:
-                    function = "hypothetical protein"
+                    function = None
 
-                # if present, adding gene name to product annotation (so long as not a hypothetical, sometimes these names are useful, sometimes they are not):
+                # if present, adding gene name to product annotation (so long as not a hypothetical,
+                # sometimes these names are useful, sometimes they are not):
                 if "gene" in gene.qualifiers:
-                    if function not in "hypothetical protein":
+                    if function:
                         gene_name=str(gene.qualifiers["gene"][0])
                         function = function + " (" + gene_name + ")"
 
@@ -859,14 +863,23 @@ class GenbankToAnvio:
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
-                if "hypothetical protein" not in function:
-                    output_functions[self.gene_callers_id] = {'source': self.source,
-                                                              'accession': accession,
-                                                              'function': function,
-                                                              'e_value': 0}
+                if function:
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': self.source,
+                                             'accession': accession,
+                                             'function': function,
+                                             'e_value': 0})
                     num_genes_with_functions += 1
 
-                # increment the gene callers id fo rthe next
+                if self.include_locus_tags_as_functions and "locus_tag" in gene.qualifiers:
+                    locus_tag = gene.qualifiers["locus_tag"][0]
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': 'GENBANK_LOCUS_TAG',
+                                             'accession': locus_tag,
+                                             'function': locus_tag,
+                                             'e_value': 0})
+
+                # increment the gene callers id for the next
                 self.gene_callers_id += 1
 
         if num_genbank_records_processed == 0:
@@ -879,6 +892,7 @@ class GenbankToAnvio:
         self.run.info('Num genes reported', num_genes_reported, mc='green')
         self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
         self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
+        self.run.info('Locus tags included in functions output?', "Yes" if self.include_locus_tags_as_functions else "No", mc='green')
         self.run.info('Num partial genes', num_partial_genes, mc='cyan')
         self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
 
@@ -928,9 +942,10 @@ class GenbankToAnvio:
                                                    self.output_gene_calls_path,
                                                    headers=header_for_external_gene_calls)
 
-            utils.store_dict_as_TAB_delimited_file(output_functions,
-                                                   self.output_functions_path,
-                                                   headers=header_for_functions)
+            with open(self.output_functions_path, 'w') as output_functions_file:
+                for entry in output_functions:
+                    functions_text = '\t'.join([f"{entry[k]}" for k in header_for_functions])
+                    output_functions_file.write(f"{functions_text}\n")
 
             self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)
