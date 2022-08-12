@@ -22,9 +22,7 @@ $(document).ready(function() {
     checkNews();
 });
 
-function checkNews() {
-    $('#news-panel-inner').empty();
-
+function checkNews() { // only render unread news items
     $.ajax({
         type: 'GET',
         cache: false,
@@ -34,42 +32,51 @@ function checkNews() {
             var hash_found = false;
             var unread_count = 0;
 
+            // let test_news_item = {
+            //     content: 'beep boop',
+            //     date: '15.11.2021',
+            //     title : 'this is my test news'
+            // }
+            // news.unshift(test_news_item)
+
             for (var i=0; i < news.length; i++) {
                 var news_item = news[i];
                 if (hash_found || last_seen_hash == md5(news_item['title'])) {
                     hash_found = true;
                 } else {
                     unread_count++;
+                    $('#modNewsBadger-inner').append('<div class="news-item"> \
+                                                  <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
+                                                  <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
                 }
-                $('#news-panel-inner').append('<div class="news-item"> \
-                                              <h1>' + ((hash_found) ? '' : '<span class="blue-dot">') + '</span>'+news_item['title']+'</h1> \
+            }
+            if (unread_count > 0) {
+                $('#modNewsBadger').modal('show')
+            }
+        }
+    });
+}
+
+function showAllNews(){ // render all news items regardless of cookie content - called from interactive hamburger dropdown.
+    $('#modNewsBadger-inner').empty()
+    console.log('got here')
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/news',
+        success: function(news) {
+            for (var i=0; i < news.length; i++) {
+                var news_item = news[i];
+                $('#modNewsBadger-inner').append('<div class="news-item"> \
+                                              <h1>' + '</span>'+news_item['title']+'</h1> \
                                               <span class="news-date">'+news_item['date']+'</span>'+renderMarkdown(news_item['content'])+'</div>')
             }
-
-            if (unread_count > 0) {
-                $('#toggle-panel-right-3').css('color', '#FF0000');
-                $('#toggle-panel-right-3').addClass('fading-button');
-
-		$('#toggle-panel-right-3').mouseover(function() {
-			if(!$('#news-panel').is(':visible')) {
-				$(this).addClass('toggle-panel-right-pos-3');
-                		toggleRightPanel('#news-panel');
-                		$('#toggle-panel-right-3-inner').html('&#9658;');
-                	}
-		});
-            } else {
-		// remove upon starting interface in case 'last-seen-hash' cookie is not cleared
-	    	$('#news-mark-read').remove();
-            }
+            $('#modNewsBadger').modal('show')
         }
     });
 }
 
 function newsMarkRead() {
     $('.blue-dot').remove();
-    $('#toggle-panel-right-3').css('color', '#000000');
-    $('#toggle-panel-right-3').removeClass('fading-button');
-    $('#news-mark-read').remove();
-    $('#toggle-panel-right-3').off('mouseover');
     createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
 }
