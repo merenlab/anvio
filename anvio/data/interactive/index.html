@@ -10,17 +10,18 @@
     <meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
     <meta http-equiv="pragma" content="no-cache" />
     <meta name="google" value="notranslate">
+    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
+    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
     <link rel="icon" type="image/png" href="images/logo-simple.png">
     <script type="text/javascript" src="js/error.js"></script>
 
-    <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    <link rel="stylesheet" href="lib/toastr/build/toastr.min.css" type="text/css" />
+    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
-    <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/core.js" onerror='alertDependencyError("jquery-core")'></script>
     <script type="text/javascript" src="lib/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
@@ -105,10 +106,6 @@
                 <span id="toggle-panel-right-2-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">DESCRIPTIO<u>N</u></span>
         </div>
 
-        <div id="toggle-panel-right-3" onclick="toggleRightPanel('#news-panel');">
-                <span id="toggle-panel-right-3-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">NE<u>W</u>S</span>
-        </div>
-
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -136,6 +133,7 @@
                         <ul class="dropdown-menu multi-level" role="menu">
                           <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
                           <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
+                          <li><a href='#' onclick="showAllNews()">Anvi'o news</a></li>
                           <li><a href="http://merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
                           <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
                           <li><a href="http://merenlab.org/people/">Contact us</a></li>
@@ -340,7 +338,7 @@
                                         <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shade: </Label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
-                                            <span class="shade_details" style="display: float; margin-left:5px; float-left;">Shade opacity:
+                                            <span class="shade_details" style="display: float; margin-left:5px; float-left;">Shade opacity:        
                                                 <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="shade_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
                                             </span>
                                         </div>
@@ -350,9 +348,9 @@
                                     <div class="col-md-8">
                                         <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color').show(); } else { $('.inverse_details, #inverse_color').hide(); }" style="float: left;" unchecked>
                                         <div id="inverse_color"onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #000" color="#000"></div>
-                                        <span class="inverse_details" style="display: float; margin-left:5px; float-left;">Opacity:
+                                        <span class="inverse_details" style="display: float; margin-left:5px; float-left;">Opacity:        
                                             <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                        </span>
+                                        </span> 
                                     </div>
                                 </div>
                                 <div class="form-group form-margin">
@@ -897,16 +895,6 @@
     <div id="description-panel">
         <textarea id="description-editor" rows="10"></textarea>
     </div>
-
-    <div id="news-panel">
-        <h1 style="font-size: 22px; display: inline-block;">What's New</h1>
-	<div id="news-mark-read">
-	    <p style="border: 1px dashed #b8b8b8; background: #f0f8ff2e; border-radius: 4px; padding: 6px;">
-                <a href="#" style="font-weight: bold; color: red;" onclick="newsMarkRead();">Mark everything as read</a> to make the annoying news button stop blinking red.
-            </p>
-        </div>
-        <div id="news-panel-inner"></div>
-    </div>
     <!-- DIALOGS SECTION -->
 
     <!-- LOAD STATE -->
@@ -955,6 +943,26 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- NEWS MODAL -->
+    <div class="modal fade" id="modNewsBadger">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="padding-bottom: 0px;">
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                    <h4 class="modal-title">📰 The Anvi'o News Network</h4>
+                    <p style="padding: 10px 10px 0px 10px;">Click the button below to mark all news as read to not see this window again until there is a new news for you from the anvi'o developers 😇</p>
+                </div>
+                <div class="modal-body">
+                    <div id='modNewsBadger-inner'></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-default" type='button' onclick='newsMarkRead()'>Mark all news as read</button>
                     <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
