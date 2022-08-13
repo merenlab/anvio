@@ -347,6 +347,7 @@ rule combine_sequence_data:
         AA_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.faa"),
         reformat_report_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-reformat-report-all.txt"),
         external_gene_calls_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-external_gene_calls_all.tsv"),
+        done = touch(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-combine_sequence_data.done"))
     threads: M.T('combine_sequence_data')
     run:
         # Make list of contigDBs that had a hit with the HMM
@@ -403,16 +404,15 @@ rule combine_sequence_data:
                     file = open(f).read().splitlines(True)
                     external_gene_calls_all.writelines(file[1:])
 
+
 rule cluster_X_percent_sim_mmseqs:
     """
-    Cluster SCG NT sequences with mmseqs to remove redundant SCG sequences which will prevent non-specific read recruitment
-    and read recruitment dilution.
     """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}.log")
     input: 
-        NT_all = rules.combine_sequence_data.output.NT_all
+        done = rules.combine_sequence_data.output.done
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.tsv"),
@@ -423,15 +423,20 @@ rule cluster_X_percent_sim_mmseqs:
         min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
+        if M.AA_mode == True:
+           fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{wildcards.HMM}", f"{wildcards.HMM}-all.faa") 
+        else:
+           fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{wildcards.HMM}", f"{wildcards.HMM}-all.fna")
+
         # Exit workflow if we couldn't find any hmm-hits
         from Bio import SeqIO
 
-        fasta_dict = SeqIO.index(input.NT_all, "fasta")
+        fasta_dict = SeqIO.index(fasta, "fasta")
         if len(fasta_dict) == 0:
             raise ConfigError(f"anvi'o and the EcoPhylo workflow are sad to announce that the "
-                              f"HMM, {wildcards.HMM}, was not not found in any of your contigsDBs")
+                            f"HMM, {wildcards.HMM}, was not not found in any of your contigsDBs")
             
-        shell(f"mmseqs easy-cluster {input} \
+        shell(f"mmseqs easy-cluster {fasta} \
                                     {params.output_prefix} \
                                     {params.mmseqs_tmp} \
                                     --threads {threads} \
@@ -448,7 +453,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}_{clustering_threshold}.log")
     input: 
         NT_all = rules.combine_sequence_data.output.NT_all,
-        done = rules.cluster_X_percent_sim_mmseqs.output.done
+        done = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-mmseqs_NR_cluster.done")
     output: 
         fasta = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta"),
         mmseqs_cluster_rep_index = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{clustering_threshold}", "{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
