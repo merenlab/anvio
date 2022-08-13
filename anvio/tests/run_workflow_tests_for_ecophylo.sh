@@ -21,6 +21,7 @@ anvi-run-workflow -w ecophylo --get-default-config default-config.json
 sed 's|external-genomes.txt||' default-config.json > only-metagenomes-txt-config.json
 sed 's|metagenomes.txt||' default-config.json > only-external-genomes-txt-config.json
 sed 's|samples\.txt||' default-config.json > no-samples-txt-config.json
+sed 's|\"AA_mode\"\: false|\"AA_mode\"\: true|' no-samples-txt-config.json > AA-mode-config.json
 sed 's|external-genomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-metagenomes-txt-config.json
 sed 's|metagenomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-external-genomes-txt-config.json
 
@@ -78,7 +79,11 @@ anvi-run-workflow -w ecophylo -c no-samples-only-metagenomes-txt-config.json -A 
 INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only external-genomes.txt"
 anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json -A --dry-run
 
+INFO "Running ecophylo workflow - no samples.txt and AA-mode"
+anvi-run-workflow -w ecophylo -c AA-mode-config.json -A --dry-run
+
 INFO "Running ecophylo workflow - no samples.txt"
+rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
 
 INFO "Running ecophylo workflow interactive"
@@ -90,7 +95,7 @@ anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
 
 INFO "Running ecophylo workflow - external HMM"
-anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json
+anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json
 
 INFO "Running ecophylo workflow interactive from external HMM"
 HMM="Ribosomal_L16"

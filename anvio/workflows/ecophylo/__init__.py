@@ -76,7 +76,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
         rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', 'clustering_threshold_for_OTUs', 'additional_params']
-        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs']
+        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs', 'AA_mode']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
@@ -99,7 +99,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
             'cat_external_gene_calls_file': {'threads': 2},
-            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97]},
+            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97], 'AA_mode': False},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
             'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
@@ -221,6 +221,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         self.init_hmm_list_txt()
 
+        self.AA_mode = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'AA_mode'])
+
         if self.samples_txt_file:
             filesnpaths.is_file_tab_delimited(self.samples_txt_file)
 
@@ -235,6 +237,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                   f"We are not sure what's wrong, but we can't find a column with title 'sample'.")
 
             self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+
+            if self.AA_mode == True:
+                raise ConfigError("You provided a samples.txt so you're in profile mode! Please change AA_mode to false.")
+
         else:
             self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
                              f"to profile the ecology of your proteins and will just be making trees for now!")
@@ -261,6 +267,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigsDB_name_bam_dict) == 0:
             raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
                               f"Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
+
+        if self.cluster_representative_method == 'cluster_rep_with_coverages' and self.AA_mode == True:
+            raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages in AA_mode")
 
         # Parse clustering parameter space
         self.clustering_param_space = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'clustering_threshold_for_OTUs'])
