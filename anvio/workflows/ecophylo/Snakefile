@@ -177,10 +177,10 @@ rule filter_hmm_hits_by_model_coverage:
                                                         {params.additional_params} >> {log} 2>&1")
             
         else:
-            no_hmm_hits_string = f"{HMM_source} could not find any hmm_hits in the the contigsDB: {contigsDB}"
-            print(f"{HMM_source} could not find any hmm_hits in the the contigsDB: {contigsDB}")
+            no_hmm_hits_string = f"The HMM {wildcards.HMM} was not found in the hmm_hits of the contigsDB: {contigsDB}"
+            print(no_hmm_hits_string)
             with open(log.log, "w") as logfile:
-                logfile.write(f"{HMM_source} could not find any hmm_hits in the the contigsDB: {contigsDB}")
+                logfile.write(no_hmm_hits_string)
         
         # Get hmm_hits.txt
         get_hmm_hits_txt(contigsDB, output.hmm_hits_filtered)
