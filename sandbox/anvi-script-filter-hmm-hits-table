@@ -394,7 +394,7 @@ if __name__ == '__main__':
                         "anvi'o will first merge independent hits for the same gene/model that are closer to each other than that "
                         "distance.")
 
-    args = parser.parse_args()
+    args = parser.get_args(parser)
 
     try:
         main(args)

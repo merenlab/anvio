@@ -1776,6 +1776,44 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
+def get_stretches_for_numbers_list(numbers_list, discard_singletons=False):
+    """Takes a array of numbers, and turns reports back stretches
+
+    For example, for a `numbers_list` that looks like this:
+
+        >>> [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 99]
+
+    This function will return the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    If the user chooses to `discard_singletons`, then for the same input list,
+    they will get the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    The output of this function can be the input of `merge_stretches` function.
+    """
+
+    if not len(numbers_list):
+        return []
+
+    numbers_list = sorted(numbers_list)
+
+    stretches = []
+    groups = it.groupby(numbers_list, key=lambda item, c=it.count():item-next(c))
+
+    for k, g in groups:
+        stretch = list(g)
+
+        if discard_singletons and len(stretch) == 1:
+            continue
+
+        stretches.append((stretch[0], stretch[-1]), )
+
+    return stretches
+
+
 def merge_stretches(stretches, min_distance_between_independent_stretches=0):
     """A function to merge stretches of indices in an array.
 
@@ -1787,7 +1825,16 @@ def merge_stretches(stretches, min_distance_between_independent_stretches=0):
 
         >>> [(3, 9), (14, 27), (32, 42)]
 
+    If all you have is an array of numbers rather than stretches to be merbed, see
+    the function `get_stretches_for_numbers_list`.
     """
+
+    if not len(stretches):
+        return None
+
+    if not isinstance(stretches[0], tuple):
+        raise ConfigError("This function expect a list of tuples :/")
+
     STRETCHES_FINAL = stretches
     STRETCHES_CURRENT = stretches
 

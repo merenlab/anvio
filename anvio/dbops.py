@@ -280,10 +280,10 @@ class ContigsSuperclass(object):
         if len(gene_caller_ids_of_interest):
             if len(split_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'split names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'split names of interest'
             elif len(contig_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'contig names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'contig names of interest'
         elif len(split_names_of_interest):
             if len(contig_names_of_interest):
                 too_many_args = True
@@ -309,7 +309,7 @@ class ContigsSuperclass(object):
 
         if subset_provided and not len(contig_names_of_interest):
             raise ConfigError("Anvi'o was trying to identify the contig names of interest in `init_contig_sequences` "
-                              "and then after a few steps there was no contig names of interest at all :( Something "
+                              "and then after a few steps there were no contig names of interest at all :( Something "
                               "fishy happened, and code is Jon Snow.")
 
         self.progress.new('Loading contig sequences')
@@ -3859,7 +3859,7 @@ class PanDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
+        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls', \
                     'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
             try:
                 self.meta[key] = int(self.meta[key])
