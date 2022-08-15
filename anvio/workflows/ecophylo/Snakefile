@@ -792,27 +792,24 @@ rule rename_tree_tips:
     output:
         done = os.path.join(dirs_dict['TREES'], "{HMM}_combined.done"),
         tree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.nwk"),
-        fasta = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.faa")
+        fasta = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed.faa"),
+        fasta_all = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}_renamed_all.faa")
     params:
         fasttree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.nwk"),
         iqtree = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}.iqtree"),
-        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa")
+        fasta = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_aligned_trimmed_filtered.fa"),
+        fasta_all = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{HMM}", "{HMM}-all.faa")
     threads: M.T('rename_tree_tips')
     run:
         # rename tree tips 
         from ete3 import Tree
 
         def add_split_name_to_tree_tips(tree):
-
             t = Tree(tree)
-
             for leaf in t:
                 leaf.name = leaf.name + "_split_00001"
-
             t.write(format = 1, outfile = output.tree)
 
-            shell('touch {output}')
-        
         if M.run_iqtree == True:
             add_split_name_to_tree_tips(params.iqtree)
         
@@ -820,18 +817,25 @@ rule rename_tree_tips:
             add_split_name_to_tree_tips(params.fasttree)
         
         # rename fasta headers to match tree
-        fasta = open(str(params.fasta))
-        newfasta = open(output.fasta, "a")
 
-        for line in fasta:
-            if line.startswith('>'):
-                newname = line.rstrip("\n") + "_split_00001\n"
-                newfasta.write(newname)
-            else:
-                newfasta.write(line)
+        def add_split_name_to_fasta_headers(fasta, outfile):
+            fasta = open(str(fasta))
+            newfasta = open(outfile, "a")
 
-        fasta.close()
-        newfasta.close()
+            for line in fasta:
+                if line.startswith('>'):
+                    newname = line.rstrip("\n") + "_split_00001\n"
+                    newfasta.write(newname)
+                else:
+                    newfasta.write(line)
+
+            fasta.close()
+            newfasta.close()
+
+        add_split_name_to_fasta_headers(params.fasta, output.fasta)
+        add_split_name_to_fasta_headers(params.fasta_all, output.fasta_all)
+
+        shell('touch {output.done}')
 
 
 def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
