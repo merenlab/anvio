@@ -61,6 +61,7 @@ rule anvi_run_hmms_hmmsearch:
         if M.metagenomes:
             if wildcards.sample_name in M.metagenomes_name_list:
                 threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
+                threads = int(threads[0])
         else:
             threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
 
