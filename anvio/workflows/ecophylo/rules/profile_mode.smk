@@ -33,6 +33,7 @@ rule make_metagenomics_config_file:
         config_dict['bowtie']['threads'] = 5
         config_dict['bowtie_build']['threads'] = 5
         config_dict['anvi_gen_contigs_database']['threads'] = 5
+        config_dict['anvi_init_bam']['threads'] = 2
         config_dict['anvi_profile']['--profile-SCVs'] = True 
 
         if M.clusterize_metagenomics_workflow == True:
@@ -50,11 +51,11 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile HMM_hits"""
 
     version: 1.0
-    log: "00_LOGS/run_metagenomics_workflow.log"
+    log: "00_LOGS/{HMM}_run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
-        done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
+        done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_metagenomics_workflow.done"))
     params:
         HPC_string = M.metagenomics_workflow_HPC_string,
         snakemake_additional_params = M.snakemake_additional_params 
@@ -76,7 +77,7 @@ rule run_metagenomics_workflow:
             HPC_string = params.HPC_string
             shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{HPC_string}\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         else:
-            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A {params.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going && cd -")
+            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A {params.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
         
 
 rule add_default_collection:
