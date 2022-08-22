@@ -246,6 +246,10 @@ class Inversions:
             # starts and ends with 'low coverage'.
             regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= self.min_coverage_to_define_stretches, [False]])
 
+            # but if there aren't any regions covered enough we want to stop:
+            if not regions_of_contig_covered_enough.any():
+                continue
+            
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
             cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
