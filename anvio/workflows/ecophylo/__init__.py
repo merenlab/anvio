@@ -183,6 +183,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         
         if self.external_genomes:
             
+            # FIXME: If contigs-dbs use an external gene-caller, e.g not prodigal, then this will break. It 
+            # looks like GenomeDescriptions expects all contigs-dbs in the external-genomes.txt to have the same 
+            # gene-caller when it would be great if it could be flexible and handle multiple kinds of gene-callers. 
+            # This line would allow an external-genomes.txt to work if they were all using the NCBI_PGAP gene-caller:
+            # args = argparse.Namespace(external_genomes=self.external_genomes,gene_caller='NCBI_PGAP')
+
             args = argparse.Namespace(external_genomes=self.external_genomes)
             genome_descriptions = GenomeDescriptions(args)
             genome_descriptions.load_genomes_descriptions()
