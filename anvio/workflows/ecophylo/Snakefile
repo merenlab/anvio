@@ -37,6 +37,29 @@ rule ECOPHYLO_WORKFLOW_target_rule:
     input: M.target_files
 
 
+def get_hmm_threads(sample_name):
+    threads = None
+    max_threads = self.get_param_value_from_config("max_threads")
+
+    if M.metagenomes:
+        if sample_name in M.metagenomes_name_list:
+            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
+    else:
+        threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
+    
+    if threads:
+        try:
+            if int(threads) > float(max_threads):
+                return int(max_threads)
+            else:
+                return int(threads)
+        except:
+            raise ConfigError(f'"threads" must be an integer number. In your config file you provided "{threads}" for '
+                              f'the number of threads for rule "{rule_name}"')
+    else:
+        return 1
+
+
 rule anvi_run_hmms_hmmsearch:
     """Run hmmsearch with input HMMs to get domtblout"""
 
@@ -49,7 +72,7 @@ rule anvi_run_hmms_hmmsearch:
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'additional_params']),
-    threads: M.T('anvi_run_hmms_hmmsearch')
+    threads: get_hmm_threads("{sample_name}")
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_dict[wildcards.HMM]['path'])
@@ -61,8 +84,10 @@ rule anvi_run_hmms_hmmsearch:
             if wildcards.sample_name in M.metagenomes_name_list:
                 threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
                 threads = int(threads[0])
+                print(f"metagenomes threads: {threads}")
         else:
             threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
+            print(f"everything else threads: {threads}")
 
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}", "dom-hmmsearch", "hmm.domtable")
 
