@@ -378,7 +378,7 @@ rule combine_sequence_data:
         outfile = os.path.join(dirs_dict['LOGS_DIR'], f"contigDBs_with_no_HMM_hit_{wildcards.HMM}.log") 
         with open(outfile, "a") as outfile:
             for element in contigsDB_with_hmm_NO_hits:
-                outfile.write(element + '/n')
+                outfile.write(element + '\n')
         
         NT_list = []
         AA_list = []
