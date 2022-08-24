@@ -37,10 +37,7 @@ rule ECOPHYLO_WORKFLOW_target_rule:
 
 
 rule anvi_run_hmms_hmmsearch:
-    """
-    Run hmmsearch with input HMMs to get domtblout.
-    If incoming contigsDBs do not have `scg_taxonomy_was_run` then run anvi-run-scg-taxonomy 
-    """
+    """Run hmmsearch with input HMMs to get domtblout."""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
@@ -108,19 +105,33 @@ rule anvi_run_hmms_hmmsearch:
 
 
 def get_hmm_hits_txt(contigsDB, out_file):
-        database = db.DB(contigsDB, None, ignore_version=True)
-        tables_in_database = database.get_table_names()
-        args_table = 'hmm_hits'
+    """This function extracts the hmm_hits table from a contigs-db
+    
+    Parameters
+    ==========
+    contigsDB
 
-        if args_table not in tables_in_database:
-            # Make empty hmm_hits.txt so that the rule the next rule has something to work with
-            column_names = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
-            df = pd.DataFrame(columns = column_names)
-            df.to_csv(out_file, sep="\t", index=False, header=True)
-        else:
-            table_columns = database.get_table_structure(args_table)
-            table_content = database.get_table_as_dataframe(args_table, columns_of_interest=table_columns, error_if_no_data=False)
-            u.store_dataframe_as_TAB_delimited_file(table_content, out_file)
+    out_file : str
+        Output file path for hmm_hits.tsv
+
+    Returns
+    =======
+    hmm_hits.tsv : tsv 
+    """
+
+    database = db.DB(contigsDB, None, ignore_version=True)
+    tables_in_database = database.get_table_names()
+    args_table = 'hmm_hits'
+
+    if args_table not in tables_in_database:
+        # Make empty hmm_hits.txt so that the rule the next rule has something to work with
+        column_names = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
+        df = pd.DataFrame(columns = column_names)
+        df.to_csv(out_file, sep="\t", index=False, header=True)
+    else:
+        table_columns = database.get_table_structure(args_table)
+        table_content = database.get_table_as_dataframe(args_table, columns_of_interest=table_columns, error_if_no_data=False)
+        u.store_dataframe_as_TAB_delimited_file(table_content, out_file)
 
 rule filter_hmm_hits_by_model_coverage:
     """
@@ -436,7 +447,7 @@ rule cluster_X_percent_sim_mmseqs:
         fasta_dict = SeqIO.index(fasta, "fasta")
         if len(fasta_dict) == 0:
             raise ConfigError(f"anvi'o and the EcoPhylo workflow are sad to announce that the "
-                            f"HMM, {wildcards.HMM}, was not not found in any of your contigsDBs")
+                              f"HMM, {wildcards.HMM}, was not not found in any of your contigsDBs")
             
         shell(f"mmseqs easy-cluster {fasta} \
                                     {params.output_prefix} \
@@ -552,6 +563,19 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
             df2 = pd.merge(cluster_rep_index, df, left_on='cluster_members', right_on='new_header', how='inner')[["representative", "cluster_members", "mean_cov"]]
 
             def get_new_seed(df):
+                """This function extracts the hmm_hits table from a contigs-db
+                
+                Parameters
+                ==========
+                contigsDB
+
+                out_file : str
+                    Output file path for hmm_hits.tsv
+
+                Returns
+                =======
+                hmm_hits.tsv : tsv 
+                """
                 new_seed = df[df['mean_cov'] == df['mean_cov'].max()]['cluster_members'].iloc[0]
                 df['representative'] = [new_seed] * len(df)
                 return df
@@ -659,6 +683,17 @@ rule count_num_sequences_filtered:
     threads: M.T('count_num_sequences_filtered')
     run:
         def count_num_sequences(fasta):
+            """This function counts the number of sequences in a fasta file
+            
+            Parameters
+            ==========
+            fasta: fasta
+
+            Returns
+            =======
+            num_seqs : int
+            """
+
             num_seqs = 0
             for line in fasta:
                 if line.startswith(">"):
@@ -805,21 +840,42 @@ rule rename_tree_tips:
         # rename tree tips 
         from ete3 import Tree
 
-        def add_split_name_to_tree_tips(tree):
+        def add_split_name_to_tree_tips(tree, outfile):
+            """This function adds a string to the end of tree tip names in a newick file
+            
+            Parameters
+            ==========
+            tree: newick file
+
+            outfile: str
+                path to returned newick tree
+            """
+
             t = Tree(tree)
             for leaf in t:
                 leaf.name = leaf.name + "_split_00001"
-            t.write(format = 1, outfile = output.tree)
+
+            t.write(format = 1, outfile = outfile)
 
         if M.run_iqtree == True:
-            add_split_name_to_tree_tips(params.iqtree)
+            add_split_name_to_tree_tips(tree = params.iqtree, outfile = output.tree)
         
         elif M.run_fasttree == True:
-            add_split_name_to_tree_tips(params.fasttree)
+            add_split_name_to_tree_tips(tree = params.fasttree, outfile = output.tree)
         
         # rename fasta headers to match tree
 
         def add_split_name_to_fasta_headers(fasta, outfile):
+            """This function adds a string "_split_00001\n" to the end of fasta file headers
+            
+            Parameters
+            ==========
+            fasta: str
+                path to fasta file
+
+            outfile: str
+                path returned fasta
+            """
             fasta = open(str(fasta))
             newfasta = open(outfile, "a")
 
@@ -840,9 +896,22 @@ rule rename_tree_tips:
 
 
 def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output):
-    """
-    Here we will extract misc data to add as layers to the interactive interface.
-    e.g. cluster size, contigsDB type, etc. 
+    """This function creates a tsv of metadata for mmseqs cluster tsv outfile (*_cluster.tsv)
+    
+    Parameters
+    ==========
+    mmseqs_cluster_rep_index: str
+        path to tsv containing mmseqs cluster representatives and member index
+
+    final_sequences_headers: str
+        path to tsv with fasta file headers
+    
+    output: str
+        path to output tsv, metadata values include ['split_name', 'contig_db_type', 'genomic_seq_in_cluster', 'cluster_size']
+        - 'split_name': ID name in interactive interface
+        - 'contig_db_type': cluster representative origin: MAG, SAG, isolate genome, metagenome.
+        - 'genomic_seq_in_cluster': detects if a cluster member came from an external-genome
+        - 'cluster_size': number of sequences in cluster
     """
 
     # Import data
@@ -893,10 +962,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
 
     # Export
     #-------
-    df.to_csv(output, \
-              sep="\t", \
-              index=None, \
-              na_rep="NA")
+    df.to_csv(output, sep="\t", index=None, na_rep="NA")
 
 def count_cluster_size(group):
     c = group['cluster_members'].count()
