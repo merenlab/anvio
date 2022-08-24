@@ -140,7 +140,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
 
     def init(self):
-        """This function is called from within the snakefile to initialize parameters."""
+        """This function is called from within the Snakefile to initialize parameters."""
         
         super().init()
         #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
@@ -183,10 +183,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         
         if self.external_genomes:
             
-            # FIXME: If contigs-dbs use an external gene-caller, e.g not prodigal, then this will break. It 
-            # looks like GenomeDescriptions expects all contigs-dbs in the external-genomes.txt to have the same 
-            # gene-caller when it would be great if it could be flexible and handle multiple kinds of gene-callers. 
-            # This line would allow an external-genomes.txt to work if they were all using the NCBI_PGAP gene-caller:
+            # FIXME: If contigs-dbs use an external gene-caller then this will break. It looks like 
+            # GenomeDescriptions expects all contigs-dbs in the external-genomes.txt to have the 
+            # same gene-caller when it would be great if it could be flexible and handle multiple
+            # kinds of gene-callers. 
+            # This line would allow an external-genomes.txt to work if they were all using the NCBI_PGAP
+            # gene-caller:
             # args = argparse.Namespace(external_genomes=self.external_genomes,gene_caller='NCBI_PGAP')
 
             args = argparse.Namespace(external_genomes=self.external_genomes)
@@ -293,6 +295,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
 
     def get_target_files(self):
+        """This function creates a list of target files for Snakemake
+        
+        RETURNS
+        =======
+        target_files: list
+            list of target files for snakemake
+        """
+
         target_files = []
 
         for HMM in self.HMM_dict.keys():
@@ -336,6 +346,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         return target_files
     
     def init_hmm_list_txt(self):
+        """This function 
+
+        PARAMETERS
+        ==========
+        self.hmm_list_path : str
+            Path to hmm_list.txt
+
+        RETURNS
+        =======
+        self.HMM_dict : dict
+            Dict with HMM as primary key and values: HMM_source, PATH
+        """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
         
