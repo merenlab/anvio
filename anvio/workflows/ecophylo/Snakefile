@@ -39,7 +39,7 @@ rule ECOPHYLO_WORKFLOW_target_rule:
 
 def get_hmm_threads(sample_name):
     threads = None
-    max_threads = self.get_param_value_from_config("max_threads")
+    max_threads = M.get_param_value_from_config("max_threads")
 
     if M.metagenomes:
         if sample_name in M.metagenomes_name_list:
