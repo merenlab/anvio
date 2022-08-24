@@ -242,8 +242,6 @@ rule process_hmm_hits:
 
         # There is no point in running the following if we don't have any hmm_hits to begin with!
         if wildcards.HMM in gene_name_list:            
-            print("we have a hit!")
-
             if HMM_source in M.internal_HMM_sources:
 
                 # Get AA and NT fasta files
