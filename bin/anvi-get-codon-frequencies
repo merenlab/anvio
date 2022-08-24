@@ -90,6 +90,10 @@ def main(args):
 
     from_function_sources = parse_select_functions_table(args, from_function_sources)
 
+    # Store the coding dictionary in `args` for use in instantiating single- and multi-genome codon
+    # usage objects.
+    args.codon_to_amino_acid = codonusage.get_custom_encodings(args.encodings_txt)
+
     if args.include_amino_acids and args.exclude_amino_acids:
         raise ConfigError(
             "Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
@@ -283,6 +287,15 @@ if __name__ == '__main__':
     groupD.add_argument(
         '--return-amino-acids', default=False, action='store_true',
         help="Return frequencies of codons encoding the same amino acid.")
+    groupD.add_argument(
+        '--encodings-txt',
+        help="Changes to the standard genetic code can be provided in this tab-delimited file of "
+             "two columns. Each entry in the first column is a codon and each entry in the second "
+             "column is the three-letter code for the decoded amino acid. For example, to recode "
+             "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
+             "the same row of the second. Stop/termination codons are abbreviated \"STP\". This "
+             "option affects per-amino acid and synonymous codon output (when using "
+             "`--return-amino-acids` or `--synonymous`).")
     groupD.add_argument(
         '--sum', default=False, action='store_true',
         help="Sum frequencies across genes, returning a single row for each genome. When functions "

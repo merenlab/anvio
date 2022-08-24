@@ -42,6 +42,10 @@ def main(args):
         raise ConfigError("`--output-file` must be provided.")
     filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
 
+    # Store the coding dictionary in `args` for use in instantiating single- and multi-genome codon
+    # usage objects.
+    args.codon_to_amino_acid = codonusage.get_custom_encodings(args.encodings_txt)
+
     if args.function_sources is None:
         from_function_sources = False
     elif len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
@@ -376,7 +380,7 @@ if __name__ == '__main__':
         "per genome, with the provided output file path serving as a template for the new file "
         "paths."}))
 
-    groupD = parser.add_argument_group('CUB_METRIC')
+    groupD = parser.add_argument_group('CUB_CALCULATION')
     groupD.add_argument(
         '--metrics', choices=['cai', 'delta'], nargs='*',
         help="These are the metrics used in CUB calculations, with a separate calculation and a "
@@ -386,6 +390,15 @@ if __name__ == '__main__':
              "reference-independent. 'cai' is the reference-dependent Codon Adaptation Index of "
              "Sharp and Li (1987). 'delta' is a reference-dependent metric of Ran and Higgs (2012, "
              "Eq. 6) that involves the overall codon composition of the genome in the comparison.")
+    groupD.add_argument(
+        '--encodings-txt',
+        help="Changes to the standard genetic code can be provided in this tab-delimited file of "
+             "two columns. Each entry in the first column is a codon and each entry in the second "
+             "column is the three-letter code for the decoded amino acid. For example, to recode "
+             "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
+             "the same row of the second. Stop/termination codons are abbreviated \"STP\". This "
+             "option affects per-amino acid and synonymous codon output (when using "
+             "`--return-amino-acids` or `--synonymous`).")
 
     groupE = parser.add_argument_group(
         'FUNCTION SELECTION',
