@@ -33,11 +33,12 @@ M.init()
 dirs_dict = M.dirs_dict
 
 rule ECOPHYLO_WORKFLOW_target_rule:
+    """The rule creates all target files for the Snakefile"""
     input: M.target_files
 
 
 rule anvi_run_hmms_hmmsearch:
-    """Run hmmsearch with input HMMs to get domtblout."""
+    """Run hmmsearch with input HMMs to get domtblout"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_hmms_hmmsearch-{sample_name}-{HMM}.log")
@@ -95,8 +96,6 @@ rule anvi_run_hmms_hmmsearch:
                                      --domain-hits-table \
                                      --just-do-it \
                                      -T {threads} >> {log} 2>&1")
-        
-        
 
         # Get hmm_hits.txt
         get_hmm_hits_txt(contigsDB, output.hmm_hits)
@@ -133,10 +132,9 @@ def get_hmm_hits_txt(contigsDB, out_file):
         table_content = database.get_table_as_dataframe(args_table, columns_of_interest=table_columns, error_if_no_data=False)
         u.store_dataframe_as_TAB_delimited_file(table_content, out_file)
 
+
 rule filter_hmm_hits_by_model_coverage:
-    """
-    Remove weak HMM hits using model alignment coverage filter.
-    """
+    """Remove weak HMM hits using model alignment coverage filter"""
 
     version: 1.0
     log: 
@@ -198,10 +196,10 @@ rule filter_hmm_hits_by_model_coverage:
 
         shell('touch {output.done}')
 
+
 rule process_hmm_hits:
-    """
-    Filter hmm_hits table in the contigsDB by model coverage using domtblout.
-    This will remove any sketchy sequences that were recruited by the HMM.
+    """Extract AA/NT fastas and external-gene-calls from contigs-db then rename external-gene-calls
+    names with reformated names. 
     """
 
     version: 1.0
@@ -338,7 +336,7 @@ rule process_hmm_hits:
 
 
 rule combine_sequence_data:
-    """
+    """Cat all NT/AA fastas, reformat files, and renamed external-gene-calls files 
     Narrow end of the workflow funnel! 
 
     In this rule output files from metagenomes, genomes, SAGs, and MAGs all come together here!
@@ -419,8 +417,7 @@ rule combine_sequence_data:
 
 
 rule cluster_X_percent_sim_mmseqs:
-    """
-    """
+    """Cluster NT or AA fasta file with user defined percent identity"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "cluster_X_mmseqs_{HMM}.log")
@@ -457,9 +454,8 @@ rule cluster_X_percent_sim_mmseqs:
 
 
 rule cluster_X_percent_sim_mmseqs_OTUs:
-    """
-    Cluster extracted proteins within percent ID parameter space provided by user. This will 
-    help identify clustering thresholds for OTU like analyses.
+    """Cluster extracted proteins within percent identity parameter space provided by user. 
+    This will help identify clustering thresholds for OTU like analyses.
     """
 
     version: 1.0
@@ -485,9 +481,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
     rule anvi_profile_blitz:
-        """
-        Choose a NT cluster rep based on read recruitment!
-
+        """Choose a NT cluster rep based on read recruitment!
         The sequence with the most read recruitment from the input profiled assembly will be chosen as the cluster representative.
         """
 
@@ -507,8 +501,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
 
     rule cat_anvi_profile_blitz:
-        """
-        """
+        """Cat gene coverages from anvi-profile-blitz"""
 
         version: 1.0
         # log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_profile_blitz-{sample_name}.log")
@@ -524,9 +517,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
 
     rule pick_cluster_rep_with_coverage:
-        """
-        Pick a cluster rep with coverage values.
-        """
+        """Pick a cluster rep with coverage values."""
 
         version: 1.0
         log: os.path.join(dirs_dict['LOGS_DIR'], "pick_cluster_rep_with_coverage-{HMM}.log")
@@ -652,7 +643,7 @@ rule trim_alignment:
 
 
 rule remove_sequences_with_X_percent_gaps:
-    """Removing sequences that have Z > X% gaps"""
+    """Remove sequences that have X% gaps"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "remove_sequences_with_X_percent_gaps_{HMM}.log")
@@ -723,7 +714,7 @@ rule count_num_sequences_filtered:
 
 
 rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
-    """Filter for SCG NT sequences what will be used for read recruitment later"""
+    """Extract NT sequences based on final list of AA sequences for read recruitment"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{HMM}.log")
@@ -741,10 +732,9 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
 
 
 rule subset_external_gene_calls_file_all:
-    """
-    Subset the concatenated external_gene_calls.txt for the final set of NT sequences for profiling.
+    """Subset the concatenated external_gene_calls.txt for the final set of NT sequences for profiling.
     ALSO, once all external-gene-calls are concatenated, gene-callers-ids will be re-indexed so that 
-    there is NO repeating gene-callers-id values. 
+    there are NO repeating gene-callers-id values. 
     """
 
     version: 1.0
@@ -760,10 +750,7 @@ rule subset_external_gene_calls_file_all:
 
 
 rule make_fasta_txt:
-    """
-    Format a fasta.txt with the filtered NT sequences that will be profiled 
-    using the metagenomics workflow.
-    """
+    """Format a fasta.txt with the filtered NT sequences for profiling in metagenomics workflow"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_fasta_txt.log")
@@ -972,7 +959,7 @@ def count_cluster_size(group):
 
 
 rule make_misc_data:
-    """Make misc data file for sequences"""
+    """Make misc data file for clustered sequences"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_contigsDB_type_{HMM}.log")
@@ -1012,7 +999,6 @@ rule anvi_scg_taxonomy:
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{HMM}", "{HMM}_headers.tmp"),
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
     output: 
-        # tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
         done = touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
     threads: M.T('anvi_scg_taxonomy')
     run:

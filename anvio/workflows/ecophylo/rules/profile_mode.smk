@@ -1,7 +1,7 @@
 # default mode with read recruitment
 
 rule make_metagenomics_config_file:
-    """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW"""
+    """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW - PROFILE MODE"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "make_metagenomics_config_file.log")
@@ -81,7 +81,7 @@ rule run_metagenomics_workflow:
         
 
 rule add_default_collection:
-    """"""
+    """Make default collection for profile-db that contains all splits"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{HMM}.log")
@@ -96,9 +96,7 @@ rule add_default_collection:
 
 
 rule anvi_summarize:
-    """
-    Get coverage values for HMM_hits
-    """
+    """Get coverage values for HMM_hits"""
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{HMM}.log")
@@ -301,9 +299,7 @@ rule make_anvio_state_file:
                 json.dump(state_dict, outfile, indent=4)
 
 rule anvi_import_everything_metagenome:
-    """
-    Import state file, phylogenetic tree, AND misc data to interactive interface
-
+    """Import state file, phylogenetic tree, AND misc data to interactive interface
     If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
     """
 
