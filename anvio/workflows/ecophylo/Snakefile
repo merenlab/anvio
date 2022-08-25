@@ -37,15 +37,17 @@ rule ECOPHYLO_WORKFLOW_target_rule:
     input: M.target_files
 
 
-def get_hmm_threads(sample_name):
-    threads = None
+def get_hmm_threads(wildcards):
+    threads = M.T('anvi_run_hmms_hmmsearch')
     max_threads = M.get_param_value_from_config("max_threads")
+    if not max_threads:
+        max_threads = float("Inf")
 
     if M.metagenomes:
-        if sample_name in M.metagenomes_name_list:
-            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
+        if wildcards.sample_name in M.metagenomes_name_list:
+            threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes'])
     else:
-        threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
+        threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes'])
     
     if threads:
         try:
@@ -55,7 +57,7 @@ def get_hmm_threads(sample_name):
                 return int(threads)
         except:
             raise ConfigError(f'"threads" must be an integer number. In your config file you provided "{threads}" for '
-                              f'the number of threads for rule "{rule_name}"')
+                              f'the number of threads for rule anvi_run_hmms_hmmsearch')
     else:
         return 1
 
@@ -72,22 +74,19 @@ rule anvi_run_hmms_hmmsearch:
     params:
         hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'additional_params']),
-    threads: get_hmm_threads("{sample_name}")
+    threads: get_hmm_threads
     run:
         contigsDB = os.path.join(M.contigsDB_name_path_dict[wildcards.sample_name])
         HMM_dir = os.path.join(M.HMM_dict[wildcards.HMM]['path'])
         HMM_source = M.HMM_dict[wildcards.HMM]['source']
         hmmer_output_dir = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}", f"{wildcards.HMM}-dom-hmmsearch")
 
-        #FIXME: conditional threads does not impact the rule as a whole
         if M.metagenomes:
             if wildcards.sample_name in M.metagenomes_name_list:
                 threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_metagenomes']),
                 threads = int(threads[0])
-                print(f"metagenomes threads: {threads}")
         else:
             threads = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'threads_genomes']),
-            print(f"everything else threads: {threads}")
 
         domtblout = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], f"{wildcards.sample_name}-{wildcards.HMM}", "dom-hmmsearch", "hmm.domtable")
 
