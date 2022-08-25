@@ -48,14 +48,14 @@ rule make_metagenomics_config_file:
 
 
 rule run_metagenomics_workflow:
-    """Run metagenomics workflow to profile HMM_hits"""
+    """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
-    log: "00_LOGS/{HMM}_run_metagenomics_workflow.log"
+    log: "00_LOGS/{hmm}_run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
-        done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_metagenomics_workflow.done"))
+        done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_metagenomics_workflow.done"))
     params:
         HPC_string = M.metagenomics_workflow_HPC_string,
         snakemake_additional_params = M.snakemake_additional_params 
@@ -84,29 +84,29 @@ rule add_default_collection:
     """Make default collection for profile-db that contains all splits"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{hmm}.log")
     input: metagenomics_workflow_done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}.db")),
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db")
-    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done"))
+        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}.db")),
+        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db")
+    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     run:
         shell('anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}')
 
 
 rule anvi_summarize:
-    """Get coverage values for HMM_hits"""
+    """Get coverage values for hmm_hits"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{hmm}.log")
     input: 
-        done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{HMM}_add_default_collection.done")
+        done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done")
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{HMM}-contigs.db")),
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
-        output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}")
-    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{HMM}_summarize.done"))
+        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}-contigs.db")),
+        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
+        output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}")
+    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}_summarize.done"))
     threads: M.T('anvi_summarize')
     run: 
         shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it;')
@@ -116,22 +116,22 @@ rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm}.log")
     input:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done_scg = rules.anvi_scg_taxonomy.output.done
     params:
-        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
-        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv"),
+        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
     output:
-        state_file = os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_ECOPHYLO_WORKFLOW_state.json")
+        state_file = os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_ECOPHYLO_WORKFLOW_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
-        HMM_source = M.HMM_dict[wildcards.HMM]['source']
+        hmm_source = M.hmm_dict[wildcards.hmm]['source']
 
         # Read in misc data headers for layer_order
-        if HMM_source in M.internal_HMM_sources:
+        if hmm_source in M.internal_hmm_sources:
             with open(params.tax_data_final) as f:
                 lines = f.read()
                 first = lines.split('\n', 1)[0]
@@ -170,7 +170,7 @@ rule make_anvio_state_file:
         for metagenome in M.sample_names_for_mapping_list:
             metagenomes.append(metagenome)
 
-        if HMM_source in M.internal_HMM_sources:
+        if hmm_source in M.internal_hmm_sources:
             layer_order = first_layers + metagenomes + misc_layers_list + scg_taxonomy_layers_list 
         else:
             layer_order = first_layers + metagenomes + misc_layers_list 
@@ -304,7 +304,7 @@ rule anvi_import_everything_metagenome:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm}.log")
     input:
         tree = rules.rename_tree_tips.output.tree,
         misc_data = rules.make_misc_data.output.misc_data_final,
@@ -312,21 +312,21 @@ rule anvi_import_everything_metagenome:
         done = rules.run_metagenomics_workflow.output.done
     params:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{HMM}", "PROFILE.db"),
-        tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
+        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
+        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_profile.done"))
+        touch(os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
     run:
-        state = os.path.join("ECOPHYLO_WORKFLOW", f"{wildcards.HMM}_ECOPHYLO_WORKFLOW_state.json")
+        state = os.path.join("ECOPHYLO_WORKFLOW", f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
 
         shell("anvi-import-state -p {params.profileDB} -s {state} -n default")
 
-        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
+        shell("anvi-import-items-order -p {params.profileDB} -i {input.tree} --name {wildcards.hmm}_tree")
 
         shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {input.misc_data} --just-do-it")
 
-        HMM_source = M.HMM_dict[wildcards.HMM]['source']
+        hmm_source = M.hmm_dict[wildcards.hmm]['source']
         
-        if HMM_source in M.internal_HMM_sources:
+        if hmm_source in M.internal_hmm_sources:
             shell("anvi-import-misc-data -p {params.profileDB} --target-data-table items {params.tax_data_final} --just-do-it")
