@@ -12,6 +12,7 @@ import anvio
 import anvio.data.hmm
 import anvio.utils as u
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -69,7 +70,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['hmm_list']) # user must input which Reference proteins will be used for workflow
         self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
         self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
-
+        self.general_params.extend(['gene_caller_to_use']) # designate gene-caller for all contig-dbs if not default Prodigal
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
@@ -163,8 +164,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not self.hmm_list_path:
             raise ConfigError('Please provide a path to an hmm_list.txt')
 
+
+        gene_caller_to_use = self.get_param_value_from_config(['gene_caller_to_use'])
+        if not gene_caller_to_use:
+            gene_caller_to_use = constants.default_gene_caller
+
         if self.metagenomes:
-            args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']))
+            args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']), gene_caller = gene_caller_to_use)
             g = MetagenomeDescriptions(args)
             g.load_metagenome_descriptions(skip_sanity_check=True)
             self.metagenomes_dict = g.metagenomes_dict
@@ -183,15 +189,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         
         if self.external_genomes:
             
-            # FIXME: If contigs-dbs use an external gene-caller then this will break. It looks like 
-            # GenomeDescriptions expects all contigs-dbs in the external-genomes.txt to have the 
-            # same gene-caller when it would be great if it could be flexible and handle multiple
-            # kinds of gene-callers. 
-            # This line would allow an external-genomes.txt to work if they were all using the NCBI_PGAP
-            # gene-caller:
-            # args = argparse.Namespace(external_genomes=self.external_genomes,gene_caller='NCBI_PGAP')
+            # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
+            # here. Users should only have one type of gene-caller e.g. "NCBI_PGAP".
 
-            args = argparse.Namespace(external_genomes=self.external_genomes)
+            args = argparse.Namespace(external_genomes=self.external_genomes, gene_caller = gene_caller_to_use)
             genome_descriptions = GenomeDescriptions(args)
             genome_descriptions.load_genomes_descriptions()
             self.external_genomes_dict = genome_descriptions.external_genomes_dict
