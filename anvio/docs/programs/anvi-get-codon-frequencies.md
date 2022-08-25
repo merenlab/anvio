@@ -9,15 +9,19 @@ A range of options allows calculation of different frequency statistics. This pr
 This command produces a table of codon frequencies from coding sequences in the contigs database. The first column of the table contains gene caller IDs and subsequent columns contain frequency data. The decoded amino acid is included in each codon column name with the flag, `--header-amino-acids`.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output.txt --header-amino-acids
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           -o path/to/output.txt \
+                           --header-amino-acids
 {{ codestop }}
 
 ### Function frequencies
 
-This command produces a table of function frequencies rather than gene frequencies. By using `--function-sources` without any arguments, the output will include every function from every source used to annotate the genome, e.g., 'KOfam', 'KEGG_BRITE', 'Pfam'. The first four columns of the table before frequency data contain, respectively, gene caller IDs, function sources, accessions, and names.
+This command produces a table of function frequencies rather than gene frequencies. By using `--function-sources` without any arguments, the output will include every %(functions)s source available in a given %(contigs-db)s, e.g., `KOfam`, `KEGG_BRITE`, `Pfam` (you can always see the complete list of %(functions)s in *your* %(contigs-db)s by running the program %(anvi-db-info)s on it). The first four columns of the table before frequency data contain, respectively, gene caller IDs, function sources, accessions, and names.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db --function-sources --function-table-output path/to/function_output.txt
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           --function-sources \
+                           --function-table-output path/to/function_output.txt
 {{ codestop }}
 
 ### Gene frequencies with function information
@@ -25,7 +29,9 @@ anvi-get-codon-frequencies -c path/to/contigs.db --function-sources --function-t
 In contrast to the previous example, this command produces a table of gene frequencies, but has an entry for every gene/function pair, allowing statistical interrogation of the gene components of functions. The function table output is derived from this table by grouping rows by function source, retaining only one row per gene caller ID, and summing frequencies across rows of the groups.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db --function-sources --gene-table-output path/to/gene_output.txt
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           --function-sources \
+                           --gene-table-output path/to/gene_output.txt
 {{ codestop }}
 
 ### Codon frequencies from multiple internal and external genomes
@@ -33,7 +39,9 @@ anvi-get-codon-frequencies -c path/to/contigs.db --function-sources --gene-table
 This command produces a table of codon frequencies from coding sequences in multiple genomes. A column is added at the beginning of the table for genome name.
 
 {{ codestart }}
-anvi-get-codon-frequencies -i path/to/internal_genomes.txt -e path/to/external_genomes.txt -o path/to/output.txt
+anvi-get-codon-frequencies -i %(internal-genomes)s \
+                           -e %(external-genomes)s \
+                           -o path/to/output.txt
 {{ codestop }}
 
 ## Option examples
@@ -87,7 +95,7 @@ The following tables show the options to get the requested results.
 | [Exclude functions with <300 codons](#function-codon-count) | `--function-min-codons 300` |
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
 | [Only include certain codons](#codons) | `--include-amino-acids Leu Ile` |
-| [Exclude codons for amino acids with <5 codons in >90% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
+| [Exclude codons for amino acids with <5 codons in >90%% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
 
 ## Option details
@@ -101,15 +109,23 @@ This flag returns the relative frequency of each codon among the codons encoding
 `--sum` and `--average` produce a table with a single row of frequencies from across genes. For example, the following command sums the codon frequencies of each decoded amino acid (and STP) across all genes, and then calculates the relative frequencies of the amino acids.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --sum --amino-acid --relative
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           -o path/to/output_table.txt \
+                           --sum \
+                           --amino-acid \
+                           --relative
 {{ codestop }}
 
 The first column of the output table has the header, 'gene_caller_ids', and the value, 'all', indicating that the data is aggregated across genes.
 
-`--sum` and `--average` operate on genes. When used with a function option, the program subsets the genes annotated by the functions of interest. With `--average`, it calculates the average frequency across genes rather than functions (sums of genes with functional annotation). For example, the following command calculates the average synonymous relative frequency across genes annotated by KEGG KOfams.
+`--sum` and `--average` operate on genes. When used with a function option, the program subsets the genes annotated by the functions of interest. With `--average`, it calculates the average frequency across genes rather than functions (sums of genes with functional annotation). For example, the following command calculates the average synonymous relative frequency across genes annotated by `KOfam`.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --average --synonymous --function-sources KOfam
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           -o path/to/output_table.txt \
+                           --average \
+                           --synonymous \
+                           --function-sources KOfam
 {{ codestop }}
 
 ### Functions
@@ -125,8 +141,12 @@ There are multiple options to define which functions and sources should be used.
 `--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options to select COG functions.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources COG14_FUNCTION --function-accessions COG0004 COG0005 --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
-{{ codestart }}
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           -o path/to/output_table.txt \
+                           --function-sources COG14_FUNCTION \
+                           --function-accessions COG0004 COG0005 \
+                           --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
+{{ codestop }}
 
 To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for source.
 
@@ -134,10 +154,12 @@ By default, selected function accessions or names do not need to be present in t
 
 #### BRITE hierarchies
 
-Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams). For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
+Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Codon frequencies can be calculated for genes classified at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns summed codon frequencies for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
-anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --function-sources KEGG_BRITE
+anvi-get-codon-frequencies -c %(contigs-db)s \
+                           -o path/to/output_table.txt \
+                           --function-sources KEGG_BRITE
 {{ codestop }}
 
 ### Filter genes and codons
@@ -146,7 +168,7 @@ anvi-get-codon-frequencies -c path/to/contigs.db -o path/to/output_table.txt --f
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons and the single codons encoding Met and Trp are excluded by default from calculation of synonymous codon relative frequencies (`--synonymous`). Relative frequencies across codons in a gene (`--relative`) are calculated for the selected amino acids, so the following option would return a table of codon frequencies relative to the codons encoding the selected nonpolar amino acids: `--include-amino-acids Gly Ala Val Leu Met Ile`.
 
-Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies. For example, 0.5 AAT and 0.5 AAC for Asn may be statistically insignificant for a gene with 1 AAT and 1 AAC; even more meaningless would be 1.0 AAT and 0.0 AAC for a gene with 1 AAT and 0 AAC. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90% of genes will be excluded from the analysis with `--pansequence-min-amino-acids 5 0.9`.
+Dynamic exclusion of amino acids can be useful in the calculation of synonymous codon frequencies. For example, 0.5 AAT and 0.5 AAC for Asn may be statistically insignificant for a gene with 1 AAT and 1 AAC; even more meaningless would be 1.0 AAT and 0.0 AAC for a gene with 1 AAT and 0 AAC. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90%% of genes will be excluded from the analysis with `--pansequence-min-amino-acids 5 0.9`.
 
 Codons for rarer amino acids within each gene or function row can be excluded in the results table (replaced by NaN) with `--sequence-min-amino-acids`. This parameter only affects how the results are displayed. For example, amino acids with <5 codons in each row will be discarded in the results table with `--sequence-min-amino-acids 5`.
 

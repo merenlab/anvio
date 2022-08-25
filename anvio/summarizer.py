@@ -569,7 +569,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         ('Minbit parameter', self.p_meta['minbit']),
                         ('Gene cluster min occurrence parameter', pretty(int(self.p_meta['gene_cluster_min_occurrence']))),
                         ('MCL inflation parameter', self.p_meta['mcl_inflation']),
-                        ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND (and it was %s)' % ('sensitive' if self.p_meta['diamond_sensitive'] else 'not sensitive'))),
+                        ('NCBI blastp or DIAMOND?', 'NCBI blastp' if self.p_meta['use_ncbi_blast'] else ('DIAMOND')),
+                        ('Additional parameters for sequence search', self.p_meta['additional_params_for_seq_search']),
                         ('Number of genomes used', pretty(int(self.p_meta['num_genomes']))),
                         ('Items aditional data keys', '--' if not self.items_additional_data_keys else ', '.join(self.items_additional_data_keys))],
 
