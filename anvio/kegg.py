@@ -4593,7 +4593,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kofam_hits_superdict = {}
 
         if skip_storing_data or self.write_dict_to_json:
-            self.output_file_dict = {}
+            self.output_file_dict = {} # if this object is empty, no output will be generated
         else:
             if output_files_dictionary:
                 self.output_file_dict = output_files_dictionary
@@ -5107,6 +5107,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         This is an alternative to store_kegg_metabolism_superdicts(), which prints the entire metabolism superdicts for all
         genomes/bins/contigs in metagenome at once.
+
+        NOTE: in cases where output should not be generated (ie, self.skip_storing_data is true), the self.output_file_dict
+        object will be empty, so the loop in this function will never run. :)
         """
 
         for mode, file_obj in self.output_file_dict.items():
