@@ -38,6 +38,19 @@ rule ECOPHYLO_WORKFLOW_target_rule:
 
 
 def get_hmm_threads(wildcards):
+    """This function conditionly selects threads for anvi-run-hmms based on 
+    if a contigs-db is a metagenome or not.
+    
+    Parameters
+    ==========
+    wildcards: snakemake object
+        allows you to programmatically access snakemake wildcards
+
+    Returns
+    =======
+    threads : int
+        number of threads to be used
+    """
     threads = M.T('anvi_run_hmms_hmmsearch')
     max_threads = M.get_param_value_from_config("max_threads")
     if not max_threads:
