@@ -148,8 +148,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
 
         self.names_list = []
-        self.contigsDB_name_path_dict = {}
-        self.contigsDB_name_bam_dict = {}
+        self.contigs_db_name_path_dict = {}
+        self.contigs_db_name_bam_dict = {}
 
         # Load input files
         self.metagenomes = self.get_param_value_from_config(['metagenomes'])
@@ -176,11 +176,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             self.metagenomes_dict = g.metagenomes_dict
             self.metagenomes_name_list = list(self.metagenomes_dict.keys())
             self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
-            self.contigsDB_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
+            self.contigs_db_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
 
             self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
             if 'bam' in self.metagenomes_df.columns:
-                self.contigsDB_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
+                self.contigs_db_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
                 self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
             self.names_list.extend(self.metagenomes_name_list)
 
@@ -198,12 +198,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             self.external_genomes_dict = genome_descriptions.external_genomes_dict
             self.external_genomes_names_list = list(self.external_genomes_dict.keys())
             self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
-            self.contigsDB_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
+            self.contigs_db_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
 
 
             self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
             if 'bam' in self.external_genomes_df.columns:
-                self.contigsDB_name_bam_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_df.bam)))
+                self.contigs_db_name_bam_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_df.bam)))
                 self.external_genomes_profiles_list = self.external_genomes_df.bam.to_list()
             self.names_list.extend(self.external_genomes_names_list)
 
@@ -211,11 +211,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             self.external_genomes_names_list = []
 
         # Concatenate metagenomes.txt and external-genomes.txt
-        contigsDB_name_path_list = list(self.contigsDB_name_path_dict.items())
-        contigsDB_name_path_df = pd.DataFrame(contigsDB_name_path_list, columns=['name', 'contigs_db_path'])
+        contigs_db_name_path_list = list(self.contigs_db_name_path_dict.items())
+        contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
         self.combined_genomes_df_path = "ECOPHYLO_WORKFLOW/combined_genomes.txt"
         
-        contigsDB_name_path_df.to_csv(self.combined_genomes_df_path, \
+        contigs_db_name_path_df.to_csv(self.combined_genomes_df_path, \
                                       sep="\t", \
                                       index=False, \
                                       header=True)
@@ -273,7 +273,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             raise ConfigError(f"anvi'o has never heard of this method to pick a cluster representative: {self.cluster_representative_method} "
                               f"Please check your config file {self.config_file} and change cluster_representative_method to one of the following: 'mmseqs' and 'cluster_rep_with_coverages'")
 
-        if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigsDB_name_bam_dict) == 0:
+        if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigs_db_name_bam_dict) == 0:
             raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
                               f"Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
 
@@ -306,42 +306,42 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         target_files = []
 
-        for HMM in self.HMM_dict.keys():
+        for hmm in self.hmm_dict.keys():
 
             # Clustering parameter space
             for clustering_threshold in self.clustering_param_space_list_strings:
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{clustering_threshold}", f"{HMM}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_rep_seq.fasta")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{HMM}", f"{clustering_threshold}", f"{HMM}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], f"{hmm}", f"{clustering_threshold}", f"{hmm}-{clustering_threshold}-mmseqs_NR_cluster.tsv")
                 target_files.append(target_file)
 
             if not self.samples_txt_file:
                 # TREE-MODE
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
                 target_files.append(target_file)
                 
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
                 target_files.append(target_file)
                 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_tree.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_state_imported_tree.done")
                 target_files.append(target_file)
             
             else:
                 # PROFILE-MODE
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_state_imported_profile.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_state_imported_profile.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['TREES'], f"{HMM}", f"{HMM}_renamed.nwk")
+                target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
                 target_files.append(target_file)
                 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{HMM}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{HMM}", f"{HMM}_stats.tsv")
+                target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
                 target_files.append(target_file)
         
         return target_files
@@ -356,63 +356,63 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         RETURNS
         =======
-        self.HMM_dict : dict
-            Dict with HMM as primary key and values: HMM_source, PATH
+        self.hmm_dict : dict
+            Dict with hmm as primary key and values: hmm_source, PATH
         """
         filesnpaths.is_file_exists(self.hmm_list_path)
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
         
         try:
-            HMM_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
+            hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
         except AttributeError as e:
             raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
                               f"This is the error from trying to load it: {self.hmm_list_path}")
 
-        HMM_list_txt_columns = ['name', 'source', 'path']
+        hmm_list_txt_columns = ['name', 'source', 'path']
 
-        for column_name in HMM_list_txt_columns:
-            if column_name not in list(HMM_df.columns):
+        for column_name in hmm_list_txt_columns:
+            if column_name not in list(hmm_df.columns):
                 raise ConfigError(f"Looks like your hmm-list.txt file, {self.hmm_list_path}, is not properly formatted. "
                                   f"We are not sure what's wrong, but we can't find a column with title '{column_name}'."
-                                  f"Please make sure you have a tsv with the column names: {HMM_list_txt_columns}")
+                                  f"Please make sure you have a tsv with the column names: {hmm_list_txt_columns}")
 
-        self.HMM_dict = HMM_df.set_index('name').to_dict('index')
+        self.hmm_dict = hmm_df.set_index('name').to_dict('index')
 
-        if any("-" in s for s in self.HMM_dict.keys()):
-            raise ConfigError(f"Please do not use "-" in your external HMM names in: "
+        if any("-" in s for s in self.hmm_dict.keys()):
+            raise ConfigError(f"Please do not use "-" in your external hmm names in: "
                               f"{self.hmm_list_path}. It will make our lives "
                               f"easier with Snakemake wildcards :)")
 
-        # FIXME: this line prints the list of HMM_sources to stdout and I don't want that
-        self.internal_HMM_sources = list(anvio.data.hmm.sources.keys())
+        # FIXME: this line prints the list of hmm_sources to stdout and I don't want that
+        self.internal_hmm_sources = list(anvio.data.hmm.sources.keys())
 
-        for HMM in self.HMM_dict.keys():
-            HMM_source = self.HMM_dict[HMM]['source']
-            HMM_path = self.HMM_dict[HMM]['path']
+        for hmm in self.hmm_dict.keys():
+            hmm_source = self.hmm_dict[hmm]['source']
+            hmm_path = self.hmm_dict[hmm]['path']
 
-            if HMM_path == "INTERNAL":
-                if HMM_source not in self.internal_HMM_sources:
-                    raise ConfigError(f"{HMM_source} is not an 'INTERNAL' HMM source for anvi'o. "
+            if hmm_path == "INTERNAL":
+                if hmm_source not in self.internal_hmm_sources:
+                    raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
-                                      f"please checkout the default internal HMMs here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
+                                      f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
 
-            if not filesnpaths.is_file_exists(HMM_path, dont_raise=True):
-                if HMM_path == 'INTERNAL':
+            if not filesnpaths.is_file_exists(hmm_path, dont_raise=True):
+                if hmm_path == 'INTERNAL':
                     pass
                 else:
-                    raise ConfigError(f"The path to your HMM {HMM} does not exist: {HMM_path}. "
+                    raise ConfigError(f"The path to your hmm {hmm} does not exist: {hmm_path}. "
                                       f"Please double check the paths in our hmm-list.txt: {self.hmm_list_path} "
-                                      f"If the HMM you want to use is in an internal anvi'o HMM collection e.g. Bacteria_71 "
+                                      f"If the hmm you want to use is in an internal anvi'o hmm collection e.g. Bacteria_71 "
                                       f"please put 'INTERNAL' for the path.")
             
-            if HMM_path != "INTERNAL":
-                sources = u.get_HMM_sources_dictionary([HMM_path])
+            if hmm_path != "INTERNAL":
+                sources = u.get_hmm_sources_dictionary([hmm_path])
                 
                 for source,value in sources.items():
                     gene = value['genes']
-                    if HMM_source != source:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {HMM} to this: {source}")
+                    if hmm_source != source:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the source for gene {hmm} to this: {source}")
                     if len(gene) > 1:
-                        raise ConfigError("EcoPhylo can only work with one gene at a time in a HMM directory (at the moment)")
-                    if HMM != gene[0]:
-                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {HMM} to this: {gene[0]}")
+                        raise ConfigError("EcoPhylo can only work with one gene at a time in a hmm directory (at the moment)")
+                    if hmm != gene[0]:
+                        raise ConfigError(f"In your {self.hmm_list_path}, please change the gene name {hmm} to this: {gene[0]}")
