@@ -1,3 +1,9 @@
+# Slack or someting else? (09.08.2022) #
+Additional restrictions in the free version of Slack makes us question whether we need a more appropriate solution.
+
+If you have benefited from [anvi'o Slack](https://join.slack.com/t/anvio/shared_invite/zt-ov46uj90-9p2woLJFcVCfv7cdhANXSA), or interested in this discussion, please consider reading [this blog post](https://anvio.org/blog/slack-vs-discord/), and share your input by filling [this form](https://forms.gle/qu7EbebVnM48CNPM9). Thank you!
+***
+
 # v7, "hope" is out! (04.01.2021) #
 We are happy to announce anvi'o v7, with the code name 'hope' after 'Hope E. Hopps'.
 

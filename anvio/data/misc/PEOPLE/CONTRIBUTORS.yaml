@@ -166,3 +166,17 @@
       inst: Marine Biological Laboratory
       inst_link: https://www.mbl.edu
       current: true
+
+- github: Lamm-a
+  name: Robert Murphy
+  web: https://www1.bio.ku.dk/english/staff/?pure=en/persons/670045
+  avatar: RobMurphy.png
+  email: robert.murphy@bio.ku.dk
+  linkedin: robert-murphy-b36475105
+  orcid: 0000-0002-0850-5439
+  bio: "Microbiologist and bioinformatician - intrested in microbial communites present in symbiosis as a source for novel secondary metabolites"
+  affiliations:
+    - title: PhD Student
+      inst: Section of Ecology and Evolution - University of Copenhagen
+      inst_link: https://www.socialsymbioticevolution.com/
+      current: true
