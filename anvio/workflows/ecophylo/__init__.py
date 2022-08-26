@@ -134,6 +134,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
 
         # Make log directories
+        # FIXME: anvi-run-workflow -w ecophylo --get-default-config ecophylo_config.json will make these directories
+        # automatically when the workflow has not started and user did not ask fo rit. These are here to ensure that
+        # slurm has all log files to put stdout and stderror or will crash in most cases. It would be great if I could
+        # place these in init instead
         if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
             os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
         if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
@@ -172,7 +176,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.metagenomes:
             args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']), gene_caller = gene_caller_to_use)
             g = MetagenomeDescriptions(args)
-            g.load_metagenome_descriptions(skip_sanity_check=True)
+            g.load_metagenome_descriptions(init=False)
             self.metagenomes_dict = g.metagenomes_dict
             self.metagenomes_name_list = list(self.metagenomes_dict.keys())
             self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
@@ -194,7 +198,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
             args = argparse.Namespace(external_genomes=self.external_genomes, gene_caller = gene_caller_to_use)
             genome_descriptions = GenomeDescriptions(args)
-            genome_descriptions.load_genomes_descriptions()
+            genome_descriptions.load_genomes_descriptions(init=False)
             self.external_genomes_dict = genome_descriptions.external_genomes_dict
             self.external_genomes_names_list = list(self.external_genomes_dict.keys())
             self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
@@ -406,7 +410,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                       f"please put 'INTERNAL' for the path.")
             
             if hmm_path != "INTERNAL":
-                sources = u.get_hmm_sources_dictionary([hmm_path])
+                sources = u.get_HMM_sources_dictionary([hmm_path])
                 
                 for source,value in sources.items():
                     gene = value['genes']
