@@ -23,7 +23,7 @@ from anvio.genomedescriptions import MetagenomeDescriptions
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
-__credits__ = []
+__credits__ = ['mschecht']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
