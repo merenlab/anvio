@@ -124,6 +124,7 @@ function loadAdditionalDataLayers(){
       settings['display']['colors'] = {}
       settings['display']['colors']['genes'] = {}
       settings['display']['colors']['genes']['annotations'] = {}
+      settings['display']['colors']['Batch'] = '#FFFFFF';
       settings['display']['layers'] = {}
       settings['display']['labels'] = {}
       settings['display']['labels']['set-labels'] = {}
@@ -201,10 +202,10 @@ function serializeSettings() {
   state['display']['gene-shade-style'] = $('#shade_by').val()
   state['display']['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
   state['display']['genome-label-size'] = $('#genome_label').val()
-  state['display']['genome-label-color'] = $('#genome_label_color').attr(':color')
+  state['display']['colors']['genome-label'] = $('#genome_label_color').attr(':color')
   state['display']['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
   state['display']['gene-label-size'] = $('#gene_label').val()
-  state['display']['gene-label-color'] = $('#gene_label_color').attr(':color')
+  state['display']['colors']['gene-label'] = $('#gene_label_color').attr(':color')
   state['display']['gene-text-position'] = $('#gene_text_pos').val()
   state['display']['gc-window-size'] = $('#gc_window_size').val()
   state['display']['gc-step-size'] = $('#gc_step_size').val()
