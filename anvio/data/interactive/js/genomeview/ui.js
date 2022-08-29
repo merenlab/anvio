@@ -260,6 +260,43 @@ function setEventListeners(){
       brush.event(d3.select(".brush").transition());
     }
   });
+  $('#batch_colorpicker').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          settings['display']['colors']['Batch'] = '#' + hex;
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
+  $('#genome_label_color').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
+  $('#gene_label_color').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
 
   $('#brush_start').val(0);
   $('#brush_end').val(Math.floor(canvas.getWidth()));
@@ -1326,12 +1363,12 @@ function resetFunctionColors(fn_colors=null) {
  */
  function batchColor() {
      var rule = $('[name=batch_rule]:checked').val()
-     var color = $('#batch_colorpicker').attr('color');
+     var color = settings['display']['colors']['Batch'];
      var randomize_color = $('#batch_randomcolor').is(':checked');
 
      let fn_type = $('#gene_color_order').val();
      let dict = getCustomColorDict(fn_type);
-     if(Object.keys(counts).includes("Other")) dict["Other"] = $("#picker_Other").attr('color') ? $("#picker_Other").attr('color') : "#FFFFFF";
+     if(counts && Object.keys(counts).includes("Other")) dict["Other"] = $("#picker_Other").attr('color') ? $("#picker_Other").attr('color') : "#FFFFFF";
 
      Object.keys(dict).forEach(category => {
        if(randomize_color) {
