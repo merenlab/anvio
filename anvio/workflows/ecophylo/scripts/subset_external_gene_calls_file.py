@@ -16,7 +16,7 @@ headers = pd.read_csv(snakemake.input.headers, \
 
 # Make new columns
 #-----------------
-external_gene_calls_subset = external_gene_calls_all.merge(headers, on="contig", how="inner")
+external_gene_calls_subset = external_gene_calls_all[external_gene_calls_all['contig'].isin(headers['contig'].tolist())]
 
 # Make new gene-callers-ids starting from 1:x
 #--------------------------------------------

@@ -4593,7 +4593,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         kofam_hits_superdict = {}
 
         if skip_storing_data or self.write_dict_to_json:
-            self.output_file_dict = {}
+            self.output_file_dict = {} # if this object is empty, no output will be generated
         else:
             if output_files_dictionary:
                 self.output_file_dict = output_files_dictionary
@@ -4645,7 +4645,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # so in this case, we can extract and return smaller dictionaries for module completeness, module presence/absence,
         # and KO hits.
         elif return_subset_for_matrix_format:
-            return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict)
+            return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict, only_complete_modules=self.only_complete)
         # otherwise we return nothing at all
         return
 
@@ -4810,7 +4810,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 d[self.modules_unique_id][sample_avg_det_header] = c_dict["average_detection_per_sample"][s]
 
 
-    def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False, exclude_zero_completeness=True):
+    def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False,
+                                               exclude_zero_completeness=True):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
         The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
@@ -5049,24 +5050,47 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return d
 
 
-    def generate_subsets_for_matrix_format(self, module_superdict, ko_hits_superdict):
-        """Here we extract and return three subsets of data from the superdicts, for matrix formatted output.
+    def generate_subsets_for_matrix_format(self, module_superdict, ko_hits_superdict, only_complete_modules=False):
+        """Here we extract and return subsets of data from the superdicts, for matrix formatted output.
 
         The subsets of data that we need are: module completeness scores, module presence/absence, KO hit frequency,
                                               module top-level step completeness
         If --add-copy-number was provided, we also need copy numbers for modules and module steps.
 
         Each of these is put into a dictionary (one for modules, one for ko hits, one for module steps) and returned.
+
+        PARAMETERS
+        ==========
+        module_superdict, ko_hits_superdict: multi-level dictionaries
+            The superdicts containing module/enzyme information for each bin/genome/metagenome
+
+        only_complete_modules : boolean
+            If True, we only put information into the output dictionary for modules whose completeness is above the threshold
+            in at least one sample in the matrix. Note that this affects all module-related info, not just completeness scores.
         """
 
         mod_completeness_presence_subdict = {}
         ko_hits_subdict = {}
         steps_subdict = {}
 
+        if only_complete_modules: # here we determine which modules to include in the output
+            set_of_modules_to_include = set([])
+
+            for mod in self.all_modules_in_db:
+                for bin, mod_dict in module_superdict.items():
+                    if mod in mod_dict and (mod_dict[mod]["pathwise_is_complete"] or mod_dict[mod]["stepwise_is_complete"]):
+                        set_of_modules_to_include.add(mod)
+                        break
+
         for bin, mod_dict in module_superdict.items():
             mod_completeness_presence_subdict[bin] = {}
             steps_subdict[bin] = {}
             for mnum, c_dict in mod_dict.items():
+
+                if only_complete_modules:
+                    if mnum not in set_of_modules_to_include:
+                        continue
+
                 mod_completeness_presence_subdict[bin][mnum] = {}
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_percent_complete"] = c_dict["pathwise_percent_complete"]
                 mod_completeness_presence_subdict[bin][mnum]["pathwise_is_complete"] = c_dict["pathwise_is_complete"]
@@ -5107,6 +5131,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         This is an alternative to store_kegg_metabolism_superdicts(), which prints the entire metabolism superdicts for all
         genomes/bins/contigs in metagenome at once.
+
+        NOTE: in cases where output should not be generated (ie, self.skip_storing_data is true), the self.output_file_dict
+        object will be empty, so the loop in this function will never run. :)
         """
 
         for mode, file_obj in self.output_file_dict.items():
