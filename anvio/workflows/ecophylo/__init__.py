@@ -214,16 +214,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         else:
             self.external_genomes_names_list = []
 
-        # Concatenate metagenomes.txt and external-genomes.txt
-        contigs_db_name_path_list = list(self.contigs_db_name_path_dict.items())
-        contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
-        self.combined_genomes_df_path = "ECOPHYLO_WORKFLOW/combined_genomes.txt"
-        
-        contigs_db_name_path_df.to_csv(self.combined_genomes_df_path, \
-                                      sep="\t", \
-                                      index=False, \
-                                      header=True)
-
         # Make variables that tells whether we have metagenomes.txt, external-genomes.txt, or both
         if self.metagenomes and not self.external_genomes:
             self.mode = 'metagenomes'
@@ -328,21 +318,21 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
                 target_files.append(target_file)
                 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_state_imported_tree.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_tree.done")
                 target_files.append(target_file)
             
             else:
                 # PROFILE-MODE
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_state_imported_profile.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_state_imported_profile.done")
                 target_files.append(target_file)
 
                 target_file = os.path.join(self.dirs_dict['TREES'], f"{hmm}", f"{hmm}_renamed.nwk")
                 target_files.append(target_file)
                 
-                target_file = os.path.join("ECOPHYLO_WORKFLOW", f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
+                target_file = os.path.join(self.dirs_dict['HOME'], f"{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done")
                 target_files.append(target_file)
 
                 target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")

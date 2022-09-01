@@ -177,8 +177,8 @@ rule filter_hmm_hits_by_model_coverage:
     log: 
         log = os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm}.log")
     input:
-        done = rules.anvi_run_hmms_hmmsearch.output.done,
-        hmm_hits = rules.anvi_run_hmms_hmmsearch.output.hmm_hits,
+        done = ancient(rules.anvi_run_hmms_hmmsearch.output.done),
+        hmm_hits = ancient(rules.anvi_run_hmms_hmmsearch.output.hmm_hits),
     output:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "{sample_name}-{hmm}-DB_filtered.done"),
         hmm_hits_filtered = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "hmm_hits_filtered.txt")
@@ -243,8 +243,8 @@ rule process_hmm_hits:
     log: 
         log = os.path.join(dirs_dict['LOGS_DIR'], "process_hmm_hits-{sample_name}-{hmm}.log")
     input:
-        done = rules.filter_hmm_hits_by_model_coverage.output.done,
-        hmm_hits = rules.filter_hmm_hits_by_model_coverage.output.hmm_hits_filtered,
+        done = ancient(rules.filter_hmm_hits_by_model_coverage.output.done),
+        hmm_hits = ancient(rules.filter_hmm_hits_by_model_coverage.output.hmm_hits_filtered),
     output:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "{sample_name}-{hmm}-processed.done"),
     threads: M.T('process_hmm_hits')
@@ -793,7 +793,7 @@ rule make_fasta_txt:
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-external_gene_calls_subset.tsv"), hmm = M.hmm_dict.keys()),
         expand(os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-references_for_mapping_NT.fa"), hmm = M.hmm_dict.keys()),
     output:
-        fasta_txt = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "fasta.txt"),
+        fasta_txt = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "fasta.txt"),
     threads: M.T('make_fasta_txt')
     run:
         fastas = [os.path.join("..", "02_NR_FASTAS", r + "/" + r + '-references_for_mapping_NT.fa') for r in M.hmm_dict.keys()]
@@ -1028,20 +1028,24 @@ rule anvi_scg_taxonomy:
         misc_data = rules.make_misc_data.output.misc_data_final,
         reformat_file = rules.combine_sequence_data.output.reformat_report_all,
     params:
-        combined_genomes_txt = M.combined_genomes_df_path,
         taxonomy = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results"),
         taxonomy_long = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt"),
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{hmm}", "{hmm}_headers.tmp"),
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
     output: 
-        done = touch(os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
+        done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_anvi_estimate_scg_taxonomy_for_SCGs.done"))
     threads: M.T('anvi_scg_taxonomy')
     run:
         hmm_source = M.hmm_dict[wildcards.hmm]['source']
+
+        # Concatenate metagenomes.txt and external-genomes.txt
+        contigs_db_name_path_list = list(M.contigs_db_name_path_dict.items())
+        contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
+        combined_genomes_df_path = os.path.join(dirs_dict['HOME'], "combined_genomes.txt") 
+        contigs_db_name_path_df.to_csv(combined_genomes_df_path, sep="\t", index=False, header=True)
         
         if hmm_source in M.internal_hmm_sources:
-
-            shell("anvi-estimate-scg-taxonomy -M {params.combined_genomes_txt} \
+            shell("anvi-estimate-scg-taxonomy -M {combined_genomes_df_path} \
                                               --metagenome-mode \
                                               --scg-name-for-metagenome-mode {wildcards.hmm} \
                                               -T {threads} \

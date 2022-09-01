@@ -1,4 +1,4 @@
-# default mode with read recruitment
+# profile-mode with read recruitment
 
 rule make_metagenomics_config_file:
     """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW - PROFILE MODE"""
@@ -8,7 +8,7 @@ rule make_metagenomics_config_file:
     input:
         rules.make_fasta_txt.output.fasta_txt
     output:
-        config = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_config.json")
+        config = os.path.join(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "metagenomics_config.json"))
     threads: M.T('make_metagenomics_config_file')
     run:
 
@@ -55,29 +55,32 @@ rule run_metagenomics_workflow:
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
-        done = touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_metagenomics_workflow.done"))
+        done = touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_metagenomics_workflow.done"))
     params:
         HPC_string = M.metagenomics_workflow_HPC_string,
         snakemake_additional_params = M.snakemake_additional_params 
     threads: M.T('run_metagenomics_workflow')
     run:
+        metagenomics_workflow_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW") 
 
         # Convert r1 and r2 to absolute paths
-        samples_txt_new_path = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/", M.samples_txt_file)
+        samples_txt_new_path = os.path.join(metagenomics_workflow_path, M.samples_txt_file)
         samples_txt_new = pd.read_csv(M.samples_txt_file, sep='\t', index_col=False)
         samples_txt_new['r1'] = samples_txt_new['r1'].apply(lambda x: os.path.abspath(str(x)))
         samples_txt_new['r2'] = samples_txt_new['r2'].apply(lambda x: os.path.abspath(str(x)))
         samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
 
-        shell("mkdir -p METAGENOMICS_WORKFLOW/00_LOGS && touch {log}")
+        log_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "00_LOGS")
+        log_file = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{log}")
+        shell(f"mkdir -p {log_path} && touch {log_file}")
 
         if M.clusterize_metagenomics_workflow == True:
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             HPC_string = params.HPC_string
-            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{HPC_string}\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{HPC_string}\' {params.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         else:
-            shell("cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A {params.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
+            shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json -A {params.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
         
 
 rule add_default_collection:
@@ -85,11 +88,11 @@ rule add_default_collection:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{hmm}.log")
-    input: metagenomics_workflow_done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "metagenomics_workflow.done")
+    input: metagenomics_workflow_done = rules.run_metagenomics_workflow.output.done
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}.db")),
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db")
-    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}.db")),
+        profileDB = os.path.join(dirs_dict['HOME'], "06_MERGED", "{hmm}", "PROFILE.db")
+    output: done = touch(os.path.join("METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     run:
         shell('anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}')
@@ -101,12 +104,12 @@ rule anvi_summarize:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{hmm}.log")
     input: 
-        done = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done")
+        done = rules.add_default_collection.output.done
     params:
-        contigsDB = ancient(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}-contigs.db")),
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
-        output_dir = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}")
-    output: touch(os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}_summarize.done"))
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}-contigs.db")),
+        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
+        output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}")
+    output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/07_SUMMARY", "{hmm}_summarize.done"))
     threads: M.T('anvi_summarize')
     run: 
         shell('anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it;')
@@ -124,7 +127,7 @@ rule make_anvio_state_file:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
     output:
-        state_file = os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_ECOPHYLO_WORKFLOW_state.json")
+        state_file = os.path.join(dirs_dict['HOME'], "{hmm}_ECOPHYLO_WORKFLOW_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
@@ -312,13 +315,13 @@ rule anvi_import_everything_metagenome:
         done = rules.run_metagenomics_workflow.output.done
     params:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-        profileDB = os.path.join("ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
+        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/06_MERGED", "{hmm}", "PROFILE.db"),
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_state_imported_profile.done"))
+        touch(os.path.join(dirs_dict['HOME'], "{hmm}_state_imported_profile.done"))
     threads: M.T('anvi_import_state')
     run:
-        state = os.path.join("ECOPHYLO_WORKFLOW", f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
+        state = os.path.join(dirs_dict['HOME'], f"{wildcards.hmm}_ECOPHYLO_WORKFLOW_state.json")
 
         shell("anvi-import-state -p {params.profileDB} -s {state} -n default")
 
