@@ -309,6 +309,7 @@ class GenomeDescriptions(object):
             # init all the bulky stuff, we still can give them the contents of the meta tables.
             self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
             self.progress.update('...')
+            
             for genome_name in self.genomes:
                 self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
@@ -605,6 +606,10 @@ class GenomeDescriptions(object):
             self.progress.end()
             raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
                                 these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
+
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        self.progress.update("Checking genome names ..")
+        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
