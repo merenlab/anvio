@@ -42,51 +42,51 @@ do
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
 done
 
-INFO "Listing dependencies for ecophylo workflow"
+INFO "Listing dependencies for ecophylo workflow (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json --list-dependencies
 
-INFO "Saving a workflow graph"
+INFO "Saving a workflow graph (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json --save-workflow-graph
 
-INFO "Running ecophylo workflow with ecophylo dry-run"
+INFO "Running ecophylo workflow with ecophylo dry-run (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json -A --dry-run
 
-INFO "Running ecophylo workflow with ecophylo dry-run: only metagenomes.txt"
+INFO "Running ecophylo workflow with ecophylo dry-run: only metagenomes.txt (profile-mode)"
 anvi-run-workflow -w ecophylo -c only-metagenomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txt"
+INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txtn(profile-mode)"
 anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow"
+INFO "Running ecophylo workflow (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json
 
-INFO "Running ecophylo workflow interactive"
+INFO "Running ecophylo workflow interactive (profile-mode)"
 HMM="Ribosomal_L16"
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/"${HMM}"-contigs.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/"${HMM}"/PROFILE.db
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
 
-INFO "Saving a workflow graph - no samples.txt"
+INFO "Saving a workflow graph - no samples.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json --save-workflow-graph
 
-INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt"
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only metagenomes.txt"
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only metagenomes.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-only-metagenomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only external-genomes.txt"
+INFO "Running ecophylo workflow with ecophylo dry-run - no samples.txt, only external-genomes.txt (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow - no samples.txt and AA-mode"
+INFO "Running ecophylo workflow - no samples.txt and AA-mode (tree-mode)"
 anvi-run-workflow -w ecophylo -c AA-mode-config.json -A --dry-run
 
-INFO "Running ecophylo workflow - no samples.txt"
+INFO "Running ecophylo workflow - no samples.txt (tree-mode)"
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
 
-INFO "Running ecophylo workflow interactive"
+INFO "Running ecophylo workflow interactive (tree-mode)"
 HMM="Ribosomal_L16"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
@@ -94,10 +94,10 @@ anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/     
 
-INFO "Running ecophylo workflow - external HMM"
+INFO "Running ecophylo workflow - external HMM (tree-mode)"
 anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.json
 
-INFO "Running ecophylo workflow interactive from external HMM"
+INFO "Running ecophylo workflow interactive from external HMM (tree-mode)"
 HMM="Ribosomal_L16"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/"${HMM}"/"${HMM}"-PROFILE.db \
