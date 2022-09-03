@@ -25,7 +25,9 @@ jobs:
       run: |
         conda info -a
         conda install -y mamba
-        mamba install -y python=${{ matrix.python-version }} sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree r-base r-tidyverse r-optparse r-stringi r-magrittr r-reshape2
+        mamba install -y python=${{ matrix.python-version }} sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree r-base r-tidyverse r-optparse r-magrittr r-reshape2
+        conda config --set channel_priority strict
+        conda install r-stringi
         Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
     - uses: actions/checkout@v2
     - name: "Install anvi'o from the codebase"
