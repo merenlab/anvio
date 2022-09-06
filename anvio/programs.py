@@ -577,7 +577,7 @@ class AnvioArtifacts:
                                            ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
 
 
-class AnvioDocs(AnvioPrograms, AnvioArtifacts):
+class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
     """Generate a docs output.
 
     The purpose of this class is to generate a static HTML output with
@@ -602,6 +602,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
+        self.workflows_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'workflows'))
 
         self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
         self.base_url = os.path.join("/help", anvio.anvio_version_for_help_docs)
@@ -612,6 +613,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         AnvioArtifacts.__init__(self, args, r=self.run, p=self.progress)
         self.init_artifacts()
+
+        AnvioWorkflows.__init__(self, args, r=self.run, p=self.progress)
+        self.init_workflows()
 
         if not len(self.programs):
             raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
@@ -647,6 +651,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.generate_pages_for_artifacts()
 
         self.generate_pages_for_programs()
+
+        self.generate_pages_for_workflows()
 
         self.generate_index_page()
 
@@ -736,6 +742,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             program = self.programs[program_name]
             d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
             d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
+            d[program_name]['anvio_workflows'] = [(w, '%sworkflows/%s' % (prefix, w)) for w in program.meta_info['anvio_workflows']['value']]
 
         return d
 
