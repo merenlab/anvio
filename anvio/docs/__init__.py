@@ -1,5 +1,20 @@
 # -*- coding: utf-8
-"""Everything about anvi'o artifacts"""
+"""Everything about anvi'o workflows and artifacts"""
+
+# when defining a new anvi'o workflow, it is essential to document most critical
+# artifacts produced by a given workflow. it is also important to mention the
+# third party programs used (such as Bowtie2 or HMMER). there is no need to
+# mention anvi'o programs here as it will be discovered from program tags. to
+# associate a program with a workflow, please add the workflow name(s) to the
+# meta tag `__anvio_workflows__`
+ANVIO_WORKFLOWS = {
+    "metagenomics": {
+        "authors": ['ShaiberAlon'],
+        "artifacts_produced": ['contigs-db', 'profile-db'],
+        "third_party_programs_used": [],
+        "one_sentence_summary": "From FASTQ files to essential anvi'o artifacts."
+    },
+}
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
 # that are referred from 'requires' and 'provides' statements in anvi'o programs
