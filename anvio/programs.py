@@ -855,6 +855,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
             d['program']['authors'] = self.get_HTML_formatted_authors_data(program.meta_info['authors']['value'])
             d['artifacts'] = self.artifacts_info
+            d['workflows'] = self.workflows
 
             if anvio.DEBUG:
                 self.progress.reset()
@@ -891,6 +892,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
         d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p])) for p in self.programs],
+             'workflows': self.workflows,
              'artifacts': self.artifacts_info,
              'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
