@@ -312,6 +312,10 @@ class Program:
                 'object_name': '__authors__',
                 'null_object': []
             },
+            'anvio_workflows': {
+                'object_name': '__anvio_workflows__',
+                'null_object': []
+            },
             'description': {
                 'object_name': '__description__',
                 'null_object': ''
