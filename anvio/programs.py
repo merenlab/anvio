@@ -405,6 +405,109 @@ class Artifact:
         return "ARTIFACT::%s" % self.id
 
 
+class AnvioWorkflows:
+    """Information on anvi'o workflows"""
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.workflows = {}
+
+        if not hasattr(self, 'programs') or not hasattr(self, 'artifacts_info') or not hasattr(self, 'authors'):
+            raise ConfigError("AnvioWorkflows class is upset. You need to treat this class as a base class, and initialize "
+                              "it from within another class that has already initialized AnvioPrograms, AnvioArtifacts, AND"
+                              "AnvioAuthors classes. If this is confusing, take a look at the AnvioDocs class.")
+
+        if not len(self.programs):
+            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.programs` variable :/")
+
+        if not len(self.programs):
+            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.artifacts_info` variable :/")
+
+
+    def init_workflows(self):
+        """Learn all about anvi'o workflows and initiate the class.
+
+        Returns
+        =======
+        workflows, dict:
+            Running this function will fill in the dictionary `self.workflows`
+        """
+
+        self.workflows= {}
+
+        expected_keys = ['authors', 'artifacts_produced', 'third_party_programs_used', 'one_sentence_summary']
+
+        workflows_without_descriptions = set([])
+
+        for workflow in ANVIO_WORKFLOWS:
+            self.workflows[workflow] = ANVIO_WORKFLOWS[workflow]
+
+            for key in expected_keys:
+                if key not in self.workflows[workflow]:
+                    raise ConfigError(f"Every workflow must contain the keys \"{', '.join(expected_keys)}\". But "
+                                      f"it is not the case for the workflow '{workflow}' :(")
+
+            self.workflows[workflow]['name'] = workflow
+            self.workflows[workflow]['anvio_programs_used'] = []
+
+            # learn about the description of the workflow
+            workflow_description_path = os.path.join(anvio.DOCS_PATH, 'workflows/%s.md' % (workflow))
+            if os.path.exists(workflow_description_path):
+                self.workflows[workflow]['description'] = self.read_anvio_markdown(workflow_description_path)
+            else:
+                workflows_without_descriptions.add(workflow)
+
+            # add anvi'o programs used by the workflow
+            for program in self.programs.values():
+                    if workflow in [a for a in program.meta_info['anvio_workflows']['value']]:
+                        self.workflows[workflow]['anvio_programs_used'].append(program.name)
+
+        # sanity check of author names
+        author_names_apper_in_workflows = set([])
+        [author_names_apper_in_workflows.update(w['authors']) for w in self.workflows.values()]
+        author_names_missing_in_authors_file = [a for a in author_names_apper_in_workflows if a not in self.authors]
+        if len(author_names_missing_in_authors_file):
+            self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
+            self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')
+            self.run.info("Author names anvi'o does not know about", ', '.join(author_names_missing_in_authors_file), mc='red')
+            raise ConfigError("Some author names in anvi'o workflows defined under `anvio/docs/__init__.py` do not "
+                              "appear in the DEVELOPERS.yaml file. If there is no typo here, please update the "
+                              "contents of the DEVELOPERS.yaml file with the GitHub username of the developer you "
+                              "wish to associate with a workflow. The problematic authors are shown above.")
+
+        # make sure every workflow has at least one author
+        workflows_missing_authors = set([])
+        [workflows_missing_authors.add(w) for w in self.workflows if not len(self.workflows[w]['authors'])]
+        if len(workflows_missing_authors):
+            raise ConfigError(f"One or more workflows workflows defined under `anvio/docs/__init__.py` do not have "
+                              f"any authors. Every workflow must have at least one :/ Here is the list of those that "
+                              f"are missing any authors: {', '.join(workflows_missing_authors)}")
+
+        # note the workflows that are missing descriptions.
+        if len(workflows_without_descriptions):
+            self.run.info_single("Of %d workflows found, %d did not contain any DESCRIPTION. If you would like to "
+                                 "see examples and add new descriptions, please see the directory '%s'. Here is the "
+                                 "full list of workflows that are not yet explained: %s." \
+                                        % (len(ANVIO_WORKFLOWS),
+                                           len(workflows_without_descriptions),
+                                           anvio.DOCS_PATH,
+                                           ', '.join(workflows_without_descriptions)), nl_after=1, nl_before=1)
+
+        # makes ure every workflow mentioned in programs in fact are explained
+        # as a workflow
+        workflows_mentioned_in_programs = set([])
+        [workflows_mentioned_in_programs.update(p.meta_info['anvio_workflows']['value']) for p in self.programs.values()]
+        unknown_workflows_mentioned_in_programs = [w for w in workflows_mentioned_in_programs if w not in self.workflows]
+        if len(unknown_workflows_mentioned_in_programs):
+            raise ConfigError(f"Some anvi'o programs include `__anvio_workflows__` tags with workflow names anvi'o "
+                              f"dees not recognize :/ Here is the missing workflow names so you can either fix some "
+                              f"typos, or add entries for these workflows in `anvio/docs/__init.py__`: "
+                              f"{', '.join(unknown_workflows_mentioned_in_programs)}")
+
+
 class AnvioArtifacts:
     """Information on anvi'o artifacts"""
 
