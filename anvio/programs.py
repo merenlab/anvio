@@ -787,12 +787,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         self.progress.end()
 
 
-    def get_HTML_formatted_authors_data(self, program):
+    def get_HTML_formatted_authors_data(self, authors):
         """for a given program, returns HTML-formatted authors data"""
 
         d = ""
 
-        for author in program.meta_info['authors']['value']:
+        for author in authors:
             d += '''<div class="anvio-person"><div class="anvio-person-info">'''
             d += f'''<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
             d += '''<div class="anvio-person-info-box">'''
@@ -853,7 +853,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
-            d['program']['authors'] = self.get_HTML_formatted_authors_data(program)
+            d['program']['authors'] = self.get_HTML_formatted_authors_data(program.meta_info['authors']['value'])
             d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
