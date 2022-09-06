@@ -827,6 +827,39 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         return d
 
 
+    def generate_pages_for_workflows(self):
+        """Generate static pages for anvi'o workflows in the output directory"""
+
+        self.progress.new("Rendering workflow pages", progress_total_items=len(self.workflows))
+        self.progress.update('...')
+
+        for workflow_name in self.workflows:
+            self.progress.update(f"'{workflow_name}' ...", increment=True)
+
+            d = {'workflow': self.workflows[workflow_name],
+                 'meta': {'summary_type': 'workflow',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
+                 }
+
+            d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
+
+            if anvio.DEBUG:
+                self.progress.reset()
+                run.warning(None, 'THE WORKFLOW OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            self.progress.update(f"'{workflow_name}' ... rendering ...", increment=False)
+            workflow_output_dir = filesnpaths.gen_output_directory(os.path.join(self.workflows_output_dir, workflow_name))
+            output_file_path = os.path.join(workflow_output_dir, 'index.md')
+            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
+
+
+
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
 
