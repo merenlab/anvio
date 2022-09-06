@@ -18,7 +18,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.authors import AnvioAuthors
-from anvio.docs import ANVIO_ARTIFACTS
+from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
