@@ -135,7 +135,7 @@ def get_first_line(string):
     return string.split('\n')[0]
 
 @register.filter(name='get_first_sentence')
-def get_first_line(string):
+def get_first_sentence(string):
     return string.split('.')[0]
 
 @register.filter(name='lookup')
