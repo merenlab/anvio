@@ -121,6 +121,8 @@ class SummaryHTMLOutput:
             rendered = render_to_string('artifact.tmpl', self.summary_dict)
         elif self.summary_type == 'program':
             rendered = render_to_string('program.tmpl', self.summary_dict)
+        elif self.summary_type == 'workflow':
+            rendered = render_to_string('workflow.tmpl', self.summary_dict)
         elif self.summary_type == 'programs_and_artifacts_index':
             rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
         else:
