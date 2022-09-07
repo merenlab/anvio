@@ -49,7 +49,9 @@ def main(args):
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
 
-    has_valid_gene_caller_id_arg = False # this extra flag is necessary for avoiding args.gene_caller_id == 0 which would evaluate to False :)
+    # this extra flag is necessary for avoiding args.gene_caller_id == 0 which could evaluate to False
+    # when gene caller id is 0 :)
+    has_valid_gene_caller_id_arg = False
     if args.gene_caller_id != None:
         has_valid_gene_caller_id_arg = utils.is_gene_caller_id(args.gene_caller_id)
         if not args.contigs_db:
