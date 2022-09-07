@@ -2243,7 +2243,8 @@ class MultiGenomeCodonUsage(object):
                         drop_amino_acids=None,
                         sequence_min_amino_acids=0,
                         pansequence_min_amino_acids=(0, 1.0),
-                        label_amino_acids=False):
+                        label_amino_acids=False,
+                        infinity_to_zero=False):
         """
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions
         in one or more genomes.
