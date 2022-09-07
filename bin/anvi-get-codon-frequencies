@@ -129,7 +129,8 @@ def main(args):
             drop_amino_acids=args.exclude_amino_acids,
             sequence_min_amino_acids=args.sequence_min_amino_acids,
             pansequence_min_amino_acids=args.pansequence_min_amino_acids,
-            label_amino_acids=args.header_amino_acids)
+            label_amino_acids=args.header_amino_acids,
+            infinity_to_zero=args.infinity_to_zero)
     else:
         single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
         frequency_df = single_genome_codon_usage.get_frequencies(
@@ -150,7 +151,8 @@ def main(args):
             drop_amino_acids=args.exclude_amino_acids,
             sequence_min_amino_acids=args.sequence_min_amino_acids,
             pansequence_min_amino_acids=args.pansequence_min_amino_acids,
-            label_amino_acids=args.header_amino_acids)
+            label_amino_acids=args.header_amino_acids,
+            infinity_to_zero=args.infinity_to_zero)
 
     # Write output tables.
     if args.sum or args.average:
@@ -269,6 +271,13 @@ if __name__ == '__main__':
         '--header-amino-acids', default=False, action='store_true',
         help="Include the amino acid for each codon in the column header of codon output, i.e., "
              "LysAAA instead of AAA.")
+    groupC.add_argument(
+        '--infinity-to-zero', default=False, action='store_true',
+        help="Replace NA (empty) values in output with 0.0. NA occurs with `--synonymous` when all "
+             "codons for an amino acid are absent in a gene or function, resulting in 0/0, "
+             "reported as NA. Use with caution, for NA and 0.0 mean different things and this will "
+             "skew downstream analyses of synonymous relative frequencies, such as codon usage "
+             "bias.")
 
     groupD = parser.add_argument_group(
         'FREQUENCY STATISTICS',

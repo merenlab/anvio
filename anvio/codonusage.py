@@ -263,7 +263,8 @@ class SingleGenomeCodonUsage(object):
                         drop_amino_acids=None,
                         sequence_min_amino_acids=0,
                         pansequence_min_amino_acids=(0, 1.0),
-                        label_amino_acids=False):
+                        label_amino_acids=False,
+                        infinity_to_zero=False):
         """
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions.
 
@@ -380,6 +381,12 @@ class SingleGenomeCodonUsage(object):
         label_amino_acids : bool, optional
             If True (default False), include the amino acid for each codon in the column header of
             the output, i.e., LysAAA instead of AAA.
+        infinity_to_zero : bool, optional
+            If True (default False), replace NA (empty) values in output with 0.0. NA occurs if
+            `synonymous` is True and all codons for an amino acid are absent in a gene or function,
+            resulting in 0/0, reported as NA. Use with caution, for NA and 0.0 mean different things
+            and this will skew downstream analyses of synonymous relative frequencies, such as codon
+            usage bias.
 
         Returns
         -------
@@ -599,6 +606,7 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(gene_codon_frequency_df,
                                           sequence_min_amino_acids=sequence_min_amino_acids,
                                           label_amino_acids=label_amino_acids,
+                                          replace_na=infinity_to_zero,
                                           output_amino_acids=return_amino_acids)
         ### Absolute frequencies
         if (not relative and
@@ -648,7 +656,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(
             gene_codon_frequency_df,
             sequence_min_amino_acids=sequence_min_amino_acids,
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -671,7 +680,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(
             gene_codon_frequency_df,
             sequence_min_amino_acids=sequence_min_amino_acids,
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             not synonymous and
@@ -715,6 +725,7 @@ class SingleGenomeCodonUsage(object):
              gene_function_codon_frequency_df.sort_values(['source', 'accession', 'name'])),
             sequence_min_amino_acids=sequence_min_amino_acids,
             label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero,
             output_amino_acids=return_amino_acids)
         ### Absolute frequencies
         if (not relative and
@@ -775,7 +786,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -809,7 +821,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -1130,6 +1143,22 @@ class SingleGenomeCodonUsage(object):
         return wrapper
 
 
+    def _replace_na(method):
+        """Decorator to replace NA with 0.0 in the output frequency table. This should only occur in
+        synonymous relative frequency output, in which missing amino acids yield NA (not inf, though
+        this is as a consequence of 0/0)."""
+        def wrapper(*args, **kwargs):
+            frequency_df = method(*args, **kwargs)
+            try:
+                replace_na = kwargs['replace_na']
+            except KeyError:
+                replace_na = False
+            if replace_na:
+                frequency_df = frequency_df.fillna(0)
+            return frequency_df
+        return wrapper
+
+
     def _filter_output_codon_count(method):
         """Decorator to discard rows in the output frequency table with fewer than the minimum
         number of codons/amino acids."""
@@ -1188,6 +1217,7 @@ class SingleGenomeCodonUsage(object):
     # @_filter_pansequence_synonymous_codon_count_decorator
     @_filter_sequence_synonymous_codon_count_decorator
     @_add_amino_acid_to_header_decorator
+    @_replace_na
     # @_filter_output_codon_count
     def _get_synonymous_codon_rel_frequency_table(self, codon_frequency_df, **kwargs):
         """Return the relative frequencies of codons in relation to the set of codons encoding the
@@ -1247,7 +1277,7 @@ class SingleGenomeCodonUsage(object):
         first_kwargs = {}
         second_kwargs = {}
         for key, value in kwargs.items():
-            if key in ['sequence_min_amino_acids', 'label_amino_acids']:
+            if key in ['sequence_min_amino_acids', 'label_amino_acids', 'replace_na']:
                 second_kwargs[key] = value
             else:
                 first_kwargs[key] = value
@@ -1289,7 +1319,7 @@ class SingleGenomeCodonUsage(object):
         first_kwargs = {}
         second_kwargs = {}
         for key, value in kwargs.items():
-            if key in ['sequence_min_amino_acids', 'label_amino_acids']:
+            if key in ['sequence_min_amino_acids', 'label_amino_acids', 'replace_na']:
                 second_kwargs[key] = value
             else:
                 first_kwargs[key] = value
