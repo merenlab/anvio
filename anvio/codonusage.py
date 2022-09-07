@@ -1192,8 +1192,8 @@ class SingleGenomeCodonUsage(object):
     def _get_synonymous_codon_rel_frequency_table(self, codon_frequency_df, **kwargs):
         """Return the relative frequencies of codons in relation to the set of codons encoding the
         same amino acid (or stop codons). If columns for one or more codons in a synonymous set are
-        missing, synonymous relative frequency will not be calculated for the remaining codons in
-        the set."""
+        missing (rather than 0), synonymous relative frequency will not be calculated for the
+        remaining codons in the set."""
         try:
             mask_df = self._filter_sequence_synonymous_codon_count(
                 codon_frequency_df, kwargs['sequence_min_amino_acids']).notna()
