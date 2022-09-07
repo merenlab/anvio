@@ -201,7 +201,7 @@ class SingleGenomeCodonUsage(object):
     def _make_gene_codon_frequency_table(self):
         """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
 
-        self.progress.new("Recovering codon frequency data")
+        self.progress.new("Fetching codon frequency data")
         self.progress.update("...")
 
         gene_codon_frequencies = []
