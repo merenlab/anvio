@@ -37,7 +37,6 @@ run = terminal.Run()
 
 def main(args):
     """Prepare arguments to get codon frequencies."""
-
     if (bool(args.output_file) +
         bool(args.gene_table_output) +
         bool(args.function_table_output)) != 1:
