@@ -355,11 +355,11 @@ class Integrator(object):
 
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
-
         trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
         if trnaseq_contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
-                              "not the required 'trnaseq' variant.")
+            raise ConfigError(
+                f"The database at '{self.trnaseq_contigs_db_path}' was a "
+                f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
         hit_count = trnaseq_contigs_db_info.load_db().get_row_counts_from_table('trna_gene_hits')
@@ -377,10 +377,12 @@ class Integrator(object):
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
         if str(trnaseq_contigs_db_info.version) != required_version:
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' is outdated (this database is v{trnaseq_contigs_db_info.version} "
-                              f"and your anvi'o installation wants to work with v{required_version}). "
-                              "You can migrate your database without losing any data using the program `anvi-migrate` "
-                              "with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
+            raise ConfigError(
+                f"The database at '{self.trnaseq_contigs_db_path}' is outdated (this database is "
+                f"v{trnaseq_contigs_db_info.version} and your anvi'o installation wants to work "
+                f"with v{required_version}). You can migrate your database without losing any data "
+                "using the program `anvi-migrate` with either of the flags `--migrate-dbs-safely` "
+                "or `--migrate-dbs-quickly`.")
 
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
@@ -410,14 +412,19 @@ class Integrator(object):
             raise ConfigError(f"The number of threads (used by BLAST) must be a positive integer, not the provided value of {self.num_threads}")
 
         if self.max_mismatches < 0:
-            raise ConfigError("The maximum number of mismatches allowed in a seed-gene alignment "
-                              f"must be a non-negative integer, not the provided value of {self.max_mismatches}")
+            raise ConfigError(
+                "The maximum number of mismatches allowed in a seed-gene alignment must be a "
+                f"non-negative integer, not the provided value of {self.max_mismatches}")
 
         filesnpaths.is_output_dir_writable(self.blast_dir)
 
         # Ignore this sanity check when using `genomictrnaseq.Permuter` FASTA output.
         if check_permuted_seeds_fasta:
             filesnpaths.is_file_fasta_formatted(self.permuted_seeds_fasta_path)
+
+        if self.num_threads < 1:
+            raise ConfigError("The number of threads (used by BLAST) must be a positive integer, "
+                              f"not the provided value of {self.num_threads}")
 
 
     def go(self):
