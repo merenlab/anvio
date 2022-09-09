@@ -143,6 +143,20 @@ if __name__ == '__main__':
         '-f', '--full-gene', default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
              "excluding seeds representing 3' fragments.")
+    groupD.add_argument(
+        '-a', '--ambiguous-genome-assignment', default=False, action='store_true',
+        help="Use this flag to allow tRNA-seq seeds to be assigned to tRNA genes in multiple "
+             "genomes or a single genome and unbinned contigs. By default, seeds can only be "
+             "assigned to genes in a single genome to prevent ambiguity. For example, consider the "
+             "default option with two internal genomes. If a seed matches genes in both bins, the "
+             "seed is disregarded; if a seed matches genes in one bin and also matches genes in "
+             "unbinned contigs, the seed is also disregarded. The seed can only match one or more "
+             "genes in a single genome. Note that this flag not only affects the result when "
+             "multiple genomes are provided using `--internal-genomes` and `--external-genomes`, "
+             "but also allows the program to be run multiple times with the same seeds against "
+             "different genomic references, appending new seed/gene matches in the tRNA-seq "
+             "contigs database. To overwrite all existing assignments rather than appending, also "
+             "use `--just-do-it`.")
 
     groupD = parser.add_argument_group('TEMPORARY FILES', "By default, certain temporary files are produced: "
                                        "(1) A FASTA file of permuted tRNA-seq seed sequences and "
