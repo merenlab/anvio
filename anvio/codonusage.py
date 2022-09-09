@@ -75,7 +75,7 @@ class SingleGenomeCodonUsage(object):
     Manipulate the raw data using the methods, `get_frequencies` and `get_codon_usage_bias`.
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, r=run, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -87,8 +87,8 @@ class SingleGenomeCodonUsage(object):
 
         self.function_sources = A('function_sources')
 
-        self.run = run
-        self.progress = progress
+        self.run = r
+        self.progress = p
 
         self._load_contigs_db_data()
         self._make_gene_codon_frequency_table()
@@ -2084,7 +2084,7 @@ class SingleGenomeCodonUsage(object):
 class MultiGenomeCodonUsage(object):
     """This object processes codon usage data from multiple internal and/or external genomes."""
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, r=run, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -2096,8 +2096,8 @@ class MultiGenomeCodonUsage(object):
 
         self.preload_genomes = A('preload-genomes') or False
 
-        self.run = run
-        self.progress = progress
+        self.run = r
+        self.progress = p
 
         descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
         descriptions.load_genomes_descriptions(init=False)
