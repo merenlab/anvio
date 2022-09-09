@@ -128,10 +128,16 @@ if __name__ == '__main__':
              "once in a tRNA-seq seed sequence. For example, if this argument is 5, and a seed has "
              "6 positions with predicted modifications, then a permuted sequence can have at most "
              "5 of the 6 nucleotides changed relative to the seed.")
-                        help="The maximum number of mismatches allowed in a gapless alignment between a permuted/non-permuted tRNA-seq seed and tRNA gene sequence.")
-    groupC.add_argument('-f', '--use-full-length-seeds',
-                        default=False, action='store_true',
-                        help="Use this flag to retain only tRNA-seq seed sequences that encompass an entire tRNA gene to the exclusion of 3' fragments.")
+
+    groupD = parser.add_argument(
+        'SEED/GENE MATCHING',
+        "After tRNA-seq seed sequences are permuted, the original and permuted sequences are "
+        "aligned to tRNA genes in the supplied contigs database(s). Matches are selected from "
+        "filtered alignments.")
+    groupD.add_argument(
+        '-f', '--full-gene', default=False, action='store_true',
+        help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
+             "excluding seeds representing 3' fragments.")
 
     groupD = parser.add_argument_group('TEMPORARY FILES', "By default, certain temporary files are produced: "
                                        "(1) A FASTA file of permuted tRNA-seq seed sequences and "
