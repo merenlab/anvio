@@ -265,50 +265,52 @@ class SeedPermuter(object):
 
 
 class Integrator(object):
-    """Using the `go` method, links tRNA-seq seeds to tRNA genes and adds this information to the tRNA-seq contigs database."""
+    """Using the `go` method, links tRNA-seq seeds to tRNA genes and adds this information to the
+    tRNA-seq contigs database."""
 
     default_max_mismatches = 3
-    blast_search_output_cols = ['qseqid', 'sseqid', 'mismatch', 'qstart', 'qlen', 'sstart', 'send', 'slen', 'bitscore']
+    blast_search_output_cols = [
+        'qseqid', 'sseqid', 'mismatch', 'qstart', 'qlen', 'sstart', 'send', 'slen', 'bitscore']
 
     def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
-        self.progress = p
-        self.run = r
-
         self.args = args
-
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
         self.seeds_specific_txt_path = A('seeds_specific_txt')
         self.modifications_txt_path = A('modifications_txt')
-        self.genomic_contigs_db_path = A('contigs_db')
 
+        self.genomic_contigs_db_path = A('contigs_db')
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
+
         self.max_mismatches = A('max_mismatches')
-        if self.max_mismatches == None:
+        if self.max_mismatches is None:
             self.max_mismatches = self.default_max_mismatches
+        self.full_gene = A('full_gene')
+        if self.full_gene is None:
+            self.full_gene = False
         self.ambiguous_genome_assignment = A('ambiguous_genome_assignment')
         if self.ambiguous_genome_assignment is None:
             self.ambiguous_genome_assignment = False
 
-        self.blast_dir = A('blast_dir')
-        if self.blast_dir == None:
-            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
+        self.blast_dir = A('blast_dir')
+        if self.blast_dir is None:
+            self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
+
+        self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
         self.just_do_it = A('just_do_it')
 
         self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
         self.overwrite_table = self.just_do_it
 
-        if do_sanity_check:
-            self.sanity_check()
-
-        self.bin_conscious = True if self.genomic_profile_db_path else False
+        self.run = r
+        self.progress = p
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
         self.genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path)
