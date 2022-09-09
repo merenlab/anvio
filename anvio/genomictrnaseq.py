@@ -33,37 +33,35 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 class SeedPermuter(object):
-    """Using the `go` method, generates a FASTA file of permuted seed sequences from a tRNA-seq contigs database."""
+    """Using the `go` method, generates a FASTA file of permuted seed sequences from a tRNA-seq
+    contigs database."""
 
     default_min_nt_frequency = 0.05
     default_max_variable_positions = 5
 
-    def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
-        self.progress = p
-        self.run = r
-
+    def __init__(self, args={}, r=run, p=progress, do_sanity_check=True):
         self.args = args
-
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        # mandatory args
         self.contigs_db_path = A('trnaseq_contigs_db')
         self.modifications_txt_path = A('modifications_txt')
 
-        # optional args for algorithm parameterization
         self.min_nt_frequency = A('min_nt_frequency')
-        if self.min_nt_frequency == None:
+        if self.min_nt_frequency is None:
             self.min_nt_frequency = self.default_min_nt_frequency
         self.max_variable_positions = A('max_variable_positions')
-        if self.max_variable_positions == None:
+        if self.max_variable_positions is None:
             self.max_variable_positions = self.default_max_variable_positions
 
         # paths for output files
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.tmp_dir = None
-        if self.permuted_seeds_fasta_path == None:
+        if self.permuted_seeds_fasta_path is None:
             self.tmp_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
             self.permuted_seeds_fasta_path = os.path.join(self.tmp_dir, "permuted_seeds.fa")
+
+        self.run = r
+        self.progress = p
 
         if do_sanity_check:
             self.sanity_check()
@@ -73,28 +71,29 @@ class SeedPermuter(object):
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
-
         contigs_db_info = DBInfo(self.contigs_db_path, expecting='contigs')
         if contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' variant, "
-                              "not the required 'trnaseq' variant.")
+            raise ConfigError(
+                f"The database at '{self.contigs_db_path}' was a '{contigs_db_info.variant}' "
+                "variant, not the required 'trnaseq' variant.")
 
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
         if not (0 <= self.min_nt_frequency < 1):
-            raise ConfigError(f"The specified minimum nucleotide frequency for permutation is '{self.min_nt_frequency}', "
-                              "which is not in the required range [0, 1).")
+            raise ConfigError(
+                "The specified minimum nucleotide frequency for permutation is "
+                f"'{self.min_nt_frequency}', which is not in the required range [0, 1).")
 
         if self.max_variable_positions < 1:
-            raise ConfigError(f"The specified maximum number of variable positions in a permuted sequence is '{self.max_variable_positions}', "
-                              "but it needs to be a positive integer.")
+            raise ConfigError(
+                "The specified maximum number of variable positions in a permuted sequence is "
+                f"'{self.max_variable_positions}', but it needs to be a positive integer.")
 
         filesnpaths.is_output_file_writable(self.permuted_seeds_fasta_path)
 
 
     def go(self):
         """Permute tRNA seed sequences at predicted sites of modification-induced substitutions."""
-
         with self.contigs_db_info.load_db() as contigs_db:
             seed_contig_names_seqs = contigs_db.get_table_as_list_of_tuples('contig_sequences')
 
@@ -139,7 +138,10 @@ class SeedPermuter(object):
             output_fasta.write_id(seed_contig_name)
             output_fasta.write_seq(seed_seq)
             for permuted_seq, permuted_positions, permuted_nts in permuted_seed_info:
-                seq_id = f"{seed_contig_name}|{'_'.join([str(permuted_position) + permuted_nt for permuted_position, permuted_nt in zip(permuted_positions, permuted_nts)])}"
+                permutations = [
+                    str(permuted_position) + permuted_nt
+                    for permuted_position, permuted_nt in zip(permuted_positions, permuted_nts)]
+                seq_id = f"{seed_contig_name}|{'_'.join(permutations)}"
                 output_fasta.write_id(seq_id)
                 output_fasta.write_seq(permuted_seq)
         self.progress.end()
@@ -159,8 +161,8 @@ class SeedPermuter(object):
         variable_nts_gb : pandas DataFrameGroupBy
             the modifications table with a subset of columns grouped by seed ID ("contig name")
         """
-
-        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0, usecols=['contig_name', 'seed_position', 'A', 'C', 'G', 'T'])
+        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0,
+                                       usecols=['contig_name', 'seed_position', 'A', 'C', 'G', 'T'])
         modifications_df = modifications_df.set_index('contig_name')
         modifications_df = modifications_df.dropna()
         variable_nts_gb = modifications_df.groupby('contig_name')
@@ -194,10 +196,10 @@ class SeedPermuter(object):
             a dict with keys being predicted modified positions in the seed and values being tuples
             of minority nucleotides (chars)
         """
-
         # Loop through each predicted modification in the seed.
         variable_nts_dict = {}
-        for position, gb_df in variable_nts_df.set_index('seed_position').groupby('seed_position', sort=False):
+        for position, gb_df in variable_nts_df.set_index('seed_position').groupby(
+            'seed_position', sort=False):
             # Calculate nucleotide relative frequencies for each sample.
             position_variable_nts_df = gb_df.div(gb_df.sum(axis=1), axis=0)
             # Drop the column of the relative frequency of the nucleotide in the seed sequence.
@@ -205,7 +207,8 @@ class SeedPermuter(object):
             # Calculate the mean relative frequency of each nucleotide across samples.
             position_variable_nts_series = position_variable_nts_df.mean(axis=0)
             # Filter nucleotides by threshold relative frequency.
-            position_variable_nts_series = position_variable_nts_series[position_variable_nts_series > self.min_nt_frequency]
+            position_variable_nts_series = position_variable_nts_series[
+                position_variable_nts_series > self.min_nt_frequency]
 
             if len(position_variable_nts_series) == 0:
                 continue
@@ -233,11 +236,11 @@ class SeedPermuter(object):
             of permuted position indices, and 3) a tuple of substituted nucleotide characters at
             those positions
         """
-
         permuted_seed_info = []
         # Loop through the different numbers of permuted positions that can be introduced in the
         # sequence, starting with 1 permuted position.
-        for num_variable_positions in range(1, min(len(variable_nts_dict), self.max_variable_positions) + 1):
+        for num_variable_positions in range(
+            1, min(len(variable_nts_dict), self.max_variable_positions) + 1):
             # Find combinations of permuted positions, e.g., with 1 permuted position, and positions
             # 8 and 32 being variable, then one combination would simply be (8, ) and the other
             # combination (32, ).
@@ -246,14 +249,17 @@ class SeedPermuter(object):
             for permuted_positions in permutation_combinations:
                 # Find the sets of nucleotides that will be substituted into the sequence given the
                 # combination of positions. Each loop generates a new permuted sequence and entry.
-                for permuted_nts in product(*[variable_nts_dict[position] for position in permuted_positions]):
+                for permuted_nts in product(
+                    *[variable_nts_dict[position] for position in permuted_positions]):
                     permuted_seed_seq = seed_seq
                     # Loop through the positions to make the nucleotide substitutions.
                     for position, nt in zip(permuted_positions, permuted_nts):
-                        permuted_seed_seq = permuted_seed_seq[: position] + nt + permuted_seed_seq[position + 1: ]
+                        permuted_seed_seq = \
+                            permuted_seed_seq[: position] + nt + permuted_seed_seq[position + 1: ]
                     # In addition to the permuted sequence, record the permuted positions and
                     # substituted nucleotides.
-                    permuted_seed_info.append((permuted_seed_seq, tuple(permuted_positions), tuple(permuted_nts)))
+                    permuted_seed_info.append(
+                        (permuted_seed_seq, tuple(permuted_positions), tuple(permuted_nts)))
 
         return permuted_seed_info
 
