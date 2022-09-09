@@ -285,14 +285,16 @@ class Integrator(object):
 
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
+        self.bin_id = A('bin_id')
 
-        self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
+        self.internal_genomes_path = A('internal_genomes')
+        self.external_genomes_path = A('external_genomes')
         self.max_mismatches = A('max_mismatches')
         if self.max_mismatches == None:
             self.max_mismatches = self.default_max_mismatches
-        self.use_full_length_seeds = A('use_full_length_seeds')
-        if self.use_full_length_seeds == None:
-            self.use_full_length_seeds = False
+        self.ambiguous_genome_assignment = A('ambiguous_genome_assignment')
+        if self.ambiguous_genome_assignment is None:
+            self.ambiguous_genome_assignment = False
 
         self.blast_dir = A('blast_dir')
         if self.blast_dir == None:
