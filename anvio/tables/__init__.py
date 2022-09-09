@@ -150,7 +150,7 @@ trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TR
 
 trna_gene_hits_table_name               = 'trna_gene_hits'
 trna_gene_hits_table_structure          = ['entry_id', 'seed_contig_name', 'gene_gene_callers_id', 'bin_name', 'decoded_amino_acid', 'anticodon', 'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop', 'trnascan_score', 'unmodified_nucleotides', 'gene_sequence']
-trna_gene_hits_table_types              = ['numeric' , 'text'            , 'numeric'             , 'text'    , 'text'              , 'text'     , 'integer' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'numeric'       , 'text'                  , 'text']
+trna_gene_hits_table_types              = ['numeric' , 'text'            , 'numeric'             , 'text'    , 'text'              , 'text'     , 'numeric' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'numeric'       , 'text'                  , 'text']
 
 
 ####################################################################################################
