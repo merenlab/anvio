@@ -349,6 +349,9 @@ class Integrator(object):
                 genome_info['collection_name'] = None
                 genome_info['bin_id'] = None
 
+        if do_sanity_check:
+            self.sanity_check()
+
 
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
