@@ -135,6 +135,11 @@ if __name__ == '__main__':
         "aligned to tRNA genes in the supplied contigs database(s). Matches are selected from "
         "filtered alignments.")
     groupD.add_argument(
+        '-x', '--max-mismatches', metavar='INT', type=int,
+        default=genomictrnaseq.Integrator.default_max_mismatches,
+        help="The maximum number of mismatches allowed in a gapless alignment between a permuted "
+             "or non-permuted tRNA-seq seed and a tRNA gene.")
+    groupD.add_argument(
         '-f', '--full-gene', default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
              "excluding seeds representing 3' fragments.")
