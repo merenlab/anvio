@@ -125,7 +125,7 @@ class BLAST:
         self.run.info('BLAST search db', self.target_fasta)
 
 
-    def blast(self, outputfmt='6', word_size=None, strand=None, ungapped=False):
+    def blast(self, outputfmt='6', word_size=None, strand=None):
         self.run.warning(None, header="NCBI BLAST SEARCH", lc="green")
         self.run.info("Additional params for BLAST", self.additional_params_for_blast, mc='green')
 
