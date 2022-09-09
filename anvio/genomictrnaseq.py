@@ -468,14 +468,23 @@ class Integrator(object):
                     "corresponding profile databases. In fact, the profile databases were not "
                     f"generated from the contigs databases. {', '.join(incompatible)}")
 
-            collections = ccollections.Collections()
-            collections.populate_collections_dict(self.genomic_profile_db_path)
-            if self.collection_name not in collections.collections_dict:
-                raise ConfigError(f"The desired collection, '{self.collection_name}', does not exist "
-                                  f"in the (meta)genomic profile database, '{self.genomic_profile_db_path}'.")
-
-        if self.num_threads < 1:
-            raise ConfigError(f"The number of threads (used by BLAST) must be a positive integer, not the provided value of {self.num_threads}")
+        # Check that collections exist.
+        unrecognized = []
+        for genome_name, genome_info in self.genome_info_dict.items():
+            if genome_info['profile_db']:
+                collections = ccollections.Collections()
+                collections.populate_collections_dict(genome_info['profile_db'])
+                if genome_info['collection_name'] not in collections.collections_dict:
+                    unrecognized.append(genome_name)
+        if unrecognized:
+            if self.genomic_contigs_db_path:
+                raise ConfigError(
+                    f"The profile database, '{self.genomic_profile_db_path}', does not contain the "
+                    f"requested collection, '{self.collection_name}'.")
+            else:
+                raise ConfigError(
+                    "The profile databases do not contain the requested collections for the "
+                    f"following genomes. {', '.join(unrecognized)}")
 
         if self.max_mismatches < 0:
             raise ConfigError(
