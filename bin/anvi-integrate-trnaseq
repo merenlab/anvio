@@ -97,21 +97,37 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
-    groupC = parser.add_argument_group('OPTIONAL')
-    groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupC.add_argument('-n', '--min-nt-frequency',
-                        metavar='FLOAT', type=float,
-                        default=genomictrnaseq.SeedPermuter.default_min_nt_frequency,
-                        help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide relative frequency, "
-                             "averaged across samples in which the modification is detected, "
-                             "that is required for the nucleotide to be substituted in the permuted sequence.")
-    groupC.add_argument('-v', '--max-variable-positions',
-                        metavar='INT', type=int,
-                        default=genomictrnaseq.SeedPermuter.default_max_variable_positions,
-                        help="The maximum number of positions with predicted modifications that can be permuted at once in a tRNA-seq seed sequence.")
-    groupC.add_argument('-x', '--max-mismatches',
-                        metavar='INT', type=int,
-                        default=genomictrnaseq.Integrator.default_max_mismatches,
+    groupC = parser.add_argument_group(
+        'PERMUTATION OF MODIFICATIONS',
+        "For tRNA-seq seeds to be accurately matched to tRNA genes, nucleotide positions with "
+        "predicted modifications in the seeds are permuted, generating a set of query sequences "
+        "per seed. Permutation is needed to find the gene sequences, which lack the mutation "
+        "signatures induced by modifications in tRNA-seq reads. Seed sequences are built from a "
+        "simple majority consensus of the reads; if a majority of reads have a mutation at a "
+        "position, the underlying unmodified nucleotide is not represented in the seed. "
+        "Permutation does not entirely solve the problem for positions that have such high levels "
+        "of a modification that there is no signature of mutational variability. The common "
+        "modification of this sort is I34. The unmodified nucleotide is A, but inosine is read as "
+        "G, and is typically found in virtually all tRNA transcripts when it occurs. The algorithm "
+        "solves the problem of I34 with a tailored solution; contact the developers to accommodate "
+        "any other cases like this that might arise.")
+    groupC.add_argument(
+        '-n', '--min-nt-frequency', metavar='FLOAT', type=float,
+        default=genomictrnaseq.SeedPermuter.default_min_nt_frequency,
+        help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide relative "
+             "frequency, averaged across samples in which the modification is detected, that is "
+             "required for the nucleotide to be substituted in the permuted sequence. For example, "
+             "if this argument is 0.05, and a predicted modified position in a seed has average "
+             "relative frequencies of A, C, G, and T equal to 0.02, 0.03, 0.1, and 0.85, "
+             "respectively, then permuted versions of the seed will contain G and T at the "
+             "position but not A or C.")
+    groupC.add_argument(
+        '-v', '--max-variable-positions', metavar='INT', type=int,
+        default=genomictrnaseq.SeedPermuter.default_max_variable_positions,
+        help="The maximum number of positions with predicted modifications that can be permuted at "
+             "once in a tRNA-seq seed sequence. For example, if this argument is 5, and a seed has "
+             "6 positions with predicted modifications, then a permuted sequence can have at most "
+             "5 of the 6 nucleotides changed relative to the seed.")
                         help="The maximum number of mismatches allowed in a gapless alignment between a permuted/non-permuted tRNA-seq seed and tRNA gene sequence.")
     groupC.add_argument('-f', '--use-full-length-seeds',
                         default=False, action='store_true',
