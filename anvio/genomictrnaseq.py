@@ -387,8 +387,26 @@ class Integrator(object):
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
-        genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
-        if genomic_contigs_db_info.variant != 'unknown':
+        # Do basic checks of the combinations of genomic input arguments.
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
+                              "`contigs_db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
+                              "`collection_name`.")
+
+        if (self.bin_id and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
+                              "`profile_db`, and `collection_name`.")
+
             raise ConfigError(f"The database at '{self.genomic_contigs_db_path}' was a '{genomic_contigs_db_info.variant}' variant. "
                               "This should be a normal (meta)genomic contigs database, technically of an 'unknown' variant, produced by `anvi-gen-contigs-database`.")
 
