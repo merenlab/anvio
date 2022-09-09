@@ -174,8 +174,11 @@ if __name__ == '__main__':
         help="Directory to store BLAST databases and tables generated in searching original and "
              "permuted seeds against tRNA genes.")
 
-    groupE = parser.add_argument_group('AUTHORITY')
-    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupF = parser.add_argument_group('OTHER')
+    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupF.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {
+        'help': "Overwrite existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq "
+                "contigs database."}))
 
     args = parser.get_args(parser)
 
