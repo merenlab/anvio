@@ -21,7 +21,8 @@ __resources__ = []
 __tags__ = ['trnaseq']
 __requires__ = ['trnaseq-contigs-db', 'seeds-specific-txt', 'modifications-txt', 'contigs-db']
 __provides__ = ['trna-gene-hits']
-__description__ = ("Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes")
+__description__ = (
+    "Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes")
 
 
 def main(args):
