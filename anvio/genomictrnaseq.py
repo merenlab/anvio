@@ -447,11 +447,26 @@ class Integrator(object):
                     "(this same error will arise if no tRNA genes are found). "
                     f"{', '.join(unannotated)}.")
 
-        if (self.genomic_profile_db_path and not self.collection_name) or (self.collection_name and not self.genomic_profile_db_path):
-            raise ConfigError("A profile database cannot be provided without a collection name, "
-                              "nor can a collection name be provided without a profile database.")
-        if self.genomic_profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.genomic_profile_db_path, self.genomic_contigs_db_path)
+        # Check that profile databases correspond to (meta)genomic contigs databases.
+        incompatible = []
+        for genome_name, genome_info in self.genome_info_dict.items():
+            if genome_info['profile_db']:
+                try:
+                    utils.is_profile_db_and_contigs_db_compatible(
+                        genome_info['profile_db'], genome_info['contigs_db'])
+                except ConfigError:
+                    incompatible.append(genome_name)
+        if incompatible:
+            if self.genomic_contigs_db_path:
+                raise ConfigError(
+                    f"The (meta)genomic contigs database, '{incompatible[0]}', is not compatible "
+                    f"with the provided profile database, {genome_info['profile_db']}. In fact, "
+                    "the profile database was not generated from the contigs database.")
+            else:
+                raise ConfigError(
+                    "The contigs databases for the following genomes are not compatible with the "
+                    "corresponding profile databases. In fact, the profile databases were not "
+                    f"generated from the contigs databases. {', '.join(incompatible)}")
 
             collections = ccollections.Collections()
             collections.populate_collections_dict(self.genomic_profile_db_path)
