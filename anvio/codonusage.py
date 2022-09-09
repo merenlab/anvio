@@ -99,7 +99,8 @@ class SingleGenomeCodonUsage(object):
         utils.is_contigs_db(self.contigs_db_path)
 
         if self.profile_db_path or self.collection_name or self.bin_id:
-            # Initialize the contigs superclass from the splits of the internal genome bin.
+            # Initialize the contigs superclass from the splits of the internal genome bin. An
+            # exception will be raised if all three args are not provided or valid.
             self.args.split_names_of_interest = \
                 ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
         contigs_super = ContigsSuperclass(self.args, r=run_quiet)
