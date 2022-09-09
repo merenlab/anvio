@@ -29,6 +29,7 @@ __email__ = "samuelmiller10@gmail.com"
 
 progress = terminal.Progress()
 run = terminal.Run()
+progress = terminal.Progress()
 pp = terminal.pretty_print
 
 class SeedPermuter(object):
