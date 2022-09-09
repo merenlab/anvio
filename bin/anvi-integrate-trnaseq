@@ -26,6 +26,8 @@ __description__ = (
 
 
 def main(args):
+    sanity_check(args)
+
     permuter = genomictrnaseq.SeedPermuter(args)
     integrator = genomictrnaseq.Integrator(args)
 
@@ -35,6 +37,25 @@ def main(args):
     # Relate seeds to (meta)genomic tRNA genes.
     integrator.permuted_seeds_fasta_path = permuter.permuted_seeds_fasta_path
     integrator.go()
+
+
+def sanity_check(args):
+    """Do basic checks of the combinations of genomic input arguments."""
+    if args.contigs_db and (args.internal_genomes or args.external_genomes):
+        raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
+                          "`--external-genomes`.")
+
+    if (args.profile_db is not None) or (args.collection_name is not None):
+        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
+            (args.collection_name is not None) < 3):
+            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
+                              "and `--collection-name`.")
+
+    if args.bin_id is not None:
+        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
+            (args.collection_name is not None) + (args.bin_id is not None) < 4):
+            raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
+                              "`--collection-name`.")
 
 
 if __name__ == '__main__':
