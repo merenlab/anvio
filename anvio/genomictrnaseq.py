@@ -358,21 +358,18 @@ class Integrator(object):
             raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
                               "not the required 'trnaseq' variant.")
 
-        # If the tRNA-seq seeds have already been associated with tRNA genes, then `--just-do-it` is needed.
-        trnaseq_contigs_db_self_table = trnaseq_contigs_db_info.get_self_table()
-        associated_genomic_contigs_db_hash = trnaseq_contigs_db_self_table['genomic_contigs_db_hash']
-        associated_genomic_contigs_db_project_name = trnaseq_contigs_db_self_table['genomic_contigs_db_project_name']
-        associated_genomic_collection_name = trnaseq_contigs_db_self_table['genomic_collection_name']
-        if not self.overwrite_table and associated_genomic_contigs_db_hash != None:
-            if associated_genomic_collection_name:
-                additional_message = f" A collection named '{associated_genomic_collection_name}' was used."
-            else:
-                additional_message = ""
-            raise ConfigError(f"The tRNA-seq contigs database at '{self.trnaseq_contigs_db_path}' "
-                              "has already been associated with tRNA genes from a (meta)genomic contigs database "
-                              f"with the project name, '{associated_genomic_contigs_db_project_name}', "
-                              f"and hash ID, '{associated_genomic_contigs_db_hash}'.{additional_message} "
-                              f"`anvi-integrate-trnaseq` can be run with the flag `--just-do-it` to overwrite the existing data.")
+        # Existing seed/gene hits must be willfully overwritten or appended to.
+        hit_count = trnaseq_contigs_db_info.load_db().get_row_counts_from_table('trna_gene_hits')
+        if hit_count:
+            self.run.info(
+                "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
+            if not self.ambiguous_genome_assignment and not self.just_do_it:
+                raise ConfigError(
+                    "The seeds from the tRNA-seq contigs database at "
+                    f"'{self.trnaseq_contigs_db_path}' have already been associated with tRNA "
+                    "genes from one or more (meta)genomic contigs databases. `just_do_it` to "
+                    "overwrite the existing hits, or append to existing hits with "
+                    "`ambiguous_genome_assignments`.")
 
         # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
