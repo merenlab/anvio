@@ -158,19 +158,21 @@ if __name__ == '__main__':
              "contigs database. To overwrite all existing assignments rather than appending, also "
              "use `--just-do-it`.")
 
-    groupD = parser.add_argument_group('TEMPORARY FILES', "By default, certain temporary files are produced: "
-                                       "(1) A FASTA file of permuted tRNA-seq seed sequences and "
-                                       "(2) BLAST databases and output tables from searching permuted seeds against tRNA genes. "
-                                       "The global anvi'o option, `--tmp-dir`, allows the user to provide a single output directory for all of these. "
-                                       "Alternatively, program-specific options give more control over temp file storage.")
-    groupD.add_argument('-r', '--permuted-seeds-fasta',
-                        metavar='FILE_PATH', type=str,
-                        default=None,
-                        help="FASTA file of permuted tRNA-seq seed sequences.")
-    groupD.add_argument('-d', '--blast-dir',
-                        metavar='DIRECTORY_PATH', type=str,
-                        default=None,
-                        help="Directory to store BLAST databases and tables generated in searching permuted seeds against tRNA genes.")
+    groupE = parser.add_argument_group(
+        'TEMPORARY FILES',
+        "By default, temporary files are produced: "
+        "(1) A FASTA file of permuted tRNA-seq seed sequences and "
+        "(2) BLAST databases and output tables from searching permuted seeds against tRNA genes. "
+        "The global anvi'o option, `--tmp-dir`, allows the user to provide a single output "
+        "directory for all of these. Alternatively, program-specific options give more control "
+        "over temp file storage.")
+    groupE.add_argument(
+        '-r', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
+        help="FASTA file of original and permuted tRNA-seq seed sequences.")
+    groupE.add_argument(
+        '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
+        help="Directory to store BLAST databases and tables generated in searching original and "
+             "permuted seeds against tRNA genes.")
 
     groupE = parser.add_argument_group('AUTHORITY')
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
