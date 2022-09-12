@@ -61,17 +61,17 @@ def sanity_check(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group(
+    group1A = parser.add_argument_group(
         'TRNASEQ INPUTS',
-        "THREE INPUT FILES are required: "
+        "THREE FILES are required: "
         "(1) A 'trnaseq'-variant contigs database produced by `anvi-merge-trnaseq`, "
         "(2) a table of **specific** coverages of seeds produced by `anvi-tabulate-trnaseq`, "
         "(3) a table of seed modifications also produced by `anvi-tabulate-trnaseq`.")
-    groupA.add_argument(*anvio.A('trnaseq-contigs-db'), **anvio.K('trnaseq-contigs-db'))
-    groupA.add_argument(*anvio.A('seeds-specific-txt'), **anvio.K('seeds-specific-txt'))
-    groupA.add_argument(*anvio.A('modifications-txt'), **anvio.K('modifications-txt'))
+    group1A.add_argument(*anvio.A('trnaseq-contigs-db'), **anvio.K('trnaseq-contigs-db'))
+    group1A.add_argument(*anvio.A('seeds-specific-txt'), **anvio.K('seeds-specific-txt'))
+    group1A.add_argument(*anvio.A('modifications-txt'), **anvio.K('modifications-txt'))
 
-    groupB = parser.add_argument_group(
+    group1B = parser.add_argument_group(
         'GENOMIC INPUTS',
         "Different (meta)genomic inputs can be provided. The selection of input type depends on "
         "the purpose of running this program. One purpose could be finding tRNAs that are uniquely "
@@ -90,14 +90,14 @@ if __name__ == '__main__':
         "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
         "(5) External genomes, or a list of contigs databases representing genomes (can be used "
         "with internal genomes).")
-    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    group1B.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    group1B.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    group1B.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    group1B.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    group1B.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    group1B.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
-    groupC = parser.add_argument_group(
+    group1C = parser.add_argument_group(
         'PERMUTATION OF MODIFICATIONS',
         "For tRNA-seq seeds to be accurately matched to tRNA genes, nucleotide positions with "
         "predicted modifications in the seeds are permuted, generating a set of query sequences "
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         "G, and is typically found in virtually all tRNA transcripts when it occurs. The algorithm "
         "solves the problem of I34 with a tailored solution; contact the developers to accommodate "
         "any other cases like this that might arise.")
-    groupC.add_argument(
+    group1C.add_argument(
         '-n', '--min-nt-frequency', metavar='FLOAT', type=float,
         default=genomictrnaseq.SeedPermuter.default_min_nt_frequency,
         help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide relative "
@@ -121,7 +121,7 @@ if __name__ == '__main__':
              "relative frequencies of A, C, G, and T equal to 0.02, 0.03, 0.1, and 0.85, "
              "respectively, then permuted versions of the seed will contain G and T at the "
              "position but not A or C.")
-    groupC.add_argument(
+    group1C.add_argument(
         '-v', '--max-variable-positions', metavar='INT', type=int,
         default=genomictrnaseq.SeedPermuter.default_max_variable_positions,
         help="The maximum number of positions with predicted modifications that can be permuted at "
@@ -129,21 +129,21 @@ if __name__ == '__main__':
              "6 positions with predicted modifications, then a permuted sequence can have at most "
              "5 of the 6 nucleotides changed relative to the seed.")
 
-    groupD = parser.add_argument(
+    group1D = parser.add_argument(
         'SEED/GENE MATCHING',
         "After tRNA-seq seed sequences are permuted, the original and permuted sequences are "
         "aligned to tRNA genes in the supplied contigs database(s). Matches are selected from "
         "filtered alignments.")
-    groupD.add_argument(
+    group1D.add_argument(
         '-x', '--max-mismatches', metavar='INT', type=int,
         default=genomictrnaseq.Integrator.default_max_mismatches,
         help="The maximum number of mismatches allowed in a gapless alignment between a permuted "
              "or non-permuted tRNA-seq seed and a tRNA gene.")
-    groupD.add_argument(
+    group1D.add_argument(
         '-f', '--full-gene', default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
              "excluding seeds representing 3' fragments.")
-    groupD.add_argument(
+    group1D.add_argument(
         '-a', '--ambiguous-genome-assignment', default=False, action='store_true',
         help="Use this flag to allow tRNA-seq seeds to be assigned to tRNA genes in multiple "
              "genomes or a single genome and unbinned contigs. By default, seeds can only be "
@@ -159,7 +159,7 @@ if __name__ == '__main__':
              "appending new seed/gene matches in the tRNA-seq contigs database. To overwrite all "
              "existing assignments rather than appending, also use `--just-do-it`.")
 
-    groupE = parser.add_argument_group(
+    group1E = parser.add_argument_group(
         'TEMPORARY FILES',
         "By default, temporary files are produced: "
         "(1) A FASTA file of permuted tRNA-seq seed sequences and "
@@ -167,19 +167,28 @@ if __name__ == '__main__':
         "The global anvi'o option, `--tmp-dir`, allows the user to provide a single output "
         "directory for all of these. Alternatively, program-specific options give more control "
         "over temp file storage.")
-    groupE.add_argument(
+    group1E.add_argument(
         '-r', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
         help="FASTA file of original and permuted tRNA-seq seed sequences.")
-    groupE.add_argument(
+    group1E.add_argument(
         '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
         help="Directory to store BLAST databases and tables generated in searching original and "
              "permuted seeds against tRNA genes.")
 
-    groupF = parser.add_argument_group('OTHER')
-    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupF.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {
+    group1F = parser.add_argument_group('OTHER')
+    group1F.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    group1F.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {
         'help': "Overwrite existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq "
                 "contigs database."}))
+
+    group2 = parser.add_argument_group('INFO')
+    group2.add_argument(
+        '-l', '--list-genomes', default=False, action='store_true',
+        help="Report information on the sources of tRNA genes that have already been associated "
+             "with a tRNA-seq contigs database. The `--trnaseq-contigs-db` argument must be "
+             "provided along with this flag. The project names and hashes of (meta)genomic contigs "
+             "databases and any collections/bins in which linked tRNA genes were found are printed "
+             "to the terminal.")
 
     args = parser.get_args(parser)
 
