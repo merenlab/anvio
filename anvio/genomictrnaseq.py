@@ -267,6 +267,14 @@ class SeedPermuter(object):
 class Integrator(object):
     """Using the `go` method, links tRNA-seq seeds to tRNA genes and adds this information to the
     tRNA-seq contigs database."""
+    # Here are the different possible (meta)genomic sources:
+    # 1. Single contigs database without bins
+    # 2. Single contigs database with collection of bins
+    # 3. Single contigs database with specified bin
+    # 4. One or more contigs databases input as "external" genomes
+    # 5. "Internal" genomes (bins) from one or more contigs databases
+    # 6. A combination of "internal" and "external" genomes (4 + 5)
+    # Ambiguous assignment of tRNA-seq seeds to tRNA genes can apply if used to 2, 4, 5, and 6.
 
     default_max_mismatches = 3
     blast_search_output_cols = [
