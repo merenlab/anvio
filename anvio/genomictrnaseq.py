@@ -1017,37 +1017,48 @@ class Integrator(object):
 
 
     def update_trnaseq_contigs_database(self, hits_df, unmodified_nt_df):
-        """Add information on tRNA gene associations to the tRNA-seq contigs database."""
+        """Add information on tRNA gene associations to the tRNA-seq contigs database.
 
+        Parameters
+        ==========
+        hits_df : pandas.core.frame.DataFrame
+            Each row contains a selected hit between a seed and tRNA gene.
+
+        unmodified_nt_df : pandas.core.frame.DataFrame
+            Each row contains a modification for which the underlying nucleotide could be resolved.
+        """
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
 
-        # Erase the table contents: if this table was already filled out in a previous run, then
-        # `self.sanity_check` would catch this and force the user to `--just-do-it`.
-        trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
-
-        # Update metadata tracking (meta)genomic associations.
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_project_name', self.genomic_contigs_db_info.hash)
-        trnaseq_contigs_db.set_meta_value('genomic_contigs_db_hash', self.genomic_contigs_db_info.project_name)
-        if self.collection_name:
-            trnaseq_contigs_db.set_meta_value('genomic_collections_name', self.collection_name)
+        # Either erase the table of seed/gene matches with `self.just_do_it` or append to the table.
+        row_count = trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name)
+        if self.just_do_it:
+            trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
+            self.run.info_single(
+                f"{row_count} seed/gene matches dropped from the tRNA-seq contigs database")
+        else:
+            if row_count:
+                self.run.info_single(f"{row_count} seed/gene matches are previously stored in the "
+                                     "tRNA-seq contigs database")
 
         # Assemble the rows of the table.
         table_entries = []
         hit_id = 0
         for row in hits_df.itertuples(index=False):
-            seed_unmodified_nt_df = unmodified_nt_df[unmodified_nt_df['seed_contig_name'] == row.seed_contig_name]
+            seed_unmodified_nt_df = unmodified_nt_df[
+                unmodified_nt_df['seed_contig_name'] == row.seed_contig_name]
 
             if len(seed_unmodified_nt_df):
-                seed_unmodified_nt_series = seed_unmodified_nt_df['seed_position'].astype(str) + seed_unmodified_nt_df['unmodified_nt']
+                # Note that modification positions at which the unmodified nucleotide could not be
+                # resolved will not be represented in the entry.
+                seed_unmodified_nt_series = (seed_unmodified_nt_df['seed_position'].astype(str) +
+                                             seed_unmodified_nt_df['unmodified_nt'])
                 unmodified_nt_entry = ','.join(seed_unmodified_nt_series.tolist())
             else:
                 unmodified_nt_entry = ''
 
-            # Add somewhat more than the minimum amount of information (gene callers ID of the tRNA
-            # gene) to make life easier and allow inspection of the result in the absence of the
-            # (meta)genomic contigs database source.
             table_entries.append([hit_id,
                                   row.seed_contig_name,
+                                  row.contigs_db,
                                   row.gene_callers_id,
                                   row.bin_id,
                                   row.decoded_amino_acid,
@@ -1061,10 +1072,13 @@ class Integrator(object):
                                   unmodified_nt_entry,
                                   row.gene_sequence])
             hit_id += 1
-        trnaseq_contigs_db._exec_many(f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES ({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
+        trnaseq_contigs_db._exec_many(
+            f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES '''
+            f'''({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
         trnaseq_contigs_db.disconnect()
 
-        self.run.info_single(f"In total, {hit_id} tRNA-seq seeds were linked to tRNA genes.")
+        self.run.info_single(f"{hits_df['seed_contig_name'].nunique()} tRNA-seq seeds are found to "
+                             f"match {hits_df['gene_callers_id'].nunique()} tRNA genes.")
 
 
 class Affinitizer:
