@@ -524,7 +524,7 @@ class Integrator(object):
         """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
         database."""
         trna_gene_seq_dict = self.write_trna_genes_fasta()
-        search_output_path = self.blast()
+        self.blast()
         hits_df = self.filter_hits(search_output_path)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
@@ -615,13 +615,23 @@ class Integrator(object):
         trna_genes_fasta.close()
 
         return trna_gene_seq_dict
+
+
+    def blast(self):
+        """Align tRNA-seq seeds/permuted seeds to tRNA genes."""
+        blast = BLAST(self.permuted_seeds_fasta_path,
+                      self.trna_genes_fasta_path,
+                      search_program='blastn',
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads)
         blast.tmp_dir = self.blast_dir
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
         blast.log_file_path = os.path.join(self.blast_dir, 'blast-log.txt')
+        blast.additional_params_for_blast = "-ungapped"
         blast.makedb(dbtype='nucl')
-        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols), ungapped=True)
+        blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols))
 
-        return blast.search_output_path
 
 
     def filter_hits(self, search_output_path):
