@@ -525,7 +525,7 @@ class Integrator(object):
         database."""
         trna_gene_seq_dict = self.write_trna_genes_fasta()
         self.blast()
-        hits_df = self.filter_hits(search_output_path)
+        hits_df = self.filter_hits(trna_gene_seq_dict)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
         self.update_trnaseq_contigs_database(hits_df, unmodified_nt_df)
 
@@ -633,34 +633,46 @@ class Integrator(object):
         blast.blast(outputfmt='6 ' + ' '.join(self.blast_search_output_cols))
 
 
+    def filter_hits(self, trna_gene_seq_dict):
+        """
+        Confidently associate tRNA-seq seeds with tRNA genes, filtering BLAST alignments of
+        seeds/permuted seeds to genes.
 
-    def filter_hits(self, search_output_path):
-        """The heavy lifting to confidently associate tRNA-seq seeds with tRNA genes."""
+        Parameters
+        ==========
+        trna_gene_seq_dict : dict
+            tRNA gene sequences used as subjects in BLAST search keyed by tuple of contigs database
+            name and gene callers ID.
 
+        Returns
+        =======
+        hits_df : pandas.core.frame.DataFrame
+            Each row contains a selected hit between a seed, which may be permuted, and tRNA gene.
+        """
         # Load BLAST output table.
-        hits_df = pd.read_csv(search_output_path, sep='\t', header=None, names=self.blast_search_output_cols)
+        search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
+        hits_df = pd.read_csv(
+            search_output_path, sep='\t', header=None, names=self.blast_search_output_cols)
 
-        # Apply some alignment filters to hits.
+        # Discard alignments with too many mismatches.
         hits_df = hits_df[hits_df['mismatch'] <= self.max_mismatches]
-        if self.use_full_length_seeds:
+        if self.full_gene:
+            # Discard alignments that do not start at the beginning of the gene.
             hits_df = hits_df[hits_df['sstart'] == 1]
 
-        # Separate seed IDs and permutation info.
-        hits_df[['seed_contig_name', 'seed_permutation']] = hits_df['qseqid'].str.split('|', expand=True)
+        # Discard (enigmatic) indistinguishable, duplicate hits if they exist.
+        hits_df = hits_df.drop_duplicates()
+
+        # Parse seed IDs and permutation info.
+        hits_df[['seed_contig_name', 'seed_permutation']] = \
+            hits_df['qseqid'].str.split('|', expand=True)
         hits_df['seed_permutation'] = hits_df['seed_permutation'].fillna('')
         hits_df = hits_df.drop('qseqid', axis=1)
-
-        # If considering a collection of bins, associate seed "contigs" with bins.
-        contig_bin_id_dict = {}
-        if self.bin_conscious:
-            bin_contig_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
-            for bin_id, split_names in bin_contig_names_dict.items():
-                for split_name in split_names:
-                    contig_bin_id_dict[split_name.split('_split_')[0]] = bin_id
 
         # Extract information on each hit.
         decoded_amino_acids = []
         anticodons = []
+        contigs_db_names = []
         bin_ids = []
         trnascan_scores = []
         gene_contig_names = []
@@ -670,29 +682,23 @@ class Integrator(object):
         gene_sequences = []
         for sseqid in hits_df['sseqid']:
             split_sseqid = sseqid.split('|')
-
-            decoded_amino_acid, anticodon = split_sseqid[0].split('_')[: 2]
+            contigs_db_name = split_sseqid[0]
+            contigs_db_names.append(contigs_db_name)
+            gene_name = split_sseqid[1]
+            decoded_amino_acid, anticodon = gene_name.split('_')[: 2]
             decoded_amino_acids.append(decoded_amino_acid)
             anticodons.append(anticodon)
-
-            gene_contig_name = split_sseqid[4].split('contig:')[1]
-            if self.bin_conscious:
-                try:
-                    bin_id = contig_bin_id_dict[gene_contig_name]
-                except KeyError:
-                    bin_id = ''
-            else:
-                bin_id = ''
-            gene_contig_names.append(gene_contig_name)
-            bin_ids.append(bin_id)
-
-            trnascan_scores.append(split_sseqid[3].split('e_value:')[1])
-            gene_callers_ids.append(split_sseqid[5].split('gene_callers_id:')[1])
-            gene_starts.append(split_sseqid[6].split('start:')[1])
-            gene_stops.append(split_sseqid[7].split('stop:')[1])
-            gene_sequences.append(split_sseqid[9].split('sequence:')[1])
+            bin_ids.append(split_sseqid[2])
+            trnascan_scores.append(split_sseqid[3])
+            gene_callers_id = split_sseqid[4]
+            gene_contig_names.append(gene_callers_id)
+            gene_callers_ids.append(split_sseqid[5])
+            gene_starts.append(split_sseqid[6])
+            gene_stops.append(split_sseqid[7])
+            gene_sequences.append(trna_gene_seq_dict[(contigs_db_name, gene_callers_id)])
         hits_df['decoded_amino_acid'] = decoded_amino_acids
         hits_df['anticodon'] = anticodons
+        hits_df['contigs_db_name'] = contigs_db_names
         hits_df['bin_id'] = bin_ids
         hits_df['trnascan_score'] = trnascan_scores
         hits_df['gene_contig_name'] = gene_contig_names
@@ -703,96 +709,248 @@ class Integrator(object):
 
         # Filter individual alignments.
         retained_indices = []
-        for index, decoded_amino_acid, seed_alignment_start, seed_length, gene_alignment_start, gene_alignment_end, gene_sequence, gene_length in zip(
-            hits_df.index, hits_df['decoded_amino_acid'], hits_df['qstart'], hits_df['qlen'], hits_df['sstart'], hits_df['send'], hits_df['gene_sequence'], hits_df['slen']):
-            if (gene_length - gene_alignment_end == 0) or ((gene_length - gene_alignment_end == 3) and gene_sequence[-3: ] == 'CCA'):
-                # The alignment ends at the end of the gene or just short of a 3'-CCA acceptor in the gene (the seed should never contain the 3'-CCA acceptor).
-                if (seed_alignment_start == 1) and (gene_alignment_end - gene_alignment_start == seed_length - 1):
-                    # The alignment starts at the beginning of the gene and spans the entire query.
+        for (index,
+             decoded_amino_acid,
+             seed_alignment_start,
+             seed_length,
+             gene_alignment_start,
+             gene_alignment_end,
+             gene_sequence,
+             gene_length) in zip(hits_df.index,
+                                 hits_df['decoded_amino_acid'],
+                                 hits_df['qstart'],
+                                 hits_df['qlen'],
+                                 hits_df['sstart'],
+                                 hits_df['send'],
+                                 hits_df['gene_sequence'],
+                                 hits_df['slen']):
+            if ((gene_length - gene_alignment_end == 0) or
+                ((gene_length - gene_alignment_end == 3) and gene_sequence[-3: ] == 'CCA')):
+                # The alignment ends at the end of the gene or just short of a 3'-CCA acceptor in
+                # the gene (the seed/permuted seed should never contain the 3'-CCA acceptor).
+                if ((seed_alignment_start == 1) and
+                    (gene_alignment_end - gene_alignment_start == seed_length - 1)):
+                    # The alignment starts at the beginning of the seed/permuted seed and spans the
+                    # entire query.
                     retained_indices.append(index)
-                elif (decoded_amino_acid == 'His') and (seed_alignment_start == 2) and (gene_alignment_end - gene_alignment_start == seed_length - 2):
-                    # The alignment starts at the second position of the tRNA-His seed sequence, which has a post-transcriptional G at the 5' end, and spans the remaining length of the query.
+                elif ((decoded_amino_acid == 'His') and
+                      (seed_alignment_start == 2) and
+                      (gene_alignment_end - gene_alignment_start == seed_length - 2)):
+                    # The alignment starts at the second position of the tRNA-His seed/permuted seed
+                    # sequence, which has a post-transcriptional G at the 5' end, and spans the
+                    # remaining length of the query.
                     retained_indices.append(index)
         hits_df = hits_df.loc[retained_indices]
 
-        # Retain each seed's top-scoring hits.
-        hits_df = hits_df[hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
+        # Retain each seed/permuted seed's top-scoring hits.
+        hits_df = hits_df[
+            hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
 
-        # If a collection of bins is provided, retain seeds unique to a single bin: disregard seeds
-        # that equally strongly hit genes inside and outside a single bin, and disregard seeds that
-        # hit unbinned contigs.
-        if self.bin_conscious:
-            hits_df = hits_df.groupby('seed_contig_name').filter(lambda seed_df: seed_df['bin_id'].nunique() == 1)
+        # If "ambiguous" tRNA gene assignment is not allowed, disregard seeds with equally strong
+        # hits to genes inside and outside a single genome, and disregard seeds that only hit genes
+        # outside bins. If the only genomic input was `args.contigs_db`, the database is not assumed
+        # to be a single genome, unlike with `args.external_genomes`, and "ambiguous" assignment is
+        # meaningless.
+        if self.contigs_db and not self.collection_name and not self.bin_id:
+            is_simple_contigs_db_input = True
+        else:
+            is_simple_contigs_db_input = False
+        if not self.ambiguous_genome_assignment and not is_simple_contigs_db_input:
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: seed_df['bin_id'].nunique() == 1)
             hits_df = hits_df[hits_df['bin_id'] != '']
 
         # Multiple permutations of the same seed may be retained after filtering by score. There are
         # two and possibly more ways that this can occur. (1) The unmodified nucleotide at a
         # modified position has a very low frequency and so was not used in the permuted sequences.
         # The permuted sequences, none of which contain the correct nucleotide, mismatch this
-        # nucleotide in the gene equally well. (2) A permutation is introduced at a predicted
-        # modification position that is actually a single nucleotide variant, and different versions
-        # of the SNV occur in different (meta)genomic contigs. The following procedure resolves both
-        # of these possibilities, with the last step being the one that resolves the first
-        # possibility. (1) Choose the permutation hitting the greatest number of genes. (2) If not
-        # resolved, choose the permutation with the fewest permuted positions. (3) If not resolved,
-        # break the tie by choosing the first permutation in the table, which will favor
-        # permutations toward the 5' end.
+        # nucleotide in genes equally well. (2) A permutation is introduced at a predicted
+        # modification position that is actually a nucleotide variant, and different versions of the
+        # variant occur in different (meta)genomic contigs. The following procedure resolves both of
+        # these possibilities, with the last step being the one that resolves the first possibility.
+        # (1) Choose the permutation hitting the greatest number of genes. (2) If not resolved,
+        # choose the permutation with the fewest permuted positions. (3) If not resolved, break the
+        # tie by choosing the first permutation in the table, which will favor permutations toward
+        # the 5' end.
         are_permutations_unresolved = True
-        if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
+        if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(
+            ['seed_contig_name', 'seed_permutation']).ngroups:
             are_permutations_unresolved = False
         if are_permutations_unresolved: # (1)
-            hits_df['count'] = hits_df.groupby(['seed_contig_name', 'seed_permutation'], as_index=False)['seed_contig_name'].transform(len)
-            hits_df = hits_df[hits_df['count'] == hits_df.groupby('seed_contig_name')['count'].transform('max')]
+            hits_df['count'] = hits_df.groupby(
+                ['seed_contig_name', 'seed_permutation'], as_index=False)[
+                    'seed_contig_name'].transform(len)
+            hits_df = hits_df[
+                hits_df['count'] == hits_df.groupby('seed_contig_name')['count'].transform('max')]
             hits_df = hits_df.drop('count', axis=1)
-            if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
+            if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(
+                ['seed_contig_name', 'seed_permutation']).ngroups:
                 are_permutations_unresolved = False
         if are_permutations_unresolved: # (2)
-            hits_df['num_permuted_positions'] = hits_df['seed_permutation'].apply(lambda p: p.count('_'))
-            hits_df = hits_df[hits_df['num_permuted_positions'] == hits_df.groupby('seed_contig_name')['num_permuted_positions'].transform('min')]
+            hits_df['num_permuted_positions'] = hits_df[
+                'seed_permutation'].apply(lambda p: p.count('_'))
+            hits_df = hits_df[
+                hits_df['num_permuted_positions'] == hits_df.groupby('seed_contig_name')[
+                    'num_permuted_positions'].transform('min')]
             hits_df = hits_df.drop('num_permuted_positions', axis=1)
-            if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(['seed_contig_name', 'seed_permutation']).ngroups:
+            if hits_df.groupby('seed_contig_name').ngroups == hits_df.groupby(
+                ['seed_contig_name', 'seed_permutation']).ngroups:
                 are_permutations_unresolved = False
         if are_permutations_unresolved: # (3)
-            hits_df = hits_df[hits_df['seed_permutation'] == hits_df.groupby('seed_contig_name')['seed_permutation'].transform('first')]
+            hits_df = hits_df[hits_df['seed_permutation'] == hits_df.groupby('seed_contig_name')[
+                'seed_permutation'].transform('first')]
 
-        # Seeds can be artifacts of the anvi'o de novo tRNA-seq workflow, especially in relatively
-        # deeply sequenced samples with high coverages, such as tRNA-seq libraries of pure cultures.
-        # `anvi-merge-trnaseq` reports up to the number of seeds set by the user. If the user asks
-        # for 1,000 seeds from a bacterial isolate experiment, then ~25-50 of these seeds will be
-        # true tRNA sequences and up to ~950-975 will be artifacts (containing unaccounted
-        # modification-induced indels, nontemplated nucleotides, sequence errors, etc., typically at
-        # low frequency), that could not be resolved as non-tRNA by the tRNA-seq workflow. To remove
-        # these artifact seeds, hits to the same gene are sorted by number of mismatches in the
-        # alignment and seed abundance, and only the lowest mismatch/highest seed abundance hit is
-        # retained. Seed abundance is taken as the average of relative abundance in each sample
-        # based on 3' (discriminator nucleotide) coverage of the seed. For example, if there are two
-        # tRNA-seq samples in the experiment, and two seeds hit the same gene each with one
-        # mismatch, but one seed has relative 3' abundances of 0.02 and 0.03 in the two samples and
-        # the other seed has abundances of 0.0006 and 0.00008, then the hit to the former seed will
-        # be the only one retained for this gene.
+        ##################################################
+        # Issues can arise in the selection of accurate seeds matching genes, especially in
+        # relatively deeply sequenced samples with high coverages, such as tRNA-seq libraries of
+        # pure cultures.
+        # I. Seeds can be artifacts of the anvi'o de novo tRNA-seq workflow. `anvi-merge-trnaseq`
+        # reports up to the number of seeds set by the user. If the user asks for 1,000 seeds from a
+        # bacterial isolate experiment, then ~25-50 of these seeds will be true tRNA sequences and
+        # up to ~950-975 will be artifacts (containing unaccounted modification-induced indels,
+        # nontemplated nucleotides, sequence errors, etc., typically at low frequency), that could
+        # not be resolved as non-tRNA by the tRNA-seq workflow. To remove these artifact seeds, hits
+        # to the same gene are sorted by number of mismatches in the alignment and seed abundance,
+        # and only the lowest mismatch/highest seed abundance hit is retained. Seed abundance is
+        # taken as the average of relative abundance in each sample based on 3' (discriminator
+        # nucleotide) coverage of the seed. For example, if there are two tRNA-seq samples in the
+        # experiment, and two seeds hit the same gene each with one mismatch, but one seed has
+        # relative 3' abundances of 0.02 and 0.03 in the two samples and the other seed has
+        # abundances of 0.0006 and 0.00008, then the hit to the former seed will be the only one
+        # retained for this gene.
+        # II. The selection of the lowest mismatch seed (see the previous section) can create an
+        # unintended side effect. The A -> I34 wobble position modification is typically nearly 100%
+        # complete. I is detected as G in tRNA-seq reads, so the correct seed matching the gene
+        # should have at least one alignment mismatch, G/A at position 34. In very deeply sequenced
+        # samples, however, a seed with A34 can sometimes be detected from rare tRNA molecules
+        # lacking the modification. `anvi-merge-trnaseq` would not merge the A34 and G34 seeds due
+        # to the absence of a third or fourth mutated nucleotide at position 34 and the miniscule
+        # frequency of A. Therefore, in this case, the lowest mismatch seed should not be selected;
+        # rather, select the lowest mismatch seed with G34. The algorithm also confirms that the G34
+        # seed is >10x more abundant than the A34 seed.
         coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2])
         coverage_df = coverage_df[['contig_name', 'sample_name', 'relative_discriminator_coverage']]
         coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
-        seed_contig_names = hits_df['seed_contig_name'].unique()
-        coverage_df = coverage_df[coverage_df['seed_contig_name'].isin(seed_contig_names)]
+        coverage_df = coverage_df[
+            coverage_df['seed_contig_name'].isin(hits_df['seed_contig_name'].unique())]
         coverage_df = hits_df.merge(coverage_df, on='seed_contig_name')
-        def filter_multiple_hits_to_gene(gene_df):
+
+        # Isolate the nucleotide at wobble position 34 in seeds that hit tRNAs with A34.
+        trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
+        # Convert seed contigs names to gene callers IDs.
+        seed_contig_names_string = ','.join(
+            ['"%s"' % seed_contig_name for seed_contig_name in
+             hits_df[hits_df['anticodon'].str[0] == 'A']['seed_contig_name'].unique()])
+        contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
+        seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
+            'genes_in_contigs',
+            columns_of_interest=['gene_callers_id', 'contig'],
+            where_clause=contigs_where_clause)
+        seed_id_df = seed_id_df.rename(
+            {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'}, axis=1)
+        # Find the index of position 34 in each of the seed sequences.
+        seed_ids_string = ','.join(['"%s"' % seed_gene_callers_id for seed_gene_callers_id in
+                                    seed_id_df['seed_gene_callers_id'].unique()])
+        ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
+        seed_wobble_df = trnaseq_contigs_db.get_table_as_dataframe(
+            'trna_feature',
+            columns_of_interest=['gene_callers_id', 'anticodon_loop_start'],
+            where_clause=ids_where_clause)
+        seed_wobble_df = seed_wobble_df.rename(
+            {'gene_callers_id': 'seed_gene_callers_id',
+             'anticodon_loop_start': 'seed_anticodon_loop_start'}, axis=1)
+        seed_wobble_df['seed_anticodon_start'] = seed_wobble_df['seed_anticodon_loop_start'] + 2
+        seed_wobble_df = seed_wobble_df.drop('seed_anticodon_loop_start', axis=1)
+        seed_wobble_df = seed_id_df.merge(seed_wobble_df, on='seed_gene_callers_id')
+        # Get the seed consensus sequence strings.
+        seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
+            'contig_sequences', where_clause=contigs_where_clause)
+        trnaseq_contigs_db.disconnect()
+        seed_consensus_sequence_df = seed_consensus_sequence_df.rename(
+            {'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
+        seed_wobble_df = seed_wobble_df.merge(seed_consensus_sequence_df, on='seed_contig_name')
+        # Find the nucleotides read at wobble position 34 in the seeds.
+        anticodon_wobble_nucleotides = []
+        for anticodon_start, seed_consensus_sequence in zip(
+            seed_wobble_df['seed_anticodon_start'], seed_wobble_df['seed_sequence']):
+            anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
+        seed_wobble_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
+
+        def filter_multiple_hits_to_gene(gene_df): # inner function used in groupby apply
             min_mismatch_df = gene_df[gene_df['mismatch'] == gene_df['mismatch'].min()]
             if min_mismatch_df['seed_contig_name'].nunique() > 1:
-                most_abund_seed_contig_name = min_mismatch_df.groupby('seed_contig_name')['relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
-                return min_mismatch_df[min_mismatch_df['seed_contig_name'] == most_abund_seed_contig_name]
-            return min_mismatch_df
-        coverage_df = coverage_df.groupby('gene_callers_id', group_keys=False).apply(filter_multiple_hits_to_gene)
-        hits_df = hits_df[hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
+                min_mismatch_df = min_mismatch_df[
+                    min_mismatch_df['seed_contig_name'] == min_mismatch_df.groupby(
+                        'seed_contig_name')['relative_discriminator_coverage'].mean().sort_values(
+                            ascending=False).index[0]]
+            if gene_df['anticodon'].iloc[0][0] != 'A':
+                return min_mismatch_df
+            else:
+                # Case II: Address possibility that seed with I34 is neglected.
+                max_coverage_seed_contig_name = gene_df.groupby('seed_contig_name')[
+                        'relative_discriminator_coverage'].mean().sort_values(
+                            ascending=False).index[0]
+                min_mismatch_seed_contig_name = min_mismatch_df['seed_contig_name'].iloc[0]
+                if min_mismatch_seed_contig_name == max_coverage_seed_contig_name:
+                    # The seed with the fewest mismatches also has the highest average discriminator
+                    # coverage.
+                    return min_mismatch_df
+                wobble_df = gene_df.merge(seed_wobble_df, how='left', on='seed_contig_name')
+                min_mismatch_seed_wobble_nucleotide = wobble_df[
+                    wobble_df['seed_contig_name'] == min_mismatch_seed_contig_name][
+                        'anticodon'].iloc[0][0]
+                if min_mismatch_seed_wobble_nucleotide != 'A':
+                    # The seed with the fewest mismatches (and which does not have the highest
+                    # average discriminator coverage) does not have an A at position 34. A seed is
+                    # not matched to the gene.
+                    return pd.DataFrame().reindex_like(min_mismatch_df)
+                wobble_df = wobble_df[wobble_df['seed_anticodon_wobble_nucleotide'] == 'G']
+                wobble_df = wobble_df[wobble_df['mismatch'] == wobble_df['mismatch'].min()]
+                max_coverage_G34_seed_contig_name = wobble_df.groupby('seed_contig_name')[
+                    'relative_discriminator_coverage'].mean().sort_values(ascending=False).index[0]
+                if (wobble_df[wobble_df['seed_contig_name'] == max_coverage_G34_seed_contig_name][
+                    'relative_discriminator_coverage'].mean() >= 10 * min_mismatch_df[
+                        'relative_discriminator_coverage'].mean()):
+                    # The seed with the fewest mismatches and a G at position 34 has an average
+                    # discriminator coverage at least an order of magnitude higher than the the seed
+                    # with the fewest mismatches and an A at position 34. Match the former seed to
+                    # the gene instead of the latter.
+                    return gene_df[gene_df['seed_contig_name'] == max_coverage_G34_seed_contig_name]
+                else:
+                    # The seed with the fewest mismatches and a G at position 34 does not have an
+                    # average discriminator coverage at least an order of magnitude higher than the
+                    # the seed with the fewest mismatches and an A at position 34. A seed is not
+                    # matched to the gene.
+                    return pd.DataFrame().reindex_like(min_mismatch_df)
+
+        coverage_df = coverage_df.groupby(
+            'gene_callers_id', group_keys=False).apply(filter_multiple_hits_to_gene)
+        hits_df = hits_df[
+            hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
+        ##################################################
 
         # Spruce up the columns.
         hits_df['seed_alignment_start'] = hits_df['qstart'] - 1
         hits_df['gene_alignment_start'] = hits_df['sstart'] - 1
         hits_df = hits_df.drop(['qstart', 'qlen', 'sseqid', 'sstart'], axis=1)
         hits_df = hits_df.rename({'send': 'gene_alignment_stop'}, axis=1)
-        hits_df = hits_df[['seed_contig_name', 'seed_permutation', # seed info
-                           'gene_contig_name', 'gene_callers_id', 'gene_start_in_contig', 'gene_stop_in_contig', 'bin_id', 'trnascan_score', 'decoded_amino_acid', 'anticodon', 'gene_sequence', # gene info
-                           'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop']] # hit info
+        hits_df = hits_df[['seed_contig_name', # seed info
+                           'seed_permutation',
+                           'contigs_db', # gene info
+                           'gene_contig_name',
+                           'gene_callers_id',
+                           'gene_start_in_contig',
+                           'gene_stop_in_contig',
+                           'bin_id',
+                           'trnascan_score',
+                           'decoded_amino_acid',
+                           'anticodon',
+                           'gene_sequence',
+                           'mismatch', # hit info
+                           'bitscore',
+                           'seed_alignment_start',
+                           'gene_alignment_start',
+                           'gene_alignment_stop']]
 
         return hits_df
 
