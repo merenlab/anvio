@@ -3,6 +3,7 @@
 """Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 
 
+import copy
 import inspect
 import argparse
 import numpy as np
@@ -37,9 +38,8 @@ run_quiet = terminal.Run(verbose=False)
 
 pp = terminal.pretty_print
 
-translation_table = constants.AA_to_codons
-nonstop_translation_table = {aa: co for aa, co in translation_table.items() if aa != 'STP'}
-decoding_table = constants.codon_to_AA
+default_codon_amino_acid_dict = {
+    codon: amino_acid for codon, amino_acid in constants.codon_to_AA.items()}
 
 # CAI is the Codon Adaptation Index of Sharp and Li (1987).
 # Delta is from Ran and Higgs (2012, Eq. 6).
@@ -47,15 +47,9 @@ cub_metrics = ['cai', 'delta']
 # The following CUB metrics rely upon comparison to a set of reference genes.
 reference_dependent_cub_metrics = ['cai', 'delta']
 
-# For CUB, remove single codon amino acids, stop codons, and codons with "N" nucleotide which were
-# recorded as "None".
+# For CUB, remove single-codon amino acids (which do not affect CUB) and stop codons.
 single_codon_amino_acids = ['Met', 'Trp']
-ignored_decodings_in_cub = ['Met', 'Trp', 'STP']
-ignored_codons_in_cub = [None]
-for decoding in ignored_decodings_in_cub:
-    ignored_codons_in_cub += translation_table[decoding]
-synonymous_codon_dict = {aa: co for aa, co in translation_table.items()
-                         if aa not in ignored_decodings_in_cub}
+ignored_cub_amino_acids = ['Met', 'Trp', 'STP']
 
 # By default, genes annotated as ribosomal proteins by KEGG KOfams/BRITE are used as the CUB
 # reference.
@@ -90,8 +84,44 @@ class SingleGenomeCodonUsage(object):
         self.run = r
         self.progress = p
 
+        self._set_genetic_code()
         self._load_contigs_db_data()
         self._make_gene_codon_frequency_table()
+
+
+    def _set_genetic_code(self):
+        """Record decoding properties of the genome as object attributes.
+
+        The dict, `args.codon_to_amino_acid`, should have keys that are codons and values that are
+        three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is None, the
+        standard genetic code is used."""
+        if self.args.codon_to_amino_acid is None:
+            self.codon_amino_acid_dict = default_codon_amino_acid_dict
+        else:
+            check_genetic_code(self.args.codon_to_amino_acid)
+            self.codon_amino_acid_dict = self.args.codon_to_amino_acid
+            if self.codon_amino_acid_dict != default_codon_amino_acid_dict:
+                self.run.info_single("Using a nonstandard genetic code for the genome")
+
+        self.amino_acid_codons_dict = {}
+        for codon, amino_acid in self.codon_amino_acid_dict.items():
+            try:
+                self.amino_acid_codons_dict[amino_acid].append(codon)
+            except KeyError:
+                self.amino_acid_codons_dict[amino_acid] = [codon]
+
+        self.nonstop_amino_acid_codons_dict = {
+            amino_acid: codons for amino_acid, codons in
+            self.amino_acid_codons_dict.items() if amino_acid != 'STP'}
+
+        # Ignore codons with "N" nucleotide which anvi'o records as None.
+        self.ignored_cub_codons = [None]
+        for amino_acid in ignored_cub_amino_acids:
+            self.ignored_cub_codons += self.amino_acid_codons_dict[amino_acid]
+
+        self.synonymous_nonstop_amino_acid_codons_dict = {
+            amino_acid: codons for amino_acid, codons in self.nonstop_amino_acid_codons_dict.items()
+            if amino_acid not in ignored_cub_amino_acids}
 
 
     def _load_contigs_db_data(self):
@@ -171,6 +201,10 @@ class SingleGenomeCodonUsage(object):
 
     def _make_gene_codon_frequency_table(self):
         """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
+
+        self.progress.new("Fetching codon frequency data")
+        self.progress.update("...")
+
         gene_codon_frequencies = []
         skipped_noncoding_gene_caller_ids = []
         coding_gene_caller_ids = []
@@ -203,6 +237,8 @@ class SingleGenomeCodonUsage(object):
         gene_codon_frequency_df.index.name = 'gene_caller_id'
         self.gene_codon_frequency_df = gene_codon_frequency_df
 
+        self.progress.end()
+
         self.noncoding_gene_count = len(skipped_noncoding_gene_caller_ids)
         if self.noncoding_gene_count:
             self.run.warning(
@@ -228,7 +264,8 @@ class SingleGenomeCodonUsage(object):
                         drop_amino_acids=None,
                         sequence_min_amino_acids=0,
                         pansequence_min_amino_acids=(0, 1.0),
-                        label_amino_acids=False):
+                        label_amino_acids=False,
+                        infinity_to_zero=False):
         """
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions.
 
@@ -345,6 +382,12 @@ class SingleGenomeCodonUsage(object):
         label_amino_acids : bool, optional
             If True (default False), include the amino acid for each codon in the column header of
             the output, i.e., LysAAA instead of AAA.
+        infinity_to_zero : bool, optional
+            If True (default False), replace NA (empty) values in output with 0.0. NA occurs if
+            `synonymous` is True and all codons for an amino acid are absent in a gene or function,
+            resulting in 0/0, reported as NA. Use with caution, for NA and 0.0 mean different things
+            and this will skew downstream analyses of synonymous relative frequencies, such as codon
+            usage bias.
 
         Returns
         -------
@@ -459,13 +502,13 @@ class SingleGenomeCodonUsage(object):
         # Set `drop_amino_acids`.
         if drop_amino_acids is None:
             if synonymous:
-                drop_amino_acids = ignored_decodings_in_cub
+                drop_amino_acids = ignored_cub_amino_acids
             else:
                 drop_amino_acids = []
         else:
             unrecognized_amino_acids = []
             for amino_acid in drop_amino_acids:
-                if amino_acid not in translation_table:
+                if amino_acid not in self.amino_acid_codons_dict:
                     unrecognized_amino_acids.append(amino_acid)
             if unrecognized_amino_acids:
                 raise ConfigError("The following amino acids in `drop_amino_acids` are not "
@@ -548,7 +591,7 @@ class SingleGenomeCodonUsage(object):
             else:
                 min_gene_length_message = ''
             dynamically_dropped_amino_acids = set()
-            for codon, amino_acid in decoding_table.items():
+            for codon, amino_acid in self.codon_amino_acid_dict.items():
                 if (codon not in gene_codon_frequency_df.columns and
                     amino_acid not in drop_amino_acids):
                     dynamically_dropped_amino_acids.add(amino_acid)
@@ -564,6 +607,7 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(gene_codon_frequency_df,
                                           sequence_min_amino_acids=sequence_min_amino_acids,
                                           label_amino_acids=label_amino_acids,
+                                          replace_na=infinity_to_zero,
                                           output_amino_acids=return_amino_acids)
         ### Absolute frequencies
         if (not relative and
@@ -613,7 +657,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(
             gene_codon_frequency_df,
             sequence_min_amino_acids=sequence_min_amino_acids,
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -636,7 +681,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: method(
             gene_codon_frequency_df,
             sequence_min_amino_acids=sequence_min_amino_acids,
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             not synonymous and
@@ -680,6 +726,7 @@ class SingleGenomeCodonUsage(object):
              gene_function_codon_frequency_df.sort_values(['source', 'accession', 'name'])),
             sequence_min_amino_acids=sequence_min_amino_acids,
             label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero,
             output_amino_acids=return_amino_acids)
         ### Absolute frequencies
         if (not relative and
@@ -740,7 +787,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -774,7 +822,8 @@ class SingleGenomeCodonUsage(object):
         get_table = lambda method: self._get_frequency_table(
             gene_function_codon_frequency_df.groupby('source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
-            label_amino_acids=label_amino_acids)
+            label_amino_acids=label_amino_acids,
+            replace_na=infinity_to_zero)
         if (not return_amino_acids and
             relative and
             synonymous and
@@ -971,8 +1020,9 @@ class SingleGenomeCodonUsage(object):
                 drop_amino_acids = []
             if drop_amino_acids:
                 drop_codons = []
-                for aa in drop_amino_acids:
-                    drop_codons += translation_table[aa]
+                amino_acid_codons_dict = args[0].amino_acid_codons_dict
+                for amino_acid in drop_amino_acids:
+                    drop_codons += amino_acid_codons_dict[amino_acid]
                 codon_frequency_df = codon_frequency_df.drop(drop_codons, axis=1, errors='ignore')
                 if len(codon_frequency_df.columns) == 0:
                     codon_frequency_df = codon_frequency_df.drop(codon_frequency_df.index)
@@ -992,7 +1042,7 @@ class SingleGenomeCodonUsage(object):
             if pansequence_min_amino_acids[0] > 0 and 0 < pansequence_min_amino_acids[1] < 1:
                 row_count = len(codon_frequency_df)
                 drop_codons = []
-                for synonymous_codons in translation_table.values():
+                for synonymous_codons in args[0].amino_acid_codons_dict.values():
                     try:
                         filtered_row_count = len(codon_frequency_df[codon_frequency_df[
                             synonymous_codons].sum(axis=1) >= pansequence_min_amino_acids[0]])
@@ -1010,7 +1060,7 @@ class SingleGenomeCodonUsage(object):
 
     def _filter_sequence_synonymous_codon_count(self, codon_frequency_df, sequence_min_amino_acids):
         mask_df = pd.DataFrame()
-        for synonymous_codons in translation_table.values():
+        for synonymous_codons in self.amino_acid_codons_dict.values():
             try:
                 codon_mask_series = \
                     codon_frequency_df[synonymous_codons].sum(axis=1) >= sequence_min_amino_acids
@@ -1036,7 +1086,7 @@ class SingleGenomeCodonUsage(object):
                 sequence_min_amino_acids = 0
             if sequence_min_amino_acids > 0:
                 mask_df = pd.DataFrame()
-                for synonymous_codons in translation_table.values():
+                for synonymous_codons in args[0].amino_acid_codons_dict.values():
                     try:
                         codon_mask_series = (codon_frequency_df[synonymous_codons].sum(axis=1) >=
                                              sequence_min_amino_acids)
@@ -1062,7 +1112,7 @@ class SingleGenomeCodonUsage(object):
                 output_amino_acids = False
             if output_amino_acids:
                 aa_df = pd.DataFrame(index=codon_df.index)
-                for amino_acid, codons in translation_table.items():
+                for amino_acid, codons in args[0].amino_acid_codons_dict.items():
                     try:
                         aa_df[amino_acid] = codon_df[codons].sum(axis=1, skipna=False)
                     except KeyError:
@@ -1091,6 +1141,22 @@ class SingleGenomeCodonUsage(object):
                                       f"{', '.join(list(codon_df.columns))}")
                 codon_df = codon_df[sorted(codon_df.columns)]
             return codon_df
+        return wrapper
+
+
+    def _replace_na(method):
+        """Decorator to replace NA with 0.0 in the output frequency table. This should only occur in
+        synonymous relative frequency output, in which missing amino acids yield NA (not inf, though
+        this is as a consequence of 0/0)."""
+        def wrapper(*args, **kwargs):
+            frequency_df = method(*args, **kwargs)
+            try:
+                replace_na = kwargs['replace_na']
+            except KeyError:
+                replace_na = False
+            if replace_na:
+                frequency_df = frequency_df.fillna(0)
+            return frequency_df
         return wrapper
 
 
@@ -1152,12 +1218,13 @@ class SingleGenomeCodonUsage(object):
     # @_filter_pansequence_synonymous_codon_count_decorator
     @_filter_sequence_synonymous_codon_count_decorator
     @_add_amino_acid_to_header_decorator
+    @_replace_na
     # @_filter_output_codon_count
     def _get_synonymous_codon_rel_frequency_table(self, codon_frequency_df, **kwargs):
         """Return the relative frequencies of codons in relation to the set of codons encoding the
         same amino acid (or stop codons). If columns for one or more codons in a synonymous set are
-        missing, synonymous relative frequency will not be calculated for the remaining codons in
-        the set."""
+        missing (rather than 0), synonymous relative frequency will not be calculated for the
+        remaining codons in the set."""
         try:
             mask_df = self._filter_sequence_synonymous_codon_count(
                 codon_frequency_df, kwargs['sequence_min_amino_acids']).notna()
@@ -1211,7 +1278,7 @@ class SingleGenomeCodonUsage(object):
         first_kwargs = {}
         second_kwargs = {}
         for key, value in kwargs.items():
-            if key in ['sequence_min_amino_acids', 'label_amino_acids']:
+            if key in ['sequence_min_amino_acids', 'label_amino_acids', 'replace_na']:
                 second_kwargs[key] = value
             else:
                 first_kwargs[key] = value
@@ -1253,7 +1320,7 @@ class SingleGenomeCodonUsage(object):
         first_kwargs = {}
         second_kwargs = {}
         for key, value in kwargs.items():
-            if key in ['sequence_min_amino_acids', 'label_amino_acids']:
+            if key in ['sequence_min_amino_acids', 'label_amino_acids', 'replace_na']:
                 second_kwargs[key] = value
             else:
                 first_kwargs[key] = value
@@ -1509,7 +1576,7 @@ class SingleGenomeCodonUsage(object):
 
         # Determine the encoded amino acids ignored in the analysis.
         if drop_amino_acids is None:
-            drop_amino_acids = ignored_decodings_in_cub
+            drop_amino_acids = ignored_cub_amino_acids
         else:
             for amino_acid in single_codon_amino_acids:
                 if amino_acid not in drop_amino_acids:
@@ -1546,7 +1613,7 @@ class SingleGenomeCodonUsage(object):
         if missing_query_codons:
             missing_codon_dict = {}
             for codon in missing_query_codons:
-                amino_acid = decoding_table[codon]
+                amino_acid = self.codon_amino_acid_dict[codon]
                 try:
                     missing_codon_dict[amino_acid].append(codon)
                 except KeyError:
@@ -1774,7 +1841,7 @@ class SingleGenomeCodonUsage(object):
             function_names=reference_function_names,
             expect_functions=expect_reference_functions,
             sum_genes=True,
-            drop_amino_acids=ignored_decodings_in_cub)
+            drop_amino_acids=ignored_cub_amino_acids)
 
         # In the absence of a set of reference genes for the genome,
         # `reference_codon_frequency_df` has an index and header but no data.
@@ -1787,12 +1854,12 @@ class SingleGenomeCodonUsage(object):
 
         # Report codons absent in the reference.
         missing_reference_codons = []
-        for codon in set(constants.codons).difference(set(ignored_codons_in_cub)):
+        for codon in set(constants.codons).difference(set(self.ignored_cub_codons)):
             if reference_codon_frequency_df[codon].sum() == 0:
                 missing_reference_codons.append(codon)
         missing_codon_dict = {}
         for codon in missing_reference_codons:
-            amino_acid = decoding_table[codon]
+            amino_acid = self.codon_amino_acid_dict[codon]
             try:
                 missing_codon_dict[amino_acid].append(codon)
             except KeyError:
@@ -1815,7 +1882,7 @@ class SingleGenomeCodonUsage(object):
         if reference_exclude_amino_acid_count:
             removed_amino_acids = []
             removed_codons = []
-            for amino_acid, codons in synonymous_codon_dict.items():
+            for amino_acid, codons in self.synonymous_nonstop_amino_acid_codons_dict.items():
                 present_codons = set(reference_codon_frequency_df.columns.intersection(codons))
                 if (reference_codon_frequency_df[present_codons].sum().sum()
                     < reference_exclude_amino_acid_count):
@@ -1907,7 +1974,7 @@ class SingleGenomeCodonUsage(object):
         # Calculate reference codon weights.
         np.seterr(divide='ignore')
         synonymous_weight_dfs = []
-        for codons in synonymous_codon_dict.values():
+        for codons in self.synonymous_nonstop_amino_acid_codons_dict.values():
             # Not every codon in the synonymous set need be present in the data.
             intermediate_df = reference_codon_frequency_df[
                 reference_codon_frequency_df.columns.intersection(codons)]
@@ -2131,7 +2198,7 @@ class MultiGenomeCodonUsage(object):
                     "Of the requested function annotation sources, the following were not run on "
                     f"every genome: {', '.join(unshared_function_sources)}.")
 
-        # Store information on accessing the genomes.
+        # Store information on the genomes.
         self.genome_info_dict = {}
         for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
             self.genome_info_dict[genome_name] = genome_info = {}
@@ -2140,10 +2207,12 @@ class MultiGenomeCodonUsage(object):
             genome_info['collection_name'] = genome_dict['collection_id']
             genome_info['bin_id'] = genome_dict['bin_id']
             genome_info['function_sources'] = self.function_sources
+            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
         for genome_name, genome_dict in descriptions.external_genomes_dict.items():
             self.genome_info_dict[genome_name] = genome_info = {}
             genome_info['contigs_db'] = genome_dict['contigs_db_path']
             genome_info['function_sources'] = self.function_sources
+            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
 
         # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
         # all of the SingleGenomeCodonUsage objects into memory, allowing methods to save time by
@@ -2175,7 +2244,8 @@ class MultiGenomeCodonUsage(object):
                         drop_amino_acids=None,
                         sequence_min_amino_acids=0,
                         pansequence_min_amino_acids=(0, 1.0),
-                        label_amino_acids=False):
+                        label_amino_acids=False,
+                        infinity_to_zero=False):
         """
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions
         in one or more genomes.
@@ -2261,3 +2331,49 @@ class MultiGenomeCodonUsage(object):
             print()
 
             yield genome_name, cub_table_dict
+
+
+def get_custom_encodings(encodings_txt):
+    """Modify the standard genetic code given user input, as used in the scripts,
+    `anvi-get-codon-frequencies` and `anvi-get-codon-usage-bias`."""
+    codon_amino_acid_dict = copy.deepcopy(default_codon_amino_acid_dict)
+
+    if not encodings_txt:
+        return codon_amino_acid_dict
+
+    encodings_df = pd.read_csv(encodings_txt, sep='\t', header=None)
+    codon_amino_acid_dict.update(dict(zip(encodings_df.iloc[:, 0], encodings_df.iloc[:, 1])))
+
+    return codon_amino_acid_dict
+
+
+def check_genetic_code(codon_amino_acid_dict):
+    """Check that known codons and three-letter amino acid codes are used in a dict defining the
+    genetic code, throwing an exception if needed."""
+    unrecognized_codons = []
+    unrecognized_amino_acids = []
+    for codon, amino_acid in codon_amino_acid_dict.items():
+        if codon not in constants.codons:
+            unrecognized_codons.append(codon)
+        if amino_acid not in constants.amino_acids:
+            unrecognized_amino_acids.append(amino_acid)
+
+    if unrecognized_codons:
+        unrecognized_codon_message = (
+            "The following codons in the provided genetic code are not recognized: "
+            f"{', '.join(unrecognized_codons)}.")
+    else:
+        unrecognized_codon_message = ""
+
+    if unrecognized_amino_acids:
+        unrecognized_amino_acid_message = (
+            "The following amino acids in the provided genetic code are not recognized: "
+            f"{', '.join(unrecognized_amino_acids)}. These should be three-letter codes "
+            "and \"STP\" for stop codons.")
+        if unrecognized_codon_message:
+            unrecognized_amino_acid_message = " " + unrecognized_amino_acid_message
+    else:
+        unrecognized_amino_acid_message = ""
+
+    if unrecognized_codon_message or unrecognized_amino_acid_message:
+        raise ConfigError(f"{unrecognized_codon_message}{unrecognized_amino_acid_message}")

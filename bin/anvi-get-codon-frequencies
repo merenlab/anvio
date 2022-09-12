@@ -89,6 +89,10 @@ def main(args):
 
     from_function_sources = parse_select_functions_table(args, from_function_sources)
 
+    # Store the coding dictionary in `args` for use in instantiating single- and multi-genome codon
+    # usage objects.
+    args.codon_to_amino_acid = codonusage.get_custom_encodings(args.encodings_txt)
+
     if args.include_amino_acids and args.exclude_amino_acids:
         raise ConfigError(
             "Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
@@ -125,7 +129,8 @@ def main(args):
             drop_amino_acids=args.exclude_amino_acids,
             sequence_min_amino_acids=args.sequence_min_amino_acids,
             pansequence_min_amino_acids=args.pansequence_min_amino_acids,
-            label_amino_acids=args.header_amino_acids)
+            label_amino_acids=args.header_amino_acids,
+            infinity_to_zero=args.infinity_to_zero)
     else:
         single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
         frequency_df = single_genome_codon_usage.get_frequencies(
@@ -146,7 +151,8 @@ def main(args):
             drop_amino_acids=args.exclude_amino_acids,
             sequence_min_amino_acids=args.sequence_min_amino_acids,
             pansequence_min_amino_acids=args.pansequence_min_amino_acids,
-            label_amino_acids=args.header_amino_acids)
+            label_amino_acids=args.header_amino_acids,
+            infinity_to_zero=args.infinity_to_zero)
 
     # Write output tables.
     if args.sum or args.average:
@@ -265,6 +271,13 @@ if __name__ == '__main__':
         '--header-amino-acids', default=False, action='store_true',
         help="Include the amino acid for each codon in the column header of codon output, i.e., "
              "LysAAA instead of AAA.")
+    groupC.add_argument(
+        '--infinity-to-zero', default=False, action='store_true',
+        help="Replace NA (empty) values in output with 0.0. NA occurs with `--synonymous` when all "
+             "codons for an amino acid are absent in a gene or function, resulting in 0/0, "
+             "reported as NA. Use with caution, for NA and 0.0 mean different things and this will "
+             "skew downstream analyses of synonymous relative frequencies, such as codon usage "
+             "bias.")
 
     groupD = parser.add_argument_group(
         'FREQUENCY STATISTICS',
@@ -282,6 +295,15 @@ if __name__ == '__main__':
     groupD.add_argument(
         '--return-amino-acids', default=False, action='store_true',
         help="Return frequencies of codons encoding the same amino acid.")
+    groupD.add_argument(
+        '--encodings-txt',
+        help="Changes to the standard genetic code can be provided in this tab-delimited file of "
+             "two columns. Each entry in the first column is a codon and each entry in the second "
+             "column is the three-letter code for the decoded amino acid. For example, to recode "
+             "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
+             "the same row of the second. Stop/termination codons are abbreviated \"STP\". This "
+             "option affects per-amino acid and synonymous codon output (when using "
+             "`--return-amino-acids` or `--synonymous`).")
     groupD.add_argument(
         '--sum', default=False, action='store_true',
         help="Sum frequencies across genes, returning a single row for each genome. When functions "

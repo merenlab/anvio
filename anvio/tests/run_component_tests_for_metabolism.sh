@@ -22,7 +22,8 @@ kegg_data_dir=`mktemp -d`
 rm -rf $kegg_data_dir
 
 INFO "Setting up KEGG data"
-anvi-setup-kegg-kofams --kegg-data-dir $kegg_data_dir
+anvi-setup-kegg-kofams --kegg-data-dir $kegg_data_dir \
+                       --no-progress
 
 ## BASIC TESTS
 INFO "Estimating metabolism on a single contigs database"

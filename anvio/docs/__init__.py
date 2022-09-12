@@ -532,6 +532,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "hmm-list": {
+        "name": "HMM-LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "coverages-txt": {
         "name": "COVERAGES",
         "type": "TXT",
@@ -760,6 +766,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "ecophylo-workflow": {
+        "name": "ECOPHYLO WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+},
     "contig-inspection" : {
         "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",
