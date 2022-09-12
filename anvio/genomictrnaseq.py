@@ -956,30 +956,47 @@ class Integrator(object):
 
 
     def find_unmodified_nucleotides(self, hits_df):
-        """Find the unmodified nucleotides at predicted modification positions in tRNA-seq seeds using matching tRNA gene sequences."""
+        """Find the unmodified nucleotides at predicted modification positions in tRNA-seq seeds
+        using matching tRNA gene sequences.
 
+        Parameters
+        ==========
+        hits_df : pandas.core.frame.DataFrame
+            Each row contains a selected hit between a seed and tRNA gene.
+
+        Returns
+        =======
+        unmodified_nt_df : pandas.core.frame.DataFrame
+            Each row contains a modification for which the underlying nucleotide could be resolved.
+        """
         # Load modification information for seeds associated with genes.
-        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0, usecols=['contig_name', 'seed_position'])
+        modifications_df = pd.read_csv(self.modifications_txt_path, sep='\t', header=0,
+                                       usecols=['contig_name', 'seed_position'])
         modifications_df = modifications_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
         modifications_df = modifications_df.drop_duplicates()
-        modifications_df = modifications_df[modifications_df['seed_contig_name'].isin(hits_df['seed_contig_name'].unique())]
+        modifications_df = modifications_df[
+            modifications_df['seed_contig_name'].isin(hits_df['seed_contig_name'].unique())]
 
         # If a seed matches multiple genes and the nucleotides at a predicted modification position
         # differ between the genes, then it is likely that the variation is genetic rather than
         # caused by a modification.
-        modification_candidates_df = modifications_df.merge(hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_sequence']],
-                                                            how='left', on='seed_contig_name')
+        modification_candidates_df = modifications_df.merge(
+            hits_df[['seed_contig_name', 'seed_alignment_start', 'gene_sequence']],
+            how='left', on='seed_contig_name')
         modification_keys = []
         unmodified_nts = []
-        snv_keys = []
-        for group_key, modification_candidate_df in modification_candidates_df.groupby(['seed_contig_name', 'seed_position'], as_index=False):
+        variant_keys = []
+        for group_key, modification_candidate_df in modification_candidates_df.groupby(
+            ['seed_contig_name', 'seed_position'], as_index=False):
             unmodified_nt = ''
             for seed_position, seed_alignment_start, gene_sequence in zip(
-                modification_candidate_df['seed_position'], modification_candidate_df['seed_alignment_start'], modification_candidate_df['gene_sequence']):
+                modification_candidate_df['seed_position'],
+                modification_candidate_df['seed_alignment_start'],
+                modification_candidate_df['gene_sequence']):
                 gene_nt = gene_sequence[int(seed_position - seed_alignment_start)]
                 if unmodified_nt:
                     if gene_nt != unmodified_nt:
-                        snv_keys.append(group_key)
+                        variant_keys.append(group_key)
                         break
                 else:
                     unmodified_nt = gene_nt
@@ -988,9 +1005,12 @@ class Integrator(object):
                 unmodified_nts.append(unmodified_nt)
         modifications_df = modifications_df.set_index(['seed_contig_name', 'seed_position'])
         modifications_df = modifications_df.loc[modification_keys]
-        unmodified_nt_df = modifications_df.merge(pd.DataFrame([modification_key + (unmodified_nt, ) for modification_key, unmodified_nt in zip(modification_keys, unmodified_nts)],
-                                                               columns=['seed_contig_name', 'seed_position', 'unmodified_nt']),
-                                                  on=['seed_contig_name', 'seed_position'])
+        unmodified_nt_df = modifications_df.merge(
+            pd.DataFrame(
+                [modification_key + (unmodified_nt, )
+                 for modification_key, unmodified_nt in zip(modification_keys, unmodified_nts)],
+                columns=['seed_contig_name', 'seed_position', 'unmodified_nt']),
+            on=['seed_contig_name', 'seed_position'])
         unmodified_nt_df = unmodified_nt_df.reset_index(drop=True)
 
         return unmodified_nt_df
