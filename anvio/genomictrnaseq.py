@@ -18,6 +18,7 @@ from itertools import combinations, product
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
+from anvio.genomedescriptions import GenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
