@@ -522,7 +522,7 @@ class Integrator(object):
     def go(self):
         """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
         database."""
-        self.write_trna_genes_fasta()
+        trna_gene_seq_dict = self.write_trna_genes_fasta()
         search_output_path = self.blast()
         hits_df = self.filter_hits(search_output_path)
         unmodified_nt_df = self.find_unmodified_nucleotides(hits_df)
@@ -530,25 +530,90 @@ class Integrator(object):
 
 
     def write_trna_genes_fasta(self):
-        """Write tRNA genes in the (meta)genomic contigs database to a FASTA file.
-
-        This method is based on `anvi-get-sequences-for-hmm-hits`.
         """
+        Write all tRNA gene sequences from input contigs databases to a FASTA file.
 
-        trna_gene_info = hmmops.SequencesForHMMHits(self.genomic_contigs_db_path, sources=set(['Transfer_RNAs']))
-        splits_dict = {self.genomic_contigs_db_info.project_name: list(self.genomic_contigs_db_info.load_db().smart_get(tables.splits_info_table_name, 'split').keys())}
-        hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
+        Returns
+        =======
+        trna_gene_seq_dict : dict
+            tRNA gene sequences keyed by tuple of contigs database name and gene callers ID.
+        """
+        trna_genes_fasta = open(self.trna_genes_fasta_path, 'w')
+        # BLAST cannot report the full subject (gene) sequence, but these are needed to filter
+        # alignments.
+        trna_gene_seq_dict = {}
+        processed_contigs_db_names = []
+        for genome_info in self.genome_info_dict.values():
+            trna_gene_info = hmmops.SequencesForHMMHits(
+                genome_info['contigs_db'], sources=set(['Transfer_RNAs']))
 
-        if not len(hmm_seqs_dict):
-            raise ConfigError("Unfortunately it appears that no tRNA genes were found in the (meta)genomic contigs database.")
+            contigs_db_name = genome_info['contigs_db_info'].project_name
 
-        trna_gene_info.store_hmm_sequences_into_FASTA(hmm_seqs_dict, self.trna_genes_fasta_path, header_section_separator='|', sequence_in_header=True)
+            if contigs_db_name in processed_contigs_db_names:
+                # The tRNA genes from the contigs database were already added to the FASTA due to
+                # another internal genome from the database having already been encountered in
+                # `genome_info_dict`.
+                continue
 
+            # Split names from the database are needed to recover the tRNA sequence strings.
+            splits_dict = {
+                contigs_db_name: list(genome_info['contigs_db_info'].load_db().smart_get(
+                    tables.splits_info_table_name, 'split').keys())}
+            hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
 
-    def blast(self):
-        """Align permuted tRNA-seq seeds to tRNA genes."""
+            # Find any bin of interest from `genome_info` containing the tRNA gene. If the gene is
+            # in an unbinned contig or in a contig that is not in a bin of interest, then the bin is
+            # recorded as an empty string.
+            args = argparse.ArgumentParser()
+            if genome_info['bin_id']:
+                args.contigs_db = genome_info['contigs_db']
+                args.profile_db = genome_info['profile_db']
+                args.collection_name = genome_info['collection_name']
+                args.bin_id = genome_info['bin_id']
+                search_for_bin_of_interest = True
+            elif genome_info['collection_name']:
+                args.contigs_db = genome_info['contigs_db']
+                args.profile_db = genome_info['profile_db']
+                args.collection_name = genome_info['collection_name']
+                search_for_bin_of_interest = True
+            else:
+                search_for_bin_of_interest = False
+            if search_for_bin_of_interest:
+                contig_bin_id_dict = {}
+                bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+                for bin_id, split_names in bin_contig_names_dict.items():
+                    for split_name in split_names:
+                        contig_bin_id_dict[split_name.split('_split_')[0]] = bin_id
 
-        blast = BLAST(self.permuted_seeds_fasta_path, self.trna_genes_fasta_path, search_program='blastn', run=self.run, progress=self.progress, num_threads=self.num_threads)
+            for gene_id, entry in hmm_seqs_dict.items():
+                seq_string = hmm_seqs_dict[gene_id]['sequence']
+
+                if search_for_bin_of_interest:
+                    try:
+                        bin_id = contig_bin_id_dict[entry['contig']]
+                    except KeyError:
+                        bin_id = ''
+                else:
+                    bin_id = ''
+
+                # The sequence header line has a format similar to that produced by
+                # `SequencesForHMMHits.get_FASTA_header_and_sequence_for_gene_unique_id`.
+                header = (f"{contigs_db_name}|"
+                          f"{entry['gene_name']}|"
+                          f"{bin_id}|"
+                          f"{entry['e_value']}|"
+                          f"{entry['contig']}|"
+                          f"{entry['gene_callers_id']}|"
+                          f"{entry['start']}|"
+                          f"{entry['stop']}")
+                trna_genes_fasta.write(f">{header}\n")
+                trna_genes_fasta.write(f"{seq_string}\n")
+
+                trna_gene_seq_dict[(contigs_db_name, entry['gene_callers_id'])] = seq_string
+            processed_contigs_db_names.append(contigs_db_name)
+        trna_genes_fasta.close()
+
+        return trna_gene_seq_dict
         blast.tmp_dir = self.blast_dir
         blast.search_output_path = os.path.join(self.blast_dir, 'blast-search-results.txt')
         blast.log_file_path = os.path.join(self.blast_dir, 'blast-log.txt')
