@@ -520,8 +520,8 @@ class Integrator(object):
 
 
     def go(self):
-        """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs database."""
-
+        """Link tRNA-seq seeds to tRNA genes, adding this information to the tRNA-seq contigs
+        database."""
         self.write_trna_genes_fasta()
         search_output_path = self.blast()
         hits_df = self.filter_hits(search_output_path)
