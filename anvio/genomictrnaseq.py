@@ -427,10 +427,10 @@ class Integrator(object):
         # Prevent a confused user from providing tRNA-seq rather than (meta)genomic contigs
         # databases.
         unrecognized = []
-        for genome_name, genome_info in self.genome_info_dict.items():
+        for name, genome_info in self.genome_info_dict.items():
             genomic_contigs_db_info = DBInfo(genome_info['contigs_db'], expecting='contigs')
             if genomic_contigs_db_info.variant != 'unknown':
-                unrecognized.append(genome_name)
+                unrecognized.append(name)
         if unrecognized:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
@@ -446,10 +446,10 @@ class Integrator(object):
 
         # Check that there are tRNA genes annotated in the (meta)genomes.
         unannotated = []
-        for genome_name, genome_info in self.genome_info_dict.items():
+        for name, genome_info in self.genome_info_dict.items():
             if 'Transfer_RNAs' not in hmmops.SequencesForHMMHits(
                 genome_info['contigs_db']).hmm_hits_info:
-                unannotated.append(genome_name)
+                unannotated.append(name)
         if unannotated:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
@@ -466,13 +466,13 @@ class Integrator(object):
 
         # Check that profile databases correspond to (meta)genomic contigs databases.
         incompatible = []
-        for genome_name, genome_info in self.genome_info_dict.items():
+        for name, genome_info in self.genome_info_dict.items():
             if genome_info['profile_db']:
                 try:
                     utils.is_profile_db_and_contigs_db_compatible(
                         genome_info['profile_db'], genome_info['contigs_db'])
                 except ConfigError:
-                    incompatible.append(genome_name)
+                    incompatible.append(name)
         if incompatible:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
@@ -487,12 +487,12 @@ class Integrator(object):
 
         # Check that collections exist.
         unrecognized = []
-        for genome_name, genome_info in self.genome_info_dict.items():
+        for name, genome_info in self.genome_info_dict.items():
             if genome_info['profile_db']:
                 collections = ccollections.Collections()
                 collections.populate_collections_dict(genome_info['profile_db'])
                 if genome_info['collection_name'] not in collections.collections_dict:
-                    unrecognized.append(genome_name)
+                    unrecognized.append(name)
         if unrecognized:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
