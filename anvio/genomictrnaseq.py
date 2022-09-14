@@ -1017,22 +1017,25 @@ class Integrator(object):
             hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
         ##################################################
 
-        # Spruce up the columns.
+        # Spruce up the columns. Order them how they will appear in the hits table in the database.
         hits_df['seed_alignment_start'] = hits_df['qstart'] - 1
         hits_df['gene_alignment_start'] = hits_df['sstart'] - 1
         hits_df = hits_df.drop(['qstart', 'qlen', 'sseqid', 'sstart'], axis=1)
         hits_df = hits_df.rename({'send': 'gene_alignment_stop'}, axis=1)
         hits_df = hits_df[['seed_contig_name', # seed info
                            'seed_permutation',
-                           'contigs_db', # gene info
+                           'contigs_db_project_name', # gene and genome info
+                           'contigs_db_hash',
                            'gene_contig_name',
-                           'gene_callers_id',
-                           'gene_start_in_contig',
-                           'gene_stop_in_contig',
+                           'profile_db_sample_id',
+                           'collection_name',
                            'bin_id',
-                           'trnascan_score',
+                           'gene_callers_id',
                            'decoded_amino_acid',
                            'anticodon',
+                           'gene_start_in_contig',
+                           'gene_stop_in_contig',
+                           'trnascan_score',
                            'gene_sequence',
                            'mismatch', # hit info
                            'bitscore',
