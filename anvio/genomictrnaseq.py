@@ -444,8 +444,7 @@ class Integrator(object):
         # (meta)genomic contigs database.
         unrecognized = []
         for name, genome_info in self.genome_info_dict.items():
-            genomic_contigs_db_info = DBInfo(genome_info['contigs_db'], expecting='contigs')
-            if genomic_contigs_db_info.variant != 'unknown':
+            if genome_info['contigs_db_info'].variant != 'unknown':
                 unrecognized.append(name)
         if unrecognized:
             if self.genomic_contigs_db_path:
