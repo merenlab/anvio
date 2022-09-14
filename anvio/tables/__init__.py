@@ -149,8 +149,8 @@ trna_seed_feature_table_structure       = ['gene_callers_id'] + list(itertools.c
 trna_seed_feature_table_types           = ['gene_callers_id'] + ['str'] * len(TRNA_FEATURE_NAMES[: -1]) * 2                                                                                    + ['numeric'    , 'numeric'   , 'numeric'   , 'numeric']
 
 trna_gene_hits_table_name               = 'trna_gene_hits'
-trna_gene_hits_table_structure          = ['entry_id', 'seed_contig_name', 'gene_contigs_db_name', 'gene_gene_callers_id', 'bin_name', 'decoded_amino_acid', 'anticodon', 'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop', 'trnascan_score', 'unmodified_nucleotides', 'gene_sequence']
-trna_gene_hits_table_types              = ['numeric' , 'text'            , 'text'                , 'numeric'             , 'text'    , 'text'              , 'text'     , 'numeric' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'numeric'       , 'text'                  , 'text']
+trna_gene_hits_table_structure          = ['entry_id', 'seed_contig_name', 'gene_contigs_db_project_name', 'gene_contigs_db_hash', 'gene_contig_name', 'profile_db_sample_id', 'collection_name', 'bin_id', 'gene_gene_callers_id', 'decoded_amino_acid', 'anticodon', 'gene_start_in_contig', 'gene_stop_in_contig', 'trnascan_score', 'gene_sequence', 'mismatch', 'bitscore', 'seed_alignment_start', 'gene_alignment_start', 'gene_alignment_stop', 'unmodified_nucleotides']
+trna_gene_hits_table_types              = ['numeric' , 'text'            , 'text'                        , 'text'                , 'text'            , 'text'                , 'text'           , 'text'  , 'numeric'             , 'text'              , 'text'     , 'numeric'             , 'numeric'            , 'numeric'       , 'text'         , 'numeric' , 'numeric' , 'numeric'             , 'numeric'             , 'numeric'            , 'text']
 
 
 ####################################################################################################
