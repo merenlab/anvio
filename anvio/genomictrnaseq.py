@@ -559,75 +559,43 @@ class Integrator(object):
         # output table, but these sequences are needed to filter alignments, so they are filed in a
         # dictionary.
         trna_gene_seq_dict = {}
-        processed_contigs_db_names = []
+
+        # Get the unique set of input contigs databases.
+        contigs_db_paths = set()
+        contigs_db_infos = []
         for genome_info in self.genome_info_dict.values():
-            trna_gene_info = hmmops.SequencesForHMMHits(
-                genome_info['contigs_db'], sources=set(['Transfer_RNAs']))
-
-            contigs_db_name = genome_info['contigs_db_info'].project_name
-
-            if contigs_db_name in processed_contigs_db_names:
-                # The tRNA genes from the contigs database were already added to the FASTA due to
-                # another internal genome from the database having already been encountered in
-                # `genome_info_dict`.
+            if genome_info['contigs_db_info'].path in contigs_db_paths:
                 continue
+            contigs_db_infos.append(genome_info['contigs_db_info'])
+
+        for contigs_db_info in contigs_db_infos:
+            trna_gene_info = hmmops.SequencesForHMMHits(
+                contigs_db_info.path, sources=set(['Transfer_RNAs']))
 
             # Split names from the database are needed to recover the tRNA sequence strings.
             splits_dict = {
-                contigs_db_name: list(genome_info['contigs_db_info'].load_db().smart_get(
+                contigs_db_info.hash: list(contigs_db_info.load_db().smart_get(
                     tables.splits_info_table_name, 'split').keys())}
             hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
 
-            # Find any bin of interest from `genome_info` containing the tRNA gene. If the gene is
-            # in an unbinned contig or in a contig that is not in a bin of interest, then the bin is
-            # recorded as an empty string.
-            args = argparse.ArgumentParser()
-            if genome_info['bin_id']:
-                args.contigs_db = genome_info['contigs_db']
-                args.profile_db = genome_info['profile_db']
-                args.collection_name = genome_info['collection_name']
-                args.bin_id = genome_info['bin_id']
-                search_for_bin_of_interest = True
-            elif genome_info['collection_name']:
-                args.contigs_db = genome_info['contigs_db']
-                args.profile_db = genome_info['profile_db']
-                args.collection_name = genome_info['collection_name']
-                search_for_bin_of_interest = True
-            else:
-                search_for_bin_of_interest = False
-            if search_for_bin_of_interest:
-                contig_bin_id_dict = {}
-                bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-                for bin_id, split_names in bin_contig_names_dict.items():
-                    for split_name in split_names:
-                        contig_bin_id_dict[split_name.split('_split_')[0]] = bin_id
-
-            for gene_id, entry in hmm_seqs_dict.items():
+            for gene_id, gene_entry in hmm_seqs_dict.items():
                 seq_string = hmm_seqs_dict[gene_id]['sequence']
 
-                if search_for_bin_of_interest:
-                    try:
-                        bin_id = contig_bin_id_dict[entry['contig']]
-                    except KeyError:
-                        bin_id = ''
-                else:
-                    bin_id = ''
-
-                # The sequence header line has a format similar to that produced by
-                # `SequencesForHMMHits.get_FASTA_header_and_sequence_for_gene_unique_id`.
-                header = (f"{contigs_db_name}|"
-                          f"{entry['gene_name']}|"
-                          f"{bin_id}|"
-                          f"{entry['e_value']}|"
-                          f"{entry['contig']}|"
-                          f"{entry['gene_callers_id']}|"
-                          f"{entry['start']}|"
-                          f"{entry['stop']}")
+                # Record both the project name and hash of the contigs database: the project name is
+                # not guaranteed to be unique.
+                header = (f"{contigs_db_info.project_name}|"
+                          f"{contigs_db_info.hash}|"
+                          f"{gene_entry['contig']}|"
+                          f"{gene_entry['gene_callers_id']}|"
+                          f"{gene_entry['gene_name']}|"
+                          f"{gene_entry['e_value']}|"
+                          f"{gene_entry['start']}|"
+                          f"{gene_entry['stop']}")
                 trna_genes_fasta.write(f">{header}\n")
                 trna_genes_fasta.write(f"{seq_string}\n")
 
-                trna_gene_seq_dict[(contigs_db_name, entry['gene_callers_id'])] = seq_string
-            processed_contigs_db_names.append(contigs_db_name)
+                trna_gene_seq_dict[(contigs_db_info.hash, gene_entry['gene_callers_id'])] = seq_string
+
         trna_genes_fasta.close()
 
         return trna_gene_seq_dict
