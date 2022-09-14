@@ -1172,9 +1172,88 @@ class Integrator(object):
                              f"match {hits_df['gene_callers_id'].nunique()} tRNA genes.")
 
 
-class Affinitizer:
-    """Using the `go` method, relates changes in tRNA-seq seed abundances to the codon usage of gene functions."""
+    @staticmethod
+    def get_integrated_genomes(trnaseq_contigs_db_path):
+        """
+        Get the project names and hashes of (meta)genomic contigs databases and any bins in which
+        tRNA genes linked to the 'trnaseq'-variant contigs database were found.
 
+        Parameters
+        ==========
+        trnaseq_contigs_db_path : str
+            Path to 'trnaseq'-variant contigs database.
+
+        Returns
+        =======
+        integrated_genome_dict : dict
+            Nested dictionary with levels for contigs database, profile database, collection, and
+            bins.
+        """
+        trnaseq_contigs_db_info = DBInfo(trnaseq_contigs_db_path, expecting='contigs')
+
+        if trnaseq_contigs_db_info.variant != 'trnaseq':
+            raise ConfigError(
+                f"The database at '{trnaseq_contigs_db_path}' was a "
+                f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
+
+        trnaseq_contigs_db = trnaseq_contigs_db_info.load_db()
+        trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
+            tables.trna_gene_hits_table_name,
+            columns_of_interest=['gene_contigs_db_project_name',
+                                 'gene_contigs_db_hash',
+                                 'profile_db_sample_id',
+                                 'collection_name',
+                                 'bin_id'])
+        integrated_genome_dict = {}
+        for row in trna_gene_hits_df.itertuples(index=False):
+            if not row.contigs_db_project_name or not row.contigs_db_hash:
+                raise ConfigError(
+                    "For some reason a row of the tRNA gene hits table in the tRNA-seq contigs "
+                    f"database at '{trnaseq_contigs_db_path}' does not have a proper (meta)genomic "
+                    "contigs database identifier indicating the source of the gene. The contigs "
+                    "database should be identified by both a project name and a hash. Here is all "
+                    "of the information from the erroneous row. Contigs database project name: "
+                    f"{row.contigs_db_project_name}   Contigs database hash: {row.contigs_db_hash} "
+                    f"  Profile database sample ID: {row.profile_db_sample_id}   Collection name: "
+                    f"{row.collection_name}   Bin ID: {row.bin_id}")
+
+            contigs_db_key = (row.contigs_db_project_name, row.contigs_db_hash)
+            try:
+                profile_db_dict = integrated_genome_dict[contigs_db_key]
+            except KeyError:
+                integrated_genome_dict[contigs_db_key] = profile_db_dict = {}
+
+            if not row.profile_db_sample_id and not row.collections_name and not row.bin_id:
+                continue
+            elif row.profile_db_sample_id and row.collections_name and row.bin_id:
+                pass
+            else:
+                raise ConfigError(
+                    "For some reason a row of tRNA gene hits only contains some but not all of the "
+                    "information needed to identify a bin. A profile database sample ID, "
+                    "collection name, and bin ID should all be provided. Here is all of the "
+                    "information from the erroneous row. Contigs database project name: "
+                    f"{row.contigs_db_project_name}   Contigs database hash: {row.contigs_db_hash} "
+                    f"  Profile database sample ID: {row.profile_db_sample_id}   Collection name: "
+                    f"{row.collection_name}   Bin ID: {row.bin_id}")
+
+            try:
+                collections_dict = profile_db_dict[row.profile_db_sample_id]
+            except KeyError:
+                profile_db_dict[row.profile_db_sample_id] = collections_dict = {}
+
+            try:
+                bin_ids = collections_dict[row.collection_name]
+            except KeyError:
+                collections_dict[row.collection_name] = bin_ids = set()
+            bin_ids.add(row.bin_id)
+
+        return integrated_genome_dict
+
+
+class Affinitizer:
+    """Using the `go` method, relates changes in tRNA-seq seed abundances to the codon usage of gene
+    functions."""
     default_min_coverage = 10
     default_min_isoacceptors = 4
     default_rarefaction_limit = 0
