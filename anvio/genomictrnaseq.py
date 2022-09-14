@@ -393,7 +393,8 @@ class Integrator(object):
                 f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
-        hit_count = trnaseq_contigs_db_info.load_db().get_row_counts_from_table('trna_gene_hits')
+        hit_count = trnaseq_contigs_db_info.load_db().get_row_counts_from_table(
+            tables.trna_gene_hits_table_name)
         if hit_count:
             self.run.info(
                 "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
