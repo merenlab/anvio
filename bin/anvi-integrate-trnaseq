@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio.argparse import ArgumentParser
@@ -26,6 +27,12 @@ __description__ = (
 
 
 def main(args):
+    if args.list_genomes:
+        integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
+            args.trnaseq_contigs_db)
+        print_genomes(integrated_genome_dict)
+        return
+
     sanity_check(args)
 
     permuter = genomictrnaseq.SeedPermuter(args)
@@ -56,6 +63,41 @@ def sanity_check(args):
             (args.collection_name is not None) + (args.bin_id is not None) < 4):
             raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
                               "`--collection-name`.")
+
+
+def print_genomes(integrated_genome_dict):
+    """
+    Print to terminal information on the (meta)genomic contigs databases and profile
+    databases/collections/bins integrated with the input 'trnaseq'-variant contigs database.
+
+    Parameters
+    ==========
+    integrated_genome_dict : dict
+        Nested dictionary with levels for database, collection, and bin.
+    """
+    run = terminal.Run()
+    if not integrated_genome_dict:
+        raise ConfigError(
+            "The tRNA gene hits table in the tRNA-seq contigs database does not contain any rows!")
+
+    for contigs_db_info, profile_db_dict in integrated_genome_dict.items():
+        run.info_single(
+            f"Contigs database project name: {contigs_db_info[0]}   "
+            f"Hash: {contigs_db_info[1]}",
+            cut_after=0)
+
+        if profile_db_dict is None:
+            continue
+
+        for profile_db_sample_id, collections_dict in profile_db_dict.items():
+            run.info_single(
+                f"Profile database sample ID: {profile_db_sample_id}", cut_after=0, level=2)
+
+            for collection_name, bin_ids in collections_dict.items():
+                run.info_single(f"Collection name: {collection_name}", cut_after=0, level=3)
+
+                for bin_id in bin_ids:
+                    run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=4)
 
 
 if __name__ == '__main__':
