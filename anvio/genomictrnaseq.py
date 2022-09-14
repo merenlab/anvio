@@ -731,19 +731,122 @@ class Integrator(object):
         hits_df = hits_df[
             hits_df.groupby('seed_contig_name')['bitscore'].transform('max') == hits_df['bitscore']]
 
-        # If "ambiguous" tRNA gene assignment is not allowed, disregard seeds with equally strong
-        # hits to genes inside and outside a single genome, and disregard seeds that only hit genes
-        # outside bins. If the only genomic input was `args.contigs_db`, the database is not assumed
-        # to be a single genome, unlike with `args.external_genomes`, and "ambiguous" assignment is
-        # meaningless.
-        if self.contigs_db and not self.collection_name and not self.bin_id:
+        ##################################################
+        # Now add information on internal genomes of interest that contain the tRNA genes. Note that
+        # external genomes derived from the same metagenome can contain the same tRNA gene: hits to
+        # the same gene in different external genomes are distinguished by contigs database project
+        # name/hash.
+        # Create a dictionary, `contig_bin_dict`, mapping the names of contigs bearing tRNA genes to
+        # bin info.
+        contig_bin_dict = {}
+        for genome_info in self.genome_info_dict.values():
+            if not genome_info['bin_id'] and not genome_info['collection_name']:
+                continue
+
+            args = argparse.ArgumentParser()
+            if genome_info['bin_id']:
+                args.contigs_db = genome_info['contigs_db_info'].path
+                args.profile_db = genome_info['profile_db_info'].path
+                args.collection_name = collection_name = genome_info['collection_name']
+                args.bin_id = genome_info['bin_id']
+                search_for_bin_of_interest = True
+            elif genome_info['collection_name']:
+                # A single collection was supplied in the input arguments, `self.collection_name`.
+                args.contigs_db = genome_info['contigs_db_info'].path
+                args.profile_db = genome_info['profile_db_info'].path
+                args.collection_name = collection_name = genome_info['collection_name']
+                search_for_bin_of_interest = True
+            else:
+                search_for_bin_of_interest = False
+
+            # Note that the same contig may be in different bins, thus the list values of the dict.
+            contigs_db_hash = genome_info['contigs_db_info'].hash
+            profile_db_sample_id = genome_info['profile_db_info'].sample_id
+            if search_for_bin_of_interest:
+                bin_contig_names_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+                for bin_id, split_names in bin_contig_names_dict.items():
+                    for split_name in split_names:
+                        contig_name = split_name.split('_split_')[0]
+                        try:
+                            contig_bin_dict[(contigs_db_hash, contig_name)].append(
+                                (profile_db_sample_id, collection_name, bin_id))
+                        except KeyError:
+                            contig_bin_dict[(contigs_db_hash, contig_name)] = [
+                                (profile_db_sample_id, collection_name, bin_id)]
+
+        # Make a table of the membership of gene-bearing contigs in contigs databases/bins.
+        contig_bin_rows = []
+        for contigs_db_hash, contig_name in zip(
+            hits_df['contigs_db_hash'], hits_df['gene_contig_name']):
+            try:
+                bin_info = contig_bin_dict[(contigs_db_hash, contig_name)]
+            except KeyError:
+                # The contig is not binned.
+                contig_bin_rows.append([contigs_db_hash, contig_name, '', '', ''])
+                continue
+            for profile_db_sample_id, collection_name, bin_id in bin_info:
+                # Record each bin containing the contig.
+                contig_bin_rows.append(
+                    [contigs_db_hash, contig_name, profile_db_sample_id, collection_name, bin_id])
+        contig_bin_df = pd.DataFrame(contig_bin_rows,
+                                     columns=['contigs_db_hash',
+                                              'gene_contig_name',
+                                              'profile_db_sample_id',
+                                              'collection_name',
+                                              'bin_id'])
+        # Merge the table of seed/gene hits with the new table of bin membership, multiplying each
+        # row per hit by each bin containing the gene.
+        hits_df = hits_df.merge(
+            contig_bin_df, how='right', on=['contigs_db_hash', 'gene_contig_name'])
+
+        # For the sake of clarity, here is what happens to each of the different possible
+        # (meta)genomic sources when "ambiguous" tRNA gene assignment is NOT allowed.
+        # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
+        #    hits are disregarded.
+        # 2. Single contigs database with collection of bins: disregard seeds with equally strong
+        #    hits that are not confined to a single bin.
+        # 3. Single contigs database with specified bin: disregard seeds with equally strong hits
+        #    that are not confined to the bin.
+        # 4. One or more contigs databases input as "external" genomes: disregard seeds with equally
+        #    strong hits that are not confined to a single contigs database.
+        # 5. "Internal" genomes (bins) from one or more contigs databases: disregard seeds with
+        #    equally strong hits that are not confined to a single bin.
+        # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds with
+        #    equally strong hits that are not confined to a single internal genome bin or external
+        #    genome contigs database.
+        if self.contigs_db and not self.collection_name and not self.bin_id: # (1)
             is_simple_contigs_db_input = True
         else:
             is_simple_contigs_db_input = False
         if not self.ambiguous_genome_assignment and not is_simple_contigs_db_input:
+            # Drop hits to genes in multiple bins: partly takes care of (2), (5), and (6).
             hits_df = hits_df.groupby('seed_contig_name').filter(
-                lambda seed_df: seed_df['bin_id'].nunique() == 1)
-            hits_df = hits_df[hits_df['bin_id'] != '']
+                lambda seed_df: len(seed_df[['contigs_db_hash',
+                                             'profile_db_sample_id',
+                                             'collection_name',
+                                             'bin_id']].drop_duplicates()) == 1)
+            # Drop hits to genes in multiple contigs databases: takes care of (4), partly takes care
+            # of (5) and (6).
+            hits_df = hits_df.groupby('seed_contig_name').filter(
+                lambda seed_df: len(seed_df['contigs_db_hash'].drop_duplicates()) == 1)
+            # Drop hits to genes in unbinned contigs: takes care of (3), finishes taking care of
+            # (2), (5), and (6).
+            if (self.collection_name or
+                (self.internal_genomes_path and not self.external_genomes_path)):
+                hits_df = hits_df[hits_df['bin_id'] != '']
+            elif self.internal_genomes_path and self.external_genomes_path:
+                external_genome_contigs_db_hashes = [
+                    genome_info['contigs_db_hash'] for genome_info in self.genome_info_dict.values()
+                    if genome_info['bin_id'] is None]
+                retained_index = []
+                for key, contigs_db_hash, bin_id in zip(hits_df.index, hits_df['contigs_db_hash'], hits_df['bin_id']):
+                    if contigs_db_hash in external_genome_contigs_db_hashes:
+                        retained_index.append(key)
+                        continue
+                    if bin_id is not None:
+                        retained_index.append(key)
+                hits_df = hits_df.loc[retained_index]
+        ##################################################
 
         # Multiple permutations of the same seed may be retained after filtering by score. There are
         # two and possibly more ways that this can occur. (1) The unmodified nucleotide at a
