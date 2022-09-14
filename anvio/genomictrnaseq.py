@@ -463,7 +463,7 @@ class Integrator(object):
         unannotated = []
         for name, genome_info in self.genome_info_dict.items():
             if 'Transfer_RNAs' not in hmmops.SequencesForHMMHits(
-                genome_info['contigs_db']).hmm_hits_info:
+                genome_info['contigs_db_info'].path).hmm_hits_info:
                 unannotated.append(name)
         if unannotated:
             if self.genomic_contigs_db_path:
@@ -482,18 +482,18 @@ class Integrator(object):
         # Check that profile databases correspond to (meta)genomic contigs databases.
         incompatible = []
         for name, genome_info in self.genome_info_dict.items():
-            if genome_info['profile_db']:
+            if genome_info['profile_db_info']:
                 try:
                     utils.is_profile_db_and_contigs_db_compatible(
-                        genome_info['profile_db'], genome_info['contigs_db'])
+                        genome_info['profile_db_info'].path, genome_info['contigs_db_info'].path)
                 except ConfigError:
                     incompatible.append(name)
         if incompatible:
             if self.genomic_contigs_db_path:
                 raise ConfigError(
                     f"The (meta)genomic contigs database, '{incompatible[0]}', is not compatible "
-                    f"with the provided profile database, {genome_info['profile_db']}. In fact, "
-                    "the profile database was not generated from the contigs database.")
+                    f"with the provided profile database, {genome_info['profile_db_info'].path}. "
+                    "In fact, the profile database was not generated from the contigs database.")
             else:
                 raise ConfigError(
                     "The contigs databases for the following genomes are not compatible with the "
@@ -503,9 +503,9 @@ class Integrator(object):
         # Check putative collections.
         unrecognized = []
         for name, genome_info in self.genome_info_dict.items():
-            if genome_info['profile_db']:
+            if genome_info['profile_db_info']:
                 collections = ccollections.Collections()
-                collections.populate_collections_dict(genome_info['profile_db'])
+                collections.populate_collections_dict(genome_info['profile_db_info'].path)
                 if genome_info['collection_name'] not in collections.collections_dict:
                     unrecognized.append(name)
         if unrecognized:
