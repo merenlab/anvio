@@ -654,38 +654,39 @@ class Integrator(object):
         hits_df = hits_df.drop('qseqid', axis=1)
 
         # Extract information on each hit.
-        decoded_amino_acids = []
-        anticodons = []
-        contigs_db_names = []
-        bin_ids = []
-        trnascan_scores = []
+        contigs_db_project_names = []
+        contigs_db_hashes = []
         gene_contig_names = []
         gene_callers_ids = []
+        decoded_amino_acids = []
+        anticodons = []
+        trnascan_scores = []
         gene_starts = []
         gene_stops = []
         gene_sequences = []
         for sseqid in hits_df['sseqid']:
             split_sseqid = sseqid.split('|')
-            contigs_db_name = split_sseqid[0]
-            contigs_db_names.append(contigs_db_name)
-            gene_name = split_sseqid[1]
+            contigs_db_project_name = split_sseqid[0]
+            contigs_db_project_names.append(contigs_db_project_name)
+            contigs_db_hash = split_sseqid[1]
+            contigs_db_hashes.append(contigs_db_hash)
+            gene_contig_names.append(split_sseqid[2])
+            gene_callers_id = split_sseqid[3]
+            gene_callers_ids.append(gene_callers_id)
+            gene_name = split_sseqid[4]
             decoded_amino_acid, anticodon = gene_name.split('_')[: 2]
             decoded_amino_acids.append(decoded_amino_acid)
             anticodons.append(anticodon)
-            bin_ids.append(split_sseqid[2])
-            trnascan_scores.append(split_sseqid[3])
-            gene_callers_id = split_sseqid[4]
-            gene_contig_names.append(gene_callers_id)
-            gene_callers_ids.append(split_sseqid[5])
+            trnascan_scores.append(split_sseqid[5])
             gene_starts.append(split_sseqid[6])
             gene_stops.append(split_sseqid[7])
-            gene_sequences.append(trna_gene_seq_dict[(contigs_db_name, gene_callers_id)])
+            gene_sequences.append(trna_gene_seq_dict[(contigs_db_hash, gene_callers_id)])
+        hits_df['contigs_db_project_name'] = contigs_db_project_names
+        hits_df['contigs_db_hash'] = contigs_db_hashes
+        hits_df['gene_contig_name'] = gene_contig_names
         hits_df['decoded_amino_acid'] = decoded_amino_acids
         hits_df['anticodon'] = anticodons
-        hits_df['contigs_db_name'] = contigs_db_names
-        hits_df['bin_id'] = bin_ids
         hits_df['trnascan_score'] = trnascan_scores
-        hits_df['gene_contig_name'] = gene_contig_names
         hits_df['gene_callers_id'] = gene_callers_ids
         hits_df['gene_start_in_contig'] = gene_starts
         hits_df['gene_stop_in_contig'] = gene_stops
