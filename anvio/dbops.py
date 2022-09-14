@@ -409,7 +409,7 @@ class ContigsSuperclass(object):
 
             for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
                 gene_callers_id = self.genes_in_splits[entry_id]['gene_callers_id']
-                if self.gene_function_calls_dict[gene_callers_id][source]:
+                if gene_callers_id in self.gene_function_calls_dict and self.gene_function_calls_dict[gene_callers_id][source]:
                     gene_function = self.gene_function_calls_dict[gene_callers_id][source][1].split('!!!')[0]
                     frequency_of_categories[gene_function] += 1
 
