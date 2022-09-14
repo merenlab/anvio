@@ -554,8 +554,10 @@ class Integrator(object):
             tRNA gene sequences keyed by tuple of contigs database name and gene callers ID.
         """
         trna_genes_fasta = open(self.trna_genes_fasta_path, 'w')
-        # BLAST cannot report the full subject (gene) sequence, but these are needed to filter
-        # alignments.
+
+        # Unfortunately, the full subject (tRNA gene) sequence cannot be reported in the BLAST
+        # output table, but these sequences are needed to filter alignments, so they are filed in a
+        # dictionary.
         trna_gene_seq_dict = {}
         processed_contigs_db_names = []
         for genome_info in self.genome_info_dict.values():
