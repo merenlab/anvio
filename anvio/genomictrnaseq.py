@@ -278,7 +278,7 @@ class Integrator(object):
     # 4. One or more contigs databases input as "external" genomes
     # 5. "Internal" genomes (bins) from one or more contigs databases
     # 6. A combination of "internal" and "external" genomes (4 + 5)
-    # Ambiguous assignment of tRNA-seq seeds to tRNA genes can apply if used to 2, 4, 5, and 6.
+    # Ambiguous assignment of tRNA-seq seeds to tRNA genes can be applied to all but (1).
 
     default_max_mismatches = 3
     blast_search_output_cols = [
