@@ -406,7 +406,7 @@ class Integrator(object):
                     "overwrite the existing hits, or append to existing hits with "
                     "`ambiguous_genome_assignments`.")
 
-        # The tRNA-seq contigs db version must be up-to-date to update the tRNA gene hits table.
+        # The tRNA-seq contigs db version must be up-to-date.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
         if str(trnaseq_contigs_db_info.version) != required_version:
             raise ConfigError(
@@ -416,6 +416,7 @@ class Integrator(object):
                 "using the program `anvi-migrate` with either of the flags `--migrate-dbs-safely` "
                 "or `--migrate-dbs-quickly`.")
 
+        # Right now there are no specific checks here on the format of these tables.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
@@ -439,8 +440,8 @@ class Integrator(object):
             raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
                               "`profile_db`, and `collection_name`.")
 
-        # Prevent a confused user from providing tRNA-seq rather than (meta)genomic contigs
-        # databases.
+        # Prevent a confused user from providing a tRNA-seq contigs database in lieu of a
+        # (meta)genomic contigs database.
         unrecognized = []
         for name, genome_info in self.genome_info_dict.items():
             genomic_contigs_db_info = DBInfo(genome_info['contigs_db'], expecting='contigs')
@@ -500,7 +501,7 @@ class Integrator(object):
                     "corresponding profile databases. In fact, the profile databases were not "
                     f"generated from the contigs databases. {', '.join(incompatible)}")
 
-        # Check that collections exist.
+        # Check putative collections.
         unrecognized = []
         for name, genome_info in self.genome_info_dict.items():
             if genome_info['profile_db']:
