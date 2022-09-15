@@ -171,7 +171,7 @@ if __name__ == '__main__':
              "6 positions with predicted modifications, then a permuted sequence can have at most "
              "5 of the 6 nucleotides changed relative to the seed.")
 
-    group1D = parser.add_argument(
+    group1D = parser.add_argument_group(
         'SEED/GENE MATCHING',
         "After tRNA-seq seed sequences are permuted, the original and permuted sequences are "
         "aligned to tRNA genes in the supplied contigs database(s). Matches are selected from "
