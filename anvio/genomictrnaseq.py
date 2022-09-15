@@ -323,7 +323,7 @@ class Integrator(object):
         self.run = r
         self.progress = p
 
-        self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
+        self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
         # Store information on accessing (meta)genomes. The entries in the dictionary differ given
         # what was passed in `args`.
@@ -385,11 +385,11 @@ class Integrator(object):
 
     def sanity_check(self, check_permuted_seeds_fasta=False):
         """Check the feasibility of args from initialization."""
-        trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
-        if trnaseq_contigs_db_info.variant != 'trnaseq':
+        if self.trnaseq_contigs_db_info.variant != 'trnaseq':
             raise ConfigError(
                 f"The database at '{self.trnaseq_contigs_db_path}' was a "
-                f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
+                f"'{self.trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' "
+                "variant.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
         with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
@@ -408,13 +408,13 @@ class Integrator(object):
 
         # The tRNA-seq contigs db version must be up-to-date.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
-        if str(trnaseq_contigs_db_info.version) != required_version:
+        if str(self.trnaseq_contigs_db_info.version) != required_version:
             raise ConfigError(
                 f"The database at '{self.trnaseq_contigs_db_path}' is outdated (this database is "
-                f"v{trnaseq_contigs_db_info.version} and your anvi'o installation wants to work "
-                f"with v{required_version}). You can migrate your database without losing any data "
-                "using the program `anvi-migrate` with either of the flags `--migrate-dbs-safely` "
-                "or `--migrate-dbs-quickly`.")
+                f"v{self.trnaseq_contigs_db_info.version} and your anvi'o installation wants to "
+                f"work with v{required_version}). You can migrate your database without losing any "
+                "data using the program `anvi-migrate` with either of the flags "
+                "`--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
         # Right now there are no specific checks here on the format of these tables.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
