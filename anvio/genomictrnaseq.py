@@ -673,15 +673,15 @@ class Integrator(object):
             contigs_db_hash = split_sseqid[1]
             contigs_db_hashes.append(contigs_db_hash)
             gene_contig_names.append(split_sseqid[2])
-            gene_callers_id = split_sseqid[3]
+            gene_callers_id = int(split_sseqid[3])
             gene_callers_ids.append(gene_callers_id)
             gene_name = split_sseqid[4]
             decoded_amino_acid, anticodon = gene_name.split('_')[: 2]
             decoded_amino_acids.append(decoded_amino_acid)
             anticodons.append(anticodon)
-            trnascan_scores.append(split_sseqid[5])
-            gene_starts.append(split_sseqid[6])
-            gene_stops.append(split_sseqid[7])
+            trnascan_scores.append(float(split_sseqid[5]))
+            gene_starts.append(int(split_sseqid[6]))
+            gene_stops.append(int(split_sseqid[7]))
             gene_sequences.append(trna_gene_seq_dict[(contigs_db_hash, gene_callers_id)])
         hits_df['contigs_db_project_name'] = contigs_db_project_names
         hits_df['contigs_db_hash'] = contigs_db_hashes
