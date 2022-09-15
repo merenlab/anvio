@@ -1025,7 +1025,7 @@ class Integrator(object):
         seed_id_df = self.trnaseq_contigs_db_info.load_db().get_table_as_dataframe(
             'genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig'])
         seed_id_df = seed_id_df.rename(
-            {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'})
+            {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'}, axis=1)
         hits_df = hits_df.merge(seed_id_df, how='left', on='seed_contig_name')
 
         # Polish the columns. Order them how they will appear in the hits table in the database.
