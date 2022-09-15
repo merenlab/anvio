@@ -1057,7 +1057,8 @@ class Integrator(object):
 
 
     def find_unmodified_nucleotides(self, hits_df):
-        """Find the unmodified nucleotides at predicted modification positions in tRNA-seq seeds
+        """
+        Find the unmodified nucleotides at predicted modification positions in tRNA-seq seeds
         using matching tRNA gene sequences.
 
         Parameters
@@ -1118,7 +1119,8 @@ class Integrator(object):
 
 
     def update_trnaseq_contigs_database(self, hits_df, unmodified_nt_df):
-        """Add information on tRNA gene associations to the tRNA-seq contigs database.
+        """
+        Add information on tRNA gene associations to the tRNA-seq contigs database.
 
         Parameters
         ==========
