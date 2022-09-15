@@ -391,10 +391,23 @@ class Integrator(object):
                 f"'{self.trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' "
                 "variant.")
 
+        # Check that the table of seed/gene hits has the correct number of rows since the structure
+        # of the table changed in the development of this program without a version upgrade of the
+        # database.
+        trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
+        if (len(trnaseq_contigs_db.get_table_column_types(tables.trna_gene_hits_table_name)) !=
+            len(tables.trna_gene_hits_table_types)):
+            if not self.remove_previous_matches:
+                raise ConfigError(
+                    "The table of seed/gene matches in the tRNA-seq contigs database, "
+                    f"'{self.trnaseq_contigs_db_path}', does not have the proper number of "
+                    "columns, probably because it was created with an obsolete version of the "
+                    "program. The table can be deleted and recreated with the proper columns by "
+                    "running the program with `remove_previous_matches`.")
+
         # Existing seed/gene hits must be willfully overwritten or appended to.
-        with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
-            hit_count = trnaseq_contigs_db.get_row_counts_from_table(
-                tables.trna_gene_hits_table_name)
+        hit_count = trnaseq_contigs_db.get_row_counts_from_table(
+            tables.trna_gene_hits_table_name)
         if hit_count:
             self.run.info(
                 "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
@@ -405,6 +418,7 @@ class Integrator(object):
                     "genes from one or more (meta)genomic contigs databases. Either use "
                     "`remove_previous_matches` to clear existing matches, or append to existing "
                     "matches with `ambiguous_genome_assignments`.")
+        trnaseq_contigs_db.disconnect()
 
         # The tRNA-seq contigs db version must be up-to-date.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
@@ -1192,9 +1206,28 @@ class Integrator(object):
                                   row.gene_alignment_stop,
                                   unmodified_nt_entry])
             hit_id += 1
+
+        if (len(trnaseq_contigs_db.get_table_column_types(tables.trna_gene_hits_table_name)) !=
+            len(tables.trna_gene_hits_table_types)):
+            # `sanity_check` would have raised an error if the structure of the table is incorrect
+            # and `remove_previous_matches` is False.
+            if self.remove_previous_matches:
+                trnaseq_contigs_db.drop_table(tables.trna_gene_hits_table_name)
+                trnaseq_contigs_db.create_table(tables.trna_gene_hits_table_name,
+                                                tables.trna_gene_hits_table_structure,
+                                                tables.trna_gene_hits_table_types)
+                self.run.warning(
+                    "The existing table of seed/gene matches in the tRNA-seq contigs database, "
+                    f"'{self.trnaseq_contigs_db_path}', did not have the proper number of columns, "
+                    "probably because it was created with an obsolete version of the program, but "
+                    "anvi'o was instructed to clear the table with `remove_previous_matches`, so "
+                    "the table has instead been deleted entirely and replaced by one with the "
+                    "proper column structure.")
+
         trnaseq_contigs_db._exec_many(
             f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES '''
             f'''({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
+
         trnaseq_contigs_db.disconnect()
 
         self.run.info_single(
