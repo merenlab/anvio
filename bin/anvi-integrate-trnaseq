@@ -199,7 +199,7 @@ if __name__ == '__main__':
              "`--external-genomes`, but also has the dual purpose of allowing the program to be "
              "run multiple times with the same seeds against different genomic references, "
              "appending new seed/gene matches in the tRNA-seq contigs database. To overwrite all "
-             "existing assignments rather than appending, also use `--just-do-it`.")
+             "existing assignments rather than appending, also use `--remove-previous-matches`.")
 
     group1E = parser.add_argument_group(
         'TEMPORARY FILES',
@@ -210,7 +210,7 @@ if __name__ == '__main__':
         "directory for all of these. Alternatively, program-specific options give more control "
         "over temp file storage.")
     group1E.add_argument(
-        '-r', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
+        '-u', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
         help="FASTA file of original and permuted tRNA-seq seed sequences.")
     group1E.add_argument(
         '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
@@ -219,9 +219,10 @@ if __name__ == '__main__':
 
     group1F = parser.add_argument_group('OTHER')
     group1F.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    group1F.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it', {
-        'help': "Overwrite existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq "
-                "contigs database."}))
+    group1F.add_argument(
+        '-r', '--remove-previous-matches', default=False, action='store_true',
+        help="Remove existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq contigs "
+             "database.")
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(

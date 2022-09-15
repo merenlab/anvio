@@ -316,10 +316,9 @@ class Integrator(object):
             self.blast_dir = anvio.TMP_DIR if anvio.TMP_DIR else tempfile.gettempdir()
 
         self.num_threads = A('num_threads') or anvio.K('num_threads')['default']
-        self.just_do_it = A('just_do_it')
+        self.remove_previous_matches = A('remove_previous_matches')
 
         self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
-        self.overwrite_table = self.just_do_it
 
         self.run = r
         self.progress = p
@@ -398,13 +397,13 @@ class Integrator(object):
         if hit_count:
             self.run.info(
                 "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
-            if not self.ambiguous_genome_assignment and not self.just_do_it:
+            if not self.ambiguous_genome_assignment and not self.remove_previous_matches:
                 raise ConfigError(
                     "The seeds from the tRNA-seq contigs database at "
                     f"'{self.trnaseq_contigs_db_path}' have already been associated with tRNA "
-                    "genes from one or more (meta)genomic contigs databases. `just_do_it` to "
-                    "overwrite the existing hits, or append to existing hits with "
-                    "`ambiguous_genome_assignments`.")
+                    "genes from one or more (meta)genomic contigs databases. Either use "
+                    "`remove_previous_matches` to clear existing matches, or append to existing "
+                    "matches with `ambiguous_genome_assignments`.")
 
         # The tRNA-seq contigs db version must be up-to-date.
         required_version = utils.get_required_version_for_db(self.trnaseq_contigs_db_path)
@@ -1132,9 +1131,10 @@ class Integrator(object):
         """
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
 
-        # Either erase the table of seed/gene matches with `self.just_do_it` or append to the table.
+        # Either clear the table of seed/gene matches with `self.remove_previous_matches` or append
+        # to the table.
         row_count = trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name)
-        if self.just_do_it:
+        if self.remove_previous_matches:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
             self.run.info_single(
                 f"{pp(row_count)} seed/gene matches dropped from the tRNA-seq contigs database",
