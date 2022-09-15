@@ -47,7 +47,12 @@ def main(args):
 
 
 def sanity_check(args):
-    """Do basic checks of the combinations of genomic input arguments."""
+    if args.seeds_specific_txt is None:
+        raise ConfigError("`--seeds-specifix-txt` is a required argument.")
+    if args.modifications_txt is None:
+        raise ConfigError("`--modifications-txt` is a required argument.")
+
+    # Do basic checks of the combinations of genomic input arguments.
     if args.contigs_db and (args.internal_genomes or args.external_genomes):
         raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
                           "`--external-genomes`.")
@@ -110,8 +115,10 @@ if __name__ == '__main__':
         "(2) a table of **specific** coverages of seeds produced by `anvi-tabulate-trnaseq`, "
         "(3) a table of seed modifications also produced by `anvi-tabulate-trnaseq`.")
     group1A.add_argument(*anvio.A('trnaseq-contigs-db'), **anvio.K('trnaseq-contigs-db'))
-    group1A.add_argument(*anvio.A('seeds-specific-txt'), **anvio.K('seeds-specific-txt'))
-    group1A.add_argument(*anvio.A('modifications-txt'), **anvio.K('modifications-txt'))
+    group1A.add_argument(*anvio.A('seeds-specific-txt'),
+                         **anvio.K('seeds-specific-txt', {'required': False}))
+    group1A.add_argument(*anvio.A('modifications-txt'),
+                         **anvio.K('modifications-txt', {'required': False}))
 
     group1B = parser.add_argument_group(
         'GENOMIC INPUTS',
