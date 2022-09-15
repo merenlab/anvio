@@ -351,7 +351,7 @@ class Integrator(object):
             genome_info['collection_name'] = self.collection_name
             genome_info['bin_id'] = self.bin_id
 
-        if args.internal_genomes_path or args.external_genomes_path:
+        if self.internal_genomes_path or self.external_genomes_path:
             descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
             descriptions.load_genomes_descriptions(init=False)
 
