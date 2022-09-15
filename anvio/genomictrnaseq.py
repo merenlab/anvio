@@ -1155,6 +1155,7 @@ class Integrator(object):
         # Either clear the table of seed/gene matches with `self.remove_previous_matches` or append
         # to the table.
         row_count = trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name)
+        print()
         if self.remove_previous_matches:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
             self.run.info_single(
@@ -1233,7 +1234,7 @@ class Integrator(object):
         self.run.info_single(
             f"{hits_df['seed_gene_callers_id'].nunique()} tRNA-seq seeds are found to match "
             f"{hits_df['gene_gene_callers_id'].nunique()} tRNA genes",
-            cut_after=0)
+            cut_after=0, nl_after=1)
 
 
     @staticmethod
