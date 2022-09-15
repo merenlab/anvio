@@ -392,8 +392,9 @@ class Integrator(object):
                 f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
         # Existing seed/gene hits must be willfully overwritten or appended to.
-        hit_count = trnaseq_contigs_db_info.load_db().get_row_counts_from_table(
-            tables.trna_gene_hits_table_name)
+        with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            hit_count = trnaseq_contigs_db.get_row_counts_from_table(
+                tables.trna_gene_hits_table_name)
         if hit_count:
             self.run.info(
                 "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
@@ -575,9 +576,10 @@ class Integrator(object):
                 contigs_db_info.path, sources=set(['Transfer_RNAs']))
 
             # Split names from the database are needed here to recover the tRNA sequence strings.
-            splits_dict = {
-                contigs_db_hash: list(contigs_db_info.load_db().smart_get(
-                    tables.splits_info_table_name, 'split').keys())}
+            with contigs_db_info.load_db() as contigs_db:
+                splits_dict = {
+                    contigs_db_hash: list(contigs_db.smart_get(
+                        tables.splits_info_table_name, 'split').keys())}
             hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
 
             for gene_id, gene_entry in hmm_seqs_dict.items():
