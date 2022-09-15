@@ -1190,8 +1190,10 @@ class Integrator(object):
             f'''({",".join(["?"] * len(tables.trna_gene_hits_table_structure))})''', table_entries)
         trnaseq_contigs_db.disconnect()
 
-        self.run.info_single(f"{hits_df['seed_contig_name'].nunique()} tRNA-seq seeds are found to "
-                             f"match {hits_df['gene_callers_id'].nunique()} tRNA genes.")
+        self.run.info_single(
+            f"{hits_df['seed_gene_callers_id'].nunique()} tRNA-seq seeds are found to match "
+            f"{hits_df['gene_gene_callers_id'].nunique()} tRNA genes",
+            cut_after=0)
 
 
     @staticmethod
