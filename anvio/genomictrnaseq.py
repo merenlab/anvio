@@ -816,7 +816,7 @@ class Integrator(object):
         # 6. A combination of "internal" and "external" genomes (4 + 5): disregard seeds with
         #    equally strong hits that are not confined to a single internal genome bin or external
         #    genome contigs database.
-        if self.contigs_db and not self.collection_name and not self.bin_id: # (1)
+        if self.genomic_contigs_db_path and not self.collection_name and not self.bin_id: # (1)
             is_simple_contigs_db_input = True
         else:
             is_simple_contigs_db_input = False
