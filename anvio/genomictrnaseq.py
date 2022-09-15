@@ -778,8 +778,10 @@ class Integrator(object):
 
         # Make a table of the membership of gene-bearing contigs in contigs databases/bins.
         contig_bin_rows = []
-        for contigs_db_hash, contig_name in zip(
-            hits_df['contigs_db_hash'], hits_df['gene_contig_name']):
+        for row in hits_df[
+            ['contigs_db_hash', 'gene_contig_name']].drop_duplicates().itertuples(index=False):
+            contigs_db_hash = row.contigs_db_hash
+            contig_name = row.gene_contig_name
             try:
                 bin_info = contig_bin_dict[(contigs_db_hash, contig_name)]
             except KeyError:
@@ -798,8 +800,7 @@ class Integrator(object):
                                               'bin_id'])
         # Merge the table of seed/gene hits with the new table of bin membership, multiplying each
         # row per hit by each bin containing the gene.
-        hits_df = hits_df.merge(
-            contig_bin_df, how='right', on=['contigs_db_hash', 'gene_contig_name'])
+        hits_df = hits_df.merge(contig_bin_df, on=['contigs_db_hash', 'gene_contig_name'])
 
         # For the sake of clarity, here is what happens to each of the different possible
         # (meta)genomic sources when "ambiguous" tRNA gene assignment is NOT allowed.
