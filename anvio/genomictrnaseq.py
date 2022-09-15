@@ -1137,11 +1137,14 @@ class Integrator(object):
         if self.just_do_it:
             trnaseq_contigs_db._exec(f'''DELETE FROM {tables.trna_gene_hits_table_name}''')
             self.run.info_single(
-                f"{row_count} seed/gene matches dropped from the tRNA-seq contigs database")
+                f"{pp(row_count)} seed/gene matches dropped from the tRNA-seq contigs database",
+                cut_after=0)
         else:
             if row_count:
-                self.run.info_single(f"{row_count} seed/gene matches are previously stored in the "
-                                     "tRNA-seq contigs database")
+                self.run.info_single(
+                    f"Appending to the {pp(row_count)} seed/gene matches previously stored in the "
+                    "tRNA-seq contigs database",
+                    cut_after=0)
 
         # Assemble the rows of the table.
         table_entries = []
