@@ -1271,26 +1271,27 @@ class Integrator(object):
                                      'bin_id'])
         integrated_genome_dict = {}
         for row in trna_gene_hits_df.itertuples(index=False):
-            if not row.contigs_db_project_name or not row.contigs_db_hash:
+            if not row.gene_contigs_db_project_name or not row.gene_contigs_db_hash:
                 raise ConfigError(
                     "For some reason a row of the tRNA gene hits table in the tRNA-seq contigs "
                     f"database at '{trnaseq_contigs_db_path}' does not have a proper (meta)genomic "
                     "contigs database identifier indicating the source of the gene. The contigs "
                     "database should be identified by both a project name and a hash. Here is all "
                     "of the information from the erroneous row. Contigs database project name: "
-                    f"{row.contigs_db_project_name}   Contigs database hash: {row.contigs_db_hash} "
-                    f"  Profile database sample ID: {row.profile_db_sample_id}   Collection name: "
-                    f"{row.collection_name}   Bin ID: {row.bin_id}")
+                    f"{row.gene_contigs_db_project_name} ; Contigs database hash: "
+                    f"{row.gene_contigs_db_hash} ; Profile database sample ID: "
+                    f"{row.profile_db_sample_id} ; Collection name: {row.collection_name} ; Bin "
+                    f"ID: {row.bin_id}")
 
-            contigs_db_key = (row.contigs_db_project_name, row.contigs_db_hash)
+            contigs_db_key = (row.gene_contigs_db_project_name, row.gene_contigs_db_hash)
             try:
                 profile_db_dict = integrated_genome_dict[contigs_db_key]
             except KeyError:
                 integrated_genome_dict[contigs_db_key] = profile_db_dict = {}
 
-            if not row.profile_db_sample_id and not row.collections_name and not row.bin_id:
+            if not row.profile_db_sample_id and not row.collection_name and not row.bin_id:
                 continue
-            elif row.profile_db_sample_id and row.collections_name and row.bin_id:
+            elif row.profile_db_sample_id and row.collection_name and row.bin_id:
                 pass
             else:
                 raise ConfigError(
@@ -1298,9 +1299,10 @@ class Integrator(object):
                     "information needed to identify a bin. A profile database sample ID, "
                     "collection name, and bin ID should all be provided. Here is all of the "
                     "information from the erroneous row. Contigs database project name: "
-                    f"{row.contigs_db_project_name}   Contigs database hash: {row.contigs_db_hash} "
-                    f"  Profile database sample ID: {row.profile_db_sample_id}   Collection name: "
-                    f"{row.collection_name}   Bin ID: {row.bin_id}")
+                    f"{row.gene_contigs_db_project_name} ; Contigs database hash: "
+                    f"{row.gene_contigs_db_hash} ; Profile database sample ID: "
+                    f"{row.profile_db_sample_id} ; Collection name: {row.collection_name} ; Bin "
+                    f"ID: {row.bin_id}")
 
             try:
                 collections_dict = profile_db_dict[row.profile_db_sample_id]
