@@ -1017,12 +1017,22 @@ class Integrator(object):
             hits_df['seed_contig_name'].isin(coverage_df['seed_contig_name'].unique())]
         ##################################################
 
-        # Spruce up the columns. Order them how they will appear in the hits table in the database.
+        # Add seed gene callers IDs to the table. (Both seed "contig" names and gene callers IDs are
+        # unique.)
+        seed_id_df = self.trnaseq_contigs_db_info.load_db().get_table_as_dataframe(
+            'genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig'])
+        seed_id_df = seed_id_df.rename(
+            {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'})
+        hits_df = hits_df.merge(seed_id_df, how='left', on='seed_contig_name')
+
+        # Polish the columns. Order them how they will appear in the hits table in the database.
         hits_df['seed_alignment_start'] = hits_df['qstart'] - 1
         hits_df['gene_alignment_start'] = hits_df['sstart'] - 1
         hits_df = hits_df.drop(['qstart', 'qlen', 'sseqid', 'sstart'], axis=1)
-        hits_df = hits_df.rename({'send': 'gene_alignment_stop'}, axis=1)
-        hits_df = hits_df[['seed_contig_name', # seed info
+        hits_df = hits_df.rename(
+            {'gene_callers_id': 'gene_gene_callers_id', 'send': 'gene_alignment_stop'}, axis=1)
+        hits_df = hits_df[['seed_gene_callers_id', # seed info
+                           'seed_contig_name',
                            'seed_permutation',
                            'contigs_db_project_name', # gene and genome info
                            'contigs_db_hash',
@@ -1030,7 +1040,7 @@ class Integrator(object):
                            'profile_db_sample_id',
                            'collection_name',
                            'bin_id',
-                           'gene_callers_id',
+                           'gene_gene_callers_id',
                            'decoded_amino_acid',
                            'anticodon',
                            'gene_start_in_contig',
@@ -1148,20 +1158,27 @@ class Integrator(object):
                 unmodified_nt_entry = ''
 
             table_entries.append([hit_id,
+                                  row.seed_gene_callers_id, # seed info
                                   row.seed_contig_name,
-                                  row.contigs_db,
-                                  row.gene_callers_id,
+                                  row.contigs_db_project_name, # gene and genome info
+                                  row.contigs_db_hash,
+                                  row.gene_contig_name,
+                                  row.profile_db_sample_id,
+                                  row.collection_name,
                                   row.bin_id,
+                                  row.gene_gene_callers_id,
                                   row.decoded_amino_acid,
                                   row.anticodon,
-                                  row.mismatch,
+                                  row.gene_start_in_contig,
+                                  row.gene_stop_in_contig,
+                                  row.trnascan_score,
+                                  row.gene_sequence,
+                                  row.mismatch, # hit info
                                   row.bitscore,
                                   row.seed_alignment_start,
                                   row.gene_alignment_start,
                                   row.gene_alignment_stop,
-                                  row.trnascan_score,
-                                  unmodified_nt_entry,
-                                  row.gene_sequence])
+                                  unmodified_nt_entry])
             hit_id += 1
         trnaseq_contigs_db._exec_many(
             f'''INSERT INTO {tables.trna_gene_hits_table_name} VALUES '''
