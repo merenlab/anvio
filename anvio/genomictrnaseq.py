@@ -1261,14 +1261,14 @@ class Integrator(object):
                 f"The database at '{trnaseq_contigs_db_path}' was a "
                 f"'{trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' variant.")
 
-        trnaseq_contigs_db = trnaseq_contigs_db_info.load_db()
-        trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
-            tables.trna_gene_hits_table_name,
-            columns_of_interest=['gene_contigs_db_project_name',
-                                 'gene_contigs_db_hash',
-                                 'profile_db_sample_id',
-                                 'collection_name',
-                                 'bin_id'])
+        with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
+                tables.trna_gene_hits_table_name,
+                columns_of_interest=['gene_contigs_db_project_name',
+                                     'gene_contigs_db_hash',
+                                     'profile_db_sample_id',
+                                     'collection_name',
+                                     'bin_id'])
         integrated_genome_dict = {}
         for row in trna_gene_hits_df.itertuples(index=False):
             if not row.contigs_db_project_name or not row.contigs_db_hash:
