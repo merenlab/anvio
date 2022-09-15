@@ -1146,7 +1146,7 @@ class Integrator(object):
                     "tRNA-seq contigs database",
                     cut_after=0)
 
-        # Assemble the rows of the table.
+        # Add the unmodified nucleotides to the rows of the table.
         table_entries = []
         hit_id = 0
         for row in hits_df.itertuples(index=False):
