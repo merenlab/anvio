@@ -568,12 +568,15 @@ class Integrator(object):
             contigs_db_infos.append(genome_info['contigs_db_info'])
 
         for contigs_db_info in contigs_db_infos:
+            contigs_db_project_name = contigs_db_info.project_name
+            contigs_db_hash = contigs_db_info.hash
+
             trna_gene_info = hmmops.SequencesForHMMHits(
                 contigs_db_info.path, sources=set(['Transfer_RNAs']))
 
-            # Split names from the database are needed to recover the tRNA sequence strings.
+            # Split names from the database are needed here to recover the tRNA sequence strings.
             splits_dict = {
-                contigs_db_info.hash: list(contigs_db_info.load_db().smart_get(
+                contigs_db_hash: list(contigs_db_info.load_db().smart_get(
                     tables.splits_info_table_name, 'split').keys())}
             hmm_seqs_dict = trna_gene_info.get_sequences_dict_for_hmm_hits_in_splits(splits_dict)
 
@@ -582,8 +585,8 @@ class Integrator(object):
 
                 # Record both the project name and hash of the contigs database: the project name is
                 # not guaranteed to be unique.
-                header = (f"{contigs_db_info.project_name}|"
-                          f"{contigs_db_info.hash}|"
+                header = (f"{contigs_db_project_name}|"
+                          f"{contigs_db_hash}|"
                           f"{gene_entry['contig']}|"
                           f"{gene_entry['gene_callers_id']}|"
                           f"{gene_entry['gene_name']}|"
@@ -593,7 +596,7 @@ class Integrator(object):
                 trna_genes_fasta.write(f">{header}\n")
                 trna_genes_fasta.write(f"{seq_string}\n")
 
-                trna_gene_seq_dict[(contigs_db_info.hash, gene_entry['gene_callers_id'])] = seq_string
+                trna_gene_seq_dict[(contigs_db_hash, gene_entry['gene_callers_id'])] = seq_string
 
         trna_genes_fasta.close()
 
