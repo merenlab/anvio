@@ -99,6 +99,9 @@ if __name__ == '__main__':
         find_from_split_name = A('find_from_split_name')
         collection_name = A('collection_name')
 
+        if not collection_name:
+            raise ConfigError("You need to provide this program with a collection name :/")
+
         if find_from_split_name and not collection_name:
             raise ConfigError("If you would like anvi'o to find the bin name for your split, you should "
                               "also specify a collection name.")
@@ -119,6 +122,9 @@ if __name__ == '__main__':
                         header="SPLIT FOUND IN %s!" % (bin_name), lc="green")
 
             args.bin_id = bin_name
+
+        if not args.bin_id or args.bin_ids_file:
+            raise ConfigError("This program needs to know which bin(s) you wish to refine.")
 
         args.mode = 'refine'
         d = interactive.Interactive(args)
