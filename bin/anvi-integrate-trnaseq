@@ -164,7 +164,8 @@ if __name__ == '__main__':
         "solves the problem of I34 with a tailored solution; contact the developers to accommodate "
         "any other cases like this that might arise.")
     group1C.add_argument(
-        '-n', '--min-nt-frequency', metavar='FLOAT', type=float,
+        '-n', '--min-nt-frequency',
+        metavar='FLOAT', type=float,
         default=genomictrnaseq.SeedPermuter.default_min_nt_frequency,
         help="For a position in a tRNA-seq seed sequence, this is the minimum nucleotide relative "
              "frequency, averaged across samples in which the modification is detected, that is "
@@ -174,7 +175,8 @@ if __name__ == '__main__':
              "respectively, then permuted versions of the seed will contain G and T at the "
              "position but not A or C.")
     group1C.add_argument(
-        '-v', '--max-variable-positions', metavar='INT', type=int,
+        '-v', '--max-variable-positions',
+        metavar='INT', type=int,
         default=genomictrnaseq.SeedPermuter.default_max_variable_positions,
         help="The maximum number of positions with predicted modifications that can be permuted at "
              "once in a tRNA-seq seed sequence. For example, if this argument is 5, and a seed has "
@@ -187,16 +189,19 @@ if __name__ == '__main__':
         "aligned to tRNA genes in the supplied contigs database(s). Matches are selected from "
         "filtered alignments.")
     group1D.add_argument(
-        '-x', '--max-mismatches', metavar='INT', type=int,
+        '-x', '--max-mismatches',
+        metavar='INT', type=int,
         default=genomictrnaseq.Integrator.default_max_mismatches,
         help="The maximum number of mismatches allowed in a gapless alignment between a permuted "
              "or non-permuted tRNA-seq seed and a tRNA gene.")
     group1D.add_argument(
-        '-f', '--full-gene', default=False, action='store_true',
+        '-f', '--full-gene',
+        default=False, action='store_true',
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
              "excluding seeds representing 3' fragments.")
     group1D.add_argument(
-        '-a', '--ambiguous-genome-assignment', default=False, action='store_true',
+        '-a', '--ambiguous-genome-assignment',
+        default=False, action='store_true',
         help="Use this flag to allow tRNA-seq seeds to be assigned to tRNA genes in multiple "
              "genomes or a single genome and unbinned contigs. By default, seeds can only be "
              "assigned to genes in a single genome to prevent ambiguity (when any genomic input "
@@ -220,23 +225,27 @@ if __name__ == '__main__':
         "directory for all of these. Alternatively, program-specific options give more control "
         "over temp file storage.")
     group1E.add_argument(
-        '-u', '--permuted-seeds-fasta', metavar='FILE_PATH', type=str, default=None,
+        '-u', '--permuted-seeds-fasta',
+        metavar='FILE_PATH', type=str, default=None,
         help="FASTA file of original and permuted tRNA-seq seed sequences.")
     group1E.add_argument(
-        '-d', '--blast-dir', metavar='DIRECTORY_PATH', type=str, default=None,
+        '-d', '--blast-dir',
+        metavar='DIRECTORY_PATH', type=str, default=None,
         help="Directory to store BLAST databases and tables generated in searching original and "
              "permuted seeds against tRNA genes.")
 
     group1F = parser.add_argument_group('OTHER')
     group1F.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group1F.add_argument(
-        '-r', '--remove-previous-matches', default=False, action='store_true',
+        '-r', '--remove-previous-matches',
+        default=False, action='store_true',
         help="Remove existing tRNA-seq seed assignments to tRNA genes in the tRNA-seq contigs "
              "database.")
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(
-        '-l', '--list-genomes', default=False, action='store_true',
+        '-l', '--list-genomes',
+        default=False, action='store_true',
         help="Report information on the sources of tRNA genes that have already been associated "
              "with a tRNA-seq contigs database. The `--trnaseq-contigs-db` argument must be "
              "provided along with this flag. The project names and hashes of (meta)genomic contigs "
