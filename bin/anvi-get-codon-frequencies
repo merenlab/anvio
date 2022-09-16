@@ -296,7 +296,7 @@ if __name__ == '__main__':
         '--return-amino-acids', default=False, action='store_true',
         help="Return frequencies of codons encoding the same amino acid.")
     groupD.add_argument(
-        '--encodings-txt',
+        '--encodings-txt', metavar='FILE',
         help="Changes to the standard genetic code can be provided in this tab-delimited file of "
              "two columns. Each entry in the first column is a codon and each entry in the second "
              "column is the three-letter code for the decoded amino acid. For example, to recode "
@@ -338,7 +338,7 @@ if __name__ == '__main__':
              "`--function-sources`. To get function names from multiple sources, instead "
              "use `--select-functions-txt`.")
     groupE.add_argument(
-        '--select-functions-txt',
+        '--select-functions-txt', metavar='FILE',
         help="Selected functions can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "

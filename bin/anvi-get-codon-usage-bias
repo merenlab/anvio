@@ -346,7 +346,9 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupA.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupA.add_argument(
-        '--gene-caller-ids', type=int, nargs='+', help="Return CUB for genes with these IDs.")
+        '--gene-caller-ids', type=int, nargs='+',
+        help="Return CUB for genes with these IDs in the contigs database. The list must be "
+             "space-separated.")
 
     groupB = parser.add_argument_group(
         'MULTIPLE GENOME INPUTS',
@@ -391,7 +393,7 @@ if __name__ == '__main__':
              "Sharp and Li (1987). 'delta' is a reference-dependent metric of Ran and Higgs (2012, "
              "Eq. 6) that involves the overall codon composition of the genome in the comparison.")
     groupD.add_argument(
-        '--encodings-txt',
+        '--encodings-txt', metavar='FILE',
         help="Changes to the standard genetic code can be provided in this tab-delimited file of "
              "two columns. Each entry in the first column is a codon and each entry in the second "
              "column is the three-letter code for the decoded amino acid. For example, to recode "
@@ -425,7 +427,7 @@ if __name__ == '__main__':
              "`--function-sources`. To get function names from multiple sources, instead "
              "use `--select-functions-txt`.")
     groupE.add_argument(
-        '--select-functions-txt',
+        '--select-functions-txt', metavar='FILE',
         help="Functions to select can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
@@ -459,7 +461,7 @@ if __name__ == '__main__':
              "function) CUB values is like a distance matrix of the similarity of gene codon "
              "compositions.")
     groupF.add_argument(
-        '--select-reference-functions-txt',
+        '--select-reference-functions-txt', metavar='FILE',
         help="Rather than using the default reference, selected reference functions can be listed "
              "in a headerless, tab-delimited file of three columns. Each row is a selected "
              "annotation. The first column must contain function annotation sources, the second "
@@ -480,8 +482,9 @@ if __name__ == '__main__':
     groupF.add_argument(
         '--reference-gene-caller-ids', type=int, nargs='+',
         help="Include specific genes in the reference gene set, as given by their gene caller IDs "
-             "in the contigs database. This option can only be used with a single genome -- a "
-             "single contigs database, internal genome, or external genome.")
+             "in the contigs database. The list of IDs must be space-separated. This option can "
+             "only be used with a single genome -- a single contigs database, internal genome, or "
+             "external genome.")
 
     groupG = parser.add_argument_group(
         'FILTER GENES, FUNCTIONS, CODONS',
