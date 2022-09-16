@@ -53,13 +53,11 @@ if __name__ == '__main__':
         "`--seeds-specific-txt` argument and the `--list-sample` flag prints all sample names to "
         "the terminal.")
     group1B.add_argument(
-        '-r', '--reference-sample',
-        metavar='SAMPLE_NAME', type=str,
+        '-r', '--reference-sample', metavar='SAMPLE_NAME', type=str,
         help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
              "functional affinity.")
     group1B.add_argument(
-        '-b', '--sample-subset',
-        metavar='SAMPLE_NAMES', type=str,
+        '-b', '--sample-subset', metavar='SAMPLE_NAMES', type=str,
         help="Names of tRNA-seq samples, beside the specified reference sample, to be analyzed. By "
              "default, when this argument is not used, all of the samples in `seeds-specific-txt` "
              "are analyzed. Samples names must be separated with a comma and no space.")
@@ -98,16 +96,14 @@ if __name__ == '__main__':
         'ALGORITHM PARAMETERS',
         "Parameters for computation of functional affinity can be tuned.")
     group1D.add_argument(
-        '-d', '--min-coverage',
-        metavar='INT', type=int,
+        '-d', '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
              "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
              "met in both the sample being analyzed and reference sample for the isoacceptor to be "
              "contribute to functional affinity.")
     group1D.add_argument(
-        '-i', '--min-isoacceptors',
-        metavar='INT', type=int,
+        '-i', '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
              "source for functional affinity to be calculated. For example, say the minimum number "
@@ -125,8 +121,7 @@ if __name__ == '__main__':
         "enough isoacceptors were measured to achieve 'statistical significance'. Separate output "
         "files are produced for the results of rarefaction.")
     group1E.add_argument(
-        '-e', '--rarefaction-limit',
-        metavar='INT', type=int,
+        '-e', '--rarefaction-limit', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_rarefaction_limit,
         help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
              "isoacceptors for recomputations of functional affinities. The rarefaction limit sets "
@@ -141,8 +136,7 @@ if __name__ == '__main__':
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(
-        '-l', '--list-samples',
-        default=False, action='store_true',
+        '-l', '--list-samples', default=False, action='store_true',
         help="List the names of tRNA-seq samples in `seeds-specific-txt` by using this flag with "
              "the `--seeds-specific-txt` argument.")
 
