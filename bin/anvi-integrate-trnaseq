@@ -131,7 +131,7 @@ if __name__ == '__main__':
         "following are valid inputs: "
         "(1) A single contigs database. This could represent a genome or metagenome. "
         "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
-        "database, profile database, and collection."
+        "database, profile database, and collection. "
         "(3) A single bin. This requires a contigs database, profile database, collection and bin "
         "ID. "
         "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
