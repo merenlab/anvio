@@ -93,16 +93,53 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     group1D = parser.add_argument_group(
-        'ALGORITHM PARAMETERS',
-        "Parameters for computation of functional affinity can be tuned.")
+        'FUNCTIONS',
+        "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
+        "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
+        "sources can be compared at once. This program makes no effort to avoid redundancy in the "
+        "genes or functions that are analyzed: for example, if KEGG BRITE hierarchy categories are "
+        "analyzed, the same gene can occur in multiple KEGG KOfams that define the categories and "
+        "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
+        "categories are nested hierarchically, the same lower-level category can be encompassed by "
+        "multiple higher-level categories.")
     group1D.add_argument(
+        '-f', '--function-sources', nargs='*', default=['KEGG_BRITE'],
+        help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
+             "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
+             "any arguments, then every source will be considered.")
+    group1D.add_argument(
+        '--function-accessions', nargs='+',
+        help="Calculate affinity for select functions with these accessions from the source "
+             "provided in `--function-sources`. To get accessions from multiple sources, instead "
+             "use `--select-functions-txt`.")
+    group1D.add_argument(
+        '--function-names', nargs='+',
+        help="Calculate affinity for select functions with these names from the source provided in "
+             "`--function-sources`. To get function names from multiple sources, instead use "
+             "`--select-functions-txt`.")
+    group1D.add_argument(
+        '--select-functions-txt',
+        help="Selected functions can be listed in this tab-delimited file of three columns. The "
+             "first column should contain function annotation sources, the second column "
+             "accessions, and the third function names. An entry in the source column is required "
+             "in every row, and either an accession or name, or both, should also be in a row. "
+             "The file should not have a header of column names.")
+    group1D.add_argument(
+        '-g', '--gene-affinity', default=False, action='store_true',
+        help="Compute affinity for genes rather than functions.")
+
+    group1E = parser.add_argument_group(
+        'ISOACCEPTOR PARAMETERS',
+        "The calculation of functional affinity relies upon the abundances of tRNA isoacceptors, "
+        "or groups of seeds with the same anticodon.")
+    group1E.add_argument(
         '-d', '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
              "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
              "met in both the sample being analyzed and reference sample for the isoacceptor to be "
              "contribute to functional affinity.")
-    group1D.add_argument(
+    group1E.add_argument(
         '-i', '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
@@ -111,7 +148,9 @@ if __name__ == '__main__':
              "pass the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold "
              "in B. Functional affinity will be calculated for genome A but not B.")
 
-    group1E = parser.add_argument(
+    group1F = parser.add_argument_group('CODON FILTERS')
+
+    group1G = parser.add_argument(
         'RAREFACTION STATISTICS',
         "Rarefaction of the tRNA isoacceptors used in calculation of functional affinity provides "
         "a means of evaluating how representative the isoacceptors are of the whole tRNA pool. The "
@@ -120,7 +159,7 @@ if __name__ == '__main__':
         "Functional affinity results that are sensitive to rarefaction indicate suggest that not "
         "enough isoacceptors were measured to achieve 'statistical significance'. Separate output "
         "files are produced for the results of rarefaction.")
-    group1E.add_argument(
+    group1G.add_argument(
         '-e', '--rarefaction-limit', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_rarefaction_limit,
         help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
