@@ -24,6 +24,15 @@ The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o v
 {% include _toc.html %}
 {% endverbatim %}
 
+## Anvi'o workflows
+
+The higher order snakemake recipes for entire workflows that implement an orchestrated use of [anvi'o programs](#anvio-programs) and third-party software (such as assemblers, or read mapping software) that implement easy-to-use, scalable, and reproducible analyses. The anvi'o workflows typically start with raw data and a <span class="artifact-p">[workflow-config](artifacts/workflow-config/) <img src="images/icons/{{artifacts|lookup:"workflow-config"|lookup:"type"}}.png" class="artifact-icon-mini" /></span> and produce [anvi'o artifacts](#anvio-artifacts), which enable you to outsource rudimentary and relatively well-understood initial steps of your 'omics analyses, and use the resulting products to focus on downstream research questions.
+
+Here is a list of anvi'o workflows and their descriptions:
+
+<ul>
+{% for workflow in workflows %}<li><a href="workflows/{{ workflow }}">The anvi'o <b>{{workflow}}</b> workflow</a> by {{workflows|lookup:workflow|lookup:"authors"|safe}}: {{workflows|lookup:workflow|lookup:"one_sentence_summary"}}.</li>{% endfor %}
+</ul>
 
 ## Anvi'o artifacts
 
