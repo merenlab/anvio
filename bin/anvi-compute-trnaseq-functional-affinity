@@ -189,8 +189,45 @@ if __name__ == '__main__':
              "of isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors "
              "pass the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold "
              "in B. Functional affinity will be calculated for genome A but not B.")
+    group1E.add_argument(
+        '--exclude-anticodons', nargs='+',
+        help="Remove tRNA isoacceptors with the given anticodons from calculation of functional "
+             "affinity.")
 
-    group1F = parser.add_argument_group('CODON FILTERS')
+    group1F = parser.add_argument_group(
+        'CODON FILTERS',
+        "Functions and genes can be filtered by the number of codons that they contain, and "
+        "codons can be selected for removal. The reliability or usefulness of the affinity metric "
+        "is greater for functions with more analyzed codons decoded by measured tRNA-seq "
+        "isoacceptors. Codon selection can be useful, for instance, in testing the effect of "
+        "perturbations in the set of analyzed codons on the affinity results.")
+    group1F.add_argument(
+        '--min-analyzed-codons', type=int, default=0,
+        help="Affinity is calculated for functions (or genes, with the flag, `--gene-affinity`) "
+             "that contain at least this number of codons with corresponding tRNA-seq "
+             "isoacceptors. For example, say a function contains gene sequences with 1,000 codons "
+             "total, of which 300 can be decoded by isoacceptors screened for use in affinity "
+             "calculations. If this argument is set to 500, then affinity would not be calculated "
+             "for the function.")
+    group1F.add_argument(
+        '--function-min-total-codons', type=int, default=0,
+        help="Affinity is calculated for functions that contain at least this number of codons "
+             "total. Genes with fewer than `--gene-min-total-codons` are first removed, and then "
+             "functional groups of the remaining genes with fewer than "
+             "`--function-min-total-codons` are removed.")
+    group1F.add_argument(
+        '--gene-min-total-codons', type=int, default=0,
+        help="Genes must contain at least this number of codons total to contribute to affinity "
+             "calculations. When affinity is calculated for functions rather than genes (the "
+             "default unless `--gene-affinity` is used), this filter is applied to genes before "
+             "grouping them as functions.")
+    group1F.add_argument(
+        '--exclude-codons', nargs='+',
+        help="Remove the given codons from the calculation of functional affinity.")
+    group1F.add_argument(
+        '--exclude-amino-acids', nargs='+',
+        help="Remove codons that decode the given amino acids from calculation of functional "
+             "affinity.")
 
     group1G = parser.add_argument(
         'RAREFACTION STATISTICS',
