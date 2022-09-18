@@ -365,12 +365,11 @@ if __name__ == '__main__':
         "data.")
     groupF.add_argument(
         '--gene-min-codons', type=int, default=0,
-        help="Set the minimum number of codons required in a gene. When functions are returned "
-             "rather than genes, this filter is applied to genes before grouping them as "
-             "functions.")
+        help="The minimum number of codons required in a gene. When functions are returned rather "
+             "than genes, this filter is applied to genes before grouping them as functions.")
     groupF.add_argument(
         '--function-min-codons', type=int, default=0,
-        help="Set the minimum number of codons required in a function. Genes with fewer than "
+        help="The minimum number of codons required in a function. Genes with fewer than "
              "`--gene-min-codons` are first removed, and then functional groups of the remaining "
              "genes with fewer than `--function-min-codons` are removed. This filter only applies "
              "when returning functions.")
