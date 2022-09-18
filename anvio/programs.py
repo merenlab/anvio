@@ -921,6 +921,11 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         for artifact in self.artifacts_info:
             self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
 
+        # quick update of the author information in workflows so they contain nice HTML
+        # code instad of a list of author names
+        for workflow in self.workflows:
+            self.workflows[workflow]['authors'] = self.get_HTML_formatted_authors_data_mini(ANVIO_WORKFLOWS[workflow]['authors'])
+
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
