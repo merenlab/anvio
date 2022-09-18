@@ -175,14 +175,14 @@ if __name__ == '__main__':
         "The calculation of functional affinity relies upon the abundances of tRNA isoacceptors, "
         "or groups of seeds with the same anticodon.")
     group1E.add_argument(
-        '-d', '--min-coverage', metavar='INT', type=int,
+        '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
              "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
              "met in both the sample being analyzed and reference sample for the isoacceptor to be "
              "contribute to functional affinity.")
     group1E.add_argument(
-        '-i', '--min-isoacceptors', metavar='INT', type=int,
+        '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
              "source for functional affinity to be calculated. For example, say the minimum number "
@@ -202,7 +202,7 @@ if __name__ == '__main__':
         "enough isoacceptors were measured to achieve 'statistical significance'. Separate output "
         "files are produced for the results of rarefaction.")
     group1G.add_argument(
-        '-e', '--rarefaction-limit', metavar='INT', type=int,
+        '--rarefaction-limit', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_rarefaction_limit,
         help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
              "isoacceptors for recomputations of functional affinities. The rarefaction limit sets "
