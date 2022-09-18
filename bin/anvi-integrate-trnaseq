@@ -103,6 +103,7 @@ def print_genomes(integrated_genome_dict):
 
                 for bin_id in bin_ids:
                     run.info_single(f"Bin ID: {bin_id}", cut_after=0, level=4)
+    print()
 
 
 if __name__ == '__main__':
