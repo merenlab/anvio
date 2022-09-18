@@ -6,6 +6,7 @@ import os
 import sys
 import glob
 import json
+import copy
 import argparse
 import importlib
 
@@ -447,7 +448,7 @@ class AnvioWorkflows:
         workflows_without_descriptions = set([])
 
         for workflow in ANVIO_WORKFLOWS:
-            self.workflows[workflow] = ANVIO_WORKFLOWS[workflow]
+            self.workflows[workflow] = copy.deepcopy(ANVIO_WORKFLOWS[workflow])
 
             for key in expected_keys:
                 if key not in self.workflows[workflow]:
