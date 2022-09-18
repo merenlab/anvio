@@ -6,15 +6,44 @@
 # third party programs used (such as Bowtie2 or HMMER). there is no need to
 # mention anvi'o programs here as it will be discovered from program tags. to
 # associate a program with a workflow, please add the workflow name(s) to the
-# meta tag `__anvio_workflows__`
+# meta tag `__anvio_workflows__`.
 ANVIO_WORKFLOWS = {
     "metagenomics": {
         "authors": ['ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
-        "third_party_programs_used": [],
-        "one_sentence_summary": "From FASTQ files to essential anvi'o artifacts."
+        "anvio_workflows_used": ['contigs'],
+        "third_party_programs_used": [
+            ('Quality control of short reads', ['illumina-utils']),
+            ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
+            ('BAM file manipulations', ['samtools']),
+            ('Gene calling', ['prodigal']),
+            ('HMM search', ['HMMER']),
+            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
+            ('Read recruitment', ['Bowtie2'])
+            ],
+        "one_sentence_summary": "From FASTQ files to essential anvi'o artifacts",
+        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
+            "sunt in culpa qui officia deserunt mollit anim id est laborum")
     },
 }
+
+# the purpose of this variable is to have a list of third-party programs used from
+# within anvi'o workflows.
+THIRD_PARTY_PROGRAMS = {
+    'IDBA-UD': {'link': 'https://github.com/loneknightpy/idba'},
+    'illumina-utils': {'link': 'https://github.com/merenlab/illumina-utils'},
+    'metaSPAdes': {'link': "https://cab.spbu.ru/software/meta-spades/"},
+    'MEGAHIT': {'link': 'https://github.com/voutcn/megahit'},
+    'samtools': {'link': 'http://www.htslib.org/'},
+    'prodigal': {'link': 'https://github.com/hyattpd/Prodigal'},
+    'HMMER': {'link': 'http://hmmer.org/'},
+    'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
+    'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
+    'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
+    }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
 # that are referred from 'requires' and 'provides' statements in anvi'o programs
