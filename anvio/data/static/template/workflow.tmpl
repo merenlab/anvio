@@ -10,7 +10,9 @@ image:
   display: true
 ---
 
-{{ workflow.one_sentence_summary}}
+<i>{{ workflow.one_sentence_summary }}</i>
+
+{{ workflow.one_paragraph_summary }}
 
 🔙 **[To the main page](../../)** of anvi'o programs and artifacts.
 
@@ -18,26 +20,26 @@ image:
 
 {{ workflow.authors | safe }}
 
-## Can consume
+## Artifacts produced
 
-{% if program.requires %}
-<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
-{% else %}
-This program seems to know what its doing. It needs no input material from its user. Good program.
-{% endif %}
+The {{ workflow.name }} typically produce the following artifacts:
 
-## Can provide
+<p style="text-align: left" markdown="1">{% for name, path in workflow.artifacts_produced %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
-{% if program.provides %}
-<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
-{% else %}
-This program does not seem to provide any artifacts. Such programs usually print out some information for you to see or alter some anvi'o artifacts without producing any immediate outputs.
-{% endif %}
+## Third party programs
+
+This is a list of programs that may be used by the {{ workflow.name }} workflow depending on the user settings in the <span class="artifact-p">[workflow-config](../../artifacts/workflow-config/) <img src="../../images/icons/{{artifacts|lookup:"workflow-config"|lookup:"type"}}.png" class="artifact-icon-mini" /></span>:
+
+<ul>
+{% for third_party_program in workflow.third_party_programs_used %}<li>{{ third_party_program | safe }}</li>{% endfor %}
+</ul>
+
+An anvi'o installation that follows the recommendations on the <a href="https://anvio.org/install/" target="_blank">installation page</a> will include all these programs. But please consider your settings, and cite these additional tools from your methods sections.
 
 ## Workflow description and usage
 
 {% if workflow.description %}
-{{ workflow.description|safe }}
+{{ workflow.description | safe }}
 
 {:.notice}
 Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/workflows/{{workflow.name}}.md) to update this information.
