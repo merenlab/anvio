@@ -443,7 +443,7 @@ class AnvioWorkflows:
 
         self.workflows= {}
 
-        expected_keys = ['authors', 'artifacts_produced', 'third_party_programs_used', 'one_sentence_summary']
+        expected_keys = ['authors', 'artifacts_produced', 'anvio_workflows_used', 'third_party_programs_used', 'one_sentence_summary', 'one_paragraph_summary']
 
         workflows_without_descriptions = set([])
 
