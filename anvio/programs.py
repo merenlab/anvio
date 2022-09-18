@@ -19,7 +19,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.authors import AnvioAuthors
-from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS
+from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
@@ -458,6 +458,20 @@ class AnvioWorkflows:
             self.workflows[workflow]['name'] = workflow
             self.workflows[workflow]['anvio_programs_used'] = []
 
+            # a workflow description includes the list of third party programs that are
+            # optionally used from whithin the workflow. here we will sanity check that
+            # they all have descriptions in `THIRD_PARTY_PROGRAMS`
+            # dictionary.
+            for purpose, program_names in self.workflows[workflow]['third_party_programs_used']:
+                for program_name in program_names:
+                    if program_name not in THIRD_PARTY_PROGRAMS:
+                        raise ConfigError(f"The workflow {workflow} lists the program '{program_name}' in its "
+                                          f"description for third-party programs that are used from within, "
+                                          f"however, there is no entry for this program in the variable "
+                                          f"'THIRD_PARTY_PROGRAMS' in the file "
+                                          f"'anvio/docs/__init__.py'. Please add a necessary description for "
+                                          f"this program into that dict, and try this again.")
+
             # learn about the description of the workflow
             workflow_description_path = os.path.join(anvio.DOCS_PATH, 'workflows/%s.md' % (workflow))
             if os.path.exists(workflow_description_path):
@@ -752,6 +766,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         return d
 
 
+    def get_workflow_produced_artifacts_list(self, workflow_name, prefix="../../"):
+        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_produced']]
+
+
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
@@ -828,6 +846,18 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         return d
 
 
+    def get_HTML_formatted_third_party_programs(self, workflow_name):
+        """Get a template-friendly list of third-party programs used from within a workflow"""
+
+        d = []
+
+        for purpose, program_names in self.workflows[workflow_name]['third_party_programs_used']:
+            for program_name in program_names:
+                d.append(f'''<a href="{THIRD_PARTY_PROGRAMS[program_name]['link']}" target="_blank">{program_name}</a> ({purpose})''')
+
+        return d
+
+
     def generate_pages_for_workflows(self):
         """Generate static pages for anvi'o workflows in the output directory"""
 
@@ -844,7 +874,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                           'version_short_identifier': self.version_short_identifier}
                  }
 
+            d['workflow']['artifacts_produced'] = self.get_workflow_produced_artifacts_list(workflow_name)
+            d['workflow']['third_party_programs_used'] = self.get_HTML_formatted_third_party_programs(workflow_name)
             d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
+
+            # also add information regarding the artifacts
+            d['artifacts'] = self.artifacts_info
 
             if anvio.DEBUG:
                 self.progress.reset()
