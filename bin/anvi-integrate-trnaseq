@@ -48,9 +48,11 @@ def main(args):
 
 def sanity_check(args):
     if args.seeds_specific_txt is None:
-        raise ConfigError("`--seeds-specifix-txt` is a required argument.")
+        raise ConfigError("`--seeds-specific-txt` is a required argument for tRNA-seq/(meta)genomic "
+                          "integration.")
     if args.modifications_txt is None:
-        raise ConfigError("`--modifications-txt` is a required argument.")
+        raise ConfigError("`--modifications-txt` is a required argument for tRNA-seq/(meta)genomic "
+                          "integration.")
 
     # Do basic checks of the combinations of genomic input arguments.
     if args.contigs_db and (args.internal_genomes or args.external_genomes):
