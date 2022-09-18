@@ -11,7 +11,7 @@ rule make_anvio_state_file_tree:
         tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
         misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
     output:
-        state_file = os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_TREE_state.json")
+        state_file = os.path.join(dirs_dict['HOME'], "{hmm}_TREE_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
@@ -161,7 +161,7 @@ rule anvi_import_everything_tree:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
         tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{hmm}_state_imported_tree.done")),
+        touch(os.path.join(dirs_dict['HOME'], "{hmm}_state_imported_tree.done"))
 
     threads: M.T('anvi_import_state')
     run:

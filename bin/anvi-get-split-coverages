@@ -49,8 +49,11 @@ def main(args):
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
 
-    if args.gene_caller_id:
-        utils.is_gene_caller_id(args.gene_caller_id)
+    # this extra flag is necessary for avoiding args.gene_caller_id == 0 which could evaluate to False
+    # when gene caller id is 0 :)
+    has_valid_gene_caller_id_arg = False
+    if args.gene_caller_id != None:
+        has_valid_gene_caller_id_arg = utils.is_gene_caller_id(args.gene_caller_id)
         if not args.contigs_db:
             raise ConfigError("If you wish to work with a gene caller id, you also need to provide "
                               "a contigs database (but you are off to a very good start).")
@@ -67,7 +70,7 @@ def main(args):
     if args.flank_length and not args.gene_caller_id:
         raise ConfigError("The use of flank length is only relevant if you want to work with a gene :/")
 
-    if not ((args.split_name or args.contig_name) or (args.collection_name or args.bin_id) or args.gene_caller_id):
+    if not ((args.split_name or args.contig_name) or (args.collection_name or args.bin_id) or has_valid_gene_caller_id_arg):
         raise ConfigError("You must either declare a split or contig name, a bin name in a collection, or a gene caller id "
                           "for this to work.")
 
@@ -96,7 +99,7 @@ def main(args):
 
     splits_info_dict = {}
     target_splits_dict = {}
-    if args.gene_caller_id:
+    if has_valid_gene_caller_id_arg:
         contigs_db = dbops.ContigsDatabase(args.contigs_db)
         matches = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_splits_table_name, where_clause=f"""gene_callers_id={args.gene_caller_id}""")
 
@@ -162,7 +165,7 @@ def main(args):
     with open(args.output_file, 'w') as output_file:
         if args.contig_name:
             output_file.write('unique_entry_id\tnt_position\tcontig_name\tsample_name\tcoverage\n')
-        elif args.gene_caller_id:
+        elif has_valid_gene_caller_id_arg:
             output_file.write('unique_entry_id\tnt_position\tgene_caller_id\tsample_name\tcoverage\n')
         else:
             output_file.write('unique_entry_id\tnt_position\tsplit_name\tsample_name\tcoverage\n')
@@ -195,7 +198,7 @@ def main(args):
 
                     if args.contig_name:
                         output_file.write('%d\t%d\t%s\t%s\t%d\n' % (entry_id, nt_pos + prior_nucleotides_in_contig, args.contig_name, sample_name, split_coverage_values[sample_name][nt_pos]))
-                    elif args.gene_caller_id:
+                    elif has_valid_gene_caller_id_arg:
                         output_file.write('%d\t%d\t%s\t%s\t%d\n' % (entry_id, nt_pos, args.gene_caller_id, sample_name, split_coverage_values[sample_name][nt_pos]))
                     else:
                         output_file.write('%d\t%d\t%s\t%s\t%d\n' % (entry_id, nt_pos, split_name, sample_name, split_coverage_values[sample_name][nt_pos]))
