@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio.argparse import ArgumentParser
