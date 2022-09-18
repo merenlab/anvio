@@ -814,12 +814,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         return d
 
 
-    def get_HTML_formatted_authors_data_mini(self, program):
-        """for a given program, returns a tiny version of the HTML-formatted authors data"""
+    def get_HTML_formatted_authors_data_mini(self, authors):
+        """for a given list of authors, returns a tiny version of the HTML-formatted authors data"""
 
         d = ""
 
-        for author in program.meta_info['authors']['value']:
+        for author in authors:
             d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
             d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
             d += '''</div></div>\n'''
@@ -924,7 +924,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
-        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p])) for p in self.programs],
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p].meta_info['authors']['value'])) for p in self.programs],
              'workflows': self.workflows,
              'artifacts': self.artifacts_info,
              'artifact_types': self.artifact_types,
