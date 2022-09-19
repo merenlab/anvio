@@ -8,6 +8,24 @@
 # associate a program with a workflow, please add the workflow name(s) to the
 # meta tag `__anvio_workflows__`.
 ANVIO_WORKFLOWS = {
+    "contigs": {
+        "authors": ['ShaiberAlon', 'ivagljiva', 'meren', 'mschecht'],
+        "artifacts_produced": ['contigs-db'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Gene calling', ['prodigal']),
+            ('HMM search', ['HMMER']),
+            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
+            ('Sequence search against various databases', ['DIAMOND'])
+            ],
+        "one_sentence_summary": "From FASTA files to annotated anvi'o contigs databases",
+        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
+            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+    },
+
     "metagenomics": {
         "authors": ['ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
@@ -43,6 +61,7 @@ THIRD_PARTY_PROGRAMS = {
     'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
     'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
     'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
+    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'}
     }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
