@@ -24,6 +24,15 @@ The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o v
 {% include _toc.html %}
 {% endverbatim %}
 
+## Anvi'o workflows
+
+Anvi'o workflows are dynamic recipes for easy-to-use, scalable, and reproducible bioinformatics analyses through orchestrated use of [anvi'o programs](#anvio-programs) as well as third-party software. These workflows typically start with raw data files and a <span class="artifact-p">[workflow-config](artifacts/workflow-config/) <img src="images/icons/{{artifacts|lookup:"workflow-config"|lookup:"type"}}.png" class="artifact-icon-mini" /></span> and produce [anvi'o artifacts](#anvio-artifacts), which enable you to outsource rudimentary and relatively well-understood initial steps of your 'omics analyses so you can focus on more critical downstream research questions by further analyzing these data products inside or outside of the anvi'o software ecosystem.
+
+The anvi'o {{ meta|lookup:"version" }} contains {{ workflows | length }} workflows:
+
+<ul>
+{% for workflow in workflows %}<li><a href="workflows/{{ workflow }}">The anvi'o <b>{{workflow}}</b> workflow</a> by {{workflows|lookup:workflow|lookup:"authors"|safe}}| <i>{{workflows|lookup:workflow|lookup:"one_sentence_summary"}}</i>.</li>{% endfor %}
+</ul>
 
 ## Anvi'o artifacts
 
