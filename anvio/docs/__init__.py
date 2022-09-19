@@ -21,7 +21,7 @@ ANVIO_WORKFLOWS = {
             ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Read recruitment', ['Bowtie2'])
             ],
-        "one_sentence_summary": "From FASTQ files to essential anvi'o artifacts",
+        "one_sentence_summary": "From FASTA and/or FASTQ files to anvi'o contigs and profile databases",
         "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
             "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
             "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
