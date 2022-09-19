@@ -76,14 +76,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', 'clustering_threshold_for_OTUs', 'additional_params']
+        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', 'additional_params']
         rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs', 'AA_mode']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params', 'snakemake_additional_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params', 'snakemake_additional_params', 'bowtie2_additional_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -259,6 +259,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
         self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'cluster_submission_params'])
         self.snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
+
+        self.bowtie2_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow','bowtie2_additional_params'])
 
         # Pick clustering method
         self.cluster_representative_method = self.get_param_value_from_config(['cluster_representative_method', 'method'])
