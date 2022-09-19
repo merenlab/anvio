@@ -46,6 +46,32 @@ ANVIO_WORKFLOWS = {
             "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
             "sunt in culpa qui officia deserunt mollit anim id est laborum")
     },
+    "ecophylo": {
+        "authors": ['mschecht'],
+        "artifacts_produced": ['contigs-db', 'profile-db'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Quality control of short reads', ['illumina-utils']),
+            ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
+            ('BAM file manipulations', ['samtools']),
+            ('Gene calling', ['prodigal']),
+            ('HMM search', ['HMMER']),
+            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
+            ('Read recruitment', ['Bowtie2']),
+            ('Cluster open reading frames', ['MMseqs2']),
+            ('Align protein sequences', ['muscle']),
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ('Calculate phylogenetic tree', ['FastTree']),
+            ('Search for homologous sequences', ['HMMER'])
+            ],
+        "one_sentence_summary": "Extracts protein sequences from anvi'o contigs databases and then calculates phylogenetic tree and profiles with metagenomic read recruitment",
+        "one_paragraph_summary": ("The EcoPhylo workflow extracts a target protein from anvi'o contigs databases using a user-designated HMM from hmm-list, ",
+            "then clusters the sequences and selects representatives from each cluster. Next, the workflow post-processes the representative sequences using ", 
+            "phylogenetics and metagenomic read recruitment to produce an anvi’o interactive interface to explore their phylogenetic distances and ",
+            "co-occurrence across metagenomes (via simultaneous visual of a phylogenetic tree and read recruitment results). The workflow can use any protein-based ",
+            "HMM including single-copy core genes to taxonomically profile metagenomes or any functional protein to explore variants across samples.")
+    },
 }
 
 # the purpose of this variable is to have a list of third-party programs used from
@@ -61,7 +87,13 @@ THIRD_PARTY_PROGRAMS = {
     'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
     'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
     'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
-    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'}
+    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'},
+    'MMseqs2': {'link': 'https://github.com/soedinglab/MMseqs2'},
+    'muscle': {'link': 'http://www.drive5.com/muscle/'},
+    'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},    
+    'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},    
+    'HMMER': {'link': 'https://github.com/EddyRivasLab/hmmer'},
+    'trimal': {'link': 'https://github.com/inab/trimal'}
     }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
