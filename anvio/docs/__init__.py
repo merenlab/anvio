@@ -11,7 +11,7 @@ ANVIO_WORKFLOWS = {
     "metagenomics": {
         "authors": ['ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
-        "anvio_workflows_used": ['contigs'],
+        "anvio_workflows_inherited": ['contigs'],
         "third_party_programs_used": [
             ('Quality control of short reads', ['illumina-utils']),
             ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
