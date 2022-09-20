@@ -1309,14 +1309,12 @@ class Integrator(object):
 class Affinitizer:
     """Using the `go` method, relates changes in tRNA-seq seed abundances to the codon usage of gene
     functions."""
+
+    default_function_sources = ['KEGG_BRITE']
     default_min_coverage = 10
     default_min_isoacceptors = 4
-    default_rarefaction_limit = 0
 
     def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
-        self.progress = p
-        self.run = r
-
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
