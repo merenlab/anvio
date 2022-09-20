@@ -363,11 +363,7 @@ class Integrator(object):
                 self.genome_info_dict[genome_name] = genome_info = {}
                 genome_info['contigs_db_info'] = DBInfo(
                     genome_dict['contigs_db_path'], expecting='contigs')
-                if genome_dict['profile_db_path']:
-                    genome_info['profile_db_info'] = DBInfo(
-                        genome_dict['profile_db_path'], expecting='profile')
-                else:
-                    genome_info['profile_db_info'] = None
+                genome_info['profile_db_info'] = None
                 genome_info['collection_name'] = None
                 genome_info['bin_id'] = None
 
