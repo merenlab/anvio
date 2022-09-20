@@ -168,8 +168,11 @@ if __name__ == '__main__':
              "in every row, and either an accession or name, or both, should also be in a row. "
              "The file should not have a header of column names.")
     group1D.add_argument(
-        '-g', '--gene-affinity', default=False, action='store_true',
+        '--gene-affinity', default=False, action='store_true',
         help="Compute affinity for genes rather than functions.")
+    group1D.add_argument(
+        '--gene-caller-ids', type=int, nargs='+',
+        help="Select genes by ID, space-separated, if using `--gene-affinity`.")
 
     group1E = parser.add_argument_group(
         'ISOACCEPTOR PARAMETERS',
