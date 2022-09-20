@@ -99,10 +99,10 @@ if __name__ == '__main__':
         help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
              "functional affinity.")
     group1B.add_argument(
-        '-b', '--sample-subset', metavar='SAMPLE_NAMES', type=str,
+        '-n', '--nonreference-samples', metavar='SAMPLE_NAMES', nargs='+',
         help="Names of tRNA-seq samples, beside the specified reference sample, to be analyzed. By "
              "default, when this argument is not used, all of the samples in `seeds-specific-txt` "
-             "are analyzed. Samples names must be separated with a comma and no space.")
+             "are analyzed.")
 
     group1C = parser.add_argument_group(
         'GENOMIC INPUTS',
@@ -145,7 +145,8 @@ if __name__ == '__main__':
         "categories are nested hierarchically, the same lower-level category can be encompassed by "
         "multiple higher-level categories.")
     group1D.add_argument(
-        '-f', '--function-sources', nargs='*', default=['KEGG_BRITE'],
+        '-f', '--function-sources', nargs='*',
+        default=genomictrnaseq.Affinitizer.default_function_sources,
         help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
              "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
              "any arguments, then every source will be considered.")
@@ -239,8 +240,7 @@ if __name__ == '__main__':
         "enough isoacceptors were measured to achieve 'statistical significance'. Separate output "
         "files are produced for the results of rarefaction.")
     group1G.add_argument(
-        '--rarefaction-limit', metavar='INT', type=int,
-        default=genomictrnaseq.Affinitizer.default_rarefaction_limit,
+        '--rarefaction-limit', metavar='INT', type=int, default=0,
         help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
              "isoacceptors for recomputations of functional affinities. The rarefaction limit sets "
              "the number of randomly drawn subsamples of isoacceptors. For example, given a sample "
