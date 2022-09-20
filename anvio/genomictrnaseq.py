@@ -1388,6 +1388,49 @@ class Affinitizer:
         self.progress = p
         self.run = r
 
+        self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
+
+        # Store information on accessing (meta)genomes.
+        self.genome_info_dict = {}
+
+        # If `contigs_db` was provided, then `internal_genomes` and `external_genomes` should not
+        # also have been provided, which is checked later in `sanity_check`.
+        if self.genomic_contigs_db_path:
+            contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
+            self.genome_info_dict[contigs_db_info.project_name] = genome_info = {}
+            genome_info['contigs_db_info'] = contigs_db_info
+            if self.genomic_profile_db_path:
+                genome_info['profile_db_info'] = DBInfo(
+                    self.genomic_profile_db_path, expecting='profile')
+            else:
+                genome_info['profile_db_info'] = None
+            genome_info['collection_name'] = self.collection_name
+            genome_info['bin_id'] = self.bin_id
+
+        if self.internal_genomes_path or self.external_genomes_path:
+            descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
+            descriptions.load_genomes_descriptions(init=False)
+
+            for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db_info'] = DBInfo(
+                    genome_dict['contigs_db_path'], expecting='contigs')
+                if genome_dict['profile_db_path']:
+                    genome_info['profile_db_info'] = DBInfo(
+                        genome_dict['profile_db_path'], expecting='profile')
+                else:
+                    genome_info['profile_db_info'] = None
+                genome_info['collection_name'] = genome_dict['collection_id']
+                genome_info['bin_id'] = genome_dict['bin_id']
+
+            for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db_info'] = DBInfo(
+                    genome_dict['contigs_db_path'], expecting='contigs')
+                genome_info['profile_db_info'] = None
+                genome_info['collection_name'] = None
+                genome_info['bin_id'] = None
+
         if do_sanity_check:
             self.sanity_check()
 
