@@ -326,16 +326,7 @@ class Integrator(object):
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
-        # Store information on accessing (meta)genomes. The entries in the dictionary differ given
-        # what was passed in `args`.
-        # 1. Single contigs database without bins: entry represents a contigs database.
-        # 2. Single contigs database with collection of bins: entry represents a collection.
-        # 3. Single contigs database with specified bin: entry represents a bin.
-        # 4. One or more contigs databases input as "external" genomes: entries represent contigs
-        #    databases.
-        # 5. "Internal" genomes (bins) from one or more contigs databases: entries represent bins.
-        # 6. A combination of "internal" and "external" genomes (4 + 5)`: entries represent contigs
-        #    databases or bins.
+        # Store information on accessing (meta)genomes.
         self.genome_info_dict = {}
 
         # If `contigs_db` was provided, then `internal_genomes` and `external_genomes` should not
