@@ -1432,6 +1432,7 @@ class Affinitizer:
                 genome_info['bin_id'] = None
 
         if do_sanity_check:
+            # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
@@ -1450,68 +1451,249 @@ class Affinitizer:
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
+        if self.trnaseq_contigs_db_info.variant != 'trnaseq':
+            raise ConfigError(
+                f"The database at '{self.trnaseq_contigs_db_path}' was a "
+                f"'{self.trnaseq_contigs_db_info.variant}' variant, not the required 'trnaseq' "
+                "variant.")
 
-        trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
-        if trnaseq_contigs_db_info.variant != 'trnaseq':
-            raise ConfigError(f"The database at '{self.trnaseq_contigs_db_path}' was a '{trnaseq_contigs_db_info.variant}' variant, "
-                              "not the required 'trnaseq' variant.")
-        with trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
-            if len(trnaseq_contigs_db.get_table_as_dataframe('trna_gene_hits', columns_of_interest=['seed_contig_name'])) == 0:
-                raise ConfigError(f"It appears that no tRNA seeds in the tRNA-seq contigs database, '{self.trnaseq_contigs_db_path}', "
-                                  f"are linked to tRNA genes in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'.")
+        with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            if trnaseq_contigs_db.get_row_counts_from_table(tables.trna_gene_hits_table_name) == 0:
+                raise ConfigError(
+                    "No tRNA seeds in the tRNA-seq contigs database, "
+                    f"'{self.trnaseq_contigs_db_path}', are linked to tRNA genes, a task performed "
+                    "by `anvi-integrate-trnaseq`.")
 
+        ##################################################
+        # Check for tRNA-seq reference and non-reference samples.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
 
-        genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
-        if genomic_contigs_db_info.variant != 'unknown':
-            raise ConfigError(f"The database at '{self.genomic_contigs_db_path}' was a '{genomic_contigs_db_info.variant}' variant. "
-                              "This should be a normal (meta)genomic contigs database, technically an 'unknown' variant, produced by `anvi-gen-contigs-database`.")
-        if 'modules_db_hash' not in genomic_contigs_db_info.get_self_table():
-            raise ConfigError(f"It appears that genes have not been annotated by KOfams in the (meta)genomic contigs database, '{self.genomic_contigs_db_path}'. "
-                              "Please run `anvi-run-kegg-kofams` on the database and try again.")
-        if 'KEGG_BRITE' not in genomic_contigs_db_info.get_self_table()['gene_function_sources'].split(','):
-            raise ConfigError("The version of the Modules database that was used in `anvi-run-kegg-kofams` does not include KEGG BRITE annotations. "
-                              "The calculation of functional affinity makes use of the functional classification of gene orthologs in BRITE hierarchies. "
-                              "Please update the Modules database by rerunning `anvi-setup-kegg-kofams`, "
-                              f"and then rerun `anvi-run-kegg-kofams` on the (meta)genomics contigs database, '{self.genomic_contigs_db_path}'.")
+        if self.reference_sample_name is None:
+            raise ConfigError("A reference sample must be provided.")
 
-        filesnpaths.is_file_exists(self.codon_frequencies_txt_path)
+        available_sample_names = pd.read_csv(
+            self.seeds_specific_txt_path,
+            sep='\t',
+            header=0,
+            skiprows=[1, 2],
+            usecols=['sample_name'])['sample_name'].unique().tolist()
 
-        available_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
-        # Check for the existence of the reference sample.
         if self.reference_sample_name not in available_sample_names:
-            raise ConfigError(f"The desired reference sample name, '{self.reference_sample_name}', "
-                              f"was not found in `seeds-specific-txt`, '{self.seeds_specific_txt_path}'. "
-                              f"Here are the samples provided in that table: {', '.join(available_sample_names)}")
-        # Check for the existence of a given subset of sample names.
+            raise ConfigError(
+                f"The provided reference sample name, '{self.reference_sample_name}', is not found "
+                f"in `seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of specific "
+                "coverages of tRNA-seq seeds in different samples. Here are the samples provided "
+                f"in that table: {', '.join(available_sample_names)}")
+
         if self.nonreference_sample_names:
-            nonreference_sample_names = self.nonreference_sample_names.split(',')
-            bad_sample_names = set(nonreference_sample_names).difference(set(available_sample_names))
+            nonreference_sample_names = self.nonreference_sample_names
+            bad_sample_names = set(self.nonreference_sample_names).difference(
+                set(available_sample_names))
             if bad_sample_names:
-                raise ConfigError("The following desired subset sample names were not found in `seeds-specific-txt`, "
-                                  f"'{self.seeds_specific_txt_path}': {', '.join(bad_sample_names)}. "
-                                  f"Here are the samples provided in that table: {', '.join(available_sample_names)}")
-            if self.reference_sample_name in nonreference_sample_names:
-                raise ConfigError(f"Please do not include the reference sample, '{self.reference_sample_name}' "
-                                  f"in the subset of sample names: {', '.join(nonreference_sample_names)}. Sorry for the sclerotic idiocy.")
+                raise ConfigError(
+                    "The following provided non-reference sample names were not found in "
+                    f"`seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of "
+                    "specific coverages of tRNA-seq seeds in different samples: "
+                    f"{', '.join(bad_sample_names)}. Here are the samples provided in that table: "
+                    f"{', '.join(available_sample_names)}")
+
+            if self.reference_sample_name in self.nonreference_sample_names:
+                raise ConfigError(
+                    f"Please do not include the reference sample, '{self.reference_sample_name}' "
+                    f"in the subset of sample names: {', '.join(nonreference_sample_names)}. Sorry "
+                    "for the sclerotic idiocy.")
         else:
             nonreference_sample_names = available_sample_names
             nonreference_sample_names.remove(self.reference_sample_name)
         if len(nonreference_sample_names) == 0:
-            raise ConfigError(f"There must be one or more samples beside the reference sample in `seeds-specific-txt`, '{self.seeds_specific_txt}'. "
-                              f"Only the reference sample, '{self.reference_sample_name}', was found.")
+            raise ConfigError(
+                "There must be one or more samples beside the reference sample in "
+                f"`seeds-specific-txt`, '{self.seeds_specific_txt}'. Only the reference sample, "
+                f"'{self.reference_sample_name}', was found.")
+        ##################################################
+
+        # Do basic checks of the combinations of (meta)genomic input arguments.
+        if (self.genomic_contigs_db_path and
+            (self.internal_genomes_path or self.external_genomes_path)):
+            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
+                              "`contigs_db`.")
+
+        if ((self.genomic_profile_db_path or self.collection_name) and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
+                              "`collection_name`.")
+
+        if (self.bin_id and
+            not (self.genomic_contigs_db_path and
+                 self.genomic_profile_db_path and
+                 self.collection_name)):
+            raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
+                              "`profile_db`, and `collection_name`.")
+
+        ##################################################
+        # Check that the (meta)genomic inputs correspond to tRNA genes linked to seeds in the
+        # tRNA-seq contigs database. At least one of the (meta)genomic inputs must contain linked
+        # genes: not all need contain linked genes, as the user may have integrated a number of
+        # internal and external genomes, not all of which yielded seed/gene matches. Report
+        # (meta)genomes containing and lacking linked genes.
+        with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+            genome_id_df = trnaseq_contigs_db.get_table_as_dataframe(
+                tables.trna_gene_hits_table_name,
+                columns_of_interest=['genomic_contigs_db_hash',
+                                     'profile_db_sample_id',
+                                     'collection_name',
+                                     'bin_id'])
+            genome_id_df = genome_id_df.drop_duplicates()
+            genome_id_df = genome_id_df.fillna('')
+            genome_ids = []
+            for row in genome_id_df.itertuples(index=False):
+                genome_ids.append(row.genomic_contigs_db_hash,
+                                  row.profile_db_sample_id,
+                                  row.collection_name,
+                                  row.bin_id)
+
+        linked_bin_info_dict = {}
+        unlinked_bin_info_dict = {}
+        linked_nonbin_info_dict = {}
+        unlinked_nonbin_info_dict = {}
+        for genome_name, genome_info in self.genome_info_dict.values():
+            contigs_db_hash = genome_info['contigs_db_info'].hash
+            profile_db_sample_id = genome_info['profile_db_info'].sample_id
+            collection_name = genome_info['collection_name']
+            bin_id = genome_info['bin_id']
+            if bin_id:
+                # Considering a bin.
+                if (contigs_db_hash,
+                    profile_db_sample_id,
+                    collection_name,
+                    bin_id) in genome_ids:
+                    linked_bin_info_dict[genome_name] = genome_info
+                else:
+                    unlinked_bin_info_dict[genome_name] = genome_info
+            else:
+                # Considering an external genome or metagenome.
+                if (contigs_db_hash, '', '', '') in genome_ids:
+                    linked_nonbin_info_dict[genome_name] = genome_info
+                else:
+                    unlinked_nonbin_info_dict[genome_name] = genome_info
+
+        if not linked_bin_info_dict and not linked_nonbin_info_dict:
+            if len(self.genome_info_dict) > 1:
+                first_variable_message_string = "None of the provided (meta)genomes contained"
+                second_variable_message_string = "(meta)genomes were"
+            else:
+                first_variable_message_string = "The provided (meta)genome did not contain"
+                second_variable_message_string = "(meta)genome was"
+            raise ConfigError(
+                f"{first_variable_message_string} tRNA genes that matched seeds in the tRNA-seq "
+                f"contigs database at '{self.trnaseq_contigs_db_path}'. Either the "
+                f"{second_variable_message_string} not run with `anvi-integrate-trnaseq` or did "
+                "not contain any tRNA genes matching any tRNA-seq seeds.")
+
+        linked_genome_names = []
+        unlinked_genome_names = []
+        for genome_name in self.genome_info_dict:
+            if genome_name in linked_bin_info_dict or genome_name in linked_nonbin_info_dict:
+                linked_genome_names.append(genome_name)
+            else:
+                unlinked_genome_names.append(genome_name)
+        self.run.info_single("(Meta)genome(s) containing tRNA genes linked to seeds: "
+                             f"{', '.join(linked_genome_names)}")
+        if unlinked_genome_names:
+            self.run.info_single("(Meta)genomes lacking tRNA genes linked to seeds: "
+                                 f"{', '.join(unlinked_genome_names)}")
+        ##################################################
+
+        if len(self.function_sources) > 1 and (self.function_accessions or self.function_names):
+            raise ConfigError(
+                "`function_accessions` and `function_names` require a single function source, but "
+                f"multiple `function_sources` were provided: {', '.join(self.function_sources)}.")
+
+        if self.function_sources and (self.function_accessions_dict or self.function_names_dict):
+            raise ConfigError("`function_sources` cannot be provided alongside "
+                              "`function_accesions_dict` and `function_names_dict`.")
+
+        if self.select_functions_txt:
+            filesnpaths.is_file_exists(self.select_functions_txt)
+
+        if self.select_functions_txt and (
+            self.function_sources or self.function_accessions or self.function_names):
+            raise ConfigError("`select_functions_txt` cannot be provided alongside "
+                              "`function_sources`, `function_accessions`, and `function_names`.")
+
+        if self.gene_affinity and (
+            self.function_sources or self.function_accessions or self.function_accessions_dict or
+            self.function_names or self.function_names_dict or self.select_functions_txt):
+            raise ConfigError("`gene_affinity`, used to compute affinity for genes rather than "
+                              "functions, cannot be used alongside function options.")
+
+        # Report input (meta)genomes that did not have requested function sources run on them. By
+        # default, with `lax_function_sources` being True, requested sources must have been run on
+        # every (meta)genome.
+        if self.function_sources:
+            function_sources = self.function_sources
+        elif self.function_accessions_dict or self.function_names_dict or self.select_functions_txt:
+            function_sources = list(self.function_accessions_dict)
+            function_sources += list(self.function_names_dict)
+            if self.select_functions_txt:
+                select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
+                                                  names=['source', 'accession', 'name'])
+                function_sources += select_functions_df['source'].unique().tolist()
+        present_function_source_genome_dict = {
+            function_source: [] for function_source in function_sources}
+        missing_function_source_genome_dict = {
+            function_source: [] for function_source in function_sources}
+        for genome_name, genome_info in self.genome_info_dict.items():
+            genome_function_sources = genome_info.get_self_table()[
+                'gene_function_sources'].split(',')
+            for function_source in function_sources:
+                if function_source in genome_function_sources:
+                    present_function_source_genome_dict[function_source].append(genome_name)
+                else:
+                    missing_function_source_genome_dict[function_source].append(genome_name)
+        message = ""
+        for function_source, genome_names in missing_function_source_genome_dict.items():
+            if len(genome_names):
+                message += f"{function_source}: {', '.join(genome_names)} ; "
+        if message:
+            message = "(Meta)genomes lack requested function source(s): " + message
+            message = message[: -3]
+            if self.lax_function_sources:
+                self.run.info_single(message)
+            else:
+                raise ConfigError(message)
+
+        if self.gene_caller_ids and not self.gene_affinity:
+            raise ConfigError("`gene_caller_ids` requires the `gene_affinity` option.")
 
         if self.min_coverage < 1:
-            raise ConfigError("The minimum coverage for a tRNA isoacceptor to be detected must be an integer "
-                              f"greater than or equal to 1, not the provided value of {self.min_coverage}.")
+            raise ConfigError(
+                "The minimum coverage for a tRNA isoacceptor to be detected must be a positive "
+                f"integer, not the provided `min_coverage`, {self.min_coverage}.")
 
         if self.min_isoacceptors < 1:
-            raise ConfigError("The minimum number of tRNA isoacceptors for translational affinity to be calculated "
-                              f"must be an integer greater or equal to 1, not the provided value of {self.min_isoacceptors}.")
+            raise ConfigError(
+                "The minimum number of tRNA isoacceptors for translational affinity to be "
+                "calculated must be a positive integer, not the provided `min_isoacceptors` of "
+                f"{self.min_isoacceptors}.")
 
-        if self.rarefaction_limit < 0:
-            raise ConfigError("The rarefaction limit on subsampled tRNA isoacceptors must be an integer "
-                              f"greater than or equal to 1, not the provided value of {self.rarefaction_limit}.")
+        unrecognized_anticodons = set(self.exclude_anticodons).difference(
+            constants.anticodon_to_AA)
+        if unrecognized_anticodons:
+            raise ConfigError("Unrecognized anticodons were provided to `exclude_anticodons`: "
+                              f"{', '.join(unrecognized_anticodons)}")
+
+        unrecognized_codons = set(self.exclude_codons).difference(constants.codons)
+        if unrecognized_codons:
+            raise ConfigError("Unrecognized codons were provided to `exclude_codons`: "
+                              f"{', '.join(unrecognized_codons)}")
+
+        unrecognized_amino_acids = set(self.exclude_amino_acids).difference(constants.amino_acids)
+        if unrecognized_amino_acids:
+            raise ConfigError("Unrecognized amino acids were provided to `exclude_amino_acids`: "
+                              f"{', '.join(unrecognized_amino_acids)}")
 
 
     def go(self):
