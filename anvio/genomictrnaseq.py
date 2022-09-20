@@ -1435,18 +1435,49 @@ class Affinitizer:
             # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
 
-        self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path)
-        self.genomic_contigs_db_info = DBInfo(self.genomic_contigs_db_path)
-
-        # Find the names of the samples to analyze in addition to the reference sample: the
-        # "nonreference" samples. By default, this will be every other sample, but a subset of
-        # available samples can also be used.
-        if self.nonreference_sample_names == None:
-            self.nonreference_sample_names = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
+        # Find the names of the samples to analyze in addition to the reference sample. By default,
+        # every other sample will be a non-reference sample, but a subset of available samples can
+        # be provided instead.
+        if self.nonreference_sample_names is None:
+            self.nonreference_sample_names = pd.read_csv(
+                self.seeds_specific_txt_path,
+                sep='\t',
+                header=0,
+                skiprows=[1, 2],
+                usecols=['sample_name'])['sample_name'].unique().tolist()
             self.nonreference_sample_names.remove(self.reference_sample_name)
         else:
             self.nonreference_sample_names = self.nonreference_sample_names.split(',')
         self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
+
+        self.function_sources += \
+            list(set(list(self.function_accessions_dict) + list(self.function_names_dict)))
+
+        if self.function_accessions:
+            self.function_accessions_dict[self.function_sources[0]] = self.function_accessions
+        if self.function_names:
+            self.function_names_dict[self.function_sources[0]] = self.function_names
+
+        select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
+                                          names=['source', 'accession', 'name'])
+        select_functions_df = select_functions_df.fillna('')
+        for row in select_functions_df.itertuples():
+            if row.accession:
+                try:
+                    self.function_accessions_dict[row.source].append(row.accession)
+                except KeyError:
+                    self.function_accessions_dict[row.source] = [row.accession]
+            elif row.name:
+                try:
+                    self.function_names_dict[row.source].append(row.name)
+                except KeyError:
+                    self.function_names_dict[row.source] = [row.name]
+        for function_source in self.function_accessions_dict:
+            if function_source not in self.function_sources:
+                self.function_sources.append(function_source)
+        for function_source in self.function_names_dict:
+            if function_source not in self.function_sources:
+                self.function_sources.append(function_source)
 
 
     def sanity_check(self):
