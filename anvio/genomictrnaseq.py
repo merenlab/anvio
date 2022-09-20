@@ -1317,21 +1317,76 @@ class Affinitizer:
     def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
         self.trnaseq_contigs_db_path = A('trnaseq_contigs_db')
         self.seeds_specific_txt_path = A('seeds_specific_txt')
-        self.genomic_contigs_db_path = A('contigs_db')
-        self.codon_frequencies_path = A('codon_frequencies_txt')
+
         self.reference_sample_name = A('reference_sample')
-        self.nonreference_sample_names = A('sample_subset')
+        self.nonreference_sample_names = A('nonreference_samples')
+
+        self.genomic_contigs_db_path = A('contigs_db')
+        self.genomic_profile_db_path = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.bin_id = A('bin_id')
+
+        self.internal_genomes_path = A('internal_genomes')
+        self.external_genomes_path = A('external_genomes')
+
+        self.function_sources = A('function_sources')
+        self.function_accessions_dict = A('function_accessions')
+        if self.function_accessions is None:
+            self.function_accessions = []
+        self.function_accessions_dict = A('function_accessions_dict')
+        if self.function_accessions_dict is None:
+            self.function_accessions_dict = {}
+        self.function_names = A('function_names')
+        if self.function_names is None:
+            self.function_names = []
+        self.function_names_dict = A('function_names_dict')
+        if self.function_names_dict is None:
+            self.function_names_dict = {}
+        self.select_functions_txt = A('select_functions_txt')
+        self.lax_function_sources = A('lax_function_sources')
+        if self.lax_function_sources is None:
+            self.lax_function_sources = False
+        self.gene_affinity = A('gene_affinity')
+        if self.gene_affinity is None:
+            self.gene_affinity = False
+        self.gene_caller_ids = A('gene_caller_ids')
+        if self.gene_caller_ids is None:
+            self.gene_caller_ids = []
+        if self.function_sources is None:
+            if self.gene_affinity or self.function_accessions_dict or self.function_names_dict:
+                self.function_sources = []
+            else:
+                self.function_sources = self.default_function_sources
+
         self.min_coverage = A('min_coverage')
-        if self.min_coverage == None:
+        if self.min_coverage is None:
             self.min_coverage = self.default_min_coverage
         self.min_isoacceptors = A('min_isoacceptors')
-        if self.min_isoacceptors == None:
+        if self.min_isoacceptors is None:
             self.min_isoacceptors = self.default_min_isoacceptors
+        self.exclude_anticodons = A('exclude_anticodons')
+
+        self.min_analyzed_codons = A('min_analyzed_codons')
+        if self.min_analyzed_codons is None:
+            self.min_analyzed_codons = 0
+        self.function_min_total_codons = A('function_min_total_codons')
+        if self.function_min_total_codons is None:
+            self.function_min_total_codons = 0
+        self.gene_min_total_codons = A('gene_min_total_codons')
+        if self.gene_min_total_codons is None:
+            self.gene_min_total_codons = 0
+        self.exclude_codons = A('exclude_codons')
+        self.exclude_amino_acids = A('exclude_amino_acids')
+
         self.rarefaction_limit = A('rarefaction_limit')
-        if self.rarefaction_limit == None:
-            self.rarefaction_limit = self.default_rarefaction_limit
+        if self.rarefaction_limit is None:
+            self.rarefaction_limit = 0
+
+        self.progress = p
+        self.run = r
 
         if do_sanity_check:
             self.sanity_check()
