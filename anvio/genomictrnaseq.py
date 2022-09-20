@@ -422,7 +422,7 @@ class Integrator(object):
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
         filesnpaths.is_file_exists(self.modifications_txt_path)
 
-        # Do basic checks of the combinations of genomic input arguments.
+        # Do basic checks of the combinations of (meta)genomic input arguments.
         if (self.genomic_contigs_db_path and
             (self.internal_genomes_path or self.external_genomes_path)):
             raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
