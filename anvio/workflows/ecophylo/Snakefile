@@ -660,7 +660,6 @@ rule align_sequences:
     run:
         shell("muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}")
 
-
 rule trim_alignment:
     """Trim MSA alignment"""
 

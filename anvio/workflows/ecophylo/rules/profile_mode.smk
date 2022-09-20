@@ -8,7 +8,7 @@ rule make_metagenomics_config_file:
     input:
         rules.make_fasta_txt.output.fasta_txt
     output:
-        config = os.path.join(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "metagenomics_config.json"))
+        config = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "metagenomics_config.json")
     threads: M.T('make_metagenomics_config_file')
     run:
 
@@ -40,8 +40,9 @@ rule make_metagenomics_config_file:
             config_dict['bowtie']['threads'] = 10
             config_dict['anvi_profile']['threads'] = 10
             config_dict['anvi_merge']['threads'] = 10
-        else:
-            pass
+
+        if M.bowtie2_additional_params:
+            config_dict['bowtie']['additional_params'] = " ".join(["--no-unal", M.bowtie2_additional_params]) 
 
         with open(output.config, "w") as outfile:
             json.dump(config_dict, outfile, indent=4)

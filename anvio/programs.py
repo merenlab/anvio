@@ -6,6 +6,7 @@ import os
 import sys
 import glob
 import json
+import copy
 import argparse
 import importlib
 
@@ -18,7 +19,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.authors import AnvioAuthors
-from anvio.docs import ANVIO_ARTIFACTS
+from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
@@ -312,6 +313,10 @@ class Program:
                 'object_name': '__authors__',
                 'null_object': []
             },
+            'anvio_workflows': {
+                'object_name': '__anvio_workflows__',
+                'null_object': []
+            },
             'description': {
                 'object_name': '__description__',
                 'null_object': ''
@@ -405,6 +410,123 @@ class Artifact:
         return "ARTIFACT::%s" % self.id
 
 
+class AnvioWorkflows:
+    """Information on anvi'o workflows"""
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.workflows = {}
+
+        if not hasattr(self, 'programs') or not hasattr(self, 'artifacts_info') or not hasattr(self, 'authors'):
+            raise ConfigError("AnvioWorkflows class is upset. You need to treat this class as a base class, and initialize "
+                              "it from within another class that has already initialized AnvioPrograms, AnvioArtifacts, AND"
+                              "AnvioAuthors classes. If this is confusing, take a look at the AnvioDocs class.")
+
+        if not len(self.programs):
+            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.programs` variable :/")
+
+        if not len(self.programs):
+            raise ConfigError("AnvioWorkflows is being initialized with a blank `self.artifacts_info` variable :/")
+
+
+    def init_workflows(self):
+        """Learn all about anvi'o workflows and initiate the class.
+
+        Returns
+        =======
+        workflows, dict:
+            Running this function will fill in the dictionary `self.workflows`
+        """
+
+        self.workflows= {}
+
+        expected_keys = ['authors', 'artifacts_produced', 'anvio_workflows_inherited', 'third_party_programs_used', 'one_sentence_summary', 'one_paragraph_summary']
+
+        workflows_without_descriptions = set([])
+
+        for workflow in ANVIO_WORKFLOWS:
+            self.workflows[workflow] = copy.deepcopy(ANVIO_WORKFLOWS[workflow])
+
+            for key in expected_keys:
+                if key not in self.workflows[workflow]:
+                    raise ConfigError(f"Every workflow must contain the keys \"{', '.join(expected_keys)}\". But "
+                                      f"it is not the case for the workflow '{workflow}' :(")
+
+            self.workflows[workflow]['name'] = workflow
+            self.workflows[workflow]['anvio_programs_used'] = []
+
+            # a workflow description includes the list of third party programs that are
+            # optionally used from whithin the workflow. here we will sanity check that
+            # they all have descriptions in `THIRD_PARTY_PROGRAMS`
+            # dictionary.
+            for purpose, program_names in self.workflows[workflow]['third_party_programs_used']:
+                for program_name in program_names:
+                    if program_name not in THIRD_PARTY_PROGRAMS:
+                        raise ConfigError(f"The workflow {workflow} lists the program '{program_name}' in its "
+                                          f"description for third-party programs that are used from within, "
+                                          f"however, there is no entry for this program in the variable "
+                                          f"'THIRD_PARTY_PROGRAMS' in the file "
+                                          f"'anvio/docs/__init__.py'. Please add a necessary description for "
+                                          f"this program into that dict, and try this again.")
+
+            # learn about the description of the workflow
+            workflow_description_path = os.path.join(anvio.DOCS_PATH, 'workflows/%s.md' % (workflow))
+            if os.path.exists(workflow_description_path):
+                self.workflows[workflow]['description'] = self.read_anvio_markdown(workflow_description_path)
+            else:
+                workflows_without_descriptions.add(workflow)
+
+            # add anvi'o programs used by the workflow
+            for program in self.programs.values():
+                    if workflow in [a for a in program.meta_info['anvio_workflows']['value']]:
+                        self.workflows[workflow]['anvio_programs_used'].append(program.name)
+
+        # sanity check of author names
+        author_names_apper_in_workflows = set([])
+        [author_names_apper_in_workflows.update(w['authors']) for w in self.workflows.values()]
+        author_names_missing_in_authors_file = [a for a in author_names_apper_in_workflows if a not in self.authors]
+        if len(author_names_missing_in_authors_file):
+            self.run.warning(None, header="SOME SNAFU TOOK PLACE [poop emoji]")
+            self.run.info("Author names anvi'o knows about", ', '.join(self.authors), mc='green')
+            self.run.info("Author names anvi'o does not know about", ', '.join(author_names_missing_in_authors_file), mc='red')
+            raise ConfigError("Some author names in anvi'o workflows defined under `anvio/docs/__init__.py` do not "
+                              "appear in the DEVELOPERS.yaml file. If there is no typo here, please update the "
+                              "contents of the DEVELOPERS.yaml file with the GitHub username of the developer you "
+                              "wish to associate with a workflow. The problematic authors are shown above.")
+
+        # make sure every workflow has at least one author
+        workflows_missing_authors = set([])
+        [workflows_missing_authors.add(w) for w in self.workflows if not len(self.workflows[w]['authors'])]
+        if len(workflows_missing_authors):
+            raise ConfigError(f"One or more workflows workflows defined under `anvio/docs/__init__.py` do not have "
+                              f"any authors. Every workflow must have at least one :/ Here is the list of those that "
+                              f"are missing any authors: {', '.join(workflows_missing_authors)}")
+
+        # note the workflows that are missing descriptions.
+        if len(workflows_without_descriptions):
+            self.run.info_single("Of %d workflows found, %d did not contain any DESCRIPTION. If you would like to "
+                                 "see examples and add new descriptions, please see the directory '%s'. Here is the "
+                                 "full list of workflows that are not yet explained: %s." \
+                                        % (len(ANVIO_WORKFLOWS),
+                                           len(workflows_without_descriptions),
+                                           anvio.DOCS_PATH,
+                                           ', '.join(workflows_without_descriptions)), nl_after=1, nl_before=1)
+
+        # makes ure every workflow mentioned in programs in fact are explained
+        # as a workflow
+        workflows_mentioned_in_programs = set([])
+        [workflows_mentioned_in_programs.update(p.meta_info['anvio_workflows']['value']) for p in self.programs.values()]
+        unknown_workflows_mentioned_in_programs = [w for w in workflows_mentioned_in_programs if w not in self.workflows]
+        if len(unknown_workflows_mentioned_in_programs):
+            raise ConfigError(f"Some anvi'o programs include `__anvio_workflows__` tags with workflow names anvi'o "
+                              f"dees not recognize :/ Here is the missing workflow names so you can either fix some "
+                              f"typos, or add entries for these workflows in `anvio/docs/__init.py__`: "
+                              f"{', '.join(unknown_workflows_mentioned_in_programs)}")
+
+
 class AnvioArtifacts:
     """Information on anvi'o artifacts"""
 
@@ -474,7 +596,7 @@ class AnvioArtifacts:
                                            ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
 
 
-class AnvioDocs(AnvioPrograms, AnvioArtifacts):
+class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
     """Generate a docs output.
 
     The purpose of this class is to generate a static HTML output with
@@ -499,6 +621,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
+        self.workflows_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'workflows'))
 
         self.version_short_identifier = 'm' if anvio.anvio_version_for_help_docs == 'main' else anvio.anvio_version_for_help_docs
         self.base_url = os.path.join("/help", anvio.anvio_version_for_help_docs)
@@ -509,6 +632,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         AnvioArtifacts.__init__(self, args, r=self.run, p=self.progress)
         self.init_artifacts()
+
+        AnvioWorkflows.__init__(self, args, r=self.run, p=self.progress)
+        self.init_workflows()
 
         if not len(self.programs):
             raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
@@ -544,6 +670,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.generate_pages_for_artifacts()
 
         self.generate_pages_for_programs()
+
+        self.generate_pages_for_workflows()
 
         self.generate_index_page()
 
@@ -633,8 +761,13 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             program = self.programs[program_name]
             d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
             d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
+            d[program_name]['anvio_workflows'] = [(w, '%sworkflows/%s' % (prefix, w)) for w in program.meta_info['anvio_workflows']['value']]
 
         return d
+
+
+    def get_workflow_produced_artifacts_list(self, workflow_name, prefix="../../"):
+        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_produced']]
 
 
     def generate_pages_for_artifacts(self):
@@ -673,12 +806,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         self.progress.end()
 
 
-    def get_HTML_formatted_authors_data(self, program):
+    def get_HTML_formatted_authors_data(self, authors):
         """for a given program, returns HTML-formatted authors data"""
 
         d = ""
 
-        for author in program.meta_info['authors']['value']:
+        for author in authors:
             d += '''<div class="anvio-person"><div class="anvio-person-info">'''
             d += f'''<div class="anvio-person-photo"><img class="anvio-person-photo-img" src="../../images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></div>'''
             d += '''<div class="anvio-person-info-box">'''
@@ -700,17 +833,67 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         return d
 
 
-    def get_HTML_formatted_authors_data_mini(self, program):
-        """for a given program, returns a tiny version of the HTML-formatted authors data"""
+    def get_HTML_formatted_authors_data_mini(self, authors):
+        """for a given list of authors, returns a tiny version of the HTML-formatted authors data"""
 
         d = ""
 
-        for author in program.meta_info['authors']['value']:
+        for author in authors:
             d += '''<div class="anvio-person-mini"><div class="anvio-person-photo-mini">'''
             d += f'''<a href="/people/{self.authors[author]['github']}" target="_blank"><img class="anvio-person-photo-img-mini" title="{self.authors[author]['name']}" src="images/authors/{os.path.basename(self.authors[author]['avatar'])}" /></a>'''
             d += '''</div></div>\n'''
 
         return d
+
+
+    def get_HTML_formatted_third_party_programs(self, workflow_name):
+        """Get a template-friendly list of third-party programs used from within a workflow"""
+
+        d = []
+
+        for purpose, program_names in self.workflows[workflow_name]['third_party_programs_used']:
+            for program_name in program_names:
+                d.append(f'''<a href="{THIRD_PARTY_PROGRAMS[program_name]['link']}" target="_blank">{program_name}</a> ({purpose})''')
+
+        return d
+
+
+    def generate_pages_for_workflows(self):
+        """Generate static pages for anvi'o workflows in the output directory"""
+
+        self.progress.new("Rendering workflow pages", progress_total_items=len(self.workflows))
+        self.progress.update('...')
+
+        for workflow_name in self.workflows:
+            self.progress.update(f"'{workflow_name}' ...", increment=True)
+
+            d = {'workflow': self.workflows[workflow_name],
+                 'meta': {'summary_type': 'workflow',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
+                          'date': utils.get_date(),
+                          'version_short_identifier': self.version_short_identifier}
+                 }
+
+            d['workflow']['artifacts_produced'] = self.get_workflow_produced_artifacts_list(workflow_name)
+            d['workflow']['third_party_programs_used'] = self.get_HTML_formatted_third_party_programs(workflow_name)
+            d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
+
+            # also add information regarding the artifacts
+            d['artifacts'] = self.artifacts_info
+
+            if anvio.DEBUG:
+                self.progress.reset()
+                run.warning(None, 'THE WORKFLOW OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            self.progress.update(f"'{workflow_name}' ... rendering ...", increment=False)
+            workflow_output_dir = filesnpaths.gen_output_directory(os.path.join(self.workflows_output_dir, workflow_name))
+            output_file_path = os.path.join(workflow_output_dir, 'index.md')
+            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+        self.progress.end()
+
 
 
     def generate_pages_for_programs(self):
@@ -739,8 +922,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
-            d['program']['authors'] = self.get_HTML_formatted_authors_data(program)
+            d['program']['authors'] = self.get_HTML_formatted_authors_data(program.meta_info['authors']['value'])
             d['artifacts'] = self.artifacts_info
+            d['workflows'] = self.workflows
 
             if anvio.DEBUG:
                 self.progress.reset()
@@ -773,10 +957,16 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         for artifact in self.artifacts_info:
             self.artifacts_info[artifact]['path'] = f"artifacts/{artifact}"
 
+        # quick update of the author information in workflows so they contain nice HTML
+        # code instad of a list of author names
+        for workflow in self.workflows:
+            self.workflows[workflow]['authors'] = self.get_HTML_formatted_authors_data_mini(ANVIO_WORKFLOWS[workflow]['authors'])
+
         # please note that artifacts get a fancy dictionary with everything, while programs get a crappy tuples list.
         # if we need to improve the functionality of the help index page, we may need to update programs
         # to a fancy dictionary, too.
-        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p])) for p in self.programs],
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value'], self.get_HTML_formatted_authors_data_mini(self.programs[p].meta_info['authors']['value'])) for p in self.programs],
+             'workflows': self.workflows,
              'artifacts': self.artifacts_info,
              'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
