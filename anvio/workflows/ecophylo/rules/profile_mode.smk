@@ -74,7 +74,7 @@ rule run_metagenomics_workflow:
 
         if M.clusterize_metagenomics_workflow == True:
             # If we are using slurm and clusterize: https://github.com/ekiefl/clusterize
-            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \"clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\" {M.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --jobs=40 --resources nodes=40 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             # User-defined --cluster string: https://snakemake.readthedocs.io/en/stable/executing/cluster.html
             shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{M.metagenomics_workflow_HPC_string}\' {M.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
