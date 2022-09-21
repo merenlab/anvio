@@ -443,7 +443,7 @@ class AnvioWorkflows:
 
         self.workflows= {}
 
-        expected_keys = ['authors', 'artifacts_produced', 'anvio_workflows_inherited', 'third_party_programs_used', 'one_sentence_summary', 'one_paragraph_summary']
+        expected_keys = ['authors', 'artifacts_produced', 'artifacts_accepted', 'anvio_workflows_inherited', 'third_party_programs_used', 'one_sentence_summary', 'one_paragraph_summary']
 
         workflows_without_descriptions = set([])
 
@@ -484,6 +484,23 @@ class AnvioWorkflows:
                     if workflow in [a for a in program.meta_info['anvio_workflows']['value']]:
                         self.workflows[workflow]['anvio_programs_used'].append(program.name)
 
+            # make sure 'workflow-config' artifact is not included in 'artifacts_accepted'
+            if 'workflow-config' in self.workflows[workflow]['artifacts_accepted']:
+                raise ConfigError(f"The 'artifacts_accepted' description for the workflow '{workflow}' includes "
+                                  f"`workflow-config`, but this artifact is automatically added to each workflow "
+                                  f"on-the-fly, thus, it shouldn't be listed in the workflow description :/ Sorry!")
+
+            # every workflow should accept the artifact `workflow-config` by default, so add it here:
+            self.workflows[workflow]['artifacts_accepted'] = ['workflow-config'] + self.workflows[workflow]['artifacts_accepted']
+
+            # sanity check artifacts accepted:
+            for artifact_name in self.workflows[workflow]['artifacts_accepted']:
+                if artifact_name not in self.artifacts_info:
+                    raise ConfigError(f"The artifact '{artifact_name}' that is listed as one of the artifacts the workflow "
+                                      f"{workflow} accepts does not seem to be an artifact anvi'o knows about :/ If this is "
+                                      f"a new artifact for workflow, please first describe it in the dictionary `ANVIO_ARTIFACTS` "
+                                      f"in anvio/docs/__init__.py")
+
         # sanity check of author names
         author_names_apper_in_workflows = set([])
         [author_names_apper_in_workflows.update(w['authors']) for w in self.workflows.values()]
@@ -501,7 +518,7 @@ class AnvioWorkflows:
         workflows_missing_authors = set([])
         [workflows_missing_authors.add(w) for w in self.workflows if not len(self.workflows[w]['authors'])]
         if len(workflows_missing_authors):
-            raise ConfigError(f"One or more workflows workflows defined under `anvio/docs/__init__.py` do not have "
+            raise ConfigError(f"One or more workflows defined under `anvio/docs/__init__.py` do not have "
                               f"any authors. Every workflow must have at least one :/ Here is the list of those that "
                               f"are missing any authors: {', '.join(workflows_missing_authors)}")
 
@@ -770,6 +787,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
         return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_produced']]
 
 
+    def get_workflow_accepted_artifacts_list(self, workflow_name, prefix="../../"):
+        return [(r, '%sartifacts/%s' % (prefix, r)) for r in self.workflows[workflow_name]['artifacts_accepted']]
+
+
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
@@ -875,6 +896,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
                  }
 
             d['workflow']['artifacts_produced'] = self.get_workflow_produced_artifacts_list(workflow_name)
+            d['workflow']['artifacts_accepted'] = self.get_workflow_accepted_artifacts_list(workflow_name)
             d['workflow']['third_party_programs_used'] = self.get_HTML_formatted_third_party_programs(workflow_name)
             d['workflow']['authors'] = self.get_HTML_formatted_authors_data(d['workflow']['authors'])
 
