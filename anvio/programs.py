@@ -428,7 +428,7 @@ class AnvioWorkflows:
         if not len(self.programs):
             raise ConfigError("AnvioWorkflows is being initialized with a blank `self.programs` variable :/")
 
-        if not len(self.programs):
+        if not len(self.artifacts_info):
             raise ConfigError("AnvioWorkflows is being initialized with a blank `self.artifacts_info` variable :/")
 
 
