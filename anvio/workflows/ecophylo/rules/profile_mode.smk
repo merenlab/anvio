@@ -52,11 +52,11 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
-    log: "00_LOGS/{hmm}_run_metagenomics_workflow.log"
+    log: "00_LOGS/run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
-        done = touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{hmm}_metagenomics_workflow.done"))
+        done = touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     threads: M.T('run_metagenomics_workflow')
     run:
         metagenomics_workflow_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW") 
@@ -310,7 +310,7 @@ rule anvi_import_everything_metagenome:
     input:
         tree = rules.rename_tree_tips.output.tree,
         misc_data = rules.make_misc_data.output.misc_data_final,
-        state = rules.make_anvio_state_file.output,
+        state = rules.make_anvio_state_file.output.state_file,
         done = rules.run_metagenomics_workflow.output.done
     params:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,

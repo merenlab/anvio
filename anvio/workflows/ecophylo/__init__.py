@@ -339,6 +339,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
                 target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
                 target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
+                target_files.append(target_file)
         
         return target_files
     
