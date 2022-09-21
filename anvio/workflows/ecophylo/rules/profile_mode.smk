@@ -52,7 +52,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
-    log: "00_LOGS/{hmm}_run_metagenomics_workflow.log"
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{hmm}_run_metagenomics_workflow.log")
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
