@@ -127,11 +127,9 @@ if __name__ == '__main__':
         "the purpose of running this program. One purpose could be finding tRNAs that are uniquely "
         "expressed by genomes in a metagenome, followed by running "
         "`anvi-compute-trnaseq-functional-affinity`. Another purpose could be finding all possible "
-        "genomes that could be responsible for expression of the tRNAs. Note that the flag, "
-        "`--ambiguous-genome-assignment`, must be used to preserve seed hits to multiple genomes, "
-        "when supplying multiple genomes in a collection or internal/external genomes, or when "
-        "running the program again with another genome or metagenome to append new hits. The "
-        "following are valid inputs: "
+        "genomes that could be responsible for expression of the tRNAs. Note that the flag "
+        "`--unambiguous-genome-assignment` prevents seed hits to multiple genomes and running the "
+        "program again with another genome to append new hits. The following are valid inputs: "
         "(1) A single contigs database. This could represent a genome or metagenome. "
         "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
         "database, profile database, and collection. "
@@ -199,20 +197,16 @@ if __name__ == '__main__':
         help="Use this flag to only retain tRNA-seq seeds that align with a full tRNA gene, "
              "excluding seeds representing 3' fragments.")
     group1D.add_argument(
-        '-a', '--ambiguous-genome-assignment', default=False, action='store_true',
-        help="Use this flag to allow tRNA-seq seeds to be assigned to tRNA genes in multiple "
-             "genomes or a single genome and unbinned contigs. By default, seeds can only be "
-             "assigned to genes in a single genome to prevent ambiguity (when any genomic input "
-             "beside a single contigs database using `--contigs-db` is provided). For example, "
-             "consider the default option with two internal genomes. If a seed matches genes in "
-             "both bins, the seed is disregarded; if a seed matches genes in one bin and also "
-             "matches genes in unbinned contigs, the seed is also disregarded. The seed can only "
-             "match one or more genes in a single genome. Note that this flag not only affects the "
-             "result when multiple genomes are provided using `--internal-genomes` and "
-             "`--external-genomes`, but also has the dual purpose of allowing the program to be "
-             "run multiple times with the same seeds against different genomic references, "
-             "appending new seed/gene matches in the tRNA-seq contigs database. To overwrite all "
-             "existing assignments rather than appending, also use `--remove-previous-matches`.")
+        '--unambiguous-genome-assignment', default=False, action='store_true',
+        help="Use this flag to prevent tRNA-seq seeds from being assigned to tRNA genes in "
+             "multiple genomes or in a single genome and unbinned contigs. Consider what happens "
+             "with two bins. With this flag, if a seed matches genes in both bins, the seed is "
+             "disregarded; if a seed matches genes in one bin and also matches genes in unbinned "
+             "contigs, the seed is also disregarded. The seed can only match one or more genes in "
+             "a single bin. Note that running this program again without this flag appends new "
+             "seed/gene assignments to existing ones in the database. With this flag, new results "
+             "cannot be appended to existing ones and an error is thrown (unless "
+             "`--remove-previous-matches` is used to discard existing assignments).")
 
     group1E = parser.add_argument_group(
         'TEMPORARY FILES',

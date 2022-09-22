@@ -307,9 +307,9 @@ class Integrator(object):
         self.full_gene = A('full_gene')
         if self.full_gene is None:
             self.full_gene = False
-        self.ambiguous_genome_assignment = A('ambiguous_genome_assignment')
-        if self.ambiguous_genome_assignment is None:
-            self.ambiguous_genome_assignment = False
+        self.unambiguous_genome_assignment = A('unambiguous_genome_assignment')
+        if self.unambiguous_genome_assignment is None:
+            self.unambiguous_genome_assignment = False
 
         self.permuted_seeds_fasta_path = A('permuted_seeds_fasta')
         self.blast_dir = A('blast_dir')
@@ -399,13 +399,13 @@ class Integrator(object):
         if hit_count:
             self.run.info(
                 "Preexisting tRNA-seq seed/tRNA gene hits in the tRNA-seq contigs db", hit_count)
-            if not self.ambiguous_genome_assignment and not self.remove_previous_matches:
+            if self.unambiguous_genome_assignment and not self.remove_previous_matches:
                 raise ConfigError(
                     "The seeds from the tRNA-seq contigs database at "
                     f"'{self.trnaseq_contigs_db_path}' have already been associated with tRNA "
                     "genes from one or more (meta)genomic contigs databases. Either use "
                     "`remove_previous_matches` to clear existing matches, or append to existing "
-                    "matches with `ambiguous_genome_assignments`.")
+                    "matches by not using `unambiguous_genome_assignments`.")
         trnaseq_contigs_db.disconnect()
 
         # The tRNA-seq contigs db version must be up-to-date.
@@ -807,7 +807,7 @@ class Integrator(object):
         hits_df = hits_df.merge(contig_bin_df, on=['contigs_db_hash', 'gene_contig_name'])
 
         # For the sake of clarity, here is what happens to each of the different possible
-        # (meta)genomic sources when "ambiguous" tRNA gene assignment is NOT allowed.
+        # (meta)genomic sources with "unambiguous" tRNA gene assignment.
         # 1. Single contigs database without bins: The existence of genomes is not assumed, so no
         #    hits are disregarded.
         # 2. Single contigs database with collection of bins: disregard seeds with equally strong
@@ -825,7 +825,7 @@ class Integrator(object):
             is_simple_contigs_db_input = True
         else:
             is_simple_contigs_db_input = False
-        if not self.ambiguous_genome_assignment and not is_simple_contigs_db_input:
+        if self.unambiguous_genome_assignment and not is_simple_contigs_db_input:
             # Drop hits to genes in multiple bins: partly takes care of (2), (5), and (6).
             hits_df = hits_df.groupby('seed_contig_name').filter(
                 lambda seed_df: len(seed_df[['contigs_db_hash',
