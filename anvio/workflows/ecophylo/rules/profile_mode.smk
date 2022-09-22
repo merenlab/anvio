@@ -58,6 +58,7 @@ rule run_metagenomics_workflow:
     output:
         done = touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "metagenomics_workflow.done"))
     threads: M.T('run_metagenomics_workflow')
+    params:
     run:
         metagenomics_workflow_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW") 
 
@@ -74,12 +75,12 @@ rule run_metagenomics_workflow:
 
         if M.clusterize_metagenomics_workflow == True:
             # If we are using slurm and clusterize: https://github.com/ekiefl/clusterize
-            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' {M.snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' {M.metagenomics_workflow_snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             # User-defined --cluster string: https://snakemake.readthedocs.io/en/stable/executing/cluster.html
-            shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{M.metagenomics_workflow_HPC_string}\' {M.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
+            shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{M.metagenomics_workflow_HPC_string}\' {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
         else:
-            shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params {M.snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
+            shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
         
 
 rule add_default_collection:
@@ -89,8 +90,8 @@ rule add_default_collection:
     log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{hmm}.log")
     input: metagenomics_workflow_done = rules.run_metagenomics_workflow.output.done
     params:
-        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW/03_CONTIGS", "{hmm}.db")),
-        profileDB = os.path.join(dirs_dict['HOME'], "06_MERGED", "{hmm}", "PROFILE.db")
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{hmm}.db")),
+        profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db")
     output: done = touch(os.path.join("METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     run:
