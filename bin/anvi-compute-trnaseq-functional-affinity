@@ -99,7 +99,7 @@ if __name__ == '__main__':
         help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
              "functional affinity.")
     group1B.add_argument(
-        '-n', '--nonreference-samples', metavar='SAMPLE_NAMES', nargs='+',
+        '-n', '--nonreference-samples', metavar='SAMPLE_NAME[S]', nargs='+',
         help="Names of tRNA-seq samples, beside the specified reference sample, to be analyzed. By "
              "default, when this argument is not used, all of the samples in `seeds-specific-txt` "
              "are analyzed.")
