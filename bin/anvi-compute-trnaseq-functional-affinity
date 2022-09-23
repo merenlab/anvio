@@ -179,7 +179,8 @@ if __name__ == '__main__':
              "assigned to genome A for affinity calculations. With a `--min-coverage-ratio` >5, "
              "the ambiguous seed would be excluded from affinity calculations.")
     group1D.add_argument(
-        '--min-coverage-ratio', metavar='FLOAT', type=float, default=5,
+        '--min-coverage-ratio', metavar='FLOAT', type=float,
+        default=genomictrnaseq.Affinitizer.default_min_coverage_ratio,
         help="This argument only applies to `--seed-assignment ambiguous_choose` and not any other "
              "values of `--seed-assignment`. See (4) in the `--seed-assignment` help message for "
              "details. An ambiguous seed matching multiple genomes can be salvaged for affinity "

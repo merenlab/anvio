@@ -1310,6 +1310,7 @@ class Affinitizer:
     """Using the `go` method, relates changes in tRNA-seq seed abundances to the codon usage of gene
     functions."""
 
+    default_min_coverage_ratio = 5
     default_function_sources = ['KEGG_BRITE']
     default_min_coverage = 10
     default_min_isoacceptors = 4
