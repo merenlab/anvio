@@ -1333,6 +1333,9 @@ class Affinitizer:
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
 
+        self.seed_assignment = A('seed_assignment')
+        self.min_coverage_ratio = A('min_coverage_ratio')
+
         self.function_sources = A('function_sources')
         self.function_accessions_dict = A('function_accessions')
         if self.function_accessions is None:
