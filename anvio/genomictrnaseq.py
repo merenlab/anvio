@@ -1641,6 +1641,12 @@ class Affinitizer:
                                  f"{', '.join(unlinked_genome_names)}")
         ##################################################
 
+        if self.min_coverage_ratio <= 1:
+            raise ConfigError(
+                "`min_coverage_ratio` must be >1, as in the context of the `seed_assignment` "
+                "option, `ambiguous_choose`, it only makes sense for an ambiguous seed to be "
+                "assigned to the genome with the maximum abundance of unambiguous seeds.")
+
         if len(self.function_sources) > 1 and (self.function_accessions or self.function_names):
             raise ConfigError(
                 "`function_accessions` and `function_names` require a single function source, but "
