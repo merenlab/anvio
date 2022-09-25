@@ -1595,7 +1595,7 @@ class Affinitizer:
         unlinked_nonbin_info_dict = {}
         for genome_name, genome_info in self.genome_info_dict.values():
             contigs_db_hash = genome_info['contigs_db_info'].hash
-            profile_db_sample_id = genome_info['profile_db_info'].sample_id
+            profile_db_sample_id = genome_info['profile_db_info'].get_self_table().sample_id
             collection_name = genome_info['collection_name']
             bin_id = genome_info['bin_id']
             if bin_id:
