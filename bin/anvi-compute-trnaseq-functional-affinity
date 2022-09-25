@@ -244,7 +244,7 @@ if __name__ == '__main__':
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
              "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
-             "met in both the sample being analyzed and reference sample for the isoacceptor to be "
+             "met in both the sample being analyzed and reference sample for the isoacceptor to "
              "contribute to functional affinity.")
     group1F.add_argument(
         '--min-isoacceptors', metavar='INT', type=int,
