@@ -135,6 +135,51 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     group1D = parser.add_argument_group(
+        'FUNCTIONS',
+        "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
+        "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
+        "sources can be compared at once. This program makes no effort to avoid redundancy in the "
+        "genes or functions that are analyzed: for example, if KEGG BRITE hierarchy categories are "
+        "analyzed, the same gene can occur in multiple KEGG KOfams that define the categories and "
+        "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
+        "categories are nested hierarchically, the same lower-level category can be encompassed by "
+        "multiple higher-level categories.")
+    group1D.add_argument(
+        '-f', '--function-sources', nargs='*',
+        default=genomictrnaseq.Affinitizer.default_function_sources,
+        help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
+             "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
+             "any arguments, then every source will be considered.")
+    group1D.add_argument(
+        '--function-accessions', nargs='+',
+        help="Calculate affinity for select functions with these accessions from the source "
+             "provided in `--function-sources`. To get accessions from multiple sources, instead "
+             "use `--select-functions-txt`.")
+    group1D.add_argument(
+        '--function-names', nargs='+',
+        help="Calculate affinity for select functions with these names from the source provided in "
+             "`--function-sources`. To get function names from multiple sources, instead use "
+             "`--select-functions-txt`.")
+    group1D.add_argument(
+        '--select-functions-txt', metavar='FILE',
+        help="Selected functions can be listed in this tab-delimited file of three columns. The "
+             "first column should contain function annotation sources, the second column "
+             "accessions, and the third function names. An entry in the source column is required "
+             "in every row, and either an accession or name, or both, should also be in a row. "
+             "The file should not have a header of column names.")
+    group1D.add_argument(
+        '--lax-function-sources', default=False, action='store_true',
+        help="By default, without this flag, requested function annotation sources must have been "
+             "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
+             "sources was not run on any number of input (meta)genomes.")
+    group1D.add_argument(
+        '--gene-affinity', default=False, action='store_true',
+        help="Compute affinity for genes rather than functions.")
+    group1D.add_argument(
+        '--gene-caller-ids', type=int, nargs='+',
+        help="Select genes by ID, space-separated, if using `--gene-affinity`.")
+
+    group1E = parser.add_argument_group(
         'SEED ASSIGNMENT',
         "It may not be possible to resolve tRNA transcripts to individual populations or genomes. "
         "tRNAs have relatively short sequences (~70-100 nt) that are often conserved across deep "
@@ -145,7 +190,7 @@ if __name__ == '__main__':
         "`anvi-integrate-trnaseq` cannot have been run with the flag, "
         "`--unambiguous-genome-assignment`, as is the case by default, for the issue of seed "
         "ambiguity to factor into affinity calculations.")
-    group1D.add_argument(
+    group1E.add_argument(
         '--seed-assignment',
         choices=['unambiguous_genome', 'unambiguous_db', 'ambiguous_all', 'ambiguous_choose'],
         default='unambiguous_genome',
@@ -178,7 +223,7 @@ if __name__ == '__main__':
              "coverage. Therefore, with a `--min-coverage-ratio` ≤5, the ambiguous seed would be "
              "assigned to genome A for affinity calculations. With a `--min-coverage-ratio` >5, "
              "the ambiguous seed would be excluded from affinity calculations.")
-    group1D.add_argument(
+    group1E.add_argument(
         '--min-coverage-ratio', metavar='FLOAT', type=float,
         default=genomictrnaseq.Affinitizer.default_min_coverage_ratio,
         help="This argument only applies to `--seed-assignment ambiguous_choose` and not any other "
@@ -189,51 +234,6 @@ if __name__ == '__main__':
              "represented by the seed. The chosen genome must have at least `--min-coverage-ratio` "
              "greater summed coverage of unambiguous seeds than any of the other genomes in every "
              "tRNA-seq sample.")
-
-    group1E = parser.add_argument_group(
-        'FUNCTIONS',
-        "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
-        "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
-        "sources can be compared at once. This program makes no effort to avoid redundancy in the "
-        "genes or functions that are analyzed: for example, if KEGG BRITE hierarchy categories are "
-        "analyzed, the same gene can occur in multiple KEGG KOfams that define the categories and "
-        "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
-        "categories are nested hierarchically, the same lower-level category can be encompassed by "
-        "multiple higher-level categories.")
-    group1E.add_argument(
-        '-f', '--function-sources', nargs='*',
-        default=genomictrnaseq.Affinitizer.default_function_sources,
-        help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
-             "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
-             "any arguments, then every source will be considered.")
-    group1E.add_argument(
-        '--function-accessions', nargs='+',
-        help="Calculate affinity for select functions with these accessions from the source "
-             "provided in `--function-sources`. To get accessions from multiple sources, instead "
-             "use `--select-functions-txt`.")
-    group1E.add_argument(
-        '--function-names', nargs='+',
-        help="Calculate affinity for select functions with these names from the source provided in "
-             "`--function-sources`. To get function names from multiple sources, instead use "
-             "`--select-functions-txt`.")
-    group1E.add_argument(
-        '--select-functions-txt', metavar='FILE',
-        help="Selected functions can be listed in this tab-delimited file of three columns. The "
-             "first column should contain function annotation sources, the second column "
-             "accessions, and the third function names. An entry in the source column is required "
-             "in every row, and either an accession or name, or both, should also be in a row. "
-             "The file should not have a header of column names.")
-    group1E.add_argument(
-        '--lax-function-sources', default=False, action='store_true',
-        help="By default, without this flag, requested function annotation sources must have been "
-             "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
-             "sources was not run on any number of input (meta)genomes.")
-    group1E.add_argument(
-        '--gene-affinity', default=False, action='store_true',
-        help="Compute affinity for genes rather than functions.")
-    group1E.add_argument(
-        '--gene-caller-ids', type=int, nargs='+',
-        help="Select genes by ID, space-separated, if using `--gene-affinity`.")
 
     group1F = parser.add_argument_group(
         'ISOACCEPTOR PARAMETERS',
