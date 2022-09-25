@@ -247,6 +247,10 @@ if __name__ == '__main__':
              "met in both the sample being analyzed and reference sample for the isoacceptor to "
              "contribute to functional affinity.")
     group1F.add_argument(
+        '--exclude-anticodons', nargs='+',
+        help="Remove tRNA isoacceptors with the given anticodons from calculation of functional "
+             "affinity. This occurs before and thereby affects the `--min-isoacceptors` filter.")
+    group1F.add_argument(
         '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
@@ -254,10 +258,6 @@ if __name__ == '__main__':
              "of isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors "
              "pass the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold "
              "in B. Functional affinity will be calculated for genome A but not B.")
-    group1F.add_argument(
-        '--exclude-anticodons', nargs='+',
-        help="Remove tRNA isoacceptors with the given anticodons from calculation of functional "
-             "affinity.")
 
     group1G = parser.add_argument_group(
         'CODON FILTERS',
