@@ -275,6 +275,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             if jobs_param == False:
                 raise ConfigError("The EcoPhylo workflow did not detect the parameter '--jobs' in `snakemake_additional_params`. "
                                   "Please include '--jobs'. You can read about it with snakemake -h")
+            
+            if self.metagenomics_workflow_HPC_string:
+                raise ConfigError("You can't clusterize and provide an HPC_string for the metagenomics workflow at the same time. "
+                                  "Please choose one or the other. ")
 
         # Pick clustering method
         self.cluster_representative_method = self.get_param_value_from_config(['cluster_representative_method', 'method'])
