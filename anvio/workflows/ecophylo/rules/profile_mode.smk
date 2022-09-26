@@ -78,7 +78,7 @@ rule run_metagenomics_workflow:
             shell('cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \"clusterize -j={{rule}} -o={{log}} -n={{threads}} {M.clusterize_metagenomics_submission_params} -x\" {M.metagenomics_workflow_snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
         elif M.metagenomics_workflow_HPC_string:
             # User-defined --cluster string: https://snakemake.readthedocs.io/en/stable/executing/cluster.html
-            shell('cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{M.metagenomics_workflow_HPC_string}\' {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -')
+            shell('cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \"{M.metagenomics_workflow_HPC_string}\" {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -')
         else:
             # Running snakemake on local
             shell('cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -')
