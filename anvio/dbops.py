@@ -3613,12 +3613,12 @@ class ProfileSuperclass(object):
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
         # if SNVs are not profiled, we should not have a view for `variability`. See the issue #1845.
-        # FIXME for future generations: if SNVs are skipped, we should even have an entry in the views
-        # table for `variability` :/ but fixing that would require a migration script for profile dbs,
-        # and the person who is implementing this workaround is simply being lazy --do better, and
-        # address this the right way:
+        # At this point we could remove this comment and the next three lines of code since the variability
+        # will never be in `views_table` if SNVs were not profiled, but I'm not deleting it anyway because
+        # I guess I'm slowly becoming a code hoarder :(
         if not self.p_meta['SNVs_profiled']:
-            views_table.pop('variability')
+            if 'variability' in views_table:
+                views_table.pop('variability')
 
         self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
