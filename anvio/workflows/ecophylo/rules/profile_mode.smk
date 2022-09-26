@@ -75,7 +75,16 @@ rule run_metagenomics_workflow:
 
         if M.clusterize_metagenomics_workflow == True:
             # If we are using slurm and clusterize: https://github.com/ekiefl/clusterize
-            shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \"clusterize -j={{rule}} -o={{log}} -n={{threads}} -x {M.metagenomics_workflow_HPC_string}\" {M.metagenomics_workflow_snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            # shell(f'cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \"clusterize -j={{rule}} -o={{log}} -n={{threads}} -x {M.metagenomics_workflow_HPC_string}\" {M.metagenomics_workflow_snakemake_additional_params} --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            # hard-code
+            shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --jobs=10 --resources nodes=10 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            # https://github.com/merenlab/anvio/blob/1b1e63a47b28de94039d9ec9f48378f5908d86ea/anvio/workflows/ecophylo/rules/profile_mode.smk
+            # shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --jobs=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            # https://github.com/merenlab/anvio/blob/3d40b081a85f2994113d80770913c1f13339fd4d/anvio/workflows/ecophylo/rules/default_mode.smk 
+            # shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+            # https://github.com/merenlab/anvio/blob/d09f82d81826c877f91c6cedf00c92490a3c462b/anvio/workflows/ecophylo/Snakefile
+            # shell('cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/ && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'clusterize -j={{rule}} -o={{log}} -n={{threads}} -x\' --cores 200 --resource nodes=200 --latency-wait 100 --keep-going --rerun-incomplete &> {log} && cd -')
+
         elif M.metagenomics_workflow_HPC_string:
             # User-defined --cluster string: https://snakemake.readthedocs.io/en/stable/executing/cluster.html
             shell(f"cd {metagenomics_workflow_path} && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params --cluster \'{M.metagenomics_workflow_HPC_string}\' {M.metagenomics_workflow_snakemake_additional_params} --rerun-incomplete --latency-wait 100 --keep-going &> {log} && cd -")
