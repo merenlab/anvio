@@ -50,6 +50,7 @@ ANVIO_WORKFLOWS = {
     },
     "ecophylo": {
         "authors": ['mschecht'],
+        "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
@@ -67,12 +68,16 @@ ANVIO_WORKFLOWS = {
             ('Calculate phylogenetic tree', ['FastTree']),
             ('Search for homologous sequences', ['HMMER'])
             ],
-        "one_sentence_summary": "Extracts protein sequences from anvi'o contigs databases and then calculates phylogenetic tree and profiles with metagenomic read recruitment",
-        "one_paragraph_summary": ("The EcoPhylo workflow extracts a target protein from anvi'o contigs databases using a user-designated HMM from hmm-list, ",
-            "then clusters the sequences and selects representatives from each cluster. Next, the workflow post-processes the representative sequences using ", 
-            "phylogenetics and metagenomic read recruitment to produce an anvi’o interactive interface to explore their phylogenetic distances and ",
-            "co-occurrence across metagenomes (via simultaneous visual of a phylogenetic tree and read recruitment results). The workflow can use any protein-based ",
-            "HMM including single-copy core genes to taxonomically profile metagenomes or any functional protein to explore variants across samples.")
+        "one_sentence_summary": "Characterize the phylogenetics and biogeography of a protein sequence from anvi'o contigs databases.",
+        "one_paragraph_summary": ("The EcoPhylo workflow extracts a target protein's sequences from anvi'o contigs databases using an "
+            "[HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) to show its ecological and evolutionary landscape "
+            "across genome and metagenomes. The workflow extracts the HMM hits, clusters the sequences, and selects representatives. "
+            "Next, the workflow contextualizes the representative sequences via phylogenetics and metagenomic read recruitment "
+            "to produce an anvi'o interactive interface. This will allow you to examine phylogenetic distances and "
+            "co-occurrence across metagenomes (via simultaneous visualization of a phylogenetic tree and "
+            "[read recruitment](https://anvio.org/vocabulary/#read-recruitment) results). The workflow can "
+            "use any protein-based HMM including [single-copy core genes](https://anvio.org/vocabulary/#single-copy-core-gene-scg) "
+            "to taxonomically profile metagenomes or any functional protein to explore variants across samples. ")
     },
 }
 
