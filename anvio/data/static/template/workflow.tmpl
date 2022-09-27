@@ -20,9 +20,15 @@ image:
 
 {{ workflow.authors | safe }}
 
+## Artifacts accepted
+
+The {{ workflow.name }} can typically be initiated with the following artifacts:
+
+<p style="text-align: left" markdown="1">{% for name, path in workflow.artifacts_accepted %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
 ## Artifacts produced
 
-The {{ workflow.name }} typically produce the following artifacts:
+The {{ workflow.name }} typically produce the following anvi'o artifacts:
 
 <p style="text-align: left" markdown="1">{% for name, path in workflow.artifacts_produced %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 

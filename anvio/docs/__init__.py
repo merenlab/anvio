@@ -11,6 +11,7 @@ ANVIO_WORKFLOWS = {
     "contigs": {
         "authors": ['ShaiberAlon', 'ivagljiva', 'meren', 'mschecht'],
         "artifacts_produced": ['contigs-db'],
+        "artifacts_accepted": ['fasta-txt'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
             ('Gene calling', ['prodigal']),
@@ -29,6 +30,7 @@ ANVIO_WORKFLOWS = {
     "metagenomics": {
         "authors": ['ShaiberAlon'],
         "artifacts_produced": ['contigs-db', 'profile-db'],
+        "artifacts_accepted": ['samples-txt', 'fasta-txt'],
         "anvio_workflows_inherited": ['contigs'],
         "third_party_programs_used": [
             ('Quality control of short reads', ['illumina-utils']),
