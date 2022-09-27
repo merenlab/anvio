@@ -54,12 +54,6 @@ ANVIO_WORKFLOWS = {
         "artifacts_produced": ['contigs-db', 'profile-db'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
-            ('Quality control of short reads', ['illumina-utils']),
-            ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
-            ('BAM file manipulations', ['samtools']),
-            ('Gene calling', ['prodigal']),
-            ('HMM search', ['HMMER']),
-            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Read recruitment', ['Bowtie2']),
             ('Cluster open reading frames', ['MMseqs2']),
             ('Align protein sequences', ['muscle']),
@@ -69,15 +63,15 @@ ANVIO_WORKFLOWS = {
             ('Search for homologous sequences', ['HMMER'])
             ],
         "one_sentence_summary": "Characterize the phylogenetics and biogeography of a protein sequence from anvi'o contigs databases.",
-        "one_paragraph_summary": ("The EcoPhylo workflow extracts a target protein's sequences from anvi'o contigs databases using an "
-            "[HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) to show its ecological and evolutionary landscape "
-            "across genome and metagenomes. The workflow extracts the HMM hits, clusters the sequences, and selects representatives. "
-            "Next, the workflow contextualizes the representative sequences via phylogenetics and metagenomic read recruitment "
-            "to produce an anvi'o interactive interface. This will allow you to examine phylogenetic distances and "
-            "co-occurrence across metagenomes (via simultaneous visualization of a phylogenetic tree and "
-            "[read recruitment](https://anvio.org/vocabulary/#read-recruitment) results). The workflow can "
-            "use any protein-based HMM including [single-copy core genes](https://anvio.org/vocabulary/#single-copy-core-gene-scg) "
-            "to taxonomically profile metagenomes or any functional protein to explore variants across samples. ")
+        "one_paragraph_summary": ("The EcoPhylo workflow explores the **ECO**logical and **PHYLO**genetic relationships of a protein across genomes and metagenomes. "
+            "Briefly, the workflow extracts a target protein from any number of assembled fasta files (e.g. genomes, metagenomes, "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag)) "
+            "using a user-designated [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), then clusters the sequences and selects "
+            "representatives. Next, the workflow contextualizes the representative sequences via phylogenetics and metagenomic read recruitment "
+            "to produce an anvi'o interactive interface. This will allow you to examine phylogenetic distances and co-occurrence across metagenomes "
+            "(via simultaneous visualization of a phylogenetic tree and [read recruitment](https://anvio.org/vocabulary/#read-recruitment) results). The "
+            "workflow can use any protein-based HMM including [single-copy core genes](https://anvio.org/vocabulary/#single-copy-core-gene-scg) "
+            "to taxonomically profile metagenomes or any functional protein to explore variants across samples.")
     },
 }
 
