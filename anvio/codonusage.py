@@ -81,6 +81,10 @@ class SingleGenomeCodonUsage(object):
 
         self.function_sources = A('function_sources')
 
+        self.ignore_start_codons = A('ignore_start_codons')
+        if self.ignore_start_codons is None:
+            self.ignore_start_codons = False
+
         self.run = r
         self.run_quiet = rq
         self.progress = p
@@ -219,8 +223,11 @@ class SingleGenomeCodonUsage(object):
 
             coding_gene_caller_ids.append(gene_caller_id)
 
-            gene_codon_frequencies.append(Counter(utils.get_list_of_codons_for_gene_call(
-                gene_call, self.contig_sequences_dict)))
+            gene_codons = utils.get_list_of_codons_for_gene_call(
+                gene_call, self.contig_sequences_dict)
+            if self.ignore_start_codons:
+                gene_codons = gene_codons[1: ]
+            gene_codon_frequencies.append(Counter(gene_codons))
 
         gene_codon_frequency_df = pd.DataFrame.from_records(gene_codon_frequencies)
 
@@ -2210,11 +2217,13 @@ class MultiGenomeCodonUsage(object):
             genome_info['bin_id'] = genome_dict['bin_id']
             genome_info['function_sources'] = self.function_sources
             genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            genome_info['ignore_start_codons'] = self.args.ignore_start_codons
         for genome_name, genome_dict in descriptions.external_genomes_dict.items():
             self.genome_info_dict[genome_name] = genome_info = {}
             genome_info['contigs_db'] = genome_dict['contigs_db_path']
             genome_info['function_sources'] = self.function_sources
             genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            genome_info['ignore_start_codons'] = self.args.ignore_start_codons
 
         # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
         # all of the SingleGenomeCodonUsage objects into memory, allowing methods to save time by
