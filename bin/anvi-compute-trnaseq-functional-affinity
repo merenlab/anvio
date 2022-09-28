@@ -179,7 +179,8 @@ if __name__ == '__main__':
         help="Compute affinity for genes rather than functions.")
     group1D.add_argument(
         '--gene-caller-ids', type=int, nargs='+',
-        help="Select genes by ID, space-separated, if using `--gene-affinity`.")
+        help="Select genes by ID, space-separated, if using `--gene-affinity`, and genomic input "
+             "from a single contigs database (not `--internal-genomes` or `--external-genomes`).")
 
     group1E = parser.add_argument_group(
         'SEED ASSIGNMENT',
