@@ -490,7 +490,7 @@ class SingleGenomeCodonUsage(object):
 
         if min_codon_filter not in ['length', 'remaining', 'both']:
             raise ConfigError("`min_codon_filter` must be one of 'length', 'remaining', or 'both'.")
-        # Set `filter_gene_length` `filter_function_length`, and `filter_remaining`.
+        # Set `filter_gene_length`, `filter_function_length`, and `filter_remaining`.
         if min_codon_filter == 'length':
             filter_gene_length = bool(gene_min_codons)
             filter_function_length = bool(function_min_codons)
