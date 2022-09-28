@@ -280,15 +280,11 @@ if __name__ == '__main__':
     group1G.add_argument(
         '--function-min-total-codons', type=int, default=0,
         help="Affinity is calculated for functions that contain at least this number of codons "
-             "total. Genes with fewer than `--gene-min-total-codons` are first removed, and then "
-             "functional groups of the remaining genes with fewer than "
-             "`--function-min-total-codons` are removed.")
+             "total. This option can only be used with `--gene-affinity`.")
     group1G.add_argument(
         '--gene-min-total-codons', type=int, default=0,
         help="Genes must contain at least this number of codons total to contribute to affinity "
-             "calculations. When affinity is calculated for functions rather than genes (the "
-             "default unless `--gene-affinity` is used), this filter is applied to genes before "
-             "grouping them as functions.")
+             "calculations. This option can only be used with `--gene-affinity`.")
     group1G.add_argument(
         '--exclude-codons', nargs='+',
         help="Remove the given codons from the calculation of affinity.")
