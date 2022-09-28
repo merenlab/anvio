@@ -2390,7 +2390,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # NOTE: here we make sure the codon sequence is composed of unambiguous nucleotides.
-        # and we will not inlcude those that contain anything other than proper
+        # and we will not include those that contain anything other than proper
         # nucleotides in the resulting list of codons.
         if set(reference_codon_sequence).issubset(constants.unambiguous_nucleotides):
             list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
