@@ -552,6 +552,18 @@ if __name__ == '__main__':
         help="Only allow CUB to calculated for a query if it has at least this number of "
              "synonymous codons that will be analyzed. For reference-dependent CUB metrics, "
              "analyzed codons are those with reference compositions.")
+    groupG.add_argument(
+        '--ignore-start-codons', default=False, action='store_true',
+        help="Ignore start codons in the analysis. Beside ATG, GTG and TTG are notable minority "
+             "start codons in bacteria and archaea. With start codons removed, frequencies only "
+             "represent elongation codons. This makes codon usage bias calculations more accurate, "
+             "because initiation GTG and TTG, like ATG, encode fMet in bacteria and Met in archaea "
+             "and eukarotes, but this program treats them like elongation codons encoding Val and "
+             "Leu, respectively, in the standard genetic code. ATG does not contribute to codon "
+             "usage bias given the standard genetic code, because it lacks synonymous codons, "
+             "being the only Met codon. Note that `--ignore-start-codons` removes start codons "
+             "from genes in the earliest steps of the program, which influences "
+             "`--gene-min-codons`: the number of codons in a gene never counts the start codon.")
 
     groupH = parser.add_argument_group(
         'FILTER REFERENCE',
