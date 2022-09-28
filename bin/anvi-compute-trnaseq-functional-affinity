@@ -5,6 +5,7 @@
 import sys
 
 import anvio
+from anvio import filesnpaths
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
