@@ -91,8 +91,8 @@ THIRD_PARTY_PROGRAMS = {
     'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'},
     'MMseqs2': {'link': 'https://github.com/soedinglab/MMseqs2'},
     'muscle': {'link': 'http://www.drive5.com/muscle/'},
-    'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},    
-    'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},    
+    'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
+    'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
     'HMMER': {'link': 'https://github.com/EddyRivasLab/hmmer'},
     'trimal': {'link': 'https://github.com/inab/trimal'}
     }
