@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     group1A = parser.add_argument_group(
         'TRNASEQ INPUTS',
-        "TWO FILES are required to compute functional affinity: "
+        "TWO FILES are required to compute affinities: "
         "(1) A 'trnaseq'-variant contigs database produced by `anvi-merge-trnaseq` and integrated "
         "with (meta)genomic contigs database(s) by `anvi-integrate-trnaseq`, "
         "(2) a table of **specific** coverages of seeds produced by `anvi-tabulate-trnaseq` from "
@@ -93,14 +93,14 @@ if __name__ == '__main__':
 
     group1B = parser.add_argument_group(
         'TRNASEQ SAMPLES',
-        "A REFERENCE SAMPLE is required to compute functional affinity. Sample data is found in "
+        "A REFERENCE SAMPLE is required to compute affinities. Sample data is found in "
         "`seeds-specific-txt`. For convenience, running the current program with the "
         "`--seeds-specific-txt` argument and the `--list-sample` flag prints all sample names to "
         "the terminal.")
     group1B.add_argument(
         '-r', '--reference-sample', metavar='SAMPLE_NAME', type=str,
         help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
-             "functional affinity.")
+             "affinities.")
     group1B.add_argument(
         '-n', '--nonreference-samples', metavar='SAMPLE_NAME[S]', nargs='+',
         help="Names of tRNA-seq samples, beside the specified reference sample, to be analyzed. By "
@@ -113,10 +113,9 @@ if __name__ == '__main__':
         "contigs database can be provided. To find which (meta)genomes were integrated, run "
         "`anvi-integrate-trnaseq` with the `--list-genomes` flag. This will print the project "
         "names and hashes of (meta)genomic contigs databases and any bins (and their profile "
-        "databases/collections) in which linked tRNA genes were found. Functional affinity is "
-        "computed separately for each (meta)genome. For example, if two internal genomes are "
-        "specified, then the functional affinity results for each will be returned. The following "
-        "are valid inputs: "
+        "databases/collections) in which linked tRNA genes were found. Affinity is computed "
+        "separately for each (meta)genome. For example, if two internal genomes are provided, "
+        "then the affinity results for each will be returned. The following are valid inputs: "
         "(1) A single contigs database. This could represent a genome or metagenome. "
         "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
         "database, profile database, and collection. "
@@ -240,27 +239,27 @@ if __name__ == '__main__':
 
     group1F = parser.add_argument_group(
         'ISOACCEPTOR PARAMETERS',
-        "The calculation of functional affinity relies upon the abundances of tRNA isoacceptors, "
-        "or groups of seeds with the same anticodon.")
+        "The calculation of affinity relies upon the abundances of tRNA isoacceptors, or groups of "
+        "seeds with the same anticodon.")
     group1F.add_argument(
         '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
              "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
              "met in both the sample being analyzed and reference sample for the isoacceptor to "
-             "contribute to functional affinity.")
+             "contribute to affinity.")
     group1F.add_argument(
         '--exclude-anticodons', nargs='+',
-        help="Remove tRNA isoacceptors with the given anticodons from calculation of functional "
-             "affinity. This occurs before and thereby affects the `--min-isoacceptors` filter.")
+        help="Remove tRNA isoacceptors with the given anticodons from calculation of affinity. "
+             "This occurs before and thereby affects the `--min-isoacceptors` filter.")
     group1F.add_argument(
         '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
-             "source for functional affinity to be calculated. For example, say the minimum number "
-             "of isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors "
-             "pass the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold "
-             "in B. Functional affinity will be calculated for genome A but not B.")
+             "source for affinity to be calculated. For example, say the minimum number of "
+             "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
+             "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
+             "Affinity will be calculated for genome A but not B.")
 
     group1G = parser.add_argument_group(
         'CODON FILTERS',
@@ -291,33 +290,31 @@ if __name__ == '__main__':
              "grouping them as functions.")
     group1G.add_argument(
         '--exclude-codons', nargs='+',
-        help="Remove the given codons from the calculation of functional affinity.")
+        help="Remove the given codons from the calculation of affinity.")
     group1G.add_argument(
         '--exclude-amino-acids', nargs='+',
-        help="Remove codons that decode the given amino acids from calculation of functional "
-             "affinity.")
+        help="Remove codons that decode the given amino acids from calculation of affinity.")
 
     group1H = parser.add_argument_group(
         'RAREFACTION STATISTICS',
-        "Rarefaction of the tRNA isoacceptors used in calculation of functional affinity provides "
-        "a means of evaluating how representative the isoacceptors are of the whole tRNA pool. The "
-        "smaller the subset of isoacceptors involved in the calculation, the less reliable the "
-        "metric is at evaluating the gene functions favored for translation by the tRNA pool. "
-        "Functional affinity results that are sensitive to rarefaction indicate suggest that not "
-        "enough isoacceptors were measured to achieve 'statistical significance'. Separate output "
-        "files are produced for the results of rarefaction.")
+        "Rarefaction of the tRNA isoacceptors used in calculation of affinity provides a means of "
+        "evaluating how representative the isoacceptors are of the whole tRNA pool. The smaller "
+        "the subset of isoacceptors involved in the calculation, the less reliable the metric is "
+        "at evaluating the gene functions favored for translation by the tRNA pool. Affinity "
+        "results that are sensitive to rarefaction indicate suggest that not enough isoacceptors "
+        "were measured to achieve 'statistical significance'. Separate output files are produced "
+        "for the results of rarefaction.")
     group1H.add_argument(
         '--rarefaction-limit', metavar='INT', type=int, default=0,
         help="Any positive integer for the rarefaction limit will trigger rarefaction of tRNA "
-             "isoacceptors for recomputations of functional affinities. The rarefaction limit sets "
-             "the number of randomly drawn subsamples of isoacceptors. For example, given a sample "
-             "with 10 isoacceptors used in the calculation of functional affinity, there are 10 "
-             "combinations of 1 isoacceptor that can be subsampled for recalculation with 1 "
-             "isoacceptor, 45 combinations of 2 isoacceptors, ..., 252 combinations of 5 "
-             "isoacceptors, ..., and 10 combinations of 9 isoacceptors. Setting a rarefaction "
-             "limit of 100 would not affect any subsamples with 100 or fewer combinations, but "
-             "would, for example, cause random subsampling of 100 of the 252 possible combinations "
-             "of 5 isoacceptors.")
+             "isoacceptors for recomputations of affinities. The rarefaction limit sets the number "
+             "of randomly drawn subsamples of isoacceptors. For example, given a sample with 10 "
+             "isoacceptors used in the calculation of affinity, there are 10 combinations of 1 "
+             "isoacceptor that can be subsampled for recalculation with 1 isoacceptor, 45 "
+             "combinations of 2 isoacceptors, ..., 252 combinations of 5 isoacceptors, ..., and 10 "
+             "combinations of 9 isoacceptors. Setting a rarefaction limit of 100 would not affect "
+             "any subsamples with 100 or fewer combinations, but would, for example, cause random "
+             "subsampling of 100 of the 252 possible combinations of 5 isoacceptors.")
 
     group2 = parser.add_argument_group('INFO')
     group2.add_argument(
