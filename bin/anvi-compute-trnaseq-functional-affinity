@@ -277,6 +277,22 @@ if __name__ == '__main__':
              "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
              "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
              "Affinity will be calculated for genome A but not B.")
+    group1F.add_argument(
+        '--decoding-weights-txt', metavar='FILE',
+        help="A headerless tab-delimited file of decoding weights, with a line per base pair. The "
+             "first column should contain the wobble nucleotide of the anticodon, the second the "
+             "wobble nucleotide of the codon, and the third the weight for the base pair. The "
+             "default weights used by this program are the s(i,j) values from Table 2 of dos Reis, "
+             "Savva, and Wernisch (2004), used in their tRNA Adaptation Index (tAI) metric "
+             "(https://doi.org/10.1093/nar/gkh834). s(i,j) means \"the selective constraint on the "
+             "efficiency of the codon-anticodon coupling.\" Consistent with Table 2, recognized "
+             "anticodon wobble nucleotides are A, C, G, T, I (inosine), and L (lysidine). Any base "
+             "pairs not provided in the table that are among the default base pairs assume the "
+             "values of the default. Example: to prohibit G-U base pairs, add two rows to the "
+             "input table: \"G   T   1\" and \"T   G   1\". A value of 1 means that G-U base "
+             "pairing is maximally inefficient, like C-U base pairing. To generate a text file of "
+             "the default weights that can be used as a template for the file, run this program "
+             "with the single option, `--get-default-decoding-weights`.")
 
     group1G = parser.add_argument_group(
         'CODON FILTERS',
