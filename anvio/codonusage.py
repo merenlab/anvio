@@ -2169,8 +2169,12 @@ class MultiGenomeCodonUsage(object):
 
         self.function_sources = A('function_sources')
         self.use_shared_function_sources = A('shared_function_sources')
+        if self.use_shared_function_sources is None:
+            self.use_shared_function_sources = False
 
-        self.preload_genomes = A('preload-genomes') or False
+        self.preload_genomes = A('preload_genomes')
+        if self.preload_genomes is None:
+            self.preload_genomes = False
 
         self.run = r
         self.run_quiet = rq
