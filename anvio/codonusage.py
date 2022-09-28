@@ -69,7 +69,7 @@ class SingleGenomeCodonUsage(object):
     Manipulate the raw data using the methods, `get_frequencies` and `get_codon_usage_bias`.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=run, rq=run_quiet, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -82,6 +82,7 @@ class SingleGenomeCodonUsage(object):
         self.function_sources = A('function_sources')
 
         self.run = r
+        self.run_quiet = rq
         self.progress = p
 
         self._set_genetic_code()
@@ -133,7 +134,7 @@ class SingleGenomeCodonUsage(object):
             # exception will be raised if all three args are not provided or valid.
             self.args.split_names_of_interest = \
                 ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
-        contigs_super = ContigsSuperclass(self.args, r=run_quiet)
+        contigs_super = ContigsSuperclass(self.args, r=self.run_quiet)
         contigs_super.init_contig_sequences()
         self.contig_sequences_dict = contigs_super.contig_sequences
 
@@ -1659,7 +1660,7 @@ class SingleGenomeCodonUsage(object):
                 if codons[0] not in reference_codon_frequency_df.columns:
                     amino_acids_dropped_from_reference.append(amino_acid)
             default_run = self.run
-            self.run = run_quiet
+            self.run = self.run_quiet
             nonreference_codon_frequency_df = self.get_frequencies(
                 sum_genes=True, drop_amino_acids=amino_acids_dropped_from_reference)
             self.run = default_run
@@ -2152,7 +2153,7 @@ class SingleGenomeCodonUsage(object):
 class MultiGenomeCodonUsage(object):
     """This object processes codon usage data from multiple internal and/or external genomes."""
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=run, rq=run_quiet, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -2165,9 +2166,10 @@ class MultiGenomeCodonUsage(object):
         self.preload_genomes = A('preload-genomes') or False
 
         self.run = r
+        self.run_quiet = rq
         self.progress = p
 
-        descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
+        descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
         descriptions.load_genomes_descriptions(init=False)
 
         if self.function_sources is None:
