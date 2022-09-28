@@ -62,7 +62,7 @@ ANVIO_WORKFLOWS = {
             ('Calculate phylogenetic tree', ['FastTree']),
             ('Search for homologous sequences', ['HMMER'])
             ],
-        "one_sentence_summary": "Characterize the phylogenetics and biogeography of a protein sequence from anvi'o contigs databases.",
+        "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
         "one_paragraph_summary": ("The EcoPhylo workflow explores the **ECO**logical and **PHYLO**genetic relationships of a protein across genomes and metagenomes. "
             "Briefly, the workflow extracts a target protein from any number of assembled fasta files (e.g. genomes, metagenomes, "
             "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag)) "
