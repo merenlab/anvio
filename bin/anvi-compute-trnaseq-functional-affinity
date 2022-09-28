@@ -26,6 +26,9 @@ __description__ = ("Relate changes in tRNA-seq seed abundances to the codon usag
                    "functions")
 
 
+run = terminal.Run()
+
+
 def main(args):
     if args.list_sample_names:
         sample_names = genomictrnaseq.Affinitizer.list_sample_names(args.seeds_specific_txt)
