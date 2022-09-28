@@ -34,6 +34,9 @@ def main(args):
     if args.list_samples:
         print_sample_names(args.seeds_specific_txt)
         return
+
+    if args.get_default_decoding_weights:
+        store_default_decoding_weights(args.get_default_decoding_weights)
         return
 
     sanity_check(args)
@@ -76,6 +79,17 @@ def print_sample_names(seeds_specific_txt):
 
     run = terminal.Run()
     run.info("tRNA-seq sample names", f"{', '.join(sample_names)}", nl_after=1)
+
+
+def store_default_decoding_weights(output_path):
+    filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
+    with open(output_path) as output_file:
+        for anticodon_wobble_nucleotide, anticodon_decoding_dict in \
+            genomictrnaseq.Affinitizer.default_decoding_weights.items():
+            for codon_wobble_nucleotide, decoding_weight in anticodon_decoding_dict.items():
+                output_file.write(f"{anticodon_wobble_nucleotide}\t"
+                                  f"{codon_wobble_nucleotide}\t"
+                                  f"{decoding_weight}\n")
 
 
 if __name__ == '__main__':
@@ -320,6 +334,11 @@ if __name__ == '__main__':
         '-l', '--list-samples', default=False, action='store_true',
         help="List the names of tRNA-seq samples in `seeds-specific-txt` by using this flag with "
              "the `--seeds-specific-txt` argument.")
+    group2.add_argument(
+        '-w', '--get-default-decoding-weights', metavar='FILE',
+        help="Store a tab-delimited file of the default decoding weights used in affinity "
+             "calculations. This file has the format of the input file needed for "
+             "`--decoding-weights-txt`.")
 
     args = parser.get_args(parser)
 
