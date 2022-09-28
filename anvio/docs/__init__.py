@@ -63,15 +63,11 @@ ANVIO_WORKFLOWS = {
             ('Search for homologous sequences', ['HMMER'])
             ],
         "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
-        "one_paragraph_summary": ("The EcoPhylo workflow explores the **ECO**logical and **PHYLO**genetic relationships of a protein across genomes and metagenomes. "
-            "Briefly, the workflow extracts a target protein from any number of assembled fasta files (e.g. genomes, metagenomes, "
-            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag)) "
-            "using a user-designated [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), then clusters the sequences and selects "
-            "representatives. Next, the workflow contextualizes the representative sequences via phylogenetics and metagenomic read recruitment "
-            "to produce an anvi'o interactive interface. This will allow you to examine phylogenetic distances and co-occurrence across metagenomes "
-            "(via simultaneous visualization of a phylogenetic tree and [read recruitment](https://anvio.org/vocabulary/#read-recruitment) results). The "
-            "workflow can use any protein-based HMM including [single-copy core genes](https://anvio.org/vocabulary/#single-copy-core-gene-scg) "
-            "to taxonomically profile metagenomes or any functional protein to explore variants across samples.")
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between genes and environments."
+            "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
+            "to the phylogenetics of matching genes, and their distribution across environments.")
     },
 }
 
