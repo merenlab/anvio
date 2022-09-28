@@ -345,9 +345,7 @@ if __name__ == '__main__':
              "in every row, and either an accession or name, or both, should also be in a row. "
              "The file should not have a header of column names.")
     groupE.add_argument(
-        '--expect-functions',
-        default=False,
-        action='store_true',
+        '--expect-functions', default=False, action='store_true',
         help="By default, functions provided by `--function-accessions`, `--function-names`, and "
              "`--select-functions-txt` need not be annotated in the input genomes. With this flag, "
              "an error will be raised if any of the functions are not present in an input genome.")
