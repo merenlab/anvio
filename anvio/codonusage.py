@@ -369,7 +369,7 @@ class SingleGenomeCodonUsage(object):
             filters to ensure that total codon frequencies in the output always meet the minimum
             codon threshold. 'both' is needed as an option in addition to 'remaining' so dynamic
             codon filtering by `--exclude-amino-acid-count/fraction` operates on genes that passed
-            the first length filter.
+            the first length filter. By default "both".
         drop_amino_acids : iterable, optional
             Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, and
             STP for stop codons). If `synonymous` is True, the `drop_amino_acids` default rather
@@ -1478,7 +1478,7 @@ class SingleGenomeCodonUsage(object):
             filters to ensure that total codon frequencies always meet the minimum codon threshold.
             'both' is needed as an option in addition to 'remaining' so dynamic codon filtering by
             `--exclude-amino-acid-count/fraction` operates on genes that passed the first length
-            filter.
+            filter. By default "both".
         drop_amino_acids : iterable, optional
             Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala).
             Met and Trp are encoded by single codons, which perforce are excluded from CUB
