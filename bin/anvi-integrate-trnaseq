@@ -26,6 +26,9 @@ __description__ = (
     "Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes")
 
 
+run = terminal.Run()
+
+
 def main(args):
     if args.list_genomes:
         integrated_genome_dict = genomictrnaseq.Integrator.get_integrated_genomes(
@@ -86,7 +89,6 @@ def print_genomes(integrated_genome_dict):
         raise ConfigError(
             "The tRNA gene hits table in the tRNA-seq contigs database does not contain any rows!")
 
-    run = terminal.Run()
     for contigs_db_info, profile_db_dict in integrated_genome_dict.items():
         run.info_single(f"Contigs database project name: {contigs_db_info[0]}", cut_after=0)
         run.info_single(f"Contigs database hash: {contigs_db_info[1]}", cut_after=0)
