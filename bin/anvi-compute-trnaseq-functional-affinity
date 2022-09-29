@@ -3,6 +3,7 @@
 """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"""
 
 import sys
+import pandas as pd
 
 import anvio
 from anvio import filesnpaths
@@ -41,8 +42,43 @@ def main(args):
 
     sanity_check(args)
 
+    args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
     affinitizer = genomictrnaseq.Affinitizer(args)
-    affinitizer.go()
+
+
+def parse_decoding_weights_table(decoding_weights_txt):
+    """Load the decoding weights table as a dictionary."""
+    if not decoding_weights_txt:
+        return
+
+    filesnpaths.is_file_tab_delimited(decoding_weights_txt)
+    decoding_weights_df = pd.read_csv(
+        decoding_weights_txt, sep='\t', header=None,
+        names=['anticodon_wobble_nucleotide', 'codon_wobble_nucleotide', 'decoding_weight'])
+
+    decoding_weights = {}
+    for row in decoding_weights_df.itertuples(index=False):
+        try:
+            anticodon_dict = decoding_weights[row.anticodon_wobble_nucleotide]
+        except KeyError:
+            decoding_weights[row.anticodon_wobble_nucleotide] = anticodon_dict = {}
+        anticodon_dict[row.codon_wobble_nucleotide] = row.decoding_weight
+
+    for anticodon_wobble_nucleotide, default_anticodon_dict in \
+        genomictrnaseq.Affinitizer.default_decoding_weights.items():
+        for codon_wobble_nucleotide, decoding_weight in default_anticodon_dict.items():
+            try:
+                decoding_weights[anticodon_wobble_nucleotide][codon_wobble_nucleotide]
+                continue
+            except KeyError:
+                pass
+            try:
+                anticodon_dict = decoding_weights[anticodon_wobble_nucleotide]
+            except KeyError:
+                decoding_weights[anticodon_wobble_nucleotide] = anticodon_dict = {}
+            anticodon_dict[codon_wobble_nucleotide] = decoding_weight
+
+    return decoding_weights
 
 
 def sanity_check(args):

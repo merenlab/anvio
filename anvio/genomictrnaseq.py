@@ -1314,6 +1314,16 @@ class Affinitizer:
     default_function_sources = ['KEGG_BRITE']
     default_min_coverage = 10
     default_min_isoacceptors = 4
+    # Default decoding weights are from Table 2 of dos Reis, Savva, and Wernisch (2004), used in
+    # their tRNA Adaptation Index (tAI) metric: https://doi.org/10.1093/nar/gkh834
+    default_decoding_weights = {
+        'A': {'T': 0},
+        'C': {'G': 0},
+        'G': {'T': 0.41, 'C': 0},
+        'T': {'G': 0.68, 'A': 0},
+        'I': {'T': 0, 'C': 0.28, 'A': 0.9999},
+        'L': {'A': 0.89}
+    }
 
     def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
         self.args = args
@@ -1372,6 +1382,9 @@ class Affinitizer:
         if self.min_isoacceptors is None:
             self.min_isoacceptors = self.default_min_isoacceptors
         self.exclude_anticodons = A('exclude_anticodons')
+        self.decoding_weights = A('decoding_weights')
+        if self.decoding_weights is None:
+            self.decoding_weights = self.default_decoding_weights
 
         self.min_analyzed_codons = A('min_analyzed_codons')
         if self.min_analyzed_codons is None:
