@@ -14,9 +14,16 @@ import numpy
 import random
 import argparse
 import textwrap
-import multiprocessing
 import itertools
 import scipy.signal
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 from io import StringIO
 from collections import Counter
@@ -1663,9 +1670,12 @@ class PanSuperclass(object):
         self.progress.end()
         output_file.close()
 
-        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid', mc='green')
+        if len(gene_clusters_dict) == 1:
+            gene_cluster_name = list(gene_clusters_dict.keys())[0]
+            self.run.info('Gene cluster name', gene_cluster_name)
+        self.run.info('Sequence type', 'DNA' if report_DNA_sequences else 'Amino acid')
         self.run.info('Num sequences reported', sequence_counter)
-        self.run.info('Output FASTA file', output_file_path, mc='green')
+        self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
 
 
     def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
@@ -2958,6 +2968,9 @@ class ProfileSuperclass(object):
                        'bin_name': self.bin_names[0],
                        'splits_hash': splits_hash}
 
+        # make sure the GENES directory exists.
+        filesnpaths.gen_output_directory(os.path.dirname(self.genes_db_path), progress=self.progress, run=self.run, delete_if_exists=False, dont_warn=False)
+
         # generate a blank genes database here:
         GenesDatabase(self.genes_db_path).create(meta_values=meta_values)
 
@@ -3811,7 +3824,7 @@ class PanDatabase:
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
-        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'diamond_sensitive', 'exclude_partial_gene_calls', \
+        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls', \
                     'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
             try:
                 self.meta[key] = int(self.meta[key])
@@ -4457,10 +4470,29 @@ class ContigsDatabase:
                     nt_position_info_list[nt_position] = 8
                 continue
 
-            # if the gene stop is identical to the contig length,
-            # just move on:
-            if stop == contig_length:
-                continue
+            # if the gene stop is identical to the contig length, we have to carefully assess
+            # this situation. if we simply say,
+            #
+            #   >>> if stop == contig_length:
+            #   >>>     continue
+            #
+            # then contigs that are solely composed of genes (i.e., gene = contig) ends up being
+            # treated as intergenic regions. but if we skip this step, or say something like
+            # this,
+            #
+            #   >>> if stop == contig_length + 1:
+            #   >>>     continue
+            #
+            # then anvi'o explodes and dies a fiery death as explained at,
+            #
+            #    https://github.com/merenlab/anvio/issues/1943
+            #
+            # SO MUCH HISTORY HERE, BUT WE PAY OUR RISPEKS TO THOSE WHO SHARE REPRODUCIBLE TEST CASES.
+            if stop == contig_length: # checking fo #1661
+                if stop - start == contig_length: # realizing that it is #1943
+                    pass # thanking the gene and sending it along.
+                else: # finding out that it actually is #1661
+                    continue # NEXT
 
             if gene_call['direction'] == 'f':
                 for nt_position in range(start, stop, 3):
@@ -4775,14 +4807,12 @@ class AA_counts(ContigsSuperclass):
 ####################################################################################################
 
 def is_db_ok_to_create(db_path, db_type):
-    if os.path.exists(db_path):
-        raise ConfigError("Anvi'o will not overwrite an existing %s database. Please choose a different name "
-                           "or remove the existing database ('%s') first." % (db_type, db_path))
-
     if not db_path.lower().endswith('.db'):
         raise ConfigError("Please make sure the file name for your new %s db has a '.db' extension. Anvi'o developers "
                            "apologize for imposing their views on how anvi'o databases should be named, and are "
                            "humbled by your cooperation." % db_type)
+
+    filesnpaths.is_output_file_writable(db_path, ok_if_exists=False)
 
 
 def get_auxiliary_data_path_for_profile_db(profile_db_path):

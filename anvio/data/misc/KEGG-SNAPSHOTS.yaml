@@ -25,6 +25,18 @@ v2020-12-23:
     hash: 45b7cc2e4fdc
     modules_db_version: 2
 
+v2021-12-18:
+    url: https://figshare.com/ndownloader/files/31959416
+    archive_name: KEGG_build_2021-12-18_58937b64c44c.tar.gz
+    hash: 58937b64c44c
+    modules_db_version: 3
+
+v2022-04-14:
+    url: https://figshare.com/ndownloader/files/34817812
+    archive_name: KEGG_build_2022-04-14_666feeac5de2.tar.gz
+    hash: 666feeac5de2
+    modules_db_version: 4
+
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
 #    `anvi-setup-kegg-kofams -D --kegg-data-dir ./KEGG`
@@ -33,7 +45,9 @@ v2020-12-23:
 # 3. archive that directory:
 #   `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`
 #   Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2
-# 4. Upload the .tar.gz archive to figshare and get the download url
-# 5. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. You should also update the
+# 4. Test that setup works with this archive by running
+#    `anvi-setup-kegg-kofams --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`
+# 5. Upload the .tar.gz archive to figshare and get the download url
+# 6. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. You should also update the
 # default self.target_snapshot variable in kegg.py to point to this latest version that you have added.
-# 6. Test it, and if it works you are done :)
+# 7. Test it by running `anvi-setup-kegg-kofams --kegg-data-dir TEST_NEW_KEGG`, and if it works you are done :)

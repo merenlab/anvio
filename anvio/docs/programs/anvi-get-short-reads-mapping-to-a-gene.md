@@ -1,6 +1,6 @@
 This program finds all short reads from (%(bam-file)s) that align to a specific gene and returns them as a %(short-reads-fasta)s.
 
-If instead you want to extract these short reads from a FASTQ file, get your gene sequence with %(anvi-export-gene-calls)s and take a look at %(anvi-script-get-primer-matches)s.
+If instead you want to extract these short reads from a FASTQ file, get your gene sequence with %(anvi-export-gene-calls)s and take a look at %(anvi-search-primers)s.
 
 To run this program, just specify the bam files you're looking at and the gene of interest. To do this, name the %(contigs-db)s containing your gene and the gene caller ID (either directly through the parameter `--gene-caller-id` or through a file). Here is an example:
 

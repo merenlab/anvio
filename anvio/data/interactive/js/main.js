@@ -694,12 +694,16 @@ function buildLegendTables() {
     }
 
     legends = [];
-
+    let toastr_warn_flag = false
     for (let pindex in categorical_data_colors)
     {
-        var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
-
-        names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+        if(Object.keys(categorical_stats[pindex]).length > 20){
+            toastr_warn_flag = true
+            var names = false
+        } else {
+            var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
+            names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+        }
 
         legends.push({
             'name': getPrettyName(getLayerName(pindex)),
@@ -762,6 +766,7 @@ function buildLegendTables() {
             });
         }
     }
+    if(toastr_warn_flag) toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
 
     for (var i=0; i < legends.length; i++)
     {
@@ -773,48 +778,81 @@ function buildLegendTables() {
         } else {
             template += '<span class="label label-default">Main</span> '
         }
-
         template += legend['name'] + '</span><div>';
-        template += `Sort: <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                        <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
-                    </div>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
-                    </div>
-                    <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
-                        <table class="col-md-12 table-spacing">
-                            <tr>
-                                <td class="col-md-2">Rule: </td>
-                                <td class="col-md-10">
-                                    <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                    <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
-                                    <input type="radio" name="batch_rule_`+i+`" value="count"> Count
-                                        <select id="count_rule_`+i+`">
-                                            <option selected>==</option>
-                                            <option>&lt;</option>
-                                            <option>&gt;</option>
-                                        </select>
-                                        <input type="text" id="count_rule_value_`+i+`" size="3">
-                                    <br />
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2">Color: </td>
-                                <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2"></td>
-                                <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
-                            </tr>
-                            <tr>
-                                <td class="col-md-2"></td>
-                                <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div style="clear: both; display:block;"></div>
-                    <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+
+        if (!legends[i]['item_names']){
+            template += `
+                <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
+                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a cateogry
+                and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
+                button in the third row to randomly assign colors to each category.</p>
+                <div>
+                    <table class="col-md-12 table-spacing table-striped" style="margin-bottom: 10px;">
+                        <tr>
+                            <td class="col-md-auto" style="white-space: nowrap;">For <input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
+                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
+                        </tr>
+                        <tr>
+                            <td class="col-md-auto">For all categories</td>
+                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
+                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
+                        </tr>
+                        <tr>
+                            <td class="col-md-auto" colspan="2">For all categories</td>
+                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                        </tr>
+                    </table>
+
+                    <table class="col-md-12 table-spacing" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-success-message" style="display: none;">
+                        <tr>
+                        <td style="background-color: #85eb8559; color: black; text-align: center; border-radius: 3px; width: 100%">All set! Don't forget to click <b>Draw</b> to see changes when you're done :)</td>
+                        </tr>
+                    </table>
+                </div>
+            `
+        } else {
+            template += `Sort: <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                        </div>
+                        <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
+                            <table class="col-md-12 table-spacing">
+                                <tr>
+                                    <td class="col-md-2">Rule: </td>
+                                    <td class="col-md-10">
+                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input type="radio" name="batch_rule_`+i+`" value="count"> Count
+                                            <select id="count_rule_`+i+`">
+                                                <option selected>==</option>
+                                                <option>&lt;</option>
+                                                <option>&gt;</option>
+                                            </select>
+                                            <input type="text" id="count_rule_value_`+i+`" size="3">
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2">Color: </td>
+                                    <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-2"></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="clear: both; display:block;"></div>
+                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+        }
 
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
@@ -834,6 +872,44 @@ function buildLegendTables() {
             $(el).attr('color', '#' + hex);
         }
     });
+}
+
+function queryLegends(mode){
+    let legendFormatted = event.target.id.replaceAll('-', '_').toLowerCase()
+    let query = $(`#${event.target.id.toLowerCase()}-query-input`).val()
+    let color = String()
+
+    // because the legends iterator above does not match the categorical_data_colors key
+    // we need to reference the layerdata index value by the same legend name
+    // because layerdata key casing is unpredictable, we clone the layerdata object to a lowercase copy
+    let lowercase_layerdata = layerdata[0].map(l => l.toLowerCase())
+    let legend_index = lowercase_layerdata.indexOf(legendFormatted)
+
+    if(mode == 'random'){
+        for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
+            categorical_data_colors[legend_index][key] = randomColor()
+        }
+        displaySuccessMessage()
+    } else if(mode == 'batch'){
+        color = $(`#${event.target.id}-batch-colorpicker`).attr('color')
+        for (let [key, value] of Object.entries(categorical_data_colors[legend_index])) {
+            categorical_data_colors[legend_index][key] = color
+        }
+        displaySuccessMessage()
+    } else if(categorical_data_colors[legend_index]?.[query]){
+        color = $(`#${event.target.id}-colorpicker`).attr('color')
+        categorical_data_colors[legend_index][query] = color
+        displaySuccessMessage()
+    } else {
+        alert('query not found')
+    }
+    $(`#${event.target.id}-query-input`).val('')
+    $(`#${event.target.id}-colorpicker`).attr('color', "#FFFFFF")
+    $(`#${event.target.id}-batch-colorpicker`).attr('color', "#FFFFFF")
+
+    function displaySuccessMessage(){
+        $(`#${legendFormatted.replaceAll('_','-')}-success-message`).fadeIn(300).delay(4000).fadeOut(300)
+    }
 }
 
 function batchColor(legend_id) {

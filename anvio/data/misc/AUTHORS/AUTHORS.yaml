@@ -9,15 +9,34 @@
   skype: a.murat.eren
   bio: "I am a computer scientist with a deep appreciation for the complexity of life. I design algorithms and experiments to better understand microbes and their ecology."
   affiliations:
-    - title: MBL Fellow
+    - title: Professor
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
+    - title: Professor
+      inst: Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research
+      inst_link: https://awi.de
+      current: true
+    - title: Professor
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+    - title: Fellow
       inst: Marine Biological Laboratory
-      inst_link: http://www.mbl.edu/research/mbl-fellows/a-murat-eren/
+      inst_link: http://www.mbl.edu/
+      current: true
+    - title: Fellow
+      inst: Alfred P. Sloan Fondation
+      inst_link: https://sloan.org/grant-detail/9260
     - title: Assistant Professor
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
     - title: Committee on Microbiology
       inst: The Biomedical Sciences Cluster at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/
+    - title: Post-doctoral Scientist
+      inst: Marine Biological Laboratory
+      inst_link: https://mbl.edu
 
 - github: FlorianTrigodet
   name: Florian Trigodet
@@ -52,8 +71,18 @@
   orcid: 0000-0002-6473-0921
   email: kiefl.evan@gmail.com
   avatar: ekiefl.jpg
-  bio: "I am interested in uncovering how single nucleotide variants map to functional variation in the genes of naturally-occuring microbial populations."
+  bio: "Computational biologist and software developer. For my PhD I studied how selective pressures shape the evolution of proteins in naturally occurring microbial populations."
+  intellectual-contributions:
+    - contribution: "Spearheaded the development of protein structure prediction, analysis, and visualization capabilities within anvi'o"
+    - contribution: "Redesigned mission-critical code related to metagenomic workflows, decreasing compute times from >100 hours to <1 hour for terabyte-scale analyses"
+    - contribution: "Made significant contributions to the overall health and maintenance of the codebase through code reviews, performance refactoring, feature implementation, and issue diagnosis"
+    - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
+    - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Bioinformatician
+      inst: AbCellera
+      inst_link: https://www.abcellera.com/
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
@@ -253,3 +282,20 @@
     - title: JCVI Research Fellow
       inst: J. Craig Venter Institute
       inst_link: https://www.jcvi.org/
+
+- github: nick-youngblut
+  name: Nick Youngblut
+  bio: "Microbiologist studying methanogens and host-microbiome coevolution"
+  avatar: youngblut.jpg
+  email: nyoungb2@gmail.com
+  web: https://leylab.com/research/ecology-and-evolution-of-host-associated-methanogens-youngblut-group/
+  twitter: nick_youngblut
+  linkedin: nicholas-youngblut
+  orcid: 0000-0002-7424-5276
+  intellectual-contributions:
+    - contribution: "Spearheaded the implementation of GitHub actions for automated component tests"
+  affiliations:
+    - title: Group Leader in the Department of Microbiome Science
+      inst: Max Planck Institute for Biology
+      inst_link: http://eb.tuebingen.mpg.de/
+      current: true

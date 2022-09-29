@@ -44,6 +44,14 @@ def drop_entry_id_column_from_table(db_path, table_name, table_properties):
 
     _db = db.DB(db_path, None, ignore_version = True)
 
+    # if table doesn't exist (due to some historical glitch), generate it, and return
+    if table_name not in _db.get_table_names():
+        _db._exec('''CREATE TABLE %s (%s)''' % (table_name, db_fields))
+        _db.disconnect()
+        progress.end()
+
+        return
+
     progress.update("Creating a temporary table")
     _db._exec('''CREATE TABLE %s (%s)''' % (temp_table_name, db_fields))
 

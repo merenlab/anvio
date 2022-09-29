@@ -7,7 +7,6 @@ import copy
 from collections import Counter
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -35,15 +34,10 @@ run = terminal.Run()
 def main(args):
     sanity_check(args)
 
-    we_have_a_contigs_db = True if args.contigs_db else False
-
     # initiate the contigs database if it is present
-    if we_have_a_contigs_db:
-        contigs_db = dbops.ContigsDatabase(args.contigs_db)
-        splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
-        contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key = True)
-        contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(splits_basic_info, contigs_basic_info)
-        contigs_db.disconnect()
+    if args.contigs_db:
+        contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(args.contigs_db)
+        contig_names_in_db = contig_name_to_splits_dict.keys()
 
     # read the input file with split/contig - bin ID associations
     input_data_file_content = utils.get_TAB_delimited_file_as_dictionary(args.data, no_header = True, column_names = ['split_id', 'bin_name'])
@@ -60,7 +54,7 @@ def main(args):
     # convert contig names into split names if necessary so we can do everything else using the information in
     # pan or profile database item names (this is only relevant for a workflow that includes a contigs db)
     if args.contigs_mode:
-        input_names_missing_from_contigs_db = [n for n in input_data_file_content if n not in contigs_basic_info]
+        input_names_missing_from_contigs_db = [n for n in input_data_file_content if n not in contig_names_in_db]
 
         if len(input_names_missing_from_contigs_db):
             raise ConfigError("OK. %d of %d contig names in your input file have nothing to do with the contig names found in "
@@ -110,7 +104,7 @@ def main(args):
                 raise ConfigError("Anvi'o got an empty list of names for `items` from this databaes. But it is impossible :/")
 
         run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
-    elif we_have_a_contigs_db:
+    elif args.contigs_db:
         db_names = utils.get_all_item_names_from_the_database(args.contigs_db)
         run.info('Items in contigs database', len(db_names), mc='green')
     else:

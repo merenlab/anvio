@@ -23,11 +23,18 @@ import datetime
 import importlib
 
 from hashlib import md5
-from multiprocessing import Process
 from ete3 import Tree
 from bottle import Bottle
 from bottle import BaseRequest
 from bottle import redirect, static_file
+
+# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
+# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# goes like this:
+#
+#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+#
+import multiprocess as multiprocessing
 
 import anvio
 import anvio.dbops as dbops
@@ -202,11 +209,11 @@ class BottleApplication(Bottle):
         try:
             # allow output to terminal when debugging
             if anvio.DEBUG:
-                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': False, 'server': self._wsgi_for_bottle})
+                server_process = multiprocessing.Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': False, 'server': self._wsgi_for_bottle})
                 server_process.start()
             else:
                 with terminal.SuppressAllOutput():
-                    server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                    server_process = multiprocessing.Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
                     server_process.start()
 
             url = "http://%s:%d" % (ip, port)

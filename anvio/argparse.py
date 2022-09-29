@@ -14,6 +14,7 @@ import anvio.docs as docs
 import anvio.terminal as terminal
 
 from anvio.programs import Program
+from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
 from anvio.utils import is_program_exists as get_program_path
 
@@ -36,6 +37,11 @@ class ArgumentParser(argparse.ArgumentParser):
 
         self.description = description
         self.epilog = epilog or self.get_anvio_epilogue()
+
+        self.anvio_allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
+                                           '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
+                                           '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
+                                           '--I-know-this-is-not-a-good-idea']
 
 
     def get_anvio_epilogue(self):
@@ -178,6 +184,21 @@ class ArgumentParser(argparse.ArgumentParser):
         return help_text
 
 
+    def sanity_check(self, args):
+        """Simple sanity checks for global arguments"""
+
+        # make sure num threads are not 0 or negative.
+        if args and 'num_threads' in args:
+            try:
+                args.num_threads = int(args.num_threads)
+            except:
+                raise ConfigError(f"Among your parameters anvi'o found one that sets the number of threads, "
+                                  f"a value that should be a positive integer. But '{args.num_threads}' is not :/")
+
+            if args.num_threads <= 0:
+                raise ConfigError(f"The number of threads must be a positive integer. `{args.num_threads}` is not it :/")
+
+
     def get_args(self, parser, auto_fill_anvio_dbs=False):
         """A helper function to parse args anvi'o way.
 
@@ -190,6 +211,8 @@ class ArgumentParser(argparse.ArgumentParser):
         allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress', '--as-markdown', '--tmp-dir', '--display-db-calls']
 
         args, unknown = parser.parse_known_args()
+
+        self.sanity_check(args)
 
         if auto_fill_anvio_dbs:
             if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:
@@ -381,5 +404,3 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                 self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
 
         return self.args
-
-

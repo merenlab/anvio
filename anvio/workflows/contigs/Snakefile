@@ -21,11 +21,11 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-slave_mode = False if 'workflows/contigs' in workflow.included[0] else True
-if not slave_mode:
+this_workflow_is_inherited_by_another = False if 'anvio/workflows/contigs' in str(workflow.included[0].abspath()) else True
+if not this_workflow_is_inherited_by_another:
     # don't be confused, child. when things come to this point, the variable `config`
     # is already magically filled in by snakemake:
-    M = ContigsDBWorkflow(argparse.Namespace(config=config, slave_mode=slave_mode))
+    M = ContigsDBWorkflow(argparse.Namespace(config=config, this_workflow_is_inherited_by_another=this_workflow_is_inherited_by_another))
     M.init()
     dirs_dict = M.dirs_dict
 
@@ -374,7 +374,6 @@ rule anvi_run_ncbi_cogs:
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
         cog_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cog-data-dir'),
-        sensitive = M.get_rule_param('anvi_run_ncbi_cogs', '--sensitive'),
         temporary_dir_path = M.get_rule_param('anvi_run_ncbi_cogs', '--temporary-dir-path'),
         search_with = M.get_rule_param('anvi_run_ncbi_cogs', '--search-with')
     threads: M.T('anvi_run_ncbi_cogs')
@@ -382,7 +381,6 @@ rule anvi_run_ncbi_cogs:
     shell: w.r("""anvi-run-ncbi-cogs -c {input.contigs} \
                                      -T {threads} \
                                      {params.cog_data_dir} \
-                                     {params.sensitive} \
                                      {params.temporary_dir_path} \
                                      {params.search_with} >> {log} 2>&1""")
 
@@ -493,7 +491,7 @@ rule gen_external_genome_file:
                 f.write("%s\t%s\n" % (name, path))
 
 
-if 'workflows/contigs' in workflow.included[0]:
+if 'anvio/workflows/contigs' in str(workflow.included[0].abspath()):
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).

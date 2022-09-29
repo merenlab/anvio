@@ -119,7 +119,7 @@ def is_proper_external_gene_calls_file(file_path):
                 call_type = int(fields[6])
             except ValueError:
                 raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
-                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
+                                       "http://anvio.org/help/main/artifacts/external-gene-calls/")
 
             if call_type not in call_types_allowed:
                 raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
@@ -156,8 +156,18 @@ def is_output_file_writable(file_path, ok_if_exists=True):
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
         raise FilesNPathsError(f"You do not have write access to the file at '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
-        raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
-                               f"avoid overwriting stuff.")
+        if anvio.FORCE_OVERWRITE:
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                raise FilesNPathsError(f"As per your instructions, anvi'o was trying to delete the file at '{file_path}', "
+                                       f"yet it failed (typical anvi'o?). Here is the error message from another programmer "
+                                       f"in the matrix: {e}.")
+        else:
+            raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
+                                   f"avoid overwriting stuff. But you can always use the flag `--force-overwrite` "
+                                   f"to instruct anvi'o to delete the existing file first.")
+
     return True
 
 
@@ -184,7 +194,7 @@ def is_file_empty(file_path):
     return os.stat(file_path).st_size == 0
 
 
-def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None):
+def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, dont_raise=False):
     is_file_exists(file_path)
     f = open(file_path, 'rU')
 
@@ -196,22 +206,37 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
             else:
                 break
     except UnicodeDecodeError:
-        raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The probability of the file at '{file_path}' to be a TAB-delimited file "
+                                   f"is zero (unless, of course the locale is not properly set for your shell).")
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
-        raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                               "Did you export this file on MAC using EXCEL? :(" % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"You (or some code on your behalf) asked anvi'o if the file at '{file_path}' "
+                                   f"was a TAB-delimited file. Anvi'o took the very first line in it that did not "
+                                   f"start with the character '#' (as in commented out lines), and found zero TAB "
+                                   f"in it. This is not how we make TAB-delimited files :(")
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
     if len(num_fields_set) != 1:
-        raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("Not all lines in the file '%s' have equal number of fields..." % file_path)
 
     if expected_number_of_fields:
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
-            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
-                                   "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
+            if dont_raise:
+                return False
+            else:
+                raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
+                                       "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
     return True
@@ -363,8 +388,19 @@ def check_output_directory(output_directory, ok_if_exists=False):
     output_directory = os.path.abspath(output_directory)
 
     if os.path.exists(output_directory) and not ok_if_exists:
-        raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
-                               f"overwriting stuff (except when it does (typical anvi'o))).")
+        if anvio.FORCE_OVERWRITE:
+            try:
+                shutil.rmtree(output_directory)
+            except Exception as e:
+                raise FilesNPathsError(f"As per your instructions, anvi'o was trying to delete the directory at '{output_directory}', "
+                                       f"yet it failed (typical anvi'o?). Here is the error message from another programmer in "
+                                       f"the matrix: {e}.")
+        else:
+            raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
+                                   f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
+                                   f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
+                                   f"first remove the existing output directory (a flag that deserves extreme caution "
+                                   f"for obvious reasons).")
 
     return output_directory
 
@@ -493,7 +529,7 @@ class AppendableFile:
         if self.append_type and (not isinstance(data, self.append_type)):
             raise FilesNPathsError(f"A programmer promised to send data of type '{self.append_type}' to {self.path} for "
                                    f"appending, but instead sent data of type '{type(data)}'. Since the data type for this "
-                                   "file was explicitly declared and the actual data does not match this type, Anvi'o will "
+                                   "file was explicitly declared and the actual data does not match this type, anvi'o will "
                                    "put a stop to this whole operation.")
 
         if isinstance(data, dict):
@@ -501,6 +537,7 @@ class AppendableFile:
             self.key_header = kwargs['key_header'] if 'key_header' in kwargs else None
             self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
             self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
+            self.do_not_write_key_column = kwargs['do_not_write_key_column'] if 'do_not_write_key_column' in kwargs else False
 
             self.append_dict_to_file(data, self.file_handle)
         elif isinstance(data, str):
@@ -526,13 +563,13 @@ class AppendableFile:
             Pointer to the file, opened in append mode. The calling function should take care of the
             open() and pass the handle here
         """
-
+        
         import anvio.utils as utils
         if is_file_empty(self.path):
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
                                                     key_header=self.key_header, keys_order=self.keys_order, \
                                                     header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True)
+                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column)
         else:
             # if dictionary is empty, just return
             if not dict_to_append:

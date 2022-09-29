@@ -86,7 +86,7 @@ def main(args):
             if len(columns) != 1:
                 raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
 
-            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'rU').readlines()])
+            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file).readlines()])
             run.info('Mode', 'Reporting homogeneity for a list of gene clusters from an input file.')
     else:
         pan = dbops.PanSuperclass(args, r=terminal.Run(verbose=False))

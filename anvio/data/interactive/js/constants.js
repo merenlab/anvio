@@ -141,6 +141,13 @@ var named_functional_sources = {
                                 }),
     },
 
+    'KEGG_BRITE': {
+        'accession_decorator': (function (d) {
+                                    var maps = d.split(', ').map((function (m){return '<a href="https://www.genome.jp/brite/' + m +'" target=_"blank">' + m + '</a>';}));
+                                    return maps.join(', ');
+                                }),
+    },
+
     'GO_TERMS': {
         'annotation_decorator': (function (d) {
                                     var gos = d.split(', ').map((function (g){return '<a href="http://amigo.geneontology.org/amigo/term/' + g +'" target=_"blank">' + g + '</a>';}));

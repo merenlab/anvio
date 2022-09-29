@@ -57,7 +57,7 @@ def reformat_FASTA(args):
 
     if args.keep_ids:
         filesnpaths.is_file_exists(args.keep_ids)
-        keep_ids = set([l.split('\t')[0].strip() for l in open(args.keep_ids, 'rU').readlines()])
+        keep_ids = set([l.split('\t')[0].strip() for l in open(args.keep_ids, 'r').readlines()])
         run.info('Input IDs to consider', '%d found' % len(keep_ids))
     else:
         keep_ids = set([])
