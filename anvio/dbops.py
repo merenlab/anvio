@@ -5043,6 +5043,16 @@ def get_item_orders_from_db(anvio_db_path):
     if not anvio_db.meta['items_ordered']:
         return ([], {})
 
+    if not anvio_db.meta['available_item_orders']:
+        # this means the database thinks that the items are ordered, but in fact
+        # there are no item orders anwyhere to be found. this means that the
+        # clustering failed somehow, and we're dealing with a database that is not
+        # quite accurate. but since we can't fix the problem that led the database
+        # to find itself in this state, we can do the next best thing and avoid
+        # going any further and return an empty set as if items are NOT ordered
+        # (special thanks to Rose Kantor for helping us to diagnose this):
+        return ([], {})
+
     available_item_orders = sorted([s.strip() for s in anvio_db.meta['available_item_orders'].split(',')])
     item_orders_dict = anvio_db.db.get_table_as_dict(t.item_orders_table_name)
 
