@@ -402,13 +402,15 @@ class SingleGenomeCodonUsage(object):
         -------
         pandas.core.frame.DataFrame
             Frequency table of gene x codon or amino acid. If functions are not considered, then the
-            Index of the returned DataFrame contains gene caller IDs. If functions are considered,
-            then each row represents a gene/function pair, and the same gene frequencies can be
-            found in multiple rows with different function pairs; there are additional MultiIndex
-            columns for source, accession, and name of function. If frequencies are summed or
-            averaged and functions are not considered, the returned single-row DataFrame has an
-            Index with one entry, 'all'. If frequencies are summed or averaged and functions are
-            considered, the returned DataFrame has a row for each function annotation source.
+            Index of the returned DataFrame contains gene caller IDs. If functions are considered
+            and `return_functions` is False, then each row represents a gene/function pair, and the
+            same gene frequencies can be found in multiple rows with different function pairs; there
+            are additional MultiIndex columns for source, accession, and name of function. If
+            functions are considered and `return_functions` is True, then each row represents a
+            function rather than gene/function pair. If frequencies are summed or averaged and
+            functions are not considered, the returned single-row DataFrame has an Index with one
+            entry, 'all'. If frequencies are summed or averaged and functions are considered, the
+            returned DataFrame has a row for each function annotation source.
 
         Examples
         --------
@@ -2266,8 +2268,26 @@ class MultiGenomeCodonUsage(object):
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions
         in one or more genomes.
 
+        Parameters
+        ==========
         See the `SingleGenomeCodonUsage.get_frequencies` docstring for descriptions of each
         parameter.
+
+        Returns
+        =======
+        pandas.core.frame.DataFrame
+            Frequency table of gene x codon or amino acid. The first column of the MultiIndex of the
+            returned DataFrame is the genome name, with blocks of results for each genome being in
+            the input order of internal then external genomes. If functions are not considered, then
+            the other column of the MultiIndex contains gene caller IDs. If functions are considered
+            and `return_functions` is False, then each row represents a gene/function pair, and the
+            same gene frequencies can be found in multiple rows with different function pairs; there
+            are additional MultiIndex columns for source, accession, and name of function. If
+            functions are considered and `return_functions` is True, then each row represents a
+            function rather than gene/function pair. If frequencies are summed or averaged and
+            functions are not considered, the returned single-row DataFrame has an Index with one
+            entry, 'all'. If frequencies are summed or averaged and functions are considered, the
+            returned DataFrame has a row for each function annotation source.
         """
         kwargs = {}
         arg_info = inspect.getargvalues(inspect.currentframe())
