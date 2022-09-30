@@ -1381,9 +1381,9 @@ class Affinitizer:
         if self.min_isoacceptors is None:
             self.min_isoacceptors = self.default_min_isoacceptors
         self.exclude_anticodons = A('exclude_anticodons')
-        self.decoding_weights = A('decoding_weights')
-        if self.decoding_weights is None:
-            self.decoding_weights = self.default_decoding_weights
+        self.decoding_weights_df = A('decoding_weights')
+        if self.decoding_weights_df is None:
+            self.decoding_weights_df = self.default_decoding_weights_df
 
         self.min_analyzed_codons = A('min_analyzed_codons')
         if self.min_analyzed_codons is None:
