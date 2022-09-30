@@ -1496,6 +1496,41 @@ class Affinitizer:
             if function_source not in self.function_sources:
                 self.function_sources.append(function_source)
 
+        # Find which codons are decoded by which anticodons. A decoding efficiency of 1 in
+        # `decoding_weights_df` means that the anticodon does not decode the codon. The following
+        # dictionary maps each anticodon to a list of decoded codons. Note that anticodons for tRNAs
+        # that do not exist are included in the dictionary, such as TTA decoding TAA (STP): only
+        # entries with observed tRNAs in the tRNA-seq data and corresponding codons in genes
+        # contribute to the result.
+        self.nucleotide_decoding_dict = {}
+        for anticodon in constants.anticodon_to_AA:
+            anticodon_wobble_nucleotide = anticodon[0]
+            # Two anticodon wobble modifications are treated separately, as in tAI: ANN -> INN and
+            # CAT -> LAT. These have separate entries in `decoding_weights_df`.
+            derived_anticodons = [anticodon]
+            if anticodon_wobble_nucleotide == 'A':
+                derived_anticodons.append('I' + anticodon[1: ])
+            elif anticodon == 'CAT':
+                derived_anticodons.append('LAT')
+
+            for derived_anticodon in derived_anticodons:
+                derived_anticodon_wobble_nucleotide = derived_anticodon[0]
+                decoding_weights_series = self.decoding_weights_df.loc[
+                    derived_anticodon_wobble_nucleotide]
+                decoded_codons = []
+                for codon in constants.codons:
+                    codon_RC = constants.codon_to_codon_RC[codon]
+                    if anticodon[1: ] != codon_RC[1: ]:
+                        # The anticodon must form Watson-Crick base pairs with the codon at the
+                        # non-wobble positions.
+                        continue
+
+                    codon_wobble_nucleotide = codon[2]
+                    decoding_weight = decoding_weights_series.loc[codon_wobble_nucleotide]
+                    if decoding_weight < 1:
+                        decoded_codons.append(codon)
+                self.nucleotide_decoding_dict[derived_anticodon] = decoded_codons
+
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
