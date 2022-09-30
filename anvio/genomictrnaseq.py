@@ -1368,8 +1368,6 @@ class Affinitizer:
         if self.gene_affinity is None:
             self.gene_affinity = False
         self.gene_caller_ids = A('gene_caller_ids')
-        if self.gene_caller_ids is None:
-            self.gene_caller_ids = []
         if self.function_sources is None:
             if self.gene_affinity or self.function_accessions_dict or self.function_names_dict:
                 self.function_sources = []
