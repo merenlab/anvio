@@ -13,6 +13,7 @@ from functools import partial
 from collections import Counter
 
 import anvio
+from anvio import filesnpaths
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -2356,6 +2357,7 @@ def get_custom_encodings(encodings_txt):
     if not encodings_txt:
         return codon_amino_acid_dict
 
+    filesnpaths.is_file_tab_delimited(encodings_txt)
     encodings_df = pd.read_csv(encodings_txt, sep='\t', header=None)
     codon_amino_acid_dict.update(dict(zip(encodings_df.iloc[:, 0], encodings_df.iloc[:, 1])))
 
