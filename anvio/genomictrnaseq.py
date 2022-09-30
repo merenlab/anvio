@@ -1348,7 +1348,7 @@ class Affinitizer:
         self.min_coverage_ratio = A('min_coverage_ratio')
 
         self.function_sources = A('function_sources')
-        self.function_accessions_dict = A('function_accessions')
+        self.function_accessions = A('function_accessions')
         if self.function_accessions is None:
             self.function_accessions = []
         self.function_accessions_dict = A('function_accessions_dict')
