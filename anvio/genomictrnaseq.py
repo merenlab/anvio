@@ -1768,6 +1768,17 @@ class Affinitizer:
                 "calculated must be a positive integer, not the provided `min_isoacceptors` of "
                 f"{self.min_isoacceptors}.")
 
+        if self.function_min_total_codons and self.gene_affinity:
+            raise ConfigError(
+                "`function_min_total_codons` cannot be provided in conjunction with "
+                "`gene_affinity`. Filtering functions by codon count does not affect the selection "
+                "of genes for gene affinity calculations.")
+        if self.gene_min_total_codons and not self.gene_affinity:
+            raise ConfigError(
+                "`gene_min_total_codons` cannot be provided without `gene_affinity`. Genes cannot "
+                "be filtered by codon count prior to calculation of functional affinity in this "
+                "implementation.")
+
         unrecognized_anticodons = set(self.exclude_anticodons).difference(
             constants.anticodon_to_AA)
         if unrecognized_anticodons:
