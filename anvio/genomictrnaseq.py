@@ -284,7 +284,7 @@ class Integrator(object):
     blast_search_output_cols = [
         'qseqid', 'sseqid', 'mismatch', 'qstart', 'qlen', 'sstart', 'send', 'slen', 'bitscore']
 
-    def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
+    def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -321,6 +321,7 @@ class Integrator(object):
         self.trna_genes_fasta_path = os.path.join(self.blast_dir, 'trna_genes.fa')
 
         self.run = r
+        self.run_quiet = rq
         self.progress = p
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
@@ -343,7 +344,7 @@ class Integrator(object):
             genome_info['bin_id'] = self.bin_id
 
         if self.internal_genomes_path or self.external_genomes_path:
-            descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
+            descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
             descriptions.load_genomes_descriptions(init=False)
 
             for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
@@ -1324,7 +1325,7 @@ class Affinitizer:
         'L': {'A': 0.89}
     }
 
-    def __init__(self, args={}, p=progress, r=run, do_sanity_check=True):
+    def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -1401,8 +1402,9 @@ class Affinitizer:
         if self.rarefaction_limit is None:
             self.rarefaction_limit = 0
 
-        self.progress = p
         self.run = r
+        self.run_quiet = rq
+        self.progress = p
 
         self.trnaseq_contigs_db_info = DBInfo(self.trnaseq_contigs_db_path, expecting='contigs')
 
@@ -1424,7 +1426,7 @@ class Affinitizer:
             genome_info['bin_id'] = self.bin_id
 
         if self.internal_genomes_path or self.external_genomes_path:
-            descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
+            descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
             descriptions.load_genomes_descriptions(init=False)
 
             for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
