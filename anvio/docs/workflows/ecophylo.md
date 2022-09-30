@@ -13,7 +13,8 @@ The ecophylo workflow requires the following files:
 - %(workflow-config)s: This allows you to customize the workflow step by step. Here is how you can generate the default version:
 
 {{ codestart }}
-anvi-run-workflow -w ecophylo --get-default-config config.json
+anvi-run-workflow -w ecophylo \
+                  --get-default-config config.json
 {{ codestop }}
 
 {:.notice}
