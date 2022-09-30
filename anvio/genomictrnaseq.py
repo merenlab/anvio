@@ -1316,14 +1316,15 @@ class Affinitizer:
     default_min_isoacceptors = 4
     # Default decoding weights are from Table 2 of dos Reis, Savva, and Wernisch (2004), used in
     # their tRNA Adaptation Index (tAI) metric: https://doi.org/10.1093/nar/gkh834
-    default_decoding_weights = {
-        'A': {'T': 0},
-        'C': {'G': 0},
-        'G': {'T': 0.41, 'C': 0},
-        'T': {'G': 0.68, 'A': 0},
-        'I': {'T': 0, 'C': 0.28, 'A': 0.9999},
-        'L': {'A': 0.89}
-    }
+    default_decoding_weights_df = pd.DataFrame([
+        [1, 1, 1, 0],
+        [1, 1, 0, 1],
+        [1, 0, 1, 0.41],
+        [0, 1, 0.68, 1],
+        [0.9999, 0.28, 1, 0],
+        [0.89, 1, 1, 1]],
+        index=['A', 'C', 'G', 'T', 'I', 'L'],
+        columns=['A', 'C', 'G', 'T', 'I', 'L'])
 
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
