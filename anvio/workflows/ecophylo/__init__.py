@@ -83,7 +83,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'cluster_submission_params', 'snakemake_additional_params', 'bowtie2_additional_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -255,12 +255,30 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not self.run_iqtree and not self.run_fasttree:
             raise ConfigError("Please choose either iqtree or fasttree in your config file to run your phylogenetic tree.")
 
-        # Decide to clusterize metagenomic workflow
+        # HPC submission of metagenomics workflow of EcoPhylo
         self.clusterize_metagenomics_workflow = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize'])
-        self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'cluster_submission_params'])
-        self.snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
+        self.clusterize_metagenomics_submission_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'clusterize_submission_params'])
+        self.metagenomics_workflow_HPC_string = self.get_param_value_from_config(['run_metagenomics_workflow', 'HPC_string'])
+        self.metagenomics_workflow_snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
 
         self.bowtie2_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow','bowtie2_additional_params'])
+
+        metagenomics_workflow_snakemake_additional_params_list = self.metagenomics_workflow_snakemake_additional_params.split(' ')
+
+        if self.clusterize_metagenomics_workflow:
+            if not self.metagenomics_workflow_snakemake_additional_params:
+                raise ConfigError("If you are going to use Evan's 'clusterize' (https://github.com/ekiefl/clusterize) with  "
+                                  "the metagenomics workflow aspect of EcoPhylo you must provide the '--jobs' in snakemake_additional_params "
+                                  "so Snakemake knows how many jobs to run at the same time on the HPC.")
+
+            jobs_param = any("--jobs" in param for param in metagenomics_workflow_snakemake_additional_params_list)
+            if jobs_param == False:
+                raise ConfigError("The EcoPhylo workflow did not detect the parameter '--jobs' in `snakemake_additional_params`. "
+                                  "Please include '--jobs'. You can read about it with snakemake -h")
+            
+            if self.metagenomics_workflow_HPC_string:
+                raise ConfigError("You can't clusterize and provide an HPC_string for the metagenomics workflow at the same time. "
+                                  "Please choose one or the other. ")
 
         # Pick clustering method
         self.cluster_representative_method = self.get_param_value_from_config(['cluster_representative_method', 'method'])
@@ -338,6 +356,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 target_files.append(target_file)
 
                 target_file = os.path.join(self.dirs_dict['RIBOSOMAL_PROTEIN_MSA_STATS'], f"{hmm}", f"{hmm}_stats.tsv")
+                target_files.append(target_file)
+
+                target_file = os.path.join(self.dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", f"{hmm}_summarize.done")
                 target_files.append(target_file)
         
         return target_files
