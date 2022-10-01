@@ -1419,8 +1419,11 @@ class Affinitizer:
             if self.genomic_profile_db_path:
                 genome_info['profile_db_info'] = DBInfo(
                     self.genomic_profile_db_path, expecting='profile')
+                genome_info['profile_db_sample_id'] = genome_info[
+                    'profile_db_info'].get_self_table()['sample_id']
             else:
                 genome_info['profile_db_info'] = None
+                genome_info['profile_db_sample_id'] = None
             genome_info['collection_name'] = self.collection_name
             genome_info['bin_id'] = self.bin_id
 
@@ -1435,8 +1438,11 @@ class Affinitizer:
                 if genome_dict['profile_db_path']:
                     genome_info['profile_db_info'] = DBInfo(
                         genome_dict['profile_db_path'], expecting='profile')
+                    genome_info['profile_db_sample_id'] = genome_info[
+                        'profile_db_info'].get_self_table()['sample_id']
                 else:
                     genome_info['profile_db_info'] = None
+                    genome_info['profile_db_sample_id'] = None
                 genome_info['collection_name'] = genome_dict['collection_id']
                 genome_info['bin_id'] = genome_dict['bin_id']
 
@@ -1445,6 +1451,7 @@ class Affinitizer:
                 genome_info['contigs_db_info'] = DBInfo(
                     genome_dict['contigs_db_path'], expecting='contigs')
                 genome_info['profile_db_info'] = None
+                genome_info['profile_db_sample_id'] = None
                 genome_info['collection_name'] = None
                 genome_info['bin_id'] = None
 
@@ -1643,7 +1650,7 @@ class Affinitizer:
         unlinked_nonbin_info_dict = {}
         for genome_name, genome_info in self.genome_info_dict.values():
             contigs_db_hash = genome_info['contigs_db_info'].hash
-            profile_db_sample_id = genome_info['profile_db_info'].get_self_table().sample_id
+            profile_db_sample_id = genome_info['profile_db_sample_id']
             collection_name = genome_info['collection_name']
             bin_id = genome_info['bin_id']
             if bin_id:
