@@ -45,6 +45,12 @@ def main(args):
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
 
     affinitizer = genomictrnaseq.Affinitizer(args)
+    result = affinitizer.go()
+
+    if result is None:
+        run.info_single(
+            "Affinity could not be calculated, as none of the tRNA-seq seeds passed the filters.",
+            cut_after=0)
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
