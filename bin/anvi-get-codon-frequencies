@@ -178,6 +178,7 @@ def parse_select_functions_table(args, from_function_sources):
     if not args.select_functions_txt:
         return from_function_sources
 
+    filesnpaths.is_file_tab_delimited(args.select_functions_txt)
     select_functions_df = pd.read_csv(
         args.select_functions_txt, sep='\t', header=None, names=['source', 'accession', 'name'])
     select_functions_df = select_functions_df.fillna('')
