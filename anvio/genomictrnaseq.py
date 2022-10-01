@@ -1427,11 +1427,15 @@ class Affinitizer:
             genome_info['collection_name'] = self.collection_name
             genome_info['bin_id'] = self.bin_id
 
+        nonunique_genome_names = []
         if self.internal_genomes_path or self.external_genomes_path:
             descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
             descriptions.load_genomes_descriptions(init=False)
 
             for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+                if genome_name in self.genome_info_dict:
+                    nonunique_genome_names.append(genome_name)
+
                 self.genome_info_dict[genome_name] = genome_info = {}
                 genome_info['contigs_db_info'] = DBInfo(
                     genome_dict['contigs_db_path'], expecting='contigs')
@@ -1447,6 +1451,9 @@ class Affinitizer:
                 genome_info['bin_id'] = genome_dict['bin_id']
 
             for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+                if genome_name in self.genome_info_dict:
+                    nonunique_genome_names.append(genome_name)
+
                 self.genome_info_dict[genome_name] = genome_info = {}
                 genome_info['contigs_db_info'] = DBInfo(
                     genome_dict['contigs_db_path'], expecting='contigs')
@@ -1454,6 +1461,11 @@ class Affinitizer:
                 genome_info['profile_db_sample_id'] = None
                 genome_info['collection_name'] = None
                 genome_info['bin_id'] = None
+
+        if nonunique_genome_names:
+            raise ConfigError(
+                "Names must be unique to internal and external genomes, but the following were "
+                f"not: {', '.join(nonunique_genome_names)}")
 
         # Create a convenient dictionary to look up genome name from unique genome information.
         self.genome_name_dict = {}
