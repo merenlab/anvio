@@ -1837,79 +1837,120 @@ class Affinitizer:
     def load_isoacceptor_data(self):
         """Workhorse method to load and filter data, find properties of seeds, and ultimately group isoacceptors."""
 
+    def get_isoacceptors(self):
+        """
+        Get a table of per-genome isoacceptor non-reference/reference abundance ratios to use in
+        affinity calculations. Isoacceptors are groups of tRNA-seq seeds with the same anticodon
+        that are assigned to a genome.
+
+        Returns
+        -------
+        genome_isoacceptors_df : pandas.core.frame.DataFrame
+            Each row contains genome and isoacceptor information identifying non-reference/reference
+            abundance ratios.
+        """
         # Load data from the tRNA-seq contigs database.
-        with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
-            trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
-                'trna_gene_hits', columns_of_interest=['seed_contig_name', 'bin_name', 'decoded_amino_acid', 'anticodon', 'gene_sequence'])
-            # Drop duplicate rows (only preserve one row) representing hits between the same
-            # tRNA-seq seed and different tRNA genes with identical sequences.
-            trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
-            if self.genomic_collection_name == None:
-                trna_gene_hits_df['bin_name'] = ''
+        trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
 
-            self.run.info("tRNA-seq seeds linked to tRNA genes", len(trna_gene_hits_df))
+        trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
+            tables.trna_gene_hits_table_name,
+            columns_of_interest=['seed_gene_callers_id',
+                                 'seed_contig_name',
+                                 'gene_contigs_db_hash',
+                                 'profile_db_sample_id',
+                                 'collection_name',
+                                 'bin_id',
+                                 'decoded_amino_acid',
+                                 'anticodon'])
 
-            # Get the gene callers IDs of the tRNA-seq seeds.
-            seed_contig_names = ','.join(['"%s"' % seed_contig_name for seed_contig_name in trna_gene_hits_df['seed_contig_name'].unique()])
-            contigs_where_clause = f'''contig IN ({seed_contig_names})'''
-            seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
-                'genes_in_contigs', columns_of_interest=['gene_callers_id', 'contig'], where_clause=contigs_where_clause)
-            seed_id_df = seed_id_df.rename({'contig': 'seed_contig_name', 'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
-            trna_gene_hits_df = trna_gene_hits_df.merge(seed_id_df, on='seed_contig_name')
+        # Dereplicate duplicate rows representing hits between the same tRNA-seq seed and
+        # different tRNA genes with identical sequences. (These rows would be distinguished by
+        # the column `gene_gene_callers_id` if that were loaded.)
+        trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
 
-            # Find wobble position 34 in the tRNA-seq seed sequences.
-            seed_gene_callers_ids = ','.join(['"%s"' % gene_callers_id for gene_callers_id in trna_gene_hits_df['seed_gene_callers_id'].unique()])
-            ids_where_clause = f'''gene_callers_id IN ({seed_gene_callers_ids})'''
-            wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
-                'trna_feature', columns_of_interest=['gene_callers_id', 'anticodon_loop_start'], where_clause=ids_where_clause)
-            wobble_position_df = wobble_position_df.rename({'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
-            wobble_position_df['anticodon_start'] = wobble_position_df['anticodon_loop_start'] + 2
-            wobble_position_df = wobble_position_df.drop('anticodon_loop_start', axis=1)
-            trna_gene_hits_df = trna_gene_hits_df.merge(wobble_position_df, on='seed_gene_callers_id')
+        for column_name in ('profile_db_sample_id', 'collection_name', 'bin_id'):
+            trna_gene_hits_df[column_name] = trna_gene_hits_df[column_name].fillna('')
 
-            # Get the tRNA-seq seed consensus sequence strings.
-            seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe('contig_sequences', where_clause=contigs_where_clause)
-            seed_consensus_sequence_df = seed_consensus_sequence_df.rename({'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
-            trna_gene_hits_df = trna_gene_hits_df.merge(seed_consensus_sequence_df, on='seed_contig_name')
+        if self.seed_assignment == 'unambiguous_db':
+            # Disregard seeds with ambiguous matches in the database, not just seeds with
+            # ambiguous matches among the possible subset of genomes input to this program.
+            trna_gene_hits_df = trna_gene_hits_df.groupby('seed_gene_callers_id').filter(
+                lambda seed_df: len(seed_df) == 1)
 
-            # Find the nucleotides read at wobble position 34 in the tRNA-seq seeds.
-            anticodon_wobble_nucleotides = []
-            for anticodon_start, seed_consensus_sequence in zip(trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['seed_sequence']):
-                anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
-            trna_gene_hits_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
+        if self.seed_assignment == 'ambiguous_choose':
+            # The identities of the ambiguous seeds are needed later when choosing genomes.
+            ambiguous_seed_gene_callers_ids = trna_gene_hits_df.groupby(
+                'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) > 1)[
+                    'seed_gene_callers_id'].unique()
 
-            trna_gene_hits_df = trna_gene_hits_df.drop(['seed_gene_callers_id', 'anticodon_start', 'seed_sequence'], axis=1)
+        # Select seeds matching input genomes.
+        select_genome_ids = []
+        for genome_info in self.genome_info_dict.values():
+            contigs_db_hash = genome_info['contigs_db_info'].hash
+            if genome_info['profile_db_info'] is None:
+                profile_db_sample_id = ''
+            else:
+                profile_db_sample_id = genome_info['profile_db_sample_id']
+            if genome_info['collection_name'] is None:
+                collection_name = ''
+            else:
+                collection_name = genome_info['collection_name']
+            if genome_info['bin_id'] is None:
+                bin_id = ''
+            else:
+                bin_id = genome_info['bin_id']
+            select_genome_ids.append(
+                (contigs_db_hash, profile_db_sample_id, collection_name, bin_id))
+        trna_gene_hits_df = trna_gene_hits_df.set_index(
+            ['gene_contigs_db_hash', 'profile_db_sample_id', 'collection_name', 'bin_id'])
+        trna_gene_hits_df = trna_gene_hits_df.loc[select_genome_ids]
+        trna_gene_hits_df = trna_gene_hits_df.reset_index()
 
-        # Load data from the seeds specific coverage table.
-        coverage_df = pd.read_csv(self.seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2],
-                                  usecols=['contig_name', 'sample_name', 'relative_discriminator_coverage', 'discriminator_1'])
-        coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
-        # Select data for the samples of interest.
-        coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
-        # Select data for the tRNA-seq seeds linked to tRNA genes.
-        coverage_df = coverage_df[coverage_df['seed_contig_name'].isin(trna_gene_hits_df['seed_contig_name'].unique())]
-        coverage_df = coverage_df[coverage_df['discriminator_1'] >= self.min_coverage]
-        coverage_df = coverage_df.drop('discriminator_1', axis=1)
+        if self.seed_assignment == 'unambiguous_genome':
+            # Disregard seeds with ambiguous matches among genomes input to this program.
+            trna_gene_hits_df = trna_gene_hits_df.groupby('seed_gene_callers_id').filter(
+                lambda seed_df: len(seed_df) == 1)
 
-        # Ignore tRNA-seq seeds that do not have coverage in the reference sample.
-        coverage_df = coverage_df.groupby('seed_contig_name').filter(
-            lambda seed_coverage_df: self.reference_sample_name in seed_coverage_df['sample_name'].values)
+        ##################################################
+        # Find the nucleotide at anticodon wobble position 34 in each seed consensus sequence.
+        seed_ids_string = ','.join(['"%s"' % gene_callers_id for gene_callers_id in
+                                    trna_gene_hits_df['seed_gene_callers_id'].unique()])
+        ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
+        wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
+            'trna_feature',
+            columns_of_interest=['gene_callers_id', 'anticodon_loop_start'],
+            where_clause=ids_where_clause)
+        wobble_position_df = wobble_position_df.rename(
+            {'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
+        wobble_position_df['anticodon_start'] = wobble_position_df['anticodon_loop_start'] + 2
+        wobble_position_df = wobble_position_df.drop('anticodon_loop_start', axis=1)
+        trna_gene_hits_df = trna_gene_hits_df.merge(
+            wobble_position_df, on='seed_gene_callers_id')
 
-        self.run.info("Filtered seeds detected in reference sample", len(coverage_df['seed_contig_name'].unique()))
+        seed_contig_names_string = ','.join(['"%s"' % seed_contig_name for seed_contig_name in
+                                                trna_gene_hits_df['seed_contig_name'].unique()])
+        contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
+        seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
+            'contig_sequences', where_clause=contigs_where_clause)
+        seed_consensus_sequence_df = seed_consensus_sequence_df.rename(
+            {'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
+        trna_gene_hits_df = trna_gene_hits_df.merge(
+            seed_consensus_sequence_df, on='seed_contig_name')
 
-        # Ignore seeds that are in only one sample.
-        coverage_df = coverage_df.groupby('seed_contig_name').filter(lambda seed_coverage_df: len(seed_coverage_df) > 1)
+        anticodon_wobble_nucleotides = []
+        for anticodon_start, seed_consensus_sequence in zip(
+            trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['seed_sequence']):
+            anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
+        trna_gene_hits_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
 
-        self.run.info("Filtered seeds detected in >1 sample", len(coverage_df['seed_contig_name'].unique()))
-
-        if len(coverage_df) == 0:
-            self.info.warning(f"No seeds remain after applying the seed detection coverage threshold of {self.min_coverage}. "
-                              "This threshold must be met in both the reference sample and another sample.")
+        trna_gene_hits_df = trna_gene_hits_df.drop(['anticodon_start', 'seed_sequence'], axis=1)
 
         # Evaluate the anticodon wobble nucleotide in the seed.
         effective_wobble_nucleotides = []
         for decoded_aa_type, anticodon, seed_wobble_nucleotide in zip(
-            trna_gene_hits_df['decoded_amino_acid'], trna_gene_hits_df['anticodon'], trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
+            trna_gene_hits_df['decoded_amino_acid'],
+            trna_gene_hits_df['anticodon'],
+            trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
             if decoded_aa_type == 'Ile2':
                 # tRNA-Ile2 has a wobble nucleotide of lysidine in bacteria or agmatidine in
                 # archaea, which are given the same decoding weight.
@@ -1928,20 +1969,288 @@ class Affinitizer:
             effective_wobble_nucleotides.append(anticodon[0])
 
         trna_gene_hits_df['effective_wobble_nucleotide'] = effective_wobble_nucleotides
-        trna_gene_hits_df = trna_gene_hits_df.drop(['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
+        trna_gene_hits_df = trna_gene_hits_df.drop(
+            ['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
+        ##################################################
 
-        # Drop duplicate rows (preserve a single row) representing hits between the same tRNA-seq
-        # seed and tRNA genes with different sequences. This should only occur if the seed is a
-        # partial read of the tRNA, and the genes differ beyond the 5' end of the seed. However,
-        # confirm that the hits yielded the same anticodon wobble nucleotide, just in case I'm
-        # missing something.
+        # No more data is loaded from the tRNA-seq contigs database.
+        trnaseq_contigs_db.disconnect()
+
+        # Dereplicate duplicate rows representing hits between the same seed and genes with
+        # different sequences. This should only occur if the seed is a partial read of the tRNA, and
+        # the genes differ beyond the 5' end of the seed. However, confirm that the hits yielded the
+        # same anticodon wobble nucleotide, in case I'm missing something.
         trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
-        if trna_gene_hits_df.groupby('seed_contig_name').ngroups != trna_gene_hits_df.groupby(
-            ['seed_contig_name', 'effective_wobble_nucleotide']).ngroups:
-            confusing_df = trna_gene_hits_df.groupby('seed_contig_name').filter(lambda seed_df: len(seed_df) > 1)
-            raise ConfigError("A strange circumstance has occurred where a tRNA-seq seed linked to tRNA genes "
-                              "with different sequences was found to have different effective wobble nucleotides. "
-                              f"Here are the entries for the seeds in question:\n{confusing_df.to_string()}")
+        if trna_gene_hits_df.groupby('seed_gene_callers_id').ngroups != trna_gene_hits_df.groupby(
+            ['seed_gene_callers_id', 'effective_wobble_nucleotide']).ngroups:
+            confusing_df = trna_gene_hits_df.groupby('seed_gene_callers_id').filter(
+                lambda seed_df: len(seed_df) > 1)
+            print(confusing_df.to_string())
+            raise ConfigError(
+                "A strange circumstance has occurred where a tRNA-seq seed linked to tRNA genes "
+                "with different sequences was found to have different effective wobble "
+                "nucleotides. The tabular entries for the seeds in question were printed above "
+                "this error message.")
+
+        # Load seed specific coverages in each sample from the tabular file.
+        coverage_df = pd.read_csv(
+            self.seeds_specific_txt_path,
+            sep='\t',
+            header=0,
+            skiprows=[1, 2],
+            usecols=['gene_callers_id',
+                     'sample_name',
+                     'discriminator_1',
+                     'relative_discriminator_coverage'])
+        coverage_df = coverage_df.rename({'gene_callers_id': 'seed_gene_callers_id',
+                                          'sample_name': 'trnaseq_sample_name'}, axis=1)
+        # Select data for the samples of interest.
+        coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
+        # Select data for the seeds linked to tRNA genes.
+        coverage_df = coverage_df[coverage_df['seed_gene_callers_id'].isin(
+            trna_gene_hits_df['seed_gene_callers_id'].unique())]
+        # Add the tRNA-seq sample coverage data, multiplying the rows per seed by the number of
+        # samples in which the seed in measured.
+        trna_gene_hits_df = trna_gene_hits_df.merge(
+            coverage_df, how='inner', on='seed_gene_callers_id')
+
+        ##################################################
+        # At this point, `trna_gene_hits_df` only contains unambiguous seeds if `seed_assignment` is
+        # `unambiguous_genome` or `unambiguous_db`, and still contains ambiguous seeds if
+        # `ambiguous_all` or `ambiguous_choose`.
+        if self.seed_assignment == 'ambiguous_choose':
+            # Include ambiguous seeds if they can be assigned to a single genome due to the
+            # preponderance of unambiguous seed abundance in that genome compared to the other
+            # genomes in which the ambiguous seed is found.
+            unambiguous_hits_df = trna_gene_hits_df.groupby(
+                'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) == 1)
+            unambiguous_coverage_df = unambiguous_hits_df[
+                ['gene_contigs_db_hash',
+                 'profile_db_sample_id',
+                 'collection_name',
+                 'bin_id',
+                 'trnaseq_sample_name',
+                 'discriminator_1']].groupby(
+                    ['gene_contigs_db_hash',
+                     'profile_db_sample_id',
+                     'collection_name',
+                     'bin_id',
+                     'trnaseq_sample_name'], as_index=False).aggregate('sum')
+            # Store unambiguous coverages in a nested dictionary: tRNA-seq sample -> genome ->
+            # summed unambiguous coverage. Note that not every genome need be represented in every
+            # tRNA-seq sample.
+            unambiguous_coverage_dict = {}
+            for row in unambiguous_coverage_df.itertuples(index=False):
+                try:
+                    genome_coverage_dict = unambiguous_coverage_dict[row.trnaseq_sample_name]
+                except KeyError:
+                    unambiguous_coverage_dict[row.trnaseq_sample_name] = genome_coverage_dict = {}
+                genome_coverage_dict[
+                    (row.gene_contigs_db_hash,
+                     row.profile_db_sample_id,
+                     row.collection_name,
+                     row.bin_id)] = row.discriminator_1
+
+            def choose_genome(ambiguous_seed_df):
+                # First, for each genome/tRNA-seq sample in which the ambiguous seed is found
+                # ("select" genomes), retrieve the summed unambiguous coverage from
+                # `unambiguous_coverage_dict`. Note that the ambiguous seed may be found in genomes
+                # for which there is zero unambiguous coverage in the same samples with coverage of
+                # the ambiguous seed -- indeed, it is possible a genome to have zero unambiguous
+                # coverage in all samples.
+                select_unambiguous_coverage_dict = {}
+                for trnaseq_sample_name, sample_df in ambiguous_seed_df.groupby(
+                    'trnaseq_sample_name'):
+                    try:
+                        select_genome_coverage_dict = select_unambiguous_coverage_dict[
+                            trnaseq_sample_name]
+                    except KeyError:
+                        select_unambiguous_coverage_dict[trnaseq_sample_name] = \
+                            select_genome_coverage_dict = {}
+                    try:
+                        genome_coverage_dict = unambiguous_coverage_dict[trnaseq_sample_name]
+                    except:
+                        # No input genome whatsoever has coverage of unambiguous seeds in the
+                        # tRNA-seq sample -- the ambiguous seed has coverage in the sample and is
+                        # linked to genomes.
+                        continue
+                    for genome_id in sample_df.groupby(
+                        ['gene_contigs_db_hash',
+                         'profile_db_sample_id',
+                         'collection_name',
+                         'bin_id']).groups.keys():
+                        try:
+                            unambiguous_coverage = genome_coverage_dict[genome_id]
+                        except KeyError:
+                            # The genome does not have coverage of unambiguous seeds in the tRNA-seq
+                            # sample -- there is coverage of the ambiguous seed linked to the
+                            # genome.
+                            unambiguous_coverage = 0
+                        select_genome_coverage_dict[genome_id] = unambiguous_coverage
+                # Second, for each select tRNA-seq sample, find the genome with the highest
+                # unambiguous coverage. If this exceeds the second-highest unambiguous coverage
+                # by the threshold ratio for the same genome in every sample, then the genome is
+                # chosen as the source of the ambiguous seed.
+                samples_lacking_unambiguous_coverage = []
+                chosen_genome_id = ''
+                for trnaseq_sample_name, select_genome_coverage_dict in \
+                    select_unambiguous_coverage_dict.items():
+                    if len(select_genome_coverage_dict) == 0:
+                        samples_lacking_unambiguous_coverage.append(trnaseq_sample_name)
+                        continue
+                    select_genome_unambiguous_coverages = sorted(
+                        select_genome_coverage_dict.items(), key=lambda item: -item[1])
+                    first_unambiguous_coverage = select_genome_unambiguous_coverages[0][1]
+                    second_unambiguous_coverage = select_genome_unambiguous_coverages[0][2]
+                    if second_unambiguous_coverage == 0:
+                        sample_chosen_genome_id = select_genome_unambiguous_coverages[0][0]
+                    elif first_unambiguous_coverage / second_unambiguous_coverage >= \
+                        self.min_coverage_ratio:
+                        sample_chosen_genome_id = select_genome_unambiguous_coverages[0][0]
+                    else:
+                        # The threshold ratio is not met in the sample, so no genome can be chosen
+                        # for the ambiguous seed.
+                        sample_chosen_genome_id = None
+                    if sample_chosen_genome_id != chosen_genome_id:
+                        return ambiguous_seed_df[: 0]
+                    if not chosen_genome_id:
+                        chosen_genome_id = sample_chosen_genome_id
+                return ambiguous_seed_df.set_index(
+                    ['gene_contigs_db_hash',
+                     'profile_db_sample_id',
+                     'collection_name',
+                     'bin_id']).loc[chosen_genome_id].reset_index()
+
+            ambiguous_hits_df = trna_gene_hits_df[
+                trna_gene_hits_df['seed_gene_callers_id'].isin(ambiguous_seed_gene_callers_ids)]
+            # Retain entries for ambiguous seeds for which a genome could be chosen.
+            ambiguous_hits_df = ambiguous_hits_df.groupby('seed_gene_callers_id').filter(
+                choose_genome)
+            trna_gene_hits_df = pd.concat(
+                [unambiguous_hits_df, ambiguous_hits_df], ignore_index=True)
+        ##################################################
+
+        # Group seeds in each genome by isoacceptor. This involves summing isoacceptor seed
+        # coverages in each tRNA-seq sample.
+        trna_gene_hits_df = trna_gene_hits_df.set_index(
+            ['seed_gene_callers_id', 'seed_contig_name'])
+        isoacceptors_df = trna_gene_hits_df.groupby(
+            ['decoded_amino_acid',
+             'anticodon',
+             'trnaseq_sample_name',
+             'gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id'], as_index=False).aggregate('sum')
+
+        ##################################################
+        # Filter isoacceptors.
+
+        # Drop isoacceptors with zero coverage (absent) in the reference sample, preventing the
+        # isoacceptors from contributing to affinity.
+        isoacceptors_df = isoacceptors_df.groupby(
+            ['decoded_amino_acid',
+             'anticodon',
+             'gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id']).filter(
+                 lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
+                     'trnaseq_sample_name'])
+
+        # Drop isoacceptors that do not meet the minimum coverage threshold in the reference sample.
+        isoacceptors_df = isoacceptors_df.groupby(
+            ['decoded_amino_acid',
+             'anticodon',
+             'gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id']).filter(
+                 lambda genome_isoacceptor_df: genome_isoacceptor_df[
+                     genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
+                         'discriminator_1'] >= self.min_coverage)
+
+        # Drop isoacceptors that have coverage in only one sample, preventing the isoacceptors from
+        # contributing to affinity.
+        isoacceptors_df = isoacceptors_df.groupby(
+            ['decoded_amino_acid',
+             'anticodon',
+             'gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id']).filter(
+                 lambda genome_isoacceptor_df: genome_isoacceptor_df[
+                     'trnaseq_sample_name'].nunique() > 1)
+        ##################################################
+
+        # Drop genomes lacking a diversity of isoacceptors.
+        isoacceptors_df.groupby(
+            ['gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id']).filter(
+                 lambda genome_df: genome_df['anticodon'].nunique() > self.min_isoacceptors)
+
+        # Create a table of isoacceptor non-reference/reference abundance ratios.
+        genome_isoacceptor_rows = []
+        for genome_id, genome_df in isoacceptors_df.groupby(
+            ['gene_contigs_db_hash',
+             'profile_db_sample_id',
+             'collection_name',
+             'bin_id']):
+            reference_sample_df = genome_df[
+                genome_df['trnaseq_sample_name'] == self.reference_sample_name]
+            if len(reference_sample_df) == 0:
+                # The genome is not detected in the reference sample, precluding affinity
+                # calculations.
+                continue
+            reference_sample_df = reference_sample_df.set_index(
+                ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide'])
+
+            nonreference_samples_df = genome_df[
+                genome_df['trnaseq_sample_name'] != self.reference_sample_name]
+            if len(nonreference_samples_df) == 0:
+                # The genome is not detected in non-reference samples, precluding affinity
+                # calculations.
+                continue
+
+            for trnaseq_sample_name, nonreference_sample_df in nonreference_samples_df.groupby(
+                'trnaseq_sample_name'):
+                for row in nonreference_sample_df.itertuples(index=False):
+                    decoding_key = (
+                        row.decoded_amino_acid, row.anticodon, row.effective_wobble_nucleotide)
+
+                    try:
+                        reference_isoacceptor_series = reference_sample_df.loc[decoding_key]
+                    except KeyError:
+                        # The isoacceptor is not detected in the reference sample, so the
+                        # abundance ratio is infinite.
+                        genome_isoacceptor_rows.append(
+                            genome_id + decoding_key + (trnaseq_sample_name, np.nan))
+                        continue
+                    reference_abundance = reference_isoacceptor_series[
+                        'relative_discriminator_coverage']
+
+                    isoacceptor_abundance_ratio = \
+                        row.relative_discriminator_coverage / reference_abundance
+                    genome_isoacceptor_rows.append(
+                        genome_id +
+                        decoding_key +
+                        (trnaseq_sample_name, isoacceptor_abundance_ratio))
+        genome_isoacceptor_df = pd.DataFrame(
+            genome_isoacceptor_rows,
+            columns=['gene_contigs_db_hash',
+                     'profile_db_sample_id',
+                     'collection_name',
+                     'bin_id',
+                     'decoded_amino_acid',
+                     'anticodon',
+                     'effective_wobble_nucleotide',
+                     'nonreference_trnaseq_sample_name',
+                     'abundance_ratio'])
+
+        return genome_isoacceptor_df
+
 
         seeds_df = trna_gene_hits_df.merge(coverage_df, how='inner', on='seed_contig_name')
 
