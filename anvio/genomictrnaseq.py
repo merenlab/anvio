@@ -1883,9 +1883,11 @@ class Affinitizer:
                 'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) > 1)[
                     'seed_gene_callers_id'].unique()
 
-        # Select seeds matching input genomes.
+        # Select seeds matching input genomes. Replace the four columns needed to uniquely identify
+        # a genome with a single column of the unique genome name as given in the input.
         select_genome_ids = []
-        for genome_info in self.genome_info_dict.values():
+        genome_id_name_dict = {}
+        for genome_name, genome_info in self.genome_info_dict.items():
             contigs_db_hash = genome_info['contigs_db_info'].hash
             if genome_info['profile_db_info'] is None:
                 profile_db_sample_id = ''
@@ -1899,12 +1901,21 @@ class Affinitizer:
                 bin_id = ''
             else:
                 bin_id = genome_info['bin_id']
-            select_genome_ids.append(
-                (contigs_db_hash, profile_db_sample_id, collection_name, bin_id))
+            genome_id = (contigs_db_hash, profile_db_sample_id, collection_name, bin_id)
+            select_genome_ids.append(genome_id)
+            genome_id_name_dict[genome_id] = genome_name
         trna_gene_hits_df = trna_gene_hits_df.set_index(
             ['gene_contigs_db_hash', 'profile_db_sample_id', 'collection_name', 'bin_id'])
         trna_gene_hits_df = trna_gene_hits_df.loc[select_genome_ids]
         trna_gene_hits_df = trna_gene_hits_df.reset_index()
+        trna_gene_hits_df['genome_name'] = [
+            genome_id_name_dict[genome_id] for genome_id in zip(
+                trna_gene_hits_df['gene_contigs_db_hash'],
+                trna_gene_hits_df['profile_db_sample_id'],
+                trna_gene_hits_df['collection_name'],
+                trna_gene_hits_df['bin_id'])]
+        trna_gene_hits_df = trna_gene_hits_df.drop(
+            ['gene_contigs_db_hash', 'profile_db_sample_id', 'collection_name', 'bin_id'], axis=1)
 
         if self.seed_assignment == 'unambiguous_genome':
             # Disregard seeds with ambiguous matches among genomes input to this program.
@@ -2025,17 +2036,8 @@ class Affinitizer:
             unambiguous_hits_df = trna_gene_hits_df.groupby(
                 'seed_gene_callers_id').filter(lambda seed_df: len(seed_df) == 1)
             unambiguous_coverage_df = unambiguous_hits_df[
-                ['gene_contigs_db_hash',
-                 'profile_db_sample_id',
-                 'collection_name',
-                 'bin_id',
-                 'trnaseq_sample_name',
-                 'discriminator_1']].groupby(
-                    ['gene_contigs_db_hash',
-                     'profile_db_sample_id',
-                     'collection_name',
-                     'bin_id',
-                     'trnaseq_sample_name'], as_index=False).aggregate('sum')
+                ['genome_name', 'trnaseq_sample_name', 'discriminator_1']].groupby(
+                    ['genome_name', 'trnaseq_sample_name'], as_index=False).aggregate('sum')
             # Store unambiguous coverages in a nested dictionary: tRNA-seq sample -> genome ->
             # summed unambiguous coverage. Note that not every genome need be represented in every
             # tRNA-seq sample.
@@ -2045,11 +2047,7 @@ class Affinitizer:
                     genome_coverage_dict = unambiguous_coverage_dict[row.trnaseq_sample_name]
                 except KeyError:
                     unambiguous_coverage_dict[row.trnaseq_sample_name] = genome_coverage_dict = {}
-                genome_coverage_dict[
-                    (row.gene_contigs_db_hash,
-                     row.profile_db_sample_id,
-                     row.collection_name,
-                     row.bin_id)] = row.discriminator_1
+                genome_coverage_dict[genome_name] = row.discriminator_1
 
             def choose_genome(ambiguous_seed_df):
                 # First, for each genome/tRNA-seq sample in which the ambiguous seed is found
@@ -2074,11 +2072,7 @@ class Affinitizer:
                         # tRNA-seq sample -- the ambiguous seed has coverage in the sample and is
                         # linked to genomes.
                         continue
-                    for genome_id in sample_df.groupby(
-                        ['gene_contigs_db_hash',
-                         'profile_db_sample_id',
-                         'collection_name',
-                         'bin_id']).groups.keys():
+                    for genome_id in sample_df.groupby('genome_name').groups.keys():
                         try:
                             unambiguous_coverage = genome_coverage_dict[genome_id]
                         except KeyError:
@@ -2115,11 +2109,8 @@ class Affinitizer:
                         return ambiguous_seed_df[: 0]
                     if not chosen_genome_id:
                         chosen_genome_id = sample_chosen_genome_id
-                return ambiguous_seed_df.set_index(
-                    ['gene_contigs_db_hash',
-                     'profile_db_sample_id',
-                     'collection_name',
-                     'bin_id']).loc[chosen_genome_id].reset_index()
+                return ambiguous_seed_df.set_index('genome_name').loc[
+                    chosen_genome_id].reset_index()
 
             ambiguous_hits_df = trna_gene_hits_df[
                 trna_gene_hits_df['seed_gene_callers_id'].isin(ambiguous_seed_gene_callers_ids)]
@@ -2135,13 +2126,8 @@ class Affinitizer:
         trna_gene_hits_df = trna_gene_hits_df.set_index(
             ['seed_gene_callers_id', 'seed_contig_name'])
         isoacceptors_df = trna_gene_hits_df.groupby(
-            ['decoded_amino_acid',
-             'anticodon',
-             'trnaseq_sample_name',
-             'gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id'], as_index=False).aggregate('sum')
+            ['decoded_amino_acid', 'anticodon', 'trnaseq_sample_name', 'genome_name'],
+            as_index=False).aggregate('sum')
 
         ##################################################
         # Filter isoacceptors.
@@ -2149,23 +2135,13 @@ class Affinitizer:
         # Drop isoacceptors with zero coverage (absent) in the reference sample, preventing the
         # isoacceptors from contributing to affinity.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid',
-             'anticodon',
-             'gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id']).filter(
+            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
                  lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
                      'trnaseq_sample_name'])
 
         # Drop isoacceptors that do not meet the minimum coverage threshold in the reference sample.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid',
-             'anticodon',
-             'gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id']).filter(
+            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
                  lambda genome_isoacceptor_df: genome_isoacceptor_df[
                      genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
                          'discriminator_1'] >= self.min_coverage)
@@ -2173,31 +2149,18 @@ class Affinitizer:
         # Drop isoacceptors that have coverage in only one sample, preventing the isoacceptors from
         # contributing to affinity.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid',
-             'anticodon',
-             'gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id']).filter(
+            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
                  lambda genome_isoacceptor_df: genome_isoacceptor_df[
                      'trnaseq_sample_name'].nunique() > 1)
         ##################################################
 
         # Drop genomes lacking a diversity of isoacceptors.
-        isoacceptors_df.groupby(
-            ['gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id']).filter(
-                 lambda genome_df: genome_df['anticodon'].nunique() > self.min_isoacceptors)
+        isoacceptors_df.groupby('genome_name').filter(
+            lambda genome_df: genome_df['anticodon'].nunique() > self.min_isoacceptors)
 
         # Create a table of isoacceptor non-reference/reference abundance ratios.
         genome_isoacceptor_rows = []
-        for genome_id, genome_df in isoacceptors_df.groupby(
-            ['gene_contigs_db_hash',
-             'profile_db_sample_id',
-             'collection_name',
-             'bin_id']):
+        for genome_id, genome_df in isoacceptors_df.groupby('genome_name'):
             reference_sample_df = genome_df[
                 genome_df['trnaseq_sample_name'] == self.reference_sample_name]
             if len(reference_sample_df) == 0:
@@ -2239,10 +2202,7 @@ class Affinitizer:
                         (trnaseq_sample_name, isoacceptor_abundance_ratio))
         genome_isoacceptor_df = pd.DataFrame(
             genome_isoacceptor_rows,
-            columns=['gene_contigs_db_hash',
-                     'profile_db_sample_id',
-                     'collection_name',
-                     'bin_id',
+            columns=['genome_name',
                      'decoded_amino_acid',
                      'anticodon',
                      'effective_wobble_nucleotide',
