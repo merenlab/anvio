@@ -48,6 +48,27 @@ ANVIO_WORKFLOWS = {
             "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
             "sunt in culpa qui officia deserunt mollit anim id est laborum")
     },
+    "ecophylo": {
+        "authors": ['mschecht'],
+        "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
+        "artifacts_produced": ['contigs-db', 'profile-db'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Read recruitment', ['Bowtie2']),
+            ('Cluster open reading frames', ['MMseqs2']),
+            ('Align protein sequences', ['muscle']),
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ('Calculate phylogenetic tree', ['FastTree']),
+            ('Search for homologous sequences', ['HMMER'])
+            ],
+        "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between individual genes and environments. "
+            "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
+            "to the phylogenetics of matching genes, and their distribution across environments.")
+    },
 }
 
 # the purpose of this variable is to have a list of third-party programs used from
@@ -63,7 +84,13 @@ THIRD_PARTY_PROGRAMS = {
     'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
     'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
     'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
-    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'}
+    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'},
+    'MMseqs2': {'link': 'https://github.com/soedinglab/MMseqs2'},
+    'muscle': {'link': 'http://www.drive5.com/muscle/'},
+    'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
+    'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
+    'HMMER': {'link': 'https://github.com/EddyRivasLab/hmmer'},
+    'trimal': {'link': 'https://github.com/inab/trimal'}
     }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
