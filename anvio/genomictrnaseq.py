@@ -2273,7 +2273,7 @@ class Affinitizer:
         trna_gene_hits_df = trna_gene_hits_df.set_index(
             ['seed_gene_callers_id', 'seed_contig_name'])
         isoacceptors_df = trna_gene_hits_df.groupby(
-            ['decoded_amino_acid', 'anticodon', 'trnaseq_sample_name', 'genome_name'],
+            ['genome_name', 'decoded_amino_acid', 'anticodon', 'trnaseq_sample_name'],
             as_index=False).aggregate('sum')
 
         ##################################################
