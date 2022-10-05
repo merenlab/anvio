@@ -1521,26 +1521,27 @@ class Affinitizer:
         if self.function_names:
             self.function_names_dict[self.function_sources[0]] = self.function_names
 
-        select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
-                                          names=['source', 'accession', 'name'])
-        select_functions_df = select_functions_df.fillna('')
-        for row in select_functions_df.itertuples():
-            if row.accession:
-                try:
-                    self.function_accessions_dict[row.source].append(row.accession)
-                except KeyError:
-                    self.function_accessions_dict[row.source] = [row.accession]
-            elif row.name:
-                try:
-                    self.function_names_dict[row.source].append(row.name)
-                except KeyError:
-                    self.function_names_dict[row.source] = [row.name]
-        for function_source in self.function_accessions_dict:
-            if function_source not in self.function_sources:
-                self.function_sources.append(function_source)
-        for function_source in self.function_names_dict:
-            if function_source not in self.function_sources:
-                self.function_sources.append(function_source)
+        if self.select_functions_txt:
+            select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
+                                              names=['source', 'accession', 'name'])
+            select_functions_df = select_functions_df.fillna('')
+            for row in select_functions_df.itertuples():
+                if row.accession:
+                    try:
+                        self.function_accessions_dict[row.source].append(row.accession)
+                    except KeyError:
+                        self.function_accessions_dict[row.source] = [row.accession]
+                elif row.name:
+                    try:
+                        self.function_names_dict[row.source].append(row.name)
+                    except KeyError:
+                        self.function_names_dict[row.source] = [row.name]
+            for function_source in self.function_accessions_dict:
+                if function_source not in self.function_sources:
+                    self.function_sources.append(function_source)
+            for function_source in self.function_names_dict:
+                if function_source not in self.function_sources:
+                    self.function_sources.append(function_source)
 
         self.function_blacklist_patterns = []
         if self.function_blacklist_txt:
