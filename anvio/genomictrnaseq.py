@@ -2327,7 +2327,7 @@ class Affinitizer:
         ##################################################
 
         # Create a table of isoacceptor non-reference/reference abundance ratios.
-        genome_isoacceptor_rows = []
+        isoacceptor_abund_ratios_rows = []
         for genome_id, genome_df in isoacceptors_df.groupby('genome_name'):
             reference_sample_df = genome_df[
                 genome_df['trnaseq_sample_name'] == self.reference_sample_name]
@@ -2356,7 +2356,7 @@ class Affinitizer:
                     except KeyError:
                         # The isoacceptor is not detected in the reference sample, so the
                         # abundance ratio is infinite.
-                        genome_isoacceptor_rows.append(
+                        isoacceptor_abund_ratios_rows.append(
                             genome_id + decoding_key + (trnaseq_sample_name, np.nan))
                         continue
                     reference_abundance = reference_isoacceptor_series[
@@ -2364,12 +2364,12 @@ class Affinitizer:
 
                     isoacceptor_abundance_ratio = \
                         row.relative_discriminator_coverage / reference_abundance
-                    genome_isoacceptor_rows.append(
+                    isoacceptor_abund_ratios_rows.append(
                         genome_id +
                         decoding_key +
                         (trnaseq_sample_name, isoacceptor_abundance_ratio))
-        genome_isoacceptor_df = pd.DataFrame(
-            genome_isoacceptor_rows,
+        isoacceptor_abund_ratios_df = pd.DataFrame(
+            isoacceptor_abund_ratios_rows,
             columns=['genome_name',
                      'decoded_amino_acid',
                      'anticodon',
@@ -2377,7 +2377,7 @@ class Affinitizer:
                      'nonreference_trnaseq_sample_name',
                      'abundance_ratio'])
 
-        return genome_isoacceptor_df
+        return isoacceptor_abund_ratios_df
 
 
         seeds_df = trna_gene_hits_df.merge(coverage_df, how='inner', on='seed_contig_name')
