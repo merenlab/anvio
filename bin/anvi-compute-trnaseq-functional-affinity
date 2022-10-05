@@ -52,32 +52,6 @@ def main(args):
     result = affinitizer.go()
 
 
-def sanity_check(args):
-    if args.trnaseq_contigs_db is None:
-        raise ConfigError("`--trnaseq-contigs-db` is a required argument for computation of "
-                          "affinities.")
-    if args.reference_sample is None:
-        raise ConfigError("`--reference-sample` is a required argument of computation of "
-                          "affinities.")
-
-    # Do basic checks of the combinations of genomic input arguments.
-    if args.contigs_db and (args.internal_genomes or args.external_genomes):
-        raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
-                          "`--external-genomes`.")
-
-    if (args.profile_db is not None) or (args.collection_name is not None):
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) < 3):
-            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
-                              "and `--collection-name`.")
-
-    if args.bin_id is not None:
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) + (args.bin_id is not None) < 4):
-            raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
-                              "`--collection-name`.")
-
-
 def print_sample_names(seeds_specific_txt):
     sample_names = genomictrnaseq.Affinitizer.list_sample_names(seeds_specific_txt)
     if not sample_names:
@@ -110,6 +84,32 @@ def store_annotation_blacklist(output_path, blacklist_name):
         for blacklist_pattern in genomictrnaseq.Affinitizer.builtin_function_blacklists[
             blacklist_name]:
             output_file.write(f"{blacklist_pattern}\n")
+
+
+def sanity_check(args):
+    if args.trnaseq_contigs_db is None:
+        raise ConfigError("`--trnaseq-contigs-db` is a required argument for computation of "
+                          "affinities.")
+    if args.reference_sample is None:
+        raise ConfigError("`--reference-sample` is a required argument of computation of "
+                          "affinities.")
+
+    # Do basic checks of the combinations of genomic input arguments.
+    if args.contigs_db and (args.internal_genomes or args.external_genomes):
+        raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
+                          "`--external-genomes`.")
+
+    if (args.profile_db is not None) or (args.collection_name is not None):
+        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
+            (args.collection_name is not None) < 3):
+            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
+                              "and `--collection-name`.")
+
+    if args.bin_id is not None:
+        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
+            (args.collection_name is not None) + (args.bin_id is not None) < 4):
+            raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
+                              "`--collection-name`.")
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
