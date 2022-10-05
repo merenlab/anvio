@@ -1992,9 +1992,9 @@ class Affinitizer:
 
         Returns
         -------
-        genome_isoacceptors_df : pandas.core.frame.DataFrame
+        isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row contains genome and isoacceptor information identifying non-reference/reference
-            abundance ratios.
+            abundance ratios. This table is "long," with one column of abundance ratio data.
         """
         # Load data from the tRNA-seq contigs database.
         trnaseq_contigs_db = self.trnaseq_contigs_db_info.load_db()
