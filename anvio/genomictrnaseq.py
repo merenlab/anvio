@@ -1867,6 +1867,110 @@ class Affinitizer:
                               f"{', '.join(unrecognized_amino_acids)}")
 
 
+    def get_weighted_codon_frequencies(self, isoacceptor_abund_ratios_df):
+        """
+        Get a table of weighted codon frequencies per isoacceptor for the functions or genes used in
+        the affinity calculations. A weighted codon frequency for an isoacceptor is the sum of codon
+        frequencies weighted by decoding efficiencies given the anticodon and wobble modification.
+
+        Parameters
+        ==========
+        isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
+            Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
+            information identifying non-reference/reference abundance ratios. This table is only
+            used to retrieve the isoacceptors identified in the tRNA-seq data: abundance data is not
+            used in any way by this method.
+
+        Returns
+        =======
+        weighted_frequencies_df : pandas.core.frame.DataFrame
+            This table of weighted codon frequencies has rows representing functions (or genes) in
+            input genomes and columns representing each isoacceptor identified in the tRNA-seq data
+            regardless of genome source.
+        """
+        args = argparse.ArgumentParser()
+        args.contigs_db = self.genomic_contigs_db_path
+        args.profile_db = self.genomic_profile_db_path
+        args.collection_name = self.collection_name
+        args.bin_id = self.bin_id
+        args.internal_genomes = self.internal_genomes_path
+        args.external_genomes = self.external_genomes_path
+        args.function_sources = self.function_sources
+        args.shared_function_sources = not self.lax_function_sources
+        args.ignore_start_codons = True
+
+        if self.genomic_contigs_db_path:
+            codon_usage = codonusage.SingleGenomeCodonUsage(
+                args, r=self.run, rq=self.run_quiet, p=self.progress)
+            codon_frequency_df = codon_usage.get_frequencies(
+                from_function_sources=not self.gene_affinity,
+                return_functions=not self.gene_affinity,
+                gene_caller_ids=self.gene_caller_ids,
+                function_accessions=self.function_accessions_dict,
+                function_names=self.function_names_dict,
+                gene_min_codons=self.gene_min_total_codons,
+                function_min_codons=self.function_min_total_codons,
+                drop_amino_acids=self.exclude_amino_acids)
+            # Match single- and multi-genome table formats by adding genome name to the index.
+            new_index_cols = codon_frequency_df.index.names
+            codon_frequency_df = codon_frequency_df.reset_index()
+            codon_frequency_df['genome_name'] = list(self.genome_info_dict)[0]
+            codon_frequency_df = codon_frequency_df.set_index(new_index_cols)
+        else:
+            codon_usage = codonusage.MultiGenomeCodonUsage(
+                args, r=self.run, rq=self.run_quiet, p=self.progress)
+            codon_frequency_df = codon_usage.get_frequencies(
+                from_function_sources=not self.gene_affinity,
+                return_functions=not self.gene_affinity,
+                function_accessions=self.function_accessions_dict,
+                function_names=self.function_names_dict,
+                gene_min_codons=self.gene_min_total_codons,
+                function_min_codons=self.function_min_total_codons,
+                drop_amino_acids=self.exclude_amino_acids)
+            # Rename the index column, 'genome', to 'genome_name'.
+            codon_frequency_df.index.names = ['genome_name'] + codon_frequency_df.index.names
+
+        for pattern in self.function_blacklist_patterns:
+            codon_frequency_df = codon_frequency_df[
+                ~codon_frequency_df['name'].str.contains(pattern)]
+
+        if self.exclude_codons:
+            # Exclusion of select individual codons (`exclude_codons`) is not an option in the
+            # `codonusage` `get_frequencies` methods: apply this filter here.
+            codon_frequency_df = codon_frequency_df.drop(self.exclude_codons, axis=1)
+            if self.gene_min_total_codons:
+                codon_frequency_df = codon_frequency_df[
+                    codon_frequency_df.sum(axis=1) >= self.gene_min_total_codons]
+            elif self.function_min_total_codons:
+                codon_frequency_df = codon_frequency_df[
+                    codon_frequency_df.sum(axis=1) >= self.function_min_total_codons]
+
+        # Weight codon frequencies by decoding efficiency. For each isoacceptor found from the
+        # tRNA-seq data (regardless of genome) sum the weighted frequencies of decoded codons in the
+        # functions (or genes). Produce a table of function (or gene) x anticodon, with the values
+        # being summed weighted codon counts.
+        isoacceptors_df = isoacceptor_abund_ratios_df[
+            ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']].drop_duplicates()
+        # Disregard tRNA-iMet and tRNA-fMet. Start codons were excluded from the codon frequencies
+        # in `codon_frequency_df`.
+        isoacceptors_df = isoacceptors_df[
+            ~isoacceptors_df['decoded_amino_acid'].isin(['iMet', 'fMet'])]
+        col_dict = {}
+        for row in isoacceptors_df.itertuples(index=False):
+            anticodon_wobble_nucleotide = row.effective_wobble_nucleotide
+            decoding_weights_series = self.decoding_weights_df.loc[anticodon_wobble_nucleotide]
+            effective_anticodon = anticodon_wobble_nucleotide + row.anticodon[1: ]
+            # Get summed weighted codon counts for the isoacceptor across all functions or genes.
+            summed_weighted_codon_counts = pd.Series(0, index=codon_frequency_df.index)
+            for codon in self.nucleotide_decoding_dict[effective_anticodon]:
+                decoding_weight = decoding_weights_series.loc[codon[2]]
+                summed_weighted_codon_counts = \
+                    summed_weighted_codon_counts + (1 - decoding_weight) * codon_frequency_df[codon]
+                col_dict[effective_anticodon] = summed_weighted_codon_counts
+        weighted_frequencies_df = pd.DataFrame.from_dict(col_dict)
+        weighted_frequencies_df.index = codon_frequency_df.index
+
+        return weighted_frequencies_df
     def go(self):
         """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
 
