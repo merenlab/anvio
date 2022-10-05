@@ -1757,7 +1757,7 @@ class Affinitizer:
                               "`function_accesions_dict` and `function_names_dict`.")
 
         if self.select_functions_txt:
-            filesnpaths.is_file_exists(self.select_functions_txt)
+            filesnpaths.is_file_tab_delimited(self.select_functions_txt)
 
         if self.select_functions_txt and (
             self.function_sources or self.function_accessions or self.function_names):
