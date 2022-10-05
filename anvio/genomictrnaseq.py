@@ -2279,6 +2279,18 @@ class Affinitizer:
         ##################################################
         # Filter isoacceptors.
 
+        # Drop isoacceptors with excluded anticodons.
+        if self.exclude_unmodified_anticodons:
+            isoacceptors_df = isoacceptors_df[
+                ~isoacceptors_df['anticodon'].isin(self.exclude_unmodified_anticodons)]
+        if self.exclude_modified_anticodons:
+            isoacceptors_df['effective_anticodon'] = (
+                isoacceptors_df['anticodon'].str[1: ] +
+                isoacceptors_df['effective_wobble_nucleotide'])
+            isoacceptors_df = isoacceptors_df[
+                ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
+            isoacceptors_df = isoacceptors_df.drop('effective_wobble_nucleotide', axis=1)
+
         # Drop isoacceptors with zero coverage (absent) in the reference sample, preventing the
         # isoacceptors from contributing to affinity.
         isoacceptors_df = isoacceptors_df.groupby(
