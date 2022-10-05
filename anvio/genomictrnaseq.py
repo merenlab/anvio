@@ -2201,7 +2201,7 @@ class Affinitizer:
                 # ("select" genomes), retrieve the summed unambiguous coverage from
                 # `unambiguous_coverage_dict`. Note that the ambiguous seed may be found in genomes
                 # for which there is zero unambiguous coverage in the same samples with coverage of
-                # the ambiguous seed -- indeed, it is possible a genome to have zero unambiguous
+                # the ambiguous seed -- indeed, it is possible for a genome to have zero unambiguous
                 # coverage in all samples.
                 select_unambiguous_coverage_dict = {}
                 for trnaseq_sample_name, sample_df in ambiguous_seed_df.groupby(
