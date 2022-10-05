@@ -2294,13 +2294,13 @@ class Affinitizer:
         # Drop isoacceptors with zero coverage (absent) in the reference sample, preventing the
         # isoacceptors from contributing to affinity.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
+            ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
                  lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
                      'trnaseq_sample_name'])
 
         # Drop isoacceptors that do not meet the minimum coverage threshold in the reference sample.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
+            ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
                  lambda genome_isoacceptor_df: genome_isoacceptor_df[
                      genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
                          'discriminator_1'] >= self.min_coverage)
@@ -2308,7 +2308,7 @@ class Affinitizer:
         # Drop isoacceptors that have coverage in only one sample, preventing the isoacceptors from
         # contributing to affinity.
         isoacceptors_df = isoacceptors_df.groupby(
-            ['decoded_amino_acid', 'anticodon', 'genome_name']).filter(
+            ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
                  lambda genome_isoacceptor_df: genome_isoacceptor_df[
                      'trnaseq_sample_name'].nunique() > 1)
         ##################################################
