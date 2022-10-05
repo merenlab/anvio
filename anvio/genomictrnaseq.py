@@ -2111,7 +2111,7 @@ class Affinitizer:
             trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
             if decoded_aa_type == 'Ile2':
                 # tRNA-Ile2 has a wobble nucleotide of lysidine in bacteria or agmatidine in
-                # archaea, which are given the same decoding weight.
+                # archaea, which are given the same decoding weight and both symbolized by 'L'.
                 effective_wobble_nucleotides.append('L')
                 continue
             elif anticodon[0] == 'A':
