@@ -1871,21 +1871,23 @@ class Affinitizer:
         """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
         isoacceptor_abund_ratios_df = self.get_isoacceptors()
         if len(isoacceptor_abund_ratios_df) == 0:
-            run.info_single(
-                "Affinity could not be calculated given the lack of tRNA-seq data passing the "
-                "filters.",
-                cut_after=0)
+            run.warning("Affinity could not be calculated given the lack of tRNA-seq data passing "
+                        "the filters.")
             return
 
         weighted_frequencies_df = self.get_weighted_codon_frequencies(isoacceptor_abund_ratios_df)
         if len(weighted_frequencies_df) == 0:
-            run.info_single(
+            run.warning(
                 "Affinity could not be calculated given the lack of "
-                f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.",
-                cut_after=0)
+                f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.")
             return
 
         affinities_df = self.get_affinities(isoacceptor_abund_ratios_df, weighted_frequencies_df)
+        if len(affinities_df) == 0:
+            run.warning(
+                "Affinity could not be calculated despite the presence of the prerequisite "
+                f"filtered tRNA-seq and {'gene' if self.gene_affinity else 'function'} codon "
+                "frequency data.")
 
         return affinities_df
 
@@ -2468,7 +2470,7 @@ class Affinitizer:
             if not self.gene_affinity:
                 affinities_df = affinities_df.rename({'name': 'function_name'}, axis=1)
         else:
-            affinities_df = None
+            affinities_df = pd.DataFrame()
 
         return affinities_df
 
