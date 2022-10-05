@@ -325,9 +325,22 @@ if __name__ == '__main__':
              "met in both the sample being analyzed and reference sample for the isoacceptor to "
              "contribute to affinity.")
     group1F.add_argument(
-        '--exclude-anticodons', nargs='+',
-        help="Remove tRNA isoacceptors with the given anticodons from calculation of affinity. "
-             "This occurs before and thereby affects the `--min-isoacceptors` filter.")
+        '--exclude-unmodified-anticodons', nargs='+',
+        help="Remove tRNA isoacceptors with the given unmodified anticodons from calculation of "
+             "affinity. Note that this argument only handles unmodified anticodons. For example, "
+             "'ACG' does not exclude 'ICG', and 'CAT' excludes tRNA-Met but not tRNA-Ile2, in "
+             "which 'CAT' is modified to 'LAT' in bacteria. To exclude tRNA-Arg-ACG with the I34 "
+             "modification and tRNA-Ile2, provide 'ICG LAT' with the option, "
+             "`--exclude-modified-anticodons`. Exclusion of tRNAs by anticodon occurs before, and "
+             "thereby affects, the `--min-isoacceptors` filter.")
+    group1F.add_argument(
+        '--exclude-modified-anticodons', nargs='+',
+        help="Remove tRNA isoacceptors with the given modified anticodons from calculation of "
+             "anticodon. Recognized modifications are wobble nucleotide I (inosine) (anticodons "
+             "'INN', where 'N' is any nucleotide) and L (lysidine and, in this program, archaeal "
+             "agmatidine, with the only anticodon recognized with this modification being 'LAT'). "
+             "Exclusion of tRNAs by anticodon occurs before, and thereby affects, the "
+             "`--min-isoacceptors` filter.")
     group1F.add_argument(
         '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,

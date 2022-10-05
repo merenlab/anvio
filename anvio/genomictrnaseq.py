@@ -1398,7 +1398,8 @@ class Affinitizer:
         self.min_isoacceptors = A('min_isoacceptors')
         if self.min_isoacceptors is None:
             self.min_isoacceptors = self.default_min_isoacceptors
-        self.exclude_anticodons = A('exclude_anticodons')
+        self.exclude_unmodified_anticodons = A('exclude_unmodified_anticodons')
+        self.exclude_modified_anticodons = A('exclude_modified_anticodons')
         self.decoding_weights_df = A('decoding_weights')
         if self.decoding_weights_df is None:
             self.decoding_weights_df = self.default_decoding_weights_df
@@ -1835,11 +1836,25 @@ class Affinitizer:
                 "be filtered by codon count prior to calculation of functional affinity in this "
                 "implementation.")
 
-        unrecognized_anticodons = set(self.exclude_anticodons).difference(
+        unrecognized_unmodified_anticodons = set(self.exclude_unmodified_anticodons).difference(
             constants.anticodon_to_AA)
-        if unrecognized_anticodons:
-            raise ConfigError("Unrecognized anticodons were provided to `exclude_anticodons`: "
-                              f"{', '.join(unrecognized_anticodons)}")
+        if unrecognized_unmodified_anticodons:
+            raise ConfigError(
+                "The following unmodified anticodons are unrecognized and cannot be excluded from "
+                f"affinity calculations: {', '.join(unrecognized_unmodified_anticodons)}")
+
+        unrecognized_modified_anticodons = []
+        for modified_anticodon in self.exclude_modified_anticodons:
+            if modified_anticodon[0] not in self.recognized_anticodon_wobble_modifications:
+                unrecognized_modified_anticodons.append(modified_anticodon)
+                continue
+            if (modified_anticodon[1] not in constants.unambiguous_nucleotides or
+                modified_anticodon[2] not in constants.unambiguous_nucleotides):
+                unrecognized_modified_anticodons.append(modified_anticodon)
+        if unrecognized_modified_anticodons:
+            raise ConfigError(
+                "The following modified anticodons are unrecognized and cannot be excluded from "
+                f"affinity calculations: {', '.join(unrecognized_modified_anticodons)}")
 
         unrecognized_codons = set(self.exclude_codons).difference(constants.codons)
         if unrecognized_codons:
