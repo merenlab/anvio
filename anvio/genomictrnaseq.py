@@ -1973,7 +1973,21 @@ class Affinitizer:
         return weighted_frequencies_df
     def go(self):
         """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
+        isoacceptor_abund_ratios_df = self.get_isoacceptors()
+        if len(isoacceptor_abund_ratios_df) == 0:
+            run.info_single(
+                "Affinity could not be calculated given the lack of tRNA-seq data passing the "
+                "filters.",
+                cut_after=0)
+            return
 
+        weighted_frequencies_df = self.get_weighted_codon_frequencies(isoacceptor_abund_ratios_df)
+        if len(weighted_frequencies_df) == 0:
+            run.info_single(
+                "Affinity could not be calculated given the lack of "
+                f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.",
+                cut_after=0)
+            return
         isoacceptors_df = self.load_isoacceptor_data()
         if len(isoacceptors_df) == 0:
             return
