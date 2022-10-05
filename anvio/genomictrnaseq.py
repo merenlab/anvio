@@ -11,6 +11,7 @@ import anvio.tables as tables
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.codonusage as codonusage
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
