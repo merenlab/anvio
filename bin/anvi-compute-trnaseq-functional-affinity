@@ -40,6 +40,10 @@ def main(args):
         store_default_decoding_weights(args.get_default_decoding_weights)
         return
 
+    if args.get_annotation_blacklist:
+        store_annotation_blacklist(
+            args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
+
     sanity_check(args)
 
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
@@ -129,6 +133,18 @@ def store_default_decoding_weights(output_path):
                                   f"{codon_wobble_nucleotide}\t"
                                   f"{decoding_weight}\n")
 
+
+def store_annotation_blacklist(output_path, blacklist_name):
+    filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
+    if blacklist_name not in genomictrnaseq.Affinitizer.builtin_function_blacklists:
+        raise ConfigError(
+            f"An unrecognized built-in blacklist, {blacklist_name}, was provided. Here are the "
+            "available options: "
+            f"{', '.join(genomictrnaseq.Affinitizer.builtin_function_blacklists)}")
+    with open(output_path) as output_file:
+        for blacklist_pattern in genomictrnaseq.Affinitizer.builtin_function_blacklists[
+            blacklist_name]:
+            output_file.write(f"{blacklist_pattern}\n")
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
@@ -228,6 +244,15 @@ if __name__ == '__main__':
         help="By default, without this flag, requested function annotation sources must have been "
              "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
              "sources was not run on any number of input (meta)genomes.")
+    group1D.add_argument(
+        '--function-blacklist-txt', metavar='FILE',
+        help="A single-column file of regular expressions that exclude functions from affinity "
+             "calculations when patterns occur in function annotation strings. Built-in blacklists "
+             "can be stored to file by running this program with the sole option, "
+             "`--get-function-blacklist`. The generated file (indeed, any single-column file) can "
+             "be provided with this argument. For example, if the file contains the regex, "
+             "'[aA]rchaea', then functional annotations containing the substrings, 'archaea' or "
+             "'Archaea', are disregarded.")
     group1D.add_argument(
         '--gene-affinity', default=False, action='store_true',
         help="Compute affinity for genes rather than functions.")
@@ -391,6 +416,14 @@ if __name__ == '__main__':
         help="Store a tab-delimited file of the default decoding weights used in affinity "
              "calculations. This file has the format of the input file needed for "
              "`--decoding-weights-txt`.")
+    group2.add_argument(
+        '-k', '--get-function-blacklist', nargs=2,
+        help="Store a built-in blacklist of regular expressions that exclude functions from "
+             "affinity calculations when patterns occur in function annotation strings. The first "
+             "argument should be the output file path and the second argument should be the name "
+             "of the built-in blacklist. The single-column output file (indeed, any single-column "
+             "file) can be used with `--function-blacklist-txt`. Available named blacklists: "
+             f"{', '.join(genomictrnaseq.Affinitizer.builtin_function_blacklists)}")
 
     args = parser.get_args(parser)
 

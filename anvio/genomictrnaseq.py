@@ -1326,6 +1326,20 @@ class Affinitizer:
         index=['A', 'C', 'G', 'T', 'I', 'L'],
         columns=['A', 'C', 'G', 'T', 'I', 'L'])
 
+    builtin_function_blacklists = {
+        'bacterial_heterotrophs': [
+            '[eE]ukaryot',
+            '[mM]itochondria',
+            '[eE]xosom',
+            '[pP]roteasom',
+            'CD molecule',
+            '[eE]ndocytosis',
+            '[eE]xocytosis'
+            '[aA]rchaea',
+            '[pP]hotosynthe'
+        ]
+    }
+
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -1364,6 +1378,7 @@ class Affinitizer:
         self.lax_function_sources = A('lax_function_sources')
         if self.lax_function_sources is None:
             self.lax_function_sources = False
+        self.function_blacklist_txt = A('function_blacklist_txt')
         self.gene_affinity = A('gene_affinity')
         if self.gene_affinity is None:
             self.gene_affinity = False
@@ -1523,6 +1538,11 @@ class Affinitizer:
         for function_source in self.function_names_dict:
             if function_source not in self.function_sources:
                 self.function_sources.append(function_source)
+
+        self.function_blacklist_patterns = []
+        if self.function_blacklist_txt:
+            for line in open(self.function_blacklist_txt):
+                self.function_blacklist_patterns.append(line.rstrip())
 
         # Find which codons are decoded by which anticodons. A decoding efficiency of 1 in
         # `decoding_weights_df` means that the anticodon does not decode the codon. The following
@@ -1740,9 +1760,13 @@ class Affinitizer:
             raise ConfigError("`select_functions_txt` cannot be provided alongside "
                               "`function_sources`, `function_accessions`, and `function_names`.")
 
+        if self.function_blacklist_txt:
+            filesnpaths.is_file_tab_delimited(self.function_blacklist_txt)
+
         if self.gene_affinity and (
             self.function_sources or self.function_accessions or self.function_accessions_dict or
-            self.function_names or self.function_names_dict or self.select_functions_txt):
+            self.function_names or self.function_names_dict or self.select_functions_txt or
+            self.function_blacklist_txt):
             raise ConfigError("`gene_affinity`, used to compute affinity for genes rather than "
                               "functions, cannot be used alongside function options.")
 
