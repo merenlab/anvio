@@ -2069,8 +2069,7 @@ class Affinitizer:
                 cut_after=0)
             return
 
-        affinities_df = self.get_absolute_affinities(
-            isoacceptor_abund_ratios_df, weighted_frequencies_df)
+        affinities_df = self.get_affinities(isoacceptor_abund_ratios_df, weighted_frequencies_df)
 
         return affinities_df
 
