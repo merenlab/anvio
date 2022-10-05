@@ -1327,6 +1327,8 @@ class Affinitizer:
         index=['A', 'C', 'G', 'T', 'I', 'L'],
         columns=['A', 'C', 'G', 'T', 'I', 'L'])
 
+    recognized_anticodon_wobble_modifications = ['I', 'L']
+
     builtin_function_blacklists = {
         'bacterial_heterotrophs': [
             '[eE]ukaryot',
