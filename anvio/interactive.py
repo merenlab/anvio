@@ -665,10 +665,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for view in views_table:
                 table_name = views_table[view]['target_table']
 
-                data = profile_db.db.get_table_as_dict(table_name)
+                data, header = profile_db.db.get_view_data(table_name)
 
                 self.views[view] = {'table_name': table_name,
-                                    'header': profile_db.db.get_table_structure(table_name)[1:],
+                                    'header': header,
                                     'dict': data}
 
             self.p_meta['default_view'] = sorted(list(self.views.keys()), reverse=True)[0]
