@@ -900,7 +900,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for view in self.views:
             # first, generate an items order for a given view:
             items_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-            item_order_name = f"{view[:-5]}"
+            item_order_name = f"{view[10:-5]}"
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
 
