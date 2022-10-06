@@ -866,7 +866,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Only the best hits are considered', "False" if facc.aggregate_using_all_hits else "True", nl_after=1)
 
         # now we will work on views and clustering our data to get newick trees.
-        self.p_meta['default_view'] = 'presence_absence_view'
+        self.p_meta['default_view'] = 'functions_presence_absence_view'
         self.default_view = self.p_meta['default_view']
 
         # our 'samples' in this context are individual genomes we are about to display
@@ -874,10 +874,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['sample_id'] = f"{facc.function_annotation_source} DISPLAY"
 
         # setup the views dict
-        self.views = {'frequency_view'       : {'header': list(facc.layer_names_considered),
-                                                'dict': facc.functions_across_layers_frequency},
-                      'presence_absence_view': {'header': list(facc.layer_names_considered),
-                                                'dict': facc.functions_across_layers_presence_absence}}
+        self.views = {'functions_frequency_view'       : {'header': sorted(list(facc.layer_names_considered)),
+                                                          'dict': facc.functions_across_layers_frequency},
+                      'functions_presence_absence_view': {'header': sorted(list(facc.layer_names_considered)),
+                                                          'dict': facc.functions_across_layers_presence_absence}}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
@@ -906,7 +906,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             # then add the items order to the database
             dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
-                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
+                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'functions_presence_absence_view' else False,
                                         check_names_consistency=False)
 
             # if there are more than one genome in the analysis (which should almost always be the case),
