@@ -2,7 +2,7 @@
     "version": "3",
     "tree-type": "circlephylogram",
     "order-by": ">> associated_groups",
-    "current-view": "presence_absence_view",
+    "current-view": "functions_presence_absence_view",
     "samples-order": "FREQUENCY_VIEW",
     "angle-min": "0",
     "angle-max": "180",
@@ -44,7 +44,7 @@
         }
     },
     "views": {
-        "presence_absence_view": {
+        "functions_presence_absence_view": {
             "unadjusted_p_value": {
                 "normalization": "none",
                 "min": {
@@ -68,7 +68,7 @@
                 }
             }
         },
-        "frequency_view": {
+        "functions_frequency_view": {
             "unadjusted_p_value": {
                 "normalization": "none",
                 "min": {
