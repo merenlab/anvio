@@ -1765,7 +1765,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
                 # (3) adding essential data for the view
-                json_entry.extend([view_dict[split_name][header] for header in view_headers])
+                json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:
