@@ -168,6 +168,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not self.hmm_list_path:
             raise ConfigError('Please provide a path to an hmm_list.txt')
 
+        self.init_hmm_list_txt()
 
         gene_caller_to_use = self.get_param_value_from_config(['gene_caller_to_use'])
         if not gene_caller_to_use:
@@ -221,8 +222,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             self.mode = 'external_genomes'
         if self.metagenomes and self.external_genomes:
             self.mode = 'both'
-
-        self.init_hmm_list_txt()
 
         self.AA_mode = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'AA_mode'])
 
@@ -364,7 +363,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         return target_files
     
     def init_hmm_list_txt(self):
-        """This function 
+        """This function will sanity check hmm-list.txt
 
         PARAMETERS
         ==========
