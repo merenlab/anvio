@@ -1,5 +1,97 @@
 # -*- coding: utf-8
-"""Everything about anvi'o artifacts"""
+"""Everything about anvi'o workflows and artifacts"""
+
+# when defining a new anvi'o workflow, it is essential to document most critical
+# artifacts produced by a given workflow. it is also important to mention the
+# third party programs used (such as Bowtie2 or HMMER). there is no need to
+# mention anvi'o programs here as it will be discovered from program tags. to
+# associate a program with a workflow, please add the workflow name(s) to the
+# meta tag `__anvio_workflows__`.
+ANVIO_WORKFLOWS = {
+    "contigs": {
+        "authors": ['ShaiberAlon', 'ivagljiva', 'meren', 'mschecht'],
+        "artifacts_produced": ['contigs-db'],
+        "artifacts_accepted": ['fasta-txt'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Gene calling', ['prodigal']),
+            ('HMM search', ['HMMER']),
+            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
+            ('Sequence search against various databases', ['DIAMOND'])
+            ],
+        "one_sentence_summary": "From FASTA files to annotated anvi'o contigs databases",
+        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
+            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+    },
+
+    "metagenomics": {
+        "authors": ['ShaiberAlon'],
+        "artifacts_produced": ['contigs-db', 'profile-db'],
+        "artifacts_accepted": ['samples-txt', 'fasta-txt'],
+        "anvio_workflows_inherited": ['contigs'],
+        "third_party_programs_used": [
+            ('Quality control of short reads', ['illumina-utils']),
+            ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
+            ('BAM file manipulations', ['samtools']),
+            ('Gene calling', ['prodigal']),
+            ('HMM search', ['HMMER']),
+            ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
+            ('Read recruitment', ['Bowtie2'])
+            ],
+        "one_sentence_summary": "From FASTA and/or FASTQ files to anvi'o contigs and profile databases",
+        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
+            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
+            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
+            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
+            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+    },
+    "ecophylo": {
+        "authors": ['mschecht'],
+        "artifacts_accepted": ['samples-txt', 'hmm-list', 'external-genomes', 'metagenomes'],
+        "artifacts_produced": ['contigs-db', 'profile-db'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Read recruitment', ['Bowtie2']),
+            ('Cluster open reading frames', ['MMseqs2']),
+            ('Align protein sequences', ['muscle']),
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ('Calculate phylogenetic tree', ['FastTree']),
+            ('Search for homologous sequences', ['HMMER'])
+            ],
+        "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between individual genes and environments. "
+            "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
+            "to the phylogenetics of matching genes, and their distribution across environments.")
+    },
+}
+
+# the purpose of this variable is to have a list of third-party programs used from
+# within anvi'o workflows.
+THIRD_PARTY_PROGRAMS = {
+    'IDBA-UD': {'link': 'https://github.com/loneknightpy/idba'},
+    'illumina-utils': {'link': 'https://github.com/merenlab/illumina-utils'},
+    'metaSPAdes': {'link': "https://cab.spbu.ru/software/meta-spades/"},
+    'MEGAHIT': {'link': 'https://github.com/voutcn/megahit'},
+    'samtools': {'link': 'http://www.htslib.org/'},
+    'prodigal': {'link': 'https://github.com/hyattpd/Prodigal'},
+    'HMMER': {'link': 'http://hmmer.org/'},
+    'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
+    'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
+    'centrifuge': {'link': 'https://github.com/DaehwanKimLab/centrifuge'},
+    'DIAMOND': {'link': 'https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/diamond/'},
+    'MMseqs2': {'link': 'https://github.com/soedinglab/MMseqs2'},
+    'muscle': {'link': 'http://www.drive5.com/muscle/'},
+    'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
+    'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
+    'HMMER': {'link': 'https://github.com/EddyRivasLab/hmmer'},
+    'trimal': {'link': 'https://github.com/inab/trimal'}
+    }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
 # that are referred from 'requires' and 'provides' statements in anvi'o programs
@@ -538,6 +630,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "hmm-list": {
+        "name": "HMM-LIST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "coverages-txt": {
         "name": "COVERAGES",
         "type": "TXT",
@@ -760,6 +858,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "ecophylo-workflow": {
+        "name": "ECOPHYLO WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+},
     "contig-inspection" : {
         "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",

@@ -143,6 +143,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                               "list of parameters and flags. Either of these would have made things much less confusing "
                               "here :(")
 
+        if self.annotation_source_for_per_split_summary and self.collection_name:
+            raise ConfigError("Unfortunately the flag `--annotation-source-for-per-split-summary` is not compatible with the collection "
+                              "mode :/ This is because while this flag instructs anvi'o to prepare a split-level summary of functions, "
+                              "in reality the splits in the collection mode are not actual splits, but 'bins'. Thus, the use of this "
+                              "flag in collection mode requires additional logic to consolidate all information in splits in "
+                              "a single bin to 're-summarize' data to the level of individual bins. This logic is currently not in place, "
+                              "hence the flag is useless in this mode :( Apologies for the inconvenience. Push us through GitHub if "
+                              "you really want us to address this.")
+
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
@@ -656,10 +665,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             for view in views_table:
                 table_name = views_table[view]['target_table']
 
-                data = profile_db.db.get_table_as_dict(table_name)
+                data, header = profile_db.db.get_view_data(table_name)
 
                 self.views[view] = {'table_name': table_name,
-                                    'header': profile_db.db.get_table_structure(table_name)[1:],
+                                    'header': header,
                                     'dict': data}
 
             self.p_meta['default_view'] = sorted(list(self.views.keys()), reverse=True)[0]
@@ -857,7 +866,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.run.info('Only the best hits are considered', "False" if facc.aggregate_using_all_hits else "True", nl_after=1)
 
         # now we will work on views and clustering our data to get newick trees.
-        self.p_meta['default_view'] = 'presence_absence_view'
+        self.p_meta['default_view'] = 'functions_presence_absence_view'
         self.default_view = self.p_meta['default_view']
 
         # our 'samples' in this context are individual genomes we are about to display
@@ -865,10 +874,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['sample_id'] = f"{facc.function_annotation_source} DISPLAY"
 
         # setup the views dict
-        self.views = {'frequency_view'       : {'header': list(facc.layer_names_considered),
-                                                'dict': facc.functions_across_layers_frequency},
-                      'presence_absence_view': {'header': list(facc.layer_names_considered),
-                                                'dict': facc.functions_across_layers_presence_absence}}
+        self.views = {'functions_frequency_view'       : {'header': sorted(list(facc.layer_names_considered)),
+                                                          'dict': facc.functions_across_layers_frequency},
+                      'functions_presence_absence_view': {'header': sorted(list(facc.layer_names_considered)),
+                                                          'dict': facc.functions_across_layers_presence_absence}}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
@@ -891,13 +900,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         for view in self.views:
             # first, generate an items order for a given view:
             items_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
-            item_order_name = f"{view[:-5]}"
+            item_order_name = f"{view[10:-5]}"
             self.p_meta['available_item_orders'].append(item_order_name)
             self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
 
             # then add the items order to the database
             dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
-                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'presence_absence_view' else False,
+                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'functions_presence_absence_view' else False,
                                         check_names_consistency=False)
 
             # if there are more than one genome in the analysis (which should almost always be the case),
@@ -1511,6 +1520,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           f"'{item_names_in_collection.pop()}'. If they look good to you, then the problem may be related to "
                                           f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
                                           f"to one match between the two.")
+            elif self.mode == 'pan':
+                item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
+                if not item_names_in_user_tree == set(self.gene_cluster_names):
+                    raise ConfigError(f"You are passing a tree to the interactive interface, which is a mechanism for you to organize your "
+                                      f"gene clusters the way you like. More power to you! But there is a problem: the names in your tree do "
+                                      f"not match the names of the gene clusters. For instance, here is a gene cluster name anvi'o knows about "
+                                      f"your pangenome: '{self.gene_cluster_names.pop()}'. In contrast, here is an example to the kinds of names "
+                                      f"anvi'o finds in your tree: '{item_names_in_user_tree.pop()}' (pro tip: if your intention with this tree "
+                                      f"is to organize your GENOMES rather than your GENE CLUSTERS, than you need to use the program "
+                                      f"`anvi-import-misc-data` to import a new layer order data into your pan-db. If this error message doesn't "
+                                      f"make sense to you at all, don't despair: find us online and ask for help. You're on the right track).")
+            else:
+                pass
 
 
     def update_items_additional_data_with_functions_per_split_summary(self):
@@ -1743,7 +1765,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
 
                 # (3) adding essential data for the view
-                json_entry.extend([view_dict[split_name][header] for header in view_headers])
+                json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:

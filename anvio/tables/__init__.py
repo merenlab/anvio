@@ -369,8 +369,10 @@ table_requires_unique_entry_id = {'self': False,
                                   'mean_coverage_Q1Q3_contigs': False,
                                   'portion_covered_contigs': False,
                                   'portion_covered_splits': False,
-                                  'frequency_view': False,
-                                  'presence_absence_view': False,
+                                  'frequency_view': False,           #
+                                  'presence_absence_view': False,    # These two tables are for pangeomes
+                                  'functions_frequency_view': True,        #
+                                  'functions_presence_absence_view': True, # And these two are for anvi-display-functions stuff
                                   'atomic_data_splits': False,
                                   'atomic_data_contigs': False,
                                   'max_normalized_ratio_contigs': False,

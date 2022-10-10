@@ -18,6 +18,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl', 'ozcan']
 __requires__ = ['contigs-fasta', 'external-gene-calls']
 __provides__ = ['contigs-db']
+__anvio_workflows__ = ['metagenomics']
 __description__ = "Generate a new anvi'o contigs database"
 
 

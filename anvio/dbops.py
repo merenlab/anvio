@@ -280,10 +280,10 @@ class ContigsSuperclass(object):
         if len(gene_caller_ids_of_interest):
             if len(split_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'split names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'split names of interest'
             elif len(contig_names_of_interest):
                 too_many_args = True
-                opt1, opt2 = 'gener caller ids of interest', 'contig names of interest'
+                opt1, opt2 = 'gene caller ids of interest', 'contig names of interest'
         elif len(split_names_of_interest):
             if len(contig_names_of_interest):
                 too_many_args = True
@@ -309,7 +309,7 @@ class ContigsSuperclass(object):
 
         if subset_provided and not len(contig_names_of_interest):
             raise ConfigError("Anvi'o was trying to identify the contig names of interest in `init_contig_sequences` "
-                              "and then after a few steps there was no contig names of interest at all :( Something "
+                              "and then after a few steps there were no contig names of interest at all :( Something "
                               "fishy happened, and code is Jon Snow.")
 
         self.progress.new('Loading contig sequences')
@@ -409,7 +409,7 @@ class ContigsSuperclass(object):
 
             for entry_id in self.split_name_to_genes_in_splits_entry_ids[split_name]:
                 gene_callers_id = self.genes_in_splits[entry_id]['gene_callers_id']
-                if self.gene_function_calls_dict[gene_callers_id][source]:
+                if gene_callers_id in self.gene_function_calls_dict and self.gene_function_calls_dict[gene_callers_id][source]:
                     gene_function = self.gene_function_calls_dict[gene_callers_id][source][1].split('!!!')[0]
                     frequency_of_categories[gene_function] += 1
 
@@ -3613,12 +3613,12 @@ class ProfileSuperclass(object):
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
         # if SNVs are not profiled, we should not have a view for `variability`. See the issue #1845.
-        # FIXME for future generations: if SNVs are skipped, we should even have an entry in the views
-        # table for `variability` :/ but fixing that would require a migration script for profile dbs,
-        # and the person who is implementing this workaround is simply being lazy --do better, and
-        # address this the right way:
+        # At this point we could remove this comment and the next three lines of code since the variability
+        # will never be in `views_table` if SNVs were not profiled, but I'm not deleting it anyway because
+        # I guess I'm slowly becoming a code hoarder :(
         if not self.p_meta['SNVs_profiled']:
-            views_table.pop('variability')
+            if 'variability' in views_table:
+                views_table.pop('variability')
 
         self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
@@ -5041,6 +5041,16 @@ def get_item_orders_from_db(anvio_db_path):
     utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
 
     if not anvio_db.meta['items_ordered']:
+        return ([], {})
+
+    if not anvio_db.meta['available_item_orders']:
+        # this means the database thinks that the items are ordered, but in fact
+        # there are no item orders anwyhere to be found. this means that the
+        # clustering failed somehow, and we're dealing with a database that is not
+        # quite accurate. but since we can't fix the problem that led the database
+        # to find itself in this state, we can do the next best thing and avoid
+        # going any further and return an empty set as if items are NOT ordered
+        # (special thanks to Rose Kantor for helping us to diagnose this):
         return ([], {})
 
     available_item_orders = sorted([s.strip() for s in anvio_db.meta['available_item_orders'].split(',')])

@@ -1,21 +1,21 @@
 
 rule make_anvio_state_file_tree:
-    """Make a state file customized for EcoPhylo workflow interactive interface"""
+    """Make a state file customized for EcoPhylo workflow interactive interface - TREE MODE"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{hmm}.log")
     input:
         num_tree_tips = rules.subset_DNA_reps_with_QCd_AA_reps_for_mapping.output.NT_for_mapping,
         done_scg = rules.anvi_scg_taxonomy.output.done
     params:
-        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_scg_taxonomy_data.tsv"),
-        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{HMM}_misc.tsv"),
+        tax_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_scg_taxonomy_data.tsv"),
+        misc_data_final = os.path.join(dirs_dict['MISC_DATA'], "{hmm}_misc.tsv"),
     output:
-        state_file = os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_TREE_state.json")
+        state_file = os.path.join(dirs_dict['HOME'], "{hmm}_TREE_state.json")
     threads: M.T('make_anvio_state_file')
     run:
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        hmm_source = M.hmm_dict[wildcards.hmm]['source']
 
         # Read in misc data headers for layer_order
 
@@ -48,7 +48,7 @@ rule make_anvio_state_file_tree:
         # layer-orders
         first_layers = ["__parent__", "length", "gc_content"]
 
-        if HMM_source in M.internal_HMM_sources:
+        if hmm_source in M.internal_hmm_sources:
             with open(params.tax_data_final) as f:
                 lines = f.read()
                 first = lines.split('\n', 1)[0]
@@ -147,23 +147,21 @@ rule make_anvio_state_file_tree:
                 json.dump(state_dict, outfile, indent=4)
 
 rule anvi_import_everything_tree:
-    """
-    Import state file, phylogenetic tree, AND misc data to interactive interface
-
+    """Import state file, phylogenetic tree, AND misc data to interactive interface
     If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{HMM}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{hmm}.log")
     input:
         tree = rules.rename_tree_tips.output.tree,
         misc_data = rules.make_misc_data.output.misc_data_final,
         state = rules.make_anvio_state_file_tree.output.state_file
     params:
         tax_data_final = rules.anvi_scg_taxonomy.params.tax_data_final,
-        tree_profileDB = os.path.join(dirs_dict['TREES'], "{HMM}", "{HMM}-PROFILE.db")
+        tree_profileDB = os.path.join(dirs_dict['TREES'], "{hmm}", "{hmm}-PROFILE.db")
     output: 
-        touch(os.path.join("ECOPHYLO_WORKFLOW", "{HMM}_state_imported_tree.done")),
+        touch(os.path.join(dirs_dict['HOME'], "{hmm}_state_imported_tree.done"))
 
     threads: M.T('anvi_import_state')
     run:
@@ -209,13 +207,13 @@ rule anvi_import_everything_tree:
                             'samples': ', '.join(p_meta['samples']),
                             'sample_id': p_meta['sample_id']})
 
-        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.HMM}_tree")
+        shell("anvi-import-items-order -p {params.tree_profileDB} -i {input.tree} --name {wildcards.hmm}_tree")
 
         shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {input.misc_data} --just-do-it")
 
         shell("anvi-import-state -p {params.tree_profileDB} -s {input.state} -n default")
 
-        HMM_source = M.HMM_source_dict[wildcards.HMM]
+        hmm_source = M.hmm_dict[wildcards.hmm]['source']
         
-        if HMM_source in M.internal_HMM_sources:
+        if hmm_source in M.internal_hmm_sources:
             shell("anvi-import-misc-data -p {params.tree_profileDB} --target-data-table items {params.tax_data_final} --just-do-it")

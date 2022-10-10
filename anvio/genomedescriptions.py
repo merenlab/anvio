@@ -57,6 +57,7 @@ class GenomeDescriptions(object):
         self.just_do_it = A('just_do_it')
         self.functions_are_available = False
         self.function_annotation_sources = set([])
+        self.function_annotation_sources_some_genomes_miss = set([])
 
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
@@ -308,6 +309,7 @@ class GenomeDescriptions(object):
             # init all the bulky stuff, we still can give them the contents of the meta tables.
             self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
             self.progress.update('...')
+            
             for genome_name in self.genomes:
                 self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
@@ -428,7 +430,7 @@ class GenomeDescriptions(object):
                 else:
                     self.function_annotation_sources = self.function_annotation_sources.intersection(sources)
 
-            function_annotation_sources_some_genomes_miss = all_function_annotation_sources_observed.difference(self.function_annotation_sources)
+            self.function_annotation_sources_some_genomes_miss = all_function_annotation_sources_observed.difference(self.function_annotation_sources)
 
             if not len(self.function_annotation_sources):
                 # none of the functions are common
@@ -442,14 +444,14 @@ class GenomeDescriptions(object):
 
                 # good. here we know some functions are available, but let's get some further understanding, and report it to the user, you know,
                 # because we're nice:
-                if len(function_annotation_sources_some_genomes_miss):
+                if len(self.function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
                                      "functional annotation sources that are common to all of your genomes, and they will be used whenever "
                                      "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
-                                            (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
+                                            (', '.join(self.function_annotation_sources), ', '.join(self.function_annotation_sources_some_genomes_miss)))
                 else:
                     # every function ever observed is common to all genomes.
                     self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
@@ -604,6 +606,10 @@ class GenomeDescriptions(object):
             self.progress.end()
             raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
                                 these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
+
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        self.progress.update("Checking genome names ..")
+        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         if not self.full_init:
             # if this is not full init, stop the sanity check here.

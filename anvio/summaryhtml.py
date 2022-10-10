@@ -76,7 +76,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'programs_and_artifacts_index']:
+        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -121,6 +121,8 @@ class SummaryHTMLOutput:
             rendered = render_to_string('artifact.tmpl', self.summary_dict)
         elif self.summary_type == 'program':
             rendered = render_to_string('program.tmpl', self.summary_dict)
+        elif self.summary_type == 'workflow':
+            rendered = render_to_string('workflow.tmpl', self.summary_dict)
         elif self.summary_type == 'programs_and_artifacts_index':
             rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
         else:
@@ -133,7 +135,7 @@ def get_first_line(string):
     return string.split('\n')[0]
 
 @register.filter(name='get_first_sentence')
-def get_first_line(string):
+def get_first_sentence(string):
     return string.split('.')[0]
 
 @register.filter(name='lookup')

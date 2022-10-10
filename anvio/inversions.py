@@ -225,18 +225,31 @@ class Inversions:
                 if self.target_region_end:
                     contig_coverage[self.target_region_end:] = 0.0
 
-            # now we know the `contig_coverage`. it is time to break it into stretches
-            # of 'high coverage' regions (as in coverage > `self.min_coverage_to_define_stretches`), and store that
-            # information into the dictionary `coverage_stretches_in_contigs`
+            # now we know the `contig_coverage`
+            contig_coverages[contig_name] = contig_coverage
+
+            # and all we want to do now via the downstream code in this loop is to break it into stretches
+            # of 'high coverage' regions of FWD/FWD or REV/REV reads (as in coverage > `self.min_coverage_to_define_stretches`),
+            # and store that  information into the dictionary `coverage_stretches_in_contigs` for further processing.
+            # so here is the blank entry that will be filled soon:
             coverage_stretches_in_contigs[contig_name] = []
 
-            # we also know the contig length here, so let's keep that in mind:
+            # but we don't want to go through any of this if the contig has no coverage at all. so here we will test that first.
+            # speicial thanks goes to Andrea Watson who identified this edge case in https://github.com/merenlab/anvio/issues/1970
+            if not max(contig_coverage) > 0:
+                continue
+
+            # if we are here, we're good to go. let's keep the contig lenght in a separate variable:
             contig_length = len(contig_coverage)
 
             # to find regions of high coverage, we first need to 'pad' our array to ensure it always
             # starts and ends with 'low coverage'.
             regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= self.min_coverage_to_define_stretches, [False]])
 
+            # but if there aren't any regions covered enough we want to stop:
+            if not regions_of_contig_covered_enough.any():
+                continue
+            
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
             cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
@@ -250,7 +263,11 @@ class Inversions:
 
                 if (cov_stretch_end - cov_stretch_start) >= self.min_stretch_length:
                     coverage_stretches_in_contigs[contig_name].append((cov_stretch_start, cov_stretch_end),)
-
+            
+            # and if there are no coverage stretches long enough, stop:
+            if not coverage_stretches_in_contigs[contig_name]:
+                continue
+                
             # now it is time to merge those stretches of coverage if they are close to one another to avoid
             # over-splitting areas of coverage due to short regions with low-coverage in the middle like this,
             # where we wish to identify A and B together in a single stretch:
@@ -270,8 +287,6 @@ class Inversions:
             coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - self.num_nts_to_pad_a_stretch< 0) else e[0] - self.num_nts_to_pad_a_stretch,
                                                            contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
-
-            contig_coverages[contig_name] = contig_coverage
 
         ################################################################################
         self.progress.update("Getting ready to process stretches")
