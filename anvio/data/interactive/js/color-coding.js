@@ -1,8 +1,9 @@
 /**
  * Javascript library to visualize anvi'o gene clusterss
  *
- *  Author: Mahmoud Yousef
- *  Copyright 2018, The anvio Project
+ *  Authors: Mahmoud Yousef
+ *
+ *  Copyright 2018-2021, The anvi'o project (http://anvio.org)
  *
  * This file is part of anvi'o (<https://github.com/meren/anvio>).
  *
@@ -56,7 +57,7 @@ function colorAlgorithm(positions){
     var _positions = []
     for (aa in positions){
         if (checked(positions[aa]) && aboveThreshold(positions, positions[aa])) {
-            _positions[aa] = color(positions, positions[aa]);   
+            _positions[aa] = color(positions, positions[aa]);
         } else{
             var dict = {}
             dict[positions[aa]] = "BLACK";
@@ -80,7 +81,7 @@ function checked(letter){
 
 //does the actual comparisons
 //This checks for amino acid conservation by common characteristics
-function aboveThreshold(positions, aa) { 
+function aboveThreshold(positions, aa) {
     var number = 0;
     for (acid in positions) {
         if (acid === '') {
@@ -91,7 +92,7 @@ function aboveThreshold(positions, aa) {
     var count = 0.0;
     var count2 = 0.0;
     var count3 = 0.0;
-    
+
     var letter = aa
     switch (letter) {
         case "A":
@@ -238,7 +239,7 @@ function aboveThreshold(positions, aa) {
               break;
         default: break;
     }
-    return false;   
+    return false;
 
 }
 
@@ -275,7 +276,7 @@ function color(positions, aa){
         case "Y":
               x = "DARKTURQUOISE";
               break;
-        case "P": 
+        case "P":
             x = "YELLOW";
               break;
         case "C":
@@ -315,15 +316,15 @@ function initializeCheckBoxes(){
         box.onclick = ( function() {
                         return createDisplay();
                          } )
-        
+
         var label = document.createElement('label')
         label.htmlFor = word;
         label.style = "margin-left:1px;";
         label.appendChild(document.createTextNode(word));
-        
+
         container.appendChild(box);
-        container.appendChild(label);   
-        box.checked = true 
+        container.appendChild(label);
+        box.checked = true
     }
 
     container.appendChild(document.createElement('br'));

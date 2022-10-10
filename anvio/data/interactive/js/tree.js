@@ -1,17 +1,17 @@
 /**
  * Javascript library to parse newick trees
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2015, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           Matthew Klein <mtt.l.kln@gmail.com>
+ *           A. Murat Eren <a.murat.eren@gmail.com>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
- * 
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
  * Anvi'o is a free software. You can redistribute this program
- * and/or modify it under the terms of the GNU General Public 
- * License as published by the Free Software Foundation, either 
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
  * version 3 of the License, or (at your option) any later version.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
  *
@@ -330,7 +330,7 @@ Tree.prototype.Parse = function(str, edge_length_norm) {
                             i++;
                             if (isNumber(token[i])) {
                                 curnode.original_edge_length = parseFloat(token[i]);
-                                
+
                                 // normalization of edge lengths
                                 if (edge_length_norm) {
                                     curnode.edge_length = Math.sqrt(parseFloat(token[i]) * 1000000) / 1000000;
@@ -461,7 +461,7 @@ function NodeIterator(root)
 }
 
 
-NodeIterator.prototype.Begin = function() 
+NodeIterator.prototype.Begin = function()
 {
 /*    if (this.root.constructor === Array)
     {
@@ -478,7 +478,7 @@ NodeIterator.prototype.Begin = function()
 };
 
 
-NodeIterator.prototype.Next = function() 
+NodeIterator.prototype.Next = function()
 {
 /*    if (this.root.constructor === Array)
     {
@@ -522,14 +522,14 @@ function PreorderIterator()
 };
 
 
-PreorderIterator.prototype.Begin = function() 
+PreorderIterator.prototype.Begin = function()
 {
     this.cur = this.root;
     return this.cur;
 };
 
 
-PreorderIterator.prototype.Next = function() 
+PreorderIterator.prototype.Next = function()
 {
     if (this.cur.child)
     {

@@ -30,6 +30,7 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'metagenomics-full'     : ['run_component_tests_for_metagenomics.sh'],
          'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
          'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
+         'genome-view'           : ['run_component_tests_for_genome_view.sh'],
          'metabolism'            : ['run_component_tests_for_metabolism.sh'],
          'display-functions'     : ['run_component_tests_for_display_functions.sh'],
          'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],

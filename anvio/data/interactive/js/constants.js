@@ -1,29 +1,62 @@
-var COG_categories = {
-    'A': '[A] RNA processing and modification',
-    'B': '[B] Chromatin Structure and dynamics',
-    'C': '[C] Energy production and conversion',
-    'D': '[D] Cell cycle control and mitosis',
-    'E': '[E] Amino Acid metabolism and transport',
-    'F': '[F] Nucleotide metabolism and transport',
-    'G': '[G] Carbohydrate metabolism and transport',
-    'H': '[H] Coenzyme metabolis',
-    'I': '[I] Lipid metabolism',
-    'J': '[J] Translation',
-    'K': '[K] Transcription',
-    'L': '[L] Replication and repair',
-    'M': '[M] Cell wall/membrane/envelop biogenesis',
-    'N': '[N] Cell motility',
-    'O': '[O] Post-translational modification, protein turnover, chaperone functions',
-    'P': '[P] Inorganic ion transport and metabolism',
-    'Q': '[Q] Secondary Structure',
-    'T': '[T] Signal Transduction',
-    'U': '[U] Intracellular trafficing and secretion',
-    'V': '[V] Defense mechanisms',
-    'W': '[W] Extracellular structures',
-    'Y': '[Y] Nuclear structure',
-    'Z': '[Z] Cytoskeleton',
-    'R': '[R] General Functional Prediction only',
-    'S': '[S] Function Unknown'
+/**
+ * Constants used from various interface functions
+ *
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Isaac Fink <iafink@uchicago.edu>
+ *           Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
+ var COG_categories = {
+     'A': '[A] RNA processing and modification',
+     'B': '[B] Chromatin Structure and dynamics',
+     'C': '[C] Energy production and conversion',
+     'D': '[D] Cell cycle control and mitosis',
+     'E': '[E] Amino Acid metabolism and transport',
+     'F': '[F] Nucleotide metabolism and transport',
+     'G': '[G] Carbohydrate metabolism and transport',
+     'H': '[H] Coenzyme metabolis',
+     'I': '[I] Lipid metabolism',
+     'J': '[J] Translation',
+     'K': '[K] Transcription',
+     'L': '[L] Replication and repair',
+     'M': '[M] Cell wall/membrane/envelop biogenesis',
+     'N': '[N] Cell motility',
+     'O': '[O] Post-translational modification, protein turnover, chaperone functions',
+     'P': '[P] Inorganic ion transport and metabolism',
+     'Q': '[Q] Secondary Structure',
+     'T': '[T] Signal Transduction',
+     'U': '[U] Intracellular trafficing and secretion',
+     'V': '[V] Defense mechanisms',
+     'W': '[W] Extracellular structures',
+     'Y': '[Y] Nuclear structure',
+     'Z': '[Z] Cytoskeleton',
+     'R': '[R] General Functional Prediction only',
+     'S': '[S] Function Unknown'
+ }
+
+ var KEGG_categories = {
+  'C': 'Carbohydrate metabolism',
+  'E': 'Energy metabolism',
+  'L': 'Lipid metabolism',
+  'N': 'Nucleotide metabolism',
+  'A': 'Amino acid metabolism',
+  'G': 'Glycan biosynthesis and metabolism',
+  'V': 'Metabolism of cofactors and vitamins',
+  'T': 'Metabolism of terpenoids and polyketides',
+  'S': 'Biosynthesis of other secondary metabolites',
+  'X': 'Xenobiotics biodegradation and metabolism'
 }
 
 var default_COG_colors = {
@@ -54,19 +87,6 @@ var default_COG_colors = {
   'S': '#81402e'
 }
 
-var KEGG_categories = {
-  'C': 'Carbohydrate metabolism',
-  'E': 'Energy metabolism',
-  'L': 'Lipid metabolism',
-  'N': 'Nucleotide metabolism',
-  'A': 'Amino acid metabolism',
-  'G': 'Glycan biosynthesis and metabolism',
-  'V': 'Metabolism of cofactors and vitamins',
-  'T': 'Metabolism of terpenoids and polyketides',
-  'S': 'Biosynthesis of other secondary metabolites',
-  'X': 'Xenobiotics biodegradation and metabolism'
-}
-
 var default_KEGG_colors = {
   'C': '#0000ee',
   'E': '#9933cc',
@@ -86,6 +106,9 @@ var default_source_colors = {
   'tRNA': '#226ab2',
   'rRNA': '#b22222'
 }
+
+// default colors for user-supplied functional annotations
+var custom_cag_colors = Object.values(default_COG_colors).concat(Object.values(default_KEGG_colors));
 
 var named_functional_sources = {
     'EGGNOG_BACT': {

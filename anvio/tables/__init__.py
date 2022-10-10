@@ -24,6 +24,7 @@ genomes_storage_vesion = "7"
 trnaseq_db_version = "2"
 workflow_config_version = "3"
 metabolic_modules_db_version = "4"
+genome_view_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -31,6 +32,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'structure': structure_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
+                         'genome-view': genome_view_db_version,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'trnaseq': trnaseq_db_version,
                          'config': workflow_config_version,
