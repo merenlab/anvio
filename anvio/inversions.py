@@ -465,26 +465,6 @@ class Inversions:
 
                         self.inversions[entry_name].append(d)
 
-                    d = OrderedDict({'entry_id': true_inversion.sequence_name,
-                                     'sample_name': entry_name,
-                                     'contig_name': contig_name,
-                                     'first_seq': true_inversion.first_sequence,
-                                     'midline': true_inversion.midline,
-                                     'second_seq': utils.rev_comp(true_inversion.second_sequence),
-                                     'first_start': true_inversion.first_start + start,
-                                     'first_end': true_inversion.first_end + start,
-                                     'second_start': true_inversion.second_start + start,
-                                     'second_end': true_inversion.second_end + start,
-                                     'num_mismatches': true_inversion.num_mismatches,
-                                     'num_gaps': true_inversion.num_gaps,
-                                     'length': true_inversion.length,
-                                     'distance': true_inversion.distance})
-
-                    if contig_name not in self.inversions[entry_name]:
-                        self.inversions[entry_name][contig_name] = {}
-
-                    self.inversions[entry_name][contig_name][start] = d
-
         self.progress.end()
 
         self.run.info(f"[Inversions found] In sample {entry_name}", f"{len(self.inversions[entry_name])}", lc="yellow")
