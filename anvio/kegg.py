@@ -317,7 +317,7 @@ class KeggContext(object):
                               "want and try again :)")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
-        if self.__class__.__name__ in ['KeggSetup']:
+        if self.__class__.__name__ in ['KeggSetup'] and not self.user_input_dir:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
                 raise ConfigError(f"You are attempting to set up KEGG in a non-default data directory ({self.kegg_data_dir}) which already exists. "
                                   f"To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
