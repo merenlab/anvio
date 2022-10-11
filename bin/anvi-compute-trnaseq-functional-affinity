@@ -221,9 +221,9 @@ if __name__ == '__main__':
     group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     group1D.add_argument(
         '--separate-genomes', default=False, action='store_true',
-        help="Write separate output tables for each genome. The name of each genome/bin is "
-             "inserted into the output path after a hyphen and before the extension, replacing any "
-             "spaces in the name with underscores. The first column of each table remains the "
+        help="Write separate affinity output tables for each genome. The name of each genome/bin "
+             "is inserted into the output path after a hyphen and before the extension, replacing "
+             "any spaces in the name with underscores. The first column of each table remains the "
              "genome name.")
     group1D.add_argument(
         '--separate-function-sources', default=False, action='store_true',
