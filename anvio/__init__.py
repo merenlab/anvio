@@ -1996,7 +1996,7 @@ D = {
                      "to a lot of people and they were all like 'this is the best one available' and "
                      "it is just all out there. Honestly it is so good that we will build a wall around it "
                      "and make other linkage methods pay for it. But if you want to see a full "
-                     "list of available ones you can check the hierarcy.linkage function in "
+                     "list of available ones you can check the hierarchy.linkage function in "
                      "the scipy.cluster module. Up to you really. But then you can't use %(default)s "
                      "anymore, and you would have to leave anvi'o right now."}
                 ),
