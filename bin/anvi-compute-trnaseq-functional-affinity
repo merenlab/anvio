@@ -6,7 +6,7 @@ import sys
 import pandas as pd
 
 import anvio
-from anvio import filesnpaths
+import anvio.constants as constants
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
