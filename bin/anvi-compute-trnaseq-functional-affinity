@@ -382,23 +382,23 @@ if __name__ == '__main__':
         "categories are nested hierarchically, the same lower-level category can be encompassed by "
         "multiple higher-level categories.")
     group1D.add_argument(
-        '-f', '--function-sources', nargs='*',
+        '-f', '--function-sources', nargs='*', type=str,
         default=genomictrnaseq.Affinitizer.default_function_sources,
         help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
              "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
              "any arguments, then every source will be considered.")
     group1D.add_argument(
-        '--function-accessions', nargs='+',
+        '--function-accessions', nargs='+', type=str,
         help="Calculate affinity for select functions with these accessions from the source "
              "provided in `--function-sources`. To get accessions from multiple sources, instead "
              "use `--select-functions-txt`.")
     group1D.add_argument(
-        '--function-names', nargs='+',
+        '--function-names', nargs='+', type=str,
         help="Calculate affinity for select functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead use "
              "`--select-functions-txt`.")
     group1D.add_argument(
-        '--select-functions-txt', metavar='FILE',
+        '--select-functions-txt', metavar='FILE', type=str,
         help="Selected functions can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
@@ -410,7 +410,7 @@ if __name__ == '__main__':
              "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
              "sources was not run on any number of input (meta)genomes.")
     group1D.add_argument(
-        '--function-blacklist-txt', metavar='FILE',
+        '--function-blacklist-txt', metavar='FILE', type=str,
         help="A single-column file of regular expressions that exclude functions from affinity "
              "calculations when patterns occur in function annotation strings. Built-in blacklists "
              "can be stored to file by running this program with the sole option, "
@@ -422,7 +422,7 @@ if __name__ == '__main__':
         '--gene-affinity', default=False, action='store_true',
         help="Compute affinity for genes rather than functions.")
     group1D.add_argument(
-        '--gene-caller-ids', type=int, nargs='+',
+        '--gene-caller-ids', nargs='+', type=int,
         help="Select genes by ID, space-separated, if using `--gene-affinity`, and genomic input "
              "from a single contigs database (not `--internal-genomes` or `--external-genomes`).")
 
@@ -440,7 +440,7 @@ if __name__ == '__main__':
     group1E.add_argument(
         '--seed-assignment',
         choices=['unambiguous_genome', 'unambiguous_db', 'ambiguous_all', 'ambiguous_choose'],
-        default='unambiguous_genome',
+        type=str, default='unambiguous_genome',
         help="Control how tRNA-seq seeds assigned to tRNA genes that are not confined to a single "
              "genome -- \"ambiguous\" seeds -- affect affinity calculations. Ambiguous seeds may "
              "assigned to multiple genomes or a single genome and unbinned contigs. "
@@ -494,7 +494,7 @@ if __name__ == '__main__':
              "met in both the sample being analyzed and reference sample for the isoacceptor to "
              "contribute to affinity.")
     group1F.add_argument(
-        '--exclude-unmodified-anticodons', nargs='+',
+        '--exclude-unmodified-anticodons', nargs='+', type=str,
         help="Remove tRNA isoacceptors with the given unmodified anticodons from calculation of "
              "affinity. Note that this argument only handles unmodified anticodons. For example, "
              "'ACG' does not exclude 'ICG', and 'CAT' excludes tRNA-Met but not tRNA-Ile2, in "
@@ -503,7 +503,7 @@ if __name__ == '__main__':
              "`--exclude-modified-anticodons`. Exclusion of tRNAs by anticodon occurs before, and "
              "thereby affects, the `--min-isoacceptors` filter.")
     group1F.add_argument(
-        '--exclude-modified-anticodons', nargs='+',
+        '--exclude-modified-anticodons', nargs='+', type=str,
         help="Remove tRNA isoacceptors with the given modified anticodons from calculation of "
              "anticodon. Recognized modifications are wobble nucleotide I (inosine) (anticodons "
              "'INN', where 'N' is any nucleotide) and L (lysidine and, in this program, archaeal "
@@ -518,8 +518,7 @@ if __name__ == '__main__':
              "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
              "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
              "Affinity will be calculated for genome A but not B.")
-    group1F.add_argument(
-        '--decoding-weights-txt', metavar='FILE',
+        '--decoding-weights-txt', metavar='FILE', type=str,
         help="A tab-delimited file of decoding weights, formatted identically to the file of "
              "default weights generated by running this program with the single option, "
              "`--get-default-decoding-weights`. The default weights used by this program are the "
@@ -557,10 +556,10 @@ if __name__ == '__main__':
         help="Genes must contain at least this number of codons total to contribute to affinity "
              "calculations. This option can only be used with `--gene-affinity`.")
     group1G.add_argument(
-        '--exclude-codons', nargs='+',
+        '--exclude-codons', nargs='+', type=str,
         help="Remove the given codons from the calculation of affinity.")
     group1G.add_argument(
-        '--exclude-amino-acids', nargs='+',
+        '--exclude-amino-acids', nargs='+', type=str,
         help="Remove codons that decode the given amino acids from calculation of affinity.")
 
     group1H = parser.add_argument_group(
