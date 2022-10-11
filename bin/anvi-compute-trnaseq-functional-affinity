@@ -305,6 +305,73 @@ if __name__ == '__main__':
         '--sample-tree', metavar='NEWICK', type=str,
         help="Store a Newick-formatted tree of hierarchically clustered tRNA-seq sample "
              "affinities.")
+
+    group1F = parser.add_argument_group(
+        'PLOTS',
+        "Static plots can be generated for each genome showing heatmaps of function (or gene) "
+        "affinities, with each row being a function and each column being a tRNA-seq sample. A "
+        "dendrogram orders the functions by their overall raw codon frequencies regardless of "
+        "codon filters imposed by this program in the calculation of affinity. Optionally, a "
+        "dendrogram orders the samples by the affinities of functions in the heatmap. These static "
+        "plots are well-suited for visualizing a select number of functions, such as those most "
+        "strongly favored (`--n-highest-affinity`) and most strongly disfavored "
+        "(`--n-lowest-affinity`) by the tRNA pool. This program can generate plots alongside "
+        "tables, or it can be run again just to generate plots with affinity table and, "
+        "optionally, codon frequency table and Newick tree inputs. The anvi'o interactive "
+        "interface is better for visualizing all functions at once. `anvi-interactive` can take "
+        "the affinity table and, optionally, Newick trees for ordering function data and sample "
+        "layers -- such as those produced by `--codon-tree` and `--sample-tree`. (See "
+        "https://merenlab.org/tutorials/interactive-interface/ and "
+        "https://anvio.org/help/7/programs/anvi-interactive/"
+        "#running-anvi-interactive-in-manual-mode)")
+    group1F.add_argument(
+        '--plot', nargs='?', const=True, default=False,
+        help="Store static plots of genome function (or gene) affinity. If the program is run to "
+             "calculate affinity, generating tables, then this option should be used as a flag. "
+             "In this case, plots for each genome and affinity normalization method will be "
+             "written to filepaths based on `--output-file`, with the extension changed to '.pdf', "
+             "and the genome name and, if applicable, normalization method inserted before the "
+             "extension following a hyphen. If the program is run solely to generate plots from an "
+             "existing affinity table, then provide an output path for the plot. If the affinity "
+             "table contains information on multiple genomes, then multiple plots will be "
+             "generated, modifying each output path with the genome name as above. If the affinity "
+             "table filepath contains a recognized normalization method preceding the extension, "
+             "then it will also be included in the output filepath, and the scalebar of the "
+             "heatmap will be adjusted accordingly, with 'min-max' and 'magnitude-min-max' being "
+             "on a scale of 0 to 1 and 'min-max-mean' being on a scale of -1 to 1.")
+    group1F.add_argument(
+        '--n-highest-affinity', default=25, type=int,
+        help="Plot this number of functions or genes with the highest affinities in the genome.")
+    group1F.add_argument(
+        '--n-lowest-affinity', default=25, type=int,
+        help="Plot this number of functions or genes with the lowest affinities in the genome.")
+    group1F.add_argument(
+        '--sample-dendrogram', default=False, action='store_true',
+        help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
+             "are ordered how they are input to the program or appear in the affinity table. "
+             "Without `--plot-codon-file` or `--plot-sample-tree`, clustering is based on the "
+             "affinities of the functions or genes displayed in the heatmap. Alternatively, a "
+             "dendrogram can be computed from a codon frequency table supplied by "
+             "`--plot-codon-file` or supplied as a Newick-formatted file by `--plot-sample-tree`. "
+             "Clustering parameters can be altered with `--sample-distance` and "
+             "`--sample-linkage`.")
+    group1F.add_argument(
+        '--plot-affinity-file', metavar='FILE', type=str,
+        help="An affinity table is needed if running the program only to generate plots.")
+    group1F.add_argument(
+        '--plot-codon-file', metavar='FILE', type=str,
+        help="A codon frequency table (see `--codon-frequencies` for the proper format) can be "
+             "provided if running the program only to generate plots. The table must contain "
+             "entries for the displayed functions or genes. Clustering parameters can be altered "
+             "with `--sample-distance` and `--sample-linkage`.")
+    group1F.add_argument(
+        '--plot-codon-tree', metavar='NEWICK', type=str,
+        help="A Newick-formatted tree of the displayed functions or genes can be provided if "
+             "running the program only to generate plots.")
+    group1F.add_argument(
+        '--plot-sample-tree', metavar='NEWICK', type=str,
+        help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
+             "program only to generate plots.")
         'FUNCTIONS',
         "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
         "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
