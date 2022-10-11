@@ -10,6 +10,8 @@ from anvio import filesnpaths
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
+from anvio import filesnpaths
+
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
