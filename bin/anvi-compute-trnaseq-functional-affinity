@@ -270,6 +270,41 @@ if __name__ == '__main__':
              "row indices of genome, function, and gene information as the corresponding affinity "
              "tables. These frequency data underlie the dendrograms in the graphical output.")
 
+    group1E = parser.add_argument_group(
+        'CLUSTERING',
+        "The following arguments control hierarchical clustering and can be supplied for the "
+        "production of Newick trees and plots. For both codon frequency and tRNA-seq sample "
+        "clustering, the default distance metric is '{constants.distance_metric_default}' and "
+        "the default linkage method is '{constants.linkage_method_default}'. All available "
+        "distance metrics are listed in the help menu of the hierarchy.distance.pdist function in "
+        "the scipy.cluster module. All available linkage methods are listed in the help menu of "
+        "the hierarchy.linkage function in the scipy.cluster module.")
+    group1E.add_argument(
+        '--codon-distance', metavar='DISTANCE_METRIC', type=str,
+        default=constants.distance_metric_default,
+        help="The distance metric for the hierarchical clustering of functions or genes by their "
+             "codon frequencies.")
+    group1E.add_argument(
+        '--codon-linkage', metavar='LINKAGE_METHOD', type=str,
+        default=constants.linkage_method_default,
+        help="The linkage method for the hierarchical clustering of functions or genes by their "
+             "codon frequencies.")
+    group1E.add_argument(
+        '--codon-tree', metavar='NEWICK', type=str,
+        help="Store a Newick-formatted tree of hierarchically clustered codon frequencies.")
+    group1E.add_argument(
+        '--sample-distance', metavar='DISTANCE_METRIC', type=str,
+        default=constants.distance_metric_default,
+        help="The distance metric for the hierarchical clustering of tRNA-seq samples by their "
+             "affinities.")
+    group1E.add_argument(
+        '--sample-linkage', metavar='LINKAGE_METHOD', type=str,
+        help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
+             "affinities.")
+    group1E.add_argument(
+        '--sample-tree', metavar='NEWICK', type=str,
+        help="Store a Newick-formatted tree of hierarchically clustered tRNA-seq sample "
+             "affinities.")
         'FUNCTIONS',
         "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
         "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
