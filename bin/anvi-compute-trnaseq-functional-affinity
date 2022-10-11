@@ -520,6 +520,12 @@ if __name__ == '__main__':
              "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
              "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
              "Affinity will be calculated for genome A but not B.")
+    group1I.add_argument( # TODO: add this argument
+        '--shared-isoacceptors', default=False, action='store_true',
+        help="Retain isoacceptors that are shared among all of the input tRNA-seq samples (and "
+             "that also pass the other isoacceptor filters). This facilitates the comparison of "
+             "raw affinity data between multiple (non-reference) samples, because affinity is "
+             "based on the same set of isoacceptors in each sample.")
     group1I.add_argument(
         '--decoding-weights-txt', metavar='FILE', type=str,
         help="A tab-delimited file of decoding weights, formatted identically to the file of "
