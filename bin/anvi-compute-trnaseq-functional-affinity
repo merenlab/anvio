@@ -209,6 +209,67 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     group1D = parser.add_argument_group(
+        'TABULAR OUTPUTS',
+        "This program requires an output file argument; by default, the table of affinities is "
+        "stored there. Tables of normalized affinity data -- informative for inter-sample "
+        "comparisons -- can be generated in addition to or instead of the affinity table. Separate "
+        "tables of affinity data can be generated for each genome instead of concatenating results "
+        "for multiple genomes in a single table. If more tables are generated than the single "
+        "default, these are written to file paths derived from the provided output file path. If "
+        "also graphing the results (see arguments under \"Graphical Outputs\" below), then graphs "
+        "will be produced for each type of affinity table output specified.")
+    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    group1D.add_argument(
+        '--separate-genomes', default=False, action='store_true',
+        help="Write separate output tables for each genome. The name of each genome/bin is "
+             "inserted into the output path after a hyphen and before the extension, replacing any "
+             "spaces in the name with underscores. The first column of each table remains the "
+             "genome name.")
+    group1D.add_argument(
+        '--separate-function-sources', default=False, action='store_true',
+        help="Write separate output tables for each function source. The name of each source is "
+             "inserted into the output path after a hyphen and before the extension.")
+    group1D.add_argument(
+        '--normalize-affinity',
+        nargs='+', choices=['min_max', 'min_max_mean', 'magnitude_min_max'], type=str,
+        help="Output normalized affinity data. Normalized affinity data is useful for comparing "
+             "which functions (or genes) are favored and disfavored by the tRNA pool across "
+             "multiple (non-reference) samples, especially in graphs; without the option, "
+             "`--shared-isoacceptors`, different isoacceptors can contribute to affinity in each "
+             "sample given different sample coverage levels and the effects of isoacceptor "
+             "filtering options, so the range of raw affinity values across functions in each "
+             "sample can vary for this reason alone despite the same functions being favored and "
+             "disfavored across samples. When multiple output tables are written, the name of the "
+             "the normalization option (e.g., 'min_max', 'min_max_mean') is inserted into the "
+             "output path after a hyphen and before the extension. 'raw' is similarly inserted "
+             "into raw affinity output filepaths when normalization is used. "
+             "(1) Min-max normalization of a function in a genome for a given tRNA-seq sample "
+             "subtracts the function's affinity from the affinity of the minimum function and "
+             "divides by the difference in affinity between the maximum and minimum functions. The "
+             "minimum affinity -- which may be negative, indicating that the tRNA pool disfavors "
+             "the function in the sample relative to the reference -- is normalized to 0. The "
+             "maximum affinity -- which may also be negative -- is normalized to 1. "
+             "(2) Min-max-mean normalization follows min-max normalization by subtraction of the "
+             "mean to yield negative and positive values lying between -1 and 1. "
+             "(3) Magnitude-min-max normalization takes the absolute value of affinity before "
+             "min-max normalization to yield values that indicate the magnitude of the change in "
+             "favorability of the tRNA pool for functions, disregarding the direction of change.")
+    group1D.add_argument(
+        '--normalize-all-function-sources', default=False, action='store_true',
+        help="When normalized affinities are calculated for multiple function sources (e.g., "
+             "'KOfam', 'Pfam'), apply the normalization to all sources, so that, for example, "
+             "KOfam and Pfam functions are compared to each other. This cannot be used with the "
+             "option, `--separate-function-sources`.")
+    group1D.add_argument(
+        '--no-raw-affinity', default=False, action='store_true',
+        help="Do not output a table of raw affinity data along with normalized data.")
+    group1D.add_argument(
+        '--codon-frequencies', default=False, action='store_true',
+        help="Write a table of function or gene codon frequencies (or multiple tables when "
+             "`--separate-genomes` and `--separate-function-sources are used). These have the same "
+             "row indices of genome, function, and gene information as the corresponding affinity "
+             "tables. These frequency data underlie the dendrograms in the graphical output.")
+
         'FUNCTIONS',
         "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
         "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
