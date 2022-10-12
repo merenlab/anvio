@@ -4,7 +4,6 @@
  *  Authors: Özcan Esen <ozcanesen@gmail.com>
  *           A. Murat Eren <a. murat.eren@gmail.com>
  *
- *
  *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program

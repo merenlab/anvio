@@ -5,8 +5,6 @@
  *
  *  Copyright 2018-2021, The anvi'o project (http://anvio.org)
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
- *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either

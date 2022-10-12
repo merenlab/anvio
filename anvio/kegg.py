@@ -317,7 +317,7 @@ class KeggContext(object):
                               "want and try again :)")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
-        if self.__class__.__name__ in ['KeggSetup']:
+        if self.__class__.__name__ in ['KeggSetup'] and not self.user_input_dir:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
                 raise ConfigError(f"You are attempting to set up KEGG in a non-default data directory ({self.kegg_data_dir}) which already exists. "
                                   f"To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
@@ -1237,8 +1237,7 @@ class KeggSetup(KeggContext):
         if not os.path.exists(self.kegg_modules_db_path):
             raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
                               f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
-                              f"Well, one reason is that we always use KEGG data first when estimating metabolism. And "
-                              f"the other reason is that we need to make sure none of your module names overlap with those "
+                              f"Well, we need to make sure none of your module names overlap with those "
                               f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
                               f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
                               f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "

@@ -6,7 +6,7 @@
  *           A. Murat Eren <a.murat.eren@gmail.com>
  *
  * Copyright 2015-2021, The anvi'o project (http://anvio.org)
- *
+
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either
