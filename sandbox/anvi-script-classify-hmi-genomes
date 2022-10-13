@@ -73,6 +73,15 @@ def get_HMI_score(metabolism_file, HMI_module_list):
     """Adds up the pathwise completeness scores of each module in the HMI list. Returns the sum."""
 
     module_df = pd.read_csv(metabolism_file, sep="\t", index_col=0)
+
+    module_not_found = [m for m in HMI_module_list if m not in module_df.index]
+    if module_not_found:
+        mod_str = ", ".join(module_not_found)
+        raise ConfigError(f"Some of the module accession(s) in the provided list were not found in the metabolism "
+                          f"output files, which means that they do not exist in the KEGG database you "
+                          f"provided. You either have the wrong accession(s), or you need to provide a different "
+                          f"database. Here is a list of the missing modules: {mod_str}")
+
     subset = module_df.loc[HMI_module_list]['pathwise_module_completeness']
 
     return subset.sum()
