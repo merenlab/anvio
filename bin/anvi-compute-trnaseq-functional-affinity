@@ -253,7 +253,8 @@ if __name__ == '__main__':
              "mean to yield negative and positive values lying between -1 and 1. "
              "(3) Magnitude-min-max normalization takes the absolute value of affinity before "
              "min-max normalization to yield values that indicate the magnitude of the change in "
-             "favorability of the tRNA pool for functions, disregarding the direction of change.")
+             "favorability of the tRNA pool towards functions, disregarding the direction of "
+             "change.")
     group1D.add_argument(
         '--normalize-all-function-sources', default=False, action='store_true',
         help="When normalized affinities are calculated for multiple function sources (e.g., "
