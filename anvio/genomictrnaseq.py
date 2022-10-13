@@ -2316,7 +2316,7 @@ class Affinitizer:
             input genomes and columns representing each isoacceptor identified in the tRNA-seq data
             regardless of genome source.
         """
-        args = argparse.ArgumentParser()
+        args = argparse.Namespace()
         args.contigs_db = self.genomic_contigs_db_path
         args.profile_db = self.genomic_profile_db_path
         args.collection_name = self.collection_name
