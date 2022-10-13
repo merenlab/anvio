@@ -1344,6 +1344,9 @@ class Affinitizer:
         ]
     }
 
+    affinity_normalization_methods = ['min_max', 'min_max_mean', 'magnitude_min_max']
+
+
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -2571,3 +2574,278 @@ class Affinitizer:
                         f"contains the following samples: {', '.join(available_sample_names)}")
 
         return available_sample_names
+
+
+    @staticmethod
+    def write_affinity_output(affinities_df,
+                              output_path,
+                              separate_genomes=False,
+                              separate_function_sources=False,
+                              normalization_methods=None,
+                              normalize_all_function_sources=False,
+                              no_raw_affinity=False):
+        """
+        Store tables of affinity data.
+
+        Parameters
+        ----------
+        affinities_df : pandas.core.frame.DataFrame
+            A table of affinities of the format produced by `get_affinities`.
+        output_path : str
+            This filepath serves as a template for the paths of other files that may be generated.
+            Indeed, given the configuration of arguments to the function, nothing may be written to
+            this path. Given the template, <basename><extension>, substrings can be inserted in the
+            derived filepaths, with the most elaborate such filepath being
+            <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
+        separate_genomes : bool, optional
+            If True (default False), split output tables by genome. In the output paths, underscores
+            replace spaces in the genome names.
+        separate_function_sources : bool, optional
+            If True (default False), split output tables by function source.
+        normalization_methods : str or iterable, optional
+            Normalize affinity data by the provided method(s), one or more of the following:
+            'min_max', 'min_max_mean', 'magnitude_min_max'. By default None. A string for a single
+            method or an iterable for one or more methods can be provided. Additional output tables
+            are written for each normalization method.
+            (1) Min-max normalization of a function in a genome for a given tRNA-seq sample
+            subtracts the function's affinity from the affinity of the minimum function and divides
+            by the difference in affinity between the maximum and minimum functions. The minimum
+            affinity -- which may be negative, indicating that the tRNA pool disfavors the function
+            in the sample relative to the reference -- is normalized to 0. The maximum affinity --
+            which may also be negative -- is normalized to 1.
+            (2) Min-max-mean normalization follows min-max normalization by subtraction of the mean
+            to yield negative and positive values lying between -1 and 1.
+            (3) Magnitude-min-max normalization takes the absolute value of affinity before min-max
+            normalization to yield values that indicate the magnitude of the change in favorability
+            of the tRNA pool towards functions, disregarding the direction of change.
+        normalize_all_function_sources : bool, optional
+            If True (default False), normalize affinities of functions from all sources rather than
+            individual sources. This cannot be used with `separate_function_sources`, because it
+            would not make sense to separate data by source when functions from multiple sources are
+            compared to each other.
+        no_raw_affinity : bool, optional
+            If True (default False), do not produce a table (or tables) of raw affinities, only
+            normalized affinities.
+        """
+        if separate_genomes:
+            if 'genome_name' not in affinities_df.columns:
+                raise ConfigError(
+                    "To split output by genome, as requested by `separate_genomes`, the table of "
+                    "affinity data must contain the expected column, \"genome_name\".")
+
+        if separate_function_sources or normalize_all_function_sources:
+            if set(['function_source', 'function_accession', 'function_name']).difference(
+                affinities_df.columns):
+                raise ConfigError(
+                    "To split output by function source, as requested by "
+                    "`separate_function_sources`, the table of affinity data must contain the "
+                    "expected columns labeling functions: \"function_source\", "
+                    "\"function_accession\", and \"function_name\".")
+
+        if separate_function_sources and normalize_all_function_sources:
+            raise ConfigError("`separate_function_sources` and `normalize_all_function_sources` "
+                              "are incompatible.")
+
+        if normalization_methods is None:
+            normalization_methods = []
+            if no_raw_affinity:
+                raise ConfigError("`no_raw_affinity` must be used with `normalization_methods`.")
+        else:
+            normalization_methods = list(normalization_methods)
+
+        unrecognized_normalization_methods = []
+        for normalization_method in normalization_methods:
+            if normalization_method not in Affinitizer.affinity_normalization_methods:
+                unrecognized_normalization_methods.append(normalization_method)
+        if unrecognized_normalization_methods:
+            raise ConfigError("The following normalization methods were not recognized: "
+                              f"{', '.join(unrecognized_normalization_methods)}")
+
+        ##################################################
+        # The following functions normalize affinities stored in a pandas Series.
+        def min_max_normalize(series):
+            normalized_series = series - series.min() / (series.max() - series.min())
+            return normalized_series
+
+        def min_max_mean_normalize(series):
+            min_max_normalized_series = min_max_normalize(series)
+            min_max_mean_normalized_series = \
+                min_max_normalized_series - min_max_normalized_series.mean()
+            return min_max_mean_normalized_series
+
+        def magnitude_min_max_normalize(series):
+            magnitude_series = series.abs()
+            magnitude_min_max_normalized_series = min_max_normalize(magnitude_series)
+            return magnitude_min_max_normalized_series
+
+        def normalize(normalization_method, series):
+            if normalization_method == 'min_max':
+                normalized_series = min_max_normalize(series)
+            elif normalization_method == 'min_max_mean':
+                normalized_series = min_max_mean_normalize(series)
+            elif normalization_method == 'magnitude_min_max':
+                normalized_series = magnitude_min_max_normalize(series)
+            return normalized_series
+        ##################################################
+
+        # Rather than using a clever recursive function to split the data by genome and/or function
+        # source (and/or any other generic criteria) and apply normalization methods, handle each
+        # possibility explicitly.
+        output_basename, output_ext = os.path.splitext(output_path)
+        valid_derived_output_paths = []
+        invalid_derived_output_paths = []
+        is_input_output_path_valid = True
+        if separate_genomes and separate_function_sources:
+            # Split the data by both genome and function source.
+            for genome_name, genome_df in affinities_df.groupby('genome_name'):
+                for source, source_df in genome_df.groupby('function_source'):
+                    for normalization_method in normalization_methods:
+                        # Write a table for the genome/source/normalization method.
+                        derived_output_path = (
+                            output_basename + "-" +
+                            genome_name.replace(" ", "_") + "-" + source + "-" +
+                            normalization_method +
+                            output_ext)
+                        try:
+                            filesnpaths.is_output_file_writable(derived_output_path)
+                            valid_derived_output_paths.append(derived_output_path)
+                        except FilesNPathsError:
+                            invalid_derived_output_paths.append(derived_output_path)
+                            continue
+                        normalized_source_df = source_df.transform(
+                            partial(normalize, normalization_method))
+                        normalized_source_df.to_csv(derived_output_path, sep='\t')
+                    if no_raw_affinity:
+                        continue
+                    # Write a table of raw affinities for the genome/source.
+                    derived_output_path = (
+                        output_basename + "-" +
+                        genome_name.replace(" ", "_") + "-" + source +
+                        output_ext)
+                    try:
+                        filesnpaths.is_output_file_writable(derived_output_path)
+                        valid_derived_output_paths.append(derived_output_path)
+                    except FilesNPathsError:
+                        invalid_derived_output_paths.append(derived_output_path)
+                        continue
+                    source_df.to_csv(derived_output_path, sep='\t')
+        elif separate_genomes:
+            # Split the data by genome.
+            for genome_name, genome_df in affinities_df.groupby('genome_name'):
+                for normalization_method in normalization_methods:
+                    # Write a table for the genome/source/normalization method.
+                    derived_output_path = (
+                        output_basename + "-" +
+                        genome_name.replace(" ", "_") + "-" +
+                        normalization_method +
+                        output_ext)
+                    if normalize_all_function_sources:
+                        normalized_genome_df = genome_df.transform(
+                            partial(normalize, normalization_method))
+                    else:
+                        normalized_genome_df = genome_df.groupby('function_source').transform(
+                            partial(normalize, normalization_method))
+                    try:
+                        filesnpaths.is_output_file_writable(derived_output_path)
+                        valid_derived_output_paths.append(derived_output_path)
+                    except FilesNPathsError:
+                        invalid_derived_output_paths.append(derived_output_path)
+                        continue
+                    normalized_genome_df.to_csv(derived_output_path, sep='\t')
+                if no_raw_affinity:
+                    continue
+                # Write a table of raw affinities for the genome.
+                derived_output_path = (
+                    output_basename + "-" +
+                    genome_name.replace(" ", "_") +
+                    output_ext)
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                    valid_derived_output_paths.append(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                genome_df.to_csv(derived_output_path, sep='\t')
+        elif separate_function_sources:
+            # Split the data by function source.
+            for source, source_df in affinities_df.groupby('function_source'):
+                for normalization_method in normalization_methods:
+                    # Write a table for the source/normalization method.
+                    derived_output_path = (
+                        output_basename + "-" +
+                        source + "-" +
+                        normalization_method +
+                        output_ext)
+                    normalized_source_df = source_df.transform(
+                        partial(normalize, normalization_method))
+                    try:
+                        filesnpaths.is_output_file_writable(derived_output_path)
+                        valid_derived_output_paths.append(derived_output_path)
+                    except FilesNPathsError:
+                        invalid_derived_output_paths.append(derived_output_path)
+                        continue
+                    normalized_source_df.to_csv(derived_output_path, sep='\t')
+                if no_raw_affinity:
+                    continue
+                # Write a table of raw affinities for the source.
+                try:
+                    derived_output_path = output_basename + "-" + source + output_ext
+                    valid_derived_output_paths.append(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                source_df.to_csv(derived_output_path, sep='\t')
+        else:
+            for normalization_method in normalization_methods:
+                # Write a table for the normalization method.
+                derived_output_path = (
+                    output_basename + "-" +
+                    normalization_method +
+                    output_ext)
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                    valid_derived_output_paths.append(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                if normalize_all_function_sources:
+                    normalized_df = affinities_df.transform(
+                        partial(normalize, normalization_method))
+                else:
+                    normalized_df = affinities_df.groupby('function_source').transform(
+                        partial(normalize, normalization_method))
+                normalized_df.to_csv(derived_output_path, sep='\t')
+            if not no_raw_affinity:
+                # Write a table of raw affinities.
+                try:
+                    filesnpaths.is_output_file_writable(output_path)
+                    affinities_df.to_csv(output_path, sep='\t')
+                    is_input_output_path_valid = 1
+                except FilesNPathsError:
+                    is_input_output_path_valid = False
+
+        # Report invalid output paths and, if some paths were invalid, also remove files written to
+        # valid paths.
+        if is_input_output_path_valid:
+            input_output_path_message = ""
+        else:
+            input_output_path_message = ("The table of raw affinities could not be written to "
+                                         f"`output_path`, '{output_path}'.")
+        if invalid_derived_output_paths:
+            derived_output_paths_message = (
+                "The following tables of affinties could not be written to the following derived "
+                "target paths: "
+                f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+        else:
+            derived_output_paths_message = ""
+        if invalid_derived_output_paths or not is_input_output_path_valid:
+            if is_input_output_path_valid is 1:
+                # Derived output paths were invalid, and raw affinities were written to the input
+                # output file.
+                os.remove(output_path)
+            for derived_output_path in valid_derived_output_paths:
+                os.remove(derived_output_path)
+            raise ConfigError(
+                f"{input_output_path_message}"
+                f"{' ' if invalid_derived_output_paths and not is_input_output_path_valid else ''}"
+                f"{derived_output_paths_message}")
