@@ -1902,7 +1902,7 @@ class Affinitizer:
         that are assigned to a genome.
 
         Returns
-        -------
+        =======
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row contains genome and isoacceptor information identifying non-reference/reference
             abundance ratios. This table is "long," with one column of abundance ratio data.
@@ -2402,7 +2402,7 @@ class Affinitizer:
         Calculate affinities of tRNA isoacceptors to functions or genes for each genome.
 
         Parameters
-        ----------
+        ==========
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
             information identifying non-reference/reference abundance ratios.

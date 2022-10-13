@@ -281,7 +281,7 @@ class SingleGenomeCodonUsage(object):
         Relative codon frequencies can be normalized per-amino acid to all synonymous codons.
 
         Parameters
-        ----------
+        ==========
         from_function_sources : bool, str, or iterable of str, optional
             Select genes with functional annotations. With this argument, the first four columns of
             the returned table contain, respectively, function annotation sources, function
@@ -341,7 +341,7 @@ class SingleGenomeCodonUsage(object):
             calculation of relative/synonymous frequencies.
 
         Additional Parameters
-        ---------------------
+        =====================
         These parameters filter genes and codons. Here is the order of all possible filters:
         gene codon frequency table ->
             drop genes on codon length ->
@@ -399,7 +399,7 @@ class SingleGenomeCodonUsage(object):
             usage bias.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             Frequency table of gene x codon or amino acid. If functions are not considered, then the
             Index of the returned DataFrame contains gene caller IDs. If functions are considered
@@ -413,7 +413,7 @@ class SingleGenomeCodonUsage(object):
             returned DataFrame has a row for each function annotation source.
 
         Examples
-        --------
+        ========
         Return the amino acid frequencies of each gene annotated by KEGG KOfams.
         >>> self.get_frequencies(from_function_sources='KOfam', return_amino_acids=True)
 
@@ -1369,7 +1369,7 @@ class SingleGenomeCodonUsage(object):
         Get codon usage bias (CUB) of genes or functions.
 
         Parameters
-        ----------
+        ==========
         metrics : {'cai', 'delta'}, optional
             CUB metric, with valid choices being 'cai' (Codon Adaptation Index of Sharp and Li,
             1987) and 'delta' (Ran and Higgs, 2012, Eq. 6). The default of None calculates all
@@ -1442,7 +1442,7 @@ class SingleGenomeCodonUsage(object):
             the contigs database.
 
         Additional Parameters
-        ---------------------
+        =====================
         These parameters filter genes and codons in CUB calculations.
 
         The gene codon frequency table is the input to the CUB calculation. Here is the order of
@@ -1516,7 +1516,7 @@ class SingleGenomeCodonUsage(object):
             amino acids using `reference_exclude_amino_acid_count`. By default 100.
 
         Returns
-        -------
+        =======
         dict of pandas.core.frame.DataFrame objects
             Each dict key is the name of a CUB metric (from `metrics`), and each value is a
             corresponding table of CUB data.
@@ -1792,7 +1792,7 @@ class SingleGenomeCodonUsage(object):
         Get a codon frequency table from a set of reference genes or functions in the genome.
 
         Parameters
-        ----------
+        ==========
         reference_metrics : iterable
             CUB metrics requiring a reference codon composition.
         reference_function_accessions : dict, optional
@@ -1828,7 +1828,7 @@ class SingleGenomeCodonUsage(object):
             amino acids using `reference_exclude_amino_acid_count`. By default 100.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This frequency table has a single row for the reference composition and a column per
             codon.
@@ -1940,7 +1940,7 @@ class SingleGenomeCodonUsage(object):
         abundant synonymous codons in the reference.
 
         Parameters
-        ----------
+        ==========
         query_codon_frequency_df : pandas.core.frame.DataFrame
             This frequency table has a row per item (gene/function) to be compared to each reference
             codon composition and a column per codon.
@@ -1954,7 +1954,7 @@ class SingleGenomeCodonUsage(object):
             queries for it to be used in calculating CUB. By default 0.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This CUB table has the same row index as the input query table and a column per input
             reference. With a single reference codon composition, this table has a single column.
@@ -2055,7 +2055,7 @@ class SingleGenomeCodonUsage(object):
         of the set from the genome as a whole.
 
         Parameters
-        ----------
+        ==========
         query_codon_frequency_df : pandas.core.frame.DataFrame
             This frequency table has a row per item (gene/function) to be compared to each reference
             codon composition and a column per codon.
@@ -2072,7 +2072,7 @@ class SingleGenomeCodonUsage(object):
             queries for it to be used in calculating CUB. By default 0.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This CUB table has the same row index as the input query table and a column per input
             reference. With a single reference codon composition, this table has a single column of
