@@ -4,6 +4,9 @@ import tempfile
 import numpy as np
 import pandas as pd
 
+from functools import partial
+from itertools import combinations, product
+
 import anvio
 import anvio.utils as utils
 import anvio.hmmops as hmmops
@@ -15,11 +18,9 @@ import anvio.codonusage as codonusage
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
-from itertools import combinations, product
-
 from anvio.dbinfo import DBInfo
-from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
 
