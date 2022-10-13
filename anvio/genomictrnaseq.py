@@ -2472,7 +2472,10 @@ class Affinitizer:
         if affinities_df:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
             if not self.gene_affinity:
-                affinities_df = affinities_df.rename({'name': 'function_name'}, axis=1)
+                affinities_df = affinities_df.rename(
+                    {'source': 'function_source',
+                     'accession': 'function_accession',
+                     'name': 'function_name'}, axis=1)
         else:
             affinities_df = pd.DataFrame()
 
