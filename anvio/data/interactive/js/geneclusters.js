@@ -1,11 +1,11 @@
 /**
  * Javascript library to visualize anvi'o gene clusterss
  *
- *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen
- *  Copyright 2016, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Özcan Esen
+ *           Mahmoud Yousef
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2016-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -162,7 +162,7 @@ function createDisplay(){
 
             if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
-            
+
             var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', 0);
             rect.setAttribute('y', y_cord);
@@ -187,7 +187,7 @@ function createDisplay(){
 
             sub_y_cord = y_cord + 5;
 	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]; 
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
@@ -232,7 +232,7 @@ function createDisplay(){
                     tspan.appendChild(document.createTextNode(acid));
 		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
                     text.appendChild(tspan);
-                } 
+                }
 
                 fragment.appendChild(text);
 
@@ -267,7 +267,7 @@ function createDisplay(){
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
       var popover = $(e.target).data("bs.popover").$tip;
-      
+
       if ($(popover).css('top').charAt(0) === '-') {
         $(popover).css('top', '0px');
       }
