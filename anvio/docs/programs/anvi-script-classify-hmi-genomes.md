@@ -22,6 +22,18 @@ It is very basic (at least in its current iteration). You give the script a geno
 
 The most important things to remember is that 'HMI score' is just a sum of completeness scores, and the threshold is just a number representing the lower boundary of 'high' completeness. The last two steps are the only things that are unique to this particular script, which simply calls other anvi'o programs to do the rest of the work. If you want to know more details about the other steps, you can check the individual program pages that are linked above.
 
+### Example output
+
+When the script is finished running, you should see some text like the following on your terminal screen:
+```
+CLASSIFICATION RESULT
+===============================================
+Your genome has now been classified as an LMI genome. It had a score of
+6.5214285714285705, where the score is simply the sum of all pathwise
+completeness scores of the modules in the list you provided.
+```
+Hopefully it is clear that the classification (LMI or HMI) and the score will be different from genome to genome.
+
 ## How do I use the script?
 
 Like this:
@@ -44,7 +56,7 @@ What a great question! The short but not very helpful answer is that you are fre
 
 It's important to remember that you will need some justification for how you select modules, which will depend on your knowledge of your dataset. So maybe spend some time thinking about what high metabolic independence means in your research context before you start.
 
-**Here is what we did.** In our study of colonization after FMT, we had two groups of microbial genomes: one group (the good colonizers) which we realized had much higher metabolic capacity than the other group (the poor colonizers). To figure out exactly which metabolic pathways were differentiating between the two groups, we ran %(anvi-compute-metabolic-enrichment)s on the metabolism data from these genomes (obtained via %(anvi-estimate-metabolism)s) and selected the KEGG modules that were enriched in the first group (the good colonizers). Specifically, in our case this translates to filtering the enrichment output for modules with 1) a q-value less than 0.05, 2) the good colonizer group as its 'associated group', and 3) at least 75% completeness in at least 50% of the group members. This resulted in the following list of 33 KEGG modules:
+**Here is what we did.** In our study of colonization after FMT, we had two groups of microbial genomes: one group (the good colonizers) which we realized had much higher metabolic capacity than the other group (the poor colonizers). To figure out exactly which metabolic pathways were differentiating between the two groups, we ran %(anvi-compute-metabolic-enrichment)s on the metabolism data from these genomes (obtained via %(anvi-estimate-metabolism)s) and selected the KEGG modules that were enriched in the first group (the good colonizers). Specifically, in our case this translates to filtering the enrichment output for modules with 1) a q-value less than 0.05, 2) the good colonizer group as its 'associated group', and 3) at least 75%% completeness in at least 50%% of the group members. This resulted in the following list of 33 KEGG modules:
 
 ```
 M00049
@@ -106,4 +118,4 @@ Remember that our very basic script will add up all of the completeness scores f
 
 Here, the 'HIG' label corresponds to the group with all HMI genomes, and the 'LOW' label corresponds to the other group (with mostly LMI genomes). We used this plot to choose a threshold score of 20, which does a good job of distinguishing between the 'HIG' group (all of these genomes have scores above this value) and the 'LOW' group (most of these genomes have scores below this value). That's all!
 
-**A very general rule of thumb.** Since individual completeness scores have a maximum of 1 (for 100% complete), the maximum value of the sum will be _n_, where _n_ is the number of metabolic pathways in your list. So you should be selecting a threshold between 0 and _n_, but most likely on the higher end of that range, since high metabolic independence is generally defined as _high_ completeness scores across the set of pathways). It will depend on your data, of course. 
+**A very general rule of thumb.** Since individual completeness scores have a maximum of 1 (for 100%% complete), the maximum value of the sum will be _n_, where _n_ is the number of metabolic pathways in your list. So you should be selecting a threshold between 0 and _n_, but most likely on the higher end of that range, since high metabolic independence is generally defined as _high_ completeness scores across the set of pathways). It will depend on your data, of course.
