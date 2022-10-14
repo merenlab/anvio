@@ -40,6 +40,70 @@ Note that the script can take a while to run. Gene annotation with KOfams is the
 
 ### How do I select which metabolic modules to use?
 
-What a great question! 
+What a great question! The short but not very helpful answer is that you are free to define HMI and choose your metabolic pathways in a way that fits your research question. But the longer and more practical answer is: here we will describe how we selected our set of pathways, and you are welcome to use our set, or to use our method for selecting a set of modules using your own data.
+
+It's important to remember that you will need some justification for how you select modules, which will depend on your knowledge of your dataset. So maybe spend some time thinking about what high metabolic independence means in your research context before you start.
+
+**Here is what we did.** In our study of colonization after FMT, we had two groups of microbial genomes: one group (the good colonizers) which we realized had much higher metabolic capacity than the other group (the poor colonizers). To figure out exactly which metabolic pathways were differentiating between the two groups, we ran %(anvi-compute-metabolic-enrichment)s on the metabolism data from these genomes (obtained via %(anvi-estimate-metabolism)s) and selected the KEGG modules that were enriched in the first group (the good colonizers). Specifically, in our case this translates to filtering the enrichment output for modules with 1) a q-value less than 0.05, 2) the good colonizer group as its 'associated group', and 3) at least 75% completeness in at least 50% of the group members. This resulted in the following list of 33 KEGG modules:
+
+```
+M00049
+M00050
+M00007
+M00140
+M00005
+M00083
+M00120
+M00854
+M00527
+M00096
+M00048
+M00855
+M00022
+M00844
+M00051
+M00082
+M00157
+M00026
+M00526
+M00015
+M00019
+M00432
+M00018
+M00570
+M00126
+M00115
+M00028
+M00924
+M00122
+M00125
+M00023
+M00631
+M00061
+```
+
+You are welcome to copy and paste this list directly into a file and use it as your `--module-list` input, if you want to use the same set of modules that we did. Note that the definitions for these modules are coming from the %(kegg-data)s version with a hash of `45b7cc2e4fdc`, which is a static snapshot of KEGG from December 2020 (`v2020-12-23`), so you will need to provide this same version to the `--kegg-data-dir` parameter for things to work correctly.
+
+**But I want to do it myself!** If you instead want to use a similar method for obtaining a _de novo_ set of modules from your own data, here are the key components:
+
+1. You need two groups of genomes, one that is made up of HMI genomes and one that is made up of LMI genomes.
+2. You should estimate the completeness of all metabolic pathways of potential interest in these genomes.
+3. Finally, you need some way of determining which modules are (mostly) present in high completeness in the HMI group, but largely not complete in the LMI group. This is the list you would provide to the script for classifying additional genomes as HMI or LMI.
+
+The exact methods of estimating metabolism and computing enrichment are up to you, but note that this strategy only works if you already have genomes that you have manually identified as HMI or LMI.
 
 ### How do I select a threshold score?
+
+This question has a similar answer to the previous one, in that we can tell you how we did it for our study, but it doesn't mean everyone has to do it that way. Science is fun like that!
+
+The key, again, is to already have some idea of what HMI means, in a given genome. This usually means that you have some test genomes that you've manually identified as HMI and LMI, and you know which metabolic pathways represent high metabolic independence.
+
+Remember that our very basic script will add up all of the completeness scores for each metabolic module in your list. Then all you need to do is find a number for this sum that distinguishes between your HMI genomes and your LMI ones.
+
+**Here is what we did.** We had our two groups of genomes, good and poor colonizers. We knew that all of the good colonizers were HMI genomes, and that most (not all) of the poor colonizers were LMI genomes. So what we did was to add up the completeness scores of our 33 metabolic pathways (which, you may remember from the previous section, were enriched in the good colonizer group) and plot these sums for each genome, separated by group. This is the plot we got:
+
+![A plot of HMI scores for the good colonizer genomes and the poor colonizer genomes](../../images/FMT_HMI_score_plot.png)
+
+Here, the 'HIG' label corresponds to the group with all HMI genomes, and the 'LOW' label corresponds to the other group (with mostly LMI genomes). We used this plot to choose a threshold score of 20, which does a good job of distinguishing between the 'HIG' group (all of these genomes have scores above this value) and the 'LOW' group (most of these genomes have scores below this value). That's all!
+
+**A very general rule of thumb.** Since individual completeness scores have a maximum of 1 (for 100% complete), the maximum value of the sum will be _n_, where _n_ is the number of metabolic pathways in your list. So you should be selecting a threshold between 0 and _n_, but most likely on the higher end of that range, since high metabolic independence is generally defined as _high_ completeness scores across the set of pathways). It will depend on your data, of course. 
