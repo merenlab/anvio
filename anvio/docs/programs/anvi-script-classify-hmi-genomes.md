@@ -37,12 +37,12 @@ Hopefully it is clear that the classification (LMI or HMI) and the score will be
 ## How do I use the script?
 
 Like this:
-```
+{{ codestart }}
 anvi-script-classify-hmi-genomes -f %(fasta)s \
                                  --module-list modules.txt \
                                  --threshold 20 \
                                  --kegg-data-dir %(kegg-data)s \
-```
+{{ codestop }}
 
 Above, the `modules.txt` is a file in which each line contains a different module accession number, as defined by KEGG. Note that these modules need to be present in the KEGG database that you pass to the `--kegg-data-dir` parameter, so make sure you have a good version of this database (see %(anvi-setup-kegg-kofams)s for help with setting up different versions of KEGG, including the option to [download the most up-to-date data directly from the KEGG website](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg)).  
 
