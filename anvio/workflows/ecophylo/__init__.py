@@ -177,17 +177,23 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not gene_caller_to_use:
             gene_caller_to_use = constants.default_gene_caller
 
+        sanity_checked_metagenomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_metagenomes.txt")
+        sanity_checked_genomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_genomes.txt")
+
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
             self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
 
-            if self.run_genomes_sanity_check:
+            if not os.path.exists(sanity_checked_metagenomes_file):
                 args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']), gene_caller = gene_caller_to_use)
                 g = MetagenomeDescriptions(args)
                 g.load_metagenome_descriptions(init=False)
                 self.metagenomes_dict = g.metagenomes_dict
                 self.metagenomes_name_list = list(self.metagenomes_dict.keys())
                 self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
+
+                with open(sanity_checked_metagenomes_file, 'w') as fp:
+                    pass
             else:
                 self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                 self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
@@ -207,7 +213,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             filesnpaths.is_file_exists(self.external_genomes)
             self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
             
-            if self.run_genomes_sanity_check:
+            if not os.path.exists(sanity_checked_genomes_file):
                 # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
                 # here. Users should only have one type of gene-caller e.g. "NCBI_PGAP".
 
@@ -217,6 +223,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 self.external_genomes_dict = genome_descriptions.external_genomes_dict
                 self.external_genomes_names_list = list(self.external_genomes_dict.keys())
                 self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
+
+                with open(sanity_checked_genomes_file, 'w') as fp:
+                    pass
             else:
                 self.external_genomes_names_list = self.external_genomes_df.name.to_list()
                 self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
