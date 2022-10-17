@@ -55,9 +55,9 @@ def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, thres
     genome_score = subset.sum()
 
     if genome_score >= threshold:
-        return ('HMI', genome_score)
+        return ('High', genome_score)
     else:
-        return ('LMI', genome_score)
+        return ('Low', genome_score)
 
 
 def main(args):
@@ -126,11 +126,12 @@ def main(args):
 
 
 
-    genome_class, genome_score = get_metabolic_independence_estimates(metabolic_modules_file, HMI_mods, args.threshold)
+    genome_metabolic_independence_class, genome_metabolic_independence_score = get_metabolic_independence_estimates(metabolic_modules_file, HMI_mods, args.threshold)
 
     run.warning(None, header='CLASSIFICATION RESULT', lc='green')
-    run.info('Class', genome_class)
-    run.info('Score', genome_score)
+    run.info('Metabolic independence', genome_metabolic_independence_class, mc='green')
+    run.info('Threshold for classification', args.threshold)
+    run.info('Genome score', f"{genome_metabolic_independence_score:.2f}")
 
 
 
