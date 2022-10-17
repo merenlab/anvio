@@ -2051,7 +2051,7 @@ class KeggEstimatorArgs():
 
         # we use the below flag to find out if long format output was explicitly requested
         # this gets around the fact that we always assign 'modules' as the default output mode
-        self.long_format_mode = True if args.output_modes else False
+        self.long_format_mode = True if self.output_modes else False
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
