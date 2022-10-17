@@ -3619,7 +3619,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # and adjust overall module copy number
         if meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"]:
-            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"])
         else:
             meta_dict_for_bin[mod]["pathwise_copy_number"] = 'NA'
 
