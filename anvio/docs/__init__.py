@@ -881,8 +881,8 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "HMI-score": {
-        "name": "HMI SCORE",
+    "metabolic-independence-score": {
+        "name": "METABOLIC INDEPENDENCE SCORE",
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False

@@ -21,7 +21,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db"]
-__provides__ = ["HMI-score"]
+__provides__ = ["metabolic-independence-score"]
 __description__ = "Takes a genome as a contigs-db, and tells you whether it can be considered as an organism of high metabolic independence, or not."
 
 run = terminal.Run()
@@ -37,8 +37,8 @@ HMI_mods = ['M00049', 'M00050', 'M00007', 'M00140', 'M00005', 'M00083', 'M00120'
             'M00126', 'M00115', 'M00028', 'M00924', 'M00122', 'M00125', 'M00023', 'M00631',
             'M00061' ]
 
-def get_HMI_score(metabolism_file, HMI_module_list, threshold):
-    """Adds up the pathwise completeness scores of each module in the HMI list. Returns the sum."""
+def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, threshold):
+    """Adds up the pathwise completeness scores of each module in the HMI list. Returns the class, and the score."""
 
     module_df = pd.read_csv(metabolism_file, sep="\t", index_col=0)
 
@@ -126,7 +126,7 @@ def main(args):
 
 
 
-    genome_class, genome_score = get_HMI_score(metabolic_modules_file, HMI_mods, args.threshold)
+    genome_class, genome_score = get_metabolic_independence_estimates(metabolic_modules_file, HMI_mods, args.threshold)
 
     run.warning(None, header='CLASSIFICATION RESULT', lc='green')
     run.info('Class', genome_class)
