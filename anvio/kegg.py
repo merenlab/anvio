@@ -2658,7 +2658,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       "before you attempt to run this script again.")
                 contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
 
-                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet, run=self.run)
                 mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
                 kegg_modules_db.disconnect()
 
