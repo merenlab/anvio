@@ -10,6 +10,7 @@ import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.dbinfo import DBInfo as dbi
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.kegg import KeggContext, KeggMetabolismEstimator
@@ -62,6 +63,7 @@ def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, thres
 
 def main(args):
     # learn about the contigs-db and make sure it has KOfams
+    dbi(args.contigs_db, expecting='contigs')
     contigs_db = ContigsDatabase(args.contigs_db)
     run.info('Contigs DB', f"{args.contigs_db} ('{contigs_db.meta['project_name']}' with "
                            f"{P('contig', contigs_db.meta['num_contigs'])} and "
