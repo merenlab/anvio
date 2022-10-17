@@ -22,7 +22,7 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
 __requires__ = ["contigs-db"]
 __provides__ = ["HMI-score"]
-__description__ = "Classifies an input genome (fasta file) as having high (HMI) or low metabolic independence (LMI) given a set of metabolic modules which represent HMI."
+__description__ = "Takes a genome as a contigs-db, and tells you whether it can be considered as an organism of high metabolic independence, or not."
 
 run = terminal.Run()
 P = terminal.pluralize
