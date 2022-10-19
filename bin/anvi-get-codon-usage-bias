@@ -314,7 +314,7 @@ def parse_select_reference_functions_table(args):
 
         if row.source == 'KEGG_BRITE' and not row.name:
             raise ConfigError(
-                "In the select reerence functions table, KEGG BRITE categories must be named in "
+                "In the select reference functions table, KEGG BRITE categories must be named in "
                 "the third column. Categories do not have accessions in most BRITE hierarchies, "
                 "and hierarchy accessions are not useful here.")
 
