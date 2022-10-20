@@ -158,8 +158,8 @@ if __name__ == '__main__':
                 "as HMI. Must be an integer. The default value reflects our findings based on the gneomes. Please see the docs for "
                 "more information on this.", default=20)
 
-    groupO = parser.add_argument_group('OPTIONAL THINGIES', "We highly recommend increasing the number of threads for this one. But take care not to "
-                                                            "overload your computer, hmm?")
+    groupO = parser.add_argument_group('OPTIONAL THINGIES', "We are not sure if increasing the number of threads will help at this "
+                                                            "time. But you can try.")
     groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
 
