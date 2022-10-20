@@ -49,7 +49,7 @@ Even if this hypothesis has merit, there are open questions that needs to be add
 This script will use by default the list of modules that we determined to be associated with high metabolic independence, and calculate the completion scores of these modules in a given %(contigs-db)s to classify it as an HMI or an LMI organism. Here is an example run:
 
 {{ codestart }}
-anvi-script-estimate-metabolic-independence -f %(contigs-db)s
+anvi-script-estimate-metabolic-independence -c %(contigs-db)s
 {{ codestop }}
 
 Running this on a _Ruminococcus gnavus_ genome will print something like this:
@@ -69,7 +69,7 @@ The script calls upon the same classes that are invoked via %(anvi-estimate-meta
 You can provide this script with a different set of metabolic modules, a different threshold, and/or a different KEGG data directory to utilize:
 
 {{ codestart }}
-anvi-script-estimate-metabolic-independence -f %(contigs-db)s \
+anvi-script-estimate-metabolic-independence -c %(contigs-db)s \
                                             --module-list modules.txt \
                                             --threshold 20 \
                                             --kegg-data-dir %(kegg-data)s \
