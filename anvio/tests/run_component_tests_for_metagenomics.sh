@@ -139,15 +139,17 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $files/external_hmm_profile \
               --no-progress
 
-INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
-anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
-                                              -O $output_dir/ADHOC_HMMs \
-                                              --no-progress
-
-INFO "Running the HMMs in the ad hoc user directory"
-anvi-run-hmms -c $output_dir/CONTIGS.db \
-              -H $output_dir/ADHOC_HMMs \
-              --no-progress
+# FXIME: we need to comment these out because of the change in the design of the PFAM
+#        database. MEren sent an email to Rob Finn, and we're waiting for an answer.
+#INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
+#anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
+#                                              -O $output_dir/ADHOC_HMMs \
+#                                              --no-progress
+#
+#INFO "Running the HMMs in the ad hoc user directory"
+#anvi-run-hmms -c $output_dir/CONTIGS.db \
+#              -H $output_dir/ADHOC_HMMs \
+#              --no-progress
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
