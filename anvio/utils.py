@@ -2372,7 +2372,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
-                           "this function does contain the contig name that appears in the gene call. "
+                           "this function does not contain the contig name that appears in the gene call. "
                            "Something is wrong here...")
 
     try:
