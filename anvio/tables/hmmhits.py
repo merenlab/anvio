@@ -305,7 +305,7 @@ class TablesForHMMHits(Table):
                 if num_hits_before != num_hits_after:
                     self.run.info('Pruned', '%d out of %d hits were removed due to redundancy' % (num_hits_before - num_hits_after, num_hits_before))
 
-                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search,
+                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_search_results_dict(kind_of_search,
                                                                                                            search_results_dict,
                                                                                                            skip_amino_acid_sequences=True)
 
@@ -327,7 +327,7 @@ class TablesForHMMHits(Table):
             shutil.rmtree(tmp_directory_path)
 
 
-    def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
+    def add_new_gene_calls_to_contigs_db_and_update_search_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
         """Add new gene calls to the contigs database and update the HMM `search_results_dict`.
 
            When we are looking for HMM hits in the context of CONTIGS, our hits do not
@@ -477,7 +477,7 @@ class TablesForHMMHits(Table):
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        # push information about this search result into serach_info table.
+        # push information about this search result into search_info table.
         db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
         database._exec('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
 
@@ -486,7 +486,7 @@ class TablesForHMMHits(Table):
             database.disconnect()
             return
 
-        # then populate serach_data table for each contig.
+        # then populate search_data table for each contig.
         db_entries = []
         for hit in list(search_results_dict.values()):
             entry_id = self.next_id(t.hmm_hits_table_name)

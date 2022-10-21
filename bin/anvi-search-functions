@@ -24,9 +24,9 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
                    "searches for one or more search terms you define in functional annotations of "
                    "genes in an anvi'o contigs database, and generates multiple reports. The "
                    "default report simply tells you which contigs contain genes with functions "
-                   "matching to serach terms you used, useful for viewing in the interface. You "
+                   "matching to search terms you used, useful for viewing in the interface. You "
                    "can also request a much more comprehensive report, which gives you anything "
-                   "you might need to know for each hit and serach term")
+                   "you might need to know for each hit and search term")
 
 
 run = terminal.Run()

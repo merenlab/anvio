@@ -55,8 +55,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--search-with', default=default_search_method, metavar="SEARCH_METHOD",
                         help="What program to use for database searching. The default search uses %(default)s.\
-                              All available options include: %(serach_methods)s." \
-                                        % {'serach_methods': ', '.join(available_search_methods),
+                              All available options include: %(search_methods)s." \
+                                        % {'search_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 
     args = parser.get_args(parser)
