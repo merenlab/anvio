@@ -220,7 +220,7 @@ class Collections:
                               "be working with.")
 
         if not isinstance(bin_names_list, list):
-            raise ConfigError("The `bin_names_list` must be of thpe `set` :/")
+            raise ConfigError("The `bin_names_list` must be of type `set` :/")
 
         bins_info_dict = self.get_bins_info_dict(collection_name)
         collection_dict = self.get_collection_dict(collection_name)
