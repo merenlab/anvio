@@ -563,7 +563,7 @@ class AppendableFile:
             Pointer to the file, opened in append mode. The calling function should take care of the
             open() and pass the handle here
         """
-        
+
         import anvio.utils as utils
         if is_file_empty(self.path):
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
