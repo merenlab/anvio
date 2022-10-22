@@ -100,11 +100,13 @@ class SingleGenomeCodonUsage(object):
 
 
     def _set_genetic_code(self):
-        """Record decoding properties of the genome as object attributes.
+        """
+        Store decoding properties of the genome as object attributes.
 
         The dict, `args.codon_to_amino_acid`, should have keys that are codons and values that are
         three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is None, the
-        standard genetic code is used."""
+        standard genetic code is used.
+        """
         if self.args.codon_to_amino_acid is None:
             self.codon_amino_acid_dict = default_codon_amino_acid_dict
         else:
