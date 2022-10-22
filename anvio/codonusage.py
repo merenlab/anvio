@@ -146,11 +146,20 @@ class SingleGenomeCodonUsage(object):
             self.args.split_names_of_interest = \
                 ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
         contigs_super = ContigsSuperclass(self.args, r=self.run_quiet)
-        contigs_super.init_contig_sequences()
+        contigs_super.init_contig_sequences(
+            gene_caller_ids_of_interest=self.gene_caller_ids_of_interest)
         self.contig_sequences_dict = contigs_super.contig_sequences
 
-        self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
-        self.gene_caller_ids = list(set(self.genes_in_contigs_dict))
+        if self.gene_caller_ids_of_interest:
+            self.gene_caller_ids = list(set(self.gene_caller_ids_of_interest).intersection(
+                contigs_super.gene_caller_ids_included_in_contig_sequences_initialized))
+            self.genes_in_contigs_dict = {
+                gene_caller_id: contigs_super.genes_in_contigs_dict[gene_caller_id]
+                for gene_caller_id in self.gene_caller_ids}
+        else:
+            self.gene_caller_ids = \
+                contigs_super.gene_caller_ids_included_in_contig_sequences_initialized
+            self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
 
         # Organize functional annotations into a table.
         contigs_super.init_functions(requested_sources=self.function_sources)
