@@ -222,7 +222,6 @@ class SingleGenomeCodonUsage(object):
 
     def _make_gene_codon_frequency_table(self):
         """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
-
         self.progress.new("Fetching codon frequency data")
         self.progress.update("...")
 
@@ -892,8 +891,8 @@ class SingleGenomeCodonUsage(object):
                           "https://www.youtube.com/watch?v=Q21clW0s0B8&ab_channel=PeriodicVideos")
 
 
+    ##################################################
     # `self.get_frequencies` SETUP HELPER METHODS
-    #############################################
     def _establish_function_sources(self, from_function_sources):
         """Gets `function_sources` for methods that take the argument, `from_function_sources`."""
         if from_function_sources == True:
@@ -945,10 +944,10 @@ class SingleGenomeCodonUsage(object):
         unrecognized_sources = []
         for function_source, function_accessions in function_accession_dict.items():
             if function_source == 'KEGG_BRITE':
-                self.run.warning("Nota bene: KEGG BRITE accessions stored in anvi'o are for "
-                                 "hierarchies as a whole, not categories of the hierarchy. Most "
-                                 "hierarchies do not have category accessions. So all genes in the "
-                                 "selected hierarchies are being analyzed.")
+                self.run.warning(
+                    "Nota bene: KEGG BRITE accessions stored in anvi'o are for hierarchies as a "
+                    "whole, not categories of the hierarchy. Most hierarchies do not have category "
+                    "accessions. So all genes in the selected hierarchies are being analyzed.")
             if function_source not in self.function_sources:
                 unrecognized_sources.append(function_source)
             for function_accession in function_accessions:
@@ -1015,10 +1014,11 @@ class SingleGenomeCodonUsage(object):
         select_gene_caller_ids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
 
         return self.gene_codon_frequency_df.loc[set(select_gene_caller_ids)]
+    ##################################################
 
 
+    ##################################################
     # `self.get_frequencies` OUTPUT HELPER METHODS
-    ##############################################
     def _filter_input_codon_count_decorator(method):
         """Decorator to discard rows in the input frequency table with fewer than the minimum number
         of codons/amino acids."""
@@ -1200,6 +1200,7 @@ class SingleGenomeCodonUsage(object):
                 frequency_df = frequency_df[frequency_df.sum(axis=1) >= min_codons]
             return frequency_df
         return wrapper
+    ##################################################
 
 
     # The order of decorators should not be changed (only @_output_amino_acids_decorator and
