@@ -278,26 +278,6 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
-    # REMOVE
-    # groupA = parser.add_argument_group(
-    #     'SINGLE GENOME INPUTS',
-    #     "Get CUB from genes or functions in a single genome. A contigs database can be "
-    #     "provided alone as an \"external\" genome. An \"internal\" genome (bin) also requires a "
-    #     "profile database, collection name, and bin ID.")
-    # groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    # groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    # groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    # groupA.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    # groupA.add_argument(
-    #     '--gene-caller-ids', type=int, nargs='+', help="Select genes by ID, space-separated.")
-
-    # groupB = parser.add_argument_group(
-    #     'MULTIPLE GENOME INPUTS',
-    #     "Get frequencies from genes or functions in multiple genomes by providing internal and/or "
-    #     "external genome files listing the genomes to analyze.")
-    # groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    # groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-
     groupB = parser.add_argument_group(
         'OUTPUT FILES',
         "This program writes codon or amino acid frequency tables. When functions rather than "
