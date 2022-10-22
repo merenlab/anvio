@@ -260,13 +260,12 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group(
         'GENOME INPUTS',
-        "Get codon frequencies from genes or functions in one or more genomes. 1) A contigs "
-        "database can be provided alone as an \"external\" genome. 2) One or more bins "
-        "(\"internal\" genomes) can be specified by a contigs database, profile database, "
-        "collection, and bin ID(s). 3) A collection of bins can be provided via a contigs "
-        "database, profile database, and collection. 4) A text file of \"internal\" genomes (bins) "
-        "from one or more sources can be provided. 5) A text file of \"external\" genomes (contigs "
-        "databases) can be provided.")
+        "Get codon frequencies from genes or functions in one or more genomes. 1) A single contigs "
+        "database can be provided. 2) One or more bins (\"internal\" genomes) can be specified by "
+        "a contigs database, profile database, collection, and bin ID(s). 3) A collection of bins "
+        "can be provided via a contigs database, profile database, and collection. 4) A text file "
+        "of \"internal\" genomes (bins) from one or more sources can be provided. 5) A text file "
+        "of \"external\" genomes (contigs databases) can be provided.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
