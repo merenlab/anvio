@@ -80,6 +80,10 @@ class SingleGenomeCodonUsage(object):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
 
+        self.gene_caller_ids_of_interest = A('gene_caller_ids')
+        if self.gene_caller_ids_of_interest is None:
+            self.gene_caller_ids_of_interest = set()
+
         self.function_sources = A('function_sources')
 
         self.ignore_start_codons = A('ignore_start_codons')
