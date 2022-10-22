@@ -2183,6 +2183,11 @@ class MultiGenomeCodonUsage(object):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
+        self.contigs_db = A('contigs_db')
+        self.profile_db = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.bin_ids_path = A('bin_ids_file')
+
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
 
@@ -2199,51 +2204,104 @@ class MultiGenomeCodonUsage(object):
         self.run_quiet = rq
         self.progress = p
 
-        descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
-        descriptions.load_genomes_descriptions(init=False)
+        if self.contigs_db and (self.internal_genomes_path or self.external_genomes_path):
+            raise ConfigError(
+                "Internal and external genomes files cannot be provided alongside bins in a "
+                "collection from a profile database. `internal_genomes` and `external_genomes` can "
+                "be used by themselves or together, and `contigs_db`, `profile_db`, "
+                "`collection_name`, and `bin_ids_file` can be used in various combinations.")
 
-        if self.function_sources is None:
-            pass
-        elif (self.function_sources == [] and
-            self.use_shared_function_sources and
-            descriptions.function_annotation_sources_some_genomes_miss):
-            # All function sources are requested (in `anvi-get-codon-usage` this corresponds to
-            # `--function-sources` used as a flag), but some sources are not common to all genomes
-            # and only common sources are allowed (`use_shared_function_sources`). Report sources in
-            # common that will be analyzed and those not in common that will be ignored.
-            self.function_sources = list(descriptions.function_annotation_sources)
-            self.run.info("Function sources shared across genomes: ",
-                          ', '.join(self.function_sources))
-            self.run.info("Function sources missing in one or more genomes: ",
-                          ', '.join(descriptions.function_annotation_sources_some_genomes_miss))
-        elif (len(self.function_sources) and
-              self.use_shared_function_sources and
-              descriptions.function_annotation_sources_some_genomes_miss):
-            # A list of function sources is requested, but some are not common to all genomes and
-            # only common sources are allowed (`use_shared_function_sources`). This causes an error.
-            unshared_function_sources = []
-            for source in self.function_sources:
-                if source not in descriptions.function_annotation_sources_some_genomes_miss:
-                    unshared_function_sources.append(source)
-            if unshared_function_sources:
-                raise ConfigError(
-                    "Of the requested function annotation sources, the following were not run on "
-                    f"every genome: {', '.join(unshared_function_sources)}.")
+        if self.collection_name:
+            self.bin_ids = []
+            collections = ccollections.Collections()
+            collections.populate_collections_dict(self.profile_db)
+            if self.bin_ids_path:
+                filesnpaths.is_file_plain_text(self.bin_ids_path)
+                for line in open(self.bin_ids_path):
+                    bin_id = line.rstrip()
+                    self.bin_ids.append(bin_id)
+                self.bin_ids = list(set(self.bin_ids))
+                self.bin_ids.remove('')
+            else:
+                self.bin_ids = list(collections.get_bins_info_dict(self.collection_name))
+        else:
+            self.bin_ids = None
+            collections = None
 
-        # Store information on the genomes.
+        # Store genome information in the following dictionary.
         self.genome_info_dict = {}
-        for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
-            self.genome_info_dict[genome_name] = genome_info = {}
-            genome_info['contigs_db'] = genome_dict['contigs_db_path']
-            genome_info['profile_db'] = genome_dict['profile_db_path']
-            genome_info['collection_name'] = genome_dict['collection_id']
-            genome_info['bin_id'] = genome_dict['bin_id']
-            genome_info['function_sources'] = self.function_sources
-            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
-            genome_info['ignore_start_codons'] = self.args.ignore_start_codons
-        for genome_name, genome_dict in descriptions.external_genomes_dict.items():
-            self.genome_info_dict[genome_name] = genome_info = {}
-            genome_info['contigs_db'] = genome_dict['contigs_db_path']
+        if self.internal_genomes_path or self.external_genomes_path:
+            # Store genome information starting with internal and external genome files.
+            descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
+            descriptions.load_genomes_descriptions(init=False)
+
+            if self.function_sources is None:
+                pass
+            elif (self.function_sources == [] and
+                  self.use_shared_function_sources and
+                  descriptions.function_annotation_sources_some_genomes_miss):
+                # All function sources are requested (in `anvi-get-codon-usage` this corresponds to
+                # `--function-sources` used as a flag), but some sources are not common to all
+                # genomes and only common sources are allowed (`use_shared_function_sources`).
+                # Report sources in common that will be analyzed and those not in common that will
+                # be ignored.
+                self.function_sources = list(descriptions.function_annotation_sources)
+                self.run.info("Function sources shared across genomes: ",
+                            ', '.join(self.function_sources))
+                self.run.info("Function sources missing in one or more genomes: ",
+                            ', '.join(descriptions.function_annotation_sources_some_genomes_miss))
+            elif (len(self.function_sources) and
+                  self.use_shared_function_sources and
+                  descriptions.function_annotation_sources_some_genomes_miss):
+                # A list of function sources is requested, but some are not common to all genomes
+                # and only common sources are allowed (`use_shared_function_sources`). This causes
+                # an error.
+                unshared_function_sources = []
+                for source in self.function_sources:
+                    if source not in descriptions.function_annotation_sources_some_genomes_miss:
+                        unshared_function_sources.append(source)
+                if unshared_function_sources:
+                    raise ConfigError(
+                        "Of the requested function annotation sources, the following were not run "
+                        f"on every genome: {', '.join(unshared_function_sources)}.")
+
+            # Store information on the genomes.
+            for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db'] = genome_dict['contigs_db_path']
+                genome_info['profile_db'] = genome_dict['profile_db_path']
+                genome_info['collection_name'] = genome_dict['collection_id']
+                genome_info['bin_id'] = genome_dict['bin_id']
+            for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db'] = genome_dict['contigs_db_path']
+        else:
+            # Store genome information from bins in a collection for a single contigs database.
+            if self.collection_name not in collections.collections_dict:
+                raise ConfigError(f"The collection, '{self.collection_name}', was not found in the "
+                                  f"profile database, '{self.profile_db}'.")
+
+            missing_bin_ids = []
+            for bin_id in self.bin_ids:
+                try:
+                    collections.is_bin_in_collection(self.collection_name, bin_id)
+                except ConfigError:
+                    missing_bin_ids.append(bin_id)
+            if missing_bin_ids:
+                raise ConfigError(
+                    "The following bin IDs were not found in the collection, "
+                    f"'{self.collection_name}', in the profile database, '{self.profile_db}': "
+                    f"{', '.join(missing_bin_ids)}")
+
+            for bin_id in self.bin_ids:
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db'] = self.contigs_db
+                genome_info['profile_db'] = self.profile_db
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+
+        # The following information is common to all genomes regardless of input source.
+        for genome_info in self.genome_info_dict.values():
             genome_info['function_sources'] = self.function_sources
             genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
             genome_info['ignore_start_codons'] = self.args.ignore_start_codons
