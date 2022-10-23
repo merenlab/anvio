@@ -35,49 +35,6 @@ __description__ = (
 run = terminal.Run()
 
 
-def sanity_check(args):
-    """Check for valid combinations of arguments."""
-    # Here are the exhaustive checks on combinations of genome inputs.
-    if ((args.internal_genomes or args.external_genomes) and
-        (args.contigs_db or args.profile_db or args.collection_name or
-         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
-        raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with other "
-                          "genome input arguments.")
-    if args.profile_db and not (args.contigs_db and args.collection_name):
-        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
-    if args.collection_name and not (args.contigs_db and args.profile_db):
-        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
-    if args.bin_id and args.bin_ids_file:
-        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
-    if ((args.bin_id or args.bin_ids_file) and
-        not (args.contigs_db and args.profile_db and args.collection_name)):
-        raise ConfigError("`--bin-id` and `--bin-ids-file` also require `--contigs-db`, "
-                          "`--profile-db`, and `--collection-name`.")
-    if args.gene_caller_ids and not args.contigs_db:
-        raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
-
-    if (bool(args.output_file) +
-        bool(args.gene_table_output) +
-        bool(args.function_table_output)) != 1:
-        raise ConfigError("One and only one of `--output-file`, `--gene-table-output`, or "
-                          "`--function-table-output` must be provided.")
-
-    if args.function_sources is not None:
-        if len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
-            raise ConfigError(
-                "`--function-accessions` and `--function-names` require a single value for "
-                "`--function-sources`. If select functions come from more than one source, use "
-                "`--select-functions-txt`.")
-
-    if (args.function_accessions or args.function_names) and args.select_functions_txt:
-        raise ConfigError("`--function-accessions` and `--function-names` should not be used with "
-                          "`--select-functions-txt`.")
-
-    if args.include_amino_acids and args.exclude_amino_acids:
-        raise ConfigError(
-            "Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
-
-
 def main(args):
     """Prepare arguments to get codon frequencies."""
     sanity_check(args)
@@ -198,6 +155,49 @@ def main(args):
     else:
         frequency_df.to_csv(args.gene_table_output, sep='\t')
         run.info("Gene table output", args.gene_table_output)
+
+
+def sanity_check(args):
+    """Check for valid combinations of arguments."""
+    # Here are the exhaustive checks on combinations of genome inputs.
+    if ((args.internal_genomes or args.external_genomes) and
+        (args.contigs_db or args.profile_db or args.collection_name or
+         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+        raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with other "
+                          "genome input arguments.")
+    if args.profile_db and not (args.contigs_db and args.collection_name):
+        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
+    if args.collection_name and not (args.contigs_db and args.profile_db):
+        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
+    if args.bin_id and args.bin_ids_file:
+        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+    if ((args.bin_id or args.bin_ids_file) and
+        not (args.contigs_db and args.profile_db and args.collection_name)):
+        raise ConfigError("`--bin-id` and `--bin-ids-file` also require `--contigs-db`, "
+                          "`--profile-db`, and `--collection-name`.")
+    if args.gene_caller_ids and not args.contigs_db:
+        raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
+
+    if (bool(args.output_file) +
+        bool(args.gene_table_output) +
+        bool(args.function_table_output)) != 1:
+        raise ConfigError("One and only one of `--output-file`, `--gene-table-output`, or "
+                          "`--function-table-output` must be provided.")
+
+    if args.function_sources is not None:
+        if len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
+            raise ConfigError(
+                "`--function-accessions` and `--function-names` require a single value for "
+                "`--function-sources`. If select functions come from more than one source, use "
+                "`--select-functions-txt`.")
+
+    if (args.function_accessions or args.function_names) and args.select_functions_txt:
+        raise ConfigError("`--function-accessions` and `--function-names` should not be used with "
+                          "`--select-functions-txt`.")
+
+    if args.include_amino_acids and args.exclude_amino_acids:
+        raise ConfigError(
+            "Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
 
 
 def parse_select_functions_table(args, from_function_sources):
