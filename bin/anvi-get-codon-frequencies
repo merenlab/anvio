@@ -159,7 +159,7 @@ def main(args):
 
 def sanity_check(args):
     """Check for valid combinations of arguments."""
-    # Here are the exhaustive checks on combinations of genome inputs.
+    # The following are checks on combinations of genome inputs.
     if ((args.internal_genomes or args.external_genomes) and
         (args.contigs_db or args.profile_db or args.collection_name or
          args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
