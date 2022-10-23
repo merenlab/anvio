@@ -38,9 +38,7 @@ run = terminal.Run()
 
 def main(args):
     """Prepare arguments to get codon usage bias."""
-    if not args.output_file:
-        raise ConfigError("`--output-file` must be provided.")
-    filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
+    sanity_check(args)
 
     # Store the coding dictionary in `args` for use in instantiating single- and multi-genome codon
     # usage objects.
@@ -48,21 +46,12 @@ def main(args):
 
     if args.function_sources is None:
         from_function_sources = False
-    elif len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
-        raise ConfigError(
-            "`--function-accessions` and `--function-names` require a single value for "
-            "`--function-sources`. If select functions come from more than one source, use "
-            "`--select-functions-txt`.")
     elif len(args.function_sources) == 0:
         from_function_sources = True
     elif len(args.function_sources) >= 1:
         # This includes 1) use of `--function-sources` as a flag, 2) ≥1 argument passed to
         # `--function-sources`, and 3) no use of `--function-sources` (None).
         from_function_sources = [source for source in args.function_sources]
-
-    if (args.function_accessions or args.function_names) and args.select_functions_txt:
-        raise ConfigError("`--function-accessions` or `--function-names` should not be used with "
-                          "`args.select_functions_txt`.")
 
     # Select function sources and functions of interest.
     args.function_accessions_dict = {}
@@ -117,7 +106,7 @@ def main(args):
 
     # Get CUB tables. Separate tables are produced for each combination of input genome and CUB
     # metric.
-    if args.internal_genomes or args.external_genomes:
+    if (args.collection_name and not args.bin_id) or args.internal_genomes or args.external_genomes:
         multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, r=run)
         output_paths = []
         # The keys are CUB metrics in the returned dict. Write files as results for each genome are
@@ -222,6 +211,47 @@ def main(args):
             cub_df = pd.concat(cub_table_dict.values(), axis=1)
             cub_df.to_csv(args.output_file, sep='\t')
             run.info("CUB table output", args.output_file)
+
+
+def sanity_check(args):
+    """Check for valid combinations of arguments."""
+    # The following are checks on combinations of genome inputs.
+    if ((args.internal_genomes or args.external_genomes) and
+        (args.contigs_db or args.profile_db or args.collection_name or
+         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+        raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with other "
+                          "genome input arguments.")
+    if args.profile_db and not (args.contigs_db and args.collection_name):
+        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
+    if args.collection_name and not (args.contigs_db and args.profile_db):
+        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
+    if args.bin_id and args.bin_ids_file:
+        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+    if ((args.bin_id or args.bin_ids_file) and
+        not (args.contigs_db and args.profile_db and args.collection_name)):
+        raise ConfigError("`--bin-id` and `--bin-ids-file` also require `--contigs-db`, "
+                          "`--profile-db`, and `--collection-name`.")
+    if args.gene_caller_ids and not args.contigs_db:
+        raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
+
+    if not args.output_file:
+        raise ConfigError("`--output-file` must be provided.")
+    filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
+
+    if args.function_sources is not None:
+        if len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
+            raise ConfigError(
+                "`--function-accessions` and `--function-names` require a single value for "
+                "`--function-sources`. If select functions come from more than one source, use "
+                "`--select-functions-txt`.")
+
+    if (args.function_accessions or args.function_names) and args.select_functions_txt:
+        raise ConfigError("`--function-accessions` or `--function-names` should not be used with "
+                          "`args.select_functions_txt`.")
+
+    if args.include_amino_acids and args.exclude_amino_acids:
+        raise ConfigError(
+            "Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
 
 
 def parse_select_functions_table(args, from_function_sources):
@@ -337,28 +367,48 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group(
-        'SINGLE GENOME INPUTS',
-        "Get CUB of \"query\" genes or functions in a single genome. A contigs database can be "
-        "provided alone as an \"external\" genome. An \"internal\" genome (bin) also requires a "
-        "profile database, collection name, and bin ID.")
+        'GENOME INPUTS',
+        "Get CUB from genes or functions in one or more genomes. 1) A contigs database can be "
+        "provided. 2) One or more bins (\"internal\" genomes) can be specified by a contigs "
+        "database, profile database, collection, and bin ID(s). 3) A collection of bins can be "
+        "provided via a contigs database, profile database, and collection. 4) A text file of "
+        "\"external\" genomes (contigs databases) can be provided.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupA.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    groupA.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
     groupA.add_argument(
         '--gene-caller-ids', type=int, nargs='+',
-        help="Return CUB for genes with these IDs in the contigs database. The list must be "
-             "space-separated.")
+        help="Return CUB for genes with these IDs, space-separated, from a single contigs "
+             "database.")
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
-    groupB = parser.add_argument_group(
-        'MULTIPLE GENOME INPUTS',
-        "Get CUB from genes or functions in multiple genomes by providing internal and/or "
-        "external genome files listing the genomes to analyze.")
-    groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
-    groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    # REMOVE
+    # groupA = parser.add_argument_group(
+    #     'SINGLE GENOME INPUTS',
+    #     "Get CUB of \"query\" genes or functions in a single genome. A contigs database can be "
+    #     "provided alone as an \"external\" genome. An \"internal\" genome (bin) also requires a "
+    #     "profile database, collection name, and bin ID.")
+    # groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+    # groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    # groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
+    # groupA.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    # groupA.add_argument(
+    #     '--gene-caller-ids', type=int, nargs='+',
+    #     help="Return CUB for genes with these IDs in the contigs database. The list must be "
+    #          "space-separated.")
 
-    groupC = parser.add_argument_group('OUTPUT')
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'help':
+    # groupB = parser.add_argument_group(
+    #     'MULTIPLE GENOME INPUTS',
+    #     "Get CUB from genes or functions in multiple genomes by providing internal and/or "
+    #     "external genome files listing the genomes to analyze.")
+    # groupB.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    # groupB.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupB = parser.add_argument_group('OUTPUT')
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'help':
         "This program writes one or more tab-delimited files of gene/function CUB statistics. All "
         "tables have gene/function row labels. 1.a. Single genome, single CUB metric, not omnibias "
         "mode: A table with one column of CUB data is written to the provided output file path. "
@@ -382,8 +432,8 @@ if __name__ == '__main__':
         "per genome, with the provided output file path serving as a template for the new file "
         "paths."}))
 
-    groupD = parser.add_argument_group('CUB_CALCULATION')
-    groupD.add_argument(
+    groupC = parser.add_argument_group('CUB_CALCULATION')
+    groupC.add_argument(
         '--metrics', choices=['cai', 'delta'], nargs='*',
         help="These are the metrics used in CUB calculations, with a separate calculation and a "
              "separate section of rows in the output table for each metric provided. When used as "
@@ -392,7 +442,7 @@ if __name__ == '__main__':
              "reference-independent. 'cai' is the reference-dependent Codon Adaptation Index of "
              "Sharp and Li (1987). 'delta' is a reference-dependent metric of Ran and Higgs (2012, "
              "Eq. 6) that involves the overall codon composition of the genome in the comparison.")
-    groupD.add_argument(
+    groupC.add_argument(
         '--encodings-txt', metavar='FILE',
         help="Changes to the standard genetic code can be provided in this tab-delimited file of "
              "two columns. Each entry in the first column is a codon and each entry in the second "
@@ -402,7 +452,7 @@ if __name__ == '__main__':
              "option affects per-amino acid and synonymous codon output (when using "
              "`--return-amino-acids` or `--synonymous`).")
 
-    groupE = parser.add_argument_group(
+    groupD = parser.add_argument_group(
         'FUNCTION SELECTION',
         "Calculate CUB for functions rather than genes. The codon frequencies of genes annotated "
         "by a function are summed, treating functions as concatenations of genes, with longer "
@@ -411,41 +461,41 @@ if __name__ == '__main__':
         "equally. Averaging means that short genes have equal importance as long genes in the CUB "
         "of a function, which could imply that short genes are rate-limiting and therefore need to "
         "be favored for translation.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--function-sources', nargs='*',
         help="Return CUB for functions annotated by these sources, e.g., 'KOfam', 'KEGG_BRITE', "
              "'COG20_FUNCTION'. If `--function-sources` is used as a flag without any arguments, "
              "then every source will be considered.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--function-accessions', nargs='+',
         help="Return CUB for functions with these accessions from the source provided in "
              "`--function-sources`. To get accessions from multiple sources, instead use "
              "`--select-functions-txt`.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--function-names', nargs='+',
         help="Return CUB for functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead "
              "use `--select-functions-txt`.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--select-functions-txt', metavar='FILE',
         help="Functions to select can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
              "in every row, and either an accession or name, or both, should also be in a row. "
              "Column names should not be provided.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--expect-functions',
         default=False,
         action='store_true',
         help="By default, functions provided by `--function-accessions`, `--function-names`, and "
              "`--select-functions-txt` need not be annotated in the input genomes. With this flag, "
              "an error will be raised if any of the functions are not present.")
-    groupE.add_argument(
+    groupD.add_argument(
         '--shared-function-sources', default=False, action='store_true',
         help="When analyzing multiple genomes, exclude function annotation sources that were not "
              "run on every genome.")
 
-    groupF = parser.add_argument_group(
+    groupE = parser.add_argument_group(
         'REFERENCE',
         "Certain CUB metrics rely on definition of a reference codon composition. Often, a set of "
         "housekeeping genes including ribosomal proteins is used as the reference. Reference "
@@ -454,13 +504,13 @@ if __name__ == '__main__':
         "genes are ribosomal proteins annotated by KEGG KOfams/BRITE, requiring input contigs "
         "databases to have been annotated by `anvi-run-kegg-kofams`. Specifically, the genes "
         "must be classified within BRITE as 'Ribosome>>>Ribosomal proteins'.")
-    groupF.add_argument(
+    groupE.add_argument(
         '--omnibias', default=False, action='store_true',
         help="Use every gene or function as a separate reference rather than defining a set of "
              "reference genes or functions. The resulting table of gene x gene (or function x "
              "function) CUB values is like a distance matrix of the similarity of gene codon "
              "compositions.")
-    groupF.add_argument(
+    groupE.add_argument(
         '--select-reference-functions-txt', metavar='FILE',
         help="Rather than using the default reference, selected reference functions can be listed "
              "in a headerless, tab-delimited file of three columns. Each row is a selected "
@@ -470,7 +520,7 @@ if __name__ == '__main__':
              "can be provided for one or the other. In summary, every row requires a source in the "
              "first column and either an accession or name in the second and third columns, "
              "respectively.")
-    groupF.add_argument(
+    groupE.add_argument(
         '--expect-reference-functions', default=False, action='store_true',
         help="By default, reference functions provided by `--select-reference-functions-txt` do "
              "not all need to be annotated in the input genomes. For example, if two KEGG BRITE "
@@ -479,49 +529,49 @@ if __name__ == '__main__':
              "and genes are found to be annotated by only one of the categories, then these genes "
              "will be used as the reference. If this flag is used, then an error would instead "
              "be raised since one of the reference functions is not represented in the genome.")
-    groupF.add_argument(
+    groupE.add_argument(
         '--reference-gene-caller-ids', type=int, nargs='+',
         help="Include specific genes in the reference gene set, as given by their gene caller IDs "
              "in the contigs database. The list of IDs must be space-separated. This option can "
              "only be used with a single genome -- a single contigs database, internal genome, or "
              "external genome.")
 
-    groupG = parser.add_argument_group(
+    groupF = parser.add_argument_group(
         'FILTER GENES, FUNCTIONS, CODONS',
         "Genes/functions can be filtered by the number of codons they contain, e.g., ignore genes "
         "shorter than 300 codons. Codons can be selected a priori, e.g., ignore Ala codons, or "
         "rarer codons can be excluded, e.g., ignore amino acids that are decoded by ≤3 codons in "
         "≥90%% of genes. Filters can improve the statistical utility of CUB data. These filters do "
         "not apply to the reference gene set.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--gene-min-codons', type=int, default=0,
         help="Set the minimum number of codons required in a gene forming a gene/function "
              "queries. When functions are returned rather than genes, this filter is applied to "
              "genes before grouping them as functions.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--function-min-codons', type=int, default=0,
         help="Set the minimum number of codons required in a function \"query\". Genes with fewer "
              "than `--gene-min-codons` are first removed, and then functional groups of the "
              "remaining genes with fewer than `--function-min-codons` are removed. This filter "
              "only applies when returning function queries.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--exclude-amino-acids', nargs='+', default=['STP'],
         help="Remove codons that decode the given amino acids (use three-letter codes, e.g., "
              "Ala). Amino acids encoded by a single codon (Met and Trp) are excluded perforce from "
              "CUB calculations and do not have to be made explicit here. Importantly, to continue "
              "to exclude stop codons, as per the default, make sure to include \"STP\" in the "
              "argument: exclusion of Ala and stop codons is achieved with \"Ala STP\".")
-    groupG.add_argument(
+    groupF.add_argument(
         '--include-amino-acids', nargs='+',
         help="This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
              "acids are analyzed.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--sequence-min-amino-acids', type=int, default=0,
         help="Remove codons for amino acids (and STP) that are less numerous than the given "
              "argument. For example, if the argument is 5, and a gene or function query has 4 "
              "codons encoding Asn, 2 AAT and 2 AAC, then Asn will be disregarded in the "
              "calculation of CUB for this query.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--pansequence-min-amino-acids', nargs=2, default=[0, 1.0],
         help="The first value of the argument is a positive integer representing a minimum number "
              "of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a number "
@@ -531,7 +581,7 @@ if __name__ == '__main__':
              "'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for an amino "
              "acid/STP in ≥90%% of genes, the amino acid's codons do not factor into the "
              "calculation of CUB for any query.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--min-codon-filter', choices=['length', 'remaining', 'both'], default='both',
         help="This argument arises from the ambiguity of filters that remove genes and functions "
              "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
@@ -545,14 +595,14 @@ if __name__ == '__main__':
              "codon threshold. \"both\" is needed as an option in addition to \"remaining\" so "
              "dynamic codon filtering by `--exclude-amino-acid-count/fraction` operates on genes "
              "that passed the first length filter.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--query-min-analyzed-codons',
         type=int,
         default=codonusage.default_query_min_analyzed_codons,
         help="Only allow CUB to calculated for a query if it has at least this number of "
              "synonymous codons that will be analyzed. For reference-dependent CUB metrics, "
              "analyzed codons are those with reference compositions.")
-    groupG.add_argument(
+    groupF.add_argument(
         '--ignore-start-codons', default=False, action='store_true',
         help="Ignore start codons in the analysis. Beside ATG, GTG and TTG are notable minority "
              "start codons in bacteria and archaea. With start codons removed, frequencies only "
@@ -565,7 +615,7 @@ if __name__ == '__main__':
              "from genes in the earliest steps of the program, which influences "
              "`--gene-min-codons`: the number of codons in a gene never counts the start codon.")
 
-    groupH = parser.add_argument_group(
+    groupG = parser.add_argument_group(
         'FILTER REFERENCE',
         "Confidence in the reference codon composition can be increased by setting minimum "
         "frequency requirements for the set of reference genes or codons for any individual amino "
@@ -573,13 +623,13 @@ if __name__ == '__main__':
         "references are the same in omnibias mode, so references will be filtered by query options "
         "including `--exclude-amino-acid-count`, `--exclude-amino-acid-fraction`, and "
         "`--query-min-analyzed-codons`.")
-    groupH.add_argument(
+    groupG.add_argument(
         '--reference-exclude-amino-acid-count',
         type=int,
         default=codonusage.default_reference_exclude_amino_acid_count,
         help="Exclude codons for amino acids with fewer than this many codons in the set of "
              "reference genes.")
-    groupH.add_argument(
+    groupG.add_argument(
         '--reference-min-analyzed-codons',
         type=int,
         default=codonusage.default_reference_min_analyzed_codons,
