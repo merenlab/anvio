@@ -1435,9 +1435,10 @@ class SingleGenomeCodonUsage(object):
             Genes annotated with the given function accessions are selected for the reference set.
             The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
             'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
-            parameter can be used alongside `function_names`. Note that 'KEGG_BRITE' does not use
-            individual function accessions but overarching hierarchy accessions that include
-            multiple functions. By default None.
+            parameter can be used alongside `reference_gene_caller_ids` and
+            `reference_function_names`. Note that 'KEGG_BRITE' does not use individual function
+            accessions but overarching hierarchy accessions that include multiple functions. By
+            default None.
         reference_function_names : dict, optional
             Genes annotated with the given function names are selected for the reference set. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
@@ -1446,8 +1447,8 @@ class SingleGenomeCodonUsage(object):
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
             type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default, if using reference-dependent
-            metrics without omnibias mode, this argument becomes {'KEGG_BRITE':
+            `reference_gene_caller_ids` and `reference_function_accessions`. By default, if using
+            reference-dependent metrics without omnibias mode, this argument becomes {'KEGG_BRITE':
             ['Ribosome>>>Ribosomal proteins']}.
         expect_reference_functions : bool, optional
             If True (default False), an error will be raised if any given
@@ -1815,9 +1816,10 @@ class SingleGenomeCodonUsage(object):
             Genes annotated with the given function accessions are selected for the reference set.
             The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
             'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
-            parameter can be used alongside `function_names`. Note that 'KEGG_BRITE' does not use
-            individual function accessions but overarching hierarchy accessions that include
-            multiple functions. By default None.
+            parameter can be used alongside `reference_gene_caller_ids` and
+            `reference_function_names`. Note that 'KEGG_BRITE' does not use individual function
+            accessions but overarching hierarchy accessions that include multiple functions. By
+            default None.
         reference_function_names : dict, optional
             Genes annotated with the given function names are selected for the reference set. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
@@ -1826,7 +1828,7 @@ class SingleGenomeCodonUsage(object):
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
             type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default, {'KEGG_BRITE':
+            `reference_gene_caller_ids` and `reference_function_accessions`. By default, {'KEGG_BRITE':
             ['Ribosome>>>Ribosomal proteins']}.
         expect_reference_functions : bool, optional
             If True (default False), an error will be raised if any given
