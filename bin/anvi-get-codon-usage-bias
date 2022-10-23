@@ -237,7 +237,6 @@ def sanity_check(args):
 
     if not args.output_file:
         raise ConfigError("`--output-file` must be provided.")
-    filesnpaths.is_output_file_writable(args.output_file, ok_if_exists=False)
 
     if args.function_sources is not None:
         if len(args.function_sources) != 1 and (args.function_accessions or args.function_names):
