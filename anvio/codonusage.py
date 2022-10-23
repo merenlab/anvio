@@ -2408,7 +2408,6 @@ class MultiGenomeCodonUsage(object):
         reference_function_accessions=None,
         reference_function_names=None,
         expect_reference_functions=False,
-        reference_gene_caller_ids=None,
         gene_min_codons=0,
         function_min_codons=0,
         min_codon_filter='both',

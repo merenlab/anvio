@@ -121,7 +121,6 @@ def main(args):
             reference_function_accessions=reference_function_accessions_dict,
             reference_function_names=reference_function_names_dict,
             expect_reference_functions=args.expect_reference_functions,
-            reference_gene_caller_ids=args.reference_gene_caller_ids,
             gene_min_codons=args.gene_min_codons,
             function_min_codons=args.function_min_codons,
             min_codon_filter=args.min_codon_filter,
@@ -233,6 +232,8 @@ def sanity_check(args):
                           "`--profile-db`, and `--collection-name`.")
     if args.gene_caller_ids and not args.contigs_db:
         raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
+    if args.reference_gene_caller_ids and not args.contigs_db:
+        raise ConfigError("`--reference-gene-caller-ids` also requires `--contigs-db`.")
 
     if not args.output_file:
         raise ConfigError("`--output-file` must be provided.")
@@ -509,10 +510,8 @@ if __name__ == '__main__':
              "be raised since one of the reference functions is not represented in the genome.")
     groupE.add_argument(
         '--reference-gene-caller-ids', type=int, nargs='+',
-        help="Include specific genes in the reference gene set, as given by their gene caller IDs "
-             "in the contigs database. The list of IDs must be space-separated. This option can "
-             "only be used with a single genome -- a single contigs database, internal genome, or "
-             "external genome.")
+        help="Include specific genes in the reference gene set, as given by their gene caller IDs, "
+             "space-separated, from a single contigs database.")
 
     groupF = parser.add_argument_group(
         'FILTER GENES, FUNCTIONS, CODONS',
