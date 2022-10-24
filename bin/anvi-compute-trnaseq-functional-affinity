@@ -55,6 +55,18 @@ def main(args):
     if len(affinities_df) == 0:
         raise ConfigError("Affinity could not be calculated given the input data and/or filters "
                           "applied to the data.")
+    # Write affinity tables.
+    if not affinitizer.write_affinity_output(
+        affinities_df,
+        args.output_file,
+        separate_genomes=args.separate_genomes,
+        separate_function_sources=args.separate_function_sources,
+        normalization_methods=args.normalize_affinity,
+        normalize_all_function_sources=args.normalize_all_function_sources,
+        no_raw_affinity=args.no_raw_affinity):
+        run.warning(
+            "No affinity output tables were stored. `--no-raw-affinity` was used without "
+            "`--normalization-methods`, so neither raw nor normalized affinities were written.")
 
 
 def print_sample_names(seeds_specific_txt):
