@@ -45,6 +45,21 @@ def main(args):
         store_annotation_blacklist(
             args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
 
+    if args.plot and args.plot_affinity_file:
+        if ((args.plot_codon_file and args.plot_codon_tree) or
+            (not args.plot_codon_file and not args.plot_codon_tree)):
+            raise ConfigError(
+                "To plot the dendrogram of displayed functions or genes, either pass a table of "
+                "codon frequency data for tree calculation to `--plot-codon-file`, or pass a "
+                "Newick tree to `--plot-codon-tree`.")
+        run.info_single("Input affinities to plot", args.plot_affinity_file)
+        if args.plot_codon_file:
+            run.info_single("Input codon frequency table", args.plot_codon_file)
+        elif args.plot_codon_tree:
+            run.info_single("Input codon frequency tree", args.plot_codon_tree)
+        if args.plot_sample_tree:
+            run.info_single("Input tRNA-seq sample tree", args.plot_sample_tree)
+
     sanity_check(args)
 
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
