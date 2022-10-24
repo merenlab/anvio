@@ -2629,6 +2629,14 @@ class Affinitizer:
         no_raw_affinity : bool, optional
             If True (default False), do not produce a table (or tables) of raw affinities, only
             normalized affinities.
+
+        Returns
+        =======
+        bool
+            If all output tables were written without error, return True. If no output tables were
+            written due to the configuration of the argument (`no_raw_affinity` is True and
+            `normalization_methods` is False), return False. If some output tables could not be
+            written, an error is raised.
         """
         if separate_genomes:
             if 'genome_name' not in affinities_df.columns:
@@ -2652,7 +2660,7 @@ class Affinitizer:
         if normalization_methods is None:
             normalization_methods = []
             if no_raw_affinity:
-                raise ConfigError("`no_raw_affinity` must be used with `normalization_methods`.")
+                return False
         else:
             normalization_methods = list(normalization_methods)
 
@@ -2852,3 +2860,5 @@ class Affinitizer:
                 f"{input_output_path_message}"
                 f"{' ' if invalid_derived_output_paths and not is_input_output_path_valid else ''}"
                 f"{derived_output_paths_message}")
+
+        return True
