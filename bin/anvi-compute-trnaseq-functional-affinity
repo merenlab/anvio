@@ -4,10 +4,15 @@
 
 import sys
 import pandas as pd
+import scipy.cluster.hierarchy as hierarchy
+
+from argparse import Namespace
 
 import anvio
-import anvio.constants as constants
 import anvio.terminal as terminal
+import anvio.constants as constants
+import anvio.codonusage as codonusage
+import anvio.filesnpaths as filesnpaths
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio import filesnpaths
