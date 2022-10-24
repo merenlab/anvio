@@ -276,7 +276,7 @@ if __name__ == '__main__':
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not output a table of raw affinity data along with normalized data.")
     group1D.add_argument(
-        '--codon-frequencies', metavar='FILE_PATH' default=False, action='store_true',
+        '--codon-frequencies', metavar='FILE_PATH', default=False, action='store_true',
         help="Write a table of function or gene codon frequencies to the provided file path; if "
              "`--separate-genomes` or `--separate-function-sources` are used, then multiple files "
              "are written for each genome, function source or combination of genome and source, "
