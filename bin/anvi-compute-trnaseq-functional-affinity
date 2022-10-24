@@ -50,6 +50,7 @@ def main(args):
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
 
     affinitizer = genomictrnaseq.Affinitizer(args)
+    # Get a table of affinity results.
     affinities_df = affinitizer.go()
     if len(affinities_df) == 0:
         raise ConfigError("Affinity could not be calculated given the input data and/or filters "
