@@ -275,16 +275,16 @@ if __name__ == '__main__':
              "option, `--separate-function-sources`.")
     group1D.add_argument(
         '--no-raw-affinity', default=False, action='store_true',
-        help="Do not output a table of raw affinity data along with normalized data.")
+        help="Do not store tables of raw affinity data.")
     group1D.add_argument(
-        '--codon-frequencies', metavar='FILE_PATH', default=False, action='store_true',
-        help="Write a table of function or gene codon frequencies to the provided file path; if "
-             "`--separate-genomes` or `--separate-function-sources` are used, then multiple files "
-             "are written for each genome, function source or combination of genome and source, "
-             "with file paths derived from the provided file path template. The tables have the "
-             "same row indices of genome, function, and gene information as the corresponding "
-             "affinity tables. These codon frequency data underlie the dendrograms of functions or "
-             "genes in plot output.")
+        '--codon-frequencies', default=False, action='store_true',
+        help="Write a table of function or gene codon frequencies. If `--separate-genomes` or "
+             "`--separate-function-sources` are used, then multiple files are written for each "
+             "genome, function source, or combination of genome and source, with paths derived "
+             "from the provided `--output-file` template. In these paths, '-CODONS' is added "
+             "before the extension. The tables have the same row indices of genome, function, and "
+             "gene information as the corresponding affinity tables. In plot output, these codon "
+             "frequency data underlie the dendrograms of functions or genes.")
 
     group1E = parser.add_argument_group(
         'CLUSTERING',
@@ -306,8 +306,14 @@ if __name__ == '__main__':
         help="The linkage method for the hierarchical clustering of functions or genes by their "
              "codon frequencies.")
     group1E.add_argument(
-        '--codon-tree', metavar='NEWICK', type=str,
-        help="Store a Newick-formatted tree of hierarchically clustered codon frequencies.")
+        '--codon-tree', default=False, action='store_true',
+        help="Write a Newick-formatted tree of hierarchically clustered codon frequencies. If "
+             "`--separate-genomes` or `--separate-function-sources` are used, then multiple tree "
+             "files are written for each genome, function source, or combination of genome and "
+             "source, with paths derived from the provided `--output-file` template. In these "
+             "paths, '-CODONS' is added before the extension, and the extension is changed to "
+             "'.tree'. In plot output, these trees are displayed as dendrograms of functions or "
+             "genes.")
     group1E.add_argument(
         '--sample-distance', metavar='DISTANCE_METRIC', type=str,
         default=constants.distance_metric_default,
@@ -318,9 +324,13 @@ if __name__ == '__main__':
         help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
              "affinities.")
     group1E.add_argument(
-        '--sample-tree', metavar='NEWICK', type=str,
-        help="Store a Newick-formatted tree of hierarchically clustered tRNA-seq sample "
-             "affinities.")
+        '--sample-tree', metavar='NEWICK', default=False, action='store_true',
+        help="Write a Newick-formatted tree of hierarchically clustered tRNA-seq sample "
+             "affinities. If `--separate-genomes` or `--separate-function-sources` are used, then "
+             "multiple tree files are written for each genome, function source, or combination of "
+             "genome and source, with paths derived from the provided `--output-file` template. In "
+             "these paths, '-SAMPLE' is added before the extension, and the extension is changed "
+             "to '.tree'. In plot output, these trees can be displayed as dendrograms of samples.")
 
     group1F = parser.add_argument_group(
         'PLOTS',
