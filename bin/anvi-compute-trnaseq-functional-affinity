@@ -229,7 +229,7 @@ if __name__ == '__main__':
         "default, these are written to file paths derived from the provided output file path. If "
         "also graphing the results (see arguments under \"Graphical Outputs\" below), then graphs "
         "will be produced for each type of affinity table output specified.")
-    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     group1D.add_argument(
         '--separate-genomes', default=False, action='store_true',
         help="Write separate affinity output tables for each genome. The name of each genome/bin "
