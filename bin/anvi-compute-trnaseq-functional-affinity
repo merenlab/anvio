@@ -150,11 +150,30 @@ def sanity_check(args):
         raise ConfigError("`--separate-function-sources` cannot be used with "
                           "`--normalize-all-function-sources`.")
 
-    if args.bin_id is not None:
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) + (args.bin_id is not None) < 4):
-            raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
-                              "`--collection-name`.")
+    if args.codon_distance != constants.distance_metric_default:
+        try:
+            hierarchy.distance.pdist([[0]], args.codon_distance)
+        except ValueError:
+            raise ConfigError("An invalid distance metric, '{args.codon_distance}', was given to "
+                              "`--codon-distance`.")
+    if args.codon_linkage != constants.linkage_method_default:
+        try:
+            hierarchy.linkage([0], args.codon_linkage)
+        except ValueError:
+            raise ConfigError("An invalid linkage method, '{args.codon_linkage}', was given to "
+                              "`--codon-linkage`.")
+    if args.sample_distance != constants.distance_metric_default:
+        try:
+            hierarchy.distance.pdist([[0]], args.sample_distance)
+        except ValueError:
+            raise ConfigError("An invalid distance metric, '{args.sample_distance}', was given to "
+                              "`--sample-distance`.")
+    if args.sample_linkage != constants.linkage_method_default:
+        try:
+            hierarchy.linkage([0], args.sample_linkage)
+        except ValueError:
+            raise ConfigError("An invalid linkage method, '{args.sample_linkage}', was given to "
+                              "`--sample-linkage`.")
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
