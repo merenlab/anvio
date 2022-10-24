@@ -276,11 +276,14 @@ if __name__ == '__main__':
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not output a table of raw affinity data along with normalized data.")
     group1D.add_argument(
-        '--codon-frequencies', default=False, action='store_true',
-        help="Write a table of function or gene codon frequencies (or multiple tables when "
-             "`--separate-genomes` and `--separate-function-sources are used). These have the same "
-             "row indices of genome, function, and gene information as the corresponding affinity "
-             "tables. These frequency data underlie the dendrograms in the graphical output.")
+        '--codon-frequencies', metavar='FILE_PATH' default=False, action='store_true',
+        help="Write a table of function or gene codon frequencies to the provided file path; if "
+             "`--separate-genomes` or `--separate-function-sources` are used, then multiple files "
+             "are written for each genome, function source or combination of genome and source, "
+             "with file paths derived from the provided file path template. The tables have the "
+             "same row indices of genome, function, and gene information as the corresponding "
+             "affinity tables. These codon frequency data underlie the dendrograms of functions or "
+             "genes in plot output.")
 
     group1E = parser.add_argument_group(
         'CLUSTERING',
