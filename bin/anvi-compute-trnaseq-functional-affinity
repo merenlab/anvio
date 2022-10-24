@@ -126,16 +126,29 @@ def sanity_check(args):
         raise ConfigError("`--reference-sample` is a required argument of computation of "
                           "affinities.")
 
-    # Do basic checks of the combinations of genomic input arguments.
-    if args.contigs_db and (args.internal_genomes or args.external_genomes):
-        raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
-                          "`--external-genomes`.")
+    # The following are checks on combinations of genomic inputs.
+    if ((args.internal_genomes or args.external_genomes) and
+        (args.contigs_db or args.profile_db or args.collection_name or
+         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+        raise ConfigError("`--internal-genomes` and `--external-genomes` cannot be used with other "
+                          "genome input arguments.")
+    if args.profile_db and not (args.contigs_db and args.collection_name):
+        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
+    if args.collection_name and not (args.contigs_db and args.profile_db):
+        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
+    if args.bin_id and args.bin_ids_file:
+        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+    if ((args.bin_id or args.bin_ids_file) and
+        not (args.contigs_db and args.profile_db and args.collection_name)):
+        raise ConfigError("`--bin-id` and `--bin-ids-file` also require `--contigs-db`, "
+                          "`--profile-db`, and `--collection-name`.")
 
-    if (args.profile_db is not None) or (args.collection_name is not None):
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) < 3):
-            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
-                              "and `--collection-name`.")
+    if args.gene_caller_ids and not args.contigs_db:
+        raise ConfigError("`--gene-caller-ids` also requires `--contigs-db`.")
+
+    if args.separate_function_sources and args.normalize_all_function_sources:
+        raise ConfigError("`--separate-function-sources` cannot be used with "
+                          "`--normalize-all-function-sources`.")
 
     if args.bin_id is not None:
         if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
