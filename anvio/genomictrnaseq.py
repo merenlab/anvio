@@ -2844,7 +2844,7 @@ class Affinitizer:
                                             f"`output_path`, '{output_path}'.")
         if invalid_derived_output_paths:
             derived_output_paths_message = (
-                "The following tables of affinties could not be written to the following derived "
+                "The following tables of affinities could not be written to the following derived "
                 "target paths: "
                 f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
         else:
