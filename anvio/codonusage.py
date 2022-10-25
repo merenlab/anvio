@@ -2524,9 +2524,9 @@ def write_split_codon_output(codon_frequency_df,
     separate_function_sources : bool, optional
         If True (default False), split output tables by function source.
     output_basename : str, optional
-        If given, then rather than splitting the output path by the extension, the output filepath
-        template consists of <output_basename><post_output_basename>, with <genome_name> and
-        <function_source> inserted between the two.
+        If given (default None), then rather than splitting the output path by the extension, the
+        output filepath template consists of <output_basename><post_output_basename>, with
+        <genome_name> and <function_source> inserted between the two.
     """
     if separate_genomes:
         if 'genome' not in codon_frequency_df.index.names:
