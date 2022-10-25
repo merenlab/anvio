@@ -1,3 +1,7 @@
+# -*- coding: utf-8
+# pylint: disable=line-too-long
+"""tRNA-seq integration with (meta)genomics"""
+
 import os
 import argparse
 import tempfile
