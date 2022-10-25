@@ -1527,8 +1527,9 @@ class Affinitizer:
             self.function_names_dict[self.function_sources[0]] = self.function_names
 
         if self.select_functions_txt:
-            select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
-                                              names=['source', 'accession', 'name'])
+            select_functions_df = pd.read_csv(
+                self.select_functions_txt, sep='\t', header=None,
+                names=['function_source', 'function_accession', 'function_name'])
             select_functions_df = select_functions_df.fillna('')
             for row in select_functions_df.itertuples():
                 if row.accession:
@@ -1788,9 +1789,10 @@ class Affinitizer:
             function_sources = list(self.function_accessions_dict)
             function_sources += list(self.function_names_dict)
             if self.select_functions_txt:
-                select_functions_df = pd.read_csv(self.select_functions_txt, sep='\t', header=None,
-                                                  names=['source', 'accession', 'name'])
-                function_sources += select_functions_df['source'].unique().tolist()
+                select_functions_df = pd.read_csv(
+                    self.select_functions_txt, sep='\t', header=None,
+                    names=['function_source', 'function_accession', 'function_name'])
+                function_sources += select_functions_df['function_source'].unique().tolist()
         present_function_source_genome_dict = {
             function_source: [] for function_source in function_sources}
         missing_function_source_genome_dict = {
@@ -2355,12 +2357,10 @@ class Affinitizer:
                 gene_min_codons=self.gene_min_total_codons,
                 function_min_codons=self.function_min_total_codons,
                 drop_amino_acids=self.exclude_amino_acids)
-            # Rename the index column, 'genome', to 'genome_name'.
-            codon_frequency_df.index.names = ['genome_name'] + codon_frequency_df.index.names
 
         for pattern in self.function_blacklist_patterns:
             codon_frequency_df = codon_frequency_df[
-                ~codon_frequency_df['name'].str.contains(pattern)]
+                ~codon_frequency_df['function_name'].str.contains(pattern)]
 
         if self.exclude_codons:
             # Exclusion of select individual codons (`exclude_codons`) is not an option in the
@@ -2471,11 +2471,6 @@ class Affinitizer:
 
         if affinities_df:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
-            if not self.gene_affinity:
-                affinities_df = affinities_df.rename(
-                    {'source': 'function_source',
-                     'accession': 'function_accession',
-                     'name': 'function_name'}, axis=1)
         else:
             affinities_df = pd.DataFrame()
 

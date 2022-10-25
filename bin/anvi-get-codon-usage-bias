@@ -260,7 +260,8 @@ def parse_select_functions_table(args, from_function_sources):
         return from_function_sources
 
     select_functions_df = pd.read_csv(
-        args.select_functions_txt, sep='\t', header=None, names=['source', 'accession', 'name'])
+        args.select_functions_txt, sep='\t', header=None,
+        names=['function_source', 'function_accession', 'function_name'])
     select_functions_df = select_functions_df.fillna('')
 
     if args.function_sources is None:
@@ -271,7 +272,7 @@ def parse_select_functions_table(args, from_function_sources):
     else:
         # Add the sources from the file to the list of all function sources to check for and load in
         # the genomes.
-        for source in select_functions_df['source'].unique():
+        for source in select_functions_df['function_source'].unique():
             if source not in args.function_sources:
                 args.function_sources.append(source)
                 from_function_sources.append(source)
@@ -328,7 +329,7 @@ def parse_select_reference_functions_table(args):
         args.select_reference_functions_txt,
         sep='\t',
         header=None,
-        names=['source', 'accession', 'name'])
+        names=['function_source', 'function_accession', 'function_name'])
     select_reference_functions_df = select_reference_functions_df.fillna('')
 
     for row in select_reference_functions_df.itertuples(index=False):
