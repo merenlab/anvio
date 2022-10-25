@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from functools import partial
+from argparse import Namespace
 from itertools import combinations, product
 
 import anvio
