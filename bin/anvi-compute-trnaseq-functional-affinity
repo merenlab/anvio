@@ -50,6 +50,7 @@ def main(args):
     if args.get_annotation_blacklist:
         store_annotation_blacklist(
             args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
+        return
 
     if args.plot and args.plot_affinity_file:
         if ((args.plot_codon_file and args.plot_codon_tree) or
