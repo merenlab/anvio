@@ -2704,7 +2704,7 @@ class Affinitizer:
         output_basename, output_ext = os.path.splitext(output_path)
         valid_derived_output_paths = []
         invalid_derived_output_paths = []
-        is_input_output_path_valid = True
+        is_given_output_path_valid = True
         if separate_genomes and separate_function_sources:
             # Split the data by both genome and function source.
             for genome_name, genome_df in affinities_df.groupby('genome_name'):
@@ -2831,13 +2831,13 @@ class Affinitizer:
                 try:
                     filesnpaths.is_output_file_writable(output_path)
                     affinities_df.to_csv(output_path, sep='\t')
-                    is_input_output_path_valid = 1
+                    is_given_output_path_valid = 1
                 except FilesNPathsError:
-                    is_input_output_path_valid = False
+                    is_given_output_path_valid = False
 
         # Report invalid output paths and, if some paths were invalid, also remove files written to
         # valid paths.
-        if is_input_output_path_valid:
+        if is_given_output_path_valid:
             template_output_path_message = ""
         else:
             template_output_path_message = ("The table of raw affinities could not be written to "
@@ -2849,8 +2849,8 @@ class Affinitizer:
                 f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
         else:
             derived_output_paths_message = ""
-        if invalid_derived_output_paths or not is_input_output_path_valid:
-            if is_input_output_path_valid is 1:
+        if invalid_derived_output_paths or not is_given_output_path_valid:
+            if is_given_output_path_valid is 1:
                 # Derived output paths were invalid, and raw affinities were written to the input
                 # output file.
                 os.remove(output_path)
@@ -2858,7 +2858,7 @@ class Affinitizer:
                 os.remove(derived_output_path)
             raise ConfigError(
                 f"{template_output_path_message}"
-                f"{' ' if invalid_derived_output_paths and not is_input_output_path_valid else ''}"
+                f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
                 f"{derived_output_paths_message}")
 
         return True
