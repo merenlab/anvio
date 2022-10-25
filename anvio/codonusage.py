@@ -477,9 +477,9 @@ class SingleGenomeCodonUsage(object):
 
         # Check compatability of `return_amino_acids` with other arguments.
         if return_amino_acids and synonymous:
-            raise ConfigError("The argument `synonymous` should only be True when "
-                              "`return_amino_acids` is also True, as `synonymous` returns "
-                              "synonymous codon relative frequencies.")
+            raise ConfigError(
+                "The argument `synonymous` should only be True when `return_amino_acids` is also "
+                "True, as `synonymous` returns synonymous codon relative frequencies.")
         if return_amino_acids and label_amino_acids:
             # Don't bother raising an exception.
             label_amino_acids = False
