@@ -2497,3 +2497,138 @@ def check_genetic_code(codon_amino_acid_dict):
 
     if unrecognized_codon_message or unrecognized_amino_acid_message:
         raise ConfigError(f"{unrecognized_codon_message}{unrecognized_amino_acid_message}")
+
+
+def write_split_codon_output(codon_frequency_df,
+                             output_path,
+                             separate_genomes=False,
+                             separate_function_sources=False,
+                             output_basename=None):
+    """
+    Store tables of codon frequency data.
+
+    Parameters
+    ----------
+    codon_frequency_df : pandas.core.frame.DataFrame
+        A table of codon frequencies of the format produced by
+        `SingleGenomeCodonUsage.get_frequencies` or `MultiGenomeCodonUsage.get_frequencies`.
+    output_path : str
+        This filepath serves as a template for the paths of other files that may be generated.
+        Indeed, if the arguments, `separate_genomes` and/or `separate_function_sources` are used,
+        nothing is written to this path. Given the template, <basename><extension>, substrings can
+        be inserted in the derived filepaths, with the most elaborate such filepath being
+        <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
+    separate_genomes : bool, optional
+        If True (default False), split output tables by genome. In the output paths, underscores
+        replace spaces in the genome names.
+    separate_function_sources : bool, optional
+        If True (default False), split output tables by function source.
+    output_basename : str, optional
+        If given, then rather than splitting the output path by the extension, the output filepath
+        template consists of <output_basename><post_output_basename>, with <genome_name> and
+        <function_source> inserted between the two.
+    """
+    if separate_genomes:
+        if 'genome' not in codon_frequency_df.index.names:
+            raise ConfigError(
+                "To split output by genome, as requested by `separate_genomes`, the table of "
+                "codon frequencies must contain the expected index column, \"genome\".")
+
+    if separate_function_sources:
+        if 'function_source' not in codon_frequency_df.index.names:
+            raise ConfigError(
+                "To split output by function source, as requested by `separate_function_sources`, "
+                "the table of codon frequencies must contain the expected index column, "
+                "\"function_source\".")
+
+    if output_basename is not None:
+        try:
+            output_basename_index = output_path.index(output_basename)
+        except ValueError:
+            output_basename_index = -1
+        if output_basename_index != 0:
+            raise ConfigError(
+                "The value provided for `output_basename`, '{output_basename}', does not but must "
+                "occur at the start of `output_path`, '{output_path}'.")
+
+    if output_basename:
+        output_ext = output_path[len(output_basename): ]
+    else:
+        output_basename, output_ext = os.path.splitext(output_path)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    is_given_output_path_valid = True
+    if separate_genomes and separate_function_sources:
+        # Split the data by both genome and function source.
+        for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+            for source, source_df in genome_df.groupby('function_source'):
+                # Write a table of codon frequencies for the genome/source.
+                derived_output_path = (
+                    output_basename + "-" +
+                    genome_name.replace(" ", "_") + "-" + source +
+                    output_ext)
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                    valid_derived_output_paths.append(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                source_df.to_csv(derived_output_path, sep='\t')
+    elif separate_genomes:
+        # Split the data by genome.
+        for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+            derived_output_path = (
+                output_basename + "-" +
+                genome_name.replace(" ", "_") +
+                output_ext)
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+                valid_derived_output_paths.append(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            genome_df.to_csv(derived_output_path, sep='\t')
+    elif separate_function_sources:
+        # Split the data by function source.
+        for source, source_df in codon_frequency_df.groupby('function_source'):
+            derived_output_path = output_basename + "-" + source + output_ext
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            source_df.to_csv(derived_output_path, sep='\t')
+    else:
+        try:
+            filesnpaths.is_output_file_writable(output_path)
+            codon_frequency_df.to_csv(output_path, sep='\t')
+            is_given_output_path_valid = 1
+        except FilesNPathsError:
+            is_given_output_path_valid = False
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if is_given_output_path_valid:
+        template_output_path_message = ""
+    else:
+        template_output_path_message = ("The table of codon frequencies could not be written to "
+                                        f"`output_path`, '{output_path}'.")
+    if invalid_derived_output_paths:
+        derived_output_paths_message = (
+            "The following tables of codon frequencies could not be written to the following "
+            "derived target paths: "
+            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+    else:
+        derived_output_paths_message = ""
+    if invalid_derived_output_paths or not is_given_output_path_valid:
+        if is_given_output_path_valid is 1:
+            # Derived output paths were invalid, and raw affinities were written to the input
+            # output file.
+            os.remove(output_path)
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        raise ConfigError(
+            f"{template_output_path_message}"
+            f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
+            f"{derived_output_paths_message}")
