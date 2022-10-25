@@ -27,7 +27,7 @@ class FastaOutput:
         self.compressed = True if self.output_file_path.endswith('.gz') else False
 
         if self.compressed:
-            self.output_file_obj = gzip.open(output_file_path, 'w')
+            self.output_file_obj = gzip.open(output_file_path, 'wt')
         else:
             self.output_file_obj = open(output_file_path, 'w')
 
