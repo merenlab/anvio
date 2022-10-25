@@ -1,11 +1,10 @@
 /**
- * Javascript library to display phylogenetic trees
+ * Javascript library to display phylogenetic trees and more
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2015, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public

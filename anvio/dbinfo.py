@@ -157,7 +157,7 @@ class DBInfo(ABC):
             raise ConfigError(f"There is nothing at '{path}' :/")
 
         if os.path.isdir(path):
-            raise ConfigError(f"But this is no file?! This is ah directory! :(")
+            raise ConfigError("But this is no file?! This is ah directory! :(")
 
         try:
             with DB(path, None, ignore_version=True) as database:

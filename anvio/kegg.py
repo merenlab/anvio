@@ -317,7 +317,7 @@ class KeggContext(object):
                               "want and try again :)")
 
         # sanity check to prevent automatic overwriting of non-default kegg data dir
-        if self.__class__.__name__ in ['KeggSetup']:
+        if self.__class__.__name__ in ['KeggSetup'] and not self.user_input_dir:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
                 raise ConfigError(f"You are attempting to set up KEGG in a non-default data directory ({self.kegg_data_dir}) which already exists. "
                                   f"To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
@@ -1237,8 +1237,7 @@ class KeggSetup(KeggContext):
         if not os.path.exists(self.kegg_modules_db_path):
             raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
                               f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
-                              f"Well, one reason is that we always use KEGG data first when estimating metabolism. And "
-                              f"the other reason is that we need to make sure none of your module names overlap with those "
+                              f"Well, we need to make sure none of your module names overlap with those "
                               f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
                               f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
                               f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "
@@ -1531,10 +1530,11 @@ class RunKOfams(KeggContext):
 
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
-                              "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
-                              "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_hmm_data_dir)
+            raise ConfigError(f"Anvi'o is unable to find any KEGG files around :/ It is likely you need to first run the program "
+                              f"`anvi-setup-kegg-kofams` to set things up. If you already have run it, but instructed anvi'o to "
+                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-kofams` again, "
+                              f"you simply need to specify the location of the KEGG data using the flag `--kegg-data-dir`. Just for "
+                              f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
         utils.is_contigs_db(self.contigs_db_path)
 
@@ -2051,7 +2051,7 @@ class KeggEstimatorArgs():
 
         # we use the below flag to find out if long format output was explicitly requested
         # this gets around the fact that we always assign 'modules' as the default output mode
-        self.long_format_mode = True if args.output_modes else False
+        self.long_format_mode = True if self.output_modes else False
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
@@ -2658,7 +2658,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       "before you attempt to run this script again.")
                 contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
 
-                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet, run=self.run)
                 mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
                 kegg_modules_db.disconnect()
 
@@ -3619,7 +3619,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # and adjust overall module copy number
         if meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"]:
-            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"])
         else:
             meta_dict_for_bin[mod]["pathwise_copy_number"] = 'NA'
 
