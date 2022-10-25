@@ -55,6 +55,8 @@ def reformat_FASTA(args):
     # top of the input file, overwriting it forever.
     if args.overwrite_input:
        args.output_file = filesnpaths.get_temp_file_path()
+       if args.contigs_fasta.endswith(".gz"):
+            args.output_file += ".gz" 
 
     filesnpaths.is_file_exists(args.contigs_fasta)
     filesnpaths.is_output_file_writable(args.output_file)
@@ -108,8 +110,6 @@ def reformat_FASTA(args):
     total_num_contigs_removed = 0
 
     fasta = u.SequenceSource(args.contigs_fasta)
-    if (fasta.fasta_file_path.endswith(".gz")) and (not args.output_file.endswith(".gz")):
-        args.output_file += ".gz"
     output = u.FastaOutput(args.output_file)
 
     while next(fasta):
