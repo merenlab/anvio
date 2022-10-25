@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """Codon usage analyses at the levels of genes, functional groups of genes, and genomes"""
 
-
+import os
 import copy
 import inspect
 import argparse
@@ -19,8 +19,8 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
 
