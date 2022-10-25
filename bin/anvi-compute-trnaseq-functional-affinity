@@ -44,11 +44,11 @@ def main(args):
         return
 
     if args.get_default_decoding_weights:
-        store_default_decoding_weights(args.get_default_decoding_weights)
+        write_default_decoding_weights(args.get_default_decoding_weights)
         return
 
     if args.get_annotation_blacklist:
-        store_annotation_blacklist(
+        write_annotation_blacklist(
             args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
         return
 
@@ -101,7 +101,7 @@ def print_sample_names(seeds_specific_txt):
     run.info("tRNA-seq sample names", f"{', '.join(sample_names)}", nl_after=1)
 
 
-def store_default_decoding_weights(output_path):
+def write_default_decoding_weights(output_path):
     filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
     with open(output_path) as output_file:
         for anticodon_wobble_nucleotide, anticodon_decoding_dict in \
@@ -112,7 +112,7 @@ def store_default_decoding_weights(output_path):
                                   f"{decoding_weight}\n")
 
 
-def store_annotation_blacklist(output_path, blacklist_name):
+def write_annotation_blacklist(output_path, blacklist_name):
     filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
     if blacklist_name not in genomictrnaseq.Affinitizer.builtin_function_blacklists:
         raise ConfigError(
