@@ -2718,10 +2718,10 @@ class Affinitizer:
                             output_ext)
                         try:
                             filesnpaths.is_output_file_writable(derived_output_path)
-                            valid_derived_output_paths.append(derived_output_path)
                         except FilesNPathsError:
                             invalid_derived_output_paths.append(derived_output_path)
                             continue
+                        valid_derived_output_paths.append(derived_output_path)
                         normalized_source_df = source_df.transform(
                             partial(normalize, normalization_method))
                         normalized_source_df.to_csv(derived_output_path, sep='\t')
@@ -2734,10 +2734,10 @@ class Affinitizer:
                         output_ext)
                     try:
                         filesnpaths.is_output_file_writable(derived_output_path)
-                        valid_derived_output_paths.append(derived_output_path)
                     except FilesNPathsError:
                         invalid_derived_output_paths.append(derived_output_path)
                         continue
+                    valid_derived_output_paths.append(derived_output_path)
                     source_df.to_csv(derived_output_path, sep='\t')
         elif separate_genomes:
             # Split the data by genome.
@@ -2757,10 +2757,10 @@ class Affinitizer:
                             partial(normalize, normalization_method))
                     try:
                         filesnpaths.is_output_file_writable(derived_output_path)
-                        valid_derived_output_paths.append(derived_output_path)
                     except FilesNPathsError:
                         invalid_derived_output_paths.append(derived_output_path)
                         continue
+                    valid_derived_output_paths.append(derived_output_path)
                     normalized_genome_df.to_csv(derived_output_path, sep='\t')
                 if no_raw_affinity:
                     continue
@@ -2771,10 +2771,10 @@ class Affinitizer:
                     output_ext)
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
-                    valid_derived_output_paths.append(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
                     continue
+                valid_derived_output_paths.append(derived_output_path)
                 genome_df.to_csv(derived_output_path, sep='\t')
         elif separate_function_sources:
             # Split the data by function source.
@@ -2790,20 +2790,21 @@ class Affinitizer:
                         partial(normalize, normalization_method))
                     try:
                         filesnpaths.is_output_file_writable(derived_output_path)
-                        valid_derived_output_paths.append(derived_output_path)
                     except FilesNPathsError:
                         invalid_derived_output_paths.append(derived_output_path)
                         continue
+                    valid_derived_output_paths.append(derived_output_path)
                     normalized_source_df.to_csv(derived_output_path, sep='\t')
                 if no_raw_affinity:
                     continue
                 # Write a table of raw affinities for the source.
                 try:
-                    derived_output_path = output_basename + "-" + source + output_ext
-                    valid_derived_output_paths.append(derived_output_path)
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
                     continue
+                valid_derived_output_paths.append(derived_output_path)
                 source_df.to_csv(derived_output_path, sep='\t')
         else:
             for normalization_method in normalization_methods:
@@ -2814,10 +2815,10 @@ class Affinitizer:
                     output_ext)
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
-                    valid_derived_output_paths.append(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
                     continue
+                valid_derived_output_paths.append(derived_output_path)
                 if normalize_all_function_sources:
                     normalized_df = affinities_df.transform(
                         partial(normalize, normalization_method))
