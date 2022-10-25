@@ -2798,7 +2798,7 @@ class Affinitizer:
                 if no_raw_affinity:
                     continue
                 # Write a table of raw affinities for the source.
-                try:
+                derived_output_path = output_basename + "-" + source + output_ext
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
