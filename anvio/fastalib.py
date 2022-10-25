@@ -27,7 +27,7 @@ class FastaOutput:
         self.compressed = True if self.output_file_path.endswith('.gz') else False
 
         if self.compressed:
-            self.output_file_obj = gzip.open(output_file_path, 'w')
+            self.output_file_obj = gzip.open(output_file_path, 'wt')
         else:
             self.output_file_obj = open(output_file_path, 'w')
 
@@ -95,7 +95,7 @@ class SequenceSource():
         self.unique_next_hash = 0
 
         if self.compressed:
-            self.file_pointer = gzip.open(self.fasta_file_path)
+            self.file_pointer = gzip.open(self.fasta_file_path, mode="rt")
         else:
             self.file_pointer = io.open(self.fasta_file_path, 'rU', newline='')
 

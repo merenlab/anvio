@@ -20,7 +20,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'ekiefl']
+__authors__ = ['meren', 'ekiefl', 'vinisalazar']
 __requires__ = ["fasta"]
 __provides__ = ["contigs-fasta"]
 __description__ =  ("Reformat FASTA file (remove contigs based on length, or based on a given list of "
@@ -107,8 +107,10 @@ def reformat_FASTA(args):
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
-    output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
+    if (fasta.fasta_file_path.endswith(".gz")) and (not args.output_file.endswith(".gz")):
+        args.output_file += ".gz"
+    output = u.FastaOutput(args.output_file)
 
     while next(fasta):
         l = len(fasta.seq)

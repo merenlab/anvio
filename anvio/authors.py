@@ -33,11 +33,17 @@ class AnvioAuthors:
 
         self.authors = {}
 
+        self.initialized = False
+
         if not skip_init:
             self.init_authors()
 
 
     def init_authors(self):
+        if self.initialized:
+            # so we are asked to re-initialize
+            self.authors = {}
+
         """Initializes the `self.authors` dictionary."""
 
         if not os.path.exists(self.authors_yaml_file_path):
