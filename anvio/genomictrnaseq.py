@@ -2838,10 +2838,10 @@ class Affinitizer:
         # Report invalid output paths and, if some paths were invalid, also remove files written to
         # valid paths.
         if is_input_output_path_valid:
-            input_output_path_message = ""
+            template_output_path_message = ""
         else:
-            input_output_path_message = ("The table of raw affinities could not be written to "
-                                         f"`output_path`, '{output_path}'.")
+            template_output_path_message = ("The table of raw affinities could not be written to "
+                                            f"`output_path`, '{output_path}'.")
         if invalid_derived_output_paths:
             derived_output_paths_message = (
                 "The following tables of affinties could not be written to the following derived "
@@ -2857,7 +2857,7 @@ class Affinitizer:
             for derived_output_path in valid_derived_output_paths:
                 os.remove(derived_output_path)
             raise ConfigError(
-                f"{input_output_path_message}"
+                f"{template_output_path_message}"
                 f"{' ' if invalid_derived_output_paths and not is_input_output_path_valid else ''}"
                 f"{derived_output_paths_message}")
 
