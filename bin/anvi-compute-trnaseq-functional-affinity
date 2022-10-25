@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"""
 
+import os
 import sys
 import pandas as pd
 import scipy.cluster.hierarchy as hierarchy
