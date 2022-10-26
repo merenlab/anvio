@@ -12,6 +12,7 @@ from argparse import Namespace
 import anvio
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.clustering as clustering
 import anvio.codonusage as codonusage
 import anvio.filesnpaths as filesnpaths
 import anvio.genomictrnaseq as genomictrnaseq
