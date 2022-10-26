@@ -271,6 +271,8 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   }
 
+DEFAULT_OUTPUT_MODE = 'modules'
+
 # global metadata header lists for matrix format
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
 # get_XXX_metadata_dictionary() function
@@ -2026,7 +2028,7 @@ class KeggEstimatorArgs():
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
         self.enzymes_txt = A('enzymes_txt') or None
-        self.output_modes = A('output_modes') or "modules"
+        self.output_modes = A('output_modes')
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
@@ -2050,8 +2052,10 @@ class KeggEstimatorArgs():
             self.module_completion_threshold = 0.0
 
         # we use the below flag to find out if long format output was explicitly requested
-        # this gets around the fact that we always assign 'modules' as the default output mode
         self.long_format_mode = True if self.output_modes else False
+        # if it was not explicitly requested, we set the default output mode to "modules"
+        if not self.output_modes:
+            self.output_modes = DEFAULT_OUTPUT_MODE
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
