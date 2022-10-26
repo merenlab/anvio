@@ -12,6 +12,8 @@ When run on a %(contigs-fasta)s this program will,
 
 * **Identify open reading frames** using [Prodigal](http://prodigal.ornl.gov/), UNLESS, (1) you have used the flag `--skip-gene-calling` (no gene calls will be made) or (2) you have provided %(external-gene-calls)s.
 
+{:.notice}
+This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention).
 
 ### Create a contigs database from a FASTA file
 

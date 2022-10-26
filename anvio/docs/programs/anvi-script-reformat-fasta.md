@@ -9,6 +9,9 @@ anvi-script-reformat-fasta %(fasta)s \
 {:.notice}
 If you use the flag `--report-file`, it will also create a TAB-delimited file for you to keep track of which defline in the new file corresponds to which defline in the original file.
 
+{:.notice}
+This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension).
+
 In addition to simplifying names, this program will allow you to do a combination of the operations that include,
 
 * Add a prefix to sequnce names in a FASTA file,
