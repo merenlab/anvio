@@ -183,30 +183,12 @@ def sanity_check(args):
         raise ConfigError("`--separate-function-sources` cannot be used with "
                           "`--normalize-all-function-sources`.")
 
-    if args.codon_distance != constants.distance_metric_default:
-        try:
-            hierarchy.distance.pdist([[0]], args.codon_distance)
-        except ValueError:
-            raise ConfigError("An invalid distance metric, '{args.codon_distance}', was given to "
-                              "`--codon-distance`.")
-    if args.codon_linkage != constants.linkage_method_default:
-        try:
-            hierarchy.linkage([0], args.codon_linkage)
-        except ValueError:
-            raise ConfigError("An invalid linkage method, '{args.codon_linkage}', was given to "
-                              "`--codon-linkage`.")
-    if args.sample_distance != constants.distance_metric_default:
-        try:
-            hierarchy.distance.pdist([[0]], args.sample_distance)
-        except ValueError:
-            raise ConfigError("An invalid distance metric, '{args.sample_distance}', was given to "
-                              "`--sample-distance`.")
-    if args.sample_linkage != constants.linkage_method_default:
-        try:
-            hierarchy.linkage([0], args.sample_linkage)
-        except ValueError:
-            raise ConfigError("An invalid linkage method, '{args.sample_linkage}', was given to "
-                              "`--sample-linkage`.")
+    clustering.is_distance_metric_OK(args.codon_distance)
+    clustering.is_linkage_method_OK(args.codon_linkage)
+    clustering.is_distance_and_linkage_compatible(args.codon_distance, args.codon_linkage)
+    clustering.is_distance_metric_OK(args.sample_distance)
+    clustering.is_linkage_method_OK(args.sample_linkage)
+    clustering.is_distance_and_linkage_compatible(args.sample_distance, args.sample_linkage)
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
