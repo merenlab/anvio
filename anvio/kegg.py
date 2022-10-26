@@ -5579,7 +5579,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
             self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
-            self.run.info("User data directory: single estimator", args.input_dir)
+            self.run.info("User data directory: single estimator", args.user_modules)
 
         return args
 
