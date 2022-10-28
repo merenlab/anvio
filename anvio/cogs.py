@@ -139,7 +139,7 @@ class COGs:
                          f"will now attempt to do it automatically by first moving things to a temporary directory "
                          f"('{tmp_dir}') and then moving them back into their new target location. If you have not been "
                          f"having an exceptionally bad day, this should go smoothly. But if you see an error below, anvi'o is "
-                         f"very sorry for breaking itself on your system :( In which case please find us on our Slack channel "
+                         f"very sorry for breaking itself on your system :( In which case please find us on our Discord channel "
                          f"and we will try to help you to sort things out.")
         self.progress.new("Moving files around")
         shutil.move(self.COG_base_dir, tmp_dir)

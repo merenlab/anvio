@@ -1329,7 +1329,7 @@ def check_R_packages_are_installed(required_package_dict):
                               "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
                               "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
                               "be much more helpful solving the issue. If none of the solutions offered here worked for you, feel free to "
-                              "come to anvi'o Slack and ask around -- others may already have a solution for it already. Apologies for the "
+                              "come to anvi'o Discord and ask around -- others may already have a solution for it already. Apologies for the "
                               "frustration. R frustrates everyone." % {'missing': ', '.join(missing_packages),
                                                                        'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
                                                                        'example': missing_packages[0]})

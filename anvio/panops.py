@@ -978,7 +978,7 @@ class Pangenome(object):
                                 f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
                                 f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
                                 f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
-                                f"on what you wish to do with them (if you are not sure, come to anvi'o slack, and tell us about what you "
+                                f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
                                 f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
                                 f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
                                 f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
@@ -1021,7 +1021,7 @@ class Pangenome(object):
                              f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
                              f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
                              f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
-                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Slack "
+                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
                              f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
                              f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
 

@@ -24,6 +24,6 @@ Anvi'o has a relatively steep learning curve, but once you get the basics, the r
 
 [Developers of anvi'o](https://github.com/merenlab/anvio/blob/master/AUTHORS.txt) strive to tailor this platform to **your** needs. Please do not hesitate to get in touch with us if you need technical help, have suggestions, or simply in need of bouncing computational and experimental 'omics ideas from others.
 
-* Here you can find [most up-to-date ways to get help from the anvi'o community](https://merenlab.org/2019/10/07/getting-help/), which includes options to reach out to us through the anvi'o Slack and Google Groups.
+* Here you can find [most up-to-date ways to get help from the anvi'o community](https://merenlab.org/2019/10/07/getting-help/), which includes options to reach out to us through the anvi'o Discord and Google Groups.
 
 * If you run into technical problems despite our best efforts, you can always [file an issue report on GitHub](https://github.com/merenlab/anvio/issues).
