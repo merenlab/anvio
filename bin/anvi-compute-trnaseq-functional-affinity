@@ -666,17 +666,17 @@ if __name__ == '__main__':
         'PLOTS',
         "Static plots can be generated for each genome showing heatmaps of function (or gene) "
         "affinities, with each row being a function and each column being a tRNA-seq sample. A "
-        "dendrogram orders the functions by their overall raw codon frequencies regardless of "
+        "dendrogram orders the functions by their relative codon frequencies regardless of "
         "codon filters imposed by this program in the calculation of affinity. Optionally, a "
         "dendrogram orders the samples by the affinities of functions in the heatmap. These static "
         "plots are well-suited for visualizing a select number of functions, such as those most "
         "strongly favored (`--n-highest-affinity`) and most strongly disfavored "
-        "(`--n-lowest-affinity`) by the tRNA pool. This program can generate plots alongside "
+        "(`--n-lowest-affinity`) by the tRNA pool. This program can generate plots in addition to "
         "tables, or it can be run again just to generate plots with affinity table and, "
         "optionally, codon frequency table and Newick tree inputs. The anvi'o interactive "
         "interface is better for visualizing all functions at once. `anvi-interactive` can take "
         "the affinity table and, optionally, Newick trees for ordering function data and sample "
-        "layers -- such as those produced by `--codon-tree` and `--sample-tree`. (See "
+        "layers -- such as those produced by `--save-codon-tree` and `--sample-tree`. (See "
         "https://merenlab.org/tutorials/interactive-interface/ and "
         "https://anvio.org/help/7/programs/anvi-interactive/"
         "#running-anvi-interactive-in-manual-mode)")
@@ -697,10 +697,16 @@ if __name__ == '__main__':
              "on a scale of 0 to 1 and 'min-max-mean' being on a scale of -1 to 1.")
     group1F.add_argument(
         '--n-highest-affinity', default=25, type=int,
-        help="Plot this number of functions or genes with the highest affinities in the genome.")
+        help="Plot this number of functions (or genes) with the highest affinities in the genome "
+             "averaged across samples. Set this argument and `--n-lowest-affinity` to -1 to plot "
+             "all functions. Set this argument to 0 and `--n-lowest-affinity` to a positive "
+             "integer to only plot the lowest-affinity functions.")
     group1F.add_argument(
         '--n-lowest-affinity', default=25, type=int,
-        help="Plot this number of functions or genes with the lowest affinities in the genome.")
+        help="Plot this number of functions (or genes) with the lowest affinities in the genome "
+             "averaged across samples. Set this argument and `--n-highest-affinity` to -1 to plot "
+             "all functions. Set this argument to 0 and `--n-highest-affinity` to a positive "
+             "integer to only plot the highest-affinity functions.")
     group1F.add_argument(
         '--sample-dendrogram', default=False, action='store_true',
         help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
