@@ -146,6 +146,65 @@ def write_annotation_blacklist(output_path, blacklist_name):
 
 
 def sanity_check(args):
+    """Check for valid combinations of arguments."""
+    ##################################################
+    # Check arguments applicable when either computing or loading affinities.
+    clustering.is_distance_metric_OK(args.codon_distance)
+    clustering.is_linkage_method_OK(args.codon_linkage)
+    clustering.is_distance_and_linkage_compatible(args.codon_distance, args.codon_linkage)
+    clustering.is_distance_metric_OK(args.sample_distance)
+    clustering.is_linkage_method_OK(args.sample_linkage)
+    clustering.is_distance_and_linkage_compatible(args.sample_distance, args.sample_linkage)
+
+    if not ((args.n_highest_affinity > 0 and args.n_lowest_affinity > 0) or
+            (args.n_highest_affinity > 0 and args.n_lowest_affinity == 0) or
+            (args.n_highest_affinity == 0 and args.n_lowest_affinity > 0) or
+            (args.n_highest_affinity == -1 and args.n_lowest_affinity == -1)):
+        raise ConfigError("`--n-highest-affinity` and `--n-lowest-affinity` were passed an invalid "
+                          "combination of values.")
+    ##################################################
+
+    ##################################################
+    # Check arguments needed for plotting stored data without computing affinities anew.
+    if args.plot_affinity_file:
+        if not args.plot:
+            raise ConfigError("To plot stored affinity data, `--plot` and `--plot-affinity-file` "
+                              "are needed, at minimum.")
+
+        if args.no_codon_dendrogram and (args.plot_codon_file or args.plot_codon_tree_file):
+            raise ConfigError("`--no-codon-dendrogram` cannot be used with `--plot-codon-file` or "
+                              "`--plot-codon-tree-file`.")
+
+        if ((args.plot_codon_file and args.plot_codon_tree_file) or
+            (not args.plot_codon_file and not args.plot_codon_tree_file)):
+            raise ConfigError(
+                "To plot the dendrogram of displayed functions or genes, either pass a table of "
+                "codon frequency data for tree calculation to `--plot-codon-file`, or pass a "
+                "Newick tree to `--plot-codon-tree-file`.")
+
+        if args.select_samples_txt:
+            filesnpaths.is_file_plain_text(args.select_samples_txt)
+        if args.plot_codon_file:
+            filesnpaths.is_file_tab_delimited(args.plot_codon_file)
+        if args.plot_codon_tree_file:
+            filesnpaths.is_proper_newick(args.plot_codon_tree_file)
+        if args.plot_sample_tree_file:
+            filesnpaths.is_proper_newick(args.plot_sample_tree_file)
+
+        return
+
+    if ((args.no_codon_dendrogram or args.plot_sample_dendrogram or args.select_samples_txt or
+         args.plot_codon_file or args.plot_codon_tree_file or
+         args.plot_sample_file or args.plot_sample_tree_file) and
+        not (args.plot or args.plot_affinity_file)):
+        raise ConfigError(
+            "`--no-codon-dendrogram`, `--plot-sample-dendrogram`, `--select-samples-txt`, "
+            "`--plot-codon-file`, `--plot-codon-tree-file`, `--plot-sample-file`, and "
+            "`--plot-sample-tree-file` must be used with `--plot` and `--plot-affinity-file`.")
+    ##################################################
+
+    ##################################################
+    # Check arguments needed for computing affinties.
     if args.trnaseq_contigs_db is None:
         raise ConfigError("`--trnaseq-contigs-db` is a required argument for computation of "
                           "affinities.")
@@ -176,6 +235,9 @@ def sanity_check(args):
     if args.separate_function_sources and args.normalize_all_function_sources:
         raise ConfigError("`--separate-function-sources` cannot be used with "
                           "`--normalize-all-function-sources`.")
+    ##################################################
+
+
 
     clustering.is_distance_metric_OK(args.codon_distance)
     clustering.is_linkage_method_OK(args.codon_linkage)
