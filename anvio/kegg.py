@@ -271,6 +271,8 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   }
 
+DEFAULT_OUTPUT_MODE = 'modules'
+
 # global metadata header lists for matrix format
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
 # get_XXX_metadata_dictionary() function
@@ -2026,7 +2028,7 @@ class KeggEstimatorArgs():
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
         self.enzymes_txt = A('enzymes_txt') or None
-        self.output_modes = A('output_modes') or "modules"
+        self.output_modes = A('output_modes')
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
@@ -2050,8 +2052,10 @@ class KeggEstimatorArgs():
             self.module_completion_threshold = 0.0
 
         # we use the below flag to find out if long format output was explicitly requested
-        # this gets around the fact that we always assign 'modules' as the default output mode
         self.long_format_mode = True if self.output_modes else False
+        # if it was not explicitly requested, we set the default output mode to "modules"
+        if not self.output_modes:
+            self.output_modes = DEFAULT_OUTPUT_MODE
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
@@ -5575,7 +5579,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
             self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
-            self.run.info("User data directory: single estimator", args.input_dir)
+            self.run.info("User data directory: single estimator", args.user_modules)
 
         return args
 
@@ -6239,7 +6243,7 @@ class ModulesDatabase(KeggContext):
             raise ConfigError("Appparently, the module data files were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
-                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Discord/telepathically "
                               "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of modules "
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
