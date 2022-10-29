@@ -49,10 +49,7 @@ def main(args):
     sanity_check(args)
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    if args.get_annotation_blacklist:
-        write_annotation_blacklist(
-            args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
-        return
+    affinitizer, affinities_df = get_affinities(args)
 
     if args.plot and args.plot_affinity_file:
         if ((args.plot_codon_file and args.plot_codon_tree) or
@@ -276,6 +273,86 @@ def parse_decoding_weights_table(decoding_weights_txt):
     return decoding_weights_df
 
 
+def get_affinities(args):
+    """Generate or load an affinities table."""
+    if args.plot_affinity_file:
+        # Affinities are being plotted but not computed anew.
+        affinitizer = None
+
+        run.info("Input affinities to plot", args.plot_affinity_file)
+        if args.plot_codon_file:
+            run.info("Input codon frequency table", args.plot_codon_file)
+        elif args.plot_codon_tree_file:
+            run.info("Input codon frequency tree", args.plot_codon_tree_file)
+        if args.plot_sample_tree_file:
+            run.info("Input tRNA-seq sample tree", args.plot_sample_tree_file)
+
+        # Load an affinity table, and make sure it looks like one.
+        affinities_df = pd.read_csv(args.plot_affinity_file, sep='\t')
+        if affinities_df.columns[: 4] == [
+            'genome_name', 'function_source', 'function_accession', 'function_name']:
+            affinities_df = affinities_df.set_index(
+                ['genome_name', 'function_source', 'function_accession', 'function_name'])
+            run.info.single("Loaded function affinities")
+        elif affinities_df.columns[: 2] == ['genome_name', 'gene_callers_id']:
+            affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id'])
+            if args.gene_affinity is False:
+                # Help out the user.
+                args.gene_affinity = True
+            run.info.single("Loaded gene affinities")
+        else:
+            raise ConfigError(
+                f"The affinity table loaded from '{args.plot_affinity_file}' does not have the "
+                "proper format, with the first columns being 'genome_name', 'function_source', "
+                "'function_accession', and 'function_name' for functional affinities or "
+                "'genome_name' and 'gene_callers_id' for gene affinities.")
+
+        # If also loading a codon tree to plot a y-axis dendrogram, confirm that the affinity table
+        # only contains information on one genome, like a proper codon tree.
+        if (args.plot_codon_tree and
+            affinities_df.index.get_level_values('genome_name').nunique() > 1):
+            raise ConfigError(
+                f"The provided affinity table, '{args.plot_affinity_table}', contains information "
+                "on more than one genome. However, the provided codon tree, "
+                f"'{args.plot_codon_tree}', is only allowed to contain information on one genome. "
+                "When loading both an affinity table and codon tree, they should contain "
+                "information on the same genome.")
+
+        if args.select_samples_txt:
+            # Select a subset of samples.
+            with open(args.select_samples_txt) as select_samples_file:
+                select_samples = [line.rstrip() for line in select_samples_file]
+
+            missing_samples = set(select_samples).difference(set(affinities_df.columns))
+            if missing_samples:
+                raise ConfigError(
+                    "The following samples given in the `--select-samples-txt` file, "
+                    "'{args.select_samples_txt}', are not found in the affinities table loaded "
+                    "from '{args.plot_affinity_file}'.")
+
+            affinities_df = affinities_df[select_samples]
+    else:
+        # Rather than loading an affinity table, compute one anew.
+        args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
+        affinitizer = genomictrnaseq.Affinitizer(args)
+        affinities_df = affinitizer.go()
+        if len(affinities_df) == 0:
+            raise ConfigError("Affinity could not be calculated given the input data and/or "
+                              "filters applied to the data.")
+
+    if args.plot_codon_dendrogram:
+        # Create a column in the affinity table containing function or gene names formatted like the
+        # labels stored in a codon tree. This allows the affinity table to be cross-referenced with
+        # codon trees.
+        affinities_df = affinities_df.reset_index()
+        affinities_df['label'] = get_codon_tree_labels(affinities_df)
+        if args.gene_affinity:
+            affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id', 'label'])
+        else:
+            affinities_df = affinities_df.set_index(
+                ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
+
+    return affinitizer, affinities_df
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
