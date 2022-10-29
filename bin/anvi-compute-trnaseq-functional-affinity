@@ -46,9 +46,8 @@ def main(args):
     if ran_helper_mode:
         return
 
-    if args.get_default_decoding_weights:
-        write_default_decoding_weights(args.get_default_decoding_weights)
-        return
+    sanity_check(args)
+    args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
     if args.get_annotation_blacklist:
         write_annotation_blacklist(
