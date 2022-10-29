@@ -708,7 +708,9 @@ if __name__ == '__main__':
              "all functions. Set this argument to 0 and `--n-highest-affinity` to a positive "
              "integer to only plot the highest-affinity functions.")
     group1F.add_argument(
-        '--sample-dendrogram', default=False, action='store_true',
+        '--no-codon-dendrogram', default=False, action='store_true',
+        help="This flag removes the dendrogram clustering functions or genes by their general "
+             "codon composition.")
         help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
              "are ordered how they are input to the program or appear in the affinity table. "
              "Without `--plot-codon-file` or `--plot-sample-tree`, clustering is based on the "
