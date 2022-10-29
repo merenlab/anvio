@@ -5,9 +5,6 @@
 import os
 import sys
 import pandas as pd
-import scipy.cluster.hierarchy as hierarchy
-
-from argparse import Namespace
 
 import anvio
 import anvio.terminal as terminal
@@ -20,6 +17,9 @@ import anvio.genomictrnaseq as genomictrnaseq
 from anvio import filesnpaths
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+
+with terminal.SuppressAllOutput():
+    from ete3 import Tree
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
