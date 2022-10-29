@@ -725,6 +725,11 @@ if __name__ == '__main__':
         '--plot-affinity-file', metavar='FILE_PATH', type=str,
         help="An affinity table is needed if running the program only to generate plots.")
     group1F.add_argument(
+        '--select-samples-txt', metavar='FILE_PATH', type=str,
+        help="Select a subset tRNA-seq samples in the loaded affinity table for plotting. The "
+             "input file should have a single column of sample names. Available sample names in an "
+             "affinity table can be printed to the terminal by running this program with the flag, "
+             "`--list-samples`.")
         '--plot-codon-file', metavar='FILE_PATH', type=str,
         help="A codon frequency table (see `--codon-frequencies` for the proper format) can be "
              "provided if running the program only to generate plots. The table must contain "
