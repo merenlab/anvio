@@ -730,17 +730,19 @@ if __name__ == '__main__':
              "input file should have a single column of sample names. Available sample names in an "
              "affinity table can be printed to the terminal by running this program with the flag, "
              "`--list-samples`.")
+    group1F.add_argument(
         '--plot-codon-file', metavar='FILE_PATH', type=str,
-        help="A codon frequency table (see `--codon-frequencies` for the proper format) can be "
-             "provided if running the program only to generate plots. The table must contain "
+        help="A codon frequency table (see `--save-codon-frequencies` for the proper format) can "
+             "be provided if running the program only to generate plots. The table must contain "
              "entries for the displayed functions or genes. Clustering parameters can be altered "
              "with `--sample-distance` and `--sample-linkage`.")
     group1F.add_argument(
-        '--plot-codon-tree', metavar='NEWICK', type=str,
+        '--plot-codon-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the displayed functions or genes can be provided if "
-             "running the program only to generate plots.")
+             "running the program only to generate plots. If the nodes of the tree represent genes "
+             "rather than functions, use the flag, `--gene-affinity`.")
     group1F.add_argument(
-        '--plot-sample-tree', metavar='NEWICK', type=str,
+        '--plot-sample-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
              "program only to generate plots.")
 
