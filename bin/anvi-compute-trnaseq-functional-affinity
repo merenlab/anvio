@@ -223,13 +223,38 @@ def sanity_check(args):
     ##################################################
 
 
+def get_codon_tree_labels(df):
+    """Get a list of function or gene leaf labels formatted for a codon tree."""
+    if args.gene_affinity:
+        labels = df['gene_callers_id'].tolist()
+    else:
+        labels = []
+        if df['function_source'].nunique() == 1:
+            # A single function source is considered.
+            for accession, name in zip(df['function_accession'], df['function_name']):
+                # Function labels in the tree are formatted, "<function_name>
+                # (<function_accession>)", unless no function accession is available (e.g., for
+                # BRITE categories), in which case labels consist only of the function name.
+                if accession == '':
+                    label_suffix = ""
+                else:
+                    label_suffix = f" ({accession})"
+                labels.append(name + label_suffix)
+        else:
+            # Multiple function sources are considered.
+            for source, accession, name in zip(
+                df['function_source'], df['function_accession'], df['function_name']):
+                # Function labels in the tree are formatted, "<function_name> (<function_source>
+                # : <function_accession>)", unless no function accession is available (e.g., for
+                # BRITE categories), in which case labels are formatted, "<function_name>
+                # (<function_source>)".
+                if accession == '':
+                    label_suffix = f" ({source})"
+                else:
+                    label_suffix = f" ({source} : {accession})"
+                labels.append(name + label_suffix)
 
-    clustering.is_distance_metric_OK(args.codon_distance)
-    clustering.is_linkage_method_OK(args.codon_linkage)
-    clustering.is_distance_and_linkage_compatible(args.codon_distance, args.codon_linkage)
-    clustering.is_distance_metric_OK(args.sample_distance)
-    clustering.is_linkage_method_OK(args.sample_linkage)
-    clustering.is_distance_and_linkage_compatible(args.sample_distance, args.sample_linkage)
+    return labels
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
