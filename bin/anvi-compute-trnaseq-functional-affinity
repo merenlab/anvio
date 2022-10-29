@@ -55,28 +55,77 @@ def main(args):
     codon_frequency_df = get_general_codon_frequencies(args, affinities_df)
     write_general_codon_frequency_tables(args, codon_frequency_df)
 
-    sanity_check(args)
+    ##################################################
+    # Tree generation and loading
+    if args.plot_codon_tree_file:
+        # Load the Newick-formatted tree of functions or genes for the y-axis dendrogram.
+        codon_tree = Tree(args.plot_codon_tree_file)
+        if args.gene_affinity:
+            run.info("Loaded tree of gene codon frequencies", args.plot_codon_tree_file)
+        else:
+            run.info("Loaded tree of function codon frequencies", args.plot_codon_tree_file)
+        tree_items = [leaf.name for leaf in codon_tree.get_leaves()]
 
-    args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
+        # Confirm that the functions or genes in the tree are in the affinity table.
+        missing_tree_items = sorted(set(tree_items)).difference(set(affinities_df['label']))
+        if missing_tree_items:
+            raise ConfigError(
+                "The following functions or genes in the codon frequency tree loaded from "
+                f"'{args.plot_codon_tree_file}' are not represented in the affinity table: "
+                f"{', '.join(missing_tree_items)}")
 
-    affinitizer = genomictrnaseq.Affinitizer(args)
-    # Get a table of affinity results.
-    affinities_df = affinitizer.go()
-    if len(affinities_df) == 0:
-        raise ConfigError("Affinity could not be calculated given the input data and/or filters "
-                          "applied to the data.")
-    # Write affinity tables.
-    if not affinitizer.write_affinity_output(
-        affinities_df,
-        args.output_file,
-        separate_genomes=args.separate_genomes,
-        separate_function_sources=args.separate_function_sources,
-        normalization_methods=args.normalize_affinity,
-        normalize_all_function_sources=args.normalize_all_function_sources,
-        no_raw_affinity=args.no_raw_affinity):
-        run.warning(
-            "No affinity output tables were stored. `--no-raw-affinity` was used without "
-            "`--normalization-methods`, so neither raw nor normalized affinities were written.")
+        # Subset the functions or genes with the highest and lowest average affinities.
+        affinities_df['mean'] = affinities_df.mean(axis=1)
+        affinities_df = affinities_df.sort_values(by='mean', ascending=False)
+        if args.n_highest_affinity > 0:
+            if args.n_highest_affinity >= len(affinities_df):
+                run.warning(
+                    "`--n-highest-affinity` was given a value of {args.n_highest_affinity}, but "
+                    f"there were only {len(affinities_df)} "
+                    f"{'genes' if args.gene_affinity else 'functions'} in the affinity table, all "
+                    "of which have therefore been retained.")
+            else:
+                affinities_df = affinities_df.iloc[: args.n_highest_affinity]
+        if args.n_lowest_affinity > 0:
+            if (args.n_lowest_affinity >= len(affinities_df) and
+                args.n_highest_affinity < len(affinities_df)):
+                run.warning(
+                    "`--n-lowest-affinity` was given a value of {args.n_lowest_affinity}, but "
+                    f"there were only {len(affinities_df)} "
+                    f"{'genes' if args.gene_affinity else 'functions'} in the affinity table, all "
+                    "of which have therefore been retained.")
+            else:
+                affinities_df = affinities_df.iloc[-args.n_lowest_affinity: ]
+
+        # Prune the tree to retain the functions or genes of interest.
+        codon_tree = codon_tree.prune(affinities_df['tree_labels'].tolist())
+    elif args.plot_codon_dendrogram or args.save_codon_tree:
+        # Rather than loading a tree, make one from a matrix of relative codon frequencies.
+        relative_codon_frequency_df = codon_frequency_df.div(codon_frequency_df.sum(axis=1), axis=0)
+        codon_tree = clustering.get_clustering_as_tree(relative_codon_frequency_df,
+                                                       linkage=args.codon_linkage,
+                                                       distance=args.codon_distance,
+                                                       progress=progress_quiet)
+    elif args.plot and args.no_codon_dendrogram:
+        codon_tree = None
+    ##################################################
+
+    if args.plot and args.plot_sample_tree_file:
+        # Load a Newick-formatted tree of samples to create an x-axis sample dendrogram.
+        sample_tree = Tree(args.plot_sample_tree_file)
+        tree_samples = [leaf.name for leaf in sample_tree.get_leaves()]
+
+        missing_tree_samples = sorted(set(affinities_df.columns).difference(set(tree_samples)))
+        if missing_tree_samples:
+            raise ConfigError(
+                "The following tRNA-seq samples of interest for which affinities were calculated "
+                "are not represented in the sample tree loaded from "
+                f"'{args.plot_sample_tree_file}': {', '.join(missing_tree_samples)}")
+
+        excess_tree_samples = sorted(set(tree_samples).difference(set(affinities_df.columns)))
+        if excess_tree_samples:
+            sample_tree = sample_tree.prune(affinities_df.columns.tolist())
+
 
 def run_helper_modes(args):
     """Run helper functionality from Group 2 arguments."""
