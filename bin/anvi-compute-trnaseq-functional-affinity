@@ -53,6 +53,7 @@ def main(args):
     write_affinity_tables(args, affinitizer, affinities_df)
 
     codon_frequency_df = get_general_codon_frequencies(args, affinities_df)
+    write_general_codon_frequency_tables(args, codon_frequency_df)
 
     sanity_check(args)
 
@@ -447,6 +448,22 @@ def get_general_codon_frequencies(args, affinities_df):
                 ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
 
     return codon_frequency_df
+
+
+def write_general_codon_frequency_tables(args, codon_frequency_df):
+    """Write one or more codon frequency tables, if applicable."""
+    if args.save_codon_frequencies:
+        # Store codon frequency tables.
+        output_basename, output_ext = os.path.splitext(args.output_path)
+        template_output_path = output_basename + "-CODONS" + output_ext
+        codonusage.write_split_codon_output(
+            codon_frequency_df,
+            template_output_path,
+            separate_genomes=args.separate_genomes,
+            separate_function_sources=args.separate_function_sources,
+            output_basename=output_basename)
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
