@@ -50,6 +50,7 @@ def main(args):
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
     affinitizer, affinities_df = get_affinities(args)
+    write_affinity_tables(args, affinitizer, affinities_df)
 
     if args.plot and args.plot_affinity_file:
         if ((args.plot_codon_file and args.plot_codon_tree) or
@@ -353,6 +354,24 @@ def get_affinities(args):
                 ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
 
     return affinitizer, affinities_df
+
+
+def write_affinity_tables(args, affinitizer, affinities_df):
+    """Write one or more affinity tables, if applicable."""
+    if not args.plot_affinity_file:
+        wrote_affinity_output = affinitizer.write_affinity_output(
+            affinities_df,
+            args.output_file,
+            separate_genomes=args.separate_genomes,
+            separate_function_sources=args.separate_function_sources,
+            normalization_methods=args.normalize_affinity,
+            normalize_all_function_sources=args.normalize_all_function_sources,
+            no_raw_affinity=args.no_raw_affinity)
+        if not wrote_affinity_output:
+            run.warning(
+                "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
+                "without `--normalization-methods`, so neither raw nor normalized affinities were "
+                "written.")
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
