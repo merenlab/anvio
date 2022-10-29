@@ -52,20 +52,7 @@ def main(args):
     affinitizer, affinities_df = get_affinities(args)
     write_affinity_tables(args, affinitizer, affinities_df)
 
-    if args.plot and args.plot_affinity_file:
-        if ((args.plot_codon_file and args.plot_codon_tree) or
-            (not args.plot_codon_file and not args.plot_codon_tree)):
-            raise ConfigError(
-                "To plot the dendrogram of displayed functions or genes, either pass a table of "
-                "codon frequency data for tree calculation to `--plot-codon-file`, or pass a "
-                "Newick tree to `--plot-codon-tree`.")
-        run.info_single("Input affinities to plot", args.plot_affinity_file)
-        if args.plot_codon_file:
-            run.info_single("Input codon frequency table", args.plot_codon_file)
-        elif args.plot_codon_tree:
-            run.info_single("Input codon frequency tree", args.plot_codon_tree)
-        if args.plot_sample_tree:
-            run.info_single("Input tRNA-seq sample tree", args.plot_sample_tree)
+    codon_frequency_df = get_general_codon_frequencies(args, affinities_df)
 
     sanity_check(args)
 
@@ -372,6 +359,94 @@ def write_affinity_tables(args, affinitizer, affinities_df):
                 "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
                 "without `--normalization-methods`, so neither raw nor normalized affinities were "
                 "written.")
+
+
+def get_general_codon_frequencies(args, affinities_df):
+    """Generate or load a table of absolute codon frequencies per function or gene."""
+    if (args.plot and not args.plot_codon_file) or args.save_codon_frequencies:
+        # Get the frequencies of codons encoding amino acids in the functions or genes (the rows)
+        # reported in the affinity table. The general set of all codons encoding amino acids is
+        # reported here, whereas codons that factor into affinity calculations are determined by the
+        # detected tRNA transcripts.
+        genome_names = affinities_df.index.get_level_values('genome_name').unique()
+        if len(genome_names) == 1:
+            # Add a first column to the index consisting of the genome name. With multiple genomes,
+            # the table already has such an index.
+            single_genome_name_index = genome_names[0]
+        else:
+            single_genome_name_index = None
+        codon_frequency_df = genomictrnaseq.Affinitizer.get_general_codon_frequencies(
+            args, affinities_df, single_genome_name_index=single_genome_name_index)
+
+    if args.plot_codon_file:
+        # Load absolute codon frequencies, from which codon trees are made.
+        codon_frequency_df = pd.read_csv(args.plot_codon_file, sep='\t')
+
+        if 'genome_name' not in codon_frequency_df.columns:
+            raise ConfigError(f"The codon frequency table, loaded from '{args.plot_codon_file}', "
+                              "does not but should contain a 'genome_name' column.")
+
+        if (set(codon_frequency_df['genome_name']) !=
+            set(affinities_df.index.get_level_values('genome_name'))):
+            missing_codon_genome_names = set(
+                affinities_df.index.get_level_values('genome_name')).difference(
+                    set(codon_frequency_df['genome_name']))
+            missing_affinity_genome_names = set(
+                codon_frequency_df['genome_name']).difference(
+                    set(affinities_df.index.get_level_values('genome_name')))
+            if missing_codon_genome_names:
+                codon_message = (
+                    "The following genome names are in the affinity table but not the codon "
+                    f"frequency table: {', '.join(missing_codon_genome_names)}.")
+            elif missing_affinity_genome_names:
+                codon_message = " "
+            else:
+                codon_message = ""
+            if missing_affinity_genome_names:
+                affinity_message = (
+                    "The following genome names are in the codon frequency table but not the "
+                    f"affinity table: {', '.join(missing_affinity_genome_names)}.")
+                if missing_codon_genome_names:
+                    affinity_message = " " + affinity_message
+            else:
+                affinity_message = ""
+            raise ConfigError(
+                f"The codon frequency table, loaded from '{args.plot_codon_file}', does not but "
+                "should contain the same genome names as the affinity table, loaded from "
+                f"'{args.plot_affinity_file}'.{codon_message}{affinity_message}")
+
+        if affinities_df.index.names == [
+            'genome_name', 'function_source', 'function_accession', 'function_name']:
+            missing_cols = set(
+                ['function_source', 'function_accession', 'function_name']).difference(
+                    codon_frequency_df.columns)
+            if missing_cols:
+                raise ConfigError(
+                    f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
+                    "but should contain function columns with the headers, 'function_source', "
+                    "'function_accession', and 'function_name'. The following of these columns "
+                    f"is missing: {', '.join(missing_cols)}")
+        elif affinities_df.index.names == ['genome_name', 'gene_callers_id']:
+            if 'gene_callers_id' not in codon_frequency_df.columns:
+                raise ConfigError(
+                    f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
+                    "but should contain a column with the header, 'gene_callers_id'.")
+        else:
+            raise ConfigError(
+                "The affinity table index columns, as follows, are not recognized, though they "
+                f"should already have been checked: {', '.join(affinities_df.index.names)}")
+
+    if args.plot_codon_dendrogram:
+        codon_frequency_df = codon_frequency_df.reset_index()
+        codon_frequency_df['label'] = get_codon_tree_labels(codon_frequency_df)
+        if args.gene_affinity:
+            codon_frequency_df = affinities_df.set_index(
+                ['genome_name', 'gene_callers_id', 'label'])
+        else:
+            codon_frequency_df = affinities_df.set_index(
+                ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
+
+    return codon_frequency_df
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
