@@ -607,7 +607,7 @@ if __name__ == '__main__':
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not store tables of raw affinity data.")
     group1D.add_argument(
-        '--codon-frequencies', default=False, action='store_true',
+        '--save-codon-frequencies', default=False, action='store_true',
         help="Write a table of function or gene codon frequencies. If `--separate-genomes` or "
              "`--separate-function-sources` are used, then multiple files are written for each "
              "genome, function source, or combination of genome and source, with paths derived "
@@ -636,7 +636,7 @@ if __name__ == '__main__':
         help="The linkage method for the hierarchical clustering of functions or genes by their "
              "codon frequencies.")
     group1E.add_argument(
-        '--codon-tree', default=False, action='store_true',
+        '--save-codon-tree', default=False, action='store_true',
         help="Write a Newick-formatted tree of hierarchically clustered codon frequencies. If "
              "`--separate-genomes` or `--separate-function-sources` are used, then multiple tree "
              "files are written for each genome, function source, or combination of genome and "
