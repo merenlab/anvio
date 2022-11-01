@@ -60,7 +60,7 @@ To initialize [AA-mode](#aa-mode), go to the rule `cluster_X_percent_sim_mmseqs`
     "hmm_list": "hmm_list.txt",
     "samples_txt": ""
     "cluster_X_percent_sim_mmseqs": {
-        "AA_mode": True,
+        "AA_mode": true,
     }
 }
 ```
@@ -88,7 +88,7 @@ To initialize [profile-mode](#profile-mode-insights-into-the-ecological-and-evol
 
 ## Config file options
 
-Ecophylo will sanity check all input files that contain %(contigs-db)ss before the workflow starts. This can take a while especially if you are working with 1000's of genomes. If you want to skip sanity checks for contigsDBs in your external-genomes and/or %(metagenomes)s then adjust your config to the following:
+Ecophylo will sanity check all input files that contain %(contigs-db)ss before the workflow starts. This can take a while especially if you are working with 1000's of genomes. If you want to skip sanity checks for %(contigs-db)ss in your %(external-genomes)s and/or %(metagenomes)s then adjust your config to the following:
 
 ```bash
 {
