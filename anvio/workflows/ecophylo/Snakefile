@@ -1040,9 +1040,9 @@ rule anvi_scg_taxonomy:
         # Concatenate metagenomes.txt and external-genomes.txt
         contigs_db_name_path_list = list(M.contigs_db_name_path_dict.items())
         contigs_db_name_path_df = pd.DataFrame(contigs_db_name_path_list, columns=['name', 'contigs_db_path'])
-        combined_genomes_df_path = os.path.join(dirs_dict['HOME'], "combined_genomes.txt") 
+        combined_genomes_df_path = "combined_genomes.txt"
         contigs_db_name_path_df.to_csv(combined_genomes_df_path, sep="\t", index=False, header=True)
-        
+
         if hmm_source in M.internal_hmm_sources:
             shell("anvi-estimate-scg-taxonomy -M {combined_genomes_df_path} \
                                               --metagenome-mode \
@@ -1050,6 +1050,7 @@ rule anvi_scg_taxonomy:
                                               -T {threads} \
                                               --raw-output \
                                               -O {params.taxonomy} &> {log}")
+            
             # Import data
             #------------
             scg_taxonomy = pd.read_csv(params.taxonomy_long, \
