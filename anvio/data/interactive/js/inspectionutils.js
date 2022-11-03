@@ -295,7 +295,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       category = getCleanCagCode(category);
 
       if(!category) {
-        category = "none";
+        category = "None";
         if(colortype == "Source") {
           if (gene.source.startsWith('Ribosomal_RNA')) {
             category = 'rRNA';
@@ -411,22 +411,10 @@ function getCustomColorDict(fn_type, cags=null, order=null) {
     Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
   }
 
-  if(out["Other"]) out["Other"] = "#FFFFFF";
-  if(out["None"]) out["None"] = "#808080";
+  if(cags.includes("Other")) out["Other"] = "#FFFFFF";
+  if(cags.includes("None")) out["None"] = "#808080";
   delete out["undefined"];
   return out;
-  console.log(out);
-}
-
-/*
- *  @returns array of functional annotation types from genes
- */
-function getFunctionalAnnotations() {
-  for(gene of geneParser["data"]) {
-    if(!gene.functions) continue;
-    return Object.keys(gene.functions);
-  }
-  return [];
 }
 
 /*
@@ -473,22 +461,6 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
-}
-
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js

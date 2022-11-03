@@ -49,23 +49,12 @@ function getKeyByValue(object, value) {
   return Object.keys(object).find(key => object[key] === value);
 }
 
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
 //-----------------------------------------------------------------------------
 // Gene function coloring
 //-----------------------------------------------------------------------------
 
 /*
- *  @returns category name corresponding to a given single-character code, for the approporiate functional annotation type
+ *  @returns target gene's category code for a given functional annotation type.
  */
 function getCagForType(geneFunctions, fn_type) {
   let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;

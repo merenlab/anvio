@@ -57,8 +57,6 @@ var show_cags_in_split = true;
 var thresh_count_gene_colors = 1;
 var order_gene_colors_by_count = true;
 
-var mcags;
-
 function loadAll() {
     info("Initiated");
     $.ajaxPrefilter(function(options) {
@@ -267,7 +265,6 @@ function loadAll() {
                   state['source-colors'] = default_source_colors;
                 }
                 generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes'], show_cags_in_split);
-                mcags = Object.keys(default_source_colors);
                 for(fn of getFunctionalAnnotations()) {
                   $('#gene_color_order').append($('<option>', {
                     value: fn,
@@ -435,16 +432,6 @@ function loadAll() {
 
                 }).change(function() {
                     state['gene-fn-db'] = $(this).val();
-                    switch($(this).val()) {
-                      case "COG_CATEGORY":
-                        mcags = Object.keys(COG_categories);
-                        break;
-                      case "KEGG_CLASS":
-                        mcags = Object.keys(KEGG_categories);
-                        break;
-                      case "Source":
-                        mcags = Object.keys(default_source_colors);
-                    }
                     resetFunctionColors(state[$(this).val().toLowerCase() + '-colors']);
                     redrawArrows();
                     $(this).blur();
@@ -802,8 +789,8 @@ function redrawArrows() {
 }
 
 function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
-  if(!cags) cags = Object.keys(getColorDefaults(fn_type));
-  if(noneMarker) cags = ["none"].concat(cags);
+  if(!cags) cags = Object.keys(getCustomColorDict(fn_type));
+  if(noneMarker) cags = ["None"].concat(cags);
   cags.forEach(category => {
     if(category.indexOf(',') != -1) category = category.substr(0,category.indexOf(','));
     if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
@@ -829,7 +816,6 @@ function resetArrowMarkers() {
   $('#contextSvgDefs').empty();
 
   defineArrowMarkers($('#gene_color_order').val());
-  //defineArrowMarkers(null, cags=mcags);
   defineArrowMarkers(null, cags=Object.keys(state['highlight-genes']), noneMarker=false);
 }
 
@@ -845,19 +831,7 @@ function resetFunctionColors(fn_colors=null) {
   let prop = $('#gene_color_order').val().toLowerCase() + '-colors';
   Object.assign(state[prop], fn_colors ? fn_colors : getCustomColorDict($('#gene_color_order')));
 
-  switch($('#gene_color_order').val()) {
-    case 'Source':
-      Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
-      break;
-    case 'COG_CATEGORY':
-      Object.assign(state['cog_category-colors'], fn_colors ? fn_colors : default_COG_colors);
-      break;
-    case 'KEGG_CLASS':
-      Object.assign(state['kegg_class-colors'], fn_colors ? fn_colors : default_KEGG_colors);
-      break;
-  }
-
-  generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
+  generateFunctionColorTable(state[prop],
                              $('#gene_color_order').val(),
                              state['highlight-genes'],
                              show_cags_in_split);
@@ -1501,7 +1475,6 @@ function processState(state_name, state) {
     $('#gene_color_order').val(state['gene-fn-db']);
 
     generateFunctionColorTable(state[state['gene-fn-db'].toLowerCase() + '-colors'], state['gene-fn-db'], highlight_genes=state['highlight-genes'], show_cags_in_split);
-    mcags = Object.keys(state[state['gene-fn-db'].toLowerCase() + '-colors']);
     this.state = state;
 
     if(!state['highlight-genes']) {
