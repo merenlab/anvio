@@ -209,27 +209,6 @@
                   <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="toggleShowCagsInSplit()" class="btn btn-outline-primary">Show only categories in this split</button>
 
-                  <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                    <label id="gene_colors_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
-                    <div class="col-md-8">
-                      <select id="gene_color_order" stsyle="margin-bottom: 10px" class="form-control input-xs"></select>
-                    </div>
-                  </div>
-
-                  <tbody>
-                      <tr>
-                        <td style="margin-bottom: 10px;">Filter:</td>
-                        <td><input type="text" class="form-control input-sm" id="thresh_count" value="1" style="margin-bottom: 10px;"></td>
-                      </tr>
-                  </tbody>
-                  <div class="ui-accordion-content ui-helper-reset ui-widget-content ui-corner-bottom ui-accordion-content-active" id="ui-id-2" aria-labelledby="ui-id-1" role="tabpanel" style="display: block;" aria-hidden="false">Sort: <div class="btn-group" role="group">
-                  <button type="button" class="btn btn-default" onclick="orderColorTable('alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                  <button type="button" class="btn btn-default" onclick="orderColorTable('count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
-                  </div>
-                  <div class="btn-group" role="group">
-                      <button type="button" class="btn btn-default" style="margin-left: 10px;" onclick="console.log('\nComing soon: batch coloring (!)')"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
-                  </div>
-
                   <div id="table_function_colors_container" style="margin-top: 20px; color:black">
                     <table id="table_function_colors">
                       <thead id="thead_function_colors">
