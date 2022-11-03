@@ -192,13 +192,13 @@ class BAMProfilerQuick:
 
         with open(self.output_file_path, 'w') as output:
             if self.report_minimal and not self.gene_level_stats:
-                header = ['contig', 'sample', 'length', 'gc_content', 'detection', 'mean_cov']
+                header = ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             elif not self.report_minimal and not self.gene_level_stats:
-                header = ['contig', 'sample', 'length', 'gc_content',  'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+                header = ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
             elif self.report_minimal and self.gene_level_stats:
                 header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov']
             else:
-                header = ['gene_callers_id', 'contig', 'sample', 'length', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+                header = ['gene_callers_id', 'contig', 'sample', 'length', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
 
             output.write('\t'.join(header) + '\n')
 
@@ -235,6 +235,7 @@ class BAMProfilerQuick:
                                      f"{bam_file_name}\t"
                                      f"{self.contigs_basic_info[contig_name]['length']}\t"
                                      f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{c.num_reads}\t"
                                      f"{detection:.4}\t"
                                      f"{mean:.4}\n")
                     elif not self.report_minimal and not self.gene_level_stats:
@@ -244,6 +245,7 @@ class BAMProfilerQuick:
                                      f"{bam_file_name}\t"
                                      f"{self.contigs_basic_info[contig_name]['length']}\t"
                                      f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{c.num_reads}\t"
                                      f"{C.detection:.4}\t"
                                      f"{C.mean:.4}\t"
                                      f"{C.mean_Q2Q3:.4}\t"
@@ -273,11 +275,20 @@ class BAMProfilerQuick:
                                              f"{detection:.4}\t"
                                              f"{mean:.4}\n")
                             else:
+                                # calculate the total number of reads mapping to the gene:
+                                num_mapped_reads_to_gene = 0
+                                for r in bam.fetch_only(contig_name, start=g['start'], end=g['stop']):
+                                    num_mapped_reads_to_gene += 1
+
+                                # get coverage stats:
                                 GC = utils.CoverageStats(gc, skip_outliers=True)
+
+                                # write everything out:
                                 output.write(f"{gene_callers_id}\t"
                                              f"{contig_name}\t"
                                              f"{bam_file_name}\t"
                                              f"{g['stop'] - g['start']}\t"
+                                             f"{num_mapped_reads_to_gene}\t"
                                              f"{GC.detection:.4}\t"
                                              f"{GC.mean:.4}\t"
                                              f"{GC.mean_Q2Q3:.4}\t"
