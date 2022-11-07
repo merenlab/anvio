@@ -1603,7 +1603,7 @@ if __name__ == '__main__':
         "optionally, codon frequency table and Newick tree inputs. The anvi'o interactive "
         "interface is better for visualizing all functions at once. `anvi-interactive` can take "
         "the affinity table and, optionally, Newick trees for ordering function data and sample "
-        "layers -- such as those produced by `--save-codon-tree` and `--sample-tree`. (See "
+        "layers -- such as those produced by `--save-codon-trees` and `--save-sample-trees`. (See "
         "https://merenlab.org/tutorials/interactive-interface/ and "
         "https://anvio.org/help/7/programs/anvi-interactive/"
         "#running-anvi-interactive-in-manual-mode)")
