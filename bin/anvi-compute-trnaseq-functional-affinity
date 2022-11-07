@@ -1627,13 +1627,16 @@ if __name__ == '__main__':
         help="Plot this number of functions (or genes) with the highest affinities in the genome "
              "averaged across samples. Set this argument and `--n-lowest-affinity` to -1 to plot "
              "all functions. Set this argument to 0 and `--n-lowest-affinity` to a positive "
-             "integer to only plot the lowest-affinity functions.")
+             "integer to only plot the lowest-affinity functions. In plots of normalized affinity, "
+             "the functions with the highest and lowest unnormalized affinities are displayed.")
     group1F.add_argument(
         '--n-lowest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the lowest affinities in the genome "
              "averaged across samples. Set this argument and `--n-highest-affinity` to -1 to plot "
              "all functions. Set this argument to 0 and `--n-highest-affinity` to a positive "
-             "integer to only plot the highest-affinity functions.")
+             "integer to only plot the highest-affinity functions. In plots of normalized "
+             "affinity, the functions with the highest and lowest unnormalized affinities are "
+             "displayed.")
     group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
         help="This flag removes the dendrogram clustering functions or genes by their general "
