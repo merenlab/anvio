@@ -1102,6 +1102,18 @@ def subset_affinity_entries(args, affinities_dict):
     return subset_affinities_dict
 
 
+def get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict):
+    """Get clusters of functions or genes."""
+    if args.plot_codon_tree_file:
+        codon_linkage_dict = load_codon_linkage_from_newick(args, subset_affinities_dict)
+    elif args.plot_codon_dendrogram or args.save_codon_trees:
+        codon_linkage_dict = generate_codon_linkages(args, codon_frequency_dict)
+    else:
+        codon_linkage_dict = None
+
+    return codon_linkage_dict
+
+
 
     return codon_frequency_df
 
