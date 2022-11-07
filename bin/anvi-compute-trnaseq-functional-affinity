@@ -323,39 +323,86 @@ def get_affinities(args):
     return affinities_dict
 
 
-
-        # If also loading a codon tree to plot a y-axis dendrogram, confirm that the affinity table
-        # only contains information on one genome, like a proper codon tree.
-        if (args.plot_codon_tree and
-            affinities_df.index.get_level_values('genome_name').nunique() > 1):
-            raise ConfigError(
-                f"The provided affinity table, '{args.plot_affinity_table}', contains information "
-                "on more than one genome. However, the provided codon tree, "
-                f"'{args.plot_codon_tree}', is only allowed to contain information on one genome. "
-                "When loading both an affinity table and codon tree, they should contain "
-                "information on the same genome.")
-
-        if args.select_samples_txt:
-            # Select a subset of samples.
-            with open(args.select_samples_txt) as select_samples_file:
-                select_samples = [line.rstrip() for line in select_samples_file]
-
-            missing_samples = set(select_samples).difference(set(affinities_df.columns))
-            if missing_samples:
-                raise ConfigError(
-                    "The following samples given in the `--select-samples-txt` file, "
-                    "'{args.select_samples_txt}', are not found in the affinities table loaded "
-                    "from '{args.plot_affinity_file}'.")
-
-            affinities_df = affinities_df[select_samples]
+def load_affinities(args):
+    """Load single genome affinities for the purposes of plotting."""
+    affinities_df = pd.read_csv(args.plot_affinity_file, sep='\t')
+    # Make sure the loaded table is properly formatted.
+    if affinities_df.columns[: 4] == [
+        'genome_name', 'function_source', 'function_accession', 'function_name']:
+        affinities_df = affinities_df.set_index(
+            ['genome_name', 'function_source', 'function_accession', 'function_name'])
+        args.gene_affinity = False
+    elif affinities_df.columns[: 2] == ['genome_name', 'gene_callers_id']:
+        affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id'])
+        if args.gene_affinity is False:
+            # Help out the user if they didn't explicitly indicate gene rather function affinity.
+            args.gene_affinity = True
     else:
-        # Rather than loading an affinity table, compute one anew.
-        args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
-        affinitizer = genomictrnaseq.Affinitizer(args)
-        affinities_df = affinitizer.go()
-        if len(affinities_df) == 0:
-            raise ConfigError("Affinity could not be calculated given the input data and/or "
-                              "filters applied to the data.")
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' does not have the "
+            "proper format, with the first columns being 'genome_name', 'function_source', "
+            "'function_accession', and 'function_name' for function affinities or 'genome_name' "
+            "and 'gene_callers_id' for gene affinities.")
+
+    # If also loading a codon tree to plot a y-axis dendrogram, confirm that the table only contains
+    # information on one genome.
+    if (args.plot_codon_tree and
+        affinities_df.index.get_level_values('genome_name').nunique() > 1):
+        raise ConfigError(
+            f"The provided affinity table, '{args.plot_affinity_table}', contains information on "
+            f"more than one genome. However, the provided codon tree, '{args.plot_codon_tree}', is "
+            "only allowed to contain information on one genome. Of course, the affinity table and "
+            "codon tree should contain information on the same genome.")
+
+    if args.select_samples_txt:
+        # Select a subset of samples.
+        with open(args.select_samples_txt) as select_samples_file:
+            select_samples = [line.rstrip() for line in select_samples_file]
+
+        missing_samples = set(select_samples).difference(set(affinities_df.columns))
+        if missing_samples:
+            raise ConfigError(
+                "The following samples given in the `--select-samples-txt` file, "
+                f"'{args.select_samples_txt}', are not found in the affinity table loaded from "
+                f"from '{args.plot_affinity_file}'.")
+
+        affinities_df = affinities_df[select_samples]
+
+    # The dictionary of affinity tables will only have one key for a single genome in the outermost
+    # dictionary.
+    affinities_dict = {}
+    genome_name = affinities_df.index.get_level_values('genome_name')[0]
+    affinities_dict[genome_name] = source_dict = {}
+    if args.gene_affinity:
+        source_dict['genes'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    elif args.compare_all_function_sources:
+        source_dict['all_functions'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    else:
+        for source, source_df in affinities_df.groupby('function_source'):
+            source_dict[source] = normalization_dict = {}
+            if args.plot_codon_dendrogram:
+                source_df = get_table_with_codon_tree_labels(args, source_df)
+            normalization_dict['raw'] = source_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(source_df)
+
+    run.info(
+        f"Input table of {'function' if args.gene_affinity else 'gene'} affinities",
+        args.plot_affinity_file)
+
+    return affinities_dict
+
+
 
     if args.plot_codon_dendrogram:
         # Create a column in the affinity table containing function or gene names formatted like the
