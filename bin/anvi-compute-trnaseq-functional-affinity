@@ -1362,6 +1362,49 @@ def generate_sample_linkages(args, subset_affinities_dict):
     return sample_linkage_dict
 
 
+def write_sample_newick_files(args, sample_linkage_dict):
+    """Write Newick-formatted tRNA-seq sample trees."""
+    if not args.save_sample_trees:
+        return
+
+    output_basename = os.path.basename(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    for genome_name, source_sample_linkage_dict in sample_linkage_dict.items():
+        for source, normalization_sample_linkage_dict in source_sample_linkage_dict.items():
+            for normalization_method, value in normalization_sample_linkage_dict.items():
+                sample_linkage = value[0]
+                labels = value[1]
+
+                sample_tree = hierarchy.to_tree(sample_linkage)
+
+                leaf_index_label_dict = dict(enumerate(labels))
+                newick = clustering.get_tree_object_in_newick(
+                    sample_tree, id_to_sample_dict=leaf_index_label_dict)
+                if normalization_method == 'raw':
+                    derived_output_path = f"{output_basename}-{genome_name}-{source}.nwk"
+                else:
+                    derived_output_path = \
+                        f"{output_basename}-{genome_name}-{source}-{normalization_method}.nwk"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                with open(derived_output_path, 'w') as output_file:
+                    output_file.write(newick)
+                valid_derived_output_paths.append(derived_output_path)
+
+            if invalid_derived_output_paths:
+                for derived_output_path in valid_derived_output_paths:
+                    os.remove(derived_output_path)
+                raise ConfigError(
+                    "tRNA-seq sample trees could not be written to the following derived target "
+                    f"paths: {', '.join(invalid_derived_output_paths)}")
+
+    run.info_single("Saved tRNA-seq sample Newick trees")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
 
 
 if __name__ == '__main__':
