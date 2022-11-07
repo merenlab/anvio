@@ -1668,9 +1668,12 @@ if __name__ == '__main__':
              "with `--sample-distance-metric` and `--sample-linkage-method`.")
     group1F.add_argument(
         '--plot-codon-tree-file', metavar='NEWICK', type=str,
-        help="A Newick-formatted tree of the displayed functions or genes can be provided if "
-             "running the program only to generate plots. If the nodes of the tree represent genes "
-             "rather than functions, use the flag, `--gene-affinity`.")
+        help="A Newick-formatted tree of functions or genes from a single genome can be provided "
+             "if running the program only to generate plots. `--plot-affinity-file` should be "
+             "provided a table for the corresponding genome. Functions should derive from a single "
+             "annotation source, or functions from multiple sources can be lumped together using "
+             "`--compare-all-function-sources`; this program will not split the tree apart into "
+             "multiple trees per function source.")
     group1F.add_argument(
         '--plot-sample-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
