@@ -1554,14 +1554,16 @@ if __name__ == '__main__':
         help="The linkage method for the hierarchical clustering of functions or genes by their "
              "codon frequencies.")
     group1E.add_argument(
-        '--save-codon-tree', default=False, action='store_true',
-        help="Write a Newick-formatted tree of hierarchically clustered codon frequencies. If "
-             "`--separate-genomes` or `--separate-function-sources` are used, then multiple tree "
-             "files are written for each genome, function source, or combination of genome and "
-             "source, with paths derived from the provided `--output-file` template. In these "
-             "paths, '-CODONS' is added before the extension, and the extension is changed to "
-             "'.tree'. In plot output, these trees are displayed as dendrograms of functions or "
-             "genes.")
+        '--save-codon-trees', default=False, action='store_true',
+        help="Write Newick-formatted trees of hierarchically clustered codon frequencies. If "
+             "functional affinities are calculated, trees are generated per combination of genome "
+             "and function source, unless the flag, `--compare-all-function-sources`, is used, in "
+             "which case trees are generated per genome taking into account function annotations "
+             "from all sources. If gene affinities are calculated, trees are generated per genome "
+             "from genes. Output paths are derived from the provided `--output-file` template. The "
+             "extension is replaced by '-CODONS.nwk', and the genome name and function source, if "
+             "applicable, are added before the extension following hyphens. In plot output, these "
+             "trees are displayed as y-axis dendrograms of functions or genes.")
     group1E.add_argument(
         '--sample-distance-metric', metavar='DISTANCE_METRIC', type=str,
         default=constants.distance_metric_default,
