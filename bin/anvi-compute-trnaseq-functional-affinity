@@ -1665,7 +1665,7 @@ if __name__ == '__main__':
         help="A codon frequency table (see `--save-codon-frequencies` for the proper format) can "
              "be provided if running the program only to generate plots. The table must contain "
              "entries for the displayed functions or genes. Clustering parameters can be altered "
-             "with `--sample-distance` and `--sample-linkage`.")
+             "with `--sample-distance-metric` and `--sample-linkage-method`.")
     group1F.add_argument(
         '--plot-codon-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the displayed functions or genes can be provided if "
