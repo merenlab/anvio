@@ -1516,11 +1516,11 @@ if __name__ == '__main__':
              "favorability of the tRNA pool towards functions, disregarding the direction of "
              "change.")
     group1D.add_argument(
-        '--normalize-all-function-sources', default=False, action='store_true',
-        help="When normalized affinities are calculated for multiple function sources (e.g., "
-             "'KOfam', 'Pfam'), apply the normalization to all sources, so that, for example, "
-             "KOfam and Pfam functions are compared to each other. This cannot be used with the "
-             "option, `--separate-function-sources`.")
+        '--compare-all-function-sources', default=False, action='store_true',
+        help="When affinities are calculated for multiple function sources, apply normalization to "
+             "all sources and create plots showing all sources. For example, KOfam and Pfam "
+             "function affinities could be normalized to each other and shown on the same plots. "
+             "This flag cannot be used along with the flag, `--separate-function-sources`.")
     group1D.add_argument(
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not store tables of raw affinity data.")
