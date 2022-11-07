@@ -750,10 +750,44 @@ def write_affinity_tables(args, affinities_dict):
         run.info_single(args.output_path, level=2)
 
 
+def get_general_codon_frequencies(args, affinities_dict):
+    """
+    Generate or load a table of absolute codon frequencies for each genome.
+
+    Returns
+    =======
+    codon_frequency_dict : dict
+        This nested dictionary is similar to the dictionary of affinity tables, with the outer
+        dictionary keyed by genome name and the inner dictionary of codon frequencies keyed by
+        source. The source can be separate function sources, all function sources, or 'genes'.
+    """
+    if not (args.plot_codon_dendrogram or args.save_codon_frequencies):
+        return None
 
     if args.plot_codon_file:
-        # Load absolute codon frequencies, from which codon trees are made.
-        codon_frequency_df = pd.read_csv(args.plot_codon_file, sep='\t')
+        codon_frequency_dict = load_general_codon_frequencies(args, affinities_dict)
+    else:
+        codon_frequency_dict = generate_general_codon_frequencies(args, affinities_dict)
+
+    if args.plot_codon_dendrogram:
+        for source_dict in codon_frequency_dict.values():
+            for source, codon_frequency_df in source_dict.items():
+                new_codon_frequency_df = get_table_with_codon_tree_labels(args, codon_frequency_df)
+                if args.gene_affinity:
+                    new_codon_frequency_df = new_codon_frequency_df.set_index(
+                        ['genome_name', 'gene_callers_id', 'label'])
+                else:
+                    new_codon_frequency_df = new_codon_frequency_df.set_index(
+                        ['genome_name',
+                         'function_source',
+                         'function_accession',
+                         'function_name',
+                         'label'])
+                source_dict[source] = new_codon_frequency_df
+
+    return codon_frequency_dict
+
+
 
         if 'genome_name' not in codon_frequency_df.columns:
             raise ConfigError(f"The codon frequency table, loaded from '{args.plot_codon_file}', "
