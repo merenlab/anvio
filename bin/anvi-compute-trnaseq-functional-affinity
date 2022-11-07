@@ -1268,6 +1268,74 @@ def get_sample_linkage(args, subset_affinities_dict):
     return sample_linkage_dict
 
 
+def load_sample_linkage_from_newick(args, subset_affinities_dict):
+    """Load a Newick-formatted tree of tRNA-seq samples as a cluster linkage. The x-axis dendrogram
+    in the plot derives from the linkage object."""
+    sample_tree = Tree(args.plot_sample_tree_file)
+    run.info(f"Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
+    leaf_labels = sample_tree.get_leaf_names()
+
+    # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
+    if len(subset_affinities_dict) > 1:
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' must only contain data "
+            "from one genome in order to be used with `--plot-sample-tree-file`, as the loaded "
+            "sample tree can only represent affinities from a single genome.")
+
+    # Get the table of raw affinities for genes or functions from all sources.
+    for genome_name, source_dict in subset_affinities_dict.items():
+        if len(source_dict) > 1:
+            raise ConfigError(
+            "`--plot-sample-tree-file` can only be used with a single function source or by "
+            "lumping all function sources together with `--compare-all-function-sources`. "
+            "Yet multiple function sources are being analyzed from the affinity table: "
+            f"{', '.join(source_dict.keys())}")
+        for source, normalization_dict in source_dict.items():
+            # There should only be one table of raw affinities or affinities normalized a single way
+            # in this dictionary. This is ensured by `sanity_check_plot_affinity_file`.
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                break
+
+    # Confirm that the samples in the affinity table are represented in the tree.
+    missing_leaf_labels = sorted(set(subset_affinities_df.columns)).difference(set(leaf_labels))
+    if missing_leaf_labels:
+        raise ConfigError(
+            "The following select samples in the affinity table loaded from "
+            f"'{args.plot_affinity_file}' are not represented in the sample tree loaded from "
+            f"'{args.plot_sample_tree_file}': {', '.join(missing_leaf_labels)}")
+
+    # Prune the tree to retain the samples of interest.
+    pruned_sample_tree = sample_tree.prune(subset_affinities_df.columns)
+    pruned_leaf_labels = pruned_sample_tree.get_leaf_names()
+    if pruned_leaf_labels < leaf_labels:
+        run.warning(
+            f"{len(leaf_labels)} samples were loaded in the tRNA-seq sample tree from "
+            f"'{args.plot_sample_tree_file}' and pruned to {len(pruned_leaf_labels)} samples of "
+            "interest.")
+
+    # Arrange the affinity table sample columns to match the leaf order in the x-axis dendrogram.
+    subset_affinities_df = subset_affinities_df[pruned_leaf_labels]
+    subset_affinities_dict[genome_name][source][normalization_method] = subset_affinities_df
+
+    sample_linkage = clustering.get_linkage_from_tree(
+        pruned_sample_tree, args.sample_linkage_method, args.sample_distance_metric)
+    run.warning(
+        "It is assumed that the loaded tRNA-seq sample tree was generated with the distance "
+        f"metric, '{args.sample_distance_metric}', and linkage method, "
+        f"'{args.sample_linkage_method}', that have been provided to the program by "
+        "`--codon-distance-metric` and `--codon-linkage-method`.")
+
+    sample_linkage_dict = {}
+    sample_linkage_dict[genome_name] = source_sample_linkage_dict = {}
+    source_sample_linkage_dict[source] = normalization_sample_linkage_dict = {}
+    # By default, samples are labeled as integers in the linkage object. Labels are later updated to
+    # be informative.
+    normalization_sample_linkage_dict[normalization_method] = {
+        'tree': sample_linkage, 'labels': pruned_leaf_labels}
+
+    return sample_linkage_dict
+
+
 
 
 def write_general_codon_frequency_tables(args, codon_frequency_df):
