@@ -5,6 +5,10 @@
 import os
 import sys
 import pandas as pd
+import scipy.cluster.hierarchy as hierarchy
+
+from argparse import Namespace
+from functools import partial
 
 import anvio
 import anvio.terminal as terminal
