@@ -1114,6 +1114,85 @@ def get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict):
     return codon_linkage_dict
 
 
+def load_codon_linkage_from_newick(args, subset_affinities_dict):
+    """Load a Newick-formatted tree of functions or genes from a genome as a cluster linkage. The
+    y-axis dendrogram in the plot derives from the linkage object."""
+    codon_tree = Tree(args.plot_codon_tree_file)
+    run.info(
+        f"Loaded tree of {'genes' if args.gene_affinity else 'functions'}",
+        args.plot_codon_tree_file)
+    leaf_labels = codon_tree.get_leaf_names()
+
+    # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
+    if len(subset_affinities_dict) > 1:
+        raise ConfigError(
+            f"The affinity table loaded from '{args.plot_affinity_file}' must only contain data "
+            "from one genome in order to be used with `--plot-codon-tree-file`, as the loaded "
+            "codon tree can only represent functions or genes from a single genome.")
+
+    # Get the table of raw affinities for genes or functions from all sources.
+    for source_dict in subset_affinities_dict.values():
+        if len(source_dict) > 1:
+            raise ConfigError(
+                "`--plot-codon-tree-file` can only be used with a single function source or by "
+                "lumping all function sources together with `--compare-all-function-sources`. "
+                "Yet multiple function sources are being analyzed from the affinity table: "
+                f"{', '.join(source_dict.keys())}")
+        for normalization_dict in source_dict.values():
+            subset_affinities_df = normalization_dict['raw']
+            break
+
+    # Confirm that the functions or genes in the subset affinity table are represented in the tree.
+    missing_leaf_labels = sorted(set(subset_affinities_df['label']).difference(set(leaf_labels)))
+    if missing_leaf_labels:
+        raise ConfigError(
+            "The following functions or genes of interest in the affinity table loaded from "
+            f"'{args.plot_affinity_file}' are not represented in the codon tree loaded from "
+            f"'{args.plot_codon_tree_file}': {', '.join(missing_leaf_labels)}")
+
+    # Prune the tree to retain the functions or genes of interest.
+    pruned_codon_tree = codon_tree.prune(subset_affinities_df['label'].tolist())
+    pruned_leaf_labels = pruned_codon_tree.get_leaf_names()
+    if pruned_leaf_labels < leaf_labels:
+        run.warning(
+            f"{len(leaf_labels)} {'genes' if args.gene_affinity else 'functions'} were loaded in "
+            f"the codon tree from '{args.plot_codon_tree_file}' and pruned to "
+            f"{len(pruned_leaf_labels)} {'genes' if args.gene_affinity else 'functions'} of "
+            "interest.")
+
+    # Reindex the raw and normalized affinity tables to match the order of leaves in the dendrogram:
+    # the first leaf is the bottom leaf of the y-axis dendrogram, corresponding to the last row of
+    # the affinity table and heatmap.
+    reindexed_info = []
+    for genome_name, source_dict in subset_affinities_df.items():
+        for source, normalization_dict in source_dict.items():
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                index_names = subset_affinities_df.index.names
+                reindexed_df = subset_affinities_df.reset_index()
+                reindexed_df = reindexed_df.set_index('label')
+                reindexed_df = reindexed_df.loc[pruned_leaf_labels[::-1]]
+                reindexed_df = reindexed_df.reset_index()
+                reindexed_df = reindexed_df.set_index(index_names)
+                reindexed_info.append((normalization_method, reindexed_df))
+    subset_affinities_df[genome_name][source] = dict(reindexed_info)
+
+    codon_linkage = clustering.get_linkage_from_tree(
+        pruned_codon_tree, args.codon_linkage_method, args.codon_distance_metric)
+    run.warning(
+        "It is assumed that the loaded codon tree was generated with the distance metric, "
+        f"'{args.codon_distance_metric}', and linkage method, '{args.codon_linkage_method}', that "
+        "have been provided to the program by `--codon-distance-metric` and "
+        "`--codon-linkage-method`.")
+
+    codon_linkage_dict = {}
+    codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
+    # By default, functions or genes are labeled as integers in the linkage object. Labels are later
+    # updated to be informative.
+    source_codon_linkage_dict[source] = {'tree': codon_linkage, 'labels': pruned_leaf_labels}
+
+    return codon_linkage_dict
+
+
 
     return codon_frequency_df
 
