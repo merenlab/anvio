@@ -1193,6 +1193,29 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
     return codon_linkage_dict
 
 
+def generate_codon_linkages(args, codon_frequency_dict):
+    """Generate cluster linkages of functions or genes by their relative codon frequencies."""
+    codon_linkage_dict = {}
+    for genome_name, source_dict in codon_frequency_dict.items():
+        codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
+        for source, codon_frequency_df in source_dict.items():
+            relative_codon_frequency_df = codon_frequency_df.div(
+                codon_frequency_df.sum(axis=1), axis=0)
+            # Note that the linkage object is not generated from the subset of functions or genes
+            # retained in the affinity tables after application of `--n-highest-affinity` and
+            # `--n-lowest-affinity`. This subsetting only occurs before plotting.
+            codon_linkage = hierarchy.linkage(
+                relative_codon_frequency_df,
+                method=args.codon_linkage_method,
+                distance=args.codon_distance_metric)
+            # By default, functions or genes are labeled as integers in the linkage object. Labels
+            # are later updated to be informative.
+            leaf_labels = relative_codon_frequency_df.index.get_level_values('label').tolist()
+            source_codon_linkage_dict[source] = {'linkage': codon_linkage, 'labels': leaf_labels}
+
+    return codon_linkage_dict
+
+
 
     return codon_frequency_df
 
