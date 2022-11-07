@@ -5,6 +5,8 @@
 import numpy as np
 import pandas as pd
 
+from itertools import combinations
+
 from sklearn import manifold
 from sklearn import preprocessing
 from scipy.cluster import hierarchy
@@ -423,3 +425,26 @@ def order_contigs_experimental(config, progress=progress, run=run, debug=False):
             open(config.output_file_path, 'w').write(newick + '\n')
 
         return newick
+
+
+def get_linkage_from_tree(tree, linkage, distance):
+    """Get a cluster linkage matrix from a tree.
+
+    See https://stackoverflow.com/a/31036521
+    """
+    leaf_labels = tree.get_leaf_labels()
+    label_index_dict = {label: index for index, label in enumerate(leaf_labels)}
+
+    distance_matrix = np.zeros(len(leaf_labels), len(leaf_labels))
+    for first_label, second_label in combinations(leaf_labels):
+        distance = tree.get_distance(first_label, second_label)
+        first_index = label_index_dict[first_label]
+        second_index = label_index_dict[second_label]
+        distance_matrix[first_index, second_index] = \
+            distance_matrix[second_index, first_index] = distance
+
+    # Condense the distance matrix for clustering.
+    distance_vector = scipy_distance.squareform(distance_matrix)
+    linkage_matrix = hierarchy.linkage(distance_vector, method=linkage, metric=distance)
+
+    return linkage_matrix
