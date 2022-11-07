@@ -1040,6 +1040,68 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
         run.info_single(valid_derived_output_path, level=2)
 
 
+def subset_affinity_entries(args, affinities_dict):
+    """Subset the functions or genes that have the highest and lowest average affinities in each
+    genome and optionally function source. This reduces the number of plotted functions or genes
+    (rows)."""
+    subset_affinities_dict = {}
+    for genome_name, source_dict in affinities_dict.items():
+        subset_affinities_dict[genome_name] = subset_source_dict = {}
+        for source, normalization_dict in source_dict.items():
+            subset_source_dict[source] = subset_normalization_dict = {}
+
+            raw_affinities_df = normalization_dict['raw']
+            raw_affinities_df['mean'] = raw_affinities_df.mean(axis=1)
+
+            subset_raw_affinities_df = raw_affinities_df.sort_values(by='mean', ascending=False)
+            subset_raw_affinities_df = subset_raw_affinities_df.drop('mean', axis=1)
+            if args.n_highest_affinity > 0:
+                if args.n_highest_affinity >= len(subset_raw_affinities_df):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.compare_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-highest-affinity` was given a value of {args.n_highest_affinity}, "
+                        f"but there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = subset_raw_affinities_df.iloc[
+                        : args.n_highest_affinity]
+            if args.n_lowest_affinity > 0:
+                if (args.n_lowest_affinity >= len(subset_raw_affinities_df) and
+                    args.n_highest_affinity < len(subset_raw_affinities_df)):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.normalized_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-lowest-affinity` was given a value of {args.n_lowest_affinity}, but "
+                        f"there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = subset_raw_affinities_df.iloc[
+                        -args.n_lowest_affinity: ]
+            subset_normalization_dict['raw'] = subset_raw_affinities_df
+
+            # Select the same genes or functions in the table of normalized affinities as in the
+            # table of raw affinities.
+            for normalization_method in args.normalization_methods:
+                normalized_df = normalization_dict[normalization_method]
+                subset_normalized_df = normalized_df.loc[subset_raw_affinities_df.index]
+                subset_normalization_dict[normalization_method] = subset_normalized_df
+
+    return subset_affinities_dict
+
+
 
     return codon_frequency_df
 
