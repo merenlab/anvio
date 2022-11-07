@@ -461,11 +461,40 @@ def generate_affinities(args):
     return affinities_dict
 
 
+def normalize_affinities_table(affinities_df, normalization_method):
+    """Normalize affinities across functions or genes within a tRNA-seq sample using a specified
+    normalization method."""
+    # The following normalization functions are written to operate on a generic pandas Series.
+    def min_max_normalize(series):
+        normalized_series = series - series.min() / (series.max() - series.min())
+        return normalized_series
 
-    return affinitizer, affinities_df
+    def min_max_mean_normalize(series):
+        min_max_normalized_series = min_max_normalize(series)
+        min_max_mean_normalized_series = \
+            min_max_normalized_series - min_max_normalized_series.mean()
+        return min_max_mean_normalized_series
+
+    def magnitude_min_max_normalize(series):
+        magnitude_series = series.abs()
+        magnitude_min_max_normalized_series = min_max_normalize(magnitude_series)
+        return magnitude_min_max_normalized_series
+
+    def normalize(normalization_method, series):
+        if normalization_method == 'min_max':
+            normalized_series = min_max_normalize(series)
+        elif normalization_method == 'min_max_mean':
+            normalized_series = min_max_mean_normalize(series)
+        elif normalization_method == 'magnitude_min_max':
+            normalized_series = magnitude_min_max_normalize(series)
+        return normalized_series
+
+    # Assume that the normalization method has already been recognized as valid.
+    normalized_affinities_df = affinities_df.transform(partial(normalize, normalization_method))
+
+    return normalized_affinities_df
 
 
-def write_affinity_tables(args, affinitizer, affinities_df):
     """Write one or more affinity tables, if applicable."""
     if not args.plot_affinity_file:
         wrote_affinity_output = affinitizer.write_affinity_output(
