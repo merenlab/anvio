@@ -50,6 +50,7 @@ def main(args):
 
 
 def sanity_check(args):
+    """Check for valid combinations of arguments."""
     if args.seeds_specific_txt is None:
         raise ConfigError("`--seeds-specific-txt` is a required argument for tRNA-seq/(meta)genomic "
                           "integration.")
