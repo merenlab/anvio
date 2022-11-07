@@ -1216,8 +1216,46 @@ def generate_codon_linkages(args, codon_frequency_dict):
     return codon_linkage_dict
 
 
+def write_codon_newick_files(args, codon_linkage_dict):
+    """Write Newick-formatted codon trees."""
+    if not args.save_codon_trees:
+        return
 
-    return codon_frequency_df
+    output_basename = os.path.basename(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    for genome_name, source_codon_linkage_dict in codon_linkage_dict.items():
+        for source, value in source_codon_linkage_dict.items():
+            codon_linkage = value[0]
+            labels = value[1]
+
+            codon_tree = hierarchy.to_tree(codon_linkage)
+
+            leaf_index_label_dict = dict(enumerate(labels))
+            newick = clustering.get_tree_object_in_newick(
+                codon_tree, id_to_sample_dict=leaf_index_label_dict)
+            derived_output_path = f"{output_basename}-{genome_name}-{source}.nwk"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            with open(derived_output_path, 'w') as output_file:
+                output_file.write(newick)
+            valid_derived_output_paths.append(derived_output_path)
+
+        if invalid_derived_output_paths:
+            for derived_output_path in valid_derived_output_paths:
+                os.remove(derived_output_path)
+            raise ConfigError(
+                "Codon trees could not be written to the following derived target paths: "
+                f"{', '.join(invalid_derived_output_paths)}")
+
+    run.info_single("Saved codon frequency Newick trees")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
+
+
 
 
 def write_general_codon_frequency_tables(args, codon_frequency_df):
