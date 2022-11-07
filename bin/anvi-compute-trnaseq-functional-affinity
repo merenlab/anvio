@@ -1256,6 +1256,18 @@ def write_codon_newick_files(args, codon_linkage_dict):
         run.info_single(valid_derived_output_path, level=2)
 
 
+def get_sample_linkage(args, subset_affinities_dict):
+    """Get clusters of tRNA-seq samples."""
+    if args.plot_sample_tree_file:
+        sample_linkage_dict = load_sample_linkage_from_newick(args, subset_affinities_dict)
+    elif args.plot_sample_dendrogram or args.save_sample_trees:
+        sample_linkage_dict = generate_sample_linkages(args, subset_affinities_dict)
+    else:
+        sample_linkage_dict = None
+
+    return sample_linkage_dict
+
+
 
 
 def write_general_codon_frequency_tables(args, codon_frequency_df):
