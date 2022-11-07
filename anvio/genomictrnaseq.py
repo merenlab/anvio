@@ -1594,6 +1594,40 @@ class Affinitizer:
                         decoded_codons.append(codon)
                 self.nucleotide_decoding_dict[derived_anticodon] = decoded_codons
 
+        # REMOVE
+        # AA_to_codons = constants.AA_to_codons
+        # codon_to_codon_RC = constants.codon_to_codon_RC
+        # anticodon_codon_wobble_decoding_dict = {}
+        # for anticodon, amino_acid in constants.anticodon_to_AA.items():
+        #     anticodon_codon_wobble_decoding_dict[anticodon] = l = []
+
+        #     wobble_anticodons = []
+        #     anticodon_wobble_nucleotide = anticodon[0]
+        #     if anticodon_wobble_nucleotide == 'G':
+        #         wobble_anticodons.append('A' + anticodon[1: ])
+        #     elif anticodon_wobble_nucleotide == 'T':
+        #         wobble_anticodons.append('C' + anticodon[1: ])
+
+        #     for codon in constants.AA_to_codons[amino_acid]:
+        #         codon_RC = codon_to_codon_RC[codon]
+        #         if anticodon == codon_RC:
+        #             l.append(codon)
+        #         for wobble_anticodon in wobble_anticodons:
+        #             if wobble_anticodon == codon_RC:
+        #                 l.append(codon)
+
+        #     if anticodon[0] == 'A':
+        #         anticodon_codon_wobble_decoding_dict['I' + anticodon[1: ]] = l = []
+        #         wobble_anticodons = [anticodon, 'G' + anticodon[1: ], 'T' + anticodon[1: ]]
+        #         for codon in constants.AA_to_codons[amino_acid]:
+        #             codon_RC = codon_to_codon_RC[codon]
+        #             for wobble_anticodon in wobble_anticodons:
+        #                 if wobble_anticodon == codon_RC:
+        #                     l.append(codon)
+        #     elif anticodon == 'CAT':
+        #         # tRNA-Ile2
+        #         anticodon_codon_wobble_decoding_dict['L' + anticodon[1: ]] = ['ATA']
+
 
     def sanity_check(self):
         """Check the feasibility of args from initialization."""
@@ -1902,9 +1936,83 @@ class Affinitizer:
 
         return affinities_df
 
+        # REMOVE
+        # isoacceptors_df = self.load_isoacceptor_data()
+        # if len(isoacceptors_df) == 0:
+        #     return
+        # isoacceptor_abundance_dict = self.get_isoacceptor_abundances(isoacceptors_df)
 
-    def load_isoacceptor_data(self):
-        """Workhorse method to load and filter data, find properties of seeds, and ultimately group isoacceptors."""
+        # # Load KEGG BRITE codon frequencies.
+        # codon_frequencies_df = pd.read_csv(self.codon_frequencies_txt_path, sep='\t', header=0)
+        # codon_frequencies_df = codon_frequencies_df.drop(['function_source', 'function_accession'], axis=1)
+        # codon_frequencies_df = codon_frequencies_df.set_index('function_name')
+
+        # # Weight codon frequencies by decoding efficiency. Sum weighted codon frequencies per
+        # # anticodon. Tables in this dict have function rows, anticodon columns, and summed weighted
+        # # codon frequency values.
+        # weighted_codon_abundances_dict = {}
+        # # Want table with rows being functions, columns being nonreference samples, and values being NoDE.
+        # for bin_id, sample_dict in isoacceptor_abundance_dict.items():
+        #     weighted_codon_abundances_dict[bin_id] = bin_weighted_codon_abundances_dict = {}
+        #     for sample_name, sample_value in sample_dict.items():
+        #         anticodon_info = sample_value[0]
+        #         isoacceptor_abundance_ratios = sample_value[1]
+        #         summed_weighted_codon_count_dict = {}
+        #         # Note: Met and fMet and iMet all have the same anticodon, but should all have the same
+        #         # wobble nucleotide as well, so they will produce one only entry in
+        #         # summed_weighted_codon_count_dict
+        #         for amino_acid, unmodified_anticodon, wobble_nucleotide in anticodon_info:
+        #             anticodon = wobble_nucleotide + unmodified_anticodon[1: ]
+        #             if anticodon == 'CAT':
+        #                 continue
+        #             decoding_weight_dict = default_decoding_weights[wobble_nucleotide]
+        #             summed_weighted_codon_counts = pd.Series(0, index=codon_frequencies_df.index)
+        #             for codon in anticodon_codon_wobble_decoding_dict[anticodon]:
+        #                 decoding_weight = decoding_weight_dict[codon[2]]
+        #                 summed_weighted_codon_counts = summed_weighted_codon_counts + (1 - decoding_weight) * codon_frequencies_df[codon]
+        #             summed_weighted_codon_count_dict[anticodon] = summed_weighted_codon_counts
+        #         weighted_codon_frequency_df = pd.DataFrame.from_dict(summed_weighted_codon_count_dict)
+        #         weighted_codon_abundance_df = weighted_codon_frequency_df.div(weighted_codon_frequency_df.sum(axis=1), axis=0)
+
+        #         weighted_codon_abundance_df = weighted_codon_abundance_df[sorted(weighted_codon_abundance_df.columns)]
+        #         bin_weighted_codon_abundances_dict[sample_name] = weighted_codon_abundance_df
+
+        # # For each sample, dot the vector of weighted values by the vector of isoacceptor ratios.
+        # de_dict = {}
+        # for bin_id, bin_weighted_codon_abundances_dict in weighted_codon_abundances_dict.items():
+        #     bin_isoacceptor_abundance_dict = isoacceptor_abundance_dict[bin_id]
+        #     de_series_dict = {}
+        #     for sample_name, weighted_codon_abundance_df in bin_weighted_codon_abundances_dict.items():
+        #         sample_isoacceptor_abundance_info = bin_isoacceptor_abundance_dict[sample_name]
+        #         isoacceptor_anticodons = []
+        #         abundance_ratios = []
+        #         for isoacceptor_info, abundance_ratio in zip(sample_isoacceptor_abundance_info[0], sample_isoacceptor_abundance_info[1]):
+        #             isoacceptor_anticodon = isoacceptor_info[2] + isoacceptor_info[1][1: ]
+        #             if isoacceptor_anticodon == 'CAT':
+        #                 continue
+        #             isoacceptor_anticodons.append(isoacceptor_anticodon)
+        #             abundance_ratios.append(abundance_ratio)
+        #         abundance_ratios = pd.Series(abundance_ratios, index=isoacceptor_anticodons)
+        #         abundance_ratios = abundance_ratios[sorted(abundance_ratios.index)]
+        #         de_series_dict[sample_name] = weighted_codon_abundance_df.dot(abundance_ratios)
+        #     de_df = pd.DataFrame.from_dict(de_series_dict)
+        #     de_dict[bin_id] = de_df
+        #     # de_df = de_df[~de_df.index.str.startswith('Enzymes')]
+        #     # de_df = de_df[~de_df.index.str.startswith('KEGG Orthology (KO)')]
+        #     de_df = de_df[~de_df.index.str.startswith('Photosynthesis proteins')]
+        #     de_df = de_df[~de_df.index.str.startswith('Mitochondrial biogenesis')]
+        #     de_df = de_df[~de_df.index.str.startswith('Exosome')]
+        #     de_df = de_df[~de_df.index.str.startswith('Proteasome')]
+        #     de_df = de_df[~de_df.index.str.startswith('CD molecules')]
+        #     de_df = de_df[~de_df.index.str.contains('Eukaryot')]
+        #     de_df = de_df[~de_df.index.str.contains('Archaea')]
+        #     de_df = de_df[~de_df.index.str.contains('Endocytosis')]
+        #     de_df = de_df[~de_df.index.str.contains('Exocytosis')]
+        #     de_df.to_csv('/Users/sammiller/SCIENCE/ANALYSES/TRNASEQ/ECOLI/ecoli_stress/analysis_2022/DE_ecoli_rep2.txt', sep='\t')
+        # print(de_dict)
+        # raise Exception
+        # # kegg_df = self.consolidate_kegg_annotations()
+
 
     def get_isoacceptors(self):
         """
@@ -2481,84 +2589,329 @@ class Affinitizer:
 
         return affinities_df
 
-            decoding_keys = []
-            isoacceptor_abundance_ratios = []
-            for row in nonreference_isoacceptor_df.itertuples(index=False):
-                decoding_key = (row.decoded_amino_acid, row.anticodon, row.effective_wobble_nucleotide)
-                reference_abundance = reference_sample_df.loc[decoding_key]['relative_discriminator_coverage']
-                decoding_keys.append(decoding_key)
-                isoacceptor_abundance_ratios.append(row.relative_discriminator_coverage / reference_abundance)
-            isoacceptor_abundance_dict[bin_name] = (decoding_keys, np.array(isoacceptor_abundance_ratios))
 
-        return isoacceptor_abundance_dict
+    # def load_isoacceptor_data(self):
+    #     """Workhorse method to load and filter data, find properties of seeds, and then group
+    #     isoacceptors."""
+    #     # Load data from the tRNA-seq contigs database.
+    #     with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
+    #         trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
+    #             tables.trna_gene_hits_table_name,
+    #             columns_of_interest=['seed_gene_callers_id',
+    #                                  'seed_contig_name',
+    #                                  'gene_contigs_db_project_name',
+    #                                  'gene_contigs_db_hash',
+    #                                  'profile_db_sample_id',
+    #                                  'collection_name',
+    #                                  'bin_id',
+    #                                  'decoded_amino_acid',
+    #                                  'anticodon',
+    #                                  'gene_sequence'])
+
+    #         # Dereplicate duplicate rows representing hits between the same tRNA-seq seed and
+    #         # different tRNA genes with identical sequences. (These rows would be distinguished by
+    #         # the column `gene_gene_callers_id` if that were loaded.)
+    #         trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
+
+    #         for column_name in ('profile_db_sample_id', 'collection_name', 'bin_id'):
+    #             trna_gene_hits_df[column_name] = trna_gene_hits_df[column_name].fillna('')
 
 
-    def consolidate_kegg_annotations(self):
-        with self.genomic_contigs_db_info.load_db() as genomic_contigs_db:
-            kegg_df = genomic_contigs_db.get_table_as_dataframe('gene_functions', where_clause=f'''source IN ("KOfam", "KEGG_Module", "KEGG_Class")''')
-        kofam_df = kegg_df[kegg_df['source'] == 'KOfam']
-        module_df = kegg_df[kegg_df['source'] == 'KEGG_Module']
-        class_df = kegg_df[kegg_df['source'] == 'KEGG_Class']
 
-        # Iterate the annotations in each block of lines for KOfam, module, and class. Relate
-        # module/class to KOfam annotations. There is the same number of module and class entries.
-        # Not every KOfam is part of a module/class. There is only one edge case, presumably
-        # vanishingly rare, that can prevent accurate reassignment of module/class to KOfam: a gene
-        # is assigned multiple KOfams, the entries for the KOfams happen to be next to each other in
-        # the table (which I think would happen randomly), and one or more of the KOfams is not part
-        # of a module/class. This hypothetical edge case is resolved by assigning the module/class
-        # to the first occurring KOfam.
-        module_iter = iter(module_df.itertuples(index=False))
-        class_iter = iter(class_df.itertuples(index=False))
-        try:
-            module_row = next(module_iter)
-            class_row = next(class_iter)
-            module_gene_callers_id = module_row.gene_callers_id
-        except StopIteration:
-            module_row = None
-            class_row = None
-            module_gene_callers_id = -1
+    #         if self.genomic_collection_name is None:
+    #             trna_gene_hits_df['bin_name'] = ''
 
-        new_rows = []
-        for kofam_row in kofam_df.itertuples(index=False):
-            kofam_gene_callers_id = kofam_row.gene_callers_id
-            if kofam_gene_callers_id == module_gene_callers_id:
-                new_rows.append([
-                    kofam_gene_callers_id,
-                    kofam_row.accession,
-                    kofam_row.function,
-                    kofam_row.e_value,
-                    module_row.accession,
-                    module_row.function,
-                    class_row.function
-                ])
+    #         self.run.info("tRNA-seq seeds linked to tRNA genes", len(trna_gene_hits_df))
 
-                try:
-                    module_row = next(module_iter)
-                    class_row = next(class_iter)
-                    module_gene_callers_id = module_row.gene_callers_id
-                except StopIteration:
-                    module_row = None
-                    class_row = None
-                    module_gene_callers_id = -1
-            else:
-                new_rows.append([
-                    kofam_gene_callers_id,
-                    kofam_row.accession,
-                    kofam_row.function,
-                    kofam_row.e_value,
-                    '',
-                    '',
-                    ''
-                ])
-        new_kegg_df = pd.DataFrame(new_rows, columns=['gene_callers_id',
-                                                      'kofam_accession',
-                                                      'kofam_function',
-                                                      'kofam_e_value',
-                                                      'kegg_module_accession',
-                                                      'kegg_module_function',
-                                                      'kegg_class_function'])
-        return new_kegg_df
+    #         # Get the gene callers IDs of the tRNA-seq seeds.
+    #         seed_contig_names_string = ','.join(['"%s"' % seed_contig_name for seed_contig_name in
+    #                                              trna_gene_hits_df['seed_contig_name'].unique()])
+    #         contigs_where_clause = f'''contig IN ({seed_contig_names_string})'''
+    #         seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
+    #             'genes_in_contigs',
+    #             columns_of_interest=['gene_callers_id', 'contig'],
+    #             where_clause=contigs_where_clause)
+    #         seed_id_df = seed_id_df.rename(
+    #             {'contig': 'seed_contig_name', 'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
+    #         trna_gene_hits_df = trna_gene_hits_df.merge(seed_id_df, on='seed_contig_name')
+
+    #         # Find wobble position 34 in the tRNA-seq seed sequences.
+    #         seed_ids_string = ','.join(['"%s"' % gene_callers_id for gene_callers_id in
+    #                                     trna_gene_hits_df['seed_gene_callers_id'].unique()])
+    #         ids_where_clause = f'''gene_callers_id IN ({seed_ids_string})'''
+    #         wobble_position_df = trnaseq_contigs_db.get_table_as_dataframe(
+    #             'trna_feature',
+    #             columns_of_interest=['gene_callers_id', 'anticodon_loop_start'],
+    #             where_clause=ids_where_clause)
+    #         wobble_position_df = wobble_position_df.rename(
+    #             {'gene_callers_id': 'seed_gene_callers_id'}, axis=1)
+    #         wobble_position_df['anticodon_start'] = wobble_position_df['anticodon_loop_start'] + 2
+    #         wobble_position_df = wobble_position_df.drop('anticodon_loop_start', axis=1)
+    #         trna_gene_hits_df = trna_gene_hits_df.merge(
+    #             wobble_position_df, on='seed_gene_callers_id')
+
+    #         # Get the tRNA-seq seed consensus sequence strings.
+    #         seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
+    #             'contig_sequences', where_clause=contigs_where_clause)
+    #         seed_consensus_sequence_df = seed_consensus_sequence_df.rename(
+    #             {'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
+    #         trna_gene_hits_df = trna_gene_hits_df.merge(
+    #             seed_consensus_sequence_df, on='seed_contig_name')
+
+    #         # Find the nucleotides read at wobble position 34 in the tRNA-seq seeds.
+    #         anticodon_wobble_nucleotides = []
+    #         for anticodon_start, seed_consensus_sequence in zip(
+    #             trna_gene_hits_df['anticodon_start'], trna_gene_hits_df['seed_sequence']):
+    #             anticodon_wobble_nucleotides.append(seed_consensus_sequence[anticodon_start])
+    #         trna_gene_hits_df['seed_anticodon_wobble_nucleotide'] = anticodon_wobble_nucleotides
+
+    #         trna_gene_hits_df = trna_gene_hits_df.drop(
+    #             ['seed_gene_callers_id', 'anticodon_start', 'seed_sequence'], axis=1)
+
+    #     # Load data from the seeds specific coverage table.
+    #     coverage_df = pd.read_csv(
+    #         self.seeds_specific_txt_path,
+    #         sep='\t',
+    #         header=0,
+    #         skiprows=[1, 2],
+    #         usecols=['contig_name',
+    #                  'sample_name',
+    #                  'relative_discriminator_coverage',
+    #                  'discriminator_1'])
+    #     coverage_df = coverage_df.rename({'contig_name': 'seed_contig_name'}, axis=1)
+    #     # Select data for the samples of interest.
+    #     coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
+    #     # Select data for the tRNA-seq seeds linked to tRNA genes.
+    #     coverage_df = coverage_df[coverage_df['seed_contig_name'].isin(
+    #         trna_gene_hits_df['seed_contig_name'].unique())]
+    #     coverage_df = coverage_df[coverage_df['discriminator_1'] >= self.min_coverage]
+    #     coverage_df = coverage_df.drop('discriminator_1', axis=1)
+
+    #     # Ignore tRNA-seq seeds that do not have coverage in the reference sample.
+    #     coverage_df = coverage_df.groupby('seed_contig_name').filter(
+    #         lambda seed_coverage_df: self.reference_sample_name in seed_coverage_df[
+    #             'sample_name'].values)
+
+    #     self.run.info("Filtered seeds detected in reference sample",
+    #                   coverage_df['seed_contig_name'].nunique())
+
+    #     # Ignore seeds that are in only one sample.
+    #     coverage_df = coverage_df.groupby('seed_contig_name').filter(
+    #         lambda seed_coverage_df: len(seed_coverage_df) > 1)
+
+    #     self.run.info("Filtered seeds detected in >1 sample",
+    #                   coverage_df['seed_contig_name'].nunique())
+
+    #     if len(coverage_df) == 0:
+    #         self.info.warning(
+    #             "No seeds remain after applying the seed detection coverage threshold of "
+    #             f"{self.min_coverage}. This threshold must be met in both the reference sample and "
+    #             "another sample.")
+
+    #     # Evaluate the anticodon wobble nucleotide in the seed.
+    #     effective_wobble_nucleotides = []
+    #     for decoded_aa_type, anticodon, seed_wobble_nucleotide in zip(
+    #         trna_gene_hits_df['decoded_amino_acid'],
+    #         trna_gene_hits_df['anticodon'],
+    #         trna_gene_hits_df['seed_anticodon_wobble_nucleotide']):
+    #         if decoded_aa_type == 'Ile2':
+    #             # tRNA-Ile2 has a wobble nucleotide of lysidine in bacteria or agmatidine in
+    #             # archaea, which are given the same decoding weight.
+    #             effective_wobble_nucleotides.append('L')
+    #             continue
+    #         elif anticodon[0] == 'A':
+    #             # Check for modification of A34 to I, which is detected as G in tRNA-seq reads.
+    #             # tRNA-Arg-ACG and tRNA-Leu-AAG are the only bacterial tRNAs known to contain I34.
+    #             # No archaeal tRNAs are known to contain I34. I34 has been found in 8 eukaryotic
+    #             # tRNAs. As far as I know, the I modification is pervasive at position 34 in the
+    #             # tRNAs that have it, so presence of G34 in the seed consensus sequence is assumed
+    #             # to be 100% modification.
+    #             if seed_wobble_nucleotide == 'G':
+    #                 effective_wobble_nucleotides.append('I')
+    #                 continue
+    #         effective_wobble_nucleotides.append(anticodon[0])
+
+    #     trna_gene_hits_df['effective_wobble_nucleotide'] = effective_wobble_nucleotides
+    #     trna_gene_hits_df = trna_gene_hits_df.drop(
+    #         ['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
+
+    #     # Drop duplicate rows (preserve a single row) representing hits between the same tRNA-seq
+    #     # seed and tRNA genes with different sequences. This should only occur if the seed is a
+    #     # partial read of the tRNA, and the genes differ beyond the 5' end of the seed. However,
+    #     # confirm that the hits yielded the same anticodon wobble nucleotide, just in case I'm
+    #     # missing something.
+    #     trna_gene_hits_df = trna_gene_hits_df.drop_duplicates()
+    #     if trna_gene_hits_df.groupby('seed_contig_name').ngroups != trna_gene_hits_df.groupby(
+    #         ['seed_contig_name', 'effective_wobble_nucleotide']).ngroups:
+    #         confusing_df = trna_gene_hits_df.groupby('seed_contig_name').filter(
+    #             lambda seed_df: len(seed_df) > 1)
+    #         raise ConfigError(
+    #             "A strange circumstance has occurred where a tRNA-seq seed linked to tRNA genes "
+    #             "with different sequences was found to have different effective wobble "
+    #             "nucleotides. Here are the entries for the seeds in question:\n"
+    #             f"{confusing_df.to_string()}")
+
+    #     seeds_df = trna_gene_hits_df.merge(coverage_df, how='inner', on='seed_contig_name')
+
+    #     # Perhaps isoacceptors in the same bin could differ in their effective wobble nucleotide:
+    #     # say one is modified to I and the other is kept A. This oddity should be noted.
+    #     if seeds_df.groupby(
+    #         ['bin_name', 'decoded_amino_acid', 'anticodon']).ngroups != seeds_df.groupby(
+    #             ['bin_name', 'decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']
+    #             ).ngroups:
+    #         confusing_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+    #             lambda isoacceptor_df: isoacceptor_df['effective_wobble_nucleotide'].nunique() > 1)
+    #         self.run.warning(
+    #             "A very strange circumstance has been found in which apparent tRNA-seq seed "
+    #             "isoacceptors from the same bin differ in their anticodon wobble nucleotide. For "
+    #             "example, in one seed, the nucleotide could be A while in the other it is modified "
+    #             f"to I. Here are the entries for the seeds in question: {confusing_df.to_string()}")
+    #         seeds_df = seeds_df.groupby(['decoded_amino_acid', 'anticodon']).filter(
+    #             lambda isoacceptor_df: isoacceptor_df['effective_wobble_nucleotide'].nunique() == 1)
+
+    #     seeds_df = seeds_df.drop('seed_contig_name', axis=1)
+
+    #     # Aggregate seeds representing isoacceptors in a genome, summing their coverages.
+    #     isoacceptors_df = seeds_df.groupby(['bin_name',
+    #                                         'decoded_amino_acid',
+    #                                         'anticodon',
+    #                                         'effective_wobble_nucleotide',
+    #                                         'sample_name'], as_index=False).agg('sum')
+
+    #     # Remove bins lacking a diversity of isoacceptors.
+    #     prefilter_bin_names = set(isoacceptors_df['bin_name'])
+    #     isoacceptors_df = isoacceptors_df.groupby('bin_name').filter(
+    #         lambda bin_df: bin_df.groupby(
+    #             ['decoded_amino_acid', 'anticodon']).ngroups >= self.min_isoacceptors)
+    #     removed_bin_names = set(prefilter_bin_names).difference(set(isoacceptors_df['bin_name']))
+    #     if removed_bin_names:
+    #         self.info.warning("The following bins did not meet the bin isoacceptor threshold of "
+    #                           f"{self.min_isoacceptors}: {', '.join(removed_bin_names)}")
+    #     if len(isoacceptors_df) == 0:
+    #         self.info.warning("No seeds remain after applying the bin isoacceptor threshold of "
+    #                           f"{self.min_isoacceptors}.")
+
+    #     return isoacceptors_df
+
+
+    # def get_isoacceptor_abundances(self, isoacceptors_df):
+    #     """Get isoacceptor abundance data.
+
+    #     The keys of the returned dictionary are bin names and the values are tuples of length 2.
+    #     Within each tuple, there is an item for each isoacceptor + nonreference sample, i.e.,
+    #     isoacceptor 1 + sample X, isoacceptor 2 + sample X, isoacceptor 1 + sample Y, etc.
+
+    #     The tuple contains 1) a list and 2) a numpy array with items for each of the processed
+    #     isoacceptor + nonreference sample rows. The list contains tuples of length 3: item 1)
+    #     decoded amino acid, 2) anticodon, and 3) effective anticodon wobble position 34 nucleotide.
+    #     Each item in the numpy array is the ratio of seed abundance in the nonreference versus
+    #     reference sample. Abundance is based on coverage of the 3' discriminator nucleotide: the
+    #     most accurate representation of abundance comes from the 3' end of the seed, as many reads
+    #     can be 3' tRNA fragments resulting from truncation of reverse transcription. Example:
+    #     Isoacceptor 1 has an abundance of 1% in sample X and an abundance of 0.5% in the reference
+    #     sample; the ratio is 1% / 0.5% = 2.
+    #     """
+    #     isoacceptor_abundance_dict = {}
+    #     for bin_name, bin_df in isoacceptors_df.groupby('bin_name'):
+    #         reference_sample_df = bin_df[bin_df['sample_name'] == self.reference_sample_name]
+    #         reference_sample_df = reference_sample_df.set_index(
+    #             ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide'])
+    #         isoacceptor_abundance_dict[bin_name] = bin_isoacceptor_abundance_dict = {}
+
+    #         for sample_name, nonreference_isoacceptor_df in bin_df.groupby('sample_name'):
+    #             if sample_name == self.reference_sample_name:
+    #                 continue
+
+    #             decoding_keys = []
+    #             isoacceptor_abundance_ratios = []
+    #             for row in nonreference_isoacceptor_df.itertuples(index=False):
+    #                 decoding_key = (
+    #                     row.decoded_amino_acid, row.anticodon, row.effective_wobble_nucleotide)
+    #                 reference_abundance = reference_sample_df.loc[decoding_key][
+    #                     'relative_discriminator_coverage']
+    #                 decoding_keys.append(decoding_key)
+    #                 isoacceptor_abundance_ratios.append(
+    #                     row.relative_discriminator_coverage / reference_abundance)
+    #             bin_isoacceptor_abundance_dict[sample_name] = (
+    #                 decoding_keys, np.array(isoacceptor_abundance_ratios))
+
+    #     return isoacceptor_abundance_dict
+
+
+    # REMOVE
+    # def consolidate_kegg_annotations(self):
+
+    #     # Load gene orthologs (KOfams) and gene functional categorizations (BRITE).
+    #     with self.genomic_contigs_db_info.load_db() as genomic_contigs_db:
+    #         kegg_df = genomic_contigs_db.get_table_as_dataframe('gene_functions', where_clause=f'''source IN ("KOfam", "KEGG_BRITE")''')
+
+    #     kofam_df = kegg_df[kegg_df['source'] == 'KOfam']
+    #     brite_df = kegg_df[kegg_df['source'] == 'KEGG_BRITE']
+
+
+
+    #     module_df = kegg_df[kegg_df['source'] == 'KEGG_Module']
+    #     class_df = kegg_df[kegg_df['source'] == 'KEGG_Class']
+
+    #     # Iterate the annotations in each block of lines for KOfam, module, and class. Relate
+    #     # module/class to KOfam annotations. There is the same number of module and class entries.
+    #     # Not every KOfam is part of a module/class. There is only one edge case, presumably
+    #     # vanishingly rare, that can prevent accurate reassignment of module/class to KOfam: a gene
+    #     # is assigned multiple KOfams, the entries for the KOfams happen to be next to each other in
+    #     # the table (which I think would happen randomly), and one or more of the KOfams is not part
+    #     # of a module/class. This hypothetical edge case is resolved by assigning the module/class
+    #     # to the first occurring KOfam.
+    #     module_iter = iter(module_df.itertuples(index=False))
+    #     class_iter = iter(class_df.itertuples(index=False))
+    #     try:
+    #         module_row = next(module_iter)
+    #         class_row = next(class_iter)
+    #         module_gene_callers_id = module_row.gene_callers_id
+    #     except StopIteration:
+    #         module_row = None
+    #         class_row = None
+    #         module_gene_callers_id = -1
+
+    #     new_rows = []
+    #     for kofam_row in kofam_df.itertuples(index=False):
+    #         kofam_gene_callers_id = kofam_row.gene_callers_id
+    #         if kofam_gene_callers_id == module_gene_callers_id:
+    #             new_rows.append([
+    #                 kofam_gene_callers_id,
+    #                 kofam_row.accession,
+    #                 kofam_row.function,
+    #                 kofam_row.e_value,
+    #                 module_row.accession,
+    #                 module_row.function,
+    #                 class_row.function
+    #             ])
+
+    #             try:
+    #                 module_row = next(module_iter)
+    #                 class_row = next(class_iter)
+    #                 module_gene_callers_id = module_row.gene_callers_id
+    #             except StopIteration:
+    #                 module_row = None
+    #                 class_row = None
+    #                 module_gene_callers_id = -1
+    #         else:
+    #             new_rows.append([
+    #                 kofam_gene_callers_id,
+    #                 kofam_row.accession,
+    #                 kofam_row.function,
+    #                 kofam_row.e_value,
+    #                 '',
+    #                 '',
+    #                 ''
+    #             ])
+    #     new_kegg_df = pd.DataFrame(new_rows, columns=['gene_callers_id',
+    #                                                   'kofam_accession',
+    #                                                   'kofam_function',
+    #                                                   'kofam_e_value',
+    #                                                   'kegg_module_accession',
+    #                                                   'kegg_module_function',
+    #                                                   'kegg_class_function'])
+    #     return new_kegg_df
 
 
     @staticmethod
@@ -2577,373 +2930,3 @@ class Affinitizer:
                         f"contains the following samples: {', '.join(available_sample_names)}")
 
         return available_sample_names
-
-
-    @staticmethod
-    def write_affinity_output(affinities_df,
-                              output_path,
-                              separate_genomes=False,
-                              separate_function_sources=False,
-                              normalization_methods=None,
-                              normalize_all_function_sources=False,
-                              no_raw_affinity=False):
-        """
-        Store tables of affinity data.
-
-        Parameters
-        ----------
-        affinities_df : pandas.core.frame.DataFrame
-            A table of affinities of the format produced by `get_affinities`.
-        output_path : str
-            This filepath serves as a template for the paths of other files that may be generated.
-            Indeed, given the configuration of arguments to the function, nothing may be written to
-            this path. Given the template, <basename><extension>, substrings can be inserted in the
-            derived filepaths, with the most elaborate such filepath being
-            <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
-        separate_genomes : bool, optional
-            If True (default False), split output tables by genome. In the output paths, underscores
-            replace spaces in the genome names.
-        separate_function_sources : bool, optional
-            If True (default False), split output tables by function source.
-        normalization_methods : str or iterable, optional
-            Normalize affinity data by the provided method(s), one or more of the following:
-            'min_max', 'min_max_mean', 'magnitude_min_max'. By default None. A string for a single
-            method or an iterable for one or more methods can be provided. Additional output tables
-            are written for each normalization method.
-            (1) Min-max normalization of a function in a genome for a given tRNA-seq sample
-            subtracts the function's affinity from the affinity of the minimum function and divides
-            by the difference in affinity between the maximum and minimum functions. The minimum
-            affinity -- which may be negative, indicating that the tRNA pool disfavors the function
-            in the sample relative to the reference -- is normalized to 0. The maximum affinity --
-            which may also be negative -- is normalized to 1.
-            (2) Min-max-mean normalization follows min-max normalization by subtraction of the mean
-            to yield negative and positive values lying between -1 and 1.
-            (3) Magnitude-min-max normalization takes the absolute value of affinity before min-max
-            normalization to yield values that indicate the magnitude of the change in favorability
-            of the tRNA pool towards functions, disregarding the direction of change.
-        normalize_all_function_sources : bool, optional
-            If True (default False), normalize affinities of functions from all sources rather than
-            individual sources. This cannot be used with `separate_function_sources`, because it
-            would not make sense to separate data by source when functions from multiple sources are
-            compared to each other.
-        no_raw_affinity : bool, optional
-            If True (default False), do not produce a table (or tables) of raw affinities, only
-            normalized affinities.
-
-        Returns
-        =======
-        bool
-            If all output tables were written without error, return True. If no output tables were
-            written due to the configuration of the argument (`no_raw_affinity` is True and
-            `normalization_methods` is False), return False. If some output tables could not be
-            written, an error is raised.
-        """
-        if separate_genomes:
-            if 'genome_name' not in affinities_df.columns:
-                raise ConfigError(
-                    "To split output by genome, as requested by `separate_genomes`, the table of "
-                    "affinity data must contain the expected column, \"genome_name\".")
-
-        if separate_function_sources or normalize_all_function_sources:
-            if set(['function_source', 'function_accession', 'function_name']).difference(
-                affinities_df.columns):
-                raise ConfigError(
-                    "To split output by function source, as requested by "
-                    "`separate_function_sources`, the table of affinity data must contain the "
-                    "expected columns labeling functions: \"function_source\", "
-                    "\"function_accession\", and \"function_name\".")
-
-        if separate_function_sources and normalize_all_function_sources:
-            raise ConfigError("`separate_function_sources` and `normalize_all_function_sources` "
-                              "are incompatible.")
-
-        if normalization_methods is None:
-            normalization_methods = []
-            if no_raw_affinity:
-                return False
-        else:
-            normalization_methods = list(normalization_methods)
-
-        unrecognized_normalization_methods = []
-        for normalization_method in normalization_methods:
-            if normalization_method not in Affinitizer.affinity_normalization_methods:
-                unrecognized_normalization_methods.append(normalization_method)
-        if unrecognized_normalization_methods:
-            raise ConfigError("The following normalization methods were not recognized: "
-                              f"{', '.join(unrecognized_normalization_methods)}")
-
-        ##################################################
-        # The following functions normalize affinities stored in a pandas Series.
-        def min_max_normalize(series):
-            normalized_series = series - series.min() / (series.max() - series.min())
-            return normalized_series
-
-        def min_max_mean_normalize(series):
-            min_max_normalized_series = min_max_normalize(series)
-            min_max_mean_normalized_series = \
-                min_max_normalized_series - min_max_normalized_series.mean()
-            return min_max_mean_normalized_series
-
-        def magnitude_min_max_normalize(series):
-            magnitude_series = series.abs()
-            magnitude_min_max_normalized_series = min_max_normalize(magnitude_series)
-            return magnitude_min_max_normalized_series
-
-        def normalize(normalization_method, series):
-            if normalization_method == 'min_max':
-                normalized_series = min_max_normalize(series)
-            elif normalization_method == 'min_max_mean':
-                normalized_series = min_max_mean_normalize(series)
-            elif normalization_method == 'magnitude_min_max':
-                normalized_series = magnitude_min_max_normalize(series)
-            return normalized_series
-        ##################################################
-
-        # Rather than using a clever recursive function to split the data by genome and/or function
-        # source (and/or any other generic criteria) and apply normalization methods, handle each
-        # possibility explicitly.
-        output_basename, output_ext = os.path.splitext(output_path)
-        valid_derived_output_paths = []
-        invalid_derived_output_paths = []
-        is_given_output_path_valid = True
-        if separate_genomes and separate_function_sources:
-            # Split the data by both genome and function source.
-            for genome_name, genome_df in affinities_df.groupby('genome_name'):
-                for source, source_df in genome_df.groupby('function_source'):
-                    for normalization_method in normalization_methods:
-                        # Write a table for the genome/source/normalization method.
-                        derived_output_path = (
-                            output_basename + "-" +
-                            genome_name.replace(" ", "_") + "-" + source + "-" +
-                            normalization_method +
-                            output_ext)
-                        try:
-                            filesnpaths.is_output_file_writable(derived_output_path)
-                        except FilesNPathsError:
-                            invalid_derived_output_paths.append(derived_output_path)
-                            continue
-                        valid_derived_output_paths.append(derived_output_path)
-                        normalized_source_df = source_df.transform(
-                            partial(normalize, normalization_method))
-                        normalized_source_df.to_csv(derived_output_path, sep='\t')
-                    if no_raw_affinity:
-                        continue
-                    # Write a table of raw affinities for the genome/source.
-                    derived_output_path = (
-                        output_basename + "-" +
-                        genome_name.replace(" ", "_") + "-" + source +
-                        output_ext)
-                    try:
-                        filesnpaths.is_output_file_writable(derived_output_path)
-                    except FilesNPathsError:
-                        invalid_derived_output_paths.append(derived_output_path)
-                        continue
-                    valid_derived_output_paths.append(derived_output_path)
-                    source_df.to_csv(derived_output_path, sep='\t')
-        elif separate_genomes:
-            # Split the data by genome.
-            for genome_name, genome_df in affinities_df.groupby('genome_name'):
-                for normalization_method in normalization_methods:
-                    # Write a table for the genome/source/normalization method.
-                    derived_output_path = (
-                        output_basename + "-" +
-                        genome_name.replace(" ", "_") + "-" +
-                        normalization_method +
-                        output_ext)
-                    if normalize_all_function_sources:
-                        normalized_genome_df = genome_df.transform(
-                            partial(normalize, normalization_method))
-                    else:
-                        normalized_genome_df = genome_df.groupby('function_source').transform(
-                            partial(normalize, normalization_method))
-                    try:
-                        filesnpaths.is_output_file_writable(derived_output_path)
-                    except FilesNPathsError:
-                        invalid_derived_output_paths.append(derived_output_path)
-                        continue
-                    valid_derived_output_paths.append(derived_output_path)
-                    normalized_genome_df.to_csv(derived_output_path, sep='\t')
-                if no_raw_affinity:
-                    continue
-                # Write a table of raw affinities for the genome.
-                derived_output_path = (
-                    output_basename + "-" +
-                    genome_name.replace(" ", "_") +
-                    output_ext)
-                try:
-                    filesnpaths.is_output_file_writable(derived_output_path)
-                except FilesNPathsError:
-                    invalid_derived_output_paths.append(derived_output_path)
-                    continue
-                valid_derived_output_paths.append(derived_output_path)
-                genome_df.to_csv(derived_output_path, sep='\t')
-        elif separate_function_sources:
-            # Split the data by function source.
-            for source, source_df in affinities_df.groupby('function_source'):
-                for normalization_method in normalization_methods:
-                    # Write a table for the source/normalization method.
-                    derived_output_path = (
-                        output_basename + "-" +
-                        source + "-" +
-                        normalization_method +
-                        output_ext)
-                    normalized_source_df = source_df.transform(
-                        partial(normalize, normalization_method))
-                    try:
-                        filesnpaths.is_output_file_writable(derived_output_path)
-                    except FilesNPathsError:
-                        invalid_derived_output_paths.append(derived_output_path)
-                        continue
-                    valid_derived_output_paths.append(derived_output_path)
-                    normalized_source_df.to_csv(derived_output_path, sep='\t')
-                if no_raw_affinity:
-                    continue
-                # Write a table of raw affinities for the source.
-                derived_output_path = output_basename + "-" + source + output_ext
-                try:
-                    filesnpaths.is_output_file_writable(derived_output_path)
-                except FilesNPathsError:
-                    invalid_derived_output_paths.append(derived_output_path)
-                    continue
-                valid_derived_output_paths.append(derived_output_path)
-                source_df.to_csv(derived_output_path, sep='\t')
-        else:
-            for normalization_method in normalization_methods:
-                # Write a table for the normalization method.
-                derived_output_path = (
-                    output_basename + "-" +
-                    normalization_method +
-                    output_ext)
-                try:
-                    filesnpaths.is_output_file_writable(derived_output_path)
-                except FilesNPathsError:
-                    invalid_derived_output_paths.append(derived_output_path)
-                    continue
-                valid_derived_output_paths.append(derived_output_path)
-                if normalize_all_function_sources:
-                    normalized_df = affinities_df.transform(
-                        partial(normalize, normalization_method))
-                else:
-                    normalized_df = affinities_df.groupby('function_source').transform(
-                        partial(normalize, normalization_method))
-                normalized_df.to_csv(derived_output_path, sep='\t')
-            if not no_raw_affinity:
-                # Write a table of raw affinities.
-                try:
-                    filesnpaths.is_output_file_writable(output_path)
-                    affinities_df.to_csv(output_path, sep='\t')
-                    is_given_output_path_valid = 1
-                except FilesNPathsError:
-                    is_given_output_path_valid = False
-
-        # Report invalid output paths and, if some paths were invalid, also remove files written to
-        # valid paths.
-        if is_given_output_path_valid:
-            template_output_path_message = ""
-        else:
-            template_output_path_message = ("The table of raw affinities could not be written to "
-                                            f"`output_path`, '{output_path}'.")
-        if invalid_derived_output_paths:
-            derived_output_paths_message = (
-                "The following tables of affinities could not be written to the following derived "
-                "target paths: "
-                f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
-        else:
-            derived_output_paths_message = ""
-        if invalid_derived_output_paths or not is_given_output_path_valid:
-            if is_given_output_path_valid is 1:
-                # Derived output paths were invalid, and raw affinities were written to the input
-                # output file.
-                os.remove(output_path)
-            for derived_output_path in valid_derived_output_paths:
-                os.remove(derived_output_path)
-            raise ConfigError(
-                f"{template_output_path_message}"
-                f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
-                f"{derived_output_paths_message}")
-
-        return True
-
-
-    @staticmethod
-    def get_general_codon_frequencies(genome_args, affinities_df, single_genome_name_index=None):
-        """
-        Get the frequencies of codons encoding amino acids in the functions or genes (the rows)
-        reported in the affinity table.
-
-        Parameters
-        ----------
-        genome_args : argparse.Namespace
-            Attributes provide genomic inputs from which codon frequencies are obtained. These
-            mirror arguments of the `anvi-compute-trnaseq-functional-affinity` script.
-        affinities_df : pandas.core.frame.DataFrame
-            The table of affinities formatted like that generated by `get_affinities`.
-        single_genome_name_index : str, optional
-            If given (default None), than a column named 'genome_name' is prepended to the index
-            containing the provided string. This should not be used if inputting multiple genomes.
-
-        Returns
-        -------
-        codon_frequency_df : pandas.core.frame.DataFrame
-            A table of codon frequencies of the format produced by
-            `SingleGenomeCodonUsage.get_frequencies` or `MultiGenomeCodonUsage.get_frequencies`.
-        """
-        codon_usage_args = Namespace()
-        codon_usage_args.contigs_db = genome_args.contigs_db
-        codon_usage_args.profile_db = genome_args.profile_db
-        codon_usage_args.collection_name = genome_args.collection_name
-        codon_usage_args.bin_id = genome_args.bin_id
-        codon_usage_args.internal_genomes = genome_args.internal_genomes
-        codon_usage_args.external_genomes = genome_args.external_genomes
-        codon_usage_args.function_sources = genome_args.function_sources
-        codon_usage_args.ignore_start_codons = True
-        if ((genome_args.collection_name and not genome_args.bin_id) or
-            genome_args.internal_genomes or genome_args.external_genomes):
-            codon_usage = codonusage.MultiGenomeCodonUsage(codon_usage_args)
-        else:
-            # With a single contigs database input, the `gene_caller_ids` argument can restrict the
-            # genes for which affinity could be calculated.
-            codon_usage_args.gene_caller_ids = genome_args.gene_caller_ids
-            codon_usage = codonusage.SingleGenomeCodonUsage(codon_usage_args)
-
-        # Get tables of codon frequencies from the input genomes.
-        if genome_args.gene_affinity:
-            # Restrict rows to genes for which affinities were calculated.
-            gene_caller_ids = affinities_df['gene_caller_id'].tolist()
-            function_accession_dict = None
-            function_name_dict = None
-        else:
-            # Restrict rows to functions for which affinities were calculated.
-            gene_caller_ids = None
-            function_source_accession_dict = {}
-            function_source_name_dict = {}
-            for source, accession, name in zip(affinities_df['function_source'],
-                                               affinities_df['function_accession'],
-                                               affinities_df['function_name']):
-                try:
-                    function_source_accession_dict[source].append(accession)
-                except KeyError:
-                    function_source_accession_dict[source] = [accession]
-                try:
-                    function_source_name_dict[source].append(name)
-                except KeyError:
-                    function_source_name_dict[source] = [name]
-        codon_frequency_df = codon_usage.get_frequencies(
-            from_function_sources=not genome_args.gene_affinity,
-            return_functions=not genome_args.gene_affinity,
-            gene_caller_ids=gene_caller_ids,
-            function_accessions=function_source_accession_dict,
-            function_names=function_source_name_dict)
-
-        if single_genome_name_index:
-            if 'genome_name' in codon_frequency_df.index.names:
-                raise ConfigError(
-                    "The codon frequency table already has an index column of genome names, "
-                    "indicating that the table was generated from multiple input genomes. "
-                    "Therefore, an index column consisting of the single provided genome name "
-                    "should not be added.")
-            codon_frequency_df['genome_name'] = single_genome_name_index
-            new_index_names = ['genome_name'] + codon_frequency_df.index.names
-            codon_frequency_df = codon_frequency_df.reset_index().set_index(new_index_names)
-
-        return codon_frequency_df
