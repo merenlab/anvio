@@ -216,38 +216,44 @@ def sanity_check(args):
             "`--separate-function-sources` cannot be used with `--compare-all-function-sources`.")
 
 
-def get_codon_tree_labels(df):
-    """Get a list of function or gene leaf labels formatted for a codon tree."""
-    if args.gene_affinity:
-        labels = df['gene_callers_id'].tolist()
-    else:
-        labels = []
-        if df['function_source'].nunique() == 1:
-            # A single function source is considered.
-            for accession, name in zip(df['function_accession'], df['function_name']):
-                # Function labels in the tree are formatted, "<function_name>
-                # (<function_accession>)", unless no function accession is available (e.g., for
-                # BRITE categories), in which case labels consist only of the function name.
-                if accession == '':
-                    label_suffix = ""
-                else:
-                    label_suffix = f" ({accession})"
-                labels.append(name + label_suffix)
-        else:
-            # Multiple function sources are considered.
-            for source, accession, name in zip(
-                df['function_source'], df['function_accession'], df['function_name']):
-                # Function labels in the tree are formatted, "<function_name> (<function_source>
-                # : <function_accession>)", unless no function accession is available (e.g., for
-                # BRITE categories), in which case labels are formatted, "<function_name>
-                # (<function_source>)".
-                if accession == '':
-                    label_suffix = f" ({source})"
-                else:
-                    label_suffix = f" ({source} : {accession})"
-                labels.append(name + label_suffix)
+def sanity_check_plot_affinity_file(args):
+    """Check arguments needed for plotting stored data without computing affinities anew."""
+    if not args.plot:
+        args.plot = True
 
-    return labels
+    if args.no_codon_dendrogram and (args.plot_codon_file or args.plot_codon_tree_file):
+        raise ConfigError(
+            "`--no-codon-dendrogram` cannot be used with `--plot-codon-file` or "
+            "`--plot-codon-tree-file`.")
+    elif not (args.plot_codon_file or args.plot_codon_tree_file):
+        raise ConfigError(
+            "To plot the dendrogram of displayed functions or genes, either pass a table of codon "
+            "frequency data for tree calculation to `--plot-codon-file`, or pass a Newick tree to "
+            "`--plot-codon-tree-file`.")
+
+    if args.plot_codon_tree_file and args.save_codon_trees:
+        raise ConfigError(
+            "`--plot-codon-tree-file` cannot be used with `--save-codon-trees`. It does not make "
+            "sense to resave the tree just loaded for plotting.")
+    if args.plot_sample_tree_file and args.save_sample_trees:
+        raise ConfigError(
+            "`--plot-sample-tree-file` cannot be used with `--save-sample-trees`. It does not make "
+            "sense to resave the tree just loaded for plotting.")
+    if args.plot_sample_tree_file and args.normalization_methods:
+        raise ConfigError(
+            "`--plot-sample-tree-file` cannot be used with `--normalize-affinity`. The sample tree "
+            "should be constructed from raw affinities or normalized affinities of a single type. "
+            "The table of affinity data provided to `--plot-affinity-file` should be of the same "
+            "type.")
+
+    if args.select_samples_txt:
+        filesnpaths.is_file_plain_text(args.select_samples_txt)
+    if args.plot_codon_file:
+        filesnpaths.is_file_tab_delimited(args.plot_codon_file)
+    if args.plot_codon_tree_file:
+        filesnpaths.is_proper_newick(args.plot_codon_tree_file)
+    if args.plot_sample_tree_file:
+        filesnpaths.is_proper_newick(args.plot_sample_tree_file)
 
 
 def parse_decoding_weights_table(decoding_weights_txt):
