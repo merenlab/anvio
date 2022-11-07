@@ -857,19 +857,81 @@ def load_general_codon_frequencies(args, affinities_dict):
     return codon_frequency_dict
 
 
-            raise ConfigError(
-                "The affinity table index columns, as follows, are not recognized, though they "
-                f"should already have been checked: {', '.join(affinities_df.index.names)}")
+def generate_general_codon_frequencies(args, affinities_dict):
+    """
+    Get the frequencies of codons encoding amino acids for the functions or genes reported in each
+    affinity table.
 
-    if args.plot_codon_dendrogram:
-        codon_frequency_df = codon_frequency_df.reset_index()
-        codon_frequency_df['label'] = get_codon_tree_labels(codon_frequency_df)
-        if args.gene_affinity:
-            codon_frequency_df = affinities_df.set_index(
-                ['genome_name', 'gene_callers_id', 'label'])
-        else:
-            codon_frequency_df = affinities_df.set_index(
-                ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
+    The general set of all codons encoding amino acids is reported here, whereas codons that factor
+    into affinity calculations are determined by the detected tRNA transcripts.
+    """
+    codon_args = Namespace()
+    codon_args.contigs_db = args.contigs_db
+    codon_args.profile_db = args.profile_db
+    codon_args.collection_name = args.collection_name
+    codon_args.bin_id = args.bin_id
+    codon_args.internal_genomes = args.internal_genomes
+    codon_args.external_genomes = args.external_genomes
+    codon_args.function_sources = args.function_sources
+    codon_args.ignore_start_codons = True
+
+    if (args.collection_name and not args.bin_id) or args.internal_genomes or args.external_genomes:
+        codon_usage = codonusage.MultiGenomeCodonUsage(codon_args)
+        multi_genome_info_dict = codon_usage.genome_info_dict
+    else:
+        codon_args.gene_caller_ids = args.gene_caller_ids
+        codon_usage = codonusage.SingleGenomeCodonUsage(codon_args)
+        multi_genome_info_dict = None
+
+    codon_frequency_dict = {}
+    for genome_name, source_dict in affinities_dict.items():
+        codon_frequency_dict[genome_name] = codon_frequency_source_dict = {}
+        if multi_genome_info_dict:
+            # Trick the multi-genome object into returning a separate table for each genome by
+            # limiting its genome information to the one under consideration.
+            codon_usage.genome_info_dict = {genome_name: multi_genome_info_dict[genome_name]}
+        for source, normalization_dict in source_dict.items():
+            affinities_df = normalization_dict['raw'].reset_index()
+            if source == 'genes':
+                # Get codon frequencies of genes for which affinities were calculated. This should
+                # be the only entry in `source_dict`, since function sources are not considered.
+                gene_caller_ids = affinities_df['gene_caller_id'].tolist()
+                function_accession_dict = None
+                function_name_dict = None
+            else:
+                # Get codon frequencies of functions for which affinities were calculated.
+                gene_caller_ids = None
+                function_accession_dict = {}
+                function_name_dict = {}
+                for source, accession, name in zip(
+                    affinities_df['function_source'],
+                    affinities_df['function_accession'],
+                    affinities_df['function_name']):
+                    try:
+                        function_accession_dict[source].append(accession)
+                    except KeyError:
+                        function_accession_dict[source] = [accession]
+                    try:
+                        function_name_dict[source].append(name)
+                    except KeyError:
+                        function_name_dict[source] = [name]
+            codon_frequency_df = codon_usage.get_frequencies(
+                from_function_sources=not args.gene_affinity,
+                return_functions=not args.gene_affinity,
+                gene_caller_ids=gene_caller_ids,
+                function_accessions=function_accession_dict,
+                function_names=function_name_dict)
+            if not multi_genome_info_dict:
+                # An index column consisting of the single provided genome name must be added to the
+                # table returned for a single genome.
+                codon_frequency_df['genome_name'] = genome_name
+                new_index_names = ['genome_name'] + codon_frequency_df.index.names
+                codon_frequency_df = codon_frequency_df.reset_index().set_index(new_index_names)
+            codon_frequency_source_dict[genome_name] = codon_frequency_df
+
+    return codon_frequency_dict
+
+
 
     return codon_frequency_df
 
