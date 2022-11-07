@@ -287,38 +287,42 @@ def parse_decoding_weights_table(decoding_weights_txt):
 
 
 def get_affinities(args):
-    """Generate or load an affinities table."""
+    """
+    Generate or load an affinity table, returning a dictionary containing one or more tables per
+    genome, function or gene source, and normalization method.
+
+    Parameters
+    ==========
+    args : argparse.Namespace
+
+    Returns
+    =======
+    affinities_dict : dict
+        This triple-nested dictionary has the following levels is structured as follows: genome name
+        -> function or gene source -> normalization method -> affinity table.
+
+        If considering genes rather than functions, the inner source dictionary will have the single
+        key, 'all_genes'. If considering all functions, the inner source dictionary will have the
+        single key, 'all_functions'. Otherwise, if separating function sources, the dictionary will
+        have a key with the name of each source.
+
+        The inner normalization method dictionary is keyed by normalization method, with 'raw'
+        indicating unnormalized affinities, and the normalization choices of `--normalize-affinity`
+        -- 'min_max', 'min_max_mean', and 'magnitude_min_max' -- being the other possible keys.
+
+        The values of the innermost dictionary are affinity tables with rows representing functions
+        or genes and columns representing tRNA-seq samples.
+    """
     if args.plot_affinity_file:
-        # Affinities are being plotted but not computed anew.
-        affinitizer = None
+        # Affinities are being plotted for a single genome but not computed anew.
+        affinities_dict = load_affinities(args)
+    else:
+        # Compute affinities anew.
+        affinities_dict = generate_affinities(args)
 
-        run.info("Input affinities to plot", args.plot_affinity_file)
-        if args.plot_codon_file:
-            run.info("Input codon frequency table", args.plot_codon_file)
-        elif args.plot_codon_tree_file:
-            run.info("Input codon frequency tree", args.plot_codon_tree_file)
-        if args.plot_sample_tree_file:
-            run.info("Input tRNA-seq sample tree", args.plot_sample_tree_file)
+    return affinities_dict
 
-        # Load an affinity table, and make sure it looks like one.
-        affinities_df = pd.read_csv(args.plot_affinity_file, sep='\t')
-        if affinities_df.columns[: 4] == [
-            'genome_name', 'function_source', 'function_accession', 'function_name']:
-            affinities_df = affinities_df.set_index(
-                ['genome_name', 'function_source', 'function_accession', 'function_name'])
-            run.info.single("Loaded function affinities")
-        elif affinities_df.columns[: 2] == ['genome_name', 'gene_callers_id']:
-            affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id'])
-            if args.gene_affinity is False:
-                # Help out the user.
-                args.gene_affinity = True
-            run.info.single("Loaded gene affinities")
-        else:
-            raise ConfigError(
-                f"The affinity table loaded from '{args.plot_affinity_file}' does not have the "
-                "proper format, with the first columns being 'genome_name', 'function_source', "
-                "'function_accession', and 'function_name' for functional affinities or "
-                "'genome_name' and 'gene_callers_id' for gene affinities.")
+
 
         # If also loading a codon tree to plot a y-axis dendrogram, confirm that the affinity table
         # only contains information on one genome, like a proper codon tree.
