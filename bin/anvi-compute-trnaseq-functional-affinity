@@ -1677,7 +1677,8 @@ if __name__ == '__main__':
     group1F.add_argument(
         '--plot-sample-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
-             "program only to generate plots.")
+             "program only to generate plots. `--plot-affinity-file` should be provided a table "
+             "for the corresponding genome.")
 
     group1G = parser.add_argument_group(
         'FUNCTIONS',
