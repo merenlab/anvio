@@ -540,39 +540,216 @@ def get_table_with_codon_tree_labels(args, df):
     return df
 
 
+def write_affinity_tables(args, affinities_dict):
     """Write one or more affinity tables, if applicable."""
-    if not args.plot_affinity_file:
-        wrote_affinity_output = affinitizer.write_affinity_output(
-            affinities_df,
-            args.output_file,
-            separate_genomes=args.separate_genomes,
-            separate_function_sources=args.separate_function_sources,
-            normalization_methods=args.normalize_affinity,
-            normalize_all_function_sources=args.normalize_all_function_sources,
-            no_raw_affinity=args.no_raw_affinity)
-        if not wrote_affinity_output:
-            run.warning(
-                "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
-                "without `--normalization-methods`, so neither raw nor normalized affinities were "
-                "written.")
+    if args.plot_affinity_file:
+        # Affinity data was loaded, not generated anew, and so is not rewritten.
+        return
+
+    if args.no_raw_affinity and not args.normalization_methods:
+        run.warning(
+            "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
+            "without `--normalization-methods`, so neither raw nor normalized affinities were "
+            "written.")
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
+    output_basename, output_extension = os.path.splitext(args.output_path)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    is_given_output_path_valid = True
+
+    # There are options to split the affinity table into smaller tables by genome and function
+    # source, and to generate additional tables of normalized affinity data. The affinity table
+    # dictionary contains derived tables, which may differ in certain ways from the output, since
+    # the plotted tables need not be identical to the written tables (each plotted table, for
+    # example, must be for a single genome, whereas the tabular output can be for all genomes if
+    # `--separate-genomes` is not used).
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written affinity data by both genome and function source.
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                for normalization_method in args.normalization_methods:
+                    # Write a table for the genome/source/normalization method.
+                    derived_output_path = (
+                        f"{output_basename}-{genome_name.replace(' ', '_')}-{source}-"
+                        f"{normalization_method}{output_extension}")
+                    try:
+                        filesnpaths.is_output_file_writable(derived_output_path)
+                    except FilesNPathsError:
+                        invalid_derived_output_paths.append(derived_output_path)
+                        continue
+                    valid_derived_output_paths.append(derived_output_path)
+                    normalized_source_df = normalization_dict[normalization_method]
+                    if args.plot_codon_dendrogram:
+                        normalized_source_df = normalized_source_df.index.droplevel('label')
+                    normalized_source_df.to_csv(derived_output_path, sep='\t')
+                if args.no_raw_affinity:
+                    continue
+                # Write a table of raw affinities for the genome/source.
+                derived_output_path = (
+                    f"{output_basename}-{genome_name.replace(' ', '_')}-{source}{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                raw_source_df = normalization_dict['raw']
+                raw_source_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written affinity data by genome and not by function source.
+        for genome_name, source_dict in affinities_dict.items():
+            normalization_dict = source_dict['all_functions']
+            for normalization_method in args.normalization_methods:
+                # Write a table for the genome/normalization method.
+                derived_output_path = (
+                    f"{output_basename}-{genome_name.replace(' ', '_')}-{normalization_method}"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                normalized_genome_df = normalization_dict[normalization_method]
+                if args.plot_codon_dendrogram:
+                    normalized_genome_df = normalized_genome_df.index.droplevel('label')
+                normalized_genome_df.to_csv(derived_output_path, sep='\t')
+            if args.no_raw_affinity:
+                continue
+            # Write a table of raw affinities for the genome.
+            derived_output_path = \
+                f"{output_basename}-{genome_name.replace(' ', '_')}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            raw_genome_df = normalization_dict['raw']
+            raw_genome_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written affinity data by function source and not by genome. Due to the order of
+        # inner dictionaries, a convoluted process is required to get a table of affinities per
+        # source and normalization method across genomes. First, get lists of tables per source and
+        # normalization method.
+        source_tables_dict = {}
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                try:
+                    normalization_tables_dict = source_tables_dict[source]
+                except KeyError:
+                    source_tables_dict[source] = normalization_tables_dict = {}
+                for normalization_method, normalized_df in normalization_dict.items():
+                    if normalization_method == 'raw' and args.no_raw_affinity:
+                        continue
+                    try:
+                        normalization_tables_dict[normalization_method].append(normalized_df)
+                    except KeyError:
+                        normalization_tables_dict[normalization_method] = [normalized_df]
+        # Concatenate tables per source and normalization method and write to file.
+        for source, normalization_tables_dict in source_tables_dict.items():
+            for normalization_method in args.normalization_methods:
+                derived_output_path = \
+                    f"{output_basename}-{source}-{normalization_method}{output_extension}"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                normalized_source_df = pd.concat(normalization_tables_dict[normalization_method])
+                if args.plot_codon_dendrogram:
+                    normalized_source_df = normalized_source_df.index.droplevel('label')
+                normalized_source_df.to_csv(derived_output_path, sep='\t')
+            if args.no_raw_affinity:
+                continue
+            # Write a table of raw affinities for the source.
+            derived_output_path = f"{output_basename}-{source}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            raw_source_df = pd.concat(normalization_tables_dict['raw'])
+            if args.plot_codon_dendrogram:
+                raw_source_df = raw_source_df.index.droplevel('label')
+            raw_source_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write affinity data for each normalization method, including all genomes and sources. As
+        # with exclusively per-source tables, this requires concatenation of tables recovered from
+        # the dictionary.
+        normalization_tables_dict = {}
+        for genome_name, source_dict in affinities_dict.items():
+            for source, normalization_dict in source_dict.items():
+                for normalization_method, normalized_df in normalization_dict.items():
+                    if normalization_method == 'raw' and args.no_raw_affinity:
+                        continue
+                    try:
+                        normalization_tables_dict[normalization_method].append(normalized_df)
+                    except KeyError:
+                        normalization_tables_dict[normalization_method] = [normalized_df]
+        for normalization_method in args.normalization_methods:
+            derived_output_path = f"{output_basename}-{normalization_method}{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            valid_derived_output_paths.append(derived_output_path)
+            normalized_df = pd.concat(normalization_tables_dict[normalization_method])
+            if args.plot_codon_dendrogram:
+                normalized_df = normalized_df.index.droplevel('label')
+            normalized_df.to_csv(derived_output_path, sep='\t')
+        if not args.no_raw_affinity:
+            # Write a table of raw affinities for the source.
+            try:
+                filesnpaths.is_output_file_writable(args.output_path)
+                raw_df = pd.concat(normalization_tables_dict['raw'])
+                raw_df.to_csv(args.output_path, sep='\t')
+                is_given_output_path_valid = 1
+            except FilesNPathsError:
+                is_given_output_path_valid = False
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if is_given_output_path_valid:
+        template_output_path_message = ""
+    else:
+        template_output_path_message = (
+            "The table of raw affinities could not be written to `--output-path`, "
+            f"'{args.output_path}'.")
+    if invalid_derived_output_paths:
+        derived_output_paths_message = (
+            "The following tables of affinities could not be written to the following derived "
+            "target paths: "
+            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+    else:
+        derived_output_paths_message = ""
+    if invalid_derived_output_paths or not is_given_output_path_valid:
+        if is_given_output_path_valid is 1:
+            # Derived output paths were invalid, and raw affinities were written to the input
+            # output file.
+            os.remove(args.output_path)
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        raise ConfigError(
+            f"{template_output_path_message}"
+            f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
+            f"{derived_output_paths_message}")
+
+    run.info_single("Saved affinities")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
+    if is_given_output_path_valid is 1:
+        run.info_single(args.output_path, level=2)
 
 
-def get_general_codon_frequencies(args, affinities_df):
-    """Generate or load a table of absolute codon frequencies per function or gene."""
-    if (args.plot and not args.plot_codon_file) or args.save_codon_frequencies:
-        # Get the frequencies of codons encoding amino acids in the functions or genes (the rows)
-        # reported in the affinity table. The general set of all codons encoding amino acids is
-        # reported here, whereas codons that factor into affinity calculations are determined by the
-        # detected tRNA transcripts.
-        genome_names = affinities_df.index.get_level_values('genome_name').unique()
-        if len(genome_names) == 1:
-            # Add a first column to the index consisting of the genome name. With multiple genomes,
-            # the table already has such an index.
-            single_genome_name_index = genome_names[0]
-        else:
-            single_genome_name_index = None
-        codon_frequency_df = genomictrnaseq.Affinitizer.get_general_codon_frequencies(
-            args, affinities_df, single_genome_name_index=single_genome_name_index)
 
     if args.plot_codon_file:
         # Load absolute codon frequencies, from which codon trees are made.
