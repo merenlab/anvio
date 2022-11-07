@@ -107,9 +107,10 @@ def write_default_decoding_weights(output_path):
         for anticodon_wobble_nucleotide, anticodon_decoding_dict in \
             genomictrnaseq.Affinitizer.default_decoding_weights.items():
             for codon_wobble_nucleotide, decoding_weight in anticodon_decoding_dict.items():
-                output_file.write(f"{anticodon_wobble_nucleotide}\t"
-                                  f"{codon_wobble_nucleotide}\t"
-                                  f"{decoding_weight}\n")
+                output_file.write(
+                    f"{anticodon_wobble_nucleotide}\t{codon_wobble_nucleotide}\t"
+                    f"{decoding_weight}\n")
+    run.info("Default decoding weights file", output_path)
 
 
 def write_annotation_blacklist(output_path, blacklist_name):
