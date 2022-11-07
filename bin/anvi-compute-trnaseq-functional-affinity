@@ -788,57 +788,75 @@ def get_general_codon_frequencies(args, affinities_dict):
     return codon_frequency_dict
 
 
+def load_general_codon_frequencies(args, affinities_dict):
+    """Load a table of absolute codon frequencies. Data can be from multiple genomes."""
+    codon_frequency_df = pd.read_csv(args.plot_codon_file, sep='\t')
 
-        if 'genome_name' not in codon_frequency_df.columns:
-            raise ConfigError(f"The codon frequency table, loaded from '{args.plot_codon_file}', "
-                              "does not but should contain a 'genome_name' column.")
+    if 'genome_name' not in codon_frequency_df.columns:
+        raise ConfigError(
+            f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+            "a required column by the name of 'genome_name'.")
 
-        if (set(codon_frequency_df['genome_name']) !=
-            set(affinities_df.index.get_level_values('genome_name'))):
-            missing_codon_genome_names = set(
-                affinities_df.index.get_level_values('genome_name')).difference(
-                    set(codon_frequency_df['genome_name']))
-            missing_affinity_genome_names = set(
-                codon_frequency_df['genome_name']).difference(
-                    set(affinities_df.index.get_level_values('genome_name')))
-            if missing_codon_genome_names:
-                codon_message = (
-                    "The following genome names are in the affinity table but not the codon "
-                    f"frequency table: {', '.join(missing_codon_genome_names)}.")
-            elif missing_affinity_genome_names:
-                codon_message = " "
-            else:
-                codon_message = ""
-            if missing_affinity_genome_names:
-                affinity_message = (
-                    "The following genome names are in the codon frequency table but not the "
-                    f"affinity table: {', '.join(missing_affinity_genome_names)}.")
-                if missing_codon_genome_names:
-                    affinity_message = " " + affinity_message
-            else:
-                affinity_message = ""
+    # Confirm that the genomes with affinity data are the same as the genomes with loaded
+    # general codon data.
+    missing_codon_genome_names = []
+    for genome_name in affinities_dict:
+        if genome_name not in codon_frequency_df:
+            missing_codon_genome_names.append(genome_name)
+    missing_affinity_genome_names = []
+    for genome_name in codon_frequency_df['genome_name'].unique():
+        if genome_name not in affinities_dict:
+            missing_affinity_genome_names.append(genome_name)
+    if missing_codon_genome_names:
+        codon_message = (
+            " The following genome names are in the affinity table but not the codon frequency "
+            f"table: {', '.join(missing_codon_genome_names)}.")
+    else:
+        codon_message = ""
+    if missing_affinity_genome_names:
+        affinity_message = (
+            " The following genome names are in the codon frequency table but not the affinity "
+            f"table: {', '.join(missing_affinity_genome_names)}.")
+    else:
+        affinity_message = ""
+    if missing_codon_genome_names or missing_affinity_genome_names:
+        raise ConfigError(
+            f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
+            "contain the same genome names as the affinity table loaded from "
+            f"'{args.plot_affinity_file}'.{codon_message}{affinity_message}")
+
+    if args.gene_affinity:
+        if 'gene_callers_id' not in codon_frequency_df.columns:
             raise ConfigError(
-                f"The codon frequency table, loaded from '{args.plot_codon_file}', does not but "
-                "should contain the same genome names as the affinity table, loaded from "
-                f"'{args.plot_affinity_file}'.{codon_message}{affinity_message}")
+                f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+                "a column with the header, 'gene_callers_id'.")
+    else:
+        missing_cols = set(['function_source', 'function_accession', 'function_name']).difference(
+            codon_frequency_df.columns)
+        if missing_cols:
+            raise ConfigError(
+                f"The codon frequency table loaded from '{args.plot_codon_file}' does not contain "
+                "function columns with the headers, 'function_source', 'function_accession', and "
+                "'function_name'. The following of these columns is missing: "
+                f"{', '.join(missing_cols)}")
 
-        if affinities_df.index.names == [
-            'genome_name', 'function_source', 'function_accession', 'function_name']:
-            missing_cols = set(
-                ['function_source', 'function_accession', 'function_name']).difference(
-                    codon_frequency_df.columns)
-            if missing_cols:
-                raise ConfigError(
-                    f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
-                    "but should contain function columns with the headers, 'function_source', "
-                    "'function_accession', and 'function_name'. The following of these columns "
-                    f"is missing: {', '.join(missing_cols)}")
-        elif affinities_df.index.names == ['genome_name', 'gene_callers_id']:
-            if 'gene_callers_id' not in codon_frequency_df.columns:
-                raise ConfigError(
-                    f"The codon frequency table, loaded from '{args.plot_codon_file}', does not "
-                    "but should contain a column with the header, 'gene_callers_id'.")
+    codon_frequency_dict = {}
+    for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+        codon_frequency_dict[genome_name] = codon_frequency_source_dict = {}
+        if args.gene_affinity:
+            codon_frequency_source_dict['genes'] = genome_df
         else:
+            if args.compare_all_function_sources:
+                codon_frequency_source_dict['all_functions'] = genome_df
+            else:
+                for source, source_df in genome_df.groupby('function_source'):
+                    codon_frequency_source_dict[source] = source_df
+
+    run.info("Loaded codon frequency table", args.plot_codon_file)
+
+    return codon_frequency_dict
+
+
             raise ConfigError(
                 "The affinity table index columns, as follows, are not recognized, though they "
                 f"should already have been checked: {', '.join(affinities_df.index.names)}")
