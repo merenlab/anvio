@@ -403,18 +403,64 @@ def load_affinities(args):
     return affinities_dict
 
 
+def generate_affinities(args):
+    """Generate affinities anew given one or more genomes."""
+    args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
+    affinitizer = genomictrnaseq.Affinitizer(args)
+    affinities_df = affinitizer.go()
+    if len(affinities_df) == 0:
+        raise ConfigError(
+            "Affinity could not be calculated given the input data and/or filters applied to the "
+            "data.")
 
-    if args.plot_codon_dendrogram:
-        # Create a column in the affinity table containing function or gene names formatted like the
-        # labels stored in a codon tree. This allows the affinity table to be cross-referenced with
-        # codon trees.
-        affinities_df = affinities_df.reset_index()
-        affinities_df['label'] = get_codon_tree_labels(affinities_df)
+    affinities_dict = {}
+    for genome_name, genome_df in affinities_df.groupby('genome_name'):
+        affinities_dict[genome_name] = source_dict = {}
         if args.gene_affinity:
-            affinities_df = affinities_df.set_index(['genome_name', 'gene_callers_id', 'label'])
+            source_dict['genes'] = normalization_dict = {}
+            normalization_dict['raw'] = affinities_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+        if args.compare_all_function_sources:
+            source_dict['all_functions'] = normalization_dict = {}
+            normalization_dict['raw'] = genome_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(
+                    genome_df, normalization_method)
         else:
-            affinities_df = affinities_df.set_index(
-                ['genome_name', 'function_source', 'function_accession', 'function_name', 'label'])
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = normalization_dict = {}
+                normalization_dict['raw'] = source_df
+                for normalization_method in args.normalization_methods:
+                    normalization_dict[normalization_method] = normalize_affinities_table(
+                        source_df, normalization_method)
+
+    if args.gene_affinity:
+        source_dict['genes'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    elif args.compare_all_function_sources:
+        source_dict['all_functions'] = normalization_dict = {}
+        if args.plot_codon_dendrogram:
+            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
+        normalization_dict['raw'] = affinities_df
+        for normalization_method in args.normalization_methods:
+            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
+    else:
+        for source, source_df in affinities_df.groupby('function_source'):
+            source_dict[source] = normalization_dict = {}
+            if args.plot_codon_dendrogram:
+                source_df = get_table_with_codon_tree_labels(args, source_df)
+            normalization_dict['raw'] = source_df
+            for normalization_method in args.normalization_methods:
+                normalization_dict[normalization_method] = normalize_affinities_table(source_df)
+
+    return affinities_dict
+
+
 
     return affinitizer, affinities_df
 
