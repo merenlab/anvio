@@ -1644,13 +1644,13 @@ if __name__ == '__main__':
     group1F.add_argument(
         '--plot-sample-dendrogram', default=False, action='store_true',
         help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
-             "are ordered how they are input to the program or appear in the affinity table. "
-             "Without `--plot-codon-file` or `--plot-sample-tree-file`, clustering is based on the "
-             "affinities of the functions or genes displayed in the heatmap. Alternatively, a "
-             "dendrogram can be computed from a codon frequency table supplied by "
-             "`--plot-codon-file` or supplied as a Newick-formatted file by "
-             "`--plot-sample-tree-file`. Clustering parameters can be altered with "
-             "`--sample-distance` and `--sample-linkage`.")
+             "are ordered by how they are input to the program or, with `--plot-affinity-file`, "
+             "how they appear in the affinity table. With this flag and without "
+             "`--plot-sample-tree-file`, sample clustering is based on the affinities of the "
+             "functions or genes displayed in the heatmap. Alternatively, a dendrogram can be "
+             "supplied as a Newick-formatted file by `--plot-sample-tree-file`. Clustering "
+             "parameters can be altered with `--sample-distance-metric` and "
+             "`--sample-linkage-method`.")
     group1F.add_argument(
         '--plot-affinity-file', metavar='FILE_PATH', type=str,
         help="An affinity table is needed if running the program only to generate plots.")
