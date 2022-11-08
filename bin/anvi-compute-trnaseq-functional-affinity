@@ -1203,8 +1203,7 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
     source_codon_linkage_dict[source] = {
         'save_linkage': None,
         'save_labels': None,
-        'plot_linkage': codon_linkage,
-        'plot_labels': pruned_leaf_labels}
+        'plot_linkage': codon_linkage}
 
     return codon_linkage_dict
 
@@ -1242,8 +1241,7 @@ def generate_codon_linkages(args, codon_frequency_dict):
                     relative_codon_frequency_df,
                     method=args.codon_linkage_method,
                     distance=args.codon_distance_metric)
-                linkage_info_dict['save_linkage'] = codon_linkage
-                linkage_info_dict['save_labels'] = leaf_labels
+                linkage_info_dict['plot_linkage'] = codon_linkage
 
     return codon_linkage_dict
 
@@ -1366,8 +1364,7 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     normalization_sample_linkage_dict[normalization_method] = {
         'save_linkage': None,
         'save_labels': None,
-        'plot_linkage': sample_linkage,
-        'plot_labels': pruned_leaf_labels}
+        'plot_linkage': sample_linkage}
 
     return sample_linkage_dict
 
@@ -1398,7 +1395,6 @@ def generate_sample_linkages(args, subset_affinities_dict):
                     linkage_info_dict['save_labels'] = leaf_labels
                 if args.plot_sample_dendrogram:
                     linkage_info_dict['plot_linkage'] = sample_linkage
-                    linkage_info_dict['plot_labels'] = leaf_labels
 
     return sample_linkage_dict
 
