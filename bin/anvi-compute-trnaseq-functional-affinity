@@ -1049,7 +1049,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
         raise ConfigError(
             "The following tables of codon frequencies could not be written to the following "
             "derived target paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
 
     run.info.single("Saved codon frequencies")
     for valid_derived_output_path in valid_derived_output_paths:
