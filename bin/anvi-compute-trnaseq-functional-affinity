@@ -740,9 +740,8 @@ def write_affinity_tables(args, affinities_dict):
             f"'{args.output_path}'.")
     if invalid_derived_output_paths:
         derived_output_paths_message = (
-            "The following tables of affinities could not be written to the following derived "
-            "target paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+            "Tables of affinities could not be written to the following derived target paths: "
+            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
     else:
         derived_output_paths_message = ""
     if invalid_derived_output_paths or not is_given_output_path_valid:
