@@ -1513,22 +1513,27 @@ if __name__ == '__main__':
     group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     group1D = parser.add_argument_group(
-        'TABULAR OUTPUTS',
-        "This program requires an output file argument; by default, the table of affinities is "
-        "stored there. Tables of normalized affinity data -- informative for inter-sample "
-        "comparisons -- can be generated in addition to or instead of the affinity table. Separate "
-        "tables of affinity data can be generated for each genome instead of concatenating results "
-        "for multiple genomes in a single table. If more tables are generated than the single "
-        "default, these are written to file paths derived from the provided output file path. If "
-        "also graphing the results (see arguments under \"Graphical Outputs\" below), then graphs "
-        "will be produced for each type of affinity table output specified.")
+        'OUTPUT',
+        "This program requires an output file argument. The output path is a template. Depending "
+        "on the arguments, an affinity table can be written there and/or files can be written to "
+        "other paths derived from the template. If the output is split by genome "
+        "(`--separate-genomes`) or function annotation source (`--separate-function-sources`), "
+        "files are only written to derived paths. If affinities are normalized "
+        "(`--normalize-affinity`), additional outputs are written per normalization method. If "
+        "plots, codon frequency tables, or Newick trees are stored in addition to affinity tables, "
+        "their paths are likewise derived from the template path. If this program is only run to "
+        "generate plots from existing data files rather than to write new files, then a plot can "
+        "be stored at the output path, or plots are stored at paths derived from this template.")
     group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
     group1D.add_argument(
         '--separate-genomes', default=False, action='store_true',
-        help="Write separate affinity output tables for each genome. The name of each genome/bin "
+        help="Write separate affinity output files for each genome. The name of each genome/bin "
              "is inserted into the output path after a hyphen and before the extension, replacing "
-             "any spaces in the name with underscores. The first column of each table remains the "
-             "genome name.")
+             "any spaces in the name with underscores.")
+    group1D.add_argument(
+        '--separate-function-sources', default=False, action='store_true',
+        help="Write separate output files for each function source. The name of each source is "
+             "inserted into the output path before the extension following a hyphen.")
     group1D.add_argument(
         '--normalize-affinity',
         nargs='+', choices=['min_max', 'min_max_mean', 'magnitude_min_max'], type=str,
@@ -1557,10 +1562,11 @@ if __name__ == '__main__':
              "change.")
     group1D.add_argument(
         '--compare-all-function-sources', default=False, action='store_true',
-        help="When affinities are calculated for multiple function sources, apply normalization to "
-             "all sources and create plots showing all sources. For example, KOfam and Pfam "
-             "function affinities could be normalized to each other and shown on the same plots. "
-             "This flag cannot be used along with the flag, `--separate-function-sources`.")
+        help="When affinities are calculated for multiple function sources, lump together all "
+             "sources in the outputs and apply normalization to all sources. For example, KOfam "
+             "and Pfam function affinities could be normalized to each other, written to the same "
+             "tables, and shown in the same plots. This flag cannot be used along with "
+             "`--separate-function-sources`.")
     group1D.add_argument(
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not store tables of raw affinity data.")
@@ -1572,7 +1578,7 @@ if __name__ == '__main__':
              "from the provided `--output-file` template. In these paths, '-CODONS' is added "
              "before the extension. The tables have the same row indices of genome, function, and "
              "gene information as the corresponding affinity tables. In plot output, these codon "
-             "frequency data underlie the dendrograms of functions or genes.")
+             "frequency data underlie the x-axis dendrograms of functions or genes.")
 
     group1E = parser.add_argument_group(
         'CLUSTERING',
@@ -1730,10 +1736,6 @@ if __name__ == '__main__':
         "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
         "categories are nested hierarchically, the same lower-level category can be encompassed by "
         "multiple higher-level categories.")
-    group1D.add_argument(
-        '--separate-function-sources', default=False, action='store_true',
-        help="Write separate output tables and/or plots for each function source. The name of each "
-             "source is inserted into the output path before the extension following a hyphen.")
     group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
         default=genomictrnaseq.Affinitizer.default_function_sources,
