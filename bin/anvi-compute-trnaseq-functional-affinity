@@ -1529,10 +1529,6 @@ if __name__ == '__main__':
              "any spaces in the name with underscores. The first column of each table remains the "
              "genome name.")
     group1D.add_argument(
-        '--separate-function-sources', default=False, action='store_true',
-        help="Write separate output tables for each function source. The name of each source is "
-             "inserted into the output path after a hyphen and before the extension.")
-    group1D.add_argument(
         '--normalize-affinity',
         nargs='+', choices=['min_max', 'min_max_mean', 'magnitude_min_max'], type=str,
         help="Output normalized affinity data. Normalized affinity data is useful for comparing "
@@ -1733,6 +1729,10 @@ if __name__ == '__main__':
         "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
         "categories are nested hierarchically, the same lower-level category can be encompassed by "
         "multiple higher-level categories.")
+    group1D.add_argument(
+        '--separate-function-sources', default=False, action='store_true',
+        help="Write separate output tables and/or plots for each function source. The name of each "
+             "source is inserted into the output path before the extension following a hyphen.")
     group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
         default=genomictrnaseq.Affinitizer.default_function_sources,
