@@ -1656,7 +1656,7 @@ if __name__ == '__main__':
         help="Store static plots of function (or gene) affinity. Plots for each combination of "
              "genome, function annotation source (if `--separate-function-sources` is used), and "
              "affinity normalization method (if `--normalize-affinity` is used) are written to "
-             "filepaths based on `--output-file`, with the extension changed to '.pdf'. Genome "
+             "filepaths based on `--output-file`, with the extension changed to '.png'. Genome "
              "name, function source, and normalization method are inserted before the extension "
              "following a hyphen. If the program is run solely to generate plots from an existing "
              "affinity table, then use `--output-file` should specify the (template) path for the "
