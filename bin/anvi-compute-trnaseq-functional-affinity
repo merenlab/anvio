@@ -1609,8 +1609,8 @@ if __name__ == '__main__':
         "(1) A single contigs database. This could represent a genome or metagenome. "
         "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
         "database, profile database, and collection. "
-        "(3) A single bin. This requires a contigs database, profile database, collection and bin "
-        "ID. "
+        "(3) Specified bins. This requires a contigs database, profile database, collection and a "
+        "bin ID or list of bin IDs. "
         "(4) Internal genomes, or a list of metagenomic bins (can be used with external genomes). "
         "(5) External genomes, or a list of contigs databases representing genomes (can be used "
         "with internal genomes).")
