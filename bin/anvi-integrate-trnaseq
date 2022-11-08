@@ -58,22 +58,24 @@ def sanity_check(args):
         raise ConfigError("`--modifications-txt` is a required argument for tRNA-seq/(meta)genomic "
                           "integration.")
 
-    # Do basic checks of the combinations of genomic input arguments.
-    if args.contigs_db and (args.internal_genomes or args.external_genomes):
-        raise ConfigError("`--contigs-db` is not compatible with `--internal-genomes` or "
-                          "`--external-genomes`.")
-
-    if (args.profile_db is not None) or (args.collection_name is not None):
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) < 3):
-            raise ConfigError("A collection must be provided using `--contigs-db`, `--profile-db`, "
-                              "and `--collection-name`.")
-
-    if args.bin_id is not None:
-        if (0 < (args.contigs_db is not None) + (args.profile_db is not None) +
-            (args.collection_name is not None) + (args.bin_id is not None) < 4):
-            raise ConfigError("`--bin-id` must be used with `--contigs-db`, `--profile-db`, and "
-                              "`--collection-name`.")
+    # The following are checks on combinations of genomic inputs.
+    if ((args.internal_genomes or args.external_genomes) and
+        (args.contigs_db or args.profile_db or args.collection_name or
+         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+        raise ConfigError(
+            "`--internal-genomes` and `--external-genomes` cannot be used with other genomic input "
+            "arguments.")
+    if args.profile_db and not (args.contigs_db and args.collection_name):
+        raise ConfigError("`--profile-db` also requires `--contigs-db` and `--collection-name`.")
+    if args.collection_name and not (args.contigs_db and args.profile_db):
+        raise ConfigError("`--collection-name` also requires `--contigs-db` and `--profile-db`.")
+    if args.bin_id and args.bin_ids_file:
+        raise ConfigError("`--bin-id` and `--bin-ids-file` cannot be used together.")
+    if ((args.bin_id or args.bin_ids_file) and
+        not (args.contigs_db and args.profile_db and args.collection_name)):
+        raise ConfigError(
+            "`--bin-id` and `--bin-ids-file` also require `--contigs-db`, `--profile-db`, and "
+            "`--collection-name`.")
 
 
 def print_genomes(integrated_genome_dict):
@@ -131,8 +133,9 @@ if __name__ == '__main__':
         "expressed by genomes in a metagenome, followed by running "
         "`anvi-compute-trnaseq-functional-affinity`. Another purpose could be finding all possible "
         "genomes that could be responsible for expression of the tRNAs. Note that the flag "
-        "`--unambiguous-genome-assignment` prevents seed hits to multiple genomes and running the "
-        "program again with another genome to append new hits. The following are valid inputs: "
+        "`--unambiguous-genome-assignment` prevents seed hits to multiple genomes and prevents "
+        "running the program again with another genome to append new hits. The following are valid "
+        "inputs: "
         "(1) A single contigs database. This could represent a genome or metagenome. "
         "(2) A collection of bins, representing genomes in a metagenome. This requires a contigs "
         "database, profile database, and collection. "
@@ -150,6 +153,7 @@ if __name__ == '__main__':
     group1B.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     group1B.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     group1B.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+    group1B.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
     group1B.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     group1B.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
