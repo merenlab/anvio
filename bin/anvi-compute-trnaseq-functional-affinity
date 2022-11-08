@@ -502,6 +502,11 @@ def get_table_with_codon_tree_labels(args, df):
     cross-referenced with codon frequency tables and trees for the same genome."""
     df = df.reset_index()
 
+    if 'KEGG_BRITE' in df['function_source']:
+        # A KEGG function name has a hierarchical format, which each level separated by '>>>'.
+        # Retain the most specific level in the label.
+        df['function_name'] = df['function_name'].apply(lambda n: n.split('>>>')[-1])
+
     if args.gene_affinity:
         labels = df['gene_callers_id'].tolist()
     else:
