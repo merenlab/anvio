@@ -1651,16 +1651,16 @@ if __name__ == '__main__':
         help="Store static plots of genome function (or gene) affinity. If the program is run to "
              "calculate affinity, generating tables, then this option should be used as a flag. "
              "In this case, plots for each genome and affinity normalization method will be "
-             "written to filepaths based on `--output-file`, with the extension changed to '.pdf', "
-             "and the genome name and, if applicable, normalization method inserted before the "
-             "extension following a hyphen. If the program is run solely to generate plots from an "
-             "existing affinity table, then provide an output path for the plot. If the affinity "
-             "table contains information on multiple genomes, then multiple plots will be "
-             "generated, modifying each output path with the genome name as above. If the affinity "
-             "table filepath contains a recognized normalization method preceding the extension, "
-             "then it will also be included in the output filepath, and the scalebar of the "
-             "heatmap will be adjusted accordingly, with 'min-max' and 'magnitude-min-max' being "
-             "on a scale of 0 to 1 and 'min-max-mean' being on a scale of -1 to 1.")
+             "written to filepaths based on `--output-file`, with the extension changed to '.pdf'. "
+             "The genome name, the function annotation source (if `--separate-function-sources` is "
+             "used), and the normalization method (if `--normalize-affinity` is used) are inserted "
+             "before the extension following a hyphen. If the program is run solely to generate "
+             "plots from an existing affinity table, then use `--plot` with an output path for the "
+             "plot. If the affinity table filepath contains a recognized normalization method "
+             "preceding the extension, then it will also be included in the output filepath, and "
+             "the scale bar of the heatmap will be adjusted accordingly, with 'min-max' and "
+             "'magnitude-min-max' being on a scale of 0 to 1 and 'min-max-mean' being on a scale "
+             "of -1 to 1.")
     group1F.add_argument(
         '--n-highest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the highest affinities in the genome "
