@@ -37,8 +37,8 @@ __resources__ = []
 __tags__ = ['trnaseq']
 __requires__ = ['trnaseq-contigs-db', 'contigs-db']
 __provides__ = []
-__description__ = ("Relate changes in tRNA-seq seed abundances to the codon usage of gene "
-                   "functions")
+__description__ = \
+    "Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"
 
 
 run = terminal.Run()
