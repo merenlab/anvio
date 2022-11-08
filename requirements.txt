@@ -21,3 +21,4 @@ pandas>=1.2.1
 snakemake
 multiprocess
 plotext
+seaborn
