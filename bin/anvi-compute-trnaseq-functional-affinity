@@ -44,6 +44,16 @@ __description__ = ("Relate changes in tRNA-seq seed abundances to the codon usag
 run = terminal.Run()
 progress_quiet = terminal.Progress(verbose=False)
 
+# Constants used in static plots.
+x_tick_label_rotation = 20
+x_tick_label_alignment = 'right'
+normalization_cmap_dict = {
+    'raw': 'vlag',
+    'min_max': 'rocket',
+    'min_max_mean': 'vlag',
+    'magnitude_min_max': 'rocket'}
+image_dpi = 1200
+
 
 def main(args):
     ran_helper_mode = run_helper_modes(args)
@@ -71,6 +81,8 @@ def main(args):
 
     sample_linkage_dict = get_sample_linkage(args, subset_affinities_dict)
     write_sample_newick_files(args, sample_linkage_dict)
+
+    plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict)
 
 
 def run_helper_modes(args):
@@ -1445,6 +1457,111 @@ def write_sample_newick_files(args, sample_linkage_dict):
                     f"paths: {', '.join(invalid_derived_output_paths)}")
 
     run.info_single("Saved tRNA-seq sample Newick trees")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_linkage_dict):
+    """Save static plots of affinity heatmaps, with rows being functions or genes and columns being
+    tRNA-seq samples. A y-axis dendrogram of functions or genes clustered by their general relative
+    codon frequencies is optional. An x-axis dendrogram of samples clustered by the affinities of
+    displayed functions or genes is also optional."""
+    if not args.plot:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <basename>-<genome_name>-<function_source>-<normalization_method>.png.
+    output_basename = os.path.basename(args.output_path)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    for genome_name, source_dict in subset_affinities_dict.items():
+        for source, normalization_dict in source_dict.items():
+            if codon_linkage_dict:
+                codon_linkage_info_dict = codon_linkage_dict[genome_name][source]
+                codon_linkage = codon_linkage_info_dict['plot_linkage']
+            else:
+                codon_linkage = None
+
+            for normalization_method, subset_affinities_df in normalization_dict.items():
+                if sample_linkage_dict:
+                    sample_linkage_info_dict = sample_linkage_dict[
+                        genome_name][source][normalization_method]
+                    sample_linkage = sample_linkage_info_dict['plot_linkage']
+                else:
+                    sample_linkage = None
+
+                # Determine the output path for the plot.
+                derived_output_path = f"{output_basename}"
+                if len(subset_affinities_dict) > 0:
+                    derived_output_path = f"{derived_output_path}-{genome_name}"
+                if args.separate_function_sources:
+                    derived_output_path = f"{derived_output_path}-{source}"
+                if normalization_method != 'raw':
+                    derived_output_path = f"{derived_output_path}-{normalization_method}"
+                derived_output_path = f"{derived_output_path}.pdf"
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+
+                # The function/gene labels of the affinity table should be unique and correspond to
+                # the numerical index of the codon frequency linkage object.
+                heatmap_df = subset_affinities_df.droplevel(
+                    [i for i in subset_affinities_df.index.names if i != 'label'])
+
+                # Set affinity heatmap properties.
+                clustermap = partial(
+                    sns.clustermap,
+                    cmap=normalization_cmap_dict[normalization_method],
+                    cbar_kws={'label': 'affinity'})
+                if normalization_method == 'raw':
+                    # Raw affinities lie in the range, (-∞, +∞).
+                    clustermap = partial(clustermap(center=0))
+                elif normalization_method == 'min_max':
+                    # Min-max normalized affinities lie in the range, [0, 1]. Currently, there is no
+                    # way of handling the edge case that every affinity has the same value, which
+                    # yields undefined min-max normalized affinities.
+                    clustermap = partial(clustermap(vmin=0, vmax=1))
+                elif normalization_method == 'min_max_mean':
+                    # Min-max-mean normalized affinities lie in the range, (-1, 1).
+                    clustermap = partial(clustermap(center=0, vmin=-1, vmax=1))
+                elif normalization_method == 'magnitude_min_max':
+                    # Magnitude-min-max normalized affinities lie in the range, [0, 1].
+                    clustermap = partial(clustermap(vmin=0, vmax=1))
+
+                if codon_linkage and sample_linkage:
+                    plot = clustermap(
+                        heatmap_df, row_linkage=codon_linkage, col_linkage=sample_linkage)
+                elif codon_linkage:
+                    plot = clustermap(heatmap_df, row_linkage=codon_linkage, col_cluster=False)
+                elif sample_linkage:
+                    plot = clustermap(heatmap_df, col_linkage=sample_linkage, row_cluster=False)
+                else:
+                    plot = clustermap(heatmap_df, row_cluster=False, col_cluster=False)
+
+                plot.ax_heatmap.set_xticklabels(
+                    plot.ax_heatmap.get_xmajorticklabels(),
+                    rotation=x_tick_label_rotation,
+                    ha=x_tick_label_alignment)
+
+                figure = plot.get_figure()
+                figure.savefig(derived_output_path, bbox_inches=True, dpi=image_dpi)
+
+    if invalid_derived_output_paths:
+        raise ConfigError(
+            "Plots could not be written to the following derived target paths: "
+            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+
+    run.info_single("Saved plots")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
 
