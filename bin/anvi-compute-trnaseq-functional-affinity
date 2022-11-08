@@ -583,6 +583,7 @@ def write_affinity_tables(args, affinities_dict):
                         filesnpaths.is_output_file_writable(derived_output_path)
                     except FilesNPathsError:
                         invalid_derived_output_paths.append(derived_output_path)
+                    if invalid_derived_output_paths:
                         continue
                     valid_derived_output_paths.append(derived_output_path)
                     normalized_source_df = normalization_dict[normalization_method]
@@ -598,11 +599,11 @@ def write_affinity_tables(args, affinities_dict):
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
                     continue
-                if not invalid_derived_output_paths:
-                    valid_derived_output_paths.append(derived_output_path)
-                    raw_source_df = normalization_dict['raw']
-                    raw_source_df.to_csv(derived_output_path, sep='\t')
+                valid_derived_output_paths.append(derived_output_path)
+                raw_source_df = normalization_dict['raw']
+                raw_source_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_genomes:
         # Split written affinity data by genome and not by function source.
         for genome_name, source_dict in affinities_dict.items():
@@ -616,13 +617,13 @@ def write_affinity_tables(args, affinities_dict):
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
                     continue
-                if not invalid_derived_output_paths:
-                    valid_derived_output_paths.append(derived_output_path)
-                    normalized_genome_df = normalization_dict[normalization_method]
-                    if args.plot_codon_dendrogram:
-                        normalized_genome_df = normalized_genome_df.index.droplevel('label')
-                    normalized_genome_df.to_csv(derived_output_path, sep='\t')
+                valid_derived_output_paths.append(derived_output_path)
+                normalized_genome_df = normalization_dict[normalization_method]
+                if args.plot_codon_dendrogram:
+                    normalized_genome_df = normalized_genome_df.index.droplevel('label')
+                normalized_genome_df.to_csv(derived_output_path, sep='\t')
             if args.no_raw_affinity:
                 continue
             # Write a table of raw affinities for the genome.
@@ -632,11 +633,11 @@ def write_affinity_tables(args, affinities_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                valid_derived_output_paths.append(derived_output_path)
-                raw_genome_df = normalization_dict['raw']
-                raw_genome_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+            raw_genome_df = normalization_dict['raw']
+            raw_genome_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written affinity data by function source and not by genome. Due to the order of
         # inner dictionaries, a convoluted process is required to get a table of affinities per
@@ -665,6 +666,7 @@ def write_affinity_tables(args, affinities_dict):
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
                     continue
                 valid_derived_output_paths.append(derived_output_path)
                 normalized_source_df = pd.concat(normalization_tables_dict[normalization_method])
@@ -679,13 +681,13 @@ def write_affinity_tables(args, affinities_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                valid_derived_output_paths.append(derived_output_path)
-                raw_source_df = pd.concat(normalization_tables_dict['raw'])
-                if args.plot_codon_dendrogram:
-                    raw_source_df = raw_source_df.index.droplevel('label')
-                raw_source_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+            raw_source_df = pd.concat(normalization_tables_dict['raw'])
+            if args.plot_codon_dendrogram:
+                raw_source_df = raw_source_df.index.droplevel('label')
+            raw_source_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write affinity data for each normalization method, including all genomes and sources. As
         # with exclusively per-source tables, this requires concatenation of tables recovered from
@@ -706,23 +708,22 @@ def write_affinity_tables(args, affinities_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                valid_derived_output_paths.append(derived_output_path)
-                normalized_df = pd.concat(normalization_tables_dict[normalization_method])
-                if args.plot_codon_dendrogram:
-                    normalized_df = normalized_df.index.droplevel('label')
-                normalized_df.to_csv(derived_output_path, sep='\t')
-        if not args.no_raw_affinity:
+            valid_derived_output_paths.append(derived_output_path)
+            normalized_df = pd.concat(normalization_tables_dict[normalization_method])
+            if args.plot_codon_dendrogram:
+                normalized_df = normalized_df.index.droplevel('label')
+            normalized_df.to_csv(derived_output_path, sep='\t')
+        if not args.no_raw_affinity and not invalid_derived_output_paths:
             # Write a table of raw affinities for the source.
-            if not invalid_derived_output_paths:
-                try:
-                    filesnpaths.is_output_file_writable(args.output_path)
-                    raw_df = pd.concat(normalization_tables_dict['raw'])
-                    raw_df.to_csv(args.output_path, sep='\t')
-                    is_given_output_path_valid = 1
-                except FilesNPathsError:
-                    is_given_output_path_valid = False
+            try:
+                filesnpaths.is_output_file_writable(args.output_path)
+                raw_df = pd.concat(normalization_tables_dict['raw'])
+                raw_df.to_csv(args.output_path, sep='\t')
+                is_given_output_path_valid = 1
+            except FilesNPathsError:
+                is_given_output_path_valid = False
 
     # Report invalid output paths and, if some paths were invalid, also remove files written to
     # valid paths.
@@ -970,13 +971,13 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
                     continue
-                if not invalid_derived_output_paths:
-                    valid_derived_output_paths.append(derived_output_path)
-                    codon_frequency_df = source_dict[source]
-                    if args.plot_codon_dendrogram:
-                        codon_frequency_df = codon_frequency_df.index.droplevel('label')
-                    codon_frequency_df.to_csv(derived_output_path, sep='\t')
+                valid_derived_output_paths.append(derived_output_path)
+                codon_frequency_df = source_dict[source]
+                if args.plot_codon_dendrogram:
+                    codon_frequency_df = codon_frequency_df.index.droplevel('label')
+                codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_genomes:
         # Split written codon frequency data by genome and not by function source.
         for genome_name, source_dict in codon_frequency_dict.items():
@@ -986,16 +987,16 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                valid_derived_output_paths.append(derived_output_path)
-                if args.gene_affinity:
-                    codon_frequency_df = source_dict['genes']
-                else:
-                    codon_frequency_df = source_dict['all_functions']
-                if args.plot_codon_dendrogram:
-                    codon_frequency_df = codon_frequency_df.index.droplevel('label')
-                codon_frequency_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                codon_frequency_df = source_dict['genes']
+            else:
+                codon_frequency_df = source_dict['all_functions']
+            if args.plot_codon_dendrogram:
+                codon_frequency_df = codon_frequency_df.index.droplevel('label')
+            codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written codon frequency data by function source and not by genome. Due to the order
         # of inner dictionaries, tables of codon frequencies per source across genomes must be
@@ -1015,13 +1016,13 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                valid_derived_output_paths.append(derived_output_path)
-                codon_frequency_df = pd.concat(codon_frequency_dfs)
-                if args.plot_codon_dendrogram:
-                    codon_frequency_df = codon_frequency_df.index.droplevel('label')
-                codon_frequency_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+            codon_frequency_df = pd.concat(codon_frequency_dfs)
+            if args.plot_codon_dendrogram:
+                codon_frequency_df = codon_frequency_df.index.droplevel('label')
+            codon_frequency_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write codon frequency data for all genomes and sources in a single table.
         codon_frequency_dfs = []
@@ -1273,11 +1274,11 @@ def write_codon_newick_files(args, codon_linkage_dict):
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
                 invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
                 continue
-            if not invalid_derived_output_paths:
-                with open(derived_output_path, 'w') as output_file:
-                    output_file.write(newick)
-                valid_derived_output_paths.append(derived_output_path)
+            with open(derived_output_path, 'w') as output_file:
+                output_file.write(newick)
+            valid_derived_output_paths.append(derived_output_path)
 
         if invalid_derived_output_paths:
             for derived_output_path in valid_derived_output_paths:
@@ -1433,11 +1434,11 @@ def write_sample_newick_files(args, sample_linkage_dict):
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
                     invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
                     continue
-                if not invalid_derived_output_paths:
-                    with open(derived_output_path, 'w') as output_file:
-                        output_file.write(newick)
-                    valid_derived_output_paths.append(derived_output_path)
+                with open(derived_output_path, 'w') as output_file:
+                    output_file.write(newick)
+                valid_derived_output_paths.append(derived_output_path)
 
             if invalid_derived_output_paths:
                 for derived_output_path in valid_derived_output_paths:
