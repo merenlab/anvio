@@ -1119,8 +1119,7 @@ def get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict):
     if args.plot_codon_tree_file:
         codon_linkage_dict = load_codon_linkage_from_newick(args, subset_affinities_dict)
     elif args.plot_codon_dendrogram or args.save_codon_trees:
-        codon_linkage_dict = generate_codon_linkages(
-            args, codon_frequency_dict, subset_affinities_dict)
+        codon_linkage_dict = generate_codon_linkages(args, codon_frequency_dict)
     else:
         codon_linkage_dict = None
 
@@ -1210,14 +1209,12 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
     return codon_linkage_dict
 
 
-def generate_codon_linkages(args, codon_frequency_dict, subset_affinities_dict):
+def generate_codon_linkages(args, codon_frequency_dict):
     """Generate cluster linkages of functions or genes by their relative codon frequencies."""
     codon_linkage_dict = {}
     for genome_name, codon_source_dict in codon_frequency_dict.items():
         codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
-        subset_affinities_source_dict = subset_affinities_dict[genome_name]
         for source, codon_frequency_df in codon_source_dict.items():
-            subset_affinities_df = subset_affinities_source_dict[source]['raw']
             source_codon_linkage_dict[source] = linkage_info_dict = {}
 
             relative_codon_frequency_df = codon_frequency_df.div(
