@@ -1739,6 +1739,7 @@ if __name__ == '__main__':
              "affinities.")
     group1E.add_argument(
         '--sample-linkage-method', metavar='LINKAGE_METHOD', type=str,
+        default=constants.linkage_method_default,
         help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
              "affinities.")
     group1E.add_argument(
