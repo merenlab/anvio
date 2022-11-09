@@ -1779,10 +1779,11 @@ class Affinitizer:
         with self.trnaseq_contigs_db_info.load_db() as trnaseq_contigs_db:
             genome_id_df = trnaseq_contigs_db.get_table_as_dataframe(
                 tables.trna_gene_hits_table_name,
-                columns_of_interest=['genomic_contigs_db_hash',
-                                     'profile_db_sample_id',
-                                     'collection_name',
-                                     'bin_id'])
+                columns_of_interest=[
+                    'gene_contigs_db_hash',
+                    'profile_db_sample_id',
+                    'collection_name',
+                    'bin_id'])
             genome_id_df = genome_id_df.drop_duplicates()
             genome_id_df = genome_id_df.fillna('')
             genome_ids = []
