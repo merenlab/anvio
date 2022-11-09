@@ -1373,6 +1373,8 @@ class Affinitizer:
     default_function_sources = ['KEGG_BRITE']
     default_min_coverage = 10
     default_min_isoacceptors = 4
+
+    recognized_anticodon_wobble_modifications = ['I', 'L']
     # Default decoding weights are from Table 2 of dos Reis, Savva, and Wernisch (2004), used in
     # their tRNA Adaptation Index (tAI) metric: https://doi.org/10.1093/nar/gkh834
     default_decoding_weights_df = pd.DataFrame([
@@ -1384,8 +1386,6 @@ class Affinitizer:
         [0.89, 1, 1, 1]],
         index=['A', 'C', 'G', 'T', 'I', 'L'],
         columns=['A', 'C', 'G', 'T'])
-
-    recognized_anticodon_wobble_modifications = ['I', 'L']
 
     builtin_function_blacklists = {
         # Exclude terms associated with eukaryotes, archaea, and photoautotrophs. (The name of the
