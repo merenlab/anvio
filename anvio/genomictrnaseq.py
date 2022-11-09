@@ -2583,8 +2583,9 @@ class Affinitizer:
             genome_affinities_dfs.append(genome_affinities_df)
 
         if filtered_genome_names:
-            self.run.info_single("The following genomes did not pass the filters for affinity "
-                                 f"calculation: {', '.join(filtered_genome_names)}")
+            self.run.info_single(
+                "The following genomes did not pass the filters for affinity calculation: "
+                f"{', '.join(filtered_genome_names)}")
 
         if genome_affinities_dfs:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
