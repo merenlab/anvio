@@ -1336,6 +1336,9 @@ class Affinitizer:
     recognized_anticodon_wobble_modifications = ['I', 'L']
 
     builtin_function_blacklists = {
+        # Exclude terms associated with eukaryotes, archaea, and photoautotrophs. (The name of the
+        # blacklist is misleading in that no terms have yet been included to exclude other types of
+        # bacterial autotrophs.)
         'bacterial_heterotrophs': [
             '[eE]ukaryot',
             '[mM]itochondria',
