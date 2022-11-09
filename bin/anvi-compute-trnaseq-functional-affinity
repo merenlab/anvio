@@ -2038,7 +2038,7 @@ if __name__ == '__main__':
         '--exclude-amino-acids', nargs='+', type=str,
         help="Remove codons that decode the given amino acids from calculation of affinity.")
 
-    group1K = parser.add_argument_group(
+    group1K = parser.add_argument_group( # TODO: add this functionality
         'RAREFACTION STATISTICS',
         "Rarefaction of the tRNA isoacceptors used in calculation of affinity provides a means of "
         "evaluating how representative the isoacceptors are of the whole tRNA pool. The smaller "
