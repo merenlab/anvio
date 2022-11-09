@@ -281,7 +281,7 @@ class Integrator(object):
     # Here are the different possible (meta)genomic sources:
     # 1. Single contigs database without bins
     # 2. Single contigs database with collection of bins
-    # 3. Single contigs database with specified bin
+    # 3. Single contigs database with one or more specified bins
     # 4. One or more contigs databases input as "external" genomes
     # 5. "Internal" genomes (bins) from one or more contigs databases
     # 6. A combination of "internal" and "external" genomes (4 + 5)
@@ -303,6 +303,7 @@ class Integrator(object):
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
+        self.bin_ids_file = A('bin_ids_file')
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
@@ -340,21 +341,67 @@ class Integrator(object):
         # also have been provided, which is checked later in `sanity_check`.
         if self.genomic_contigs_db_path:
             contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
-            self.genome_info_dict[contigs_db_info.project_name] = genome_info = {}
+        else:
+            contigs_db_info = None
+        if self.genomic_profile_db_path:
+            profile_db_info = DBInfo(self.genomic_profile_db_path, expecting='profile')
+        else:
+            profile_db_info = None
+        if self.bin_ids_path:
+            filesnpaths.is_file_plain_text(self.bin_ids_path)
+            bin_ids = []
+            with open(self.bin_ids_path) as bin_ids_file:
+                for line in bin_ids_file:
+                    bin_ids.append(line.rstrip())
+        else:
+            bin_ids = None
+
+        if self.bin_id:
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            collect.is_bin_in_collection(bin_id)
+            self.genome_info_dict[bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
-            if self.genomic_profile_db_path:
-                genome_info['profile_db_info'] = DBInfo(
-                    self.genomic_profile_db_path, expecting='profile')
-            else:
-                genome_info['profile_db_info'] = None
+            genome_info['profile_db_info'] = profile_db_info
             genome_info['collection_name'] = self.collection_name
             genome_info['bin_id'] = self.bin_id
+        elif self.bin_ids_path:
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            for bin_id in bin_ids:
+                collect.is_bin_in_collection(bin_id)
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db_info'] = contigs_db_info
+                genome_info['profile_db_info'] = profile_db_info
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+        elif self.collection_name:
+            # There is a collection of internal genomes.
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            for bin_id in collect.get_bins_info_dict():
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db_info'] = contigs_db_info
+                genome_info['profile_db_info'] = profile_db_info
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+        elif self.genomic_contigs_db_path:
+            # The contigs database represents a genome, like an external genome.
+            self.genome_info_dict[contigs_db_info.project_name] = genome_info = {}
+            genome_info['contigs_db_info'] = contigs_db_info
+            genome_info['profile_db_info'] = None
+            genome_info['collection_name'] = None
+            genome_info['bin_id'] = None
 
+        nonunique_genome_names = []
         if self.internal_genomes_path or self.external_genomes_path:
             descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
             descriptions.load_genomes_descriptions(init=False)
 
             for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+                if genome_name in self.genome_info_dict:
+                    nonunique_genome_names.append(genome_name)
+
                 self.genome_info_dict[genome_name] = genome_info = {}
                 genome_info['contigs_db_info'] = DBInfo(
                     genome_dict['contigs_db_path'], expecting='contigs')
@@ -373,6 +420,11 @@ class Integrator(object):
                 genome_info['profile_db_info'] = None
                 genome_info['collection_name'] = None
                 genome_info['bin_id'] = None
+
+        if nonunique_genome_names:
+            raise ConfigError(
+                "Names must be unique to internal and external genomes, but the following were "
+                f"not: {', '.join(nonunique_genome_names)}")
 
         if do_sanity_check:
             self.sanity_check()
