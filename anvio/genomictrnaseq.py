@@ -2313,7 +2313,7 @@ class Affinitizer:
                 isoacceptors_df['anticodon'].str[1: ])
             isoacceptors_df = isoacceptors_df[
                 ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
-            isoacceptors_df = isoacceptors_df.drop('effective_wobble_nucleotide', axis=1)
+            isoacceptors_df = isoacceptors_df.drop('effective_anticodon', axis=1)
 
         # Drop isoacceptors without data for the reference sample. Development note: It now looks
         # like the reference sample will always have an entry for the isoacceptor in the genome,
