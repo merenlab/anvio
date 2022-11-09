@@ -1969,10 +1969,12 @@ class Affinitizer:
                 "Unrecognized codons were provided to `exclude_codons`: "
                 f"{', '.join(unrecognized_codons)}")
 
-        unrecognized_amino_acids = set(self.exclude_amino_acids).difference(constants.amino_acids)
+        unrecognized_amino_acids = set(self.exclude_amino_acids).difference(
+            constants.amino_acids) if self.exclude_amino_acids else []
         if unrecognized_amino_acids:
-            raise ConfigError("Unrecognized amino acids were provided to `exclude_amino_acids`: "
-                              f"{', '.join(unrecognized_amino_acids)}")
+            raise ConfigError(
+                "Unrecognized amino acids were provided to `exclude_amino_acids`: "
+                f"{', '.join(unrecognized_amino_acids)}")
 
 
     def go(self):
