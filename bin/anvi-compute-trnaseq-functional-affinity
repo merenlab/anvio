@@ -1736,7 +1736,7 @@ if __name__ == '__main__':
         help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
              "affinities.")
     group1E.add_argument(
-        '--save-sample-trees', metavar='NEWICK', default=False, action='store_true',
+        '--save-sample-trees', default=False, action='store_true',
         help="Write Newick-formatted trees of hierarchically clustered tRNA-seq sample affinities. "
              "Trees are generated per combination of genome, function source (unless using the "
              "flags, `--compare-all-function-sources` or `--gene-affinity`), and affinity "
