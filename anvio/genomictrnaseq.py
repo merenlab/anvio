@@ -1788,10 +1788,11 @@ class Affinitizer:
             genome_id_df = genome_id_df.fillna('')
             genome_ids = []
             for row in genome_id_df.itertuples(index=False):
-                genome_ids.append(row.genomic_contigs_db_hash,
-                                  row.profile_db_sample_id,
-                                  row.collection_name,
-                                  row.bin_id)
+                genome_ids.append((
+                    row.gene_contigs_db_hash,
+                    row.profile_db_sample_id,
+                    row.collection_name,
+                    row.bin_id))
 
         linked_bin_info_dict = {}
         unlinked_bin_info_dict = {}
