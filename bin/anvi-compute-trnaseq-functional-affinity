@@ -1579,7 +1579,7 @@ if __name__ == '__main__':
     group1A.add_argument(*anvio.A('trnaseq-contigs-db'),
                          **anvio.K('trnaseq-contigs-db', {'required': False}))
     group1A.add_argument(*anvio.A('seeds-specific-txt'),
-                         **anvio.K('seeds-specific-txt', {'required': True}))
+                         **anvio.K('seeds-specific-txt', {'required': False}))
 
     group1B = parser.add_argument_group(
         'TRNASEQ SAMPLES',
