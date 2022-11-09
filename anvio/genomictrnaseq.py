@@ -2544,7 +2544,9 @@ class Affinitizer:
             isoacceptor_abund_ratios_df['anticodon'].str[1: ])
 
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
-        weighted_frequencies_gb = weighted_frequencies_df.groupby('genome_name')
+        relative_weighted_frequencies_df = weighted_frequencies_df.div(
+            weighted_frequencies_df.sum(axis=1), axis=0)
+        relative_weighted_frequencies_gb = relative_weighted_frequencies_df.groupby('genome_name')
 
         filtered_genome_names = []
         genome_affinities_dfs = []
@@ -2556,7 +2558,8 @@ class Affinitizer:
                 filtered_genome_names.append(genome_name)
                 continue
             try:
-                genome_weighted_frequencies_df = weighted_frequencies_gb.get_group(genome_name)
+                genome_relative_weighted_frequencies_df = \
+                    relative_weighted_frequencies_gb.get_group(genome_name)
             except KeyError:
                 filtered_genome_names.append(genome_name)
                 continue
@@ -2564,10 +2567,10 @@ class Affinitizer:
             sample_affinities_dict = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('nonreference_trnaseq_sample_name'):
-                # Take the dot product of the matrix of isoacceptor weighted codon frequencies (m
-                # functions or genes x n isoacceptors) and the matrix of non-reference/reference
-                # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
-                # of the tRNA pool for each function or gene in the genome.
+                # Take the dot product of the matrix of relative isoacceptor weighted codon
+                # frequencies (m functions or genes x n isoacceptors) and the matrix of
+                # non-reference/reference sample isoacceptor abundance ratios (n isoacceptors x 1).
+                # This yields the affinity of the tRNA pool for each function or gene in the genome.
 
                 # `get_weighted_codon_frequencies` should ensure that every "effective" anticodon
                 # (including modified wobble nucleotide, if applicable) from the tRNA-seq data is
@@ -2576,7 +2579,7 @@ class Affinitizer:
                     ['effective_anticodon', 'abundance_ratio']].set_index('effective_anticodon')[
                         'abundance_ratio']
                 sample_affinities_dict[trnaseq_sample_name] = \
-                    genome_weighted_frequencies_df[abund_ratios.index].dot(abund_ratios)
+                    genome_relative_weighted_frequencies_df[abund_ratios.index].dot(abund_ratios)
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
             genome_affinities_df['genome_name'] = genome_name
