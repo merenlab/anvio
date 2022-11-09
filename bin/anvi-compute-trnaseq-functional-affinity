@@ -283,11 +283,13 @@ def parse_decoding_weights_table(decoding_weights_txt):
     if decoding_weights_df.shape != genomictrnaseq.Affinitizer.default_decoding_weights_df.shape:
         is_formatted = False
     else:
-        if not (decoding_weights_df.index ==
-                genomictrnaseq.Affinitizer.default_decoding_weights_df.index).all():
+        if not (
+            decoding_weights_df.index ==
+            genomictrnaseq.Affinitizer.default_decoding_weights_df.index).all():
             is_formatted = False
-        if not (decoding_weights_df.columns ==
-                genomictrnaseq.Affinitizer.default_decoding_weights_df.columns).all():
+        if not (
+            decoding_weights_df.columns ==
+            genomictrnaseq.Affinitizer.default_decoding_weights_df.columns).all():
             is_formatted = False
     if not is_formatted:
         raise ConfigError(
