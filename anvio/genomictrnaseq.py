@@ -1611,8 +1611,6 @@ class Affinitizer:
                 skiprows=[1, 2],
                 usecols=['sample_name'])['sample_name'].unique().tolist()
             self.nonreference_sample_names.remove(self.reference_sample_name)
-        else:
-            self.nonreference_sample_names = self.nonreference_sample_names.split(',')
         self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
 
         self.function_sources += \
