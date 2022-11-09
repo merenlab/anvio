@@ -1753,22 +1753,26 @@ class Affinitizer:
         # Do basic checks of the combinations of (meta)genomic input arguments.
         if (self.genomic_contigs_db_path and
             (self.internal_genomes_path or self.external_genomes_path)):
-            raise ConfigError("`internal_genomes` and `external_genomes` cannot be used with "
-                              "`contigs_db`.")
+            raise ConfigError(
+                "`internal_genomes` and `external_genomes` cannot be used with `contigs_db`.")
 
         if ((self.genomic_profile_db_path or self.collection_name) and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A collection must be provided using `contigs_db`, `profile_db`, and "
-                              "`collection_name`.")
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "A collection must be provided using `contigs_db`, `profile_db`, and "
+                "`collection_name`.")
 
         if (self.bin_id and
-            not (self.genomic_contigs_db_path and
-                 self.genomic_profile_db_path and
-                 self.collection_name)):
-            raise ConfigError("A specific bin provided with `bin_id` also requires `contigs_db`, "
-                              "`profile_db`, and `collection_name`.")
+            not (
+                self.genomic_contigs_db_path and
+                self.genomic_profile_db_path and
+                self.collection_name)):
+            raise ConfigError(
+                "A specific bin provided with `bin_id` also requires `contigs_db`, `profile_db`, "
+                "and `collection_name`.")
 
         ##################################################
         # Check that the (meta)genomic inputs correspond to tRNA genes linked to seeds in the
@@ -1839,11 +1843,13 @@ class Affinitizer:
                 linked_genome_names.append(genome_name)
             else:
                 unlinked_genome_names.append(genome_name)
-        self.run.info_single("(Meta)genome(s) containing tRNA genes linked to seeds: "
-                             f"{', '.join(linked_genome_names)}")
+        self.run.info_single(
+            "(Meta)genome(s) containing tRNA genes linked to seeds: "
+            f"{', '.join(linked_genome_names)}")
         if unlinked_genome_names:
-            self.run.info_single("(Meta)genomes lacking tRNA genes linked to seeds: "
-                                 f"{', '.join(unlinked_genome_names)}")
+            self.run.info_single(
+                "(Meta)genomes lacking tRNA genes linked to seeds: "
+                f"{', '.join(unlinked_genome_names)}")
         ##################################################
 
         if self.min_coverage_ratio <= 1:
@@ -1858,16 +1864,18 @@ class Affinitizer:
                 f"multiple `function_sources` were provided: {', '.join(self.function_sources)}.")
 
         if self.function_sources and (self.function_accessions_dict or self.function_names_dict):
-            raise ConfigError("`function_sources` cannot be provided alongside "
-                              "`function_accesions_dict` and `function_names_dict`.")
+            raise ConfigError(
+                "`function_sources` cannot be provided alongside `function_accesions_dict` and "
+                "`function_names_dict`.")
 
         if self.select_functions_txt:
             filesnpaths.is_file_tab_delimited(self.select_functions_txt)
 
         if self.select_functions_txt and (
             self.function_sources or self.function_accessions or self.function_names):
-            raise ConfigError("`select_functions_txt` cannot be provided alongside "
-                              "`function_sources`, `function_accessions`, and `function_names`.")
+            raise ConfigError(
+                "`select_functions_txt` cannot be provided alongside `function_sources`, "
+                "`function_accessions`, and `function_names`.")
 
         if self.function_blacklist_txt:
             filesnpaths.is_file_tab_delimited(self.function_blacklist_txt)
@@ -1876,8 +1884,9 @@ class Affinitizer:
             self.function_sources or self.function_accessions or self.function_accessions_dict or
             self.function_names or self.function_names_dict or self.select_functions_txt or
             self.function_blacklist_txt):
-            raise ConfigError("`gene_affinity`, used to compute affinity for genes rather than "
-                              "functions, cannot be used alongside function options.")
+            raise ConfigError(
+                "`gene_affinity`, used to compute affinity for genes rather than functions, cannot "
+                "be used alongside function options.")
 
         # Report input (meta)genomes that did not have requested function sources run on them. By
         # default, with `lax_function_sources` being True, requested sources must have been run on
