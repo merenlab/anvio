@@ -2309,8 +2309,8 @@ class Affinitizer:
                 ~isoacceptors_df['anticodon'].isin(self.exclude_unmodified_anticodons)]
         if self.exclude_modified_anticodons:
             isoacceptors_df['effective_anticodon'] = (
-                isoacceptors_df['anticodon'].str[1: ] +
-                isoacceptors_df['effective_wobble_nucleotide'])
+                isoacceptors_df['effective_wobble_nucleotide'] +
+                isoacceptors_df['anticodon'].str[1: ])
             isoacceptors_df = isoacceptors_df[
                 ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
             isoacceptors_df = isoacceptors_df.drop('effective_wobble_nucleotide', axis=1)
