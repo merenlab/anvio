@@ -2350,7 +2350,7 @@ class Affinitizer:
 
         # Drop genomes altogether if the reference sample lacked a minimum isoacceptor diversity.
         isoacceptors_df = isoacceptors_df.groupby('genome_name').filter(
-            lambda genome_df: self.reference_sample_name in genome_df['trnaseq_sample_name'])
+            lambda genome_df: self.reference_sample_name in genome_df['trnaseq_sample_name'].values)
         ##################################################
 
         # Create a table of isoacceptor non-reference/reference abundance ratios.
