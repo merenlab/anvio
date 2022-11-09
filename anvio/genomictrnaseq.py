@@ -2585,7 +2585,7 @@ class Affinitizer:
             self.run.info_single("The following genomes did not pass the filters for affinity "
                                  f"calculation: {', '.join(filtered_genome_names)}")
 
-        if affinities_df:
+        if genome_affinities_dfs:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
         else:
             affinities_df = pd.DataFrame()
