@@ -107,7 +107,7 @@ class SingleGenomeCodonUsage(object):
         three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is None, the
         standard genetic code is used.
         """
-        if self.args.codon_to_amino_acid is None:
+        if 'codon_to_amino_acid' not in self.args or self.args.codon_to_amino_acid is None:
             self.codon_amino_acid_dict = default_codon_amino_acid_dict
         else:
             check_genetic_code(self.args.codon_to_amino_acid)
