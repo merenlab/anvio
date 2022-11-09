@@ -2581,18 +2581,18 @@ class Affinitizer:
 
 
     @staticmethod
-    def list_sample_names(args={}, r=run):
+    def list_sample_names(seeds_specific_txt_path):
         """List samples in the tRNA-seq input files."""
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        seeds_specific_txt_path = A('seeds_specific_txt')
-
         if seeds_specific_txt_path is None:
-            raise ConfigError("To list samples in `seeds_specific_txt`, a path to this file must be provided.")
+            raise ConfigError(
+                "To list samples in `seeds_specific_txt`, a path to this file must be provided.")
         filesnpaths.is_file_exists(seeds_specific_txt_path)
 
         available_sample_names = pd.read_csv(
-            seeds_specific_txt_path, sep='\t', header=0, skiprows=[1, 2], usecols=['sample_name'])['sample_name'].unique().tolist()
-        run.info_single(f"The `seeds_specific_txt` table, '{seeds_specific_txt_path}', "
-                        f"contains the following samples: {', '.join(available_sample_names)}")
+            seeds_specific_txt_path,
+            sep='\t',
+            header=0,
+            skiprows=[1, 2],
+            usecols=['sample_name'])['sample_name'].unique().tolist()
 
         return available_sample_names
