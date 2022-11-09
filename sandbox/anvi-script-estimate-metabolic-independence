@@ -38,7 +38,7 @@ HMI_mods = ['M00049', 'M00050', 'M00007', 'M00140', 'M00005', 'M00083', 'M00120'
             'M00126', 'M00115', 'M00028', 'M00924', 'M00122', 'M00125', 'M00023', 'M00631',
             'M00061' ]
 
-def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, threshold):
+def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, threshold, strategy='pathwise'):
     """Adds up the pathwise completeness scores of each module in the HMI list. Returns the class, and the score."""
 
     module_df = pd.read_csv(metabolism_file, sep="\t", index_col=0)
@@ -51,7 +51,8 @@ def get_metabolic_independence_estimates(metabolism_file, HMI_module_list, thres
                           f"provided. You either have the wrong accession(s), or you need to provide a different "
                           f"database. Here is a list of the missing modules: {mod_str}")
 
-    subset = module_df.loc[HMI_module_list]['pathwise_module_completeness']
+    score_key = f"{strategy}_module_completeness"
+    subset = module_df.loc[HMI_module_list][score_key]
 
     genome_score = subset.sum()
 
@@ -106,6 +107,12 @@ def main(args):
 
     run.info("Threshold for HMI/LMI classification", args.threshold)
 
+    # select which type of completeness score to use
+    strategy = 'pathwise'
+    if args.use_stepwise_completeness:
+        strategy = 'stepwise'
+    run.info("Score type", f"{strategy} completeness")
+
     # keep track of generated files so we know what to clean up at the end
     files_for_cleanup = []
 
@@ -128,12 +135,14 @@ def main(args):
 
 
 
-    genome_metabolic_independence_class, genome_metabolic_independence_score = get_metabolic_independence_estimates(metabolic_modules_file, HMI_mods, args.threshold)
+    genome_metabolic_independence_class, genome_metabolic_independence_score = get_metabolic_independence_estimates(metabolic_modules_file, HMI_mods,
+                                                                                                                    args.threshold, strategy=strategy)
 
     run.warning(None, header='CLASSIFICATION RESULT', lc='green')
     run.info('Metabolic independence', genome_metabolic_independence_class, mc='green')
     run.info('Threshold for classification', args.threshold)
     run.info('Genome score', f"{genome_metabolic_independence_score:.2f}")
+    run.info('Completeness metric used', f"{strategy}")
 
 
 
@@ -152,11 +161,14 @@ if __name__ == '__main__':
                 "such modules in the documentation of the tool (please see the link at the end of the help menu). But using this "
                 "parameter, you can provide a list of KEGG module accession numbers (one accession per line) to be used instead.")
     groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir', {'help': "By default, anvi'o will try to use the "
-                "default KEGG data on your computer (if you have it setup already). Alternatively, you can use this paramter to "
+                "default KEGG data on your computer (if you have it setup already). Alternatively, you can use this parameter to "
                 "point the path that contains a MODULES.db that holds the HMI module data."}))
     groupE.add_argument('--threshold', metavar='INT', type=int, help="Genomes with a score over this threshold will be classified "
                 "as HMI. Must be an integer. The default value reflects our findings based on known HMI/LMI genomes. Please see the docs for "
                 "more information on this.", default=20)
+    groupE.add_argument('--use-stepwise-completeness', default=False, action='store_true', help="Pass this flag if you want stepwise "
+                        "completeness scores to be used for the calculation rather than pathwise completeness. Confused about what these are? "
+                        "Please see the help page for anvi-estimate-metabolism: https://anvio.org/help/main/programs/anvi-estimate-metabolism")
 
     groupO = parser.add_argument_group('OPTIONAL THINGIES', "We are not sure if increasing the number of threads will help at this "
                                                             "time. But you can try.")
