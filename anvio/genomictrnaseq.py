@@ -2296,8 +2296,12 @@ class Affinitizer:
         # coverages in each tRNA-seq sample.
         trna_gene_hits_df = trna_gene_hits_df.set_index(
             ['seed_gene_callers_id', 'seed_contig_name'])
-        isoacceptors_df = trna_gene_hits_df.groupby(
-            ['genome_name', 'decoded_amino_acid', 'anticodon', 'trnaseq_sample_name'],
+        isoacceptors_df = trna_gene_hits_df.groupby([
+            'genome_name',
+            'decoded_amino_acid',
+            'anticodon',
+            'effective_wobble_nucleotide',
+            'trnaseq_sample_name'],
             as_index=False).aggregate('sum')
 
         ##################################################
