@@ -1738,18 +1738,18 @@ if __name__ == '__main__':
     group1E.add_argument(
         '--save-sample-trees', default=False, action='store_true',
         help="Write Newick-formatted trees of hierarchically clustered tRNA-seq sample affinities. "
-             "Trees are generated per combination of genome, function source (unless using the "
-             "flags, `--compare-all-function-sources` or `--gene-affinity`), and affinity "
-             "normalization method. For example, there can be separate trees generated for the "
-             "same genome from raw affinities and magnitude-min-max normalized affinities of KOfam "
-             "and Pfam functions. Output paths are derived from the provided `--output-file` "
+             "Trees are generated per combination of genome, function source (unless using either "
+             "of the flags, `--compare-all-function-sources` or `--gene-affinity`), and affinity "
+             "normalization method. For example, there can be four separate trees generated for "
+             "the same genome from raw affinities and magnitude-min-max normalized affinities of "
+             "KOfam and Pfam functions. Output paths are derived from the provided `--output-file` "
              "template. The extension is replaced by '-SAMPLES.nwk'. The genome name, function "
-             "source, if applicable, and normalization method, if applicable (raw affinities will "
-             "not be marked as raw, unlike normalized affinities), are added before the extension "
+             "source (if applicable), and normalization method (if applicable: raw affinities are "
+             "not marked as raw, unlike normalized affinities), are added before the extension "
              "following hyphens. In plot output, these trees are displayed as x-axis dendrograms "
              "of samples. Importantly, note that sample clustering is based on the affinities of "
              "select functions or genes, including those filtered for plotting by "
-             "`--n-highest-affinity` and `--n-lowest-affinity` ")
+             "`--n-highest-affinity` and `--n-lowest-affinity`.")
 
     group1F = parser.add_argument_group(
         'PLOTS',
