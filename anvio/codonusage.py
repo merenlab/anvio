@@ -2615,10 +2615,10 @@ def write_split_codon_output(codon_frequency_df,
         template_output_path_message = ("The table of codon frequencies could not be written to "
                                         f"`output_path`, '{output_path}'.")
     if invalid_derived_output_paths:
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
         derived_output_paths_message = (
             "Tables of codon frequencies could not be written to the following derived target "
-            "paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}.")
+            f"paths: {paths_string}.")
     else:
         derived_output_paths_message = ""
     if invalid_derived_output_paths or not is_given_output_path_valid:

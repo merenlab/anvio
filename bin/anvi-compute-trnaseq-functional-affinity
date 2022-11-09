@@ -751,9 +751,10 @@ def write_affinity_tables(args, affinities_dict):
             "The table of raw affinities could not be written to `--output-path`, "
             f"'{args.output_path}'.")
     if invalid_derived_output_paths:
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
         derived_output_paths_message = (
             "Tables of affinities could not be written to the following derived target paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
+            f"{paths_string}")
     else:
         derived_output_paths_message = ""
     if invalid_derived_output_paths or not is_given_output_path_valid:
@@ -1058,10 +1059,10 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
     if invalid_derived_output_paths:
         for derived_output_path in valid_derived_output_paths:
             os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
         raise ConfigError(
             "The following tables of codon frequencies could not be written to the following "
-            "derived target paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
+            f"derived target paths: {paths_string}")
 
     run.info.single("Saved codon frequencies")
     for valid_derived_output_path in valid_derived_output_paths:
@@ -1555,11 +1556,11 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 figure.savefig(derived_output_path, bbox_inches=True, dpi=image_dpi)
 
     if invalid_derived_output_paths:
-        raise ConfigError(
-            "Plots could not be written to the following derived target paths: "
-            f"{', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])}")
         for derived_output_path in valid_derived_output_paths:
             os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            f"Plots could not be written to the following derived target paths: {paths_string}")
 
     run.info_single("Saved plots")
     for valid_derived_output_path in valid_derived_output_paths:
