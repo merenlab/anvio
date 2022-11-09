@@ -2315,19 +2315,22 @@ class Affinitizer:
                 ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
             isoacceptors_df = isoacceptors_df.drop('effective_wobble_nucleotide', axis=1)
 
-        # Drop isoacceptors with zero coverage (absent) in the reference sample, preventing the
-        # isoacceptors from contributing to affinity.
+        # Drop isoacceptors without data for the reference sample. Development note: It now looks
+        # like the reference sample will always have an entry for the isoacceptor in the genome,
+        # even with zero coverage, and therefore this filter is redundant with the next minimum
+        # coverage threshold filter. I am conservatively retaining it in case I'm missing something,
+        # since I now don't know why I decided to include this filter in the first place.
         isoacceptors_df = isoacceptors_df.groupby(
             ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
-                 lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
-                     'trnaseq_sample_name'])
+                lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
+                    'trnaseq_sample_name'].values)
 
         # Drop isoacceptors that do not meet the minimum coverage threshold in the reference sample.
         isoacceptors_df = isoacceptors_df.groupby(
             ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
-                 lambda genome_isoacceptor_df: genome_isoacceptor_df[
-                     genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
-                         'discriminator_1'] >= self.min_coverage)
+                lambda genome_isoacceptor_df: genome_isoacceptor_df[
+                    genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
+                        'discriminator_1'] >= self.min_coverage)
 
         # Drop isoacceptors that have coverage in only one sample, preventing the isoacceptors from
         # contributing to affinity.
