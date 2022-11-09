@@ -1383,7 +1383,7 @@ class Affinitizer:
         [0.9999, 0.28, 1, 0],
         [0.89, 1, 1, 1]],
         index=['A', 'C', 'G', 'T', 'I', 'L'],
-        columns=['A', 'C', 'G', 'T', 'I', 'L'])
+        columns=['A', 'C', 'G', 'T'])
 
     recognized_anticodon_wobble_modifications = ['I', 'L']
 
