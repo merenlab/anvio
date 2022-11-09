@@ -1596,15 +1596,6 @@ class Affinitizer:
                 "Names must be unique to internal and external genomes, but the following were "
                 f"not: {', '.join(nonunique_genome_names)}")
 
-        # Create a convenient dictionary to look up genome name from unique genome information.
-        self.genome_name_dict = {}
-        for genome_name, genome_info in self.genome_info_dict.items():
-            self.genome_name_dict[(
-                genome_info['contigs_db_info'].hash,
-                genome_info['profile_db_sample_id'],
-                genome_info['collection_name'],
-                genome_name['bin_id'])] = genome_name
-
         if do_sanity_check:
             # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
