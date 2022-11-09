@@ -2458,7 +2458,7 @@ class Affinitizer:
                 function_min_codons=self.function_min_total_codons,
                 drop_amino_acids=self.exclude_amino_acids)
             # Match single- and multi-genome table formats by adding genome name to the index.
-            new_index_cols = codon_frequency_df.index.names
+            new_index_cols = ['genome_name'] + codon_frequency_df.index.names
             codon_frequency_df = codon_frequency_df.reset_index()
             codon_frequency_df['genome_name'] = list(self.genome_info_dict)[0]
             codon_frequency_df = codon_frequency_df.set_index(new_index_cols)
