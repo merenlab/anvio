@@ -1897,7 +1897,7 @@ class Affinitizer:
         missing_function_source_genome_dict = {
             function_source: [] for function_source in function_sources}
         for genome_name, genome_info in self.genome_info_dict.items():
-            genome_function_sources = genome_info.get_self_table()[
+            genome_function_sources = genome_info['contigs_db_info'].get_self_table()[
                 'gene_function_sources'].split(',')
             for function_source in function_sources:
                 if function_source in genome_function_sources:
