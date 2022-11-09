@@ -2152,8 +2152,7 @@ class Affinitizer:
             effective_wobble_nucleotides.append(anticodon[0])
 
         trna_gene_hits_df['effective_wobble_nucleotide'] = effective_wobble_nucleotides
-        trna_gene_hits_df = trna_gene_hits_df.drop(
-            ['gene_sequence', 'seed_anticodon_wobble_nucleotide'], axis=1)
+        trna_gene_hits_df = trna_gene_hits_df.drop('seed_anticodon_wobble_nucleotide', axis=1)
         ##################################################
 
         # No more data is loaded from the tRNA-seq contigs database.
