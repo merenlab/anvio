@@ -1962,10 +1962,12 @@ class Affinitizer:
                 "The following modified anticodons are unrecognized and cannot be excluded from "
                 f"affinity calculations: {', '.join(unrecognized_modified_anticodons)}")
 
-        unrecognized_codons = set(self.exclude_codons).difference(constants.codons)
+        unrecognized_codons = set(self.exclude_codons).difference(
+            constants.codons) if self.exclude_codons else []
         if unrecognized_codons:
-            raise ConfigError("Unrecognized codons were provided to `exclude_codons`: "
-                              f"{', '.join(unrecognized_codons)}")
+            raise ConfigError(
+                "Unrecognized codons were provided to `exclude_codons`: "
+                f"{', '.join(unrecognized_codons)}")
 
         unrecognized_amino_acids = set(self.exclude_amino_acids).difference(constants.amino_acids)
         if unrecognized_amino_acids:
