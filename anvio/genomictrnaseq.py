@@ -1942,7 +1942,7 @@ class Affinitizer:
                 "implementation.")
 
         unrecognized_unmodified_anticodons = set(self.exclude_unmodified_anticodons).difference(
-            constants.anticodon_to_AA)
+            constants.anticodon_to_AA) if self.exclude_unmodified_anticodons else []
         if unrecognized_unmodified_anticodons:
             raise ConfigError(
                 "The following unmodified anticodons are unrecognized and cannot be excluded from "
