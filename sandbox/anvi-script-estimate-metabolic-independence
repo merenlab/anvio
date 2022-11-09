@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
     groupE = parser.add_argument_group('OPTIONAL INPUTS', "To go beyond what is default.")
     groupE.add_argument('--module-list', metavar='FILE', help="By default, this script will try to determine whether your genome "
-                "represents an HMI or LMI organisms based on the sum of the completeness scores of each metabolic "
+                "represents an HMI or LMI organism based on the sum of the completeness scores of each metabolic "
                 "module we have previously identified as predictors of metabolic independence status. You can find the list of "
                 "such modules in the documentation of the tool (please see the link at the end of the help menu). But using this "
                 "parameter, you can provide a list of KEGG module accession numbers (one accession per line) to be used instead.")
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                 "default KEGG data on your computer (if you have it setup already). Alternatively, you can use this paramter to "
                 "point the path that contains a MODULES.db that holds the HMI module data."}))
     groupE.add_argument('--threshold', metavar='INT', type=int, help="Genomes with a score over this threshold will be classified "
-                "as HMI. Must be an integer. The default value reflects our findings based on the gneomes. Please see the docs for "
+                "as HMI. Must be an integer. The default value reflects our findings based on known HMI/LMI genomes. Please see the docs for "
                 "more information on this.", default=20)
 
     groupO = parser.add_argument_group('OPTIONAL THINGIES', "We are not sure if increasing the number of threads will help at this "
