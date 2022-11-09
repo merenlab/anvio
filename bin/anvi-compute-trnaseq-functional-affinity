@@ -185,13 +185,12 @@ def sanity_check(args):
          args.select_samples_txt or
          args.plot_codon_file or
          args.plot_codon_tree_file or
-         args.plot_sample_file or
          args.plot_sample_tree_file) and
          not (args.plot and args.plot_affinity_file)):
         raise ConfigError(
             " `--no-codon-dendrogram`, `--plot-sample-dendrogram`, `--select-samples-txt`, "
-            "`--plot-codon-file`, `--plot-codon-tree-file`, `--plot-sample-file`, and "
-            "`--plot-sample-tree-file` must be used with `--plot`.")
+            "`--plot-codon-file`, `--plot-codon-tree-file`, and `--plot-sample-tree-file` must be "
+            "used with `--plot`.")
 
     # Check arguments needed for computing affinities.
     if args.trnaseq_contigs_db is None:
