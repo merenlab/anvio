@@ -2388,7 +2388,7 @@ class Affinitizer:
                         # The isoacceptor is not detected in the reference sample, so the
                         # abundance ratio is infinite.
                         isoacceptor_abund_ratios_rows.append(
-                            genome_id + decoding_key + (trnaseq_sample_name, np.nan))
+                            (genome_id, ) + decoding_key + (trnaseq_sample_name, np.nan))
                         continue
                     reference_abundance = reference_isoacceptor_series[
                         'relative_discriminator_coverage']
@@ -2396,7 +2396,7 @@ class Affinitizer:
                     isoacceptor_abundance_ratio = \
                         row.relative_discriminator_coverage / reference_abundance
                     isoacceptor_abund_ratios_rows.append(
-                        genome_id +
+                        (genome_id, ) +
                         decoding_key +
                         (trnaseq_sample_name, isoacceptor_abundance_ratio))
         isoacceptor_abund_ratios_df = pd.DataFrame(
