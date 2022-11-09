@@ -95,9 +95,9 @@ def run_helper_modes(args):
         write_default_decoding_weights(args.get_default_decoding_weights)
         return True
 
-    if args.get_annotation_blacklist:
-        write_annotation_blacklist(
-            args.get_annotation_blacklist[0], args.get_annotation_blacklist[1])
+    if args.get_function_blacklist:
+        write_function_blacklist(
+            args.get_function_blacklist[0], args.get_function_blacklist[1])
         return True
 
     return False
@@ -122,17 +122,20 @@ def write_default_decoding_weights(output_path):
     run.info("Default decoding weights file", output_path)
 
 
-def write_annotation_blacklist(output_path, blacklist_name):
+def write_function_blacklist(output_path, blacklist_name):
     filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
     if blacklist_name not in genomictrnaseq.Affinitizer.builtin_function_blacklists:
         raise ConfigError(
             f"An unrecognized built-in blacklist, {blacklist_name}, was provided. Here are the "
             "available options: "
             f"{', '.join(genomictrnaseq.Affinitizer.builtin_function_blacklists)}")
-    with open(output_path) as output_file:
+
+    with open(output_path, 'w') as output_file:
         for blacklist_pattern in genomictrnaseq.Affinitizer.builtin_function_blacklists[
             blacklist_name]:
             output_file.write(f"{blacklist_pattern}\n")
+
+    run.info("Function blacklist file", output_path)
 
 
 def sanity_check(args):
