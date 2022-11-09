@@ -1366,6 +1366,7 @@ class Affinitizer:
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
+        self.bin_ids_path = A('bin_ids_file')
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
@@ -1442,18 +1443,63 @@ class Affinitizer:
         # also have been provided, which is checked later in `sanity_check`.
         if self.genomic_contigs_db_path:
             contigs_db_info = DBInfo(self.genomic_contigs_db_path, expecting='contigs')
-            self.genome_info_dict[contigs_db_info.project_name] = genome_info = {}
+        else:
+            contigs_db_info = None
+        if self.genomic_profile_db_path:
+            profile_db_info = DBInfo(self.genomic_profile_db_path, expecting='profile')
+            profile_db_sample_id = profile_db_info.get_self_table()['sample_id']
+        else:
+            profile_db_info = None
+            profile_db_sample_id = None
+        if self.bin_ids_path:
+            filesnpaths.is_file_plain_text(self.bin_ids_path)
+            bin_ids = []
+            with open(self.bin_ids_path) as bin_ids_file:
+                for line in bin_ids_file:
+                    bin_ids.append(line.rstrip())
+        else:
+            bin_ids = None
+
+        if self.bin_id:
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            collect.is_bin_in_collection(bin_id)
+            self.genome_info_dict[bin_id] = genome_info = {}
             genome_info['contigs_db_info'] = contigs_db_info
-            if self.genomic_profile_db_path:
-                genome_info['profile_db_info'] = DBInfo(
-                    self.genomic_profile_db_path, expecting='profile')
-                genome_info['profile_db_sample_id'] = genome_info[
-                    'profile_db_info'].get_self_table()['sample_id']
-            else:
-                genome_info['profile_db_info'] = None
-                genome_info['profile_db_sample_id'] = None
+            genome_info['profile_db_info'] = profile_db_info
+            genome_info['profile_db_sample_id'] = profile_db_sample_id
             genome_info['collection_name'] = self.collection_name
             genome_info['bin_id'] = self.bin_id
+        elif self.bin_ids_path:
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            for bin_id in bin_ids:
+                collect.is_bin_in_collection(bin_id)
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db_info'] = contigs_db_info
+                genome_info['profile_db_info'] = profile_db_info
+                genome_info['profile_db_sample_id'] = profile_db_sample_id
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+        elif self.collection_name:
+            # There is a collection of internal genomes.
+            collect = ccollections.Collections()
+            collect.populate_collections_dict(self.genomic_profile_db_path)
+            for bin_id in collect.get_bins_info_dict():
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db_info'] = contigs_db_info
+                genome_info['profile_db_info'] = profile_db_info
+                genome_info['profile_db_sample_id'] = profile_db_sample_id
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+        elif self.genomic_contigs_db_path:
+            # The contigs database represents a genome, like an external genome.
+            self.genome_info_dict[contigs_db_info.project_name] = genome_info = {}
+            genome_info['contigs_db_info'] = contigs_db_info
+            genome_info['profile_db_info'] = None
+            genome_info['profile_db_sample_id'] = None
+            genome_info['collection_name'] = None
+            genome_info['bin_id'] = None
 
         nonunique_genome_names = []
         if self.internal_genomes_path or self.external_genomes_path:
