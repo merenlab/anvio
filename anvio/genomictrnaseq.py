@@ -1949,13 +1949,14 @@ class Affinitizer:
                 f"affinity calculations: {', '.join(unrecognized_unmodified_anticodons)}")
 
         unrecognized_modified_anticodons = []
-        for modified_anticodon in self.exclude_modified_anticodons:
-            if modified_anticodon[0] not in self.recognized_anticodon_wobble_modifications:
-                unrecognized_modified_anticodons.append(modified_anticodon)
-                continue
-            if (modified_anticodon[1] not in constants.unambiguous_nucleotides or
-                modified_anticodon[2] not in constants.unambiguous_nucleotides):
-                unrecognized_modified_anticodons.append(modified_anticodon)
+        if self.exclude_modified_anticodons:
+            for modified_anticodon in self.exclude_modified_anticodons:
+                if modified_anticodon[0] not in self.recognized_anticodon_wobble_modifications:
+                    unrecognized_modified_anticodons.append(modified_anticodon)
+                    continue
+                if (modified_anticodon[1] not in constants.unambiguous_nucleotides or
+                    modified_anticodon[2] not in constants.unambiguous_nucleotides):
+                    unrecognized_modified_anticodons.append(modified_anticodon)
         if unrecognized_modified_anticodons:
             raise ConfigError(
                 "The following modified anticodons are unrecognized and cannot be excluded from "
