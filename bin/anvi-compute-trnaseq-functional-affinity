@@ -139,6 +139,8 @@ def sanity_check(args):
     """Check for valid combinations of arguments."""
     if not args.output_file:
         raise ConfigError("An argument is required for `--output-file`.")
+    if not args.seeds_specific_txt:
+        raise ConfigError("An argument is required for `--seeds-specific-txt`.")
 
     clustering.is_distance_metric_OK(args.codon_distance_metric)
     clustering.is_linkage_method_OK(args.codon_linkage_method)
