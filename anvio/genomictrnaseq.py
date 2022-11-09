@@ -2442,6 +2442,8 @@ class Affinitizer:
         args.function_sources = self.function_sources
         args.shared_function_sources = not self.lax_function_sources
         args.ignore_start_codons = True
+        # For now, tRNA-seq programs only support the standard genetic code.
+        args.codon_to_amino_acid = None
 
         if self.genomic_contigs_db_path:
             codon_usage = codonusage.SingleGenomeCodonUsage(
