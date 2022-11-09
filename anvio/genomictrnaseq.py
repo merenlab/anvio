@@ -2564,16 +2564,17 @@ class Affinitizer:
             sample_affinities_dict = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('nonreference_trnaseq_sample_name'):
-                # Take the dot product of the m function or gene x n isoacceptor matrix of
-                # isoacceptor weighted codon frequencies and the n x 1 matrix (Series) of
-                # non-reference/reference sample isoacceptor abundance ratios, yielding the affinity
-                # of the tRNA pool to each function or gene in the genome.
+                # Take the dot product of the matrix of isoacceptor weighted codon frequencies (m
+                # functions or genes x n isoacceptors) and the matrix of non-reference/reference
+                # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
+                # of the tRNA pool for each function or gene in the genome.
+
+                # `get_weighted_codon_frequencies` should ensure that every "effective" anticodon
+                # (including modified wobble nucleotide, if applicable) from the tRNA-seq data is
+                # represented in a column of the weighted codon frequencies table.
                 abund_ratios = sample_isoacceptor_abund_ratios_df[
                     ['effective_anticodon', 'abundance_ratio']].set_index('effective_anticodon')[
                         'abundance_ratio']
-                # Every "effective" anticodon (including modified wobble nucleotide, if applicable)
-                # from the tRNA-seq data should be represented by a column in the weighted codon
-                # frequencies table output by `get_weighted_codon_frequencies`.
                 sample_affinities_dict[trnaseq_sample_name] = \
                     genome_weighted_frequencies_df[abund_ratios.index].dot(abund_ratios)
 
