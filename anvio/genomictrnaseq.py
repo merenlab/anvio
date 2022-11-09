@@ -2187,7 +2187,7 @@ class Affinitizer:
         coverage_df = coverage_df.rename({'gene_callers_id': 'seed_gene_callers_id',
                                           'sample_name': 'trnaseq_sample_name'}, axis=1)
         # Select data for the samples of interest.
-        coverage_df = coverage_df[coverage_df['sample_name'].isin(self.sample_names)]
+        coverage_df = coverage_df[coverage_df['trnaseq_sample_name'].isin(self.sample_names)]
         # Select data for the seeds linked to tRNA genes.
         coverage_df = coverage_df[coverage_df['seed_gene_callers_id'].isin(
             trna_gene_hits_df['seed_gene_callers_id'].unique())]
