@@ -141,6 +141,9 @@ def write_annotation_blacklist(output_path, blacklist_name):
 
 def sanity_check(args):
     """Check for valid combinations of arguments."""
+    if not args.output_file:
+        raise ConfigError("An argument is required for `--output-file`.")
+
     clustering.is_distance_metric_OK(args.codon_distance_metric)
     clustering.is_linkage_method_OK(args.codon_linkage_method)
     clustering.is_distance_and_linkage_compatible(
@@ -1640,7 +1643,7 @@ if __name__ == '__main__':
         "their paths are likewise derived from the template path. If this program is only run to "
         "generate plots from existing data files rather than to write new files, then a plot can "
         "be stored at the output path, or plots are stored at paths derived from this template.")
-    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     group1D.add_argument(
         '--separate-genomes', default=False, action='store_true',
         help="Write separate affinity output files for each genome. The name of each genome/bin "
