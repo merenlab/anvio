@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+import json
+import anvio
+import anvio.terminal as terminal
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__authors__ = ['meren', 'metehan']
+__requires__ = ['contigs-db', 'profile-db']
+__description__ = ("The purpose of this program is to download the data in the JSON type file received from the user and run the desired commands.")
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+@terminal.time_program
+def main(args):
+    """ This function is get json file and parse it. Then run the given commands. """
+
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    json_file_path = A('json_file')
+
+    if not json_file_path:
+        raise ConfigError("You must provide a JSON file path.")
+
+    filesnpaths.is_file_json(json_file_path)
+
+    with open(json_file_path) as json_file:
+        json_data = json.load(json_file)
+
+    for command in json_data:
+        # Parse the command in json file
+        command_path = command['command']
+        command_args = command['args']
+
+        # Run the command 
+        command_args = [command_path] + command_args
+        command_args = ' '.join(command_args)
+        run.info('Running the command below:')
+        run.warning(command_args)
+
+        # Parse the command
+        parser = ArgumentParser(description=command_args)
+        parser.add_argument(command_path, help="The command to run", default=command_path)
+        parser.add_argument('-p', '--profile-db', help="The profile database to use", default=command_args['profile-db'])
+        parser.add_argument('-C', '--contigs-db', help="The contigs database to use", default=command_args['contigs-db'])
+        parser.add_argument('-o', '--output-dir', help="The output directory to use", default=command_args['output-dir'])
+
+        # Run the command
+        args = parser.parse_args(command_args)
+        if args.profile_db:
+            filesnpaths.is_file_exists(args.profile_db)
+        if args.contigs_db:
+            filesnpaths.is_file_exists(args.contigs_db)
+        if args.output_dir:
+            filesnpaths.is_output_dir_writable(args.output_dir)
+
+
+if __name__ == '__main__': 
+    """ This is the main function that is called when the program is run from the command line. """
+
+    parser = ArgumentParser(description=__description__)
+    parser.add_argument('-j', '--json', help='JSON file containing the commands to be run', required=True)
+
+    args = parser.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
