@@ -1867,7 +1867,7 @@ if __name__ == '__main__':
         "multiple higher-level categories.")
     group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
-        default=genomictrnaseq.Affinitizer.default_function_sources,
+        default=" ".join(genomictrnaseq.Affinitizer.default_function_sources),
         help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
              "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
              "any arguments, then every source will be considered.")
