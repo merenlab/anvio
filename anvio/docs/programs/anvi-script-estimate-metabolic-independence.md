@@ -83,9 +83,24 @@ If you wish to update the list of modules based on your own empirical data, you 
 
 The exact methods of estimating metabolism and computing enrichment are up to you, but note that this strategy only works if you already have genomes that you have manually identified as HMI or LMI.
 
-This may require adjusting the threshold for classification. Which can be done in a similar fashion, where you determine a cutoff that best separates your genomes in either groups. The plot below shows our two groups of genomes, good and poor colonizers. With the assumption that most of the good colonizers had HMI, and most of the poor colonizers had LMI, we plotted the overall completion of metabolic modules of interst, and selected a number that separates them:
+This may require adjusting the threshold for classification. Which can be done in a similar fashion, where you determine a cutoff that best separates your genomes in either groups. The plot below shows our two groups of genomes, good and poor colonizers. With the assumption that most of the good colonizers had HMI, and most of the poor colonizers had LMI, we plotted the overall completion of metabolic modules of interest, and selected a number that separates them:
 
 ![A plot of HMI scores for the good colonizer genomes and the poor colonizer genomes](../../images/FMT_HMI_score_plot.png)
 
 {:.notice}
 Since individual completeness scores have a maximum of 1 (for 100%% complete), the maximum value of the sum will be _n_, where _n_ is the number of metabolic pathways in your list. So you should be selecting a threshold between 0 and _n_, but most likely on the higher end of that range, since high metabolic independence is generally defined as _high_ completeness scores across the set of pathways). It will depend on your data, of course.
+
+## Other parameter options
+
+### Using stepwise completeness instead
+
+By default, this script relies on the pathwise completeness scores for each module in the input list. If you want to use stepwise completeness instead, simply add the `--use-stepwise-completeness` flag (you may also want to adjust the threshold value): 
+
+{{ codestart }}
+anvi-script-estimate-metabolic-independence -c %(contigs-db)s \
+                                            --module-list modules.txt \
+                                            --threshold 20 \
+                                            --use-stepwise-completeness
+{{ codestop }}
+
+Not sure what we're talking about here? You can learn about the differences between pathwise and stepwise metrics [on this page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#two-estimation-strategies---pathwise-and-stepwise).
