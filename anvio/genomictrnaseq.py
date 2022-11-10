@@ -2582,7 +2582,6 @@ class Affinitizer:
                     genome_relative_weighted_frequencies_df[abund_ratios.index].dot(abund_ratios)
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
-            genome_affinities_df['genome_name'] = genome_name
             genome_affinities_dfs.append(genome_affinities_df)
 
         if filtered_genome_names:
