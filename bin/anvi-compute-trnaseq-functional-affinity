@@ -432,6 +432,13 @@ def generate_affinities(args):
             "Affinity could not be calculated given the input data and/or filters applied to the "
             "data.")
 
+    if args.nonreference_samples:
+        # Ensure that results for samples are reported in the order provided.
+        ordered_nonreference_samples = list(tuple(zip(*sorted([
+            (args.nonreference_samples.index(nonreference_sample), nonreference_sample)
+            for nonreference_sample in affinities_df.columns])))[1])
+        affinities_df = affinities_df[ordered_nonreference_samples]
+
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
         affinities_dict[genome_name] = source_dict = {}
