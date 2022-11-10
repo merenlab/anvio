@@ -167,6 +167,7 @@ def sanity_check(args):
         args.gene_affinity = True
     if (args.gene_affinity and
         (args.function_sources or
+         args.all_brite_categories or
          args.function_accessions or
          args.function_names or
          args.select_functions_txt or
@@ -174,8 +175,14 @@ def sanity_check(args):
          args.function_blacklist_txt)):
         raise ConfigError(
             "`--gene-affinity` and `--gene-caller-ids` cannot be used with function options: "
-            "`--function-sources`, `--function-accessions`, `--function-names`, "
-            "`--select-functions-txt`, `--lax-function-sources`, and `--function-blacklist-txt`.")
+            "`--function-sources`, `--all-brite-categories`, `--function-accessions`, "
+            "`--function-names`, `--select-functions-txt`, `--lax-function-sources`, and "
+            "`--function-blacklist-txt`.")
+
+    if args.all_brite_categories and 'KEGG_BRITE' not in args.function_sources:
+        raise ConfigError(
+            "`--all-brite-categories` requires that 'KEGG_BRITE' be an argument of "
+            "`--function-sources`.")
 
     if args.plot_affinity_file:
         sanity_check_plot_affinity_file(args)
