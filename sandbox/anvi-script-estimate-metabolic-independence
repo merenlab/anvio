@@ -100,10 +100,10 @@ def main(args):
 
     # make sure the threshold makes sense
     try:
-        int(args.threshold)
+        float(args.threshold)
         assert(args.threshold > 0)
     except:
-        raise ConfigError(f"The threshold value must be a positive integer. '{args.threshold}' doesn't look like it.")
+        raise ConfigError(f"The threshold value must be a positive number. '{args.threshold}' doesn't look like it.")
 
     run.info("Threshold for HMI/LMI classification", args.threshold)
 
@@ -163,8 +163,8 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir', {'help': "By default, anvi'o will try to use the "
                 "default KEGG data on your computer (if you have it setup already). Alternatively, you can use this parameter to "
                 "point the path that contains a MODULES.db that holds the HMI module data."}))
-    groupE.add_argument('--threshold', metavar='INT', type=int, help="Genomes with a score over this threshold will be classified "
-                "as HMI. Must be an integer. The default value reflects our findings based on known HMI/LMI genomes. Please see the docs for "
+    groupE.add_argument('--threshold', metavar='NUM', type=float, help="Genomes with a score over this threshold will be classified "
+                "as HMI. Must be a positive number. The default value reflects our findings based on known HMI/LMI genomes. Please see the docs for "
                 "more information on this.", default=20)
     groupE.add_argument('--use-stepwise-completeness', default=False, action='store_true', help="Pass this flag if you want stepwise "
                         "completeness scores to be used for the calculation rather than pathwise completeness. Confused about what these are? "
