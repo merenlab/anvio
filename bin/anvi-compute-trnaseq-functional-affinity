@@ -166,7 +166,7 @@ def sanity_check(args):
     if args.gene_caller_ids and not args.gene_affinity:
         args.gene_affinity = True
     if (args.gene_affinity and
-        (args.function_source or
+        (args.function_sources or
          args.function_accessions or
          args.function_names or
          args.select_functions_txt or
