@@ -166,7 +166,8 @@ def sanity_check(args):
     if args.gene_caller_ids and not args.gene_affinity:
         args.gene_affinity = True
     if (args.gene_affinity and
-        (args.function_sources or
+        (args.unlabel_function_accession_source or
+         args.function_sources or
          args.all_brite_categories or
          args.function_accessions or
          args.function_names or
@@ -175,9 +176,9 @@ def sanity_check(args):
          args.function_blacklist_txt)):
         raise ConfigError(
             "`--gene-affinity` and `--gene-caller-ids` cannot be used with function options: "
-            "`--function-sources`, `--all-brite-categories`, `--function-accessions`, "
-            "`--function-names`, `--select-functions-txt`, `--lax-function-sources`, and "
-            "`--function-blacklist-txt`.")
+            "`--unlabel-function-accession-source`, `--function-sources`, "
+            "`--all-brite-categories`, `--function-accessions`, `--function-names`, "
+            "`--select-functions-txt`, `--lax-function-sources`, and `--function-blacklist-txt`.")
 
     if args.all_brite_categories and 'KEGG_BRITE' not in args.function_sources:
         raise ConfigError(
@@ -188,7 +189,8 @@ def sanity_check(args):
         sanity_check_plot_affinity_file(args)
         return
 
-    if ((args.no_codon_dendrogram or
+    if ((args.unlabel_function_accession_source or
+         args.no_codon_dendrogram or
          args.plot_sample_dendrogram or
          args.select_samples_txt or
          args.plot_codon_file or
@@ -196,9 +198,9 @@ def sanity_check(args):
          args.plot_sample_tree_file) and
          not (args.plot and args.plot_affinity_file)):
         raise ConfigError(
-            " `--no-codon-dendrogram`, `--plot-sample-dendrogram`, `--select-samples-txt`, "
-            "`--plot-codon-file`, `--plot-codon-tree-file`, and `--plot-sample-tree-file` must be "
-            "used with `--plot`.")
+            "`--unlabel-function-accession-source`, `--no-codon-dendrogram`, "
+            "`--plot-sample-dendrogram`, `--select-samples-txt`, `--plot-codon-file`, "
+            "`--plot-codon-tree-file`, and `--plot-sample-tree-file` must be used with `--plot`.")
 
     # Check arguments needed for computing affinities.
     if args.trnaseq_contigs_db is None:
