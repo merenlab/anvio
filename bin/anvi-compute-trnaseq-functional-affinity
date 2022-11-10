@@ -572,7 +572,7 @@ def write_affinity_tables(args, affinities_dict):
     if args.no_raw_affinity and not args.normalization_methods:
         run.warning(
             "No affinity output tables were stored. The flag, `--no-raw-affinity`, was used "
-            "without `--normalization-methods`, so neither raw nor normalized affinities were "
+            "without `--normalize-affinity`, so neither raw nor normalized affinities were "
             "written.")
         return
 
