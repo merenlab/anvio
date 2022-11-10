@@ -1813,6 +1813,10 @@ if __name__ == '__main__':
              "affinity, the functions with the highest and lowest unnormalized affinities are "
              "displayed.")
     group1F.add_argument(
+        '--unlabel-function-accession-source', default=False, action='store_true',
+        help="Do not include function accession or annotation source in the labels of the y-axis "
+             "codon frequency dendrogram.")
+    group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
         help="Remove the y-axis dendrogram clustering functions or genes by their general codon "
              "composition.")
