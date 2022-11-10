@@ -1818,7 +1818,7 @@ if __name__ == '__main__':
              "displayed.")
     group1F.add_argument(
         '--unlabel-function-accession-source', default=False, action='store_true',
-        help="Do not include function accession or annotation source in the labels of the y-axis "
+        help="Do not include function accessions or annotation source in the labels of the y-axis "
              "codon frequency dendrogram.")
     group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
@@ -1886,9 +1886,10 @@ if __name__ == '__main__':
         help="If using KEGG BRITE as a function source, treat every hierarchy level as a separate "
              "function. For example, \"KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate "
              "metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" is treated as "
-             "\"Glycolysis / Gluconeogenesis\" by default, and higher levels of the hierarchy are "
-             "ignored. With this flag, higher categories are also reported as functions: "
-             "\"Carbohydrate metabolism\", \"Metabolism\", and \"KEGG Orthology\".")
+             "\"00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" by default, and higher levels "
+             "of the hierarchy are ignored. With this flag, higher categories are also reported as "
+             "functions: \"09101 Carbohydrate metabolism\", \"09100 Metabolism\", and \"KEGG "
+             "Orthology (KO)\".")
     group1G.add_argument(
         '--function-accessions', nargs='+', type=str,
         help="Calculate affinity for select functions with these accessions from the source "
