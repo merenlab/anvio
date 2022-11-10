@@ -357,6 +357,15 @@ if __name__ == '__main__':
              "subsetted to those annotated by the provided sources. If `--function-sources` is "
              "used as a flag without any arguments, then every source will be considered.")
     groupD.add_argument(
+        '--all-brite-categories', default=False, action='store_true',
+        help="If using KEGG BRITE as a function source, treat every hierarchy level as a separate "
+             "function. For example, \"KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate "
+             "metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" is treated as "
+             "\"00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\" by default, and higher levels "
+             "of the hierarchy are ignored. With this flag, higher categories are also reported as "
+             "functions: \"09101 Carbohydrate metabolism\", \"09100 Metabolism\", and \"KEGG "
+             "Orthology (KO)\".")
+    groupD.add_argument(
         '--function-accessions', nargs='+',
         help="Return frequencies for functions with these accessions from the source provided in "
              "`--function-sources`. To get accessions from multiple sources, instead use "
