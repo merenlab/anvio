@@ -1814,8 +1814,8 @@ if __name__ == '__main__':
              "displayed.")
     group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
-        help="This flag removes the dendrogram clustering functions or genes by their general "
-             "codon composition.")
+        help="Remove the y-axis dendrogram clustering functions or genes by their general codon "
+             "composition.")
     group1F.add_argument(
         '--plot-sample-dendrogram', default=False, action='store_true',
         help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
