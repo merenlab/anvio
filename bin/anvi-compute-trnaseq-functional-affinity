@@ -1858,13 +1858,15 @@ if __name__ == '__main__':
     group1G = parser.add_argument_group(
         'FUNCTIONS',
         "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
-        "in which case, the term \"gene affinity\" should be used instead. Functions from multiple "
-        "sources can be compared at once. This program makes no effort to avoid redundancy in the "
-        "genes or functions that are analyzed: for example, if KEGG BRITE hierarchy categories are "
-        "analyzed, the same gene can occur in multiple KEGG KOfams that define the categories and "
-        "in multiple categories; the same KOfam can occur in multiple categories; and, since the "
-        "categories are nested hierarchically, the same lower-level category can be encompassed by "
-        "multiple higher-level categories.")
+        "in which case, the term \"gene affinity\" should be used instead. By default, functional "
+        "affinity is computed for the most specific categories in KEGG BRITE hierarchies. For "
+        "example, the category \"Glycolysis / Gluconeogenesis\" is the reported name of \"KEGG "
+        "Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / "
+        "Gluconeogenesis [PATH:ko00010]\" and represents genes annotated by KEGG KOfams assigned "
+        "to this functional category. Functions from multiple sources can be compared at once. "
+        "This program makes no effort to avoid redundancy in the genes or functions that are "
+        "analyzed. Genes can occur in multiple KEGG KOfams, KEGG BRITE categories, or independent "
+        "sources, such as Pfam.")
     group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
         default=" ".join(genomictrnaseq.Affinitizer.default_function_sources),
