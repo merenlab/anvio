@@ -61,6 +61,7 @@ def main(args):
         return
 
     sanity_check(args)
+    args.normalization_methods = args.normalize_affinity if args.normalize_affinity else []
     # Add an argument the opposite of `no_codon_dendrogram`.
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
