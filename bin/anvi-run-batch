@@ -5,6 +5,7 @@ import sys
 import json
 import anvio
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 
@@ -31,38 +32,20 @@ def main(args):
     if not json_file_path:
         raise ConfigError("You must provide a JSON file path.")
 
-    filesnpaths.is_file_json(json_file_path)
+    filesnpaths.is_file_json_formatted(json_file_path)
 
     with open(json_file_path) as json_file:
         json_data = json.load(json_file)
 
-    for command in json_data:
-        # Parse the command in json file
-        command_path = command['command']
-        command_args = command['args']
+    # Parse the command in json file
+    command_path = json_data['command']
+    command_args = json_data['args']
 
-        # Run the command 
-        command_args = [command_path] + command_args
-        command_args = ' '.join(command_args)
-        run.info('Running the command below:')
-        run.warning(command_args)
-
-        # Parse the command
-        parser = ArgumentParser(description=command_args)
-        parser.add_argument(command_path, help="The command to run", default=command_path)
-        parser.add_argument('-p', '--profile-db', help="The profile database to use", default=command_args['profile-db'])
-        parser.add_argument('-C', '--contigs-db', help="The contigs database to use", default=command_args['contigs-db'])
-        parser.add_argument('-o', '--output-dir', help="The output directory to use", default=command_args['output-dir'])
-
-        # Run the command
-        args = parser.parse_args(command_args)
-        if args.profile_db:
-            filesnpaths.is_file_exists(args.profile_db)
-        if args.contigs_db:
-            filesnpaths.is_file_exists(args.contigs_db)
-        if args.output_dir:
-            filesnpaths.is_output_dir_writable(args.output_dir)
-
+    # Run the command with given arguments
+    command_run = command_path + ' ' + command_args[0] + ' ' + command_args[1]
+    run.info('Running the command below:')
+    run.warning(command_run)
+        
 
 if __name__ == '__main__': 
     """ This is the main function that is called when the program is run from the command line. """
