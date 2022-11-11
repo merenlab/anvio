@@ -547,6 +547,8 @@ User-defined metabolic modules must specify the annotation source(s) needed to f
 
 We currently have two ways of estimating the completeness of a module, which differ in how we decompose the module DEFINITION string into smaller parts.
 
+![A comparison of the pathwise and stepwise strategies](../../images/pathwise_vs_stepwise.png)
+
 For the 'pathwise' strategy, we consider all possible 'paths' through the module - each alternative set of enzymes that could be used together to catalyze every reaction in the metabolic pathway. After calculating the percent completeness in all possible paths, we take the maximum completeness to be the pathwise completeness score of the module as a whole. This is the most granular way of estimating module completeness because we consider all the possible alternatives.
 
 For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents one metabolic reaction in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
