@@ -85,6 +85,7 @@ class SingleGenomeCodonUsage(object):
             self.gene_caller_ids_of_interest = set()
 
         self.function_sources = A('function_sources')
+        self.all_brite_categories = A('all_brite_categories')
 
         self.ignore_start_codons = A('ignore_start_codons')
         if self.ignore_start_codons is None:
@@ -170,6 +171,12 @@ class SingleGenomeCodonUsage(object):
                     "The value of `args.function_sources` is an empty list, indicating that all "
                     "function sources in the genome should by loaded. However, the contigs "
                     "database has not been annotated by any sources :/")
+
+        if self.all_brite_categories and 'KEGG_BRITE' not in self.function_sources:
+            raise ConfigError(
+                "`all_brite_categories` can only be used with 'KEGG_BRITE' as as a function "
+                "annotation source.")
+
         gene_function_rows = []
         for gene_caller_id, annotation_dict in contigs_super.gene_function_calls_dict.items():
             for annotation_source, annotation in annotation_dict.items():
@@ -185,15 +192,22 @@ class SingleGenomeCodonUsage(object):
                     # separators.
                     for accession, name in zip(accessions, names):
                         if annotation_source == 'KEGG_BRITE':
-                            # Include every possible depth of categorization.
                             hierarchy_accession = accession
                             categorization = name
-                            split_categories = categorization.split('>>>')
-                            for depth in range(1, len(split_categories) + 1):
+                            if self.all_brite_categories:
+                                # Include every possible depth of categorization.
+                                split_categories = categorization.split('>>>')
+                                for depth in range(1, len(split_categories) + 1):
+                                    gene_function_rows.append(
+                                        [annotation_source,
+                                        hierarchy_accession,
+                                        '>>>'.join(split_categories[: depth]),
+                                        gene_caller_id])
+                            else:
                                 gene_function_rows.append(
                                     [annotation_source,
                                      hierarchy_accession,
-                                     '>>>'.join(split_categories[: depth]),
+                                     categorization,
                                      gene_caller_id])
                         else:
                             gene_function_rows.append(
@@ -203,15 +217,22 @@ class SingleGenomeCodonUsage(object):
                     # '!!!' separators. In COG20_PATHWAY, there can be multiple accessions
                     # corresponding to the same function name.
                     if annotation_source == 'KEGG_BRITE':
-                        # Include every possible depth of categorization.
                         hierarchy_accession = accession
                         categorization = name
-                        split_categories = categorization.split('>>>')
-                        for depth in range(1, len(split_categories) + 1):
+                        if self.all_brite_categories:
+                            # Include every possible depth of categorization.
+                            split_categories = categorization.split('>>>')
+                            for depth in range(1, len(split_categories) + 1):
+                                gene_function_rows.append(
+                                    [annotation_source,
+                                    hierarchy_accession,
+                                    '>>>'.join(split_categories[: depth]),
+                                    gene_caller_id])
+                        else:
                             gene_function_rows.append(
                                 [annotation_source,
                                  hierarchy_accession,
-                                 '>>>'.join(split_categories[: depth]),
+                                 categorization,
                                  gene_caller_id])
                     else:
                         gene_function_rows.append(
@@ -306,10 +327,7 @@ class SingleGenomeCodonUsage(object):
             the SingleGenomeCodonUsage object. When this argument is a string, select the source
             given by the string, e.g., 'KOfam', 'COG20_FUNCTION', 'Pfam'. When this argument is an
             iterable, select a subset of sources given by its strings, e.g., ['KOfam',
-            'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
-            `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
-            hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
-            general 'Ribosome' would each have rows in the output table. By default None.
+            'COG20_FUNCTION']. By default None.
         return_functions : bool, optional
             If True (default False), output frequency tables contain function rather than gene
             results in each row. Returning per-gene results when also considering functions by using
@@ -1408,10 +1426,7 @@ class SingleGenomeCodonUsage(object):
             sources in the SingleGenomeCodonUsage object. When this argument is a string, select the
             source given by the string, e.g., 'KOfam', 'COG20_FUNCTION', 'Pfam'. When this argument
             is an iterable, select a subset of sources given by its strings, e.g., ['KOfam',
-            'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
-            `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
-            hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
-            general 'Ribosome' would each have rows in the output table. By default None.
+            'COG20_FUNCTION']. By default None.
         gene_caller_ids : iterable, optional
             Genes with the given IDs are selected for calculation of CUB. This parameter can be
             used alongside `function_accessions` and `function_names`. By default None.
@@ -2202,6 +2217,7 @@ class MultiGenomeCodonUsage(object):
         self.external_genomes_path = A('external_genomes')
 
         self.function_sources = A('function_sources')
+        self.all_brite_categories = A('all_brite_categories')
         self.use_shared_function_sources = A('shared_function_sources')
         if self.use_shared_function_sources is None:
             self.use_shared_function_sources = False
@@ -2313,6 +2329,7 @@ class MultiGenomeCodonUsage(object):
         # The following information is common to all genomes regardless of input source.
         for genome_info in self.genome_info_dict.values():
             genome_info['function_sources'] = self.function_sources
+            genome_info['all_brite_categories'] = self.all_brite_categories
             genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
             genome_info['ignore_start_codons'] = self.args.ignore_start_codons
 
