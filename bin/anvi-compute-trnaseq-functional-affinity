@@ -540,14 +540,16 @@ def get_table_with_codon_tree_labels(args, df):
         labels = df['gene_callers_id'].tolist()
     else:
         labels = []
+        # For consistency, labels always end in parentheses. Empty parentheses are stripped upon
+        # plotting.
         if df['function_source'].nunique() == 1:
             # A single function source is considered.
             for accession, name in zip(df['function_accession'], df['function_name']):
                 # Function labels in the tree are formatted, "<function_name>
                 # (<function_accession>)", unless no function accession is available (e.g., for
-                # BRITE categories), in which case labels consist only of the function name.
+                # BRITE categories), in which case labels end in empty parentheses.
                 if accession == '':
-                    label_suffix = ""
+                    label_suffix = f" ()"
                 else:
                     label_suffix = f" ({accession})"
                 labels.append(name + label_suffix)
