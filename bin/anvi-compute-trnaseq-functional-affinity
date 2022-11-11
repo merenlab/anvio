@@ -1535,10 +1535,13 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     continue
                 valid_derived_output_paths.append(derived_output_path)
 
-                # The function/gene labels of the affinity table should correspond to the numerical
-                # index of the codon frequency linkage object.
-                heatmap_df = subset_affinities_df.droplevel(
-                    [i for i in subset_affinities_df.index.names if i != 'label'])
+                plot_labels = get_plot_labels(args, subset_affinities_df)
+
+                # The function/gene labels of the affinity table should, if everything works
+                # correctly, correspond to the numerical index of the codon frequency linkage
+                # object.
+                heatmap_df = subset_affinities_df.reset_index(drop=True)
+                heatmap_df.index = plot_labels
 
                 # Set affinity heatmap properties.
                 clustermap = partial(
@@ -1588,6 +1591,151 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     run.info_single("Saved plots")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
+
+
+def get_plot_labels(args, subset_affinities_df):
+    """Return labels to display on the codon frequency dendrogram, which can differ from recorded
+    labels."""
+    if args.label_brite_hierarchy:
+        plot_labels = subset_affinities_df['label'].tolist()
+    else:
+        # Display the specific KEGG BRITE category rather than the category's hierarchy.
+        plot_labels = []
+        for label, source in zip(
+            subset_affinities_df['label'], subset_affinities_df['function_source']):
+            if source == 'KEGG_BRITE':
+                plot_labels.append(label.split(">>>")[-1])
+            else:
+                plot_labels.append(label)
+
+    if not args.unlabel_function_accession_source:
+        # Strip placeholder empty parentheses from the end of the plot labels. These occur when a
+        # single function annotation source was processed and the function has no accession.
+        for label in plot_labels:
+            if label[-3: ] == ' ()':
+                new_plot_labels.append(label[: -3])
+            else:
+                new_plot_labels.append(label)
+        plot_labels = new_plot_labels
+
+        return plot_labels
+
+    # Strip parentheses at the end of the label containing function annotation source and
+    # accession. This can manifest as "(<source> : <accession>)", "(<source>)", "(<accession>)",
+    # or "()".
+    new_plot_labels = []
+    for label, source, accession in zip(
+        plot_labels,
+        subset_affinities_df['function_source'],
+        subset_affinities_df['function_accession']):
+        for suffix in [f"({source} : {accession})", f"({source})", f"({accession})", "()"]:
+            if label[-len(suffix): ] == suffix:
+                new_plot_labels.append(label[: -len(suffix)])
+                break
+        else:
+            new_plot_labels.append(label)
+    plot_labels = new_plot_labels
+
+    if 'KEGG_BRITE' not in subset_affinities_df['function_source']:
+        return plot_labels
+
+    # If functions come from KEGG BRITE, remove category accessions.
+    new_plot_labels = []
+    for label, source, accession in zip(
+        plot_labels,
+        subset_affinities_df['function_source'],
+        subset_affinities_df['function_accession']):
+        if source != 'KEGG_BRITE':
+            new_plot_labels.append(label)
+            continue
+
+        if args.label_brite_hierarchy:
+            if accession == 'ko00001':
+                new_plot_label = ""
+                # Strip category numbers. Assume from induction that the number occurs at the
+                # beginning of the category name.
+                for category in label.split(">>>"):
+                    category_number = category.split(" ")[0]
+                    try:
+                        int(category_number)
+                    except ValueError:
+                        # For some reason, the category does not have a number.
+                        new_plot_label += category
+                        continue
+                    new_plot_label += category[len(category_number) + 1: ] + ">>>"
+                if new_plot_label[-3: ] == ">>>":
+                    new_plot_label = new_plot_label[: -3]
+                # Strip the square bracketed pathway at the end of the terminal category, e.g.,
+                # "09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis /
+                # Gluconeogenesis [PATH:ko00010]".
+                split_category = category.split(" [PATH:")
+                suffix = split_category[-1]
+                if len(split_category) > 1 and suffix[-1] == ']':
+                    new_plot_label = new_plot_label[: -len(suffix) - 7]
+            elif accession == 'ko01000':
+                # Strip EC numbers from categories of the Enzyme Commission hierarchy. Assume from
+                # induction that there is always an EC number at the beginning of the category name.
+                new_plot_label = ""
+                for category in label.split(">>>"):
+                    ec_number = category.split(" ")[0]
+                    if ec_number == len(category):
+                        # The category contains nothing beyond the EC number, so keep it.
+                        new_plot_label += category
+                    else:
+                        new_plot_label += category[len(ec_number) + 1: ] + ">>>"
+                if new_plot_label[-3: ] == ">>>":
+                    new_plot_label = new_plot_label[: -3]
+            else:
+                # Terminal categories can end in square bracketed links to other KEGG entries or
+                # external database entries, e.g., "Other transporters>>>Pores ion channels [TC:1]",
+                # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
+                split_label = label.split(" [")
+                suffix = split_label[-1]
+                if len(split_label) > 1 and suffix[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2]
+                else:
+                    new_plot_label = label
+        else:
+            if accession == 'ko00001':
+                # Strip the category number. Assume from induction that the number occurs at the
+                # beginning of the category name.
+                category_number = label.split(" ")[0]
+                try:
+                    int(category_number)
+                    new_plot_label = label[len(category_number) + 1: ]
+                except ValueError:
+                    # For some reason, the category does not have a number.
+                    new_plot_label = label
+                # Strip the square bracketed pathway at the end of the terminal category, e.g.,
+                # "09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis /
+                # Gluconeogenesis [PATH:ko00010]".
+                split_category = new_plot_label.split(" [PATH:")
+                suffix = split_category[-1]
+                if len(split_category) > 1 and suffix[-1] == ']':
+                    new_plot_label = new_plot_label[: -len(suffix) - 7]
+            elif accession == 'ko01000':
+                # Strip the EC number from the Enzyme Commission category. Assume from induction
+                # that there is always an EC number at the beginning of the category name.
+                ec_number = label.split(" ")[0]
+                if ec_number == len(label):
+                    # The category contains nothing beyond the EC number, so keep it.
+                    new_plot_label = label
+                else:
+                    new_plot_label = label[len(ec_number) + 1: ]
+            else:
+                # Terminal categories can end in square bracketed links to other KEGG entries or
+                # other database entries, e.g., "Other transporters>>>Pores ion channels [TC:1]",
+                # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
+                split_label = label.split(" [")
+                suffix = split_label[-1]
+                if len(split_label) > 1 and suffix[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2]
+                else:
+                    new_plot_label = label
+        new_plot_labels.append(new_plot_label)
+    plot_labels = new_plot_labels
+
+    return plot_labels
 
 
 if __name__ == '__main__':
