@@ -1529,8 +1529,8 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     continue
                 valid_derived_output_paths.append(derived_output_path)
 
-                # The function/gene labels of the affinity table should be unique and correspond to
-                # the numerical index of the codon frequency linkage object.
+                # The function/gene labels of the affinity table should correspond to the numerical
+                # index of the codon frequency linkage object.
                 heatmap_df = subset_affinities_df.droplevel(
                     [i for i in subset_affinities_df.index.names if i != 'label'])
 
