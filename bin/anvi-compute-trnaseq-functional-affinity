@@ -1823,7 +1823,7 @@ if __name__ == '__main__':
         help="Do not include function accessions or annotation source in the labels of the y-axis "
              "codon frequency dendrogram. These will still be included in Newick tree outputs.")
     group1F.add_argument(
-        '--label-full-brite-hierarchy', default=False, action='store_true',
+        '--label-brite-hierarchy', default=False, action='store_true',
         help="When using KEGG BRITE as a function annotation source, display BRITE hierarchies "
              "containing each category rather than the category alone as the labels of the y-axis "
              "codon frequency dendrogram. Regardless, BRITE hierarchies constitute the labels in "
