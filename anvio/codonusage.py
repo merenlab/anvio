@@ -352,8 +352,9 @@ class SingleGenomeCodonUsage(object):
             'Pfam') and with values being lists of function names. Unlike `function_accessions`,
             'KEGG_BRITE' may be used as a source, with names (categorizations) given to an arbitrary
             level of the hierarchy, such as ['Ribosome>>>Ribosomal proteins', 'Transcription
-            machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. This parameter can be
-            used alongside `gene_caller_ids` and `function_accessions`. By default None.
+            machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. All BRITE
+            categorizations falling under the given level are selected. This parameter can be used
+            alongside `gene_caller_ids` and `function_accessions`. By default None.
         expect_functions : bool, optional
             If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
@@ -947,9 +948,10 @@ class SingleGenomeCodonUsage(object):
                       function_accession_dict,
                       function_name_dict,
                       expect_functions):
-        """Select genes in the gene frequency table given a list of IDs and/or functions
-        of interest."""
+        """Select genes in the gene frequency table given a list of IDs and/or functions of
+        interest."""
         if not gene_caller_ids and not function_accession_dict and not function_name_dict:
+            # Nothing of interest was given.
             return self.gene_codon_frequency_df
 
         select_gene_caller_ids = []
@@ -961,32 +963,41 @@ class SingleGenomeCodonUsage(object):
                 continue
             select_gene_caller_ids.append(gene_caller_id)
         if unrecognized_gene_caller_ids:
-            raise ConfigError("The following gene caller IDs were not found in the genome: "
-                              f"{unrecognized_gene_caller_ids}")
+            raise ConfigError(
+                "The following gene caller IDs were not found in the genome: "
+                f"{unrecognized_gene_caller_ids}")
 
-        index_keys = []
+        ##################################################
+        # Select by function accession.
+        requested_keys = []
         unrecognized_sources = []
         for function_source, function_accessions in function_accession_dict.items():
             if function_source == 'KEGG_BRITE':
                 self.run.warning(
                     "Nota bene: KEGG BRITE accessions stored in anvi'o are for hierarchies as a "
                     "whole, not categories of the hierarchy. Most hierarchies do not have category "
-                    "accessions. So all genes in the selected hierarchies are being analyzed.")
+                    "accessions. So all genes in hierarchies with the given accessions are "
+                    "selected.")
             if function_source not in self.function_sources:
                 unrecognized_sources.append(function_source)
             for function_accession in function_accessions:
-                index_keys.append((function_source, function_accession))
+                requested_keys.append((function_source, function_accession))
         if unrecognized_sources:
-            raise ConfigError("The following annotation sources in `function_accessions` were not "
-                              f"found as having annotated the genome: {unrecognized_sources}")
+            raise ConfigError(
+                "The following annotation sources in `function_accessions` were not found to have "
+                f"annotated any genes in the genome: {', '.join(unrecognized_sources)}")
+        requested_keys = set(requested_keys)
+
         gene_function_df = self.gene_function_df.set_index(
             ['function_source', 'function_accession'])
         if expect_functions:
-            index_keys = set(index_keys)
-            all_keys = set(gene_function_df.index)
-            missing_keys = index_keys.difference(all_keys)
+            # All requested accessions must be found.
+            available_keys = set(gene_function_df.index)
+            missing_keys = requested_keys.difference(available_keys)
+            select_keys = requested_keys
 
             if missing_keys:
+                # Prepare and throw an error message.
                 missing_key_dict = {}
                 for missing_key in missing_keys:
                     try:
@@ -998,49 +1009,122 @@ class SingleGenomeCodonUsage(object):
                     missing_key_message += source + ': ' + ', '.join(missing_accessions) + '; '
                 missing_key_message = missing_key_message[: -2]
                 if missing_keys:
-                    raise ConfigError("The following requested function accessions are missing "
-                                      f"from the genome: {missing_key_message}")
+                    raise ConfigError(
+                        "The following requested function accessions are missing from the genome: "
+                        f"{missing_key_message}")
         else:
-            index_keys = gene_function_df.index.intersection(index_keys)
-        select_gene_caller_ids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+            # Not all requested accessions need be found.
+            select_keys = gene_function_df.index.intersection(requested_keys)
+        select_gene_caller_ids += gene_function_df.loc[select_keys]['gene_caller_id'].tolist()
+        ##################################################
 
-        index_keys = []
+        ##################################################
+        # Select by function name.
+        requested_keys = []
         unrecognized_sources = []
         for function_source, function_names in function_name_dict.items():
             if function_source not in self.function_sources:
                 unrecognized_sources.append(function_source)
             for function_name in function_names:
-                index_keys.append((function_source, function_name))
+                requested_keys.append((function_source, function_name))
         if unrecognized_sources:
-            raise ConfigError("The following annotation sources in `function_names` were not "
-                              f"found as having annotated the genome: {unrecognized_sources}")
-        gene_function_df = gene_function_df.reset_index().set_index(
-            ['function_source', 'function_name'])
-        if expect_functions:
-            index_keys = set(index_keys)
-            all_keys = set(gene_function_df.index)
-            missing_keys = index_keys.difference(all_keys)
+            raise ConfigError(
+                "The following annotation sources in `function_names` were not found to have "
+                f"annotated any genes in the genome: {', '.join(unrecognized_sources)}")
+        requested_keys = set(requested_keys)
 
-            if missing_keys:
-                missing_key_dict = {}
-                for missing_key in missing_keys:
+        gene_function_df = gene_function_df.reset_index()
+
+        def select_keys(gene_function_df, requested_keys):
+            gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
+            if expect_functions:
+                available_keys = set(gene_function_df.index)
+                missing_keys = requested_keys.difference(available_keys)
+                select_keys = requested_keys
+            else:
+                select_keys = gene_function_df.index.intersection(requested_keys)
+                missing_keys = None
+
+            return select_keys, missing_keys
+
+        def select_keys_given_higher_brite_categories(gene_function_df, requested_keys):
+            # If `self.all_brite_categories` is False, then `gene_function_df` only contains rows
+            # for the most specific KEGG BRITE categories. For example, a gene can be annotated with
+            # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010
+            # Glycolysis / Gluconeogenesis [PATH:ko00010]", but not categories representing higher
+            # levels of the hierarchy: "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate
+            # metabolism", "KEGG Orthology (KO)>>>09100 Metabolism", or "KEGG Orthology (KO)".
+            # However, `function_name_dict` can be used to select genes by higher categories. "KEGG
+            # Orthology (KO)>>>09100 Metabolism", for instance, encompasses "00010 Glycolysis /
+            # Gluconeogenesis [PATH:ko00010]". BRITE functions in the table are parsed to determine
+            # if they are encompassed by the requested function names.
+            gene_brite_df = gene_function_df[gene_function_df['function_source'] == 'KEGG_BRITE']
+            gene_nonbrite_df = gene_function_df.drop(gene_brite_df.index)
+            brite_requested_keys = []
+            nonbrite_requested_keys = []
+            for requested_key in requested_keys:
+                if requested_key[0] == 'KEGG_BRITE':
+                    brite_requested_keys.append(requested_key[1])
+                else:
+                    nonbrite_requested_keys.append(requested_key)
+
+            gene_brite_df = gene_brite_df.set_index('function_name')
+            brite_select_keys = []
+            brite_found_keys = []
+            for available_key in gene_brite_df.index:
+                for requested_key in requested_keys:
                     try:
-                        missing_key_dict[missing_key[0]].append(missing_key[1])
-                    except KeyError:
-                        missing_key_dict[missing_key[0]] = [missing_key[1]]
-                missing_key_message = ''
-                for source, missing_names in missing_key_dict.items():
-                    missing_key_message += source + ': ' + ', '.join(missing_names) + '; '
-                missing_key_message = missing_key_message[: -2]
-                if missing_keys:
-                    raise ConfigError("The following requested function names are missing from the "
-                                      f"genome: {missing_key_message}")
+                        position = available_key.index(requested_key)
+                    except ValueError:
+                        continue
+                    if position == 0 and available_key[
+                        len(requested_key): len(requested_key) + 3] == '>>>':
+                        brite_select_keys.append(available_key)
+                        brite_found_keys.append(requested_key)
+            brite_select_keys = set(
+                [('KEGG_BRITE', function_name) for function_name in set(brite_select_keys)])
+            brite_found_keys = set(brite_found_keys)
+            brite_missing_keys = brite_found_keys.difference(brite_select_keys)
+            brite_missing_keys = set(
+                [('KEGG_BRITE', function_name) for function_name in set(brite_missing_keys)])
+
+            if len(gene_nonbrite_df) > 0:
+                nonbrite_select_keys, nonbrite_missing_keys = select_keys(
+                    gene_nonbrite_df, nonbrite_requested_keys)
+
+                select_keys = brite_select_keys.union(nonbrite_select_keys)
+                missing_keys = brite_missing_keys.union(nonbrite_missing_keys)
+
+            return select_keys, missing_keys
+
+        if self.all_brite_categories:
+            select_keys, missing_keys = select_keys_given_higher_brite_categories(
+                gene_function_df, requested_keys)
         else:
-            index_keys = gene_function_df.index.intersection(index_keys)
-        select_gene_caller_ids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+            select_keys, missing_keys = select_keys(gene_function_df, requested_keys)
+
+        if expect_functions and missing_keys:
+            # Prepare and throw an error message.
+            missing_key_dict = {}
+            for missing_key in missing_keys:
+                try:
+                    missing_key_dict[missing_key[0]].append(missing_key[1])
+                except KeyError:
+                    missing_key_dict[missing_key[0]] = [missing_key[1]]
+            missing_key_message = ''
+            for source, missing_names in missing_key_dict.items():
+                missing_key_message += source + ': ' + ', '.join(missing_names) + '; '
+            missing_key_message = missing_key_message[: -2]
+            if missing_keys:
+                raise ConfigError(
+                    "The following requested function names are missing from the genome: "
+                    f"{missing_key_message}")
+
+        gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
+        select_gene_caller_ids += gene_function_df.loc[select_keys]['gene_caller_id'].tolist()
+        ##################################################
 
         return self.gene_codon_frequency_df.loc[set(select_gene_caller_ids)]
-    ##################################################
 
 
     ##################################################
@@ -1444,8 +1528,9 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default None.
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside `gene_caller_ids` and
+            `function_accessions`. By default None.
         expect_functions : bool, optional
             If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
@@ -1469,7 +1554,8 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside
             `reference_gene_caller_ids` and `reference_function_accessions`. By default, if using
             reference-dependent metrics without omnibias mode, this argument becomes {'KEGG_BRITE':
             ['Ribosome>>>Ribosomal proteins']}.
@@ -1850,9 +1936,10 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `reference_gene_caller_ids` and `reference_function_accessions`. By default, {'KEGG_BRITE':
-            ['Ribosome>>>Ribosomal proteins']}.
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside
+            `reference_gene_caller_ids` and `reference_function_accessions`. By default,
+            {'KEGG_BRITE': ['Ribosome>>>Ribosomal proteins']}.
         expect_reference_functions : bool, optional
             If True (default False), an error will be raised if any given
             `reference_function_accessions` or `reference_function_names` are not annotated in the
