@@ -463,14 +463,22 @@ if __name__ == '__main__':
         '--function-names', nargs='+',
         help="Return CUB for functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead "
-             "use `--select-functions-txt`.")
+             "use `--select-functions-txt`. Regarding KEGG BRITE hierarchies, all functions "
+             "falling under the given hierarchy level are selected. For example, \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 "
+             "Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis "
+             "[PATH:ko00010]\".")
     groupD.add_argument(
         '--select-functions-txt', metavar='FILE',
         help="Functions to select can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
              "in every row, and either an accession or name, or both, should also be in a row. "
-             "Column names should not be provided.")
+             "Column names should not be provided. Regarding KEGG BRITE hierarchies, all functions "
+             "falling under the given hierarchy level are selected. For example, \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 "
+             "Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis "
+             "[PATH:ko00010]\".")
     groupD.add_argument(
         '--expect-functions',
         default=False,
@@ -507,7 +515,10 @@ if __name__ == '__main__':
              "function names. Functions can be selected by function name or accession, so a value "
              "can be provided for one or the other. In summary, every row requires a source in the "
              "first column and either an accession or name in the second and third columns, "
-             "respectively.")
+             "respectively. Regarding KEGG BRITE hierarchies, all functions falling under the "
+             "given hierarchy level are selected. For example, \"KEGG Orthology (KO)>>>09100 "
+             "Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 Metabolism>>>09101 "
+             "Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis [PATH:ko00010]\".")
     groupE.add_argument(
         '--expect-reference-functions', default=False, action='store_true',
         help="By default, reference functions provided by `--select-reference-functions-txt` do "

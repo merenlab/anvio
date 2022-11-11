@@ -1899,14 +1899,22 @@ if __name__ == '__main__':
         '--function-names', nargs='+', type=str,
         help="Calculate affinity for select functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead use "
-             "`--select-functions-txt`.")
+             "`--select-functions-txt`. Regarding KEGG BRITE hierarchies, all functions falling "
+             "under the given hierarchy level are selected. For example, \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 "
+             "Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis "
+             "[PATH:ko00010]\".")
     group1G.add_argument(
         '--select-functions-txt', metavar='FILE_PATH', type=str,
         help="Selected functions can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
              "accessions, and the third function names. An entry in the source column is required "
              "in every row, and either an accession or name, or both, should also be in a row. "
-             "The file should not have a header of column names.")
+             "The file should not have a header of column names. Regarding KEGG BRITE hierarchies, "
+             "all functions falling under the given hierarchy level are selected. For example, "
+             "\"KEGG Orthology (KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology "
+             "(KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / "
+             "Gluconeogenesis [PATH:ko00010]\".")
     group1G.add_argument(
         '--lax-function-sources', default=False, action='store_true',
         help="By default, without this flag, requested function annotation sources must have been "
