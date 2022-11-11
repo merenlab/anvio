@@ -1967,11 +1967,11 @@ class SingleGenomeCodonUsage(object):
         if reference_function_names is None:
             if 'KEGG_BRITE' not in self.function_sources:
                 raise ConfigError(
-                    f"Reference-dependent metrics ({', '.join(reference_metrics)}) were "
-                    "requested without defined reference genes. By default, reference genes "
-                    "are KEGG KOfams classified as ribosomal proteins in BRITE. However, "
-                    "'KEGG_BRITE' is not among the function annotation sources run on the "
-                    "genome. This can be rectified by rerunning `anvi-run-kegg-kofams`.")
+                    f"Reference-dependent metrics ({', '.join(reference_metrics)}) were requested "
+                    "without defined reference genes. By default, reference genes are KEGG KOfams "
+                    "classified as ribosomal proteins in BRITE. However, 'KEGG_BRITE' is not among "
+                    "the function annotation sources run on the genome. This can be rectified by "
+                    "rerunning `anvi-run-kegg-kofams`.")
             reference_function_names = {'KEGG_BRITE': ['Ribosome>>>Ribosomal proteins']}
 
         reference_codon_frequency_df = self.get_frequencies(
