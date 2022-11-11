@@ -1972,14 +1972,13 @@ if __name__ == '__main__':
              "displayed.")
     group1F.add_argument(
         '--unlabel-function-accession-source', default=False, action='store_true',
-        help="Do not include function accessions or annotation source in the labels of the y-axis "
-             "codon frequency dendrogram. These will still be included in Newick tree outputs.")
+        help="Do not include function accessions or annotation source in the y-axis labels. These "
+             "will still be included in Newick tree outputs.")
     group1F.add_argument(
         '--label-brite-hierarchy', default=False, action='store_true',
         help="When using KEGG BRITE as a function annotation source, display BRITE hierarchies "
-             "containing each category rather than the category alone as the labels of the y-axis "
-             "codon frequency dendrogram. Regardless, BRITE hierarchies constitute the labels in "
-             "Newick tree outputs.")
+             "containing each category rather than the category alone as the y-axis labels. "
+             "Regardless, BRITE hierarchies constitute the labels in Newick tree outputs.")
     group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
         help="Remove the y-axis dendrogram clustering functions or genes by their general codon "
