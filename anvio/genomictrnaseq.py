@@ -1430,6 +1430,7 @@ class Affinitizer:
         self.min_coverage_ratio = A('min_coverage_ratio')
 
         self.function_sources = A('function_sources')
+        self.all_brite_categories = A('all_brite_categories')
         self.function_accessions = A('function_accessions')
         if self.function_accessions is None:
             self.function_accessions = []
@@ -2440,6 +2441,7 @@ class Affinitizer:
         args.internal_genomes = self.internal_genomes_path
         args.external_genomes = self.external_genomes_path
         args.function_sources = self.function_sources
+        args.all_brite_categories = self.all_brite_categories
         args.shared_function_sources = not self.lax_function_sources
         args.ignore_start_codons = True
         # For now, tRNA-seq programs only support the standard genetic code.
