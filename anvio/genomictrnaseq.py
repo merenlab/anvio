@@ -1913,7 +1913,7 @@ class Affinitizer:
                 "be used alongside function options.")
 
         # Report input (meta)genomes that did not have requested function sources run on them. By
-        # default, with `lax_function_sources` being True, requested sources must have been run on
+        # default, with `lax_function_sources` being False, requested sources must have been run on
         # every (meta)genome.
         if self.function_sources:
             function_sources = self.function_sources
