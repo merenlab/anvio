@@ -1915,9 +1915,7 @@ class Affinitizer:
         # Report input (meta)genomes that did not have requested function sources run on them. By
         # default, with `lax_function_sources` being False, requested sources must have been run on
         # every (meta)genome.
-        if self.function_sources:
-            function_sources = self.function_sources
-        elif self.function_accessions_dict or self.function_names_dict or self.select_functions_txt:
+        if self.function_accessions_dict or self.function_names_dict or self.select_functions_txt:
             function_sources = list(self.function_accessions_dict)
             function_sources += list(self.function_names_dict)
             if self.select_functions_txt:
@@ -1925,29 +1923,32 @@ class Affinitizer:
                     self.select_functions_txt, sep='\t', header=None,
                     names=['function_source', 'function_accession', 'function_name'])
                 function_sources += select_functions_df['function_source'].unique().tolist()
-        present_function_source_genome_dict = {
-            function_source: [] for function_source in function_sources}
-        missing_function_source_genome_dict = {
-            function_source: [] for function_source in function_sources}
-        for genome_name, genome_info in self.genome_info_dict.items():
-            genome_function_sources = genome_info['contigs_db_info'].get_self_table()[
-                'gene_function_sources'].split(',')
-            for function_source in function_sources:
-                if function_source in genome_function_sources:
-                    present_function_source_genome_dict[function_source].append(genome_name)
+        else:
+            function_sources = self.function_sources
+        if function_sources:
+            present_function_source_genome_dict = {
+                function_source: [] for function_source in function_sources}
+            missing_function_source_genome_dict = {
+                function_source: [] for function_source in function_sources}
+            for genome_name, genome_info in self.genome_info_dict.items():
+                genome_function_sources = genome_info['contigs_db_info'].get_self_table()[
+                    'gene_function_sources'].split(',')
+                for function_source in function_sources:
+                    if function_source in genome_function_sources:
+                        present_function_source_genome_dict[function_source].append(genome_name)
+                    else:
+                        missing_function_source_genome_dict[function_source].append(genome_name)
+            message = ""
+            for function_source, genome_names in missing_function_source_genome_dict.items():
+                if len(genome_names):
+                    message += f"{function_source}: {', '.join(genome_names)} ; "
+            if message:
+                message = "(Meta)genomes lack requested function source(s): " + message
+                message = message[: -3]
+                if self.lax_function_sources:
+                    self.run.info_single(message)
                 else:
-                    missing_function_source_genome_dict[function_source].append(genome_name)
-        message = ""
-        for function_source, genome_names in missing_function_source_genome_dict.items():
-            if len(genome_names):
-                message += f"{function_source}: {', '.join(genome_names)} ; "
-        if message:
-            message = "(Meta)genomes lack requested function source(s): " + message
-            message = message[: -3]
-            if self.lax_function_sources:
-                self.run.info_single(message)
-            else:
-                raise ConfigError(message)
+                    raise ConfigError(message)
 
         if self.gene_caller_ids and not self.gene_affinity:
             raise ConfigError("`gene_caller_ids` requires the `gene_affinity` option.")
