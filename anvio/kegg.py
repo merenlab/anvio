@@ -77,7 +77,7 @@ OUTPUT_MODES = {'modules': {
                                     'output_suffix': "module_paths.txt",
                                     'data_dict': "modules",
                                     'headers': ["module", "pathwise_module_completeness", "pathwise_module_is_complete",
-                                                "path_id", "path", "path_completeness"],
+                                                "path_id", "path", "path_completeness", "annotated_enzymes_in_path"],
                                     'description': "Information on each possible path (complete set of enzymes) in a module"
                                     },
                 'module_steps': {
@@ -231,6 +231,11 @@ OUTPUT_HEADERS = {'module' : {
                         'cdict_key': 'pathway_completeness',
                         'mode_type': 'modules',
                         'description': "Percent completeness of a given path through a module"
+                        },
+                  'annotated_enzymes_in_path' : {
+                        'cdict_key': 'annotated_enzymes_in_path',
+                        'mode_type': 'modules',
+                        'description': "Shows which enzymes in the path are annotated in your sample, and which are missing"
                         },
                   'step_id' : {
                         'cdict_key': None,
@@ -4878,7 +4883,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
                                     "unique_enzymes_hit_counts"])
-        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path"])
+        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path", "annotated_enzymes_in_path"])
         step_level_headers = set(["step_id", "step", "step_completeness", "step_copy_number"])
 
         requested_path_info = headers_to_include.intersection(path_level_headers)
@@ -4928,6 +4933,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["path"] = ",".join(p)
                         if "path_completeness" in headers_to_include:
                             d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                        if "annotated_enzymes_in_path" in headers_to_include:
+                            annotated = []
+                            for accession in p:
+                                if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
+                                   (accession in c_dict['kofam_hits'].keys()):
+                                    annotated.append(accession)
+                                else:
+                                    annotated.append(f"[MISSING {accession}]")
+                            d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
                         # add path-level redundancy if requested
                         if self.add_copy_number:
