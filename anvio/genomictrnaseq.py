@@ -1452,6 +1452,13 @@ class Affinitizer:
         if self.gene_affinity is None:
             self.gene_affinity = False
         self.gene_caller_ids = A('gene_caller_ids')
+
+        if self.function_sources == []:
+            # When passed an empty list rather than None, consider functions from all sources,
+            # rather than select sources or genes.
+            self.seek_all_function_sources = True
+        else:
+            self.seek_all_function_sources = False
         if self.function_sources is None:
             if self.gene_affinity or self.function_accessions_dict or self.function_names_dict:
                 self.function_sources = []
@@ -1597,6 +1604,23 @@ class Affinitizer:
                 "Names must be unique to internal and external genomes, but the following were "
                 f"not: {', '.join(nonunique_genome_names)}")
 
+        if self.seek_all_function_sources:
+            # Find all protein function sources from the input contigs databases. All genes
+            # annotated by a protein function source have corresponding amino acid sequences.
+            for genome_name, genome_info in self.genome_info_dict.items():
+                with genome_info['contigs_db_info'].load_db() as contigs_db:
+                    gene_functions_df = contigs_db.get_table_as_dataframe(
+                        'gene_functions', columns_of_interest=['gene_callers_id', 'source'])
+                    gene_functions_df = gene_functions_df.set_index('gene_callers_id')
+                    gene_aa_seqs_df = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
+                    gene_aa_seqs_df = gene_aa_seqs_df.set_index('gene_callers_id')
+                    gene_df = gene_functions_df.merge(
+                        gene_aa_seqs_df, left_index=True, right_index=True)
+                    for function_source, source_gene_df in gene_df.groupby('source'):
+                        if '' not in source_gene_df['sequence'].values:
+                            self.function_sources.append(function_source)
+            self.function_sources = list(set(self.function_sources))
+
         if do_sanity_check:
             # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
@@ -1614,8 +1638,9 @@ class Affinitizer:
             self.nonreference_sample_names.remove(self.reference_sample_name)
         self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
 
-        self.function_sources += \
-            list(set(list(self.function_accessions_dict) + list(self.function_names_dict)))
+        if not self.seek_all_function_sources:
+            self.function_sources += \
+                list(set(list(self.function_accessions_dict) + list(self.function_names_dict)))
 
         if self.function_accessions:
             self.function_accessions_dict[self.function_sources[0]] = self.function_accessions
