@@ -2036,10 +2036,12 @@ if __name__ == '__main__':
         "sources, such as Pfam.")
     group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
-        default=genomictrnaseq.Affinitizer.default_function_sources,
         help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
              "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
-             "any arguments, then every source will be considered.")
+             "any arguments, then every source will be considered. By default, in the absence of "
+             "function options or `--gene-affinity`, affinity will be calculated for functions "
+             "from the following sources: "
+             f"{', '.join(genomictrnaseq.Affinitizer.default_function_sources)}.")
     group1G.add_argument(
         '--all-brite-categories', default=False, action='store_true',
         help="If using KEGG BRITE as a function source, treat every hierarchy level as a separate "
