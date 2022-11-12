@@ -455,7 +455,7 @@ def generate_affinities(args):
             normalization_dict['raw'] = affinities_df
             for normalization_method in args.normalization_methods:
                 normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
-        if args.compare_all_function_sources:
+        elif args.compare_all_function_sources:
             source_dict['all_functions'] = normalization_dict = {}
             normalization_dict['raw'] = genome_df
             for normalization_method in args.normalization_methods:
