@@ -31,21 +31,21 @@ def main(args):
 
     if not json_file_path:
         raise ConfigError("You must provide a JSON file path.")
-
     filesnpaths.is_file_json_formatted(json_file_path)
+
+    # Parse the command and execute it.
 
     with open(json_file_path, 'r') as json_file:
         json_data = json.load(json_file)
  
-    # Parse the command in json file
-    command = json_data.get('data').get('command')
-    arg = json_data.get('data').get('args')
-
-    # Run the command with given arguments
-    command_run = command + ' ' + arg[0] + ' ' + arg[1]
-    run.info('Running the command given in json file:', command_run)
-    subprocess.call(command_run, shell=True)    
-    
+    try:
+        command = json_data.get('data').get('command')
+        arg = json_data.get('data').get('args')
+        command_run = command + ' ' + arg[0] + ' ' + arg[1]
+        run.info('Running the command given in json file:', command_run)
+        subprocess.call(command_run, shell=True)    
+    except:
+        raise ConfigError("The JSON file is not in the correct format.")
 
 if __name__ == '__main__': 
     """ This is the main function that is called when the program is run from the command line. """
