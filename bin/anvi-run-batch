@@ -4,6 +4,7 @@
 import sys
 import json
 import anvio
+import subprocess
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 from anvio.argparse import ArgumentParser
@@ -24,28 +25,27 @@ progress = terminal.Progress()
 
 @terminal.time_program
 def main(args):
-    """ This function is get json file and parse it. Then run the given commands. """
-
-    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    json_file_path = A('json_file')
+    """ This function is get json file as argument and parse it. Then run the given commands. """
+    given_json_path = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    json_file_path = given_json_path('json')
 
     if not json_file_path:
         raise ConfigError("You must provide a JSON file path.")
 
     filesnpaths.is_file_json_formatted(json_file_path)
 
-    with open(json_file_path) as json_file:
+    with open(json_file_path, 'r') as json_file:
         json_data = json.load(json_file)
-
+ 
     # Parse the command in json file
-    command_path = json_data['command']
-    command_args = json_data['args']
+    command = json_data.get('data').get('command')
+    arg = json_data.get('data').get('args')
 
     # Run the command with given arguments
-    command_run = command_path + ' ' + command_args[0] + ' ' + command_args[1]
-    run.info('Running the command below:')
-    run.warning(command_run)
-        
+    command_run = command + ' ' + arg[0] + ' ' + arg[1]
+    run.info('Running the command given in json file:', command_run)
+    subprocess.call(command_run, shell=True)    
+    
 
 if __name__ == '__main__': 
     """ This is the main function that is called when the program is run from the command line. """
