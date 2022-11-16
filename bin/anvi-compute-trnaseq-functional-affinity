@@ -2230,7 +2230,7 @@ if __name__ == '__main__':
     group1J.add_argument(
         '--function-min-total-codons', type=int, default=0,
         help="Affinity is calculated for functions that contain at least this number of codons "
-             "total. This option can only be used with `--gene-affinity`.")
+             "total. This option cannot be used with `--gene-affinity`.")
     group1J.add_argument(
         '--gene-min-total-codons', type=int, default=0,
         help="Genes must contain at least this number of codons total to contribute to affinity "
