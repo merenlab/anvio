@@ -2611,7 +2611,8 @@ class Affinitizer:
                     ['effective_anticodon', 'abundance_ratio']].set_index('effective_anticodon')[
                         'abundance_ratio']
                 sample_affinities_dict[trnaseq_sample_name] = \
-                    genome_relative_weighted_frequencies_df[abund_ratios.index].dot(abund_ratios)
+                    genome_relative_weighted_frequencies_df[abund_ratios.index].dot(
+                        np.log2(abund_ratios))
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
             genome_affinities_dfs.append(genome_affinities_df)
