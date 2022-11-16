@@ -2507,8 +2507,8 @@ class Affinitizer:
                 drop_amino_acids=self.exclude_amino_acids)
 
         for pattern in self.function_blacklist_patterns:
-            codon_frequency_df = codon_frequency_df[
-                ~codon_frequency_df['function_name'].str.contains(pattern)]
+            codon_frequency_df = codon_frequency_df.iloc[
+                ~codon_frequency_df.index.get_level_values('function_name').str.contains(pattern)]
 
         if self.exclude_codons:
             # Exclusion of select individual codons (`exclude_codons`) is not an option in the
