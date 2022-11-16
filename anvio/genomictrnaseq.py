@@ -2410,7 +2410,8 @@ class Affinitizer:
                 'trnaseq_sample_name'):
                 for row in nonreference_sample_df.itertuples(index=False):
                     decoding_key = (
-                        row.decoded_amino_acid, row.anticodon, row.effective_wobble_nucleotide)
+                        row.decoded_amino_acid,
+                        row.effective_wobble_nucleotide + row.anticodon[1: ])
 
                     try:
                         reference_isoacceptor_series = reference_sample_df.loc[decoding_key]
@@ -2435,7 +2436,6 @@ class Affinitizer:
                 'genome_name',
                 'decoded_amino_acid',
                 'anticodon',
-                'effective_wobble_nucleotide',
                 'nonreference_trnaseq_sample_name',
                 'abundance_ratio'])
 
@@ -2571,10 +2571,6 @@ class Affinitizer:
             indices, but a gene callers ID index column. Columns are isoacceptor anticodons, with
             modified wobble nucleotide if applicable (e.g., ICG, LAT).
         """
-        isoacceptor_abund_ratios_df['effective_anticodon'] = (
-            isoacceptor_abund_ratios_df['effective_wobble_nucleotide'] +
-            isoacceptor_abund_ratios_df['anticodon'].str[1: ])
-
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
         relative_weighted_frequencies_df = weighted_frequencies_df.div(
             weighted_frequencies_df.sum(axis=1), axis=0)
