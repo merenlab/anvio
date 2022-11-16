@@ -490,7 +490,8 @@ def generate_affinities(args):
                 source_df = get_table_with_codon_tree_labels(args, source_df)
             normalization_dict['raw'] = source_df
             for normalization_method in args.normalization_methods:
-                normalization_dict[normalization_method] = normalize_affinities_table(source_df)
+                normalization_dict[normalization_method] = normalize_affinities_table(
+                    source_df, normalization_method)
 
     return affinities_dict
 
