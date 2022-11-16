@@ -1859,6 +1859,17 @@ if __name__ == '__main__':
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not store tables of raw affinity data.")
     group1D.add_argument(
+        '--save-isoacceptor-abundance-ratios', default=False, action='store_true',
+        help="Write a table of tRNA isoacceptor abundance ratios. Affinities are derived in part "
+             "from the abundance ratios of tRNA isoacceptors in a non-reference sample versus the "
+             "reference sample. This table enables the inspection of data underlying affinities, "
+             "especially together with the output of `--save-isoacceptor-codon-weights`. If "
+             "`--separate-genomes` is used, then multiple files are written for each genome, with "
+             "paths derived from the provided `--output-file` template. In these paths, "
+             "'-ABUNDANCE-RATIOS' is added before the extension. The tables have row indices of "
+             "genome, decoded amino acid, and anticodon (including modified wobble nucleotide, if "
+             "applicable). The column headers are non-reference tRNA-seq sample names.")
+    group1D.add_argument(
         '--save-codon-frequencies', default=False, action='store_true',
         help="Write a table of function or gene codon frequencies. If `--separate-genomes` or "
              "`--separate-function-sources` are used, then multiple files are written for each "
