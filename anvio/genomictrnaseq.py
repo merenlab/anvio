@@ -2551,7 +2551,7 @@ class Affinitizer:
 
     def get_affinities(self, isoacceptor_abund_ratios_df, weighted_frequencies_df):
         """
-        Calculate affinities of tRNA isoacceptors to functions or genes for each genome.
+        Calculate affinities of tRNA isoacceptors for functions or genes in each genome.
 
         Parameters
         ==========
