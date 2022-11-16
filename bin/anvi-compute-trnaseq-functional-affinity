@@ -501,7 +501,7 @@ def normalize_affinities_table(affinities_df, normalization_method):
     normalization method."""
     # The following normalization functions are written to operate on a generic pandas Series.
     def min_max_normalize(series):
-        normalized_series = series - series.min() / (series.max() - series.min())
+        normalized_series = (series - series.min()) / (series.max() - series.min())
         return normalized_series
 
     def min_max_mean_normalize(series):
