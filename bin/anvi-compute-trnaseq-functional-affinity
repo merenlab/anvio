@@ -1885,7 +1885,7 @@ if __name__ == '__main__':
              "applicable).")
     group1D.add_argument(
         '--save-codon-frequencies', default=False, action='store_true',
-        help="Write a table of function or gene codon frequencies. If `--separate-genomes` or "
+        help="Write a table of function or gene codon frequencies. If `--separate-genomes` and/or "
              "`--separate-function-sources` are used, then multiple files are written for each "
              "genome, function source, or combination of genome and source, with paths derived "
              "from the provided `--output-file` template. In these paths, '-CODONS' is added "
