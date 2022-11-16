@@ -2172,8 +2172,8 @@ if __name__ == '__main__':
              "affinity. Note that this argument only handles unmodified anticodons. For example, "
              "'ACG' does not exclude 'ICG', and 'CAT' excludes tRNA-Met but not tRNA-Ile2, in "
              "which 'CAT' is modified to 'LAT' in bacteria. To exclude tRNA-Arg-ACG with the I34 "
-             "modification and tRNA-Ile2, provide 'ICG LAT' with the option, "
-             "`--exclude-modified-anticodons`. Exclusion of tRNAs by anticodon occurs before, and "
+             "modification and tRNA-Ile2, instead use the option `--exclude-modified-anticodons` "
+             "with the value, 'ICG LAT'. Exclusion of tRNAs by anticodon occurs before, and "
              "thereby affects, the `--min-isoacceptors` filter.")
     group1I.add_argument(
         '--exclude-modified-anticodons', nargs='+', type=str,
