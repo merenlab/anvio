@@ -1870,6 +1870,20 @@ if __name__ == '__main__':
              "genome, decoded amino acid, and anticodon (including modified wobble nucleotide, if "
              "applicable). The column headers are non-reference tRNA-seq sample names.")
     group1D.add_argument(
+        '--save-isoacceptor-codon-weights', default=False, action='store_true',
+        help="Write a table of tRNA isoacceptor codon weights, calculated for each isoacceptor "
+             "from relative codon frequencies and decoding weights. Affinities are derived in part "
+             "from isoacceptor codon weights. This table enables the inspection of data underlying "
+             "affinities, especially together with the output of "
+             "`--save-isoacceptor-abundance-ratios`. If `--separate-genomes` and/or "
+             "`--separate-function-sources` are used, then multiple files are written for each "
+             "genome, function source, or combination of genome and source, with paths derived "
+             "from the provided `--output-file` template. In these paths, '-CODON-WEIGHTS' is "
+             "added before the extension. The tables have the same row indices of genome, "
+             "function, and gene information as the corresponding affinity tables. The column "
+             "headers are tRNA isoacceptor anticodons (including modified wobble nucleotide, if "
+             "applicable).")
+    group1D.add_argument(
         '--save-codon-frequencies', default=False, action='store_true',
         help="Write a table of function or gene codon frequencies. If `--separate-genomes` or "
              "`--separate-function-sources` are used, then multiple files are written for each "
