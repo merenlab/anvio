@@ -2053,14 +2053,15 @@ class Affinitizer:
 
         trna_gene_hits_df = trnaseq_contigs_db.get_table_as_dataframe(
             tables.trna_gene_hits_table_name,
-            columns_of_interest=['seed_gene_callers_id',
-                                 'seed_contig_name',
-                                 'gene_contigs_db_hash',
-                                 'profile_db_sample_id',
-                                 'collection_name',
-                                 'bin_id',
-                                 'decoded_amino_acid',
-                                 'anticodon'])
+            columns_of_interest=[
+                'seed_gene_callers_id',
+                'seed_contig_name',
+                'gene_contigs_db_hash',
+                'profile_db_sample_id',
+                'collection_name',
+                'bin_id',
+                'decoded_amino_acid',
+                'anticodon'])
 
         # Dereplicate duplicate rows representing hits between the same tRNA-seq seed and
         # different tRNA genes with identical sequences. (These rows would be distinguished by
@@ -2207,12 +2208,14 @@ class Affinitizer:
             sep='\t',
             header=0,
             skiprows=[1, 2],
-            usecols=['gene_callers_id',
-                     'sample_name',
-                     'discriminator_1',
-                     'relative_discriminator_coverage'])
-        coverage_df = coverage_df.rename({'gene_callers_id': 'seed_gene_callers_id',
-                                          'sample_name': 'trnaseq_sample_name'}, axis=1)
+            usecols=[
+                'gene_callers_id',
+                'sample_name',
+                'discriminator_1',
+                'relative_discriminator_coverage'])
+        coverage_df = coverage_df.rename({
+            'gene_callers_id': 'seed_gene_callers_id',
+            'sample_name': 'trnaseq_sample_name'}, axis=1)
         # Select data for the samples of interest.
         coverage_df = coverage_df[coverage_df['trnaseq_sample_name'].isin(self.sample_names)]
         # Select data for the seeds linked to tRNA genes.
@@ -2428,12 +2431,13 @@ class Affinitizer:
                         (trnaseq_sample_name, isoacceptor_abundance_ratio))
         isoacceptor_abund_ratios_df = pd.DataFrame(
             isoacceptor_abund_ratios_rows,
-            columns=['genome_name',
-                     'decoded_amino_acid',
-                     'anticodon',
-                     'effective_wobble_nucleotide',
-                     'nonreference_trnaseq_sample_name',
-                     'abundance_ratio'])
+            columns=[
+                'genome_name',
+                'decoded_amino_acid',
+                'anticodon',
+                'effective_wobble_nucleotide',
+                'nonreference_trnaseq_sample_name',
+                'abundance_ratio'])
 
         return isoacceptor_abund_ratios_df
 
