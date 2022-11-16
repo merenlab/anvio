@@ -1902,7 +1902,7 @@ class Affinitizer:
                 "`function_accessions`, and `function_names`.")
 
         if self.function_blacklist_txt:
-            filesnpaths.is_file_tab_delimited(self.function_blacklist_txt)
+            filesnpaths.is_file_plain_text(self.function_blacklist_txt)
 
         if self.gene_affinity and (
             self.function_sources or self.function_accessions or self.function_accessions_dict or
