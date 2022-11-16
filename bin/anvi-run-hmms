@@ -120,7 +120,7 @@ if __name__ == '__main__':
                                      f"HMM profiles installed on your system. Using this parameter, you can instruct anvi'o to run "
                                      f"only one or more of the specific profiles of you choose. You can provide a comma-separated list "
                                      f"of names for multiple profiles (but in that case don't put a space between each profile name). "
-                                     f"Here is the list of installed profiles available to you: are the currently available ones: "
+                                     f"Here is the list of installed profiles available to you: "
                                      f"{available_hmm_sources_pretty}."}))
     groupB.add_argument(*anvio.A('hmmer-output-dir'), **anvio.K('hmmer-output-dir'))
     groupB.add_argument(*anvio.A('domain-hits-table'), **anvio.K('domain-hits-table'))
