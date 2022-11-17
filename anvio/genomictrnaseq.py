@@ -8,8 +8,6 @@ import tempfile
 import numpy as np
 import pandas as pd
 
-from functools import partial
-from argparse import Namespace
 from itertools import combinations, product
 
 import anvio
@@ -24,8 +22,8 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.dbinfo import DBInfo
+from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
 
