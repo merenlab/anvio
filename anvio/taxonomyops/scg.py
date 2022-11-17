@@ -1034,12 +1034,15 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
         self.gtdb_release = A('gtdb_release')
+        self.SCGs_taxonomy_data_dir = A('scgs_taxonomy_data_dir')
 
         global ctx
 
-        if self.gtdb_release:
+        # if the user has specified a GTDB release or taxonomy data directory,
+        # we're getting a new context.
+        if self.gtdb_release or self.SCGs_taxonomy_data_dir:
             # re-initializing the context with the right release
-            ctx = SCGTaxonomyContext(database_release=self.gtdb_release)
+            ctx = SCGTaxonomyContext(scgs_taxonomy_data_dir=self.SCGs_taxonomy_data_dir, database_release=self.gtdb_release)
 
         self.ctx = ctx
 
@@ -1314,6 +1317,15 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, Popul
         self.contigs_db_path = A('contigs_db')
         self.num_parallel_processes = int(A('num_parallel_processes')) if A('num_parallel_processes') else 1
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
+        self.SCGs_taxonomy_data_dir = A('scgs_taxonomy_data_dir')
+
+        global ctx
+
+        # if the user has specified a GTDB release or taxonomy data directory,
+        # we're getting a new context.
+        if self.SCGs_taxonomy_data_dir:
+            # re-initializing the context with the right release
+            ctx = SCGTaxonomyContext(scgs_taxonomy_data_dir=self.SCGs_taxonomy_data_dir)
 
         self.ctx = ctx
 
