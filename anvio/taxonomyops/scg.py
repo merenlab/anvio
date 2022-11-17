@@ -515,9 +515,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 raise ConfigError("Something that should have never happened, happened :/ Please re-run the same command with "
                                   "`--debug` and send the Traceback to an anvi'o developer.")
 
-
-            contigs_db_name = c.a_meta['project_name_str']
-
             with open(amino_acid_sequences_output_file_path, 'a+') as aa_sequences_output, open(dna_sequences_output_file_path, 'a+') as dna_sequences_output:
                 for header, entry in d[metagenome_name].items():
                     dna_sequence = sequences_dict[entry['gene_callers_id']]['sequence']
