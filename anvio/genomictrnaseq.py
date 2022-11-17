@@ -2019,14 +2019,16 @@ class Affinitizer:
                         "the filters.")
             return
 
-        weighted_frequencies_df = self.get_weighted_codon_frequencies(isoacceptor_abund_ratios_df)
-        if len(weighted_frequencies_df) == 0:
+        isoacceptor_codon_weights_df = self.get_isoacceptor_codon_weights(
+            isoacceptor_abund_ratios_df)
+        if len(isoacceptor_codon_weights_df) == 0:
             run.warning(
                 "Affinity could not be calculated given the lack of "
                 f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.")
             return
 
-        affinities_df = self.get_affinities(isoacceptor_abund_ratios_df, weighted_frequencies_df)
+        affinities_df = self.get_affinities(
+            isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
         if len(affinities_df) == 0:
             run.warning(
                 "Affinity could not be calculated despite the presence of the prerequisite "
@@ -2442,11 +2444,11 @@ class Affinitizer:
         return isoacceptor_abund_ratios_df
 
 
-    def get_weighted_codon_frequencies(self, isoacceptor_abund_ratios_df):
+    def get_isoacceptor_codon_weights(self, isoacceptor_abund_ratios_df):
         """
-        Get a table of weighted codon frequencies per isoacceptor for the functions or genes used in
-        the affinity calculations. A weighted codon frequency for an isoacceptor is the sum of codon
-        frequencies weighted by decoding efficiencies given the anticodon and wobble modification.
+        Get a table of isoacceptor codon weights for the functions or genes used in the affinity
+        calculations. A codon weight for an isoacceptor is the sum of codon frequencies weighted by
+        decoding efficiencies given the anticodon and wobble modification.
 
         Parameters
         ==========
@@ -2458,8 +2460,8 @@ class Affinitizer:
 
         Returns
         =======
-        weighted_frequencies_df : pandas.core.frame.DataFrame
-            This table of weighted codon frequencies has rows representing functions (or genes) in
+        isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
+            This table of isoacceptor codon weights has rows representing functions (or genes) in
             input genomes and columns representing each isoacceptor identified in the tRNA-seq data
             regardless of genome source.
         """
@@ -2543,13 +2545,13 @@ class Affinitizer:
                 summed_weighted_codon_counts = \
                     summed_weighted_codon_counts + (1 - decoding_weight) * codon_frequency_df[codon]
                 col_dict[effective_anticodon] = summed_weighted_codon_counts
-        weighted_frequencies_df = pd.DataFrame.from_dict(col_dict)
-        weighted_frequencies_df.index = codon_frequency_df.index
+        isoacceptor_codon_weights_df = pd.DataFrame.from_dict(col_dict)
+        isoacceptor_codon_weights_df.index = codon_frequency_df.index
 
-        return weighted_frequencies_df
+        return isoacceptor_codon_weights_df
 
 
-    def get_affinities(self, isoacceptor_abund_ratios_df, weighted_frequencies_df):
+    def get_affinities(self, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df):
         """
         Calculate affinities of tRNA isoacceptors for functions or genes in each genome.
 
@@ -2558,8 +2560,8 @@ class Affinitizer:
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
             information identifying non-reference/reference abundance ratios.
-        weighted_frequencies_df : pandas.core.frame.DataFrame
-            This table of weighted codon frequencies has rows representing functions (or genes) in
+        isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
+            This table of isoacceptor codon weights has rows representing functions (or genes) in
             input genomes and columns representing each isoacceptor identified in the tRNA-seq data
             regardless of genome source.
 
@@ -2572,9 +2574,10 @@ class Affinitizer:
             modified wobble nucleotide if applicable (e.g., ICG, LAT).
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
-        relative_weighted_frequencies_df = weighted_frequencies_df.div(
-            weighted_frequencies_df.sum(axis=1), axis=0)
-        relative_weighted_frequencies_gb = relative_weighted_frequencies_df.groupby('genome_name')
+        relative_isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.div(
+            isoacceptor_codon_weights_df.sum(axis=1), axis=0)
+        relative_isoacceptor_codon_weights_gb = \
+            relative_isoacceptor_codon_weights_df.groupby('genome_name')
 
         filtered_genome_names = []
         genome_affinities_dfs = []
@@ -2586,8 +2589,8 @@ class Affinitizer:
                 filtered_genome_names.append(genome_name)
                 continue
             try:
-                genome_relative_weighted_frequencies_df = \
-                    relative_weighted_frequencies_gb.get_group(genome_name)
+                genome_relative_isoacceptor_codon_weights_df = \
+                    relative_isoacceptor_codon_weights_gb.get_group(genome_name)
             except KeyError:
                 filtered_genome_names.append(genome_name)
                 continue
@@ -2595,19 +2598,19 @@ class Affinitizer:
             sample_affinities_dict = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('nonreference_trnaseq_sample_name'):
-                # Take the dot product of the matrix of relative isoacceptor weighted codon
-                # frequencies (m functions or genes x n isoacceptors) and the matrix of
-                # non-reference/reference sample isoacceptor abundance ratios (n isoacceptors x 1).
-                # This yields the affinity of the tRNA pool for each function or gene in the genome.
+                # Take the dot product of the matrix of relative isoacceptor codon weights (m
+                # functions or genes x n isoacceptors) and the matrix of non-reference/reference
+                # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
+                # of the tRNA pool for each function or gene in the genome.
 
-                # `get_weighted_codon_frequencies` should ensure that every "effective" anticodon
+                # `get_isoacceptor_codon_weights` should ensure that every "effective" anticodon
                 # (including modified wobble nucleotide, if applicable) from the tRNA-seq data is
                 # represented in a column of the weighted codon frequencies table.
                 abund_ratios = sample_isoacceptor_abund_ratios_df[
                     ['effective_anticodon', 'abundance_ratio']].set_index('effective_anticodon')[
                         'abundance_ratio']
                 sample_affinities_dict[trnaseq_sample_name] = \
-                    genome_relative_weighted_frequencies_df[abund_ratios.index].dot(
+                    genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].dot(
                         np.log2(abund_ratios))
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
