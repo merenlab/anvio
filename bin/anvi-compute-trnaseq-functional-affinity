@@ -68,6 +68,7 @@ def main(args):
     affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = get_affinities(
         args, return_component_tables=True)
     write_affinity_tables(args, affinities_dict)
+    write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
 
     codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
     write_general_codon_frequency_tables(args, codon_frequency_dict)
@@ -835,6 +836,65 @@ def write_affinity_tables(args, affinities_dict):
         run.info_single(valid_derived_output_path, level=2)
     if is_given_output_path_valid is 1:
         run.info_single(args.output_file, level=2)
+
+
+def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict):
+    """Write one or more tables of isoacceptor abundance ratios in non-reference versus reference
+    samples. Affinities are derived from these abundance ratios and isoacceptor codon weights."""
+    if not args.save_isoacceptor_abundance_ratios:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <basename>-<genome_name>-ABUNDANCE_RATIOS<extension>.
+    output_basename, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # The option, `--separate-genomes`, splits the isoacceptor abundance ratio table into smaller
+    # tables per genome.
+    if args.separate_genomes:
+        # Split written isoacceptor abundance ratio data by genome.
+        for genome_name, isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.items():
+            derived_output_path = (
+                f"{output_basename}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIO"
+                f"{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            isoacceptor_abund_ratio_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write isoacceptor abundance ratio data for all genomes and sources in a single table.
+        isoacceptor_abund_ratio_dfs = []
+        for isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.values():
+            isoacceptor_abund_ratio_dfs.append(isoacceptor_abund_ratio_df)
+        derived_output_path = f"{output_basename}-ABUNDANCE_RATIO{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            isoacceptor_abund_ratio_df = pd.concat(isoacceptor_abund_ratio_dfs)
+            isoacceptor_abund_ratio_df.to_csv(derived_output_path, sep='\t')
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of isoacceptor abundance ratios could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info.single("Saved isoacceptor abundance ratios")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
 
 
 def get_general_codon_frequencies(args, affinities_dict):
