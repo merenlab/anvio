@@ -69,6 +69,7 @@ def main(args):
         args, return_component_tables=True)
     write_affinity_tables(args, affinities_dict)
     write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
+    write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
 
     codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
     write_general_codon_frequency_tables(args, codon_frequency_dict)
@@ -893,6 +894,110 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
             f"following derived target paths: {paths_string}")
 
     run.info.single("Saved isoacceptor abundance ratios")
+    for valid_derived_output_path in valid_derived_output_paths:
+        run.info_single(valid_derived_output_path, level=2)
+
+
+def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict):
+    """Write one or more tables of isoacceptor codon weights. Affinities are derived from these
+    codon weights and isoacceptor abundance ratios."""
+    if not args.save_isoacceptor_codon_weights:
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the configuration of options, nothing may be written to this path. Given the template,
+    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being
+    # <basename>-<genome_name>-<function_source>-CODON_WEIGHTS<extension>.
+    output_basename, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # There are options to split output tables into smaller tables by genome and function source.
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written isoacceptor codon weight data by both genome and function source.
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            for source in source_dict:
+                # Write a table for the genome/function source.
+                derived_output_path = (
+                    f"{output_basename}-{genome_name.replace(' ', '_')}-{source}-CODON_WEIGHTS"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                isoacceptor_codon_weights_df = source_dict[source]
+                isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written isoacceptor codon weight data by genome and not by function source.
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            derived_output_path = (
+                f"{output_basename}-{genome_name.replace(' ', '_')}-CODONS_WEIGHTS"
+                f"{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                isoacceptor_codon_weights_df = source_dict['genes']
+            else:
+                isoacceptor_codon_weights_df = source_dict['all_functions']
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written isoacceptor codon weight data by function source and not by genome. Due to
+        # the order of inner dictionaries, tables of isoacceptor codon weights per source across
+        # genomes must be reconstructed.
+        source_tables_dict = {}
+        for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
+            for source, isoacceptor_codon_weights_df in source_dict.items():
+                try:
+                    source_tables_dict[source].append(isoacceptor_codon_weights_df)
+                except KeyError:
+                    source_tables_dict[source] = [isoacceptor_codon_weights_df]
+        # Concatenate tables per source and write to file.
+        for source, isoacceptor_codon_weights_dfs in source_tables_dict.items():
+            derived_output_path = \
+                f"{output_basename}-{source}-CODON_WEIGHTS{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            isoacceptor_codon_weights_df = pd.concat(isoacceptor_codon_weights_dfs)
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write isoacceptor codon weight data for all genomes and sources in a single table.
+        isoacceptor_codon_weights_dfs = []
+        for source_dict in isoacceptor_codon_weights_dict.values():
+            for isoacceptor_codon_weights_df in source_dict.values():
+                isoacceptor_codon_weights_dfs.append(isoacceptor_codon_weights_df)
+        derived_output_path = f"{output_basename}-CODONS{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            isoacceptor_codon_weights_df = pd.concat(isoacceptor_codon_weights_dfs)
+            isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of isoacceptor codon weights could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info.single("Saved isoacceptor codon weights")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
 
