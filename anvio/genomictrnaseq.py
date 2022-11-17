@@ -2011,7 +2011,7 @@ class Affinitizer:
                 f"{', '.join(unrecognized_amino_acids)}")
 
 
-    def go(self):
+    def go(self, return_component_tables=False):
         """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions."""
         isoacceptor_abund_ratios_df = self.get_isoacceptors()
         if len(isoacceptor_abund_ratios_df) == 0:
@@ -2035,7 +2035,10 @@ class Affinitizer:
                 f"filtered tRNA-seq and {'gene' if self.gene_affinity else 'function'} codon "
                 "frequency data.")
 
-        return affinities_df
+        if return_component_tables:
+            return affinities_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df
+        else:
+            return affinities_df
 
 
     def get_isoacceptors(self):
