@@ -65,7 +65,8 @@ def main(args):
     # Add an argument the opposite of `no_codon_dendrogram`.
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    affinities_dict = get_affinities(args)
+    affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = get_affinities(
+        args, return_component_tables=True)
     write_affinity_tables(args, affinities_dict)
 
     codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
@@ -316,7 +317,9 @@ def parse_decoding_weights_table(decoding_weights_txt):
 def get_affinities(args):
     """
     Generate or load an affinity table, returning a dictionary containing one or more tables per
-    genome, function or gene source, and normalization method.
+    genome, function or gene source, and normalization method. Also return dictionaries of
+    isoacceptor abundance ratio and isoacceptor codon weight tables from which affinities are
+    derived.
 
     Parameters
     ==========
@@ -339,15 +342,26 @@ def get_affinities(args):
 
         The values of the innermost dictionary are affinity tables with rows representing functions
         or genes and columns representing tRNA-seq samples.
+    isoacceptor_abund_ratios_dict : dict
+        This dictionary is keyed by genome name and contains tables of isoacceptor abundance ratios.
+        Affinities are calculated from isoacceptor abundance ratios in conjunction with isoacceptor
+        codon weights.
+    isoacceptor_codon_weights_dict : dict
+        This nested dictionary is structured as follows: genome name -> function or gene source ->
+        isoacceptor codon weights table. Affinities are calculated from isoacceptor codon weights in
+        conjunction with isoacceptor abundance ratios.
     """
     if args.plot_affinity_file:
         # Affinities are being plotted for a single genome but not computed anew.
         affinities_dict = load_affinities(args)
+        isoacceptor_abund_ratios_dict = None
+        isoacceptor_codon_weights_dict = None
     else:
         # Compute affinities anew.
-        affinities_dict = generate_affinities(args)
+        affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = \
+            generate_affinities(args)
 
-    return affinities_dict
+    return affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict
 
 
 def load_affinities(args):
@@ -431,10 +445,17 @@ def load_affinities(args):
 
 
 def generate_affinities(args):
-    """Generate affinities anew given one or more genomes."""
+    """Generate affinities anew given one or more genomes. Also return the isoacceptor abundance
+    ratios and isoacceptor codon weights from which affinities are derived."""
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
     affinitizer = genomictrnaseq.Affinitizer(args)
-    affinities_df = affinitizer.go()
+    affinities_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = affinitizer.go(
+        return_component_tables=True)
+    isoacceptor_abund_ratios_df = pd.pivot(
+        isoacceptor_abund_ratios_df,
+        index=['genome_name', 'decoded_amino_acid', 'anticodon'],
+        columns='nonreference_trnaseq_sample_name',
+        values='abundance_ratio')
     if len(affinities_df) == 0:
         raise ConfigError(
             "Affinity could not be calculated given the input data and/or filters applied to the "
@@ -446,6 +467,7 @@ def generate_affinities(args):
             (args.nonreference_samples.index(nonreference_sample), nonreference_sample)
             for nonreference_sample in affinities_df.columns])))[1])
         affinities_df = affinities_df[ordered_nonreference_samples]
+        isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[ordered_nonreference_samples]
 
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
@@ -493,7 +515,22 @@ def generate_affinities(args):
                 normalization_dict[normalization_method] = normalize_affinities_table(
                     source_df, normalization_method)
 
-    return affinities_dict
+    isoacceptor_abund_ratios_dict = {}
+    for genome_name, genome_df in isoacceptor_abund_ratios_df.groupby('genome_name'):
+        isoacceptor_abund_ratios_dict[genome_name] = genome_df
+
+    isoacceptor_codon_weights_dict = {}
+    for genome_name, genome_df in isoacceptor_codon_weights_df.groupby('genome_name'):
+        isoacceptor_codon_weights_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = genome_df
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = genome_df
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = source_df
+
+    return affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict
 
 
 def normalize_affinities_table(affinities_df, normalization_method):
