@@ -42,6 +42,7 @@ __description__ = \
 
 
 run = terminal.Run()
+run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
 # Constants used in static plots.
@@ -1128,11 +1129,11 @@ def generate_general_codon_frequencies(args, affinities_dict):
     codon_args.ignore_start_codons = True
 
     if (args.collection_name and not args.bin_id) or args.internal_genomes or args.external_genomes:
-        codon_usage = codonusage.MultiGenomeCodonUsage(codon_args)
+        codon_usage = codonusage.MultiGenomeCodonUsage(codon_args, r=run_quiet)
         multi_genome_info_dict = codon_usage.genome_info_dict
     else:
         codon_args.gene_caller_ids = args.gene_caller_ids
-        codon_usage = codonusage.SingleGenomeCodonUsage(codon_args)
+        codon_usage = codonusage.SingleGenomeCodonUsage(codon_args, r=run_quiet)
         multi_genome_info_dict = None
 
     codon_frequency_dict = {}
