@@ -1616,7 +1616,7 @@ def generate_sample_linkages(args, subset_affinities_dict):
                 # generated from all functions or genes for which affinity was calculated, not just
                 # those displayed in the plots.
                 sample_linkage = hierarchy.linkage(
-                    subset_affinities_df,
+                    subset_affinities_df.values.T,
                     method=args.sample_linkage_method,
                     metric=args.sample_distance_metric)
                 # By default, samples are labeled as integers in the linkage object. Labels are
