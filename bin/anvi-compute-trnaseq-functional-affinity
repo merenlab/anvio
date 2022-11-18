@@ -861,7 +861,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
         # Split written isoacceptor abundance ratio data by genome.
         for genome_name, isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.items():
             derived_output_path = (
-                f"{output_basename}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIO"
+                f"{output_basename}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIOS"
                 f"{output_extension}")
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
@@ -876,7 +876,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
         isoacceptor_abund_ratio_dfs = []
         for isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.values():
             isoacceptor_abund_ratio_dfs.append(isoacceptor_abund_ratio_df)
-        derived_output_path = f"{output_basename}-ABUNDANCE_RATIO{output_extension}"
+        derived_output_path = f"{output_basename}-ABUNDANCE_RATIOS{output_extension}"
         try:
             filesnpaths.is_output_file_writable(derived_output_path)
             isoacceptor_abund_ratio_df = pd.concat(isoacceptor_abund_ratio_dfs)
