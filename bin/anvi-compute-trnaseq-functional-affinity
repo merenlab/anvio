@@ -55,6 +55,19 @@ normalization_cmap_dict = {
     'magnitude_min_max': 'rocket'}
 image_dpi = 1200
 
+# ete3 converts certain characters to underscores in output Newick tree files. Rather than losing
+# this information in codon frequency and sample trees, encode the characters as strings.
+ete_newick_encoding_dict = {
+    '(': '\\leftparenthesis',
+    ')': '\\rightparenthesis',
+    '[': '\\leftsquarebracket',
+    ']': '\\rightsquarebracket',
+    ':': '\\colon',
+    ';': '\\semicolon',
+    ',': '\\comma',
+    '=': '\\equals'}
+ete_newick_decoding_dict = {v: k for k, v in ete_newick_encoding_dict.items()}
+
 
 def main(args):
     ran_helper_mode = run_helper_modes(args)
@@ -1474,6 +1487,43 @@ def generate_codon_linkages(args, codon_frequency_dict):
                 linkage_info_dict['plot_linkage'] = codon_linkage
 
     return codon_linkage_dict
+
+
+def encode_newick_labels(labels):
+    """
+    Encode tree labels for compatibility with Newick files written by `ete3`.
+
+    `ete3.Tree.write` converts certain characters to underscores in the Newick output: parentheses,
+    square brackets, colons, semicolons, commas, equals.
+    """
+    encoded_labels = []
+    for label in labels:
+        encoded_label = label
+        for excluded_char, encoded_string in ete_newick_encoding_dict.items():
+            if excluded_char not in label:
+                continue
+            encoded_label = encoded_label.replace(excluded_char, encoded_string)
+        encoded_labels.append(encoded_label)
+
+    return encoded_labels
+
+
+def decode_newick_labels(labels):
+    """Decode Newick labels formatted for compatability with `ete3` back to original tree labels.
+
+    `ete3.Tree.write` converts certain characters to underscores in the Newick output: parentheses,
+    square brackets, colons, semicolons, commas, equals.
+    """
+    decoded_labels = []
+    for label in labels:
+        decoded_label = label
+        for encoded_string, excluded_char in ete_newick_decoding_dict.items():
+            if encoded_string not in label:
+                continue
+            decoded_label = decoded_label.replace(encoded_string, excluded_char)
+        decoded_labels.append(decoded_label)
+
+    return decoded_labels
 
 
 def write_codon_newick_files(args, codon_linkage_dict):
