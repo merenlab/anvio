@@ -2412,27 +2412,32 @@ class Affinitizer:
             for trnaseq_sample_name, nonreference_sample_df in nonreference_samples_df.groupby(
                 'trnaseq_sample_name'):
                 for row in nonreference_sample_df.itertuples(index=False):
-                    decoding_key = (
-                        row.decoded_amino_acid,
-                        row.effective_wobble_nucleotide + row.anticodon[1: ])
-
                     try:
-                        reference_isoacceptor_series = reference_sample_df.loc[decoding_key]
+                        reference_isoacceptor_series = reference_sample_df.loc[(
+                            row.decoded_amino_acid,
+                            row.anticodon,
+                            row.effective_wobble_nucleotide)]
                     except KeyError:
                         # The isoacceptor is not detected in the reference sample, so the
                         # abundance ratio is infinite.
-                        isoacceptor_abund_ratios_rows.append(
-                            (genome_id, ) + decoding_key + (trnaseq_sample_name, np.nan))
+                        isoacceptor_abund_ratios_rows.append((
+                            genome_id,
+                            row.decoded_amino_acid,
+                            row.effective_wobble_nucleotide + row.anticodon[1: ],
+                            trnaseq_sample_name,
+                            np.nan))
                         continue
                     reference_abundance = reference_isoacceptor_series[
                         'relative_discriminator_coverage']
 
                     isoacceptor_abundance_ratio = \
                         row.relative_discriminator_coverage / reference_abundance
-                    isoacceptor_abund_ratios_rows.append(
-                        (genome_id, ) +
-                        decoding_key +
-                        (trnaseq_sample_name, isoacceptor_abundance_ratio))
+                    isoacceptor_abund_ratios_rows.append((
+                        genome_id,
+                        row.decoded_amino_acid,
+                        row.effective_wobble_nucleotide + row.anticodon[1: ],
+                        trnaseq_sample_name,
+                        isoacceptor_abundance_ratio))
         isoacceptor_abund_ratios_df = pd.DataFrame(
             isoacceptor_abund_ratios_rows,
             columns=[
@@ -2529,23 +2534,22 @@ class Affinitizer:
         # functions (or genes). Produce a table of function (or gene) x anticodon, with the values
         # being summed weighted codon counts.
         isoacceptors_df = isoacceptor_abund_ratios_df[
-            ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']].drop_duplicates()
+            ['decoded_amino_acid', 'anticodon']].drop_duplicates()
         # Disregard tRNA-iMet and tRNA-fMet. Start codons were excluded from the codon frequencies
         # in `codon_frequency_df`.
         isoacceptors_df = isoacceptors_df[
             ~isoacceptors_df['decoded_amino_acid'].isin(['iMet', 'fMet'])]
         col_dict = {}
         for row in isoacceptors_df.itertuples(index=False):
-            anticodon_wobble_nucleotide = row.effective_wobble_nucleotide
-            decoding_weights_series = self.decoding_weights_df.loc[anticodon_wobble_nucleotide]
-            effective_anticodon = anticodon_wobble_nucleotide + row.anticodon[1: ]
+            anticodon = row.anticodon
+            decoding_weights_series = self.decoding_weights_df.loc[anticodon[0]]
             # Get summed weighted codon counts for the isoacceptor across all functions or genes.
             summed_weighted_codon_counts = pd.Series(0, index=codon_frequency_df.index)
-            for codon in self.nucleotide_decoding_dict[effective_anticodon]:
+            for codon in self.nucleotide_decoding_dict[anticodon]:
                 decoding_weight = decoding_weights_series.loc[codon[2]]
                 summed_weighted_codon_counts = \
                     summed_weighted_codon_counts + (1 - decoding_weight) * codon_frequency_df[codon]
-                col_dict[effective_anticodon] = summed_weighted_codon_counts
+                col_dict[anticodon] = summed_weighted_codon_counts
         isoacceptor_codon_weights_df = pd.DataFrame.from_dict(col_dict)
         isoacceptor_codon_weights_df.index = codon_frequency_df.index
 
@@ -2604,12 +2608,11 @@ class Affinitizer:
                 # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
                 # of the tRNA pool for each function or gene in the genome.
 
-                # `get_isoacceptor_codon_weights` should ensure that every "effective" anticodon
-                # (including modified wobble nucleotide, if applicable) from the tRNA-seq data is
-                # represented in a column of the weighted codon frequencies table.
+                # `get_isoacceptor_codon_weights` should ensure that every anticodon (including
+                # modified wobble nucleotide, if applicable) from the tRNA-seq data is represented
+                # in a column of the weighted codon frequencies table.
                 abund_ratios = sample_isoacceptor_abund_ratios_df[
-                    ['effective_anticodon', 'abundance_ratio']].set_index('effective_anticodon')[
-                        'abundance_ratio']
+                    ['anticodon', 'abundance_ratio']].set_index('anticodon')['abundance_ratio']
                 sample_affinities_dict[trnaseq_sample_name] = \
                     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].dot(
                         np.log2(abund_ratios))
