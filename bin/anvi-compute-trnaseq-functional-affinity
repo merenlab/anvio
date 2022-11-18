@@ -1167,7 +1167,7 @@ def generate_general_codon_frequencies(args, affinities_dict):
                 codon_frequency_df['genome_name'] = genome_name
                 new_index_names = ['genome_name'] + codon_frequency_df.index.names
                 codon_frequency_df = codon_frequency_df.reset_index().set_index(new_index_names)
-            codon_frequency_source_dict[genome_name] = codon_frequency_df
+            codon_frequency_source_dict[source] = codon_frequency_df
 
     return codon_frequency_dict
 
