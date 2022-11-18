@@ -894,7 +894,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
             "The following tables of isoacceptor abundance ratios could not be written to the "
             f"following derived target paths: {paths_string}")
 
-    run.info.single("Saved isoacceptor abundance ratios")
+    run.info_single("Saved isoacceptor abundance ratios")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
 
@@ -998,7 +998,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
             "The following tables of isoacceptor codon weights could not be written to the "
             f"following derived target paths: {paths_string}")
 
-    run.info.single("Saved isoacceptor codon weights")
+    run.info_single("Saved isoacceptor codon weights")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
 
@@ -1291,7 +1291,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
             "The following tables of codon frequencies could not be written to the following "
             f"derived target paths: {paths_string}")
 
-    run.info.single("Saved codon frequencies")
+    run.info_single("Saved codon frequencies")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
 
