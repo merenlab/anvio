@@ -637,10 +637,10 @@ def write_affinity_tables(args, affinities_dict):
 
     # The output filepath serves as a template for the paths of other files that may be generated.
     # Given the configuration of options, nothing may be written to this path. Given the template,
-    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
     # elaborate such filepath being
-    # <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
-    output_basename, output_extension = os.path.splitext(args.output_file)
+    # <root>-<genome_name>-<function_source>-<normalization_method><extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
     is_given_output_path_valid = True
@@ -658,7 +658,7 @@ def write_affinity_tables(args, affinities_dict):
                 for normalization_method in args.normalization_methods:
                     # Write a table for the genome/source/normalization method.
                     derived_output_path = (
-                        f"{output_basename}-{genome_name.replace(' ', '_')}-{source}-"
+                        f"{output_root}-{genome_name.replace(' ', '_')}-{source}-"
                         f"{normalization_method}{output_extension}")
                     try:
                         filesnpaths.is_output_file_writable(derived_output_path)
@@ -675,7 +675,7 @@ def write_affinity_tables(args, affinities_dict):
                     continue
                 # Write a table of raw affinities for the genome/source.
                 derived_output_path = (
-                    f"{output_basename}-{genome_name.replace(' ', '_')}-{source}{output_extension}")
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}{output_extension}")
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
@@ -692,7 +692,7 @@ def write_affinity_tables(args, affinities_dict):
             for normalization_method in args.normalization_methods:
                 # Write a table for the genome/normalization method.
                 derived_output_path = (
-                    f"{output_basename}-{genome_name.replace(' ', '_')}-{normalization_method}"
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{normalization_method}"
                     f"{output_extension}")
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
@@ -708,8 +708,7 @@ def write_affinity_tables(args, affinities_dict):
             if args.no_raw_affinity:
                 continue
             # Write a table of raw affinities for the genome.
-            derived_output_path = \
-                f"{output_basename}-{genome_name.replace(' ', '_')}{output_extension}"
+            derived_output_path = f"{output_root}-{genome_name.replace(' ', '_')}{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -742,7 +741,7 @@ def write_affinity_tables(args, affinities_dict):
         for source, normalization_tables_dict in source_tables_dict.items():
             for normalization_method in args.normalization_methods:
                 derived_output_path = \
-                    f"{output_basename}-{source}-{normalization_method}{output_extension}"
+                    f"{output_root}-{source}-{normalization_method}{output_extension}"
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
@@ -757,7 +756,7 @@ def write_affinity_tables(args, affinities_dict):
             if args.no_raw_affinity:
                 continue
             # Write a table of raw affinities for the source.
-            derived_output_path = f"{output_basename}-{source}{output_extension}"
+            derived_output_path = f"{output_root}-{source}{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -784,7 +783,7 @@ def write_affinity_tables(args, affinities_dict):
                     except KeyError:
                         normalization_tables_dict[normalization_method] = [normalized_df]
         for normalization_method in args.normalization_methods:
-            derived_output_path = f"{output_basename}-{normalization_method}{output_extension}"
+            derived_output_path = f"{output_root}-{normalization_method}{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -848,10 +847,10 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
 
     # The output filepath serves as a template for the paths of other files that may be generated.
     # Given the configuration of options, nothing may be written to this path. Given the template,
-    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
     # elaborate such filepath being
-    # <basename>-<genome_name>-ABUNDANCE_RATIOS<extension>.
-    output_basename, output_extension = os.path.splitext(args.output_file)
+    # <root>-<genome_name>-ABUNDANCE_RATIOS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
 
@@ -861,7 +860,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
         # Split written isoacceptor abundance ratio data by genome.
         for genome_name, isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.items():
             derived_output_path = (
-                f"{output_basename}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIOS"
+                f"{output_root}-{genome_name.replace(' ', '_')}-ABUNDANCE_RATIOS"
                 f"{output_extension}")
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
@@ -876,7 +875,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
         isoacceptor_abund_ratio_dfs = []
         for isoacceptor_abund_ratio_df in isoacceptor_abund_ratios_dict.values():
             isoacceptor_abund_ratio_dfs.append(isoacceptor_abund_ratio_df)
-        derived_output_path = f"{output_basename}-ABUNDANCE_RATIOS{output_extension}"
+        derived_output_path = f"{output_root}-ABUNDANCE_RATIOS{output_extension}"
         try:
             filesnpaths.is_output_file_writable(derived_output_path)
             isoacceptor_abund_ratio_df = pd.concat(isoacceptor_abund_ratio_dfs)
@@ -907,10 +906,10 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
 
     # The output filepath serves as a template for the paths of other files that may be generated.
     # Given the configuration of options, nothing may be written to this path. Given the template,
-    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
     # elaborate such filepath being
-    # <basename>-<genome_name>-<function_source>-CODON_WEIGHTS<extension>.
-    output_basename, output_extension = os.path.splitext(args.output_file)
+    # <root>-<genome_name>-<function_source>-CODON_WEIGHTS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
 
@@ -921,7 +920,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
             for source in source_dict:
                 # Write a table for the genome/function source.
                 derived_output_path = (
-                    f"{output_basename}-{genome_name.replace(' ', '_')}-{source}-CODON_WEIGHTS"
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-CODON_WEIGHTS"
                     f"{output_extension}")
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
@@ -936,7 +935,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
         # Split written isoacceptor codon weight data by genome and not by function source.
         for genome_name, source_dict in isoacceptor_codon_weights_dict.items():
             derived_output_path = (
-                f"{output_basename}-{genome_name.replace(' ', '_')}-CODONS_WEIGHTS"
+                f"{output_root}-{genome_name.replace(' ', '_')}-CODONS_WEIGHTS"
                 f"{output_extension}")
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
@@ -963,8 +962,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
                     source_tables_dict[source] = [isoacceptor_codon_weights_df]
         # Concatenate tables per source and write to file.
         for source, isoacceptor_codon_weights_dfs in source_tables_dict.items():
-            derived_output_path = \
-                f"{output_basename}-{source}-CODON_WEIGHTS{output_extension}"
+            derived_output_path = f"{output_root}-{source}-CODON_WEIGHTS{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -980,7 +978,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
         for source_dict in isoacceptor_codon_weights_dict.values():
             for isoacceptor_codon_weights_df in source_dict.values():
                 isoacceptor_codon_weights_dfs.append(isoacceptor_codon_weights_df)
-        derived_output_path = f"{output_basename}-CODONS{output_extension}"
+        derived_output_path = f"{output_root}-CODONS{output_extension}"
         try:
             filesnpaths.is_output_file_writable(derived_output_path)
             isoacceptor_codon_weights_df = pd.concat(isoacceptor_codon_weights_dfs)
@@ -1181,9 +1179,9 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
 
     # The output filepath serves as a template for the paths of other files that may be generated.
     # Given the configuration of options, nothing may be written to this path. Given the template,
-    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
-    # elaborate such filepath being <basename>-<genome_name>-<function_source>-CODONS<extension>.
-    output_basename, output_extension = os.path.splitext(args.output_file)
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
+    # elaborate such filepath being <root>-<genome_name>-<function_source>-CODONS<extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
 
@@ -1198,7 +1196,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
             for source in source_dict:
                 # Write a table for the genome/function source.
                 derived_output_path = (
-                    f"{output_basename}-{genome_name.replace(' ', '_')}-{source}-CODONS"
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-CODONS"
                     f"{output_extension}")
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
@@ -1215,7 +1213,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
         # Split written codon frequency data by genome and not by function source.
         for genome_name, source_dict in codon_frequency_dict.items():
             derived_output_path = \
-                f"{output_basename}-{genome_name.replace(' ', '_')}-CODONS{output_extension}"
+                f"{output_root}-{genome_name.replace(' ', '_')}-CODONS{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -1243,8 +1241,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                     source_tables_dict[source] = [codon_frequency_df]
         # Concatenate tables per source and write to file.
         for source, codon_frequency_dfs in source_tables_dict.items():
-            derived_output_path = \
-                f"{output_basename}-{source}-CODONS{output_extension}"
+            derived_output_path = f"{output_root}-{source}-CODONS{output_extension}"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -1262,7 +1259,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
         for source_dict in codon_frequency_dict.values():
             for codon_frequency_df in source_dict.values():
                 codon_frequency_dfs.append(codon_frequency_df)
-        derived_output_path = f"{output_basename}-CODONS{output_extension}"
+        derived_output_path = f"{output_root}-CODONS{output_extension}"
         try:
             filesnpaths.is_output_file_writable(derived_output_path)
             codon_frequency_df = pd.concat(codon_frequency_dfs)
@@ -1497,7 +1494,7 @@ def write_codon_newick_files(args, codon_linkage_dict):
             leaf_index_label_dict = dict(enumerate(labels))
             newick = clustering.get_tree_object_in_newick(
                 codon_tree, id_to_sample_dict=leaf_index_label_dict)
-            derived_output_path = f"{output_basename}-{genome_name}-{source}.nwk"
+            derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
@@ -1652,10 +1649,10 @@ def write_sample_newick_files(args, sample_linkage_dict):
                 newick = clustering.get_tree_object_in_newick(
                     sample_tree, id_to_sample_dict=leaf_index_label_dict)
                 if normalization_method == 'raw':
-                    derived_output_path = f"{output_basename}-{genome_name}-{source}.nwk"
+                    derived_output_path = f"{output_root}-{genome_name}-{source}.nwk"
                 else:
                     derived_output_path = \
-                        f"{output_basename}-{genome_name}-{source}-{normalization_method}.nwk"
+                        f"{output_root}-{genome_name}-{source}-{normalization_method}.nwk"
                 try:
                     filesnpaths.is_output_file_writable(derived_output_path)
                 except FilesNPathsError:
@@ -1688,9 +1685,9 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
 
     # The output filepath serves as a template for the paths of other files that may be generated.
     # Given the configuration of options, nothing may be written to this path. Given the template,
-    # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
+    # <root><extension>, substrings can be inserted in the derived filepaths, with the most
     # elaborate such filepath being
-    # <basename>-<genome_name>-<function_source>-<normalization_method>.png.
+    # <root>-<genome_name>-<function_source>-<normalization_method>.png.
     output_root = os.path.splitext(args.output_file)[0]
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
@@ -1712,7 +1709,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     sample_linkage = None
 
                 # Determine the output path for the plot.
-                derived_output_path = f"{output_basename}"
+                derived_output_path = f"{output_root}"
                 if len(subset_affinities_dict) > 0:
                     derived_output_path = f"{derived_output_path}-{genome_name}"
                 if args.separate_function_sources:

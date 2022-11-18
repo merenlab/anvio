@@ -2607,7 +2607,7 @@ def write_split_codon_output(codon_frequency_df,
                              output_path,
                              separate_genomes=False,
                              separate_function_sources=False,
-                             output_basename=None):
+                             output_root=None):
     """
     Store tables of codon frequency data.
 
@@ -2619,18 +2619,18 @@ def write_split_codon_output(codon_frequency_df,
     output_path : str
         This filepath serves as a template for the paths of other files that may be generated.
         Indeed, if the arguments, `separate_genomes` and/or `separate_function_sources` are used,
-        nothing is written to this path. Given the template, <basename><extension>, substrings can
-        be inserted in the derived filepaths, with the most elaborate such filepath being
-        <basename>-<genome_name>-<function_source>-<normalization_method><extension>.
+        nothing is written to this path. Given the template, <root><extension>, substrings can be
+        inserted in the derived filepaths, with the most elaborate such filepath being
+        <root>-<genome_name>-<function_source>-<normalization_method><extension>.
     separate_genomes : bool, optional
         If True (default False), split output tables by genome. In the output paths, underscores
         replace spaces in the genome names.
     separate_function_sources : bool, optional
         If True (default False), split output tables by function source.
-    output_basename : str, optional
+    output_root : str, optional
         If given (default None), then rather than splitting the output path by the extension, the
-        output filepath template consists of <output_basename><post_output_basename>, with
-        <genome_name> and <function_source> inserted between the two.
+        output filepath template consists of <output_root><post_output_root>, with <genome_name>
+        and <function_source> inserted between the two.
     """
     if separate_genomes:
         if 'genome' not in codon_frequency_df.index.names:
@@ -2645,20 +2645,20 @@ def write_split_codon_output(codon_frequency_df,
                 "the table of codon frequencies must contain the expected index column, "
                 "\"function_source\".")
 
-    if output_basename is not None:
+    if output_root is not None:
         try:
-            output_basename_index = output_path.index(output_basename)
+            output_root_index = output_path.index(output_root)
         except ValueError:
-            output_basename_index = -1
-        if output_basename_index != 0:
+            output_root_index = -1
+        if output_root_index != 0:
             raise ConfigError(
-                "The value provided for `output_basename`, '{output_basename}', does not but must "
-                "occur at the start of `output_path`, '{output_path}'.")
+                "The value provided for `output_root`, '{output_root}', does not but must occur at "
+                "the start of `output_path`, '{output_path}'.")
 
-    if output_basename:
-        output_ext = output_path[len(output_basename): ]
+    if output_root:
+        output_ext = output_path[len(output_root): ]
     else:
-        output_basename, output_ext = os.path.splitext(output_path)
+        output_root, output_ext = os.path.splitext(output_path)
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
     is_given_output_path_valid = True
@@ -2668,7 +2668,7 @@ def write_split_codon_output(codon_frequency_df,
             for source, source_df in genome_df.groupby('function_source'):
                 # Write a table of codon frequencies for the genome/source.
                 derived_output_path = (
-                    output_basename + "-" +
+                    output_root + "-" +
                     genome_name.replace(" ", "_") + "-" + source +
                     output_ext)
                 try:
@@ -2681,10 +2681,7 @@ def write_split_codon_output(codon_frequency_df,
     elif separate_genomes:
         # Split the data by genome.
         for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
-            derived_output_path = (
-                output_basename + "-" +
-                genome_name.replace(" ", "_") +
-                output_ext)
+            derived_output_path = output_root + "-" + genome_name.replace(" ", "_") + output_ext
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
                 valid_derived_output_paths.append(derived_output_path)
@@ -2695,7 +2692,7 @@ def write_split_codon_output(codon_frequency_df,
     elif separate_function_sources:
         # Split the data by function source.
         for source, source_df in codon_frequency_df.groupby('function_source'):
-            derived_output_path = output_basename + "-" + source + output_ext
+            derived_output_path = output_root + "-" + source + output_ext
             try:
                 filesnpaths.is_output_file_writable(derived_output_path)
             except FilesNPathsError:
