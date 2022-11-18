@@ -66,8 +66,8 @@ def main(args):
     # Add an argument the opposite of `no_codon_dendrogram`.
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = get_affinities(
-        args, return_component_tables=True)
+    affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = \
+        get_affinities(args)
     write_affinity_tables(args, affinities_dict)
     write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
     write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
