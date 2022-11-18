@@ -1460,7 +1460,7 @@ def generate_codon_linkages(args, codon_frequency_dict):
                 codon_linkage = hierarchy.linkage(
                     relative_codon_frequency_df,
                     method=args.codon_linkage_method,
-                    distance=args.codon_distance_metric)
+                    metric=args.codon_distance_metric)
                 # By default, functions or genes are labeled as integers in the linkage object. Labels
                 # are later updated to be informative.
                 leaf_labels = relative_codon_frequency_df.index.get_level_values('label').tolist()
@@ -1473,7 +1473,7 @@ def generate_codon_linkages(args, codon_frequency_dict):
                 codon_linkage = hierarchy.linkage(
                     relative_codon_frequency_df,
                     method=args.codon_linkage_method,
-                    distance=args.codon_distance_metric)
+                    metric=args.codon_distance_metric)
                 linkage_info_dict['plot_linkage'] = codon_linkage
 
     return codon_linkage_dict
@@ -1618,7 +1618,7 @@ def generate_sample_linkages(args, subset_affinities_dict):
                 sample_linkage = hierarchy.linkage(
                     subset_affinities_df,
                     method=args.codon_linkage_method,
-                    distance=args.codon_distance_metric)
+                    metric=args.codon_distance_metric)
                 # By default, samples are labeled as integers in the linkage object. Labels are
                 # later updated to be informative.
                 leaf_labels = subset_affinities_df.index.get_level_values('label').tolist()
