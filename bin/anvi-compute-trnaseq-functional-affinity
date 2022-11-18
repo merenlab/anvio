@@ -1014,7 +1014,7 @@ def get_general_codon_frequencies(args, affinities_dict):
         dictionary keyed by genome name and the inner dictionary of codon frequencies keyed by
         source. The source can be separate function sources, all function sources, or 'genes'.
     """
-    if not (args.plot_codon_dendrogram or args.save_codon_frequencies):
+    if not (args.plot_codon_dendrogram or args.save_codon_frequencies or args.save_codon_trees):
         return None
 
     if args.plot_codon_file:
@@ -1022,7 +1022,7 @@ def get_general_codon_frequencies(args, affinities_dict):
     else:
         codon_frequency_dict = generate_general_codon_frequencies(args, affinities_dict)
 
-    if args.plot_codon_dendrogram:
+    if args.plot_codon_dendrogram or args.save_codon_trees:
         for source_dict in codon_frequency_dict.values():
             for source, codon_frequency_df in source_dict.items():
                 new_codon_frequency_df = get_table_with_codon_tree_labels(args, codon_frequency_df)
@@ -1219,7 +1219,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                     continue
                 valid_derived_output_paths.append(derived_output_path)
                 codon_frequency_df = source_dict[source]
-                if args.plot_codon_dendrogram:
+                if args.plot_codon_dendrogram or args.save_codon_trees:
                     codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
                 codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_genomes:
@@ -1238,7 +1238,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                 codon_frequency_df = source_dict['genes']
             else:
                 codon_frequency_df = source_dict['all_functions']
-            if args.plot_codon_dendrogram:
+            if args.plot_codon_dendrogram or args.save_codon_trees:
                 codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
             codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
@@ -1264,7 +1264,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                 continue
             valid_derived_output_paths.append(derived_output_path)
             codon_frequency_df = pd.concat(codon_frequency_dfs)
-            if args.plot_codon_dendrogram:
+            if args.plot_codon_dendrogram or args.save_codon_trees:
                 codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
             codon_frequency_df.to_csv(derived_output_path, sep='\t')
     else:
