@@ -547,15 +547,18 @@ class Inversions:
                 for read in reads:
                     num_reads_considered += 1
                     if not evidence_left:
-                        if inversion_candidate.v1_left in read:
-                            evidence += 'v1_left and '
-                            evidence_left = True
+                        try:
+                            if inversion_candidate.v1_left in read:
+                                evidence += 'v1_left and '
+                                evidence_left = True
 
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
+                                if evidence_right:
+                                    match = True
+                                    evidence_right = False
+                                    evidence_left = False
+                                    break
+                        except:
+                            ConfigError("Something went wrong while trying to test for v1_left construct in short reads. You should check your sequences in the bam file.")
                     elif not evidence_right:
                         if inversion_candidate.v1_right in read:
                             evidence += 'v1_right'
