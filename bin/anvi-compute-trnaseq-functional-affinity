@@ -1484,7 +1484,7 @@ def write_codon_newick_files(args, codon_linkage_dict):
     if not args.save_codon_trees:
         return
 
-    output_basename = os.path.basename(args.output_file)
+    output_root = os.path.splitext(args.output_file)[0]
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
     for genome_name, source_codon_linkage_dict in codon_linkage_dict.items():
@@ -1637,7 +1637,7 @@ def write_sample_newick_files(args, sample_linkage_dict):
     if not args.save_sample_trees:
         return
 
-    output_basename = os.path.basename(args.output_file)
+    output_root = os.path.splitext(args.output_file)[0]
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
     for genome_name, source_sample_linkage_dict in sample_linkage_dict.items():
@@ -1691,7 +1691,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     # <basename><extension>, substrings can be inserted in the derived filepaths, with the most
     # elaborate such filepath being
     # <basename>-<genome_name>-<function_source>-<normalization_method>.png.
-    output_basename = os.path.basename(args.output_file)
+    output_root = os.path.splitext(args.output_file)[0]
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
 
