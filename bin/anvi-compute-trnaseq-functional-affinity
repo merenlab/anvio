@@ -1621,7 +1621,7 @@ def generate_sample_linkages(args, subset_affinities_dict):
                     metric=args.sample_distance_metric)
                 # By default, samples are labeled as integers in the linkage object. Labels are
                 # later updated to be informative.
-                leaf_labels = subset_affinities_df.index.get_level_values('label').tolist()
+                leaf_labels = subset_affinities_df.columns.tolist()
                 normalization_sample_linkage_dict[normalization_method] = linkage_info_dict = {}
                 if args.save_sample_trees:
                     linkage_info_dict['save_linkage'] = sample_linkage
