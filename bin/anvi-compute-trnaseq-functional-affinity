@@ -1376,7 +1376,11 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
     run.info(
         f"Loaded tree of {'genes' if args.gene_affinity else 'functions'}",
         args.plot_codon_tree_file)
-    leaf_labels = codon_tree.get_leaf_names()
+
+    leaves = codon_tree.iter_leaves()
+    for label in decode_newick_labels(codon_tree.get_leaf_names()):
+        leaf = next(leaves)
+        leaf.name = label
 
     # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
     if len(subset_affinities_dict) > 1:
@@ -1537,7 +1541,7 @@ def write_codon_newick_files(args, codon_linkage_dict):
     for genome_name, source_codon_linkage_dict in codon_linkage_dict.items():
         for source, linkage_info_dict in source_codon_linkage_dict.items():
             codon_linkage = linkage_info_dict['save_linkage']
-            labels = linkage_info_dict['save_labels']
+            labels = encode_newick_labels(linkage_info_dict['save_labels'])
 
             codon_tree = hierarchy.to_tree(codon_linkage)
 
@@ -1584,7 +1588,11 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     in the plot derives from the linkage object."""
     sample_tree = Tree(args.plot_sample_tree_file)
     run.info(f"Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
-    leaf_labels = sample_tree.get_leaf_names()
+
+    leaves = sample_tree.iter_leaves()
+    for label in decode_newick_labels(sample_tree.get_leaf_names()):
+        leaf = next(leaves)
+        leaf.name = label
 
     # Confirm that the affinities sourced from `--plot-affinity-file` derive from a single genome.
     if len(subset_affinities_dict) > 1:
@@ -1691,7 +1699,7 @@ def write_sample_newick_files(args, sample_linkage_dict):
         for source, normalization_sample_linkage_dict in source_sample_linkage_dict.items():
             for normalization_method, linkage_info_dict in normalization_sample_linkage_dict.items():
                 sample_linkage = linkage_info_dict['save_linkage']
-                labels = linkage_info_dict['save_labels']
+                labels = encode_newick_labels(linkage_info_dict['save_labels'])
 
                 sample_tree = hierarchy.to_tree(sample_linkage)
 
