@@ -669,7 +669,7 @@ def write_affinity_tables(args, affinities_dict):
                     valid_derived_output_paths.append(derived_output_path)
                     normalized_source_df = normalization_dict[normalization_method]
                     if args.plot_codon_dendrogram:
-                        normalized_source_df = normalized_source_df.index.droplevel('label')
+                        normalized_source_df.index = normalized_source_df.index.droplevel('label')
                     normalized_source_df.to_csv(derived_output_path, sep='\t')
                 if args.no_raw_affinity:
                     continue
@@ -703,7 +703,7 @@ def write_affinity_tables(args, affinities_dict):
                 valid_derived_output_paths.append(derived_output_path)
                 normalized_genome_df = normalization_dict[normalization_method]
                 if args.plot_codon_dendrogram:
-                    normalized_genome_df = normalized_genome_df.index.droplevel('label')
+                    normalized_genome_df.index = normalized_genome_df.index.droplevel('label')
                 normalized_genome_df.to_csv(derived_output_path, sep='\t')
             if args.no_raw_affinity:
                 continue
@@ -752,7 +752,7 @@ def write_affinity_tables(args, affinities_dict):
                 valid_derived_output_paths.append(derived_output_path)
                 normalized_source_df = pd.concat(normalization_tables_dict[normalization_method])
                 if args.plot_codon_dendrogram:
-                    normalized_source_df = normalized_source_df.index.droplevel('label')
+                    normalized_source_df.index = normalized_source_df.index.droplevel('label')
                 normalized_source_df.to_csv(derived_output_path, sep='\t')
             if args.no_raw_affinity:
                 continue
@@ -767,7 +767,7 @@ def write_affinity_tables(args, affinities_dict):
             valid_derived_output_paths.append(derived_output_path)
             raw_source_df = pd.concat(normalization_tables_dict['raw'])
             if args.plot_codon_dendrogram:
-                raw_source_df = raw_source_df.index.droplevel('label')
+                raw_source_df.index = raw_source_df.index.droplevel('label')
             raw_source_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write affinity data for each normalization method, including all genomes and sources. As
@@ -794,7 +794,7 @@ def write_affinity_tables(args, affinities_dict):
             valid_derived_output_paths.append(derived_output_path)
             normalized_df = pd.concat(normalization_tables_dict[normalization_method])
             if args.plot_codon_dendrogram:
-                normalized_df = normalized_df.index.droplevel('label')
+                normalized_df.index = normalized_df.index.droplevel('label')
             normalized_df.to_csv(derived_output_path, sep='\t')
         if not args.no_raw_affinity and not invalid_derived_output_paths:
             # Write a table of raw affinities for the source.
@@ -1220,7 +1220,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
                 valid_derived_output_paths.append(derived_output_path)
                 codon_frequency_df = source_dict[source]
                 if args.plot_codon_dendrogram:
-                    codon_frequency_df = codon_frequency_df.index.droplevel('label')
+                    codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
                 codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_genomes:
         # Split written codon frequency data by genome and not by function source.
@@ -1239,7 +1239,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
             else:
                 codon_frequency_df = source_dict['all_functions']
             if args.plot_codon_dendrogram:
-                codon_frequency_df = codon_frequency_df.index.droplevel('label')
+                codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
             codon_frequency_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written codon frequency data by function source and not by genome. Due to the order
@@ -1265,7 +1265,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
             valid_derived_output_paths.append(derived_output_path)
             codon_frequency_df = pd.concat(codon_frequency_dfs)
             if args.plot_codon_dendrogram:
-                codon_frequency_df = codon_frequency_df.index.droplevel('label')
+                codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
             codon_frequency_df.to_csv(derived_output_path, sep='\t')
     else:
         # Write codon frequency data for all genomes and sources in a single table.
