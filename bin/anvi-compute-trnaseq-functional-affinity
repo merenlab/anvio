@@ -1384,7 +1384,8 @@ def get_codon_linkage(args, codon_frequency_dict, subset_affinities_dict):
     if args.plot_codon_tree_file:
         codon_linkage_dict = load_codon_linkage_from_newick(args, subset_affinities_dict)
     elif args.plot_codon_dendrogram or args.save_codon_trees:
-        codon_linkage_dict = generate_codon_linkages(args, codon_frequency_dict)
+        codon_linkage_dict = generate_codon_linkages(
+            args, codon_frequency_dict, subset_affinities_dict)
     else:
         codon_linkage_dict = None
 
@@ -1478,13 +1479,20 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
     return codon_linkage_dict
 
 
-def generate_codon_linkages(args, codon_frequency_dict):
-    """Generate cluster linkages of functions or genes by their relative codon frequencies."""
+def generate_codon_linkages(args, codon_frequency_dict, subset_affinities_dict):
+    """
+    Generate cluster linkages of functions or genes by their relative codon frequencies.
+
+    Clusters of all functions or genes are saved to the Newick file. In contrast, for the generation
+    of the y-axis dendrogram in a plot, only the select displayed functions or genes are clustered.
+    """
     codon_linkage_dict = {}
     for genome_name, codon_source_dict in codon_frequency_dict.items():
         codon_linkage_dict[genome_name] = source_codon_linkage_dict = {}
+        subset_source_dict = subset_affinities_dict[genome_name]
         for source, codon_frequency_df in codon_source_dict.items():
             source_codon_linkage_dict[source] = linkage_info_dict = {}
+            subset_affinities_df = subset_source_dict[source]['raw']
 
             relative_codon_frequency_df = codon_frequency_df.div(
                 codon_frequency_df.sum(axis=1), axis=0)
@@ -1505,10 +1513,8 @@ def generate_codon_linkages(args, codon_frequency_dict):
                 linkage_info_dict['save_labels'] = leaf_labels
 
             if args.plot_codon_dendrogram:
-                leaf_labels = relative_codon_frequency_df.reset_index()['label'].tolist()
-                relative_codon_frequency_df = relative_codon_frequency_df.loc[leaf_labels]
                 codon_linkage = hierarchy.linkage(
-                    relative_codon_frequency_df,
+                    relative_codon_frequency_df.loc[subset_affinities_df.index],
                     method=args.codon_linkage_method,
                     metric=args.codon_distance_metric)
                 linkage_info_dict['plot_linkage'] = codon_linkage
