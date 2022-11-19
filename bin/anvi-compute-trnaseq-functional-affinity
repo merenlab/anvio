@@ -430,7 +430,10 @@ def load_affinities(args):
     affinities_dict = {}
     genome_name = affinities_df.index.get_level_values('genome_name')[0]
     affinities_dict[genome_name] = source_dict = {}
-    multiple_sources = affinities_df.index.get_level_values('function_source').nunique()
+    if affinities_df.index.get_level_values('function_source').nunique() > 1:
+        multiple_sources = True
+    else:
+        multiple_sources = False
     if args.gene_affinity:
         source_dict['genes'] = normalization_dict = {}
         if args.plot_codon_dendrogram:
@@ -478,10 +481,14 @@ def generate_affinities(args):
             "data.")
 
     if args.plot_codon_dendrogram:
+        if affinities_df.index.get_level_values('function_source').nunique() > 1:
+            multiple_sources = True
+        else:
+            multiple_sources = False
         affinities_df = get_table_with_codon_tree_labels(
             args,
             affinities_df,
-            multiple_sources=affinities_df.index.get_level_values('function_source').nunique())
+            multiple_sources=multiple_sources)
 
     isoacceptor_abund_ratios_df = pd.pivot(
         isoacceptor_abund_ratios_df,
