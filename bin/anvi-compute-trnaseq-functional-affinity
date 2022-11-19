@@ -46,7 +46,7 @@ run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
 # Constants used in static plots.
-x_tick_label_rotation = 20
+x_tick_label_rotation = 30
 x_tick_label_alignment = 'right'
 normalization_cmap_dict = {
     'raw': 'vlag',
