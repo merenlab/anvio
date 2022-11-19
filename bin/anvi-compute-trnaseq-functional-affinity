@@ -1910,7 +1910,10 @@ def get_plot_labels(args, subset_affinities_df):
                         # For some reason, the category does not have a number.
                         new_plot_label += category
                         continue
-                    new_plot_label += category[len(category_number) + 1: ] + ">>>"
+                    num_spaces = (
+                        len(category[len(category_number): ]) -
+                        len(category[len(category_number): ].lstrip()))
+                    new_plot_label += category[len(category_number) + num_spaces: ] + ">>>"
                 if new_plot_label[-3: ] == ">>>":
                     new_plot_label = new_plot_label[: -3]
                 # Strip the square bracketed pathway at the end of the terminal category, e.g.,
@@ -1926,11 +1929,14 @@ def get_plot_labels(args, subset_affinities_df):
                 new_plot_label = ""
                 for category in label.split(">>>"):
                     ec_number = category.split(" ")[0]
-                    if ec_number == len(category):
+                    if len(ec_number) == len(category.rstrip()):
                         # The category contains nothing beyond the EC number, so keep it.
                         new_plot_label += category
                     else:
-                        new_plot_label += category[len(ec_number) + 1: ] + ">>>"
+                        num_spaces = (
+                            len(category[len(ec_number): ]) -
+                            len(category[len(ec_number): ].lstrip()))
+                        new_plot_label += category[len(ec_number) + num_spaces: ] + ">>>"
                 if new_plot_label[-3: ] == ">>>":
                     new_plot_label = new_plot_label[: -3]
             else:
@@ -1939,8 +1945,8 @@ def get_plot_labels(args, subset_affinities_df):
                 # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
                 split_label = label.split(" [")
                 suffix = split_label[-1]
-                if len(split_label) > 1 and suffix[-1] == ']':
-                    new_plot_label = label[: -len(suffix) - 2]
+                if len(split_label) > 1 and suffix.rstrip()[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2].rstrip()
                 else:
                     new_plot_label = label
         else:
@@ -1950,7 +1956,10 @@ def get_plot_labels(args, subset_affinities_df):
                 category_number = label.split(" ")[0]
                 try:
                     int(category_number)
-                    new_plot_label = label[len(category_number) + 1: ]
+                    num_spaces = (
+                        len(label[len(category_number): ]) -
+                        len(label[len(category_number): ].lstrip()))
+                    new_plot_label = label[len(category_number) + num_spaces: ]
                 except ValueError:
                     # For some reason, the category does not have a number.
                     new_plot_label = label
@@ -1965,19 +1974,22 @@ def get_plot_labels(args, subset_affinities_df):
                 # Strip the EC number from the Enzyme Commission category. Assume from induction
                 # that there is always an EC number at the beginning of the category name.
                 ec_number = label.split(" ")[0]
-                if ec_number == len(label):
+                if len(ec_number) == len(label.rstrip()):
                     # The category contains nothing beyond the EC number, so keep it.
                     new_plot_label = label
                 else:
-                    new_plot_label = label[len(ec_number) + 1: ]
+                    num_spaces = (
+                        len(label[len(ec_number): ]) -
+                        len(label[len(ec_number): ].lstrip()))
+                    new_plot_label = label[len(ec_number) + num_spaces: ]
             else:
                 # Terminal categories can end in square bracketed links to other KEGG entries or
                 # other database entries, e.g., "Other transporters>>>Pores ion channels [TC:1]",
                 # "Heterotrimeric G-proteins>>>Alpha Subunits>>>Alpha type 1 (Gi/o) [OT]".
                 split_label = label.split(" [")
                 suffix = split_label[-1]
-                if len(split_label) > 1 and suffix[-1] == ']':
-                    new_plot_label = label[: -len(suffix) - 2]
+                if len(split_label) > 1 and suffix.rstrip()[-1] == ']':
+                    new_plot_label = label[: -len(suffix) - 2].rstrip()
                 else:
                     new_plot_label = label
         new_plot_labels.append(new_plot_label)
