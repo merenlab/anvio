@@ -1378,7 +1378,8 @@ def load_codon_linkage_from_newick(args, subset_affinities_dict):
         args.plot_codon_tree_file)
 
     leaves = codon_tree.iter_leaves()
-    for label in decode_newick_labels(codon_tree.get_leaf_names()):
+    leaf_labels = decode_newick_labels(codon_tree.get_leaf_names())
+    for label in leaf_labels:
         leaf = next(leaves)
         leaf.name = label
 
@@ -1590,7 +1591,8 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     run.info(f"Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
 
     leaves = sample_tree.iter_leaves()
-    for label in decode_newick_labels(sample_tree.get_leaf_names()):
+    leaf_labels = decode_newick_labels(sample_tree.get_leaf_names())
+    for label in leaf_labels:
         leaf = next(leaves)
         leaf.name = label
 
