@@ -519,30 +519,6 @@ def generate_affinities(args):
                     normalization_dict[normalization_method] = normalize_affinities_table(
                         source_df, normalization_method)
 
-    if args.gene_affinity:
-        source_dict['genes'] = normalization_dict = {}
-        if args.plot_codon_dendrogram:
-            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
-        normalization_dict['raw'] = affinities_df
-        for normalization_method in args.normalization_methods:
-            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
-    elif args.compare_all_function_sources:
-        source_dict['all_functions'] = normalization_dict = {}
-        if args.plot_codon_dendrogram:
-            affinities_df = get_table_with_codon_tree_labels(args, affinities_df)
-        normalization_dict['raw'] = affinities_df
-        for normalization_method in args.normalization_methods:
-            normalization_dict[normalization_method] = normalize_affinities_table(affinities_df)
-    else:
-        for source, source_df in affinities_df.groupby('function_source'):
-            source_dict[source] = normalization_dict = {}
-            if args.plot_codon_dendrogram:
-                source_df = get_table_with_codon_tree_labels(args, source_df)
-            normalization_dict['raw'] = source_df
-            for normalization_method in args.normalization_methods:
-                normalization_dict[normalization_method] = normalize_affinities_table(
-                    source_df, normalization_method)
-
     isoacceptor_abund_ratios_dict = {}
     for genome_name, genome_df in isoacceptor_abund_ratios_df.groupby('genome_name'):
         isoacceptor_abund_ratios_dict[genome_name] = genome_df
