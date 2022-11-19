@@ -1798,18 +1798,18 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     cbar_kws={'label': 'affinity'})
                 if normalization_method == 'raw':
                     # Raw affinities lie in the range, (-∞, +∞).
-                    clustermap = partial(clustermap(center=0))
+                    clustermap = partial(clustermap, center=0)
                 elif normalization_method == 'min_max':
                     # Min-max normalized affinities lie in the range, [0, 1]. Currently, there is no
                     # way of handling the edge case that every affinity has the same value, which
                     # yields undefined min-max normalized affinities.
-                    clustermap = partial(clustermap(vmin=0, vmax=1))
+                    clustermap = partial(clustermap, vmin=0, vmax=1)
                 elif normalization_method == 'min_max_mean':
                     # Min-max-mean normalized affinities lie in the range, (-1, 1).
-                    clustermap = partial(clustermap(center=0, vmin=-1, vmax=1))
+                    clustermap = partial(clustermap, center=0, vmin=-1, vmax=1)
                 elif normalization_method == 'magnitude_min_max':
                     # Magnitude-min-max normalized affinities lie in the range, [0, 1].
-                    clustermap = partial(clustermap(vmin=0, vmax=1))
+                    clustermap = partial(clustermap, vmin=0, vmax=1)
 
                 if codon_linkage is not None and sample_linkage is not None:
                     plot = clustermap(
