@@ -1857,6 +1857,7 @@ def get_plot_labels(args, subset_affinities_df):
             else:
                 plot_labels.append(label)
 
+    new_plot_labels = []
     if not args.unlabel_function_accession_source:
         # Strip placeholder empty parentheses from the end of the plot labels. These occur when a
         # single function annotation source was processed and the function has no accession.
