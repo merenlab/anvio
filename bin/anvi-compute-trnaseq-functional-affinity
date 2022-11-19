@@ -1826,6 +1826,11 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     rotation=x_tick_label_rotation,
                     ha=x_tick_label_alignment)
 
+                plot.fig.subplots_adjust(left=0.1, right=1, top=1)
+                plot.ax_cbar.set_position((0, 0.3, 0.03, 0.4))
+                plot.ax_cbar.yaxis.set_ticks_position('left')
+                plot.ax_cbar.yaxis.set_label_position('left')
+
                 plot.savefig(derived_output_path, bbox_inches='tight', dpi=image_dpi)
 
     if invalid_derived_output_paths:
