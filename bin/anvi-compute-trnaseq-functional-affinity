@@ -1826,8 +1826,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     rotation=x_tick_label_rotation,
                     ha=x_tick_label_alignment)
 
-                figure = plot.get_figure()
-                figure.savefig(derived_output_path, bbox_inches=True, dpi=image_dpi)
+                plot.savefig(derived_output_path, bbox_inches='tight', dpi=image_dpi)
 
     if invalid_derived_output_paths:
         for derived_output_path in valid_derived_output_paths:
