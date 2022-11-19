@@ -1795,7 +1795,8 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 clustermap = partial(
                     sns.clustermap,
                     cmap=normalization_cmap_dict[normalization_method],
-                    cbar_kws={'label': 'affinity'})
+                    cbar_kws={'label': 'affinity'},
+                    yticklabels=1)
                 if normalization_method == 'raw':
                     # Raw affinities lie in the range, (-∞, +∞).
                     clustermap = partial(clustermap, center=0)
