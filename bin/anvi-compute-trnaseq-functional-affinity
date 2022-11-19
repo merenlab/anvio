@@ -211,7 +211,7 @@ def sanity_check(args):
          args.plot_codon_file or
          args.plot_codon_tree_file or
          args.plot_sample_tree_file) and
-         not (args.plot and args.plot_affinity_file)):
+         not args.plot):
         raise ConfigError(
             "`--unlabel-function-accession-source`, `--label-brite-hierarchy`, "
             "`--no-codon-dendrogram`, `--plot-sample-dendrogram`, `--select-samples-txt`, "
