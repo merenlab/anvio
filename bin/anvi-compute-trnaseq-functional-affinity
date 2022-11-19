@@ -471,15 +471,23 @@ def generate_affinities(args):
     affinitizer = genomictrnaseq.Affinitizer(args)
     affinities_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = affinitizer.go(
         return_component_tables=True)
+
+    if len(affinities_df) == 0:
+        raise ConfigError(
+            "Affinity could not be calculated given the input data and/or filters applied to the "
+            "data.")
+
+    if args.plot_codon_dendrogram:
+        affinities_df = get_table_with_codon_tree_labels(
+            args,
+            affinities_df,
+            multiple_sources=affinities_df.index.get_level_values('function_source').nunique())
+
     isoacceptor_abund_ratios_df = pd.pivot(
         isoacceptor_abund_ratios_df,
         index=['genome_name', 'decoded_amino_acid', 'anticodon'],
         columns='nonreference_trnaseq_sample_name',
         values='abundance_ratio')
-    if len(affinities_df) == 0:
-        raise ConfigError(
-            "Affinity could not be calculated given the input data and/or filters applied to the "
-            "data.")
 
     if args.nonreference_samples:
         # Ensure that results for samples are reported in the order provided.
