@@ -1312,7 +1312,27 @@ def subset_affinity_entries(args, affinities_dict):
 
             subset_raw_affinities_df = raw_affinities_df.sort_values(by='mean', ascending=False)
             subset_raw_affinities_df = subset_raw_affinities_df.drop('mean', axis=1)
-            if args.n_highest_affinity > 0:
+            if args.n_highest_affinity > 0 and args.n_lowest_affinity > 0:
+                if args.n_highest_affinity + args.n_lowest_affinity >= len(
+                    subset_raw_affinities_df):
+                    if args.gene_affinity:
+                        source_message = ""
+                    elif args.compare_all_function_sources:
+                        source_message = "from all function sources "
+                    else:
+                        source_message = f"from the function source, {source}, "
+                    run.warning(
+                        f"`--n-highest-affinity` was given a value of {args.n_highest_affinity}, "
+                        f"and `--n-lowest-affinity` was given a value of {args.n_lowest_affinity}, "
+                        f"but there were only {len(subset_raw_affinities_df)} "
+                        f"{'genes' if args.gene_affinity else 'functions'} in the affinity table "
+                        f"{source_message}for the genome, {genome_name}. All of these have "
+                        "therefore been retained.")
+                else:
+                    subset_raw_affinities_df = pd.concat([
+                        subset_raw_affinities_df.iloc[: args.n_highest_affinity],
+                        subset_raw_affinities_df.iloc[-args.n_lowest_affinity: ]])
+            elif args.n_highest_affinity > 0:
                 if args.n_highest_affinity >= len(subset_raw_affinities_df):
                     if args.gene_affinity:
                         source_message = ""
@@ -1329,7 +1349,7 @@ def subset_affinity_entries(args, affinities_dict):
                 else:
                     subset_raw_affinities_df = subset_raw_affinities_df.iloc[
                         : args.n_highest_affinity]
-            if args.n_lowest_affinity > 0:
+            elif args.n_lowest_affinity > 0:
                 if (args.n_lowest_affinity >= len(subset_raw_affinities_df) and
                     args.n_highest_affinity < len(subset_raw_affinities_df)):
                     if args.gene_affinity:
