@@ -1743,7 +1743,7 @@ class Affinitizer:
                 f"The provided reference sample name, '{self.reference_sample_name}', is not found "
                 f"in `seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of specific "
                 "coverages of tRNA-seq seeds in different samples. Here are the samples provided "
-                f"in that table: {', '.join(available_sample_names)}")
+                f"in that table: {', '.join(sorted(available_sample_names))}")
 
         if self.nonreference_sample_names:
             nonreference_sample_names = self.nonreference_sample_names
@@ -1755,7 +1755,7 @@ class Affinitizer:
                     f"`seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of "
                     "specific coverages of tRNA-seq seeds in different samples: "
                     f"{', '.join(bad_sample_names)}. Here are the samples provided in that table: "
-                    f"{', '.join(available_sample_names)}")
+                    f"{', '.join(sorted(available_sample_names))}")
 
             if self.reference_sample_name in self.nonreference_sample_names:
                 raise ConfigError(
