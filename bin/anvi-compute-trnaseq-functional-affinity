@@ -1135,6 +1135,7 @@ def generate_general_codon_frequencies(args, affinities_dict):
     codon_args.internal_genomes = args.internal_genomes
     codon_args.external_genomes = args.external_genomes
     codon_args.function_sources = args.function_sources
+    codon_args.all_brite_categories = args.all_brite_categories
     codon_args.ignore_start_codons = True
 
     if (args.collection_name and not args.bin_id) or args.internal_genomes or args.external_genomes:
