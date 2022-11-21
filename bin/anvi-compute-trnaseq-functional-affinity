@@ -902,6 +902,9 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
     run.info_single("Saved isoacceptor abundance ratios")
     for valid_derived_output_path in valid_derived_output_paths:
         run.info_single(valid_derived_output_path, level=2)
+    run.info.warning(
+        "Note that initiator tRNAs do not contribute to affinity, though they can be reported in "
+        "the isoacceptor abundance ratio tables.")
 
 
 def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict):
