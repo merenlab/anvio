@@ -2615,6 +2615,17 @@ class Affinitizer:
                 # in a column of the weighted codon frequencies table.
                 abund_ratios = sample_isoacceptor_abund_ratios_df.loc[~initiation_index][
                     ['anticodon', 'abundance_ratio']].set_index('anticodon')['abundance_ratio']
+
+                missing_anticodons = abund_ratios.index.difference(
+                    genome_relative_isoacceptor_codon_weights_df.columns)
+                abund_ratios.drop(missing_anticodons)
+                if missing_anticodons:
+                    self.run.warning(
+                        "tRNA isoacceptors with the following anticodons do not have any codons to "
+                        f"decode in analyzed {'genes' if self.gene_affinity else 'functions'} from "
+                        f"the genome, '{genome_name}', and therefore do not contribute to "
+                        f"affinity: {', '.join(missing_anticodons)}")
+
                 sample_affinities_dict[trnaseq_sample_name] = \
                     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].dot(
                         np.log2(abund_ratios))
