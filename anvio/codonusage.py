@@ -1072,7 +1072,7 @@ class SingleGenomeCodonUsage(object):
             brite_select_keys = []
             brite_found_keys = []
             for available_key in gene_brite_df.index:
-                for requested_key in requested_keys:
+                for requested_key in brite_requested_keys:
                     try:
                         position = available_key.index(requested_key)
                     except ValueError:
@@ -1094,6 +1094,9 @@ class SingleGenomeCodonUsage(object):
 
                 select_keys = brite_select_keys.union(nonbrite_select_keys)
                 missing_keys = brite_missing_keys.union(nonbrite_missing_keys)
+            else:
+                select_keys = brite_select_keys
+                missing_keys = brite_missing_keys
 
             return select_keys, missing_keys
 
