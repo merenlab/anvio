@@ -1970,7 +1970,7 @@ def get_plot_labels(args, subset_affinities_df):
                         int(category_number)
                     except ValueError:
                         # For some reason, the category does not have a number.
-                        new_plot_label += category
+                        new_plot_label += category + ">>>"
                         continue
                     num_spaces = (
                         len(category[len(category_number): ]) -
@@ -1993,7 +1993,7 @@ def get_plot_labels(args, subset_affinities_df):
                     ec_number = category.split(" ")[0]
                     if len(ec_number) == len(category.rstrip()):
                         # The category contains nothing beyond the EC number, so keep it.
-                        new_plot_label += category
+                        new_plot_label += category + ">>>"
                     else:
                         num_spaces = (
                             len(category[len(ec_number): ]) -
