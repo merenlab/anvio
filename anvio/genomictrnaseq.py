@@ -2608,16 +2608,16 @@ class Affinitizer:
                 # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
                 # of the tRNA pool for each function or gene in the genome.
 
-                initiation_index = sample_isoacceptor_abund_ratios_df.index.get_level_values(
-                    'decoded_amino_acid').isin(['iMet', 'fMet'])
+                initiation_filter = sample_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(
+                    ['iMet', 'fMet'])
                 # `get_isoacceptor_codon_weights` should ensure that every anticodon (including
                 # modified wobble nucleotide, if applicable) from the tRNA-seq data is represented
                 # in a column of the weighted codon frequencies table.
-                abund_ratios = sample_isoacceptor_abund_ratios_df.loc[~initiation_index][
+                abund_ratios = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter][
                     ['anticodon', 'abundance_ratio']].set_index('anticodon')['abundance_ratio']
 
-                missing_anticodons = abund_ratios.index.difference(
-                    genome_relative_isoacceptor_codon_weights_df.columns)
+                missing_anticodons = list(abund_ratios.index.difference(
+                    genome_relative_isoacceptor_codon_weights_df.columns))
                 abund_ratios.drop(missing_anticodons)
                 if missing_anticodons:
                     self.run.warning(
