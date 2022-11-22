@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from itertools import combinations, product
+from scipy.stats import pearsonr, spearmanr
 
 import anvio
 import anvio.utils as utils
@@ -1402,7 +1403,10 @@ class Affinitizer:
         ]
     }
 
-    affinity_normalization_methods = ['min_max', 'min_max_mean', 'magnitude_min_max']
+    affinity_metric_dict = {
+        'pearson': lambda x, y: pearsonr(x, y)[0],
+        'spearman': lambda x, y: spearmanr(x, y)[0],
+        'dot': np.dot}
 
 
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
@@ -1423,6 +1427,9 @@ class Affinitizer:
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
+
+        self.affinity_type = A('affinity_type')
+        self.affinity_function = Affinitizer.affinity_metric_dict.get(self.affinity_type)
 
         self.seed_assignment = A('seed_assignment')
         self.min_coverage_ratio = A('min_coverage_ratio')
@@ -2007,6 +2014,11 @@ class Affinitizer:
             raise ConfigError(
                 "Unrecognized amino acids were provided to `exclude_amino_acids`: "
                 f"{', '.join(unrecognized_amino_acids)}")
+
+        if self.affinity_type not in Affinitizer.affinity_metric_dict:
+            raise ConfigError(
+                f"An unrecognized value of `affinity_type` was provided, '{self.affinity_type}'. "
+                f"Valid affinity types are: {', '.join(Affinitizer.affinity_metric_dict)}")
 
 
     def go(self, return_component_tables=False):
@@ -2626,9 +2638,13 @@ class Affinitizer:
                         f"the genome, '{genome_name}', and therefore do not contribute to "
                         f"affinity: {', '.join(missing_anticodons)}")
 
+                # Linearize abundance ratios.
+                log_abund_ratios = np.log2(abund_ratios.values)
+
                 sample_affinities_dict[trnaseq_sample_name] = \
-                    genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].dot(
-                        np.log2(abund_ratios))
+                    genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
+                        lambda relative_isoacceptor_codon_weights: self.affinity_function(
+                            log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
             genome_affinities_dfs.append(genome_affinities_df)
