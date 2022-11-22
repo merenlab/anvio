@@ -1617,6 +1617,10 @@ def write_codon_newick_files(args, codon_linkage_dict):
 
 def get_sample_linkage(args, subset_affinities_dict):
     """Get clusters of tRNA-seq samples."""
+    if len(args.nonreference_samples) == 1:
+        run.warning("tRNA-seq samples cannot be clustered given a single non-reference sample.")
+        return
+
     if args.plot_sample_tree_file:
         sample_linkage_dict = load_sample_linkage_from_newick(args, subset_affinities_dict)
     elif args.plot_sample_dendrogram or args.save_sample_trees:
