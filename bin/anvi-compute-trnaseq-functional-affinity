@@ -505,6 +505,8 @@ def generate_affinities(args):
             for nonreference_sample in affinities_df.columns])))[1])
         affinities_df = affinities_df[ordered_nonreference_samples]
         isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[ordered_nonreference_samples]
+    else:
+        args.nonreference_samples = list(isoacceptor_abund_ratios_df.columns)
 
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
