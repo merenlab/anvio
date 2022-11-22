@@ -1738,7 +1738,7 @@ def generate_sample_linkages(args, subset_affinities_dict):
 
 def write_sample_newick_files(args, sample_linkage_dict):
     """Write Newick-formatted tRNA-seq sample trees."""
-    if not args.save_sample_trees:
+    if not args.save_sample_trees or sample_linkage_dict is None:
         return
 
     output_root = os.path.splitext(args.output_file)[0]
