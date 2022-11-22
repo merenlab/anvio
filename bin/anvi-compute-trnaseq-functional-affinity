@@ -4,6 +4,7 @@
 
 import os
 import sys
+import warnings
 import pandas as pd
 import seaborn as sns
 import scipy.cluster.hierarchy as hierarchy
@@ -1853,15 +1854,17 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                     # Magnitude-min-max normalized affinities lie in the range, [0, 1].
                     clustermap = partial(clustermap, vmin=0, vmax=1)
 
-                if codon_linkage is not None and sample_linkage is not None:
-                    plot = clustermap(
-                        heatmap_df, row_linkage=codon_linkage, col_linkage=sample_linkage)
-                elif codon_linkage is not None:
-                    plot = clustermap(heatmap_df, row_linkage=codon_linkage, col_cluster=False)
-                elif sample_linkage is not None:
-                    plot = clustermap(heatmap_df, col_linkage=sample_linkage, row_cluster=False)
-                else:
-                    plot = clustermap(heatmap_df, row_cluster=False, col_cluster=False)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    if codon_linkage is not None and sample_linkage is not None:
+                        plot = clustermap(
+                            heatmap_df, row_linkage=codon_linkage, col_linkage=sample_linkage)
+                    elif codon_linkage is not None:
+                        plot = clustermap(heatmap_df, row_linkage=codon_linkage, col_cluster=False)
+                    elif sample_linkage is not None:
+                        plot = clustermap(heatmap_df, col_linkage=sample_linkage, row_cluster=False)
+                    else:
+                        plot = clustermap(heatmap_df, row_cluster=False, col_cluster=False)
 
                 plot.ax_heatmap.set_xticklabels(
                     plot.ax_heatmap.get_xmajorticklabels(),
