@@ -44,6 +44,7 @@ __description__ = \
 
 run = terminal.Run()
 run_quiet = terminal.Run(verbose=False)
+progress = terminal.Progress()
 progress_quiet = terminal.Progress(verbose=False)
 
 # Constants used in static plots.
@@ -1792,6 +1793,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
     valid_derived_output_paths = []
     invalid_derived_output_paths = []
 
+    progress.new("Plotting")
     for genome_name, source_dict in subset_affinities_dict.items():
         for source, normalization_dict in source_dict.items():
             if codon_linkage_dict:
@@ -1824,6 +1826,8 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 if invalid_derived_output_paths:
                     continue
                 valid_derived_output_paths.append(derived_output_path)
+
+                progress.update(os.path.basename(derived_output_path))
 
                 plot_labels = get_plot_labels(args, subset_affinities_df)
 
@@ -1877,6 +1881,7 @@ def plot_affinities(args, subset_affinities_dict, codon_linkage_dict, sample_lin
                 plot.ax_cbar.yaxis.set_label_position('left')
 
                 plot.savefig(derived_output_path, bbox_inches='tight', dpi=image_dpi)
+    progress.end()
 
     if invalid_derived_output_paths:
         for derived_output_path in valid_derived_output_paths:
