@@ -22,7 +22,7 @@ __version__ = anvio.__version__
 __authors__ = ['ozcan', 'FlorianTrigodet', 'watsonar']
 __requires__ = ['contigs-db']
 __provides__ = ['contigs-stats', 'interactive', 'svg']
-__description__ = "Start the anvi'o interactive interactive for viewing or comparing contigs statistics"
+__description__ = "Start the anvi'o interactive interface for viewing or comparing contigs statistics."
 
 run = terminal.Run()
 progress = terminal.Progress()
