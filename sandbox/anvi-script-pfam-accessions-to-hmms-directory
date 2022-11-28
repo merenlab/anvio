@@ -58,6 +58,8 @@ def main(args):
     else:
         raise ConfigError("You should provide *some* PFAM accession ids to this program :/")
 
+    utils.sanity_check_pfam_accessions(pfam_accession_ids)
+
     output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
     pfam_accession_ids = [e.strip() for e in set(pfam_accession_ids)]
