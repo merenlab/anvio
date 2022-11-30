@@ -93,7 +93,7 @@ rule add_default_collection:
     params:
         contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{hmm}.db")),
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{hmm}", "PROFILE.db")
-    output: done = touch(os.path.join("METAGENOMICS_WORKFLOW", "{hmm}_add_default_collection.done"))
+    output: done = touch(os.path.join(dirs_dict['HOME'], "{hmm}_add_default_collection.done"))
     threads: M.T('add_default_collection')
     run:
         shell('anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}')
