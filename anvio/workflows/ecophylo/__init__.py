@@ -126,24 +126,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"HOME": "ECOPHYLO_WORKFLOW"})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "ECOPHYLO_WORKFLOW/03_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "ECOPHYLO_WORKFLOW/04_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "ECOPHYLO_WORKFLOW/05_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "ECOPHYLO_WORKFLOW/06_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
-
-        # Make log directories
-        # FIXME: anvi-run-workflow -w ecophylo --get-default-config ecophylo_config.json will make these directories
-        # automatically when the workflow has not started and user did not ask fo rit. These are here to ensure that
-        # slurm has all log files to put stdout and stderror or will crash in most cases. It would be great if I could
-        # place these in init instead
-        if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
-            os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
-        if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
-            os.makedirs('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/')
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": os.path.join(self.dirs_dict['HOME'],"01_REFERENCE_PROTEIN_DATA")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": os.path.join(self.dirs_dict['HOME'],"02_NR_FASTAS")})
+        self.dirs_dict.update({"MSA": os.path.join(self.dirs_dict['HOME'],"03_MSA")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": os.path.join(self.dirs_dict['HOME'],"04_SEQUENCE_STATS")})
+        self.dirs_dict.update({"TREES": os.path.join(self.dirs_dict['HOME'],"05_TREES")})
+        self.dirs_dict.update({"MISC_DATA": os.path.join(self.dirs_dict['HOME'],"06_MISC_DATA")})
+        self.dirs_dict.update({"SCG_NT_FASTAS": os.path.join(self.dirs_dict['HOME'],"07_SCG_NT_FASTAS")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": os.path.join(self.dirs_dict['HOME'],"08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED")})
 
 
     def init(self):
@@ -151,7 +141,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         
         super().init()
         #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
-        self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
+        self.dirs_dict.update({"LOGS_DIR": os.path.join(self.dirs_dict['HOME'],"00_LOGS")})
+
+        # Make log directories
+        if not os.path.exists(os.path.join(self.dirs_dict['HOME'], '00_LOGS/')):
+            os.makedirs(os.path.join(self.dirs_dict['HOME'], '00_LOGS/'))
+        if not os.path.exists(os.path.join(self.dirs_dict['HOME'],'METAGENOMICS_WORKFLOW/00_LOGS/')):
+            os.makedirs(os.path.join(self.dirs_dict['HOME'],'METAGENOMICS_WORKFLOW/00_LOGS/'))
 
         self.names_list = []
         self.contigs_db_name_path_dict = {}
@@ -197,7 +193,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                         pass
                 else:
                     self.run.warning(f"You have declared run_genomes_sanity_check == false. anvi'o takes no responsibility "
-                                        f"for any genomes or metagenomes that cause issues downstream in ecophylo.")
+                                     f"for any genomes or metagenomes that cause issues downstream in ecophylo.")
                     self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                     self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
             else:
