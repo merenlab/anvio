@@ -52,7 +52,6 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
-    log: "00_LOGS/run_metagenomics_workflow.log"
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
@@ -70,7 +69,8 @@ rule run_metagenomics_workflow:
         samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
 
         log_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "00_LOGS")
-        log_file = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "{log}")
+        log_file = os.path.join(log_path, "run_metagenomics_workflow.log")
+        log = os.path.join("00_LOGS", "run_metagenomics_workflow.log")
         shell(f"mkdir -p {log_path} && touch {log_file}")
 
         if M.clusterize_metagenomics_workflow == True:
