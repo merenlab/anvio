@@ -545,9 +545,9 @@ class Inversions:
                 # Here we take advantage of construct symmetry. If the inversion candidate has no
                 # mismatches, we only needs to test for the v1 constructs.
                 for read in reads:
-                    num_reads_considered += 1
-                    if not evidence_left:
-                        try:
+                    if read is not None:
+                        num_reads_considered += 1
+                        if not evidence_left:
                             if inversion_candidate.v1_left in read:
                                 evidence += 'v1_left and '
                                 evidence_left = True
@@ -557,62 +557,63 @@ class Inversions:
                                     evidence_right = False
                                     evidence_left = False
                                     break
-                        except:
-                            ConfigError("Something went wrong while trying to test for v1_left construct in short reads. You should check your sequences in the bam file.")
-                    elif not evidence_right:
-                        if inversion_candidate.v1_right in read:
-                            evidence += 'v1_right'
-                            evidence_right = True
+                        elif not evidence_right:
+                            if inversion_candidate.v1_right in read:
+                                evidence += 'v1_right'
+                                evidence_right = True
 
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
+                                if evidence_left:
+                                    match = True
+                                    evidence_right = False
+                                    evidence_left = False
+                                    break
             else:
                 # Unfortunately, the inversion candidate has some mismatches, which requires testing
                 # for v1 _and_ v2 constructs.
                 for read in reads:
-                    num_reads_considered += 1
-                    if not evidence_left:
-                        if inversion_candidate.v1_left in read:
-                            evidence += 'v1_left and '
-                            evidence_left = True
-
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                        elif inversion_candidate.v2_left in read:
-                            evidence += 'v2_left and'
-                            evidence_left = True
+                    if read is not None:
+                        num_reads_considered += 1
+                        if not evidence_left:
+                            if inversion_candidate.v1_left in read:
+                                evidence += 'v1_left and '
+                                evidence_left = True
 
                                 if evidence_right:
                                     match = True
                                     evidence_right = False
                                     evidence_left = False
                                     break
-                    if not evidence_right:
-                        if inversion_candidate.v1_right in read:
-                            evidence += 'v1_right'
-                            evidence_right = True
+                            elif inversion_candidate.v2_left in read:
+                                evidence += 'v2_left and'
+                                evidence_left = True
+                            
+                                if evidence_right:
+                                        match = True
+                                        evidence_right = False
+                                        evidence_left = False
+                                        break
+                        if not evidence_right:
+                            if inversion_candidate.v1_right in read:
+                                evidence += 'v1_right'
+                                evidence_right = True
 
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                        elif inversion_candidate.v2_right in read:
-                            evidence += 'v2_right'
-                            evidence_right = True
+                                if evidence_left:
+                                    match = True
+                                    evidence_right = False
+                                    evidence_left = False
+                                    break
+                            elif inversion_candidate.v2_right in read:
+                                evidence += 'v2_right'
+                                evidence_right = True
 
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-
+                                if evidence_left:
+                                    match = True
+                                    evidence_right = False
+                                    evidence_left = False
+                                    break
+                    else:
+                        self.run.warning('Empty read found in the short read file. Please check your input file.')
+                        break                       
             if match:
                 # we found an inversion candidate that has at least one confirmed
                 # construct. We add this one into the list of true inversions:
