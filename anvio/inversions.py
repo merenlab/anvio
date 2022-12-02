@@ -588,11 +588,11 @@ class Inversions:
                             evidence += 'v2_left and'
                             evidence_left = True
 
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
+                                if evidence_right:
+                                    match = True
+                                    evidence_right = False
+                                    evidence_left = False
+                                    break
                     if not evidence_right:
                         if inversion_candidate.v1_right in read:
                             evidence += 'v1_right'
