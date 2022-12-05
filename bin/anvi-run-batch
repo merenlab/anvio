@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
 import json
+import yaml
 import anvio
 import subprocess
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 from anvio.argparse import ArgumentParser
@@ -17,41 +20,74 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'metehan']
-__requires__ = ['contigs-db', 'profile-db']
-__description__ = ("The purpose of this program is to download the data in the JSON type file received from the user and run the desired commands.")
+__requires__ = ['contigs-db', 'profile-db', 'pan-db']
+__description__ = ("The purpose of this program is to download the data in the Yaml type file received from the user and run the desired commands.")
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 @terminal.time_program
 def main(args):
-    """ This function is get json file as argument and parse it. Then run the given commands. """
-    given_json_path = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    json_file_path = given_json_path('json')
+    """ This function is get yaml file as argument and parse it. Then run the given commands. """
+    given_yaml_path = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    yaml_file_path = given_yaml_path('yaml')
+    #setup_arg = given_yaml_path('setup')
+    #init_arg = given_yaml_path('init')
 
-    if not json_file_path:
-        raise ConfigError("You must provide a JSON file path.")
-    filesnpaths.is_file_json_formatted(json_file_path)
+    if not yaml_file_path:
+        raise ConfigError("You must provide a YAML file path.")
+    filesnpaths.is_file_yaml_formatted(yaml_file_path)
 
-    # Parse the command and execute it.
+    # Open and parse the file
 
-    with open(json_file_path, 'r') as json_file:
-        json_data = json.load(json_file)
- 
+    with open(yaml_file_path, 'r') as yaml_file:
+        yaml_data = yaml.safe_load(yaml_file)
+    
+    # Convert yaml file to json file
+    
+    json_data = json.loads(json.dumps(yaml_data))
+
     try:
-        command = json_data.get('data').get('command')
-        arg = json_data.get('data').get('args')
-        command_run = command + ' ' + arg[0] + ' ' + arg[1]
-        run.info('Running the command given in json file:', command_run)
-        subprocess.call(command_run, shell=True)    
+        project_title = json_data.get('project').get('title')
+        project_description = json_data.get('project').get('description')
+        project_author_name = json_data.get('author').get('name')
+        project_author_email = json_data.get('author').get('email')
+        project_author_affiliation = json_data.get('author').get('affiliation')
+        project_author_web = json_data.get('author').get('web')
+        
+        setup = json_data.get('setup')
+        setup_command_counter = 0
+        
+        # Setup commands are run here but "cd" command is not working yet.
+
+        while setup_command_counter < len(setup):
+            setup_process = subprocess.run(setup[setup_command_counter], shell=True, executable='/bin/bash')
+            setup_command_counter += 1
+        
+        '''
+        init = json_data.get('init')
+        init_command_counter = 0 
+
+        while init_command_counter < len(init):
+            subprocess.call(init[init_command_counter], shell=True)
+            init_command_counter += 1
+        '''
+        run = json_data.get('run')
+        run_command_counter = 0
+
+        while run_command_counter < len(run):
+            subprocess.call(run[run_command_counter], shell=True)
+            run_command_counter += 1   
     except:
-        raise ConfigError("The JSON file is not in the correct format.")
+        raise ConfigError("The YAML file is not in the correct format.")
 
 if __name__ == '__main__': 
     """ This is the main function that is called when the program is run from the command line. """
 
     parser = ArgumentParser(description=__description__)
-    parser.add_argument('-j', '--json', help='JSON file containing the commands to be run', required=True)
+    parser.add_argument('-y', '--yaml', help='YAML file containing the commands to be run', required=True)
+    parser.add_argument('-s', '--setup', help='Setup the environment for the Anvio', default=None , required=False)
+    parser.add_argument('-i', '--init', help='Initialize the project with installed data', default=None ,required=False)
 
     args = parser.get_args(parser)
 
