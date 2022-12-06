@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import yaml
+import shlex
 import anvio
 import subprocess
 import anvio.utils as utils
@@ -26,6 +27,24 @@ __description__ = ("The purpose of this program is to download the data in the Y
 run = terminal.Run()
 progress = terminal.Progress()
 
+'''
+def os_run(cmd):
+    cmd = shlex.split(cmd)
+
+    if cmd[0] == 'cd':
+        try:
+            os.chdir(cmd[1])
+            return 0
+        except OSError:
+            print(str(sys.exc_info()[1]))
+            return 1
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+    output = proc.communicate()[0]
+
+    return proc.returncode
+'''
 @terminal.time_program
 def main(args):
     """ This function is get yaml file as argument and parse it. Then run the given commands. """
@@ -33,7 +52,7 @@ def main(args):
     yaml_file_path = given_yaml_path('yaml')
     #setup_arg = given_yaml_path('setup')
     #init_arg = given_yaml_path('init')
-
+ 
     if not yaml_file_path:
         raise ConfigError("You must provide a YAML file path.")
     filesnpaths.is_file_yaml_formatted(yaml_file_path)
@@ -58,11 +77,16 @@ def main(args):
         setup = json_data.get('setup')
         setup_command_counter = 0
         
-        # Setup commands are run here but "cd" command is not working yet.
-
+        # Setup commands are run here
+        cwd_home = os.getcwd()
         while setup_command_counter < len(setup):
-            setup_process = subprocess.run(setup[setup_command_counter], shell=True, executable='/bin/bash')
-            setup_command_counter += 1
+            if 'cd' in setup[setup_command_counter]:
+                cwd_file = cwd_home + '/' + setup[setup_command_counter].split(' ')[1]  
+                setup_command_counter += 1
+                os.chdir(cwd_file)
+            else:
+                subprocess.run(str(setup[setup_command_counter]), shell=True)
+                setup_command_counter += 1
         
         '''
         init = json_data.get('init')
@@ -76,7 +100,7 @@ def main(args):
         run_command_counter = 0
 
         while run_command_counter < len(run):
-            subprocess.call(run[run_command_counter], shell=True)
+            subprocess.call(run[run_command_counter].get('command'), shell=True)
             run_command_counter += 1   
     except:
         raise ConfigError("The YAML file is not in the correct format.")
