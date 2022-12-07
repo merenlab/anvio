@@ -4398,7 +4398,7 @@ class ContigsDatabase:
 
             self.progress.append('and %d nts. Now computing: auxiliary ... ' % contig_length)
             if genes_in_contig:
-                nt_position_info_list = self.compress_nt_position_info(contig_length, genes_in_contig, genes_in_contigs_dict)
+                nt_position_info_list = self.compress_nt_position_info(contig_name, contig_length, genes_in_contig, genes_in_contigs_dict)
                 nt_positions_table.append(contig_name, nt_position_info_list)
 
             contig_kmer_freq = contigs_kmer_table.get_kmer_freq(contig_sequence)
@@ -4463,7 +4463,7 @@ class ContigsDatabase:
                                                                             else "(Anvi'o did not create any splits)", quiet=self.quiet)
 
 
-    def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
+    def compress_nt_position_info(self, contig_name, contig_length, genes_in_contig, genes_in_contigs_dict):
         """Compress info regarding each nucleotide position in a given contig into a small int
 
         Every nucleotide position is represented by four bits depending on whether they occur in a
@@ -4497,6 +4497,9 @@ class ContigsDatabase:
 
         # first we create a list of zeros for each position of the contig
         nt_position_info_list = [0] * contig_length
+
+        # to keep track of things that didn't work
+        gene_caller_ids_that_failed = []
 
         coding = constants.gene_call_types['CODING']
 
@@ -4532,16 +4535,36 @@ class ContigsDatabase:
                 else: # finding out that it actually is #1661
                     continue # NEXT
 
-            if gene_call['direction'] == 'f':
-                for nt_position in range(start, stop, 3):
-                    nt_position_info_list[nt_position] = 4
-                    nt_position_info_list[nt_position + 1] = 2
-                    nt_position_info_list[nt_position + 2] = 1
-            elif gene_call['direction'] == 'r':
-                for nt_position in range(stop - 1, start - 1, -3):
-                    nt_position_info_list[nt_position] = 4
-                    nt_position_info_list[nt_position - 1] = 2
-                    nt_position_info_list[nt_position - 2] = 1
+            try:
+                if gene_call['direction'] == 'f':
+                    for nt_position in range(start, stop, 3):
+                        nt_position_info_list[nt_position] = 4
+                        nt_position_info_list[nt_position + 1] = 2
+                        nt_position_info_list[nt_position + 2] = 1
+                elif gene_call['direction'] == 'r':
+                    for nt_position in range(stop - 1, start - 1, -3):
+                        nt_position_info_list[nt_position] = 4
+                        nt_position_info_list[nt_position - 1] = 2
+                        nt_position_info_list[nt_position - 2] = 1
+            except IndexError:
+                # FIXME: Please see https://github.com/merenlab/anvio/issues/2020 to see why this was necessary.
+                #        Which also shows it is important to address this differently to make sure we better
+                #        support eukaryotic organisms:
+                gene_caller_ids_that_failed.append(gene_unique_id)
+
+                # As a solution here we simply mark those nucleotide positions as of unknown nature,
+                for nt_position in range(start, stop):
+                    nt_position_info_list[nt_position] = 8
+
+                # and move on to the next gene on the contig
+                continue
+
+        if len(gene_caller_ids_that_failed):
+            progress.reset()
+            run.warning(f"There were some problmes while anvi'o was trying to identify which nucleotides occur in which codon "
+                        f"positions. These problems occurred in the following gene calls: {', '.join([str(g) for g in gene_caller_ids_that_failed])}. "
+                        f"Please read this message for more information: https://github.com/merenlab/anvio/issues/2020.",
+                        header=f"SNAFU WITH CONTIG `{contig_name}`")
 
         return nt_position_info_list
 
