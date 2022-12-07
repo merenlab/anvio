@@ -4,6 +4,7 @@
 
 import os
 import json
+import yaml
 import time
 import pysam
 import shutil
@@ -252,6 +253,15 @@ def is_file_json_formatted(file_path):
                            "file ('%s', cries the library)." % (file_path, e))
 
     return True
+
+def is_file_yaml_formatted(file_path):
+    is_file_exists(file_path)
+
+    try:
+        yaml.safe_load(open(file_path, 'rU'))
+    except yaml.YAMLError as e:
+        raise FilesNPathsError("File '%s' does not seem to be a properly formatted YAML "
+                           "file ('%s', cries the library)." % (file_path, e))
 
 
 def is_file_fasta_formatted(file_path):
