@@ -4563,7 +4563,7 @@ class ContigsDatabase:
             progress.reset()
             run.warning(f"There were some problmes while anvi'o was trying to identify which nucleotides occur in which codon "
                         f"positions. These problems occurred in the following gene calls: {', '.join([str(g) for g in gene_caller_ids_that_failed])}. "
-                        f"Please read this message for more information: https://github.com/merenlab/anvio/issues/2020.",
+                        f"Please read this message for more information: https://github.com/merenlab/anvio/issues/2020#issuecomment-1341028673.",
                         header=f"SNAFU WITH CONTIG `{contig_name}`")
 
         return nt_position_info_list
