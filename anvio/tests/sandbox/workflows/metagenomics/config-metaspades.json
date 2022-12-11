@@ -21,7 +21,7 @@
         "TAXONOMY_DIR": "07_TAXONOMY_metaspades",
         "LOGS_DIR": "00_LOGS_metaspades"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
@@ -55,7 +55,7 @@
     },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1e6,
+        "--memory": 1000000.0,
         "threads": 7
     },
     "idba_ud": {

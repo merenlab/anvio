@@ -19,7 +19,7 @@
         "MERGE_DIR": "06_MERGED_references_mode_no_qc_no_gzip",
         "LOGS_DIR": "00_LOGS_references_mode_no_qc_no_gzip"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
@@ -57,7 +57,7 @@
     },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1e6,
+        "--memory": 1000000.0,
         "threads": 7
     },
     "idba_ud": {
