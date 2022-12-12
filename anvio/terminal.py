@@ -151,7 +151,9 @@ class Progress:
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
-        if anvio.NO_PROGRESS or anvio.QUIET:
+        # if --no-progress or --quiet parameters were passed, OR, if we are not attached
+        # to a real terminal, turn off progress outputs:
+        if anvio.NO_PROGRESS or anvio.QUIET or not self.is_tty:
             self.verbose = False
 
 
