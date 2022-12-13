@@ -274,8 +274,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_refereces_txt(self):
-        if self.references_mode and not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
-            raise ConfigError('In references mode you must supply a fasta_txt file.')
+        if self.references_mode:
+            if not self.fasta_txt_file:
+                raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
+
+            if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
 
         if not self.references_mode:
             # if it is reference mode then the group names have been assigned in the contigs Snakefile
