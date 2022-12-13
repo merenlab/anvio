@@ -17,6 +17,7 @@ anvi-run-workflow -w ecophylo \
                   --get-default-config config.json
 {{ codestop }}
 
+
 {:.notice}
 Here is a tutorial walking through more details regarding the ecophylo %(workflow-config)s file: coming soon!
 
@@ -59,7 +60,7 @@ To initialize [AA-mode](#aa-mode), go to the rule `cluster_X_percent_sim_mmseqs`
     "hmm_list": "hmm_list.txt",
     "samples_txt": ""
     "cluster_X_percent_sim_mmseqs": {
-        "AA_mode": True,
+        "AA_mode": true,
     }
 }
 ```
@@ -82,5 +83,15 @@ To initialize [profile-mode](#profile-mode-insights-into-the-ecological-and-evol
     "external_genomes": "external-genomes.txt",
     "hmm_list": "hmm_list.txt",
     "samples_txt": "samples.txt"
+}
+```
+
+## Config file options
+
+Ecophylo will sanity check all input files that contain %(contigs-db)ss before the workflow starts. This can take a while especially if you are working with 1000's of genomes. If you want to skip sanity checks for %(contigs-db)ss in your %(external-genomes)s and/or %(metagenomes)s then adjust your config to the following:
+
+```bash
+{
+    "run_genomes_sanity_check": false
 }
 ```

@@ -20,7 +20,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'ekiefl']
+__authors__ = ['meren', 'ekiefl', 'vinisalazar']
 __requires__ = ["fasta"]
 __provides__ = ["contigs-fasta"]
 __description__ =  ("Reformat FASTA file (remove contigs based on length, or based on a given list of "
@@ -55,6 +55,8 @@ def reformat_FASTA(args):
     # top of the input file, overwriting it forever.
     if args.overwrite_input:
        args.output_file = filesnpaths.get_temp_file_path()
+       if args.contigs_fasta.endswith(".gz"):
+            args.output_file += ".gz"
 
     filesnpaths.is_file_exists(args.contigs_fasta)
     filesnpaths.is_output_file_writable(args.output_file)
@@ -67,7 +69,7 @@ def reformat_FASTA(args):
 
     if args.exclude_ids:
         filesnpaths.is_file_exists(args.exclude_ids)
-        exclude_ids = set([l.split('\t')[0].strip() for l in open(args.exclude_ids, 'rU').readlines()])
+        exclude_ids = set([l.split('\t')[0].strip() for l in open(args.exclude_ids, 'r').readlines()])
         run.info('Input IDs to remove', '%d found' % len(exclude_ids))
     else:
         exclude_ids = set([])
@@ -107,8 +109,8 @@ def reformat_FASTA(args):
     total_num_nucleotides_modified = 0
     total_num_contigs_removed = 0
 
-    output = u.FastaOutput(args.output_file)
     fasta = u.SequenceSource(args.contigs_fasta)
+    output = u.FastaOutput(args.output_file)
 
     while next(fasta):
         l = len(fasta.seq)

@@ -77,7 +77,7 @@ OUTPUT_MODES = {'modules': {
                                     'output_suffix': "module_paths.txt",
                                     'data_dict': "modules",
                                     'headers': ["module", "pathwise_module_completeness", "pathwise_module_is_complete",
-                                                "path_id", "path", "path_completeness"],
+                                                "path_id", "path", "path_completeness", "annotated_enzymes_in_path"],
                                     'description': "Information on each possible path (complete set of enzymes) in a module"
                                     },
                 'module_steps': {
@@ -232,6 +232,11 @@ OUTPUT_HEADERS = {'module' : {
                         'mode_type': 'modules',
                         'description': "Percent completeness of a given path through a module"
                         },
+                  'annotated_enzymes_in_path' : {
+                        'cdict_key': 'annotated_enzymes_in_path',
+                        'mode_type': 'modules',
+                        'description': "Shows which enzymes in the path are annotated in your sample, and which are missing"
+                        },
                   'step_id' : {
                         'cdict_key': None,
                         'mode_type': 'modules',
@@ -270,6 +275,8 @@ OUTPUT_HEADERS = {'module' : {
                         'description': 'The functional annotation associated with the enzyme'
                         },
                   }
+
+DEFAULT_OUTPUT_MODE = 'modules'
 
 # global metadata header lists for matrix format
 # if you want to add something here, don't forget to add it to the dictionary in the corresponding
@@ -1530,10 +1537,11 @@ class RunKOfams(KeggContext):
 
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
-                              "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
-                              "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
-                              "to fix this problem. :) " % self.kegg_hmm_data_dir)
+            raise ConfigError(f"Anvi'o is unable to find any KEGG files around :/ It is likely you need to first run the program "
+                              f"`anvi-setup-kegg-kofams` to set things up. If you already have run it, but instructed anvi'o to "
+                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-kofams` again, "
+                              f"you simply need to specify the location of the KEGG data using the flag `--kegg-data-dir`. Just for "
+                              f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
         utils.is_contigs_db(self.contigs_db_path)
 
@@ -2025,7 +2033,7 @@ class KeggEstimatorArgs():
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
         self.enzymes_txt = A('enzymes_txt') or None
-        self.output_modes = A('output_modes') or "modules"
+        self.output_modes = A('output_modes')
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.matrix_include_metadata = True if A('include_metadata') else False
@@ -2049,8 +2057,10 @@ class KeggEstimatorArgs():
             self.module_completion_threshold = 0.0
 
         # we use the below flag to find out if long format output was explicitly requested
-        # this gets around the fact that we always assign 'modules' as the default output mode
-        self.long_format_mode = True if args.output_modes else False
+        self.long_format_mode = True if self.output_modes else False
+        # if it was not explicitly requested, we set the default output mode to "modules"
+        if not self.output_modes:
+            self.output_modes = DEFAULT_OUTPUT_MODE
 
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
@@ -2657,7 +2667,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       "before you attempt to run this script again.")
                 contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
 
-                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+                kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet, run=self.run)
                 mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
                 kegg_modules_db.disconnect()
 
@@ -3618,7 +3628,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # and adjust overall module copy number
         if meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"]:
-            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mnum]["num_complete_copies_of_most_complete_paths"])
+            meta_dict_for_bin[mod]["pathwise_copy_number"] = max(meta_dict_for_bin[mod]["num_complete_copies_of_most_complete_paths"])
         else:
             meta_dict_for_bin[mod]["pathwise_copy_number"] = 'NA'
 
@@ -4873,7 +4883,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition",
                                     "module_substrates", "module_products", "module_intermediates", "warnings", "enzymes_unique_to_module",
                                     "unique_enzymes_hit_counts"])
-        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path"])
+        path_level_headers = set(["path_id", "path", "path_completeness", "num_complete_copies_of_path", "annotated_enzymes_in_path"])
         step_level_headers = set(["step_id", "step", "step_completeness", "step_copy_number"])
 
         requested_path_info = headers_to_include.intersection(path_level_headers)
@@ -4923,6 +4933,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.modules_unique_id]["path"] = ",".join(p)
                         if "path_completeness" in headers_to_include:
                             d[self.modules_unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                        if "annotated_enzymes_in_path" in headers_to_include:
+                            annotated = []
+                            for accession in p:
+                                if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
+                                   (accession in c_dict['kofam_hits'].keys()):
+                                    annotated.append(accession)
+                                else:
+                                    annotated.append(f"[MISSING {accession}]")
+                            d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
                         # add path-level redundancy if requested
                         if self.add_copy_number:
@@ -5574,7 +5593,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
             self.run.info("Database name: single estimator", args.database_name)
             self.run.info("Matrix metadata: single estimator", args.matrix_include_metadata)
-            self.run.info("User data directory: single estimator", args.input_dir)
+            self.run.info("User data directory: single estimator", args.user_modules)
 
         return args
 
@@ -6238,7 +6257,7 @@ class ModulesDatabase(KeggContext):
             raise ConfigError("Appparently, the module data files were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
-                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Discord/telepathically "
                               "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of modules "
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 

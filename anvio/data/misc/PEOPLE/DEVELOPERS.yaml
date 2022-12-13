@@ -357,3 +357,17 @@
       inst: Max Planck Institute for Biology
       inst_link: http://eb.tuebingen.mpg.de/
       current: true
+
+- github: vinisalazar
+  name: Vini Salazar
+  twitter: vinisalazar_
+  email: vinicius.salazar@unimelb.edu.au
+  avatar: vinisalazar.jpg
+  orcid: 0000-0002-8362-3195
+  bio: "Researcher, open-source developer and aspiring marine microbiologist."
+  web: https://scholar.google.com/citations?user=P6xo0BsAAAAJ
+  affiliations:
+    - title: PhD Student
+      inst: Melbourne Integrative Genomics - University of Melbourne
+      inst_link: https://sites.research.unimelb.edu.au/integrative-genomics/MIG-home
+      current: True

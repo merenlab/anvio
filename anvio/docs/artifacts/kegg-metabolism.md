@@ -83,17 +83,18 @@ The same principle applies to user-defined metabolic modules, except that the en
 
 Without further ado, here is an example of this output mode (also from the Infant Gut dataset):
 
-|**module**|**genome_name**|**db_name**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**path_id**|**path**|**path_completeness**|
-|:--|:--|:--|:--|:--|:--|:--|:--|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|K12407,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|K00845,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+|**module**|**genome_name**|**db_name**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**path_id**|**path**|**path_completeness**|**annotated_enzymes_in_path**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K00844],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|K12407,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K12407],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|K00845,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K00845],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
 - `path_id`: a unique identifier of the current path through the module
 - `path`: the current path of enzymes through the module (described above)
 - `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completenesscopy-number-calculated)
+- `annotated_enzymes_in_path`: a list of enzymes in the current path that were annotated in the current sample (in same order as the path). If an enzyme is missing annotations, that is indicated with the string `[MISSING (enzyme)]`.
 
 Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
 

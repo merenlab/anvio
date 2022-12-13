@@ -24,6 +24,7 @@ sed 's|samples\.txt||' default-config.json > no-samples-txt-config.json
 sed 's|\"AA_mode\"\: false|\"AA_mode\"\: true|' no-samples-txt-config.json > AA-mode-config.json
 sed 's|external-genomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-metagenomes-txt-config.json
 sed 's|metagenomes.txt||' default-config.json | sed 's|samples\.txt||' > no-samples-only-external-genomes-txt-config.json
+sed 's|"run_genomes_sanity_check": true|"run_genomes_sanity_check": false|' default-config.json > no-genomes-sanity-check-config.json
 
 
 INFO "Generating r1 and r2 short reads for samples"
@@ -54,8 +55,11 @@ anvi-run-workflow -w ecophylo -c default-config.json -A --dry-run
 INFO "Running ecophylo workflow with ecophylo dry-run: only metagenomes.txt (profile-mode)"
 anvi-run-workflow -w ecophylo -c only-metagenomes-txt-config.json -A --dry-run
 
-INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txtn(profile-mode)"
+INFO "Running ecophylo workflow with ecophylo dry-run: only external-genomes.txt (profile-mode)"
 anvi-run-workflow -w ecophylo -c only-external-genomes-txt-config.json -A --dry-run
+
+INFO "Running ecophylo workflow with ecophylo dry-run: no GenomeDescriptions and MetagenomeDescriptions"
+anvi-run-workflow -w ecophylo -c no-genomes-sanity-check-config.json -A --dry-run
 
 INFO "Running ecophylo workflow (profile-mode)"
 anvi-run-workflow -w ecophylo -c default-config.json

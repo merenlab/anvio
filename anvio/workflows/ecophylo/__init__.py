@@ -71,6 +71,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.general_params.extend(['samples_txt']) # user must input which Reference proteins will be used for workflow
         self.general_params.extend(['cluster_representative_method']) # pick cluster rep based on single profile coverage values
         self.general_params.extend(['gene_caller_to_use']) # designate gene-caller for all contig-dbs if not default Prodigal
+        self.general_params.extend(['run_genomes_sanity_check']) # run GenomeDescriptions and MetagenomesDescriptions
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
@@ -120,28 +121,19 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'anvi_scg_taxonomy': {'threads': 5},
             'make_anvio_state_file': {'threads': 2},
             'anvi_import_everything': {'threads': 2},
+            'run_genomes_sanity_check': True
             })
 
         # Directory structure for Snakemake workflow
         self.dirs_dict.update({"HOME": "ECOPHYLO_WORKFLOW"})
-        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": "ECOPHYLO_WORKFLOW/01_REFERENCE_PROTEIN_DATA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": "ECOPHYLO_WORKFLOW/02_NR_FASTAS"})
-        self.dirs_dict.update({"MSA": "ECOPHYLO_WORKFLOW/03_MSA"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": "ECOPHYLO_WORKFLOW/04_SEQUENCE_STATS"})
-        self.dirs_dict.update({"TREES": "ECOPHYLO_WORKFLOW/05_TREES"})
-        self.dirs_dict.update({"MISC_DATA": "ECOPHYLO_WORKFLOW/06_MISC_DATA"})
-        self.dirs_dict.update({"SCG_NT_FASTAS": "ECOPHYLO_WORKFLOW/07_SCG_NT_FASTAS"})
-        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": "ECOPHYLO_WORKFLOW/08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED"})
-
-        # Make log directories
-        # FIXME: anvi-run-workflow -w ecophylo --get-default-config ecophylo_config.json will make these directories
-        # automatically when the workflow has not started and user did not ask fo rit. These are here to ensure that
-        # slurm has all log files to put stdout and stderror or will crash in most cases. It would be great if I could
-        # place these in init instead
-        if not os.path.exists('ECOPHYLO_WORKFLOW/00_LOGS/'):
-            os.makedirs('ECOPHYLO_WORKFLOW/00_LOGS/')
-        if not os.path.exists('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/'):
-            os.makedirs('ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/')
+        self.dirs_dict.update({"EXTRACTED_RIBO_PROTEINS_DIR": os.path.join(self.dirs_dict['HOME'],"01_REFERENCE_PROTEIN_DATA")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS": os.path.join(self.dirs_dict['HOME'],"02_NR_FASTAS")})
+        self.dirs_dict.update({"MSA": os.path.join(self.dirs_dict['HOME'],"03_MSA")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_MSA_STATS": os.path.join(self.dirs_dict['HOME'],"04_SEQUENCE_STATS")})
+        self.dirs_dict.update({"TREES": os.path.join(self.dirs_dict['HOME'],"05_TREES")})
+        self.dirs_dict.update({"MISC_DATA": os.path.join(self.dirs_dict['HOME'],"06_MISC_DATA")})
+        self.dirs_dict.update({"SCG_NT_FASTAS": os.path.join(self.dirs_dict['HOME'],"07_SCG_NT_FASTAS")})
+        self.dirs_dict.update({"RIBOSOMAL_PROTEIN_FASTAS_RENAMED": os.path.join(self.dirs_dict['HOME'],"08_RIBOSOMAL_PROTEIN_FASTAS_RENAMED")})
 
 
     def init(self):
@@ -149,7 +141,13 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         
         super().init()
         #FIXME: Because 00_LOGS is hardcoded in the base class I need to reassign it
-        self.dirs_dict.update({"LOGS_DIR": "ECOPHYLO_WORKFLOW/00_LOGS"})
+        self.dirs_dict.update({"LOGS_DIR": os.path.join(self.dirs_dict['HOME'],"00_LOGS")})
+
+        # Make log directories
+        if not os.path.exists(os.path.join(self.dirs_dict['HOME'], '00_LOGS/')):
+            os.makedirs(os.path.join(self.dirs_dict['HOME'], '00_LOGS/'))
+        if not os.path.exists(os.path.join(self.dirs_dict['HOME'],'METAGENOMICS_WORKFLOW/00_LOGS/')):
+            os.makedirs(os.path.join(self.dirs_dict['HOME'],'METAGENOMICS_WORKFLOW/00_LOGS/'))
 
         self.names_list = []
         self.contigs_db_name_path_dict = {}
@@ -160,6 +158,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.external_genomes = self.get_param_value_from_config(['external_genomes'])
         self.hmm_list_path = self.get_param_value_from_config(['hmm_list'])
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        self.run_genomes_sanity_check = self.get_param_value_from_config(['run_genomes_sanity_check'])
 
         if not self.metagenomes and not self.external_genomes:
             raise ConfigError('Please provide at least a metagenomes.txt or external-genomes.txt in your '
@@ -174,42 +173,75 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not gene_caller_to_use:
             gene_caller_to_use = constants.default_gene_caller
 
+        sanity_checked_metagenomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_metagenomes.txt")
+        sanity_checked_genomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_genomes.txt")
+
         if self.metagenomes:
-            args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']), gene_caller = gene_caller_to_use)
-            g = MetagenomeDescriptions(args)
-            g.load_metagenome_descriptions(init=False)
-            self.metagenomes_dict = g.metagenomes_dict
-            self.metagenomes_name_list = list(self.metagenomes_dict.keys())
-            self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
+            filesnpaths.is_file_exists(self.metagenomes)
+            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+
+            if self.run_genomes_sanity_check:
+                if not os.path.exists(sanity_checked_metagenomes_file):
+                    args = argparse.Namespace(metagenomes=self.get_param_value_from_config(['metagenomes']), gene_caller = gene_caller_to_use)
+                    g = MetagenomeDescriptions(args)
+                    g.load_metagenome_descriptions(init=False)
+                    self.metagenomes_dict = g.metagenomes_dict
+                    self.metagenomes_name_list = list(self.metagenomes_dict.keys())
+                    self.metagenomes_path_list = [value['contigs_db_path'] for key,value in self.metagenomes_dict.items()]
+
+                    with open(sanity_checked_metagenomes_file, 'w') as fp:
+                        pass
+                else:
+                    self.run.warning(f"You have declared run_genomes_sanity_check == false. anvi'o takes no responsibility "
+                                     f"for any genomes or metagenomes that cause issues downstream in ecophylo.")
+                    self.metagenomes_name_list = self.metagenomes_df.name.to_list()
+                    self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
+            else:
+                self.metagenomes_name_list = self.metagenomes_df.name.to_list()
+                self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
+
             self.contigs_db_name_path_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_path_list)))
 
-            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
             if 'bam' in self.metagenomes_df.columns:
                 self.contigs_db_name_bam_dict.update(dict(zip(self.metagenomes_name_list, self.metagenomes_df.bam)))
                 self.metagenomes_profiles_list = self.metagenomes_df.bam.to_list()
+
             self.names_list.extend(self.metagenomes_name_list)
 
         else:
             self.metagenomes_name_list = []
         
         if self.external_genomes:
+            filesnpaths.is_file_exists(self.external_genomes)
+            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
             
-            # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
-            # here. Users should only have one type of gene-caller e.g. "NCBI_PGAP".
+            if self.run_genomes_sanity_check:
+                if not os.path.exists(sanity_checked_genomes_file):
+                    # FIXME: metagenomes.txt or external-genomes.txt with multiple gene-callers will break
+                    # here. Users should only have one type of gene-caller e.g. "NCBI_PGAP".
 
-            args = argparse.Namespace(external_genomes=self.external_genomes, gene_caller = gene_caller_to_use)
-            genome_descriptions = GenomeDescriptions(args)
-            genome_descriptions.load_genomes_descriptions(init=False)
-            self.external_genomes_dict = genome_descriptions.external_genomes_dict
-            self.external_genomes_names_list = list(self.external_genomes_dict.keys())
-            self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
+                    args = argparse.Namespace(external_genomes=self.external_genomes, gene_caller = gene_caller_to_use)
+                    genome_descriptions = GenomeDescriptions(args)
+                    genome_descriptions.load_genomes_descriptions(init=False)
+                    self.external_genomes_dict = genome_descriptions.external_genomes_dict
+                    self.external_genomes_names_list = list(self.external_genomes_dict.keys())
+                    self.external_genomes_path_list = [value['contigs_db_path'] for key,value in self.external_genomes_dict.items()]
+
+                    with open(sanity_checked_genomes_file, 'w') as fp:
+                        pass
+                else:
+                    self.external_genomes_names_list = self.external_genomes_df.name.to_list()
+                    self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
+            else:
+                self.external_genomes_names_list = self.external_genomes_df.name.to_list()
+                self.external_genomes_path_list = self.external_genomes_df.contigs_db_path.to_list()
+
             self.contigs_db_name_path_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_path_list)))
 
-
-            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
             if 'bam' in self.external_genomes_df.columns:
                 self.contigs_db_name_bam_dict.update(dict(zip(self.external_genomes_names_list, self.external_genomes_df.bam)))
                 self.external_genomes_profiles_list = self.external_genomes_df.bam.to_list()
+
             self.names_list.extend(self.external_genomes_names_list)
 
         else:

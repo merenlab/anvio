@@ -769,7 +769,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
       .attr('viewBox', '-5 -5 10 10')
       .append('svg:path')
         .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-        .attr('fill', $('#picker_' + gene_id).attr('color'));
+        .attr('fill', state['highlight-genes'][gene_id]);
 
   redrawArrows();
 }
@@ -795,10 +795,10 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
     if(category.indexOf(',') != -1) category = category.substr(0,category.indexOf(','));
     if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
     if(category.indexOf('!!!') != -1) category = category.substr(0,category.indexOf('!!!'));
-    category = getCleanCagCode(category);
-    let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
+    let prop = fn_type.toLowerCase() + '-colors';
+    let color = state[prop][category] ? state[prop][category] : "#808080";
     contextSvg.select('#contextSvgDefs').append('svg:marker')
-        .attr('id', 'arrow_' + category )
+        .attr('id', 'arrow_' + getCleanCagCode(category) )
         .attr('markerHeight', 2)
         .attr('markerWidth', 2)
         .attr('orient', 'auto')

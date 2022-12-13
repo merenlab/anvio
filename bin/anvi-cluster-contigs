@@ -130,6 +130,7 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
     return input_files
 
 
+@terminal.time_program
 def main(args, unknown):
     if not args.just_do_it:
         raise ConfigError("This is an experimental module and is not yet fully tested. Alternatively you could "

@@ -58,6 +58,8 @@ def main(args):
     else:
         raise ConfigError("You should provide *some* PFAM accession ids to this program :/")
 
+    utils.sanity_check_pfam_accessions(pfam_accession_ids)
+
     output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
     pfam_accession_ids = [e.strip() for e in set(pfam_accession_ids)]
@@ -78,7 +80,11 @@ def main(args):
         fp = filesnpaths.get_temp_file_path()
 
         try:
-            utils.download_file(f"http://pfam.xfam.org/family/{pfam_accession}/hmm", fp)
+            # this downloads a gzipped model,
+            utils.download_file(f"https://www.ebi.ac.uk/interpro/wwwapi/entry/pfam/{pfam_accession}?annotation=hmm", fp + '.gz')
+
+            # which we need to decompress before moving on.
+            utils.gzip_decompress_file(fp + '.gz')
         except:
             failed_accession_ids.add(pfam_accession)
             continue

@@ -1329,7 +1329,7 @@ def check_R_packages_are_installed(required_package_dict):
                               "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
                               "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
                               "be much more helpful solving the issue. If none of the solutions offered here worked for you, feel free to "
-                              "come to anvi'o Slack and ask around -- others may already have a solution for it already. Apologies for the "
+                              "come to anvi'o Discord and ask around -- others may already have a solution for it already. Apologies for the "
                               "frustration. R frustrates everyone." % {'missing': ', '.join(missing_packages),
                                                                        'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
                                                                        'example': missing_packages[0]})
@@ -3997,6 +3997,21 @@ def sanity_check_hmm_model(model_path, genes):
     if len(genes_in_model.difference(genes)):
         raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
+
+
+def sanity_check_pfam_accessions(pfam_accession_ids):
+    """This function sanity checks a list of Pfam accession IDs
+    
+    Parameters
+    ==========
+    pfam_accession_ids: list
+        list of possible Pfam accessions
+    """
+    not_pfam_accession_ids = [pfam_accession_id for pfam_accession_id in pfam_accession_ids if not pfam_accession_id.startswith("PF")]
+
+    if len(not_pfam_accession_ids):
+        raise ConfigError(f"The following accessions do not appear to be from Pfam because they do not "
+                          f"start with \"PF\", please double check the following: {','.join(not_pfam_accession_ids)}")
 
 
 def get_missing_programs_for_hmm_analysis():

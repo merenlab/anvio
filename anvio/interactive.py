@@ -983,7 +983,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not len(self.split_names_of_interest):
             raise ConfigError("Something must have gone wrong :/ You are knee deep in refine mode, and have "
                               "zero split names to work with. You have to go back, Kate. Like, ALL the way "
-                              "back to complaining to the developers on Slack or something :(")
+                              "back to complaining to the developers on Discord or something :(")
 
         if not self.skip_hierarchical_clustering:
             item_orders = self.cluster_splits_of_interest()

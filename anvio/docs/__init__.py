@@ -89,7 +89,6 @@ THIRD_PARTY_PROGRAMS = {
     'muscle': {'link': 'http://www.drive5.com/muscle/'},
     'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
     'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
-    'HMMER': {'link': 'https://github.com/EddyRivasLab/hmmer'},
     'trimal': {'link': 'https://github.com/inab/trimal'}
     }
 
@@ -887,5 +886,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user":True
+    },
+    "metabolic-independence-score": {
+        "name": "METABOLIC INDEPENDENCE SCORE",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
 }

@@ -344,9 +344,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # the megahit output is temporary, and if we dont run
             # reformat_fasta we will delete the output of meghit at the
             # end of the workflow without saving a copy.
-            raise ConfigError('You seem to be interested in running the metagenomics workflow in reference mode. '
-                              'in this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
-                              'to add this rule to your config file with `"run": true` directive.')
+            raise ConfigError('You seem to be interested in running the metagenomics workflow in assembly mode. '
+                              'In this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
+                              'to add this rule to your config file with `"run": true` directive for this to work.')
 
 
     def init_samples_txt(self):

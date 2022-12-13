@@ -52,7 +52,7 @@
         "MERGE_DIR": "06_MERGED_megahit_no_qc",
         "LOGS_DIR": "00_LOGS_megahit_no_qc"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },

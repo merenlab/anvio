@@ -292,7 +292,6 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
 
       let category = getCagForType(gene.functions, colortype);
-      category = getCleanCagCode(category);
 
       if(!category) {
         category = "None";
@@ -325,7 +324,8 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
-      let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
+      let prop = colortype.toLowerCase() + '-colors';
+      let color = state[prop][category] ? state[prop][category] : "#808080";
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
@@ -336,7 +336,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + category + ')';
+                   return 'url(#arrow_' + getCleanCagCode(category) + ')';
                  }
 
               return '';
@@ -414,6 +414,7 @@ function getCustomColorDict(fn_type, cags=null, order=null) {
   if(cags.includes("Other")) out["Other"] = "#FFFFFF";
   if(cags.includes("None")) out["None"] = "#808080";
   delete out["undefined"];
+  delete out[null];
   return out;
 }
 
