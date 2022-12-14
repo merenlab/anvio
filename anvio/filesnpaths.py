@@ -254,7 +254,7 @@ def is_file_json_formatted(file_path):
 
     return True
 
-def is_file_yaml_formatted(file_path):
+def is_anvio_batch_yaml(file_path):
     is_file_exists(file_path)
 
     try:
