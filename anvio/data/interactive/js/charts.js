@@ -425,12 +425,7 @@ function loadAll() {
                     }
                 });
 
-                $('#gene_color_order').on('focus', function() {
-                    Object.keys(state['highlight-genes']).forEach(gene_id => {
-                      state['highlight-genes'][gene_id] = $('#picker_' + gene_id).attr('color');
-                    });
-
-                }).change(function() {
+                $('#gene_color_order').change(function() {
                     state['gene-fn-db'] = $(this).val();
                     resetFunctionColors(state[$(this).val().toLowerCase() + '-colors']);
                     redrawArrows();
@@ -680,7 +675,7 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, fi
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
             let category = el.id.substring(7).replaceAll('_', ' ');
-            state[$('#gene_color_order').val().toLowerCase() + '-colors'][category] = '#' + hex;
+            state['highlight-genes'][category] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
         }
     }).keyup(function() {
@@ -749,8 +744,8 @@ function addGeneIDColor(gene_id, color="#FF0000") {
       onChange: function(hsb, hex, rgb, el, bySetColor) {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
-
-          state['highlight-genes'][el.id.substring(7)] = '#' + hex;
+          let category = el.id.substring(7).replaceAll('_', ' ');
+          state['highlight-genes'][category] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -795,8 +790,14 @@ function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
     if(category.indexOf(',') != -1) category = category.substr(0,category.indexOf(','));
     if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
     if(category.indexOf('!!!') != -1) category = category.substr(0,category.indexOf('!!!'));
-    let prop = fn_type.toLowerCase() + '-colors';
-    let color = state[prop][category] ? state[prop][category] : "#808080";
+    let color;
+    if(fn_type) {
+      let prop = fn_type.toLowerCase() + '-colors';
+      color = state[prop][category] ? state[prop][category] : "#808080";
+    } else {
+      // highlighted gene id
+      color = state['highlight-genes'][category];
+    }
     contextSvg.select('#contextSvgDefs').append('svg:marker')
         .attr('id', 'arrow_' + getCleanCagCode(category) )
         .attr('markerHeight', 2)
