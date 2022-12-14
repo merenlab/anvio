@@ -659,8 +659,8 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, fi
       onChange: function(hsb, hex, rgb, el, bySetColor) {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
-
-          state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+          let category = el.id.substring(7).replaceAll('_', ' ');
+          state[$('#gene_color_order').val().toLowerCase() + '-colors'][category] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -679,8 +679,8 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, fi
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
-
-            state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+            let category = el.id.substring(7).replaceAll('_', ' ');
+            state[$('#gene_color_order').val().toLowerCase() + '-colors'][category] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
         }
     }).keyup(function() {
