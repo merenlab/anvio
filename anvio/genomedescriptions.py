@@ -640,9 +640,6 @@ class GenomeDescriptions(object):
                                  f"run `anvi-run-hmms` on your contigs databases to call your single-copy core genes. For the sake of brevity, here "
                                  f"is the list of genomes missing SCGs: {','.join(genomes_missing_hmms_for_scgs)}.", header="SCGs ARE NOT CALLED", lc="yellow")
 
-        # make sure genome names are not funny (since they are going to end up being db variables soon)
-        self.progress.update("Checking genome names ..")
-        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         # figure out whether there are genomes with gene calls that are NOT processed
         self.progress.update("Checking gene calls that are not processed ..")
