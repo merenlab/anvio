@@ -1241,7 +1241,7 @@ class AggregateFunctions:
             return
 
         g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
-        g.load_genomes_descriptions()
+        g.load_genomes_descriptions(skip_sanity_check=True)
         g.init_functions()
 
         self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
