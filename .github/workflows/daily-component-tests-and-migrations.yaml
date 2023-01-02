@@ -24,7 +24,7 @@ jobs:
       shell: bash -l {0}
       run: |
         conda info -a
-        conda install -y mamba
+        conda install -y "mamba >=0.24.0"
         mamba install -y python=${{ matrix.python-version }} sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond blast megahit spades bowtie2 tbb=2020.3 bwa graphviz "samtools >=1.9" trimal iqtree trnascan-se fasttree
         mamba install -y -c conda-forge r-stringi=1.7.8
         mamba install -y r-base r-tidyverse r-optparse r-stringi r-magrittr r-reshape2
