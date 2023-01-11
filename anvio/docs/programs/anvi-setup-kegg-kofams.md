@@ -81,7 +81,7 @@ anvi-setup-kegg-kofams --download-from-kegg \
 
 It's probably a good idea in this case to specify where you want this data to go using `--kegg-data-dir`, to make sure you can find it later.
 
- Actually, in addition to downloading the data, the program will also do a bit of processing on the KOfam profiles: it will remove those without bitscore thresholds, concatenate the remaining profiles into one file, and run `hmmpress` on them. But no database will be created when this flag is used.
+Actually, in addition to downloading the data, the program will also do a bit of processing on the KOfam profiles: it will remove those without bitscore thresholds, concatenate the remaining profiles into one file, and run `hmmpress` on them. But no database will be created when this flag is used.
 
 {:.notice}
 This option is primarily useful for developers to test `anvi-setup-kegg-kofams` - for instance, so that you can download the data once and run the database setup option (`--only-database`) multiple times. However, if non-developers find another practical use-case for this flag, we'd be happy to add those ideas here. Send us a message, or feel free to edit this file and pull request your changes on the anvi'o Github repository. :)
@@ -136,3 +136,17 @@ anvi-setup-kegg-kofams --kegg-archive KEGG_archive.tar.gz
 {{ codestop }}
 
 This works the same way as the default, except that it bypasses the download step and instead uses the archive file you have provided with `--kegg-archive`.
+
+## Info for developers: making a new KEGG snapshot available to all anvi'o users
+
+Periodically (especially before releasing a new version of anvi'o), we want to add new KEGG database snapshots to anvi'o so that users can have more up-to-date KEGG data without having to use the `--download-from-kegg` option. In this section you will find the instructions for doing this (these instructions are also in the comments of the `anvio/data/misc/KEGG-SNAPSHOTS.yaml` file).
+
+Available KEGG snapshots are stored in the anvi'o code repository in `anvio/data/misc/KEGG-SNAPSHOTS.yaml`. To add a new snapshot, you first need to create one by downloading and processing the data from KEGG, testing to make sure it works, and then updating this file. Here are the steps:
+
+1. Download the latest data directly from KEGG by running `anvi-setup-kegg-kofams -D --kegg-data-dir ./KEGG`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot.
+2. Get the hash value and version info from the MODULES.db by running `anvi-db-info ./KEGG/MODULES.db`.
+3. Archive the KEGG data directory by running `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`. Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2. This convention makes it easier to distinguish between KEGG snapshots by simply looking at the file name.
+4. Test that setup works with this archive by running `anvi-setup-kegg-kofams --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`.
+5. If setup worked in the last step without errors, upload the `.tar.gz` archive to [Figshare](https://figshare.com/). If you need inspiration for filling out the keywords, categories, and description fields for the archive, you can check the previous KEGG snapshots that have been uploaded - for instance, [this one](https://figshare.com/articles/dataset/KEGG_build_2023-01-10/21862494) or [this one](https://figshare.com/articles/dataset/KEGG_build_2022-04-14/19601761). At minimum, we typically indicate the database version and hash value, and an example setup command (ie, the one from step 4), in the description of the dataset. Once the archive is published on Figshare (warning: this usually takes a while due to the large file size), you can get the download url of the archive by right-clicking on the Download button and copying the address, which should be a URL with a format similar to this example (but different numbers): `https://figshare.com/ndownloader/files/34817812`
+6. Add an entry to the bottom of the `anvio/data/misc/KEGG-SNAPSHOTS.yaml` file with the Figshare download URL, archive name, and MODULES.db hash and version. If you want this to become the default snapshot (which usually only changes before the next anvi'o release), you should also update the default `self.target_snapshot` variable in `anvio/kegg.py` to be this latest version that you have added.
+7. Test it by running `anvi-setup-kegg-kofams --kegg-data-dir TEST_NEW_KEGG`, and if it works you are done, and can push your changes to the anvi'o repository. :)
