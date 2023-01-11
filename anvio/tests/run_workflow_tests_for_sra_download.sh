@@ -4,7 +4,7 @@ source 00.sh
 # Setup #############################
 SETUP_WITH_OUTPUT_DIR $1 $2
 #####################################
-INFO "Setting up the ecophylo workflow test directory"
+INFO "Setting up the sra_download workflow test directory"
 mkdir $output_dir/workflow_test
 cp -r $files/workflows/sra_download/* $output_dir/workflow_test/
 cd $output_dir/workflow_test

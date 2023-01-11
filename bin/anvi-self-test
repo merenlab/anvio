@@ -39,7 +39,7 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
          'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh'],
          'database-migrations'   : ['run_migration_tests_for_ancient_anvio_databases.sh'],
-         'workflow-sra_download' : ['run_workflow_tests_for_sra_download.sh'],
+         'workflow-sra-download' : ['run_workflow_tests_for_sra_download.sh'],
          }
 
 run = terminal.Run()
