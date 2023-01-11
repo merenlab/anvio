@@ -40,7 +40,6 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
         rule_acceptable_params_dict['prefetch'] = ['--max-size']
         rule_acceptable_params_dict['fasterq-dump'] = ['--split-files', ' --verbose', '--progress']
-        rule_acceptable_params_dict['pigz'] = ['--processes']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
