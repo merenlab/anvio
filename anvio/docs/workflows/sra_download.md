@@ -62,7 +62,8 @@ ERR6450081
 ERR6450082
 ```
 
-**NOTE** The .sra files are stored in `01_NCBI_SRA/`. This directory will be deleted upon successful completion of the workflow because I don't know any use for .sra files. If you need these feel free to update the workflow.
+{:.warning}
+The .sra files are stored in `01_NCBI_SRA/`. This directory will be deleted upon successful completion of the workflow because I don't know any use for .sra files. If you need these feel free to update the workflow.
 
 ## Start the workflow!
 
