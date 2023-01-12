@@ -80,11 +80,9 @@ ANVIO_WORKFLOWS = {
             ('Parallel gzips files', ['pigz']),
             ],
         "one_sentence_summary": "Downloads, extracts, and gzips paired-end FASTQ files from NCBI SRA",
-        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
-            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+        "one_paragraph_summary": ("The sra_download workflow is a Snakemake workflow that downloads paired-end FASTQ files "
+            "from SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
+            "then gzips them using [pigz](https://zlib.net/pigz/).")
     },
 }
 
