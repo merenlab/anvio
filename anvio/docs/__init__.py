@@ -876,7 +876,13 @@ ANVIO_ARTIFACTS ={
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
-},
+    },
+    "sra-download-workflow": {
+        "name": "SRA-DOWNLOAD WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "contig-inspection" : {
         "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",
