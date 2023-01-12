@@ -69,6 +69,21 @@ ANVIO_WORKFLOWS = {
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "sra_download": {
+        "authors": ['mschecht'],
+        "artifacts_accepted": [],
+        "artifacts_produced": [],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Downloads SRA accessions', ['prefetch']),
+            ('Extracts FASTQ files from SRA accessions', ['fasterq-dump']),
+            ('Parallel gzips files', ['pigz']),
+            ],
+        "one_sentence_summary": "Downloads, extracts, and gzips paired-end FASTQ files from NCBI SRA",
+        "one_paragraph_summary": ("The sra_download workflow is a Snakemake workflow that downloads paired-end FASTQ files "
+            "from SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
+            "then gzips them using [pigz](https://zlib.net/pigz/).")
+    },
 }
 
 # the purpose of this variable is to have a list of third-party programs used from
@@ -89,7 +104,10 @@ THIRD_PARTY_PROGRAMS = {
     'muscle': {'link': 'http://www.drive5.com/muscle/'},
     'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
     'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
-    'trimal': {'link': 'https://github.com/inab/trimal'}
+    'trimal': {'link': 'https://github.com/inab/trimal'},
+    'pigz': {'link': 'https://zlib.net/pigz/'},
+    'prefetch': {'link': 'https://github.com/ncbi/sra-tools'},
+    'fasterq-dump': {'link': 'https://github.com/ncbi/sra-tools'}
     }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
@@ -856,7 +874,13 @@ ANVIO_ARTIFACTS ={
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
-},
+    },
+    "sra-download-workflow": {
+        "name": "SRA-DOWNLOAD WORKFLOW",
+        "type": "WORKFLOW",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "contig-inspection" : {
         "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",
