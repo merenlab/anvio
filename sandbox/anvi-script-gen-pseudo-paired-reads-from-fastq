@@ -17,7 +17,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
 __requires__ = ["short-reads-fasta"]
-__provides__ = ["short-reads-fasta"]
+__provides__ = ["paired-end-fastq"]
 __description__ =  ("A script that takes a FASTQ file that is not paired-end (i.e., R1 alone) and converts "
                     "it into two FASTQ files that are paired-end (i.e., R1 and R2). This is a quick-and-dirty "
                     "workaround that halves each read from the original FASTQ and puts one half in "

@@ -72,7 +72,7 @@ ANVIO_WORKFLOWS = {
     "sra-download": {
         "authors": ['mschecht'],
         "artifacts_accepted": [],
-        "artifacts_produced": [],
+        "artifacts_produced": ['paired-end-fastq'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
             ('Downloads SRA accessions', ['prefetch']),
