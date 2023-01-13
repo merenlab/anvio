@@ -69,7 +69,7 @@ ANVIO_WORKFLOWS = {
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
-    "sra_download": {
+    "sra-download": {
         "authors": ['mschecht'],
         "artifacts_accepted": [],
         "artifacts_produced": [],
