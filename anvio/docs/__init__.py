@@ -77,11 +77,11 @@ ANVIO_WORKFLOWS = {
         "third_party_programs_used": [
             ('Downloads SRA accessions', ['prefetch']),
             ('Extracts FASTQ files from SRA accessions', ['fasterq-dump']),
-            ('Parallel gzips files', ['pigz']),
+            ('Compresses FASTQ files in parallel', ['pigz']),
             ],
-        "one_sentence_summary": "Downloads, extracts, and gzips paired-end FASTQ files from NCBI SRA",
-        "one_paragraph_summary": ("The sra_download workflow is a Snakemake workflow that downloads paired-end FASTQ files "
-            "from SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
+        "one_sentence_summary": "Download, extract, and gzip paired-end FASTQ files automatically from the NCBI short-read archive (SRA)",
+        "one_paragraph_summary": ("The sra-download workflow automatizes the process of downloading paired-end FASTQ files "
+            "for a given list of SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
             "then gzips them using [pigz](https://zlib.net/pigz/).")
     },
 }
@@ -202,6 +202,12 @@ ANVIO_ARTIFACTS ={
         "type": "FASTA",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "paired-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "genes-fasta": {
         "name": "GENES",
