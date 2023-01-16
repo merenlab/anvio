@@ -53,6 +53,9 @@ def main(args):
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
+    from argparse import Namespace
+
+    known_versions = EggNOGMapper(args=Namespace()).available_parsers.keys()
 
     parser = ArgumentParser(description=__description__)
 
@@ -68,8 +71,9 @@ if __name__ == '__main__':
                               import the contents of that file into the database instead of a run from scratch.\
                               In that case, you must also use the `--use-version` parameter to clarify which\
                               parser version should be used to parse it.")
-    parser.add_argument('--use-version', default='0.12.6', metavar="EMAPPER_VERSION",
-                        help='The version of eggnog-mapper that generated the annotation file.')
+    parser.add_argument('--use-version', default=None, metavar="EMAPPER_VERSION",
+                        help=f'The version of eggnog-mapper that generated the annotation file. Known versions \
+                               of emapper include the following: {", ".join(known_versions)}')
 
     args = parser.get_args(parser)
 
