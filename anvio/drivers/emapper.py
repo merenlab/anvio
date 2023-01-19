@@ -52,6 +52,7 @@ class EggNOGMapper:
        """
 
     def __init__(self, args, database='bact', executable = 'emapper.py', usemem=True, use_version=None, progress=progress, run=run):
+        self.args = args
         self.executable = executable
 
         self.progress = progress
