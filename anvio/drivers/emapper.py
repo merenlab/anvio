@@ -65,7 +65,7 @@ class EggNOGMapper:
         self.use_version = use_version
         self.usemem = usemem
 
-        self.COGs_data = cogs.COGsData(args)
+        self.COGs_data = cogs.COGsData(args, run=terminal.Run(verbose=False))
 
         if not self.COGs_data.initialized:
             raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class "
