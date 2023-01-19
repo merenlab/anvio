@@ -81,7 +81,7 @@ class COGs:
         self.hits = None # the search function will take care of this one.
 
         # get an instance of the setup class
-        self.COG_setup = COGsSetup(args)
+        self.COG_setup = COGsSetup(args, run=self.run, progress=self.progress)
 
         self.COG_data_dir = self.COG_setup.COG_data_dir
         self.COG_base_dir = self.COG_setup.COG_base_dir
@@ -386,7 +386,7 @@ class COGsData:
         if cog_data_dir:
             args.cog_data_dir = cog_data_dir
 
-        self.setup = COGsSetup(args)
+        self.setup = COGsSetup(args, run=self.run, progress=self.progress)
         self.essential_files = self.setup.get_essential_file_paths()
         self.COG_version = self.setup.COG_version
 
