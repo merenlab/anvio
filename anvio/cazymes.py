@@ -3,13 +3,19 @@
 """This file contains CAZyme related classes."""
 
 import os
+import glob
+import shutil
 
 import anvio
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.drivers.hmmer import HMMer
+from anvio.parsers import parser_modules
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -118,3 +124,111 @@ class CAZymeSetup(object):
         else:
             # getting rid of the log file because hmmpress was successful
             os.remove(log_file_path)
+
+class CAZyme(object):
+    def __init__(self, args, run=run, progress=progress):
+
+        self.run = run
+        self.progress = progress
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.contigs_db_path = A('contigs_db', null)
+        self.num_threads = A('num_threads', null)
+        self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
+        self.noise_cutoff_terms = A('noise_cutoff_terms', null)
+
+        # load_catalog will populate this
+        self.function_catalog = {}
+
+        filesnpaths.is_program_exists(self.hmm_program)
+        utils.is_contigs_db(self.contigs_db_path)
+
+        self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
+
+        self.is_database_exists()
+
+    def is_database_exists(self):
+        """Checks if database files exist and decompresses them if compressed"""
+
+
+        if not glob.glob(os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-*.txt")):
+            raise ConfigError(f"It seems you do not have the CAZyme database installed in {self.cazyme_data_dir}, please run 'anvi-setup-cazymes' download it.")
+
+        # Glob and find what files we have then check if we have them all
+        downloaded_files = glob.glob(os.path.join(self.cazyme_data_dir, '*'))
+        
+        # here we check if the HMM profile is compressed so we can decompress it for next time
+        hmmpress_file_extensions = ["h3f", "h3i", "h3m", "h3p", "txt"]
+        extant_extensions = [os.path.basename(file).split(".")[-1] for file in downloaded_files]
+
+        if hmmpress_file_extensions.sort() != extant_extensions.sort():
+            raise ConfigError("Anvi'o detected that the CAZyme database was not properly compressed with hmmpress. "
+                                "Please 'anvi-setup-cazymes --reset'")
+
+    def process(self):
+        # hmm_file = glob.glob(os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-*.txt"))
+        hmm_file = os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-V11.txt")
+
+        # initialize contigs database
+        class Args: pass
+        args = Args()
+        args.contigs_db = self.contigs_db_path
+        contigs_db = dbops.ContigsSuperclass(args)
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+
+        # export AA sequences for genes
+        target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['AA:GENE'],
+                                                      simple_headers=True,
+                                                      report_aa_sequences=True)
+
+        # run hmmer
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
+        hmm_hits_file = hmmer.run_hmmer('CAZymes', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, self.noise_cutoff_terms)
+
+        if not hmm_hits_file:
+            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
+                            "now anvi'o will add CAZymes as a functional source with no hits, clean the temporary directories "
+                            "and gracefully quit.", nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
+            return
+
+        # parse hmmer output
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+        search_results_dict = parser.get_search_results()
+
+        # add functions to database
+        functions_dict = {}
+        counter = 0
+        for hmm_hit in search_results_dict.values():
+            functions_dict[counter] = {
+                'gene_callers_id': hmm_hit['gene_callers_id'],
+                'source': 'CAZyme',
+                'accession': hmm_hit['gene_hmm_id'],
+                'function': hmm_hit['gene_name'],
+                'e_value': hmm_hit['e_value']
+            }
+
+            counter += 1
+
+        if functions_dict:
+            gene_function_calls_table.create(functions_dict)
+        else:
+            self.run.warning("CAZyme class has no hits to process. Returning empty handed, but still adding CAZyme as "
+                             "a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'CAZyme'})
+
+        if anvio.DEBUG:
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
+                        "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+        else:
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                            'like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
