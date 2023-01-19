@@ -126,6 +126,21 @@ class CAZymeSetup(object):
             os.remove(log_file_path)
 
 class CAZyme(object):
+    """Search CAZyme database over contigs-db
+
+    Parameters
+    ==========
+    args : argparse.Namespace
+        See `bin/anvi-run-cazymes` for available arguments
+        - noise_cutoff_terms : str, optional
+            Filtering option for HMM search
+        - hmm_program : str, optional
+            hmmsearch (default) or hmmscan
+    run : terminal.Run, optional
+        An object for printing messages to the console.
+    progress : terminal.Progress, optional
+        An object for printing progress bars to the console.
+    """
     def __init__(self, args, run=run, progress=progress):
 
         self.run = run
@@ -149,11 +164,11 @@ class CAZyme(object):
         self.is_database_exists()
 
     def is_database_exists(self):
-        """Checks if database files exist and decompresses them if compressed"""
-
+        """Checks if decompressed database files exist"""
 
         if not glob.glob(os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-*.txt")):
-            raise ConfigError(f"It seems you do not have the CAZyme database installed in {self.cazyme_data_dir}, please run 'anvi-setup-cazymes' download it.")
+            raise ConfigError(f"It seems you do not have the CAZyme database installed in {self.cazyme_data_dir}, "
+                              f"please run 'anvi-setup-cazymes' download it.")
 
         # Glob and find what files we have then check if we have them all
         downloaded_files = glob.glob(os.path.join(self.cazyme_data_dir, '*'))
@@ -164,10 +179,13 @@ class CAZyme(object):
 
         if hmmpress_file_extensions.sort() != extant_extensions.sort():
             raise ConfigError("Anvi'o detected that the CAZyme database was not properly compressed with hmmpress. "
-                                "Please 'anvi-setup-cazymes --reset'")
+                              "Please 'anvi-setup-cazymes --reset'")
 
     def process(self):
-        # hmm_file = glob.glob(os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-*.txt"))
+        """Search CAZyme HMMs over contigs-db, parse, and filter results"""
+
+        #FIXME: need a smarter way to find the CAZyme HMM file for when users 
+        # want a specific version. This will break if it's not V11
         hmm_file = os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-V11.txt")
 
         # initialize contigs database
