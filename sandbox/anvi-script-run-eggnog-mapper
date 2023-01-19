@@ -52,17 +52,18 @@ def main(args):
 
 
 if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
+    # quickly learn available parser versions
     from argparse import Namespace
-
     known_versions = EggNOGMapper(args=Namespace()).available_parsers.keys()
 
+    # construct the help and the args
+    from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
                         if you did not use the default directory.")
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {'default': None}))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     parser.add_argument('--drop-previous-annotations', default=False, action="store_true",
                         help='When declared, previous annotations in the database will be dropped.')
