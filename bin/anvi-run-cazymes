@@ -10,12 +10,11 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['mschecht']
-__requires__ = ['contigs-db']
-#FIXME: add cazyme data artifact
+__requires__ = ['contigs-db', 'cazyme-data']
 __provides__ = ['functions']
 __description__ = "Run dbCAN CAZymes on contigs-db"
 
