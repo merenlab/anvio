@@ -61,8 +61,6 @@ if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
-                        if you did not use the default directory.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     parser.add_argument('--drop-previous-annotations', default=False, action="store_true",

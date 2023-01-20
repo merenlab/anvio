@@ -11,7 +11,6 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.cogs as cogs
 
 from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
@@ -64,15 +63,6 @@ class EggNOGMapper:
         self.annotation = A('annotation')
         self.use_version = use_version
         self.usemem = usemem
-
-        self.COGs_data = cogs.COGsData(args, run=terminal.Run(verbose=False))
-
-        if not self.COGs_data.initialized:
-            raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class "
-                               "depends on it, so this is the end of the road for you. If you set up your COG directory to "
-                               "a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you "
-                               "never set up one, then maybe it is time for you to take a look at the program "
-                               "`anvi-setup-ncbi-cogs`.")
 
         try:
             self.num_threads = int(self.num_threads) if self.num_threads else None
