@@ -165,6 +165,11 @@ class CAZyme(object):
 
         self.is_database_exists()
 
+        # reminder to be a good citizen (Good idea Iva!)
+        self.run.warning("Anvi'o will annotate your contigs-db genes with the dbCAN CAZyme database. "
+                         "Please do not forget to cite this database when you publish your science :) "
+                         "(http://www.cazy.org/Citing-CAZy).", lc='green', header="CITATION")
+
     def is_database_exists(self):
         """Checks if decompressed database files exist"""
 
