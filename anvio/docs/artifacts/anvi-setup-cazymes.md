@@ -5,7 +5,7 @@ This program **downloads and organizes a local copy of the dbCAN [CAZyme HMMs da
 anvi-setup-cazymes 
 {{ codestop }}
 
-By default, this data is stored at `anvio/data/misc/CAZyme/`. To set up this data in a non-default location, run 
+By default, this data is stored at `anvio/data/misc/CAZyme/`. To set up this data in a non-default location, run the code code below. This is a good way to download multiple versions of the CAZyme database.
 {{ codestart }}
 anvi-setup-cazymes --cazyme-data-dir path/to/location
 {{ codestop }}
