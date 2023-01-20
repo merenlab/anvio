@@ -18,4 +18,4 @@ INFO "Running anvi-run-cazymes"
 anvi-run-cazymes -c B_thetaiotamicron_VPI-5482.db
 
 INFO "Running anvi-run-cazymes with --noise-cutoff-terms"
-anvi-run-cazymes -c B_thetaiotamicron_VPI-5482.db --noise-cutoff-terms "-E 1"
+anvi-run-cazymes -c B_thetaiotamicron_VPI-5482.db --noise-cutoff-terms "-E 1e-12"
