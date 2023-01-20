@@ -157,6 +157,10 @@ class CAZyme(object):
         # load_catalog will populate this
         self.function_catalog = {}
 
+        # default noise_cutoff_terms
+        if not self.noise_cutoff_terms:
+            self.noise_cutoff_terms = "-E 1e-12"
+
         filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
 
