@@ -119,7 +119,7 @@ class CAZymeSetup(object):
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. "
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the CAZyme HMM profiles. "
                                 "Check out the log file ('%s') to see what went wrong." % (log_file_path))
         else:
             # getting rid of the log file because hmmpress was successful
@@ -214,7 +214,7 @@ class CAZyme(object):
                             "and gracefully quit.", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'CAZyme'})
             return
 
         # parse hmmer output
