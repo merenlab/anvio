@@ -105,7 +105,11 @@ class CAZymeSetup(object):
         """Download CAZyme database and compress with hmmpress"""
         self.run.info("Database URL", self.database_url)
 
-        utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, os.path.basename(self.database_url)) , progress=self.progress, run=self.run)
+        utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress, run=self.run)
+
+        message = f"CAZyme_HMMs.txt was downloaded from this URL: {self.database_url}"
+        with open(os.path.join(self.cazyme_data_dir, "version.txt"), 'w') as f:
+            f.write(message)
 
         if hmmpress_files:
             self.hmmpress_files()
@@ -113,7 +117,7 @@ class CAZymeSetup(object):
     def hmmpress_files(self):
         """Runs hmmpress on CAZyme HMM profiles."""
 
-        file_path = os.path.join(self.cazyme_data_dir, os.path.basename(self.database_url))
+        file_path = os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")
         cmd_line = ['hmmpress', file_path]
         log_file_path = os.path.join(self.cazyme_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
@@ -167,6 +171,16 @@ class CAZyme(object):
         if not self.cazyme_data_dir:
             self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
 
+        self.hmm_file =  os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")
+        self.version_txt = os.path.join(self.cazyme_data_dir, "version.txt")
+
+        # Read version_txt to get CAZyme database version
+        with open(self.version_txt, 'r') as f:
+            output = f.read()
+        
+        URL = output.split(' ')[-1]
+        self.run.warning(f"Running CAZyme version: {os.path.basename(URL)}", lc='green', header="VERSION")
+
         self.is_database_exists()
 
         # reminder to be a good citizen (Good idea Iva!)
@@ -177,7 +191,7 @@ class CAZyme(object):
     def is_database_exists(self):
         """Checks if decompressed database files exist"""
 
-        if not glob.glob(os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-*.txt")):
+        if not glob.glob(self.cazyme_data_dir):
             raise ConfigError(f"It seems you do not have the CAZyme database installed in {self.cazyme_data_dir}, "
                               f"please run 'anvi-setup-cazymes' download it.")
 
@@ -194,10 +208,6 @@ class CAZyme(object):
 
     def process(self):
         """Search CAZyme HMMs over contigs-db, parse, and filter results"""
-
-        #FIXME: need a smarter way to find the CAZyme HMM file for when users 
-        # want a specific version. This will break if it's not V11
-        hmm_file = os.path.join(self.cazyme_data_dir, "dbCAN-HMMdb-V11.txt")
 
         # initialize contigs database
         class Args: pass
@@ -217,7 +227,7 @@ class CAZyme(object):
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('CAZymes', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, self.noise_cutoff_terms)
+        hmm_hits_file = hmmer.run_hmmer('CAZymes', 'AA', 'GENE', None, None, len(self.function_catalog), self.hmm_file, None, self.noise_cutoff_terms)
 
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
