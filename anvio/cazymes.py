@@ -92,7 +92,7 @@ class CAZymeSetup(object):
             self.run.info('Attempting to use version', self.args.cazyme_version)
         else:
             self.page_index = 'V11'
-            self.run.info_single('No CAZyme version specified. Using current release.')
+            self.run.info_single(f"No CAZyme version specified. Using {self.page_index}.")
 
         self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.page_index}", f"dbCAN-HMMdb-{self.page_index}.txt") 
 
