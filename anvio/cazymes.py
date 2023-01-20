@@ -152,6 +152,7 @@ class CAZyme(object):
         self.num_threads = A('num_threads', null)
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
         self.noise_cutoff_terms = A('noise_cutoff_terms', null)
+        self.cazyme_data_dir = args.cazyme_data_dir
 
         # load_catalog will populate this
         self.function_catalog = {}
@@ -159,7 +160,8 @@ class CAZyme(object):
         filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
 
-        self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
+        if not self.cazyme_data_dir:
+            self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
 
         self.is_database_exists()
 

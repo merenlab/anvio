@@ -33,6 +33,8 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('--noise-cutoff-terms', default=None, help="Choose a threshold for the CAZyme HMMs e.g. --noise-cutoff-terms \"-E 1\". \
                         If you are not sure what to pick run `hmmsearch -h` or `hmmscan -h` and check out your options.")
+    parser.add_argument('--cazyme-data-dir', default=None, type=str, help="The directory path for your downloaded CAZyme database. Anvi'o will try to use the default path \
+                        if you do not specify anything.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 
