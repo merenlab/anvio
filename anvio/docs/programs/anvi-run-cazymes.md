@@ -13,14 +13,14 @@ Here is a default run:
 
 {{ codestart }}
 anvi-run-cazymes -c %(contigs-db)s \
-            --pfam-data-dir %(cazyme-data)s 
+            --cazyme-data-dir %(cazyme-data)s 
 {{ codestop }}
 
 By default, this uses `hmmsearch` to run HMMs. You can choose to use `hmmscan` instead by running
 
 {{ codestart }}
 anvi-run-cazymes -c %(contigs-db)s \
-            --pfam-data-dir %(cazyme-data)s \
+            --cazyme-data-dir %(cazyme-data)s \
             --noise-cutoff-terms "-E 1" \
             --hmmer-program hmmscan
 {{ codestop }}
@@ -29,6 +29,6 @@ Use the parameter `--noise-cutoff-terms` to filter out hits e.g. `--noise-cutoff
 
 {{ codestart }}
 anvi-run-cazymes -c %(contigs-db)s \
-            --pfam-data-dir %(cazyme-data)s \
+            --cazyme-data-dir %(cazyme-data)s \
             --noise-cutoff-terms "-E 1"
 {{ codestop }}
