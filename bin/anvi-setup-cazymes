@@ -14,7 +14,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['mschecht']
-__provides__ = ['pfams-data']
+__provides__ = ['cazyme-data']
 __description__ = "Download and setup Pfam data from the EBI"
 
 
