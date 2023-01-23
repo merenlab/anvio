@@ -100,7 +100,7 @@ class CAZymeSetup(object):
 
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
-        if os.path.exists(os.path.join(self.cazyme_data_dir, f"dbCAN-HMMdb-{self.page_index}.txt")):
+        if os.path.exists(os.path.join(self.cazyme_data_dir, f"CAZyme_HMMs.txt")):
             raise ConfigError(f"It seems you already have CAZyme database installed in {self.cazyme_data_dir}, please use --reset flag if you want to re-download it.")
 
     def download(self, hmmpress_files=True):
