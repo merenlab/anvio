@@ -42,6 +42,8 @@ class CAZymeSetup(object):
                 The directory where the CAZyme data should be stored. If not provided, the data will be stored in the anvi'o data directory.
             - reset : bool, optional
                 If True, the data directory will be deleted and recreated. Defaults to False.
+            - cazyme_version : str, optional
+                Version of CAZyme database that will be installed
         run : terminal.Run, optional
             An object for printing messages to the console.
         progress : terminal.Progress, optional
@@ -136,10 +138,16 @@ class CAZyme(object):
     ==========
     args : argparse.Namespace
         See `bin/anvi-run-cazymes` for available arguments
+        - contigs_db_path : str
+            Path to contigs-db
+        - num_threads : str
+            Number of threads to run hmmsearch or hmmscan
         - noise_cutoff_terms : str, optional
             Filtering option for HMM search
         - hmm_program : str, optional
             hmmsearch (default) or hmmscan
+        - cazyme_data_dir : str, optional
+            path to downloaded copy of CAZyme data, default downloaded in anvio
     run : terminal.Run, optional
         An object for printing messages to the console.
     progress : terminal.Progress, optional
