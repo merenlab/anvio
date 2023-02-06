@@ -3,6 +3,7 @@
 """This is the main script for anvi-run-batch program."""
 
 import os
+import re
 import sys
 import json
 import yaml
@@ -85,41 +86,43 @@ class AnvioBatchWork():
         self.run.info('Author Affiliation', self.yaml_file.get('author').get('affiliation'), mc='green')
         self.run.info('Author Web', self.yaml_file.get('author').get('web'), mc='green')
 
-        work_dir = self.yaml_file.get('work_directory')
+        #Trimming working directory.
+        work_dir = re.sub('^[a-z0-9](?!.*?[^\na-z0-9]{2}).*?[a-z0-9]$', '', self.yaml_file.get('work_directory'))
+        
         setup = self.yaml_file.get('setup')
         setup_command_counter = 0
         cwd = os.getcwd()
         unix_commands = ['cd','rm', 'ls', 'll', 'pwd', 'cat', 'mkdir', 'cp', 'mv', 'rmdir']
 
-        if work_dir:
-            if self.setup_arg:
-                while setup_command_counter < len(setup):
-                    if 'cd' in setup[setup_command_counter]:
-                        self.run.warning('You should remove "cd" commands in your yaml file')
-                        sys.exit(-1)
-                    else:
-                        subprocess.run(
-                            str(setup[setup_command_counter]), shell=True)
-                        setup_command_counter += 1
-                        
-            running_command = self.yaml_file.get('run')
-            run_command_counter = 0
+        if not work_dir:
+            raise ConfigError('You must give your Working Directory!!')
 
-            #Change directory anyway!
-            cwd_file = cwd + '/' + work_dir
-            os.chdir(cwd_file)
+        if self.setup_arg:
+            while setup_command_counter < len(setup):
+                if 'cd' in setup[setup_command_counter]:
+                    self.run.warning('You should remove "cd" commands in your yaml file')
+                    sys.exit(-1)
+                else:
+                    subprocess.run(
+                        str(setup[setup_command_counter]), shell=True)
+                    setup_command_counter += 1
+                    
+        running_command = self.yaml_file.get('run')
+        run_command_counter = 0
 
-            # WE ALWAYS RUN MIGRATION EVEN USER GIVE IN SETUP FILE. 2 is better than 1
-            subprocess.call('anvi-migrate --migrate-dbs-safely --migrate-safely *.db', shell=True)
+        #Change directory anyway!
+        cwd_file = cwd + '/' + work_dir
+        os.chdir(cwd_file)
 
-            while run_command_counter < len(running_command):
-                subprocess.call(
-                    running_command[run_command_counter].get('command'),
-                    shell=True)
-                run_command_counter += 1
-        else:
-            self.run.warning('You must give your Working Directory!!')
-            sys.exit(-1)
+        # WE ALWAYS RUN MIGRATION EVEN USER GIVE IN SETUP FILE. 2 is better than 1
+        subprocess.call('anvi-migrate --migrate-dbs-safely --migrate-safely *.db', shell=True)
+
+        while run_command_counter < len(running_command):
+            #sanity_check
+            subprocess.call(
+                running_command[run_command_counter].get('command'),
+                shell=True)
+            run_command_counter += 1            
 
 
 

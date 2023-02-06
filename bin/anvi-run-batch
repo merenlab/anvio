@@ -25,7 +25,7 @@ __requires__ = ['contigs-db', 'profile-db']
 __description__ = (
     "The purpose of this program is to download the data in the Yaml type file received from the user and run the desired commands.")
 
-@time_program
+@terminal.time_program
 def main(args):
     batchwork.AnvioBatchWork(args).execute()
 
