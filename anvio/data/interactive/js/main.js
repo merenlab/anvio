@@ -2097,12 +2097,12 @@ function storeRefinedBins() {
 
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
-    var gene_coverage_status = $('#init-gene-checkbox').is(':checked');
+    var init_gene_coverages = $('#init-gene-checkbox').is(':checked');
 
     if (collection === null)
         return;
 
-    if (gene_coverage_status) {
+    if (init_gene_coverages) {
         waitingDialog.show('Generating a detailed summary please be patient...', {dialogSize: 'sm'});
 
         $.ajax({
