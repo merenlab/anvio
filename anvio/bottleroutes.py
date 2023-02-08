@@ -163,6 +163,7 @@ class BottleApplication(Bottle):
         self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
         self.route('/summarize/<collection_name>',             callback=self.gen_summary)
+        self.route('/summarize_full/<collection_name>',        callback=self.gen_summary_full)
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
@@ -1023,7 +1024,7 @@ class BottleApplication(Bottle):
         return json.dumps({'sequence': sequence, 'header': header})
 
 
-    def gen_summary(self, collection_name):
+    def gen_summary(self, collection_name, gene_coverage_status):
         if self.read_only:
             return json.dumps({'error': "Sorry! This is a read-only instance."})
 
@@ -1062,6 +1063,42 @@ class BottleApplication(Bottle):
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
 
+
+    def gen_summary_full(self, collection_name):
+        if self.read_only:
+            return json.dumps({'error': "Sorry! This is a read-only instance."})
+
+        if self.interactive.mode == 'manual':
+            return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
+
+        run.info_single('A summary of collection "%s" has been requested.' % collection_name)
+
+        # get a dummy args instance, and fill it down below
+        summarizer_args = summarizer.ArgsTemplateForSummarizerClass()
+
+        # common params. we will set pan/profile specific params a bit later:
+        summarizer_args.collection_name = collection_name
+        summarizer_args.taxonomic_level = self.interactive.taxonomic_level
+        summarizer_args.init_gene_coverages = True
+
+        if self.interactive.mode == 'full':
+            summarizer_args.profile_db = self.interactive.profile_db_path
+            summarizer_args.contigs_db = self.interactive.contigs_db_path
+            summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
+        else:
+            return json.dumps({'error': 'We do not know anything about this mode: "%s"' % self.interactive.mode})
+
+        # call the summary:
+        try:
+            summary = summarizer.ProfileSummarizer(summarizer_args, r=run, p=progress)
+            summary.process()
+        except Exception as e:
+            return json.dumps({'error': 'Something failed in the "%s" summary mode. This is what we know: %s' % (self.interactive.mode, e)})
+
+        run.info_single('HTML output for summary is ready: %s' % summary.index_html)
+
+        path = "summary/%s/index.html" % (collection_name)
+        return json.dumps({'path': path})
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
