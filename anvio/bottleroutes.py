@@ -1024,7 +1024,7 @@ class BottleApplication(Bottle):
         return json.dumps({'sequence': sequence, 'header': header})
 
 
-    def gen_summary(self, collection_name, gene_coverage_status):
+    def gen_summary(self, collection_name):
         if self.read_only:
             return json.dumps({'error': "Sorry! This is a read-only instance."})
 
