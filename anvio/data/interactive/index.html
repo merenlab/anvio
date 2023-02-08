@@ -1249,16 +1249,6 @@
         });
     });
 
-    $(document).ready(function() {
-        var init_gene_checkbox = $('#init-gene-checkbox');
-        
-        init_gene_checkbox.click(function() {
-            if(init_gene_checkbox.is(':checked')){
-                return init_gene_checkbox.is(':checked');
-            }
-        });
-    });
-
     document.body.addEventListener('keydown', function(ev) {
         if (ev.keyCode == 27) { // ESC = 27
             document.activeElement.blur();
