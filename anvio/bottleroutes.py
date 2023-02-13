@@ -162,8 +162,7 @@ class BottleApplication(Bottle):
         self.route('/store_description',                       callback=self.store_description, method='POST')
         self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
-        self.route('/summarize/<collection_name>',             callback=self.gen_summary)
-        self.route('/summarize_full/<collection_name>',        callback=self.gen_summary_full)
+        self.route('/summarize/<collection_name>',             callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
@@ -1039,6 +1038,11 @@ class BottleApplication(Bottle):
         # common params. we will set pan/profile specific params a bit later:
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
+        init_gene_coverages = request.forms.get('init_gene_coverages')
+        
+        if init_gene_coverages:
+            summarizer_args.init_gene_coverages = True
+            self.interactive.mode == 'full'
 
         if self.interactive.mode == 'pan':
             summarizer_args.pan_db = self.interactive.pan_db_path
@@ -1079,9 +1083,17 @@ class BottleApplication(Bottle):
         # common params. we will set pan/profile specific params a bit later:
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
-        summarizer_args.init_gene_coverages = True
+        init_gene_coverages = request.forms.get('init_gene_coverages')
 
-        if self.interactive.mode == 'full':
+        if init_gene_coverages:
+            summarizer_args.init_gene_coverages = True
+            self.interactive.mode == 'full'
+
+        if self.interactive.mode == 'pan':
+            summarizer_args.pan_db = self.interactive.pan_db_path
+            summarizer_args.genomes_storage = self.interactive.genomes_storage_path
+            summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.pan_db), 'SUMMARY_%s' % collection_name)
+        elif self.interactive.mode == 'full':
             summarizer_args.profile_db = self.interactive.profile_db_path
             summarizer_args.contigs_db = self.interactive.contigs_db_path
             summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
@@ -1090,7 +1102,7 @@ class BottleApplication(Bottle):
 
         # call the summary:
         try:
-            summary = summarizer.ProfileSummarizer(summarizer_args, r=run, p=progress)
+            summary = summarizer.PanSummarizer(summarizer_args, r=run, p=progress) if self.interactive.mode == 'pan' else summarizer.ProfileSummarizer(summarizer_args, r=run, p=progress)
             summary.process()
         except Exception as e:
             return json.dumps({'error': 'Something failed in the "%s" summary mode. This is what we know: %s' % (self.interactive.mode, e)})
