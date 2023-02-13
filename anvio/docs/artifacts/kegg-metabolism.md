@@ -9,7 +9,9 @@ Please note that the examples below show only KEGG data, but user-defined metabo
 
 ## Long-format output modes
 
-The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information.
+The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information. You can use the `--list-available-modes` parameter to see which modes are implemented in your version of anvi'o. 
+
+Some of these modes are customizable, such that you can select which columns of information to include in the output with the flag `--custom-output-headers`. Use the `--list-available-output-headers` parameter to see what kinds of information you can choose from.
 
 ### 'Modules' Mode
 
