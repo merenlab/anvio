@@ -1066,51 +1066,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-
-
-    def gen_summary_full(self, collection_name):
-        if self.read_only:
-            return json.dumps({'error': "Sorry! This is a read-only instance."})
-
-        if self.interactive.mode == 'manual':
-            return json.dumps({'error': "Creating summaries is only possible with proper anvi'o runs at the moment :/"})
-
-        run.info_single('A summary of collection "%s" has been requested.' % collection_name)
-
-        # get a dummy args instance, and fill it down below
-        summarizer_args = summarizer.ArgsTemplateForSummarizerClass()
-
-        # common params. we will set pan/profile specific params a bit later:
-        summarizer_args.collection_name = collection_name
-        summarizer_args.taxonomic_level = self.interactive.taxonomic_level
-        init_gene_coverages = request.forms.get('init_gene_coverages')
-
-        if init_gene_coverages:
-            summarizer_args.init_gene_coverages = True
-            self.interactive.mode == 'full'
-
-        if self.interactive.mode == 'pan':
-            summarizer_args.pan_db = self.interactive.pan_db_path
-            summarizer_args.genomes_storage = self.interactive.genomes_storage_path
-            summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.pan_db), 'SUMMARY_%s' % collection_name)
-        elif self.interactive.mode == 'full':
-            summarizer_args.profile_db = self.interactive.profile_db_path
-            summarizer_args.contigs_db = self.interactive.contigs_db_path
-            summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
-        else:
-            return json.dumps({'error': 'We do not know anything about this mode: "%s"' % self.interactive.mode})
-
-        # call the summary:
-        try:
-            summary = summarizer.PanSummarizer(summarizer_args, r=run, p=progress) if self.interactive.mode == 'pan' else summarizer.ProfileSummarizer(summarizer_args, r=run, p=progress)
-            summary.process()
-        except Exception as e:
-            return json.dumps({'error': 'Something failed in the "%s" summary mode. This is what we know: %s' % (self.interactive.mode, e)})
-
-        run.info_single('HTML output for summary is ready: %s' % summary.index_html)
-
-        path = "summary/%s/index.html" % (collection_name)
-        return json.dumps({'path': path})
+        
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
