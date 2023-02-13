@@ -1039,10 +1039,6 @@ class BottleApplication(Bottle):
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
         init_gene_coverages = request.forms.get('init_gene_coverages')
-        
-        if init_gene_coverages:
-            summarizer_args.init_gene_coverages = True
-            self.interactive.mode == 'full'
 
         if self.interactive.mode == 'pan':
             summarizer_args.pan_db = self.interactive.pan_db_path
@@ -1051,6 +1047,9 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'full':
             summarizer_args.profile_db = self.interactive.profile_db_path
             summarizer_args.contigs_db = self.interactive.contigs_db_path
+            if init_gene_coverages:
+                summarizer_args.init_gene_coverages = True
+
             summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
         else:
             return json.dumps({'error': 'We do not know anything about this mode: "%s"' % self.interactive.mode})
