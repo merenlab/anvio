@@ -2094,7 +2094,6 @@ function storeRefinedBins() {
     });
 }
 
-
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
     var init_gene_coverages = $('#init-gene-checkbox').is(':checked');
@@ -2104,54 +2103,35 @@ function generateSummary() {
 
     if (init_gene_coverages) {
         waitingDialog.show('Generating a detailed summary please be patient...', {dialogSize: 'sm'});
-
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/summarize_full/' + collection,
-            success: function(data) {
-                if ('error' in data){
-                    $('#modGenerateSummary').modal('hide');
-                    waitingDialog.hide();
-                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-                } else {
-                    $('#modGenerateSummary').modal('hide');
-                    waitingDialog.hide();
-    
-                    // generate a full url using the window origin and collection path:
-                    var summary_url = window.location.origin + '/' + data['path'];
-    
-                    $('#summary_link').html("Summary link: <a href='" + summary_url + "' target='_blank'>" + summary_url + "</a>");
-                    $('#modSummaryResult').modal('show');
-                }
-            }
-        });
     }
     else {
         waitingDialog.show('Generating summary...', {dialogSize: 'sm'});  
-
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/summarize/' + collection,
-            success: function(data) {
-                if ('error' in data){
-                    $('#modGenerateSummary').modal('hide');
-                    waitingDialog.hide();
-                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-                } else {
-                    $('#modGenerateSummary').modal('hide');
-                    waitingDialog.hide();
-    
-                    // generate a full url using the window origin and collection path:
-                    var summary_url = window.location.origin + '/' + data['path'];
-    
-                    $('#summary_link').html("Summary link: <a href='" + summary_url + "' target='_blank'>" + summary_url + "</a>");
-                    $('#modSummaryResult').modal('show');
-                }
-            }
-        });
     }
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/summarize/' + collection,
+        data: {
+            'init_gene_coverages': JSON.stringify(init_gene_coverages)
+        },
+        success: function(data) {
+            if ('error' in data){
+                $('#modGenerateSummary').modal('hide');
+                waitingDialog.hide();
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });                }
+            else{
+                $('#modGenerateSummary').modal('hide');
+                waitingDialog.hide();
+                console.log(data);
+
+                // generate a full url using the window origin and collection path:
+                var summary_url = window.location.origin + '/' + data['path'];
+
+                $('#summary_link').html("Summary link: <a href='" + summary_url + "' target='_blank'>" + summary_url + "</a>");
+                $('#modSummaryResult').modal('show');
+            }
+        }
+    });    
 }
 
 function showSaveStateWindow()
