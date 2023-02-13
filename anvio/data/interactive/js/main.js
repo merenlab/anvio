@@ -2094,27 +2094,35 @@ function storeRefinedBins() {
     });
 }
 
-
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
+    var init_gene_coverages = $('#init-gene-checkbox').is(':checked');
 
     if (collection === null)
         return;
 
-    waitingDialog.show('Generating summary...', {dialogSize: 'sm'});
-
+    if (init_gene_coverages) {
+        waitingDialog.show('Generating a detailed summary please be patient...', {dialogSize: 'sm'});
+    }
+    else {
+        waitingDialog.show('Generating summary...', {dialogSize: 'sm'});  
+    }
     $.ajax({
-        type: 'GET',
+        type: 'POST',
         cache: false,
         url: '/summarize/' + collection,
+        data: {
+            'init_gene_coverages': JSON.stringify(init_gene_coverages)
+        },
         success: function(data) {
             if ('error' in data){
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });                }
+            else{
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
+                console.log(data);
 
                 // generate a full url using the window origin and collection path:
                 var summary_url = window.location.origin + '/' + data['path'];
@@ -2123,7 +2131,7 @@ function generateSummary() {
                 $('#modSummaryResult').modal('show');
             }
         }
-    });
+    });    
 }
 
 function showSaveStateWindow()

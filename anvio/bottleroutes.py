@@ -162,7 +162,7 @@ class BottleApplication(Bottle):
         self.route('/store_description',                       callback=self.store_description, method='POST')
         self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
-        self.route('/summarize/<collection_name>',             callback=self.gen_summary)
+        self.route('/summarize/<collection_name>',             callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
@@ -1038,6 +1038,7 @@ class BottleApplication(Bottle):
         # common params. we will set pan/profile specific params a bit later:
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
+        init_gene_coverages = request.forms.get('init_gene_coverages')
 
         if self.interactive.mode == 'pan':
             summarizer_args.pan_db = self.interactive.pan_db_path
@@ -1046,6 +1047,9 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'full':
             summarizer_args.profile_db = self.interactive.profile_db_path
             summarizer_args.contigs_db = self.interactive.contigs_db_path
+            if init_gene_coverages:
+                summarizer_args.init_gene_coverages = True
+
             summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
         else:
             return json.dumps({'error': 'We do not know anything about this mode: "%s"' % self.interactive.mode})
@@ -1061,7 +1065,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-
+        
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
