@@ -58,6 +58,18 @@ If you use the flag `--add-coverage` and provide a profile database, additional 
 
 In this mock example, the module in this row has four gene calls in it. The `SAMPLE_1_gene_coverages` column lists the mean coverage of each of those genes in SAMPLE_1 (in the same order as the gene calls are listed in the `gene_caller_ids_in_module` column), and the `SAMPLE_1_avg_coverage` column holds the average of these values. As you probably expected, the `detection` columns are similarly defined, except that they contain detection values instead of coverage.
 
+**Pathway substrates, products, and intermediates**
+
+To add information about molecular compounds that are relevant to each metabolic pathway, you can customize the `modules mode` output. Here is an example command to do that:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s \
+                         --output-modes modules_custom \
+                         --custom-output-headers module,module_name,module_substrates,module_intermediates,module_products,pathwise_module_completeness,stepwise_module_completeness
+{{ codestop }}
+
+The resulting output file will have a column for each item in the `--custom-output-headers` list, including one each for the substrates (input compounds), products (output compounds) and intermediates.
+
 {:.warning}
 The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. If you have one of these output files and need information about it, you should look in the documentation pages for anvi'o `v7`. If you would like to obtain a similar output, the closest available is 'module_paths' mode.
 
