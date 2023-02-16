@@ -1769,6 +1769,9 @@ function showGenSummaryWindow() {
 
             showCollectionDetails('');
             $('#modGenerateSummary').modal('show');
+            if(mode == 'pan'){
+                $('#init_gene_modal').css('visibility', 'hidden');
+            }
         }
     });
 }
