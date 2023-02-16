@@ -1038,7 +1038,7 @@ class BottleApplication(Bottle):
         # common params. we will set pan/profile specific params a bit later:
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
-        init_gene_coverages = request.forms.get('init_gene_coverages')
+        init_gene_coverages = json.loads(request.forms.get('init_gene_coverages'))
 
         if self.interactive.mode == 'pan':
             summarizer_args.pan_db = self.interactive.pan_db_path

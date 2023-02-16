@@ -1769,6 +1769,9 @@ function showGenSummaryWindow() {
 
             showCollectionDetails('');
             $('#modGenerateSummary').modal('show');
+            if(mode == 'pan'){
+                $('#init_gene_modal').css('visibility', 'hidden');
+            }
         }
     });
 }
@@ -2122,7 +2125,6 @@ function generateSummary() {
             else{
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
-                console.log(data);
 
                 // generate a full url using the window origin and collection path:
                 var summary_url = window.location.origin + '/' + data['path'];
