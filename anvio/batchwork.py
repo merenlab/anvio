@@ -106,8 +106,7 @@ class AnvioBatchWork():
         subprocess.call('anvi-migrate --migrate-dbs-safely --migrate-safely *.db', shell=True)
 
         while run_command_counter < len(running_command):
-            subprocess.call(
-                running_command[run_command_counter].get('command'), shell=True)
+            subprocess.call(running_command[run_command_counter].get('command'), shell=True)
             run_command_counter += 1            
 
 
