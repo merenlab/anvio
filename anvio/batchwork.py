@@ -42,40 +42,30 @@ class AnvioBatchWork():
         self.given_work_dir = A('work_directory')
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
-
-        if not self.yaml_file_path:
-            raise ConfigError("You must provide a YAML file path.")
-
-        filesnpaths.is_anvio_batch_yaml(self.yaml_file_path)
-        
-        # Open and parse the file
-        self.yaml_file = utils.get_yaml_as_dict(self.yaml_file_path)
+        self.pan_db_path = A('pan_db')
 
         if not skip_sanity_check:
             self.sanity_check()
 
-        #self.run.info('Contigs DB', self.contigs_db_path)
+        # Open and parse the file
+        self.yaml_file = utils.get_yaml_as_dict(self.yaml_file_path)
 
         # to be filled later if necessary
         self.contigs_basic_info = {}
 
+
     def sanity_check(self):
-        pass
-        """
-        if not self.contigs_db_path:
-            raise ConfigError("You need to provide an anvi'o contigs database for this to work :/")
-        utils.is_contigs_db(self.contigs_db_path)
+        if not self.yaml_file_path:
+            raise ConfigError("You must provide a YAML file path.")
+        
+        if not self.yaml_file_path[-4:] in ['yaml', '.yml']:
+            raise ConfigError("You must provide a file with the file extension 'yaml' or 'yml.")
+        filesnpaths.is_anvio_batch_yaml(self.yaml_file_path)
 
-        if not self.structure_db_path:
-            raise ConfigError("Must provide a structure database.")
-        utils.is_structure_db(self.structure_db_path)
+        if self.contigs_db_path or self.profile_db_path or self.pan_db_path:
+            raise ConfigError("You should remove all the db_paths (CONTIGS.db, PROFILE.db...) to run this command. :/")
 
-        if not self.profile_db_path:
-            raise ConfigError("You have to provide either a variability table generated from "
-                              "anvi-gen-variability-profile, or a profile database from "
-                              "which sequence variability will be computed.")
-        """                      
-    
+
     def execute(self):
         """This function is used to run the commands in the yaml file."""
 
