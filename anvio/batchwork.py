@@ -22,8 +22,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['metehan']
 __requires__ = ['contigs-db', 'profile-db']
-__description__ = (
-    "This is helper script for anvi-run-batch program. It is used to run the commands in the yaml file.")
+__description__ = ("This is helper script for anvi-run-batch program. It is used to run the commands in the yaml file.")
 
 progress = terminal.Progress(verbose=False)
 run = terminal.Run(verbose=False)
@@ -93,8 +92,7 @@ class AnvioBatchWork():
                     self.run.warning('You should remove "cd" commands in your yaml file')
                     sys.exit(-1)
                 else:
-                    subprocess.run(
-                        str(setup[setup_command_counter]), shell=True)
+                    subprocess.run(str(setup[setup_command_counter]), shell=True)
                     setup_command_counter += 1
                     
         running_command = self.yaml_file.get('run')
@@ -108,10 +106,8 @@ class AnvioBatchWork():
         subprocess.call('anvi-migrate --migrate-dbs-safely --migrate-safely *.db', shell=True)
 
         while run_command_counter < len(running_command):
-            #sanity_check
             subprocess.call(
-                running_command[run_command_counter].get('command'),
-                shell=True)
+                running_command[run_command_counter].get('command'), shell=True)
             run_command_counter += 1            
 
 
