@@ -638,7 +638,7 @@ class Inversions:
                 if num_bad_reads:
                     self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
                                         f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
-                                        f"'bad' reads as they somehow had None type :/", mc="red", level=2)
+                                        f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
                 else:
                     self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
                                         f"after processing {num_reads_considered} reads.", mc="red", level=2)
