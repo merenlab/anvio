@@ -104,11 +104,14 @@ function setEventListeners(){
     var delta = opt.e.deltaY;
     let tmp = scaleFactor * (0.999 ** delta);
     let diff = tmp - scaleFactor;
-    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-    let [newStart, newEnd] = [Math.floor(start - diff * genomeMax), Math.floor(end + diff * genomeMax)];
+    let [start, end] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] 
+                                    : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let [newStart, newEnd] = percentScale ? [Math.floor((start - diff)*10000)/10000, Math.floor((end + diff)*10000)/10000]
+                                          : [Math.floor(start - diff * genomeMax), Math.floor(end + diff * genomeMax)];
     if (newStart < 0) newStart = 0;
-    if (newEnd > genomeMax) newEnd = genomeMax;
-    if (newEnd - newStart < 50) return;
+    newEnd = clamp(newEnd, 0, percentScale ? 1 : genomeMax);
+    if(percentScale && newEnd - newStart < 0.02) return;
+    if(!percentScale && newEnd - newStart < 50) return;
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition()); // if zoom is slow or choppy, try removing .transition()
