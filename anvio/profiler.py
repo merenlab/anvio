@@ -320,7 +320,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.list_contigs_and_exit = A('list_contigs')
         self.min_contig_length = A('min_contig_length') or 0
         self.max_contig_length = A('max_contig_length') or sys.maxsize
-        self.min_mean_coverage = A('min_mean_coverage')
         self.min_coverage_for_variability = A('min_coverage_for_variability')
         self.contigs_shall_be_clustered = A('cluster_contigs')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
@@ -544,7 +543,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Is blank profile?', self.blank)
         self.run.info('Skip contigs shorter than', self.min_contig_length)
         self.run.info('Skip contigs longer than', self.max_contig_length)
-        self.run.info('Skip contigs covered less than', self.min_mean_coverage)
         self.run.info('Perform hierarchical clustering of contigs?', self.contigs_shall_be_clustered, nl_after=1)
 
         self.run.info('Profile single-nucleotide variants (SNVs)?', not self.skip_SNV_profiling)
@@ -999,12 +997,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig.analyze_coverage(bam_file, self.min_percent_identity)
         timer.make_checkpoint('Coverage done')
 
-        # test the mean coverage of the contig.
-        if contig.coverage.mean < self.min_mean_coverage:
-            if anvio.DEBUG:
-                timer.gen_report('%s Time Report' % contig.name)
-            return None
-
         if not self.skip_SNV_profiling:
             for split in contig.splits:
                 split.auxiliary = contigops.Auxiliary(split,
@@ -1050,7 +1042,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file.fetch_filter = self.fetch_filter
 
         received_contigs = 0
-        discarded_contigs = 0
 
         self.progress.new('Profiling w/1 thread', progress_total_items=self.num_contigs)
 
@@ -1064,10 +1055,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             contig = self.process_contig(bam_file, contig_name, contig_length)
 
-            if contig:
-                self.contigs.append(contig)
-            else:
-                discarded_contigs += 1
+            self.contigs.append(contig)
 
             received_contigs += 1
 
@@ -1103,10 +1091,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
-
-        # FIXME: this needs to be checked:
-        if discarded_contigs > 0:
-            self.run.info('Num contigs after coverage removal (-C)', pp(received_contigs - discarded_contigs))
 
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
@@ -1163,7 +1147,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')
 
-        self.check_contigs(num_contigs=received_contigs-discarded_contigs)
+        self.check_contigs(num_contigs=received_contigs)
 
 
     def profile_multi_thread(self):
@@ -1185,7 +1169,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             proc.start()
 
         received_contigs = 0
-        discarded_contigs = 0
 
         self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
         self.progress.update('initializing threads ...')
@@ -1202,12 +1185,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     # If thread returns an exception, we raise it and kill the main thread.
                     raise contig
 
-                # if we have a contig back, it means we are good to go with it,
-                # otherwise it is garbage.
-                if contig:
-                    self.contigs.append(contig)
-                else:
-                    discarded_contigs += 1
+                self.contigs.append(contig)
 
                 received_contigs += 1
 
@@ -1257,10 +1235,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
-        # FIXME: this needs to be checked:
-        if discarded_contigs > 0:
-            self.run.info('contigs_after_C', pp(received_contigs - discarded_contigs))
-
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
             overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
@@ -1300,7 +1274,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')
 
-        self.check_contigs(num_contigs=received_contigs-discarded_contigs)
+        self.check_contigs(num_contigs=received_contigs)
 
 
     def store_contigs_buffer(self):
@@ -1384,8 +1358,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("No such file: '%s'" % self.serialized_profile_path)
         if not self.min_coverage_for_variability >= 0:
             raise ConfigError("Minimum coverage for variability must be 0 or larger.")
-        if not self.min_mean_coverage >= 0:
-            raise ConfigError("Minimum mean coverage must be 0 or larger.")
         if not self.min_contig_length >= 0:
             raise ConfigError("Minimum contig length must be 0 or larger.")
         if not self.max_contig_length >= 100:
