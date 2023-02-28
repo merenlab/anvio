@@ -56,7 +56,13 @@ Keep in mind that if you plan to merge your resulting %(single-profile-db)s with
 
 ### Contig Specification 
 
-To profile only contigs within a specific length, you can use the flags `--min-contig-length` and `-max-contig-length`. By default, the minimum length for analysis is 1000 and there is no maximum length. You can also profile only contigs that have a certain average coverage with the flag `--min-mean-coverage`. 
+### Contig Specification
+
+To profile only contigs within a specific length, you can use the flags `--min-contig-length` and `-max-contig-length`. By default, the minimum length for analysis is 1000 and there is no maximum length.
+
+But beyond these flags, you can specify which contigs you would like to profile much more explicitly using the flag `--contigs-of-interest`.
+
+For instance, if you wish to work only with contigs that have more than a certain coverage across your samples, you can first run the program %(anvi-profile-blitz)s on all BAM files, then use the resulting output file %(bam-stats-txt)s to identify contigs of interest based on their coverages across samples, then put their names in a text file, and pass this file to %(anvi-profile)s using the flag `--contigs-of-interest` (the anvi'o profile used to have a flag for this, `--min-mean-coverage`, that allowed users to remove contigs based on their coverage in a given sample, but [we recently removed it](https://github.com/merenlab/anvio/issues/2047) to promote explicit specification of contigs.
 
 ### Filter reads
 
