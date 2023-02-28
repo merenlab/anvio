@@ -24,17 +24,30 @@
  */
 
  function zoomIn() {
-    let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
+    let start = percentScale ? parseFloat($('#brush_start').val()) : parseInt($('#brush_start').val());
+    let end = percentScale ? parseFloat($('#brush_end').val()) : parseInt($('#brush_end').val());
     let newStart, newEnd;
 
     let len = end - start;
-    if(len > 4*genomeMax/50) {
-      newStart = Math.floor(start + genomeMax/50), newEnd = Math.floor(end - genomeMax/50);
+
+    if(percentScale){
+      if(len > 0.08) {
+        newStart = start+0.02, newEnd = end-0.02;
+      } else {
+        if(len < 0.02) return;
+        newStart = start+len/4;
+        newEnd = end-len/4;
+        if(newEnd - newStart <= 0) return;
+      }
     } else {
-      if(len < 50) return;
-      newStart = Math.floor(start + len/4);
-      newEnd = Math.floor(end - len/4);
-      if(newEnd - newStart <= 0) return;
+      if(len > 4*genomeMax/50) {
+        newStart = Math.floor(start + genomeMax/50), newEnd = Math.floor(end - genomeMax/50);
+      } else {
+        if(len < 50) return;
+        newStart = Math.floor(start + len/4);
+        newEnd = Math.floor(end - len/4);
+        if(newEnd - newStart <= 0) return;
+      }
     }
 
     brush.extent([newStart, newEnd]);
@@ -44,16 +57,23 @@
 
   function zoomOut(type, start, end) {
     let newStart, newEnd
+
     if(type && type == 'fully'){
       newStart = 0
-      newEnd = genomeMax
+      newEnd = percentScale ? 1 : genomeMax
     } else if(type && type == 'partial'){
-      newStart = start - 10000
-      newEnd = end + 10000
+      newStart = start - (percentScale ? .02 : 10000)
+      newEnd = end + (percentScale ? .02 : 10000)
     }else {
-      let start = parseInt($('#brush_start').val()), end = parseInt($('#brush_end').val());
-      newStart = start - genomeMax/50;
-      newEnd = end + genomeMax/50;
+      if(percentScale) {
+        let start = parseFloat($('#brush_start').val());
+        let end = parseFloat($('#brush_end').val());
+        newStart = start - 0.02, newEnd = end + 0.02;
+      } else {
+        let start = parseInt($('#brush_start').val());
+        let end = parseInt($('#brush_end').val());
+        newStart = start - genomeMax/50, newEnd = end + genomeMax/50;
+      }
       if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
         scaleFactor = 0.01;
         if(dynamicScaleInterval) adjustScaleInterval();
@@ -62,7 +82,13 @@
       }
     }
     if(newStart < 0) newStart = 0;
-    if(newEnd > genomeMax) newEnd = genomeMax;
+    if(newEnd > genomeMax) {
+      if(percentScale) {
+        newEnd = 1;
+      } else {
+        newEnd = genomeMax;
+      }
+    }
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition());
