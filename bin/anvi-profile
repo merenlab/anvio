@@ -87,7 +87,6 @@ if __name__ == '__main__':
                              default is "%(default)s".'}))
     groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
     groupQ.add_argument(*anvio.A('max-contig-length'), **anvio.K('max-contig-length'))
-    groupQ.add_argument(*anvio.A('min-mean-coverage'), **anvio.K('min-mean-coverage'))
     groupQ.add_argument(*anvio.A('min-coverage-for-variability'), **anvio.K('min-coverage-for-variability'))
     groupC.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
     groupC.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
