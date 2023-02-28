@@ -52,14 +52,16 @@ def main(args):
 
 
 if __name__ == '__main__':
-    from anvio.argparse import ArgumentParser
+    # quickly learn available parser versions
+    from argparse import Namespace
+    known_versions = EggNOGMapper(args=Namespace()).available_parsers.keys()
 
+    # construct the help and the args
+    from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\
-                        if you did not use the default directory.")
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads', {'default': None}))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     parser.add_argument('--drop-previous-annotations', default=False, action="store_true",
                         help='When declared, previous annotations in the database will be dropped.')
@@ -68,8 +70,9 @@ if __name__ == '__main__':
                               import the contents of that file into the database instead of a run from scratch.\
                               In that case, you must also use the `--use-version` parameter to clarify which\
                               parser version should be used to parse it.")
-    parser.add_argument('--use-version', default='0.12.6', metavar="EMAPPER_VERSION",
-                        help='The version of eggnog-mapper that generated the annotation file.')
+    parser.add_argument('--use-version', default=None, metavar="EMAPPER_VERSION",
+                        help=f'The version of eggnog-mapper that generated the annotation file. Known versions \
+                               of emapper include the following: {", ".join(known_versions)}')
 
     args = parser.get_args(parser)
 

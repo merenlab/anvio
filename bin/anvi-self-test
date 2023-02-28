@@ -22,7 +22,7 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'semiller10', 'ekiefl', 'ivagljiva']
+__authors__ = ['meren', 'semiller10', 'ekiefl', 'ivagljiva', 'mschecht']
 __description__ = "A script for anvi'o to test itself"
 
 
@@ -40,6 +40,8 @@ tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomic
          'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
          'workflow-phylogenomics': ['run_workflow_tests_for_phylogenomics.sh'],
          'database-migrations'   : ['run_migration_tests_for_ancient_anvio_databases.sh'],
+         'workflow-sra-download' : ['run_workflow_tests_for_sra_download.sh'],
+         'run-cazymes'           : ['run_component_tests_for_cazymes.sh'],
          }
 
 run = terminal.Run()

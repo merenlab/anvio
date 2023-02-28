@@ -103,7 +103,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread", "--max-contig-length"]
+                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread",
+                                                        "--fetch-filter", "--min-percent-identity", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
@@ -274,8 +275,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_refereces_txt(self):
-        if self.references_mode and not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
-            raise ConfigError('In references mode you must supply a fasta_txt file.')
+        if self.references_mode:
+            if not self.fasta_txt_file:
+                raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
+
+            if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
 
         if not self.references_mode:
             # if it is reference mode then the group names have been assigned in the contigs Snakefile

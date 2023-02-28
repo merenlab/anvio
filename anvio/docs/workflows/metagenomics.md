@@ -575,6 +575,53 @@ Yes! In "reference mode", you may choose to skip this step, and keep your origin
 
 In assembly mode, this rule is always executed.
 
+### How can I use an existing contigs-db in references mode?
+
+This is relevant if you already have a %(contigs-db)s, and all you want to do is to recruit reads from a bunch of metagenomes.
+
+This is done through 'references mode', but as you see in the relevant section, this mode asks yo to provide a %(fasta-txt)s, from which it generates %(contigs-db)s files for your references. What if you have your own contigs database, and you do not want to generate a new one? You can achieve that and make snakemake skip the creation of a new contigs database by putting the existing one at the place it is expected to be created. This is an example directory structure you should aim for before starting the workflow:
+
+```
+├── 03_CONTIGS
+│   ├── anvi_run_hmms-EXAMPLE.done
+│   ├── anvi_run_ncbi_cogs-EXAMPLE.done
+│   ├── anvi_run_scg_taxonomy-EXAMPLE.done
+│   ├── EXAMPLE-annotate_contigs_database.done
+│   └── EXAMPLE-contigs.db
+├── config.json
+├── contigs.fa
+├── fasta.txt
+└── samples.txt
+```
+
+where,
+
+* `03_CONTIGS` is the directory name defined in your config.json file to store contigs databases (`03_CONTIGS` is already the default directory name, so name it as such if you didn't change anything in the config.json).
+* The `.done` files in `03_CONTIGS` instrcuts anvi'o to not re-run those jobs on the existing contigs databse. Add them with `touch` or remove as necessary.
+* `config.json` is yor configuration where you have at least the following entries:
+
+```
+    (...)
+    "fasta_txt": "fasta.txt",
+    "samples_txt": "samples.txt",
+    "references_mode": true,
+    (...)
+```
+
+* `contigs.fa` is the output of %(anvi-export-contigs)s run on your %(contigs-db)s in `03_CONTIGS`.
+
+* `fasta.txt` is your %(fasta-txt)s that contains a single entry with name `EXAMPLE` and should look exactly like this:
+
+  |**name**|**path**|
+  |:--|:--|
+  |EXAMPLE|contigs.fa|
+
+  Please note: when you change `EXAMPLE` to something more meaningful, you will have to replace `EXAMPLE` with the same name in every other file in the list above.
+
+* `samples.txt` is your good old %(samples-txt)s that contains your metagenomes with which the read recruitment will be conducted.
+
+EASY PEASY.
+
 ### What's going on behind the scenes before we run IDBA-UD?
 
 A note regarding `idba_ud` is that it requires a single FASTA as an input. Because of that, what we do is use `fq2fa` to merge the pair of reads of each sample to one FASTA, and then we use `cat` to concatenate multiple samples for a co-assembly. The FASTA file is created as a temporary file, and is deleted once `idba_ud` finishes running. If this is annoying to you, then feel free to contact us or just hack it yourself. We tried to minimize memory usage by deleting each individual FASTA file after it was concatenated to the merged FASTA file ([see this issue for details](https://github.com/merenlab/anvio/issues/954)).

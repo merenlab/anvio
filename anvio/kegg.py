@@ -556,7 +556,7 @@ class KeggSetup(KeggContext):
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
-            self.target_snapshot = self.kegg_snapshot or 'v2022-04-14'
+            self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
             self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
             self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 

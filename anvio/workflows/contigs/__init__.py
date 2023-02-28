@@ -103,7 +103,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
 
         if self.fasta_txt_file:
-            filesnpaths.is_file_exists(self.fasta_txt_file)
+            if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
+
             self.contigs_information = u.get_TAB_delimited_file_as_dictionary(self.fasta_txt_file)
             self.fasta_information.update(self.contigs_information)
             self.group_names = list(self.contigs_information.keys())

@@ -785,6 +785,8 @@ rule anvi_profile:
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
         write_buffer_size_per_thread = M.get_rule_param("anvi_profile", "--write-buffer-size-per-thread"),
+        min_percent_identity = M.get_rule_param("anvi_profile", "--min-percent-identity"),
+        fetch_filter = M.get_rule_param("anvi_profile", "--fetch-filter"),
         max_contig_length = M.get_rule_param("anvi_profile", "--max-contig-length"),
     threads: M.T('anvi_profile')
     resources: nodes = M.T('anvi_profile'),
@@ -798,7 +800,9 @@ rule anvi_profile:
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size_per_thread} {params.max_contig_length} >> {log} 2>&1
+                             {params.queue_size} {params.write_buffer_size_per_thread} \
+                             {params.min_percent_identity} {params.fetch_filter} \
+                             {params.max_contig_length} >> {log} 2>&1
         """
 
 

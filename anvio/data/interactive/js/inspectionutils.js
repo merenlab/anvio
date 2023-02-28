@@ -324,8 +324,14 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
-      let prop = colortype.toLowerCase() + '-colors';
-      let color = state[prop][category] ? state[prop][category] : "#808080";
+      let color;
+      if(category == gene.gene_callers_id) {
+        // highlighted gene id
+        color = state['highlight-genes'][category];
+      } else {
+        let prop = colortype.toLowerCase() + '-colors';
+        color = state[prop][category] ? state[prop][category] : "#808080";
+      }
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')

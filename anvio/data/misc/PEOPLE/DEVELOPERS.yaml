@@ -140,7 +140,7 @@
 
 - github: semiller10
   name: Samuel Miller
-  email: samuelmiller@uchicago.edu
+  email: samuelmiller10@gmail.com
   orcid: 0000-0002-2836-1401
   twitter: smiller_science
   web: https://semiller10.github.io
@@ -150,6 +150,10 @@
     - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
+      current: false
+    - title: Scientific Programmer
+      inst: Marine Biological Laboratory
+      inst_link: http://mbl.edu/
       current: true
 
 - github: isaacfink21

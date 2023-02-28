@@ -11,7 +11,6 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.cogs as cogs
 
 from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
@@ -52,25 +51,18 @@ class EggNOGMapper:
        """
 
     def __init__(self, args, database='bact', executable = 'emapper.py', usemem=True, use_version=None, progress=progress, run=run):
+        self.args = args
         self.executable = executable
+
         self.progress = progress
         self.run = run
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        A = lambda x: args.__dict__[x] if args and x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.num_threads = A('num_threads')
         self.annotation = A('annotation')
         self.use_version = use_version
         self.usemem = usemem
-
-        self.COGs_data = cogs.COGsData(args)
-
-        if not self.COGs_data.initialized:
-            raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class "
-                               "depends on it, so this is the end of the road for you. If you set up your COG directory to "
-                               "a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you "
-                               "never set up one, then maybe it is time for you to take a look at the program "
-                               "`anvi-setup-ncbi-cogs`.")
 
         try:
             self.num_threads = int(self.num_threads) if self.num_threads else None
@@ -103,24 +95,16 @@ class EggNOGMapper:
                                   '2.0.1': self.__parser_3,
                                   '2.0.5': self.__parser_4,
                                   '2.1.4': self.__parser_5,
-                                  '2.1.6': self.__parser_5}
-
-        self.check_version()
-
-        if not self.num_threads:
-            try:
-                run.warning("You have not set the number of threads, and the default is whatever the default is for eggnog-mapper. You "
-                            "may really want to change that since if you have a large number of genes to annotate, this may take a very "
-                            "long time. If you don't want to see this message again, just set the number of threads you want eggnog-mapper "
-                            "to use explicitly. You can press CTRL + C to cancel this run, or simply do nothing since your operation "
-                            "will contine in probably like 2 seconds or less ... depending how fast you read.")
-                time.sleep(25)
-            except KeyboardInterrupt:
-                sys.exit()
+                                  '2.1.6': self.__parser_5,
+                                  '2.1.8': self.__parser_5,
+                                  '2.1.9': self.__parser_5}
 
 
     def check_version(self):
         """checks the installed version of eggnog-mapper, sets the parser"""
+
+        if not self.args:
+            return
 
         if self.annotation and not self.use_version:
             raise ConfigError("You must provide a version number to use if you have your own annotations.")
@@ -369,6 +353,8 @@ class EggNOGMapper:
     def populate_annotations_dict(self, annotations_file_path):
         filesnpaths.is_file_exists(annotations_file_path)
 
+        self.check_version()
+
         num_entries_processed = 0
         self.progress.new('Parsing the annotations file')
         for line in open(annotations_file_path, 'rU').readlines():
@@ -390,6 +376,18 @@ class EggNOGMapper:
         Which involves exporting amino acid sequences for gene calls, running emapper.py on them,\
         parsing the output, and storing the results in the contigs database.
         """
+
+        # check number of threads first.
+        if not self.num_threads:
+            try:
+                run.warning("You have not set the number of threads, and the default is whatever the default is for eggnog-mapper. You "
+                            "may really want to change that since if you have a large number of genes to annotate, this may take a very "
+                            "long time. If you don't want to see this message again, just set the number of threads you want eggnog-mapper "
+                            "to use explicitly. You can press CTRL + C to cancel this run, or simply do nothing since your operation "
+                            "will contine in probably like 10 seconds or less ... depending how fast you read.")
+                time.sleep(25)
+            except KeyboardInterrupt:
+                sys.exit()
 
         if not self.contigs_db_path:
             raise ConfigError("EggNOGMapper::process() is speaking: you can't really call this function if you inherited "

@@ -6,6 +6,7 @@ To populate a given %(contigs-db)s with functions, anvi'o includes multiple prog
 
 * %(anvi-run-ncbi-cogs)s, which uses NCBI's [COGs database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/),
 * %(anvi-run-pfams)s, which uses EBI's [Pfam database](https://pfam.xfam.org/),
+* %(anvi-run-cazymes)s, which uses the dbCAN [CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/)
 * %(anvi-run-kegg-kofams)s, which uses the [Kyoto Encyclopedia of Genes and Genomes](https://www.genome.jp/kegg/) (KEGG) database and produces %(kegg-functions)s, which is the necessary annotation information that can be used by the program %(anvi-estimate-metabolism)s.
 
 In addition, you can use the program %(anvi-import-functions)s with a simple %(functions-txt)s to import functions from any other annotation source, or to import any ad hoc, user-defined function to later access through anvi'o interfaces or programs.

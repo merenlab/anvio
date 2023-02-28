@@ -628,6 +628,9 @@ class Palindromes:
             # as a function of the sequence length
             method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
+        # make sure the sequence is uppercase:
+        sequence = sequence.upper()
+
         # get palindromes found in the sequence
         palindromes = method(sequence, **kwargs)
 

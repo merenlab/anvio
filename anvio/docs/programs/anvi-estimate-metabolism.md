@@ -294,7 +294,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 You can ask this program to count the number of copies of each module in your input samples by providing the `--add-copy-number` flag:
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-coverage
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-copy-number
 {{ codestop }}
 
 Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %(kegg-metabolism)s.
@@ -502,7 +502,7 @@ If these things are correct but you are still not finding an annotation for one 
 Regardless of which input type is provided to this program, the basic requirements for metabolism estimation are 1) a set of metabolic pathway definitions, and 2) a 'pool' of gene annotations.
 
 #### Module Definitions
-One set of metabolic pathway definitions that is always used by this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). You can also define your own set of metabolic modules, but the definition format and estimation strategy will be the same. So for brevity's sake, the following discussion will cover the KEGG data case.
+One set of metabolic pathway definitions that can be used by this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). You can also define your own set of metabolic modules, but the definition format and estimation strategy will be the same. So for brevity's sake, the following discussion will cover the KEGG data case.
 
 The program %(anvi-setup-kegg-kofams)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
 
@@ -551,7 +551,7 @@ We currently have two ways of estimating the completeness of a module, which dif
 
 For the 'pathwise' strategy, we consider all possible 'paths' through the module - each alternative set of enzymes that could be used together to catalyze every reaction in the metabolic pathway. After calculating the percent completeness in all possible paths, we take the maximum completeness to be the pathwise completeness score of the module as a whole. This is the most granular way of estimating module completeness because we consider all the possible alternatives.
 
-For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents one metabolic reaction in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
+For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents either one metabolic reaction or a branch point in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction or set of reactions. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
 
 The pathwise and stepwise strategies also apply to copy number calculations, in which enzyme annotations are allocated to create different copies of a path, step, or module. Path copy number is computed as the number of complete copies of a path through a module, and a module's pathwise copy number is then calculated as the maximum copy number of any of its paths that have the highest completeness score. Step copy number is the number of complete copies of a top-level step, and a module's stepwise copy number is the minimum copy number of all of its top--level steps.
 
