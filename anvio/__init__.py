@@ -2507,16 +2507,6 @@ D = {
                      "any contig longer than a certain value. Why would anyone need this? Who knows. But if you ever "
                      "do, it is here."}
                 ),
-    'min-mean-coverage': (
-            ['-X', '--min-mean-coverage'],
-            {'metavar': 'INT',
-             'default': 0,
-             'type': int,
-             'help': "Minimum mean coverage for contigs to be kept in the analysis. The default value is %(default)d, "
-                     "which is for your best interest if you are going to profile multiple BAM files which are then "
-                     "going to be merged for a cross-sectional or time series analysis. Do not change it if you are not "
-                     "sure this is what you want to do."}
-                ),
     'min-coverage-for-variability': (
             ['-V', '--min-coverage-for-variability'],
             {'metavar': 'INT',
