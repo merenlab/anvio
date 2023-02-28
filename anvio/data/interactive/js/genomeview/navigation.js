@@ -82,7 +82,7 @@
       }
     }
     if(newStart < 0) newStart = 0;
-    if(newEnd > genomeMax) newEnd = percentScale ? 1 : genomeMax;
+    newEnd = clamp(newEnd, 0, percentScale ? 1 : genomeMax);
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition());
