@@ -1138,6 +1138,13 @@ D = {
                      "functions rather than actual functions? We can't. But we have this flag here so you can "
                      "instruct anvi'o to listen to you and not to us."}
                 ),
+    'also-report-accession-ids': (
+            ['--also-report-accession-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When used, this flag will instruct anvi'o to also report the function accession ids "
+                     "in a new column, in addition to function name in the output file."}
+                ),
     'aggregate-using-all-hits': (
             ['--aggregate-using-all-hits'],
             {'default': False,
