@@ -1364,7 +1364,7 @@ class AggregateFunctions:
                                                                                       progress=self.progress)
 
 
-    def report_functions_across_genomes(self, output_file_prefix, quiet=False, with_function_accession_numbers=False):
+    def report_functions_across_genomes(self, output_file_prefix, quiet=False, with_function_accession_ids=False):
         """Reports text files for functions across genomes data"""
 
         output_file_path_for_frequency_view = f"{os.path.abspath(output_file_prefix)}-FREQUENCY.txt"
@@ -1376,7 +1376,7 @@ class AggregateFunctions:
         with open(output_file_path_for_frequency_view, 'w') as frequency_output, open(output_file_path_for_presence_absence_view, 'w') as presence_absence_output:
             layer_names = sorted(list(self.layer_names_considered))
 
-            if with_function_accession_numbers:
+            if with_function_accession_ids:
                 columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source] + [f"{self.function_annotation_source}_accession"]) + '\n'
             else:
                 columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n'
@@ -1390,7 +1390,7 @@ class AggregateFunctions:
                 frequency_data = [f"{self.functions_across_layers_frequency[key][l] if l in self.functions_across_layers_frequency[key] else 0}" for l in layer_names]
                 presence_absence_data = [f"{self.functions_across_layers_presence_absence[key][l] if l in self.functions_across_layers_presence_absence[key] else 0}" for l in layer_names]
 
-                if with_function_accession_numbers:
+                if with_function_accession_ids:
                     function_accession = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
                     frequency_output.write('\t'.join([key] + frequency_data + [function, function_accession]) + '\n')
                     presence_absence_output.write('\t'.join([key] + presence_absence_data + [function, function_accession]) + '\n')

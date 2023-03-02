@@ -39,7 +39,7 @@ def main(args):
         args.output_file = output_file_path_for_functional_enrichment
 
     facc = AggregateFunctions(args, r=run, p=progress)
-    facc.report_functions_across_genomes(args.output_file_prefix, with_function_accession_numbers=args.also_report_accession_numbers)
+    facc.report_functions_across_genomes(args.output_file_prefix, with_function_accession_ids=args.also_report_accession_ids)
 
 
 if __name__ == '__main__':
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'required': True}))
     groupC.add_argument(*anvio.A('aggregate-based-on-accession'), **anvio.K('aggregate-based-on-accession'))
     groupC.add_argument(*anvio.A('aggregate-using-all-hits'), **anvio.K('aggregate-using-all-hits'))
-    groupC.add_argument(*anvio.A('also-report-accession-numbers'), **anvio.K('also-report-accession-numbers'))
+    groupC.add_argument(*anvio.A('also-report-accession-ids'), **anvio.K('also-report-accession-ids'))
     groupC.add_argument('--min-occurrence', metavar="NUM GENOMES", default=1, help=("The minimum number of occurrence of any "
                                 "given function accross genomes. If you set a value, those functions that occur in less number "
                                 "of genomes will be excluded."), type=int)
