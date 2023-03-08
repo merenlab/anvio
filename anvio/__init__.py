@@ -1144,6 +1144,13 @@ D = {
                      "functions rather than actual functions? We can't. But we have this flag here so you can "
                      "instruct anvi'o to listen to you and not to us."}
                 ),
+    'also-report-accession-ids': (
+            ['--also-report-accession-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When used, this flag will instruct anvi'o to also report the function accession ids "
+                     "in a new column, in addition to function name in the output file."}
+                ),
     'aggregate-using-all-hits': (
             ['--aggregate-using-all-hits'],
             {'default': False,
@@ -2512,16 +2519,6 @@ D = {
              'help': "Just like the minimum contig length parameter, but to set a maximum. Basically this will remove "
                      "any contig longer than a certain value. Why would anyone need this? Who knows. But if you ever "
                      "do, it is here."}
-                ),
-    'min-mean-coverage': (
-            ['-X', '--min-mean-coverage'],
-            {'metavar': 'INT',
-             'default': 0,
-             'type': int,
-             'help': "Minimum mean coverage for contigs to be kept in the analysis. The default value is %(default)d, "
-                     "which is for your best interest if you are going to profile multiple BAM files which are then "
-                     "going to be merged for a cross-sectional or time series analysis. Do not change it if you are not "
-                     "sure this is what you want to do."}
                 ),
     'min-coverage-for-variability': (
             ['-V', '--min-coverage-for-variability'],
