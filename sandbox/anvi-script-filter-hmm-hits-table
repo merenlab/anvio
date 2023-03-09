@@ -58,6 +58,9 @@ class FilterHmmHitsTable(object):
             sys.exit()
 
         # Grab HMM sources from internal or external HMMs
+        if args.hmm_profile_dir:
+            if not os.path.exists(args.hmm_profile_dir):
+                raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
         if self.hmm_profile_dir:
             self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
         else:
