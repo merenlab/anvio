@@ -50,7 +50,8 @@ function setEventListeners(){
       var vpt = this.viewportTransform;
       vpt[4] += e.clientX - this.lastPosX;
       bindViewportToWindow();
-      this.requestRenderAll();
+      //this.requestRenderAll();
+      this.setViewportTransform(this.viewportTransform)
       this.lastPosX = e.clientX;
 
       let [l, r] = percentScale ? getFracForVPT() : getNTRangeForVPT();
@@ -61,7 +62,6 @@ function setEventListeners(){
     }
   });
   canvas.on('mouse:up', function (opt) {
-    this.setViewportTransform(this.viewportTransform);
     if (this.isDragging) updateScalePos();
     this.isDragging = false;
     this.selection = true;
@@ -300,9 +300,6 @@ function setEventListeners(){
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
   });
-
-  $('#brush_start').val(0);
-  $('#brush_end').val(Math.floor(canvas.getWidth()));
 
   $('#deepdive-tooltip-body').hide() // set initual tooltip hide value
   $('#tooltip-body').hide()

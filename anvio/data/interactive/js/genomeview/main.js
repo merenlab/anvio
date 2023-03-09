@@ -168,6 +168,7 @@ function loadState() {
       try {
         processState(state_name, response['content']);
         loadAll('reload')
+        setEventListeners() // this needs to be called a second time on reload for some reason...
       } catch (e) {
         console.error("Exception thrown", e.stack);
         toastr.error('Failed to parse state data, ' + e);
@@ -179,6 +180,112 @@ function loadState() {
       console.log(resp)
     }
   })
+}
+
+function showSaveStateWindow(){
+  $.ajax({
+      type: 'GET',
+      cache: false,
+      url: '/state/all',
+      success: function(state_list) {
+          $('#saveState_list').empty();
+
+          for (let state_name in state_list) {
+              var _select = "";
+              if (state_name == current_state_name)
+              {
+                  _select = ' selected="selected"';
+              }
+              $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
+          }
+
+          $('#modSaveState').modal('show');
+          if ($('#saveState_list').val() === null) {
+              $('#saveState_name').val('default');
+          } else {
+              $('#saveState_list').trigger('change');
+          }
+      },
+      error: function(error){
+        console.log('got an error', error)
+      }
+  });
+}
+
+function showLoadStateWindow(){
+  $.ajax({
+      type: 'GET',
+      cache: false,
+      url: '/state/all',
+      success: function(state_list) {
+          $('#loadState_list').empty();
+
+          for (let state_name in state_list) {
+              $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
+          }
+
+          $('#modLoadState').modal('show');
+      }
+  });
+}
+
+function saveState()
+{
+  var name = $('#saveState_name').val();
+
+  if (name.length==0) {
+      $('#saveState_name').focus();
+      return;
+  }
+
+  var state_exists = false;
+
+  $.ajax({
+      type: 'GET',
+      cache: false,
+      async: false,
+      url: '/state/all',
+      success: function(state_list) {
+          for (let state_name in state_list) {
+              if (state_name == name)
+              {
+                  state_exists = true;
+              }
+          }
+
+      }
+  });
+
+  if (state_exists && !confirm('"' + name + '" already exist, do you want to overwrite it?')) {
+      return;
+  }
+
+  $.ajax({
+      type: 'POST',
+      cache: false,
+      url: '/state/save/' + name,
+      data: {
+          'content': JSON.stringify(serializeSettings())
+      },
+      success: function(response) {
+          if (typeof response != 'object') {
+              response = JSON.parse(response);
+          }
+
+          if (response['status_code']==0)
+          {
+              toastr.error("Failed, Interface running in read only mode.");
+          }
+          else if (response['status_code']==1)
+          {
+              // successfull
+              $('#modSaveState').modal('hide');
+
+              current_state_name = name;
+              toastr.success("State '" + current_state_name + "' successfully saved.");
+          }
+      }
+  });
 }
 
 function serializeSettings() {
@@ -214,6 +321,10 @@ function serializeSettings() {
   state['display']['gene-label-source'] = $('#gene_label_source').val()
   state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
   state['display']['annotation-color-dict'] = []
+  state['display']['viewportTransform'] = canvas.viewportTransform[4];
+  state['display']['nt_window'] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  state['display']['scaleFactor'] = scaleFactor;
+  state['display']['percentScale'] = percentScale;
 
   $('.annotation_color').each((idx, row) => {
     let color = $(row).attr('color')
@@ -284,11 +395,16 @@ function processState(stateName, stateData) {
   settings['group-layer-order'].map(layer => {
     buildGroupLayersTable(layer)
   })
+
+  settings['display']['viewportTransform'] = stateData?.['display']?.['viewportTransform']
+  settings['display']['nt_window'] = stateData?.['display']?.['nt_window']
+  percentScale = stateData?.['display']?.['percentScale']
+  scaleFactor = stateData?.['display']?.['scaleFactor']
 }
 
 function loadAll(loadType) {
+  if(canvas) canvas.dispose(); // clear old canvas in fabric if we are calling loadAll from loadState (bugs here cause mismatch b/w 'this' and 'canvas')
   canvas = new fabric.Canvas('myCanvas');
-  canvas.clear() // clear existing canvas if loadAll is being called from loadState
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
@@ -326,7 +442,15 @@ function loadAll(loadType) {
   setEventListeners()
 
   buildGeneLabelsSelect()
-  brush.extent([parseInt($('#brush_start').val()), parseInt($('#brush_end').val())]);
+  let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  if(loadType == 'reload') {
+    [start, stop] = settings['display']['nt_window'];
+    $('#brush_start').val(start);
+    $('#brush_end').val(stop);
+    canvas.viewportTransform[4] = settings['display']['viewportTransform'];
+    canvas.setViewportTransform(canvas.viewportTransform);
+  }
+  brush.extent([start, stop]);
   brush(d3.select(".brush"));
   updateRenderWindow();
 
