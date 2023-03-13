@@ -322,7 +322,7 @@ function serializeSettings() {
   state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
   state['display']['annotation-color-dict'] = []
   state['display']['viewportTransform'] = canvas.viewportTransform[4];
-  state['display']['nt_window'] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  state['display']['nt_window'] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
   state['display']['scaleFactor'] = scaleFactor;
   state['display']['percentScale'] = percentScale;
 
@@ -442,7 +442,7 @@ function loadAll(loadType) {
   setEventListeners()
 
   buildGeneLabelsSelect()
-  let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  let [start, stop] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
   if(loadType == 'reload') {
     [start, stop] = settings['display']['nt_window'];
     $('#brush_start').val(start);
