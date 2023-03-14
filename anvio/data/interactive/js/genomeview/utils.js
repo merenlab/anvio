@@ -222,7 +222,7 @@ function filterColorTable(thresh) {
     alert("Error: filtering threshold must be an integer >= 1");
     return;
   }
-  thresh_count_gene_colors = thresh;
+  settings['display']['thresh-count-gene-colors'] = thresh;
   generateColorTable(null, $("#gene_color_order").val());
   drawer.draw();
 }

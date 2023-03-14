@@ -79,7 +79,7 @@ function setEventListeners(){
     var gid = opt.target ? opt.target.groupID : null;
     if (gid == null) return;
 
-    if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && settings['display']?.['arrowStyle'] == 3)) canvas.sendBackwards(opt.target);
+    if (opt.target.id == 'genomeLine' || (opt.target.id == 'arrow' && settings['display']?.['arrow-style'] == 3)) canvas.sendBackwards(opt.target);
     if (this.shades) {
       drawer.clearShades();
       this.shades = false;
@@ -180,7 +180,7 @@ function setEventListeners(){
     color_db = $(this).val();
     generateColorTable(settings.display.colors.genes.annotations[color_db], color_db); // TODO: include highlight_genes, fn_colors etc from state
 
-    if(link_gene_label_color_source){
+    if(settings['display']['link-gene-label-color-source']){
       $('#gene_label_source').val($(this).val())
     }
 
@@ -188,29 +188,28 @@ function setEventListeners(){
     $(this).blur();
   });
   $('#arrow_style').on('change', function () {
-    // arrowStyle = parseInt($(this).val());
     settings['display']['arrow-style'] = parseInt($(this).val());
     drawer.draw()
     $(this).blur();
   });
   $('#gene_text_pos').on('change', function () {
-    geneLabelPos = $(this).val();
-    if (!(geneLabelPos == "inside" && settings['display']['arrow-style'] != 3)) drawer.draw();
+    settings['display']['gene-text-position'] = $(this).val();
+    if (!(settings['display']['gene-text-position'] == "inside" && settings['display']['arrow-style'] != 3)) drawer.draw();
     $(this).blur();
   });
   $('#gene_text_angle').on('change', function () {
-    geneLabelAngle = $(this).val();
-    if (geneLabelPos != "inside") drawer.draw();
+    settings['display']['gene-text-angle'] = $(this).val();
+    if (settings['display']['gene-text-position'] != "inside") drawer.draw();
     $(this).blur();
   });
   $('#show_genome_labels_box').on('change', function () {
-    showLabels = !showLabels;
-    xDisplacement = showLabels ? 120 : 0;
+    settings['display']['show-genome-labels'] = !settings['display']['show-genome-labels'];
+    xDisplacement = settings['display']['show-genome-labels'] ? 120 : 0;
     alignToGC = null;
     drawer.draw()
   });
   $('#gene_label_source').on('change', function(){
-    if(link_gene_label_color_source){
+    if(settings['display']['link-gene-label-color-source']){
       color_db = $(this).val();
       $('#gene_color_order').val($(this).val())
       generateColorTable(settings.display.colors.genes.annotations[color_db], color_db)
@@ -218,11 +217,11 @@ function setEventListeners(){
     drawer.draw()
   })
   $('#show_gene_labels_box').on('change', function () {
-    showGeneLabels = !showGeneLabels;
+    settings['display']['show-gene-labels'] = !settings['display']['show-gene-labels'];
     drawer.draw()
   });
   $('#link_gene_label_color_source').on('change', function(){
-    link_gene_label_color_source = !link_gene_label_color_source;
+    settings['display']['link-gene-label-color-source'] = !settings['display']['link-gene-label-color-source'];
     drawer.draw()
   })
   $('#show_only_cags_in_window').on('change', function () {
@@ -236,7 +235,7 @@ function setEventListeners(){
     }
   });
   $('#show_dynamic_scale_box').on('change', function () {
-    dynamicScaleInterval = !dynamicScaleInterval;
+    settings['display']['dynamic-scale-interval'] = !settings['display']['dynamic-scale-interval'];
   });
   $('#adl_pts_per_layer').on('change', function () {
     drawer.setPtsPerADL($(this).val());
@@ -303,9 +302,10 @@ function setEventListeners(){
 
   $('#deepdive-tooltip-body').hide() // set initual tooltip hide value
   $('#tooltip-body').hide()
-  $('#show_genome_labels_box').attr("checked", showLabels);
-  $('#show_gene_labels_box').attr("checked", showGeneLabels);
-  $('#show_dynamic_scale_box').attr("checked", dynamicScaleInterval);
+  $('#show_genome_labels_box').prop("checked", settings['display']['show-genome-labels']);
+  $('#show_gene_labels_box').prop("checked", settings['display']['show-gene-labels']);
+  $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
+  $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);
 
   $("#tabular-modal-body").on('shown.bs.modal', function(){
     showTabularModal()
@@ -1218,7 +1218,7 @@ function changeGenomeOrder(updatedOrder){
  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
  */
-function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_window=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = thresh_count_gene_colors) {
+function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_window=filter_gene_colors_to_window, sort_by_count=order_gene_colors_by_count, thresh_count = settings['display']['thresh-count-gene-colors']) {
   let db;
   if(fn_type == 'Source') {
     db = default_source_colors;

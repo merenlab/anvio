@@ -60,7 +60,7 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
 
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
 
-  let ptInterval = Math.floor(genomeMax / adlPtsPerLayer);
+  let ptInterval = Math.floor(genomeMax / settings['display']['adlPtsPerLayer']);
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
@@ -129,8 +129,8 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
   let genomeID = genome[0];
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
-  if (showLabels) {
-    canvas.add(new fabric.Text(genomeID, { top: y - 5, selectable: false, fontSize: genomeLabelSize, fontFamily: 'sans-serif', fontWeight: 'bold' }));
+  if (settings['display']['show-genome-labels']) {
+    canvas.add(new fabric.Text(genomeID, { top: y - 5, selectable: false, fontSize: settings['display']['genome-label-size'], fontFamily: 'sans-serif', fontWeight: 'bold' }));
   }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x * scaleFactor + xDisps[genomeID]);
@@ -154,7 +154,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
   this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
 
   // draw set labels
-  if (showGeneLabels && settings['display']['labels']['gene-sets'][genomeID]) {
+  if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
     settings['display']['labels']['gene-sets'][genomeID].forEach(obj => {
       drawSetLabel(obj[0], genomeID, obj[1]);
     });
@@ -169,12 +169,12 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     canvas.add(geneObj)
     canvas.bringToFront(geneObj);
 
-    if (showGeneLabels) {
+    if (settings['display']['show-gene-labels']) {
       var label = new fabric.IText(setGeneLabelFromSource(geneID, genomeID), {
         id: 'geneLabel',
         groupID: genomeID,
-        fontSize: geneLabelSize,
-        angle: geneLabelPos == "above" ? -1 * geneLabelAngle : 0,
+        fontSize: settings['display']['gene-label-size'],
+        angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
         left: xDisps[genomeID] + (gene.start + 50) * scaleFactor,
         scaleX: 0.5,
         scaleY: 0.5,
@@ -188,12 +188,12 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
       });
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
-          top: geneLabelPos == "inside" ? y + 15 - geneLabelSize / 2 : y - 10 - geneLabelSize / 2,
+          top: settings['display']['gene-text-position'] == "inside" ? y + 15 - settings['display']['gene-label-size'] / 2 : y - 10 - settings['display']['gene-label-size'] / 2,
           selectionColor: 'rgba(128,128,128,.5)'
         });
       } else {
         label.set({
-          top: y - 10 - geneLabelSize / 2,
+          top: y - 10 - settings['display']['gene-label-size'] / 2,
           selectionColor: 'rgba(128,128,128,.2)'
         });
       }
@@ -242,11 +242,11 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     // assume gene IDs form contiguous list
     let geneObjs = geneIDs.map(geneID => settings['genomeData']['genomes'].find(obj => obj[0] == genomeID)[1].genes.gene_calls[geneID]);
     let x_set_label = geneObjs[0].start + (geneObjs[geneObjs.length - 1].stop - geneObjs[0].start) / 2;
-    let y_set_label = y - 10 - geneLabelSize;
+    let y_set_label = y - 10 - settings['display']['gene-label-size'];
     var set_label = new fabric.IText(title, {
       id: 'setLabel',
       groupID: genomeID,
-      fontSize: geneLabelSize,
+      fontSize: settings['display']['gene-label-size'],
       left: xDisps[genomeID] + x_set_label * scaleFactor,
       top: y_set_label,
       scaleX: 0.5,
@@ -355,7 +355,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
   let [l, r] = getRenderNTRange(genomeID);
   for (let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
-    for (; w < (i + 1) * genomeMax / nRulers; w += scaleInterval) {
+    for (; w < (i + 1) * genomeMax / nRulers; w += settings['display']['genome-scale-interval']) {
       if (w < l) continue;
       if (w > r) break;
       let tick = new fabric.Line([0, 0, 0, 20], {
@@ -683,7 +683,8 @@ GenomeDrawer.prototype.setPtsPerADL = function (newResolution) {
     alert(`Invalid value, genome spacing must be in range 0-${genomeMax}.`);
     return;
   }
-  adlPtsPerLayer = newResolution;
+  settings['display']['adlPtsPerLayer'] = newResolution;
+  console.log(settings['display']['adlPtsPerLayer'])
   this.draw();
 }
 
@@ -723,7 +724,7 @@ GenomeDrawer.prototype.setScaleInterval = function (newScale) {
     alert(`Invalid value, scale interval must be >=50.`);
     return;
   }
-  scaleInterval = newScale;
+  settings['display']['genome-scale-interval'] = newScale;
   this.draw();
 }
 
@@ -734,8 +735,8 @@ GenomeDrawer.prototype.setGeneLabelSize = function (newSize) {
     alert(`Invalid value, gene label size must be in range 0-1000.`);
     return;
   }
-  geneLabelSize = newSize;
-  if (showGeneLabels) this.draw();
+  settings['display']['gene-label-size'] = newSize;
+  if (settings['display']['show-gene-labels']) this.draw();
 }
 
 GenomeDrawer.prototype.setGenomeLabelSize = function (newSize) {
@@ -745,8 +746,8 @@ GenomeDrawer.prototype.setGenomeLabelSize = function (newSize) {
     alert(`Invalid value, genome label size must be in range 0-1000.`);
     return;
   }
-  genomeLabelSize = newSize;
-  if (showLabels) this.draw();
+  settings['display']['genome-label-size'] = newSize;
+  if (settings['display']['show-genome-labels']) this.draw();
 }
 
 GenomeDrawer.prototype.redrawSingleGenome = function (genomeID) {
@@ -763,8 +764,8 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
   let val = Math.floor(100 / scaleFactor);
   let roundToDigits = Math.floor(Math.log10(val)) - 1;
   let newInterval = Math.floor(val / (10 ** roundToDigits)) * (10 ** roundToDigits);
-  scaleInterval = newInterval;
-  $('#genome_scale_interval').val(scaleInterval);
+  settings['display']['genome-scale-interval'] = newInterval;
+  $('#genome_scale_interval').val(settings['display']['genome-scale-interval']);
 }
 
 GenomeDrawer.prototype.queryFunctions = async function () {

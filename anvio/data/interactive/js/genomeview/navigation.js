@@ -76,7 +76,7 @@
       }
       if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
         scaleFactor = 0.01;
-        if(dynamicScaleInterval) adjustScaleInterval();
+        if(settings['display']['dynamic-scale-interval']) adjustScaleInterval();
       drawer.draw()
         return;
       }
@@ -182,7 +182,7 @@ function drawScale() {
       scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
       updateRenderWindow();
 
-      if(dynamicScaleInterval) drawer.adjustScaleInterval();
+      if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
 
       drawer.draw()
       let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
