@@ -37,27 +37,15 @@ var yOffset = 0 // vertical space between additional data layers
 var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
-var genomeLabelSize = 15; // font size of genome labels
 var marginTop = 20; // vertical margin at the top of the genome display
 var groupLayerPadding = 10 // padding between each layer in a given genome group
 var groupMargin = 100 // space between each genome group
 var labelSpacing = 30;  // spacing default for genomeLabel canvas
-var geneLabelSize = 40; // gene label font size
 var spacing = 50; // multiplied by maxGroupSize to determine group height allocation
-var scaleInterval = 100; // nt scale intervals
-var adlPtsPerLayer = 10000; // number of data points to be subsampled per ADL. TODO: more meaningful default?
-var showLabels = true; // show genome labels?
-var showGeneLabels = true; // show gene labels?
-var link_gene_label_color_source = false // by default, allow users to display different gene arrow color / gene label source
-var dynamicScaleInterval = true; // if true, scale interval automatically adjusts to zoom level
 var percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
-var geneLabelPos = "above"; // gene label position; one of "above", "inside"
-var geneLabelAngle = 0;
-var thresh_count_gene_colors = 4; // min # occurences of annotation for filtering gene color table
 var order_gene_colors_by_count = true; // if true, order annotations on gene color table by descending order of count, otherwise order alphabetically
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
-var mainCanvasHeight;
 var canvas;
 var genomeLabelsCanvas;
 var brush;
@@ -301,30 +289,34 @@ function serializeSettings() {
   state['display']['metadata'] = settings['display']['metadata']
 
   state['display']['order-method'] = $('#genome_order_select').val()
-  state['display']['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked')
-  state['display']['genome-scale-interval'] = $('#genome_scale_interval').val()
+  state['display']['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked') // if true, scale interval automatically adjusts to zoom level
+  state['display']['genome-scale-interval'] = parseInt($('#genome_scale_interval').val())
   state['display']['genome-spacing'] = $('#genome_spacing').val()
   state['display']['arrow-style'] = $('#arrow_style').val()
   state['display']['gene-link-style'] = $('#link_style').val()
   state['display']['gene-shade-style'] = $('#shade_by').val()
   state['display']['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
-  state['display']['genome-label-size'] = $('#genome_label').val()
+  state['display']['genome-label-size'] = $('#genome_label').val() 
   state['display']['colors']['genome-label'] = $('#genome_label_color').attr(':color')
   state['display']['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
-  state['display']['gene-label-size'] = $('#gene_label').val()
+  state['display']['gene-label-size'] = $('#gene_label').val() 
   state['display']['colors']['gene-label'] = $('#gene_label_color').attr(':color')
-  state['display']['gene-text-position'] = $('#gene_text_pos').val()
+  state['display']['gene-text-position'] = $('#gene_text_pos').val() // gene label position; one of "above", "inside"
+  state['display']['gene-text-angle'] = $('#gene_text_angle').val()
   state['display']['gc-window-size'] = $('#gc_window_size').val()
   state['display']['gc-step-size'] = $('#gc_step_size').val()
   state['display']['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
   state['display']['gene-color-order'] = $('#gene_color_order').val()
   state['display']['gene-label-source'] = $('#gene_label_source').val()
-  state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked')
+  state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked') // by default, allow users to display different gene arrow color / gene label source (false)
   state['display']['annotation-color-dict'] = []
   state['display']['viewportTransform'] = canvas.viewportTransform[4];
   state['display']['nt_window'] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
   state['display']['scaleFactor'] = scaleFactor;
   state['display']['percentScale'] = percentScale;
+  state['display']['xDisps'] = xDisps;
+  state['display']['thresh-count-gene-colors'] = $('#thresh_count').val() // min # occurences of annotation for filtering gene color table
+  state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
 
   $('.annotation_color').each((idx, row) => {
     let color = $(row).attr('color')
@@ -342,7 +334,7 @@ function processState(stateName, stateData) {
   settings['state-name'] = stateName
   console.log('processing this state obj', stateData)
 
-  calculateMaxGenomeLength()
+  //calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
     settings['group-layer-order'] = stateData['group-layer-order']
   }
@@ -372,9 +364,9 @@ function processState(stateName, stateData) {
   }
 
   if (stateData?.['display']?.['arrow-style']){
-    $('#arrow_style').val(stateData['arrow-style'])
+    $('#arrow_style').val(stateData['display']['arrow-style'])
   } else {
-    $('#arrow_style').val(settings['display']['arrow-style'])
+    $('#arrow_style').val(1)
   }
 
   if (stateData?.['display']?.['bookmarks']) {
@@ -396,10 +388,107 @@ function processState(stateName, stateData) {
     buildGroupLayersTable(layer)
   })
 
-  settings['display']['viewportTransform'] = stateData?.['display']?.['viewportTransform']
-  settings['display']['nt_window'] = stateData?.['display']?.['nt_window']
-  percentScale = stateData?.['display']?.['percentScale']
-  scaleFactor = stateData?.['display']?.['scaleFactor']
+  if(stateData?.['display']?.['percentScale']) {
+    percentScale = stateData['display']['percentScale']
+  } else {
+    percentScale = false;
+  }
+
+  if(stateData?.['display']?.['scaleFactor']) {
+    scaleFactor = stateData['display']['scaleFactor']
+  } else {
+    scaleFactor = 1
+  }
+
+  if(stateData?.['display']?.['nt_window']) {
+    settings['display']['nt_window'] = stateData['display']['nt_window']
+  } else {
+    settings['display']['nt_window'] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  }
+
+  if(stateData?.['display']?.['viewportTransform']) {
+    settings['display']['viewportTransform'] = stateData['display']['viewportTransform']
+  }
+
+  if(stateData?.['display']?.['xDisps']) {
+    settings['display']['xDisps'] = stateData['display']['xDisps']
+  }
+
+  if(stateData?.['display']?.['genome-label-size']) {
+    settings['display']['genome-label-size'] = stateData['display']['genome-label-size'];
+  } else {
+    settings['display']['genome-label-size'] = 15
+  }
+  $('#genome_label').val(settings['display']['genome-label-size'])
+
+  if(stateData?.['display']?.['gene-label-size']) {
+    settings['display']['gene-label-size'] = stateData['display']['gene-label-size']
+  } else {
+    settings['display']['gene-label-size'] = 40
+  }
+  $('#gene_label').val(settings['display']['gene-label-size'])
+
+  if(stateData?.['display']?.['gene-text-position']) {
+    settings['display']['gene-text-position'] = stateData['display']['gene-text-position']
+  } else {
+    settings['display']['gene-text-position'] = 'above'
+  }
+  $('#gene_text_pos').val(settings['display']['gene-text-position'])
+
+  if(stateData?.['display']?.['gene-text-angle']) {
+    settings['display']['gene-text-angle'] = stateData['display']['gene-text-angle']
+  } else {
+    settings['display']['gene-text-angle'] = 0
+  }
+  $('#gene_text_angle').val(settings['display']['gene-text-angle'])
+
+  if(stateData?.['display']?.hasOwnProperty('dynamic-scale-interval')) {
+    settings['display']['dynamic-scale-interval'] = stateData['display']['dynamic-scale-interval']
+  } else {
+    settings['display']['dynamic-scale-interval'] = true;
+  }
+
+  if(stateData?.['display']?.hasOwnProperty('genome-scale-interval')) {
+    settings['display']['genome-scale-interval'] = stateData['display']['genome-scale-interval']
+  } else {
+    settings['display']['genome-scale-interval'] = 100 
+  }
+  $('#genome_scale_interval').val(settings['display']['genome-scale-interval'])
+
+  if(stateData?.['display']?.hasOwnProperty('show-genome-labels')) {
+    settings['display']['show-genome-labels'] = stateData['display']['show-genome-labels']
+  } else {
+    settings['display']['show-genome-labels'] = true 
+  }
+
+  if(stateData?.['display']?.hasOwnProperty('show-gene-labels')) {
+    settings['display']['show-gene-labels'] = stateData['display']['show-gene-labels']
+  } else {
+    settings['display']['show-gene-labels'] = true 
+  }
+
+  if(stateData?.['display']?.hasOwnProperty('thresh-count-gene-colors')) {
+    settings['display']['thresh-count-gene-colors'] = stateData['display']['thresh-count-gene-colors']
+  } else {
+    settings['display']['thresh-count-gene-colors'] = 4
+  }
+  $('#thresh_count').val(settings['display']['thresh-count-gene-colors'])
+
+  if(stateData?.['display']?.hasOwnProperty('adlPtsPerLayer')) {
+    settings['display']['adlPtsPerLayer'] = stateData['display']['adlPtsPerLayer']
+  } else {
+    console.log(stateData?.display?.adlPtsPerLayer)
+    settings['display']['adlPtsPerLayer'] = 10000 // number of data points to be subsampled per ADL. TODO: more meaningful default?
+  }
+  $('#adl_pts_per_layer').val(settings['display']['adlPtsPerLayer'])
+  
+  if(stateData?.['display']?.hasOwnProperty('link-gene-label-color-source')) {
+    settings['display']['link-gene-label-color-source'] = stateData['display']['link-gene-label-color-source']
+  } else {
+    settings['display']['link-gene-label-color-source'] = false
+  }
+
+  // annotation color dict?
 }
 
 function loadAll(loadType) {
@@ -408,14 +497,18 @@ function loadAll(loadType) {
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
-  xDisplacement = showLabels ? 120 : 0;
-  for (genome of settings['genomeData']['genomes']) {
-    xDisps[genome[0]] = xDisplacement;
+  xDisplacement = settings['display']['show-genome-labels'] ? 120 : 0;
+  if(settings?.['display']?.['xDisps']) {
+    xDisps = settings?.['display']['xDisps'];
+  } else {
+    for (genome of settings['genomeData']['genomes']) {
+      xDisps[genome[0]] = xDisplacement;
+    }
   }
 
   calculateMaxGenomeLength()
 
-  if (showGeneLabels && parseInt(settings['display']['arrow-style']) != 3) {
+  if (settings['display']['show-gene-labels'] && parseInt(settings['display']['arrow-style']) != 3) {
     marginTop = 60;
     spacing = settings['display']['genome-spacing'] ? settings['display']['genome-spacing'] : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
@@ -442,11 +535,10 @@ function loadAll(loadType) {
   setEventListeners()
 
   buildGeneLabelsSelect()
-  let [start, stop] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+  let [start, stop] = settings['display']['nt_window'];
+  $('#brush_start').val(start);
+  $('#brush_end').val(stop);
   if(loadType == 'reload') {
-    [start, stop] = settings['display']['nt_window'];
-    $('#brush_start').val(start);
-    $('#brush_end').val(stop);
     canvas.viewportTransform[4] = settings['display']['viewportTransform'];
     canvas.setViewportTransform(canvas.viewportTransform);
   }
