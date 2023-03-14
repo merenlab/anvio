@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+DESCRIPTION = """This program downloads and sets up files of reference protein properties."""
+
+from sys import exit
+from argparse import Namespace
+
+import anvio.proteinorthology.refdbs as refdbs
+
+from anvio import A, K
+from anvio.errors import ConfigError
+from anvio import __version__ as VERSION
+from anvio.argparse import ArgumentParser
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = VERSION
+__authors__ = ['semiller10']
+__requires__ = ['functions']
+__provides__ = []
+__description__ = DESCRIPTION
+
+
+def main() -> None:
+    args = get_args()
+    if args.db == 'ModelSEED':
+        db = refdbs.ModelSEEDDatabase(args.dir)
+    elif args.db == 'KEGG':
+        db = refdbs.KEGGDatabase(args.dir, args.num_threads)
+    db.download(reset=args.reset)
+
+def get_args() -> Namespace:
+    parser = ArgumentParser(description=DESCRIPTION)
+
+    parser.add_argument(
+        '--db', choices=refdbs.ProteinReferenceDatabase.subclass_pretty_db_names, type=str,
+        help=(
+            "The protein reference database of interest. "
+            "1) KEGG protein ortholog and reaction entries are downloaded and processed. "
+            "2) The ModelSEED Biochemistry database cross-references multiple protein orthology "
+            "and metabolic model databases. The reaction and compound tables are downloaded and "
+            "processed."
+        )
+    )
+    parser.add_argument(
+        '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
+        help=(
+            "Directory in which a new subdirectory with the name of the database is created "
+            "containing database files."
+        )
+    )
+    parser.add_argument(*A('num-threads'), **K('num-threads'))
+    parser.add_argument(*A('reset'), **K('reset'))
+
+    args = parser.get_args(parser)
+    return args
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except ConfigError as e:
+        print(e)
+        exit(-1)
