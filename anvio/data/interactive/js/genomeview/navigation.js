@@ -179,13 +179,13 @@ function drawScale() {
       $('#brush_end').val(b[1]);
 
       let ntsToShow = b[1] - b[0];
-      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*genomeMax) : canvas.getWidth()/ntsToShow;
+      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
       updateRenderWindow();
 
       if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
 
       drawer.draw()
-      let moveToX = percentScale ? getRenderXRangeForFrac()[0] : xDisplacement+scaleFactor*b[0];
+      let moveToX = percentScale ? getVPTForFrac()[0] : xDisplacement+scaleFactor*b[0];
       canvas.absolutePan({x: moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)

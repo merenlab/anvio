@@ -135,7 +135,16 @@ function getFracForVPT() {
 }
 
 /*
- *  @returns range of renderWindow x-positions for a given proportional range
+ *  @returns absolute x-position viewport range for a given proportional selection range
+ */
+function getVPTForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  return [$('#brush_start').val(),$('#brush_end').val()].map(x => l+x*(r-l));
+}
+
+/*
+ *  @returns absolute x-position viewport range for a given proportional renderWindow range
  */
 function getRenderXRangeForFrac() {
   if(!percentScale) return null;
@@ -144,9 +153,13 @@ function getRenderXRangeForFrac() {
   return [x1, x2];
 }
 
+/* 
+ *  @returns nt range of a specific genome (since they can be dragged) for a given proportional range 
+ *  - used to determine which gene arrows to draw for a given genome while proportional scale is activated
+ */
 function getRenderNTRange(genomeID) {
   if(!percentScale) return renderWindow;
-  let [l,r] = calcXBounds();
+  //let [l,r] = calcXBounds();
   let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
   return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
 }
@@ -157,11 +170,15 @@ function getRenderNTRange(genomeID) {
  */
 function calcXBounds() {
   let min = 9*(10**9), max = -9*(10**9);
-  for(let g in xDisps) {
-    if(xDisps[g] > max) max = xDisps[g];
-    if(xDisps[g] < min) min = xDisps[g];
+  for(genome of genomeData.genomes) {
+    let genomeName = genome[0];
+    let genes = genome[1].genes.gene_calls;
+    let start = xDisps[genomeName];
+    let end = xDisps[genomeName] + scaleFactor*genes[Object.keys(genes).length-1].stop;
+    if(start < min) min = start;
+    if(end > max) max = end;
   }
-  return [min, max + scaleFactor*genomeMax];
+  return [min, max];
 }
 
 /*
