@@ -306,7 +306,7 @@ function serializeSettings() {
   state['display']['gc-window-size'] = $('#gc_window_size').val()
   state['display']['gc-step-size'] = $('#gc_step_size').val()
   state['display']['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
-  state['display']['gene-color-order'] = $('#gene_color_order').val()
+  state['display']['color_db'] = $('#gene_color_order').val()
   state['display']['gene-label-source'] = $('#gene_label_source').val()
   state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked') // by default, allow users to display different gene arrow color / gene label source (false)
   state['display']['annotation-color-dict'] = []
@@ -514,23 +514,24 @@ function loadAll(loadType) {
     $("#genome_spacing").val(spacing);
   }
 
-  $('#gene_color_order').append($('<option>', {
-    value: 'Source',
-    text: 'Source'
-  }));
-  for (fn of getFunctionalAnnotations()) {
+  if(loadType == 'init') {
     $('#gene_color_order').append($('<option>', {
-      value: fn,
-      text: fn
+      value: 'Source',
+      text: 'Source'
     }));
+    for (fn of getFunctionalAnnotations()) {
+      $('#gene_color_order').append($('<option>', {
+        value: fn,
+        text: fn
+      }));
+    }
   }
 
-  color_db = $('#gene_color_order').val();
+  color_db = settings?.['display']?.['color_db'] ? settings['display']['color_db'] : $('#gene_color_order').val();
+  $('#gene_color_order').val(color_db);
+  generateColorTable(fn_colors = settings?.display?.colors?.genes?.annotations[color_db], fn_type = color_db);
 
   buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
-  if(loadType == 'init'){
-    generateColorTable(fn_colors = null, fn_type = color_db);
-  }
   drawScale();
   setEventListeners()
 
