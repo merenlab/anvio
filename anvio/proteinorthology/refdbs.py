@@ -195,7 +195,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
         else:
             self.reaction_lookup_tables = {cross_reference: formatted_reactions_table}
 
-    def get_reaction(self, reaction_data: Dict):
+    def get_reaction(self, reaction_data: Dict) -> protein.Reaction:
         """
         Get a reaction object from information in the ModelSEED database.
 

@@ -10,17 +10,18 @@ import pandas as pd
 
 from argparse import Namespace
 from abc import ABC, abstractmethod
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 import anvio.terminal as terminal
 import anvio.proteinorthology.refdbs as refdbs
 import anvio.proteinorthology.protein as protein
 
 from anvio.errors import ConfigError
-from anvio import __version__ as VERSION
+from anvio.terminal import Run, Progress
 from anvio.ccollections import Collections
 from anvio.filesnpaths import is_output_file_writable
 from anvio.dbops import ContigsSuperclass, PanSuperclass
+from anvio import TABULATE, QUIET, __version__ as VERSION
 from anvio.utils import is_contigs_db, is_genome_storage, is_pan_db
 
 
@@ -40,7 +41,7 @@ class COBRApyJSONStructure:
     """COBRApy JSON input file structure."""
 
     @staticmethod
-    def get() -> Dict:
+    def get() -> Dict[str, Any]:
         """JSON format."""
         return {
             'metabolites': [],
@@ -55,7 +56,7 @@ class COBRApyJSONStructure:
         }
 
     @staticmethod
-    def get_metabolite_entry() -> Dict:
+    def get_metabolite_entry() -> Dict[str, Any]:
         """Format of each object in the JSON 'metabolites' array."""
         return {
             'id': '',
@@ -68,7 +69,7 @@ class COBRApyJSONStructure:
         }
 
     @staticmethod
-    def get_reaction_entry() -> Dict:
+    def get_reaction_entry() -> Dict[str, Any]:
         """Format of each reaction object in the JSON 'reactions' array."""
         return {
             'id': '',
@@ -83,7 +84,7 @@ class COBRApyJSONStructure:
         }
 
     @staticmethod
-    def get_gene_entry() -> Dict:
+    def get_gene_entry() -> Dict[str, Any]:
         """Format of each object in the JSON 'genes' array."""
         return {
             'id': '',
@@ -93,9 +94,9 @@ class COBRApyJSONStructure:
         }
 
     @staticmethod
-    def get_ecoli_objective() -> Dict:
-        """Format of biomass objective from JSON 'reactions' array in COBRApy example file,
-        'e_coli_core.json'."""
+    def get_ecoli_objective() -> Dict[str, Any]:
+        """Biomass objective from JSON 'reactions' array in COBRApy example file,
+        'e_coli_core.json'"""
         return {
             'id': 'BIOMASS_Ecoli_core_w_GAM',
             'name': 'Biomass Objective Function with GAM',
@@ -220,13 +221,110 @@ class ModelInput(ABC):
             modelseed_db._set_reaction_lookup_table('KEGG')
             modelseed_db._set_reaction_lookup_table('ec_numbers')
         cobrapy_dict = self._get_cobrapy_json_dict()
+        self._find_missing_objective_metabolites(
+            cobrapy_dict, remove=self.remove_missing_objective_metabolites
+        )
         with open(path, 'w') as f:
             json.dump(cobrapy_dict, f, indent=indent)
+        run: Run = self.run
+        run.info("Metabolic model file", path, nl_before=1)
 
     @abstractmethod
-    def _get_cobrapy_json_dict(self) -> Dict:
+    def _get_cobrapy_json_dict(self) -> Dict[str, Any]:
         """Get a dictionary representation of a COBRApy JSON file from the input data."""
         raise NotImplementedError
+
+    @abstractmethod
+    def _get_cobrapy_gene_dict(self) -> Dict[str, Any]:
+        """Get a dictionary representation of a gene object in a COBRApy JSON file genes array."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_cobrapy_reaction_dict(self) -> Tuple[Dict[str, Any], bool]:
+        """
+        Get a dictionary representation of a reaction object in a COBRApy JSON file reactions array.
+
+        Returns
+        =======
+        Dict[str, Any]
+            Reaction entry
+        bool
+            True if the reaction had already been recorded in the COBRApy JSON dictionary
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_cobrapy_metabolite_dict(self) -> Tuple[Dict[str, Any], bool]:
+        """
+        Get a dictionary representation of a metabolite object in a COBRApy JSON file metabolites
+        array.
+
+        Returns
+        =======
+        Dict[str, Any]
+            Metabolite entry
+        bool
+            True if the metabolite had already been recorded in the COBRApy JSON dictionary
+        """
+        raise NotImplementedError
+
+    def _find_missing_objective_metabolites(
+        self,
+        cobrapy_dict: Dict[str, Any],
+        remove: bool = False
+    ) -> None:
+        """
+        Find metabolites in the biomass objective function that are not produced or consumed by
+        enzymes in the model.
+
+        Parameters
+        ==========
+        cobrapy_dict : Dict
+            Dictionary representation of a COBRApy JSON input file
+        remove : bool
+            If True (default False), remove metabolites from the biomass objective function that are
+            not produced or consumed by enzymes in the model.
+        """
+        objective: Dict[str, Any] = cobrapy_dict['reactions'][0]
+        try:
+            objective_metabolites: Dict[str, float] = objective['metabolites']
+        except KeyError:
+            raise ConfigError(
+                "The objective function of the metabolic model does not have a 'metabolites' "
+                "section characteristic of an expected biomass objective function."
+            )
+        reaction_metabolites: List[Dict[str, Any]] = cobrapy_dict['metabolites']
+        reaction_metabolite_ids = [m['id'] for m in reaction_metabolites]
+        missing_objective_metabolite_data = []
+        for metabolite_id, stoichiometric_coefficient in objective_metabolites.items():
+            if metabolite_id in reaction_metabolite_ids:
+                continue
+            missing_objective_metabolite_data.append((metabolite_id, stoichiometric_coefficient))
+        if not missing_objective_metabolite_data:
+            return
+        if remove:
+            for metabolite_id, stoichiometric_coefficient in missing_objective_metabolite_data:
+                objective_metabolites.pop(metabolite_id)
+        run: Run = self.run
+        if remove:
+            run.warning(
+                f"Missing metabolite data removed from '{objective['name']}'", nl_after=0
+            )
+        else:
+            run.warning(
+                f"Metabolites in '{objective['name']}' missing from the model", nl_after=0
+            )
+        if QUIET:
+            return objective
+        # Print removed metabolites.
+        TABULATE(
+            pd.DataFrame(
+                missing_objective_metabolite_data,
+                index=range(1, len(missing_objective_metabolite_data) + 1)
+            ),
+            ('Metabolite', 'Stoichiometric coefficient')
+        )
+        return objective
 
 class Pangenome(ModelInput):
     """
@@ -260,6 +358,9 @@ class Pangenome(ModelInput):
         in a cluster is assigned to the cluster itself. With this argument (a value on [0, 1]),
         at least this proportion of genes in the cluster must have the most frequent annotation
         for the cluster to be annotated.
+    remove_missing_objective_metabolites : bool
+        Metabolites in the biomass objective function are removed if they are not recorded as being
+        produced or consumed by enzymes in the model.
     """
     def __init__(
         self,
@@ -271,7 +372,10 @@ class Pangenome(ModelInput):
         cross_references: Tuple[str] = ('ModelSEED', ),
         db_superdir: str = refdbs.ProteinReferenceDatabase.default_superdir,
         discard_ties: bool = False,
-        consensus_threshold: float = None
+        consensus_threshold: float = None,
+        remove_missing_objective_metabolites: bool = False,
+        run: Run = Run(),
+        progress: Progress = Progress()
     ) -> None:
         self.genomes_storage_path = genomes_storage_path
         is_genome_storage(self.genomes_storage_path)
@@ -287,6 +391,9 @@ class Pangenome(ModelInput):
         )
         self.discard_ties = discard_ties
         self.consensus_threshold = consensus_threshold
+        self.remove_missing_objective_metabolites = remove_missing_objective_metabolites
+        self.run = run
+        self.progress = progress
         self._init_pan_super()
 
     def _init_bin(self) -> None:
@@ -314,14 +421,19 @@ class Pangenome(ModelInput):
         self.pan_super.init_gene_clusters_functions()
         self.pan_super.init_gene_clusters_functions_summary_dict()
 
-    def _get_cobrapy_json_dict(self) -> Dict:
+    def _get_cobrapy_json_dict(self) -> Dict[str, Any]:
         cobrapy_dict = COBRApyJSONStructure.get()
         self.cobrapy_reactions: List[Dict] = cobrapy_dict['reactions']
         self.cobrapy_reactions.append(COBRApyJSONStructure.get_ecoli_objective())
         self.cobrapy_metabolites: List[Dict] = cobrapy_dict['metabolites']
         self.recorded_reactions: Dict[str, Dict] = {}
         self.recorded_metabolites: Dict[str, Dict] = {}
+        self.progress.new("Analyzing gene clusters")
+        num_analyzed = 0
+        total = len(self.pan_super.gene_clusters)
         for gene_cluster_id, genome_gcids in self.pan_super.gene_clusters.items():
+            self.progress.update(f"{num_analyzed} / {total}")
+            num_analyzed += 1
             genome_gcids: Dict[str, List[str]]
             # Find consensus orthologs across genes in the cluster.
             orthologs_data = self.pan_super.gene_clusters_functions_summary_dict[gene_cluster_id]
@@ -357,6 +469,7 @@ class Pangenome(ModelInput):
             cobrapy_gene_dict = self._get_cobrapy_gene_dict(gene_cluster_id, genome_gcids, reactions)
             cobrapy_genes: List = cobrapy_dict['genes']
             cobrapy_genes.append(cobrapy_gene_dict)
+        self.progress.end()
         # Delete convenience attributes.
         delattr(self, 'cobrapy_reactions')
         delattr(self, 'cobrapy_metabolites')
@@ -369,7 +482,7 @@ class Pangenome(ModelInput):
         gene_cluster_id: str,
         genome_gcids: Dict[str, List[str]],
         reactions: List[protein.Reaction]
-    ) -> Dict:
+    ) -> Dict[str, Any]:
         cobrapy_gene_dict = COBRApyJSONStructure.get_gene_entry()
         cobrapy_gene_dict['id'] = gene_cluster_id
         for reaction in reactions:
@@ -385,7 +498,7 @@ class Pangenome(ModelInput):
         self,
         reaction: protein.Reaction,
         genome_gcids: Dict[str, List[str]]
-    ) -> Tuple[Dict, bool]:
+    ) -> Tuple[Dict[str, Any], bool]:
         # Find the genomes encoding the reaction.
         genome_ids = set()
         for genome_id, gcids in genome_gcids.items():
@@ -432,7 +545,7 @@ class Pangenome(ModelInput):
         compartment: str,
         reversibility: bool,
         genome_ids: Set[str]
-    ) -> Tuple[Dict, bool]:
+    ) -> Tuple[Dict[str, Any], bool]:
         if pd.isna(chemical.select_bigg_id):
             compound_id = chemical.modelseed_compound_id
         else:
@@ -493,16 +606,24 @@ class ExternalGenome(ModelInput):
     protein_annotation_source : str
         The source of protein ortholog annotations. For now, only KEGG orthologs can be processed.
         Default, 'KEGG'.
+    remove_missing_objective_metabolites : bool
+        Metabolites in the biomass objective function are removed if they are not recorded as being
+        produced or consumed by enzymes in the model.
     """
     def __init__(
         self,
         contigs_db_path: str,
         protein_annotation_source: str = 'KEGG',
-        db_superdir: str = refdbs.ProteinReferenceDatabase.default_superdir
+        db_superdir: str = refdbs.ProteinReferenceDatabase.default_superdir,
+        remove_missing_objective_metabolites: bool = False,
+        run: Run = Run(),
+        progress: Progress = Progress()
     ) -> None:
-        super().__init__(protein_annotation_source)
         self.contigs_db_path = contigs_db_path
         is_contigs_db(self.contigs_db_path)
+        self.remove_missing_objective_metabolites = remove_missing_objective_metabolites
+        self.run = run
+        self.progress = progress
         self.set_protein_annotation_source(source=protein_annotation_source, db_superdir=db_superdir)
         self._init_contigs_super()
 
@@ -510,16 +631,25 @@ class ExternalGenome(ModelInput):
         args = Namespace()
         args.contigs_db = self.contigs_db_path
         self.contigs_super = ContigsSuperclass(args, r=run_quiet)
-        self.contigs_super.init_functions(requested_sources=[self.protein_annotation_source])
+        if self.protein_annotation_source == 'KEGG':
+            anvio_source = 'KOfam'
+        else:
+            anvio_source = self.protein_annotation_source
+        self.contigs_super.init_functions(requested_sources=[anvio_source])
 
-    def _get_cobrapy_json_dict(self) -> Dict:
+    def _get_cobrapy_json_dict(self) -> Dict[str, Any]:
         cobrapy_dict = COBRApyJSONStructure.get()
         self.cobrapy_reactions: List[Dict] = cobrapy_dict['reactions']
         self.cobrapy_reactions.append(COBRApyJSONStructure.get_ecoli_objective())
         self.cobrapy_metabolites: List[Dict] = cobrapy_dict['metabolites']
         self.recorded_reactions: Dict[str, Dict] = {}
         self.recorded_metabolites: Dict[str, Dict] = {}
+        self.progress.new("Analyzing genes")
+        num_analyzed = 0
+        total = len(self.contigs_super.gene_function_calls_dict)
         for gcid, gene_dict in self.contigs_super.gene_function_calls_dict.items():
+            self.progress.update(f"{num_analyzed} / {total}")
+            num_analyzed += 1
             if self.protein_annotation_source == 'KEGG':
                 anvio_source = 'KOfam'
             else:
@@ -552,6 +682,7 @@ class ExternalGenome(ModelInput):
             cobrapy_gene_dict = self._get_cobrapy_gene_dict(gcid, reactions)
             cobrapy_genes: List = cobrapy_dict['genes']
             cobrapy_genes.append(cobrapy_gene_dict)
+        self.progress.end()
         # Delete convenience attributes.
         delattr(self, 'cobrapy_reactions')
         delattr(self, 'cobrapy_metabolites')
@@ -559,7 +690,7 @@ class ExternalGenome(ModelInput):
         delattr(self, 'recorded_metabolites')
         return cobrapy_dict
 
-    def _get_cobrapy_gene_dict(self, gcid: int, reactions: List[protein.Reaction]) -> Dict:
+    def _get_cobrapy_gene_dict(self, gcid: int, reactions: List[protein.Reaction]) -> Dict[str, Any]:
         cobrapy_gene_dict = COBRApyJSONStructure.get_gene_entry()
         cobrapy_gene_dict['id'] = gcid
         for reaction in reactions:
@@ -569,7 +700,7 @@ class ExternalGenome(ModelInput):
                 self.recorded_reactions[reaction.id] = cobrapy_reaction_dict
         return cobrapy_gene_dict
 
-    def _get_cobrapy_reaction_dict(self, reaction: protein.Reaction) -> Tuple[Dict, bool]:
+    def _get_cobrapy_reaction_dict(self, reaction: protein.Reaction) -> Tuple[Dict[str, Any], bool]:
         try:
             # There is already a JSON object for the reaction.
             cobrapy_reaction_dict = self.recorded_reactions[reaction.id]
@@ -586,7 +717,7 @@ class ExternalGenome(ModelInput):
             reaction.chemicals, reaction.coefficients, reaction.compartments
         ):
             cobrapy_metabolite_dict, already_recorded_metabolite = self._get_cobrapy_metabolite_dict(
-                self, chemical, coefficient, compartment, reversibility
+                chemical, compartment
             )
             metabolite_id = cobrapy_metabolite_dict['id']
             cobrapy_reaction_dict['metabolites'][metabolite_id] = float(coefficient)
@@ -599,7 +730,7 @@ class ExternalGenome(ModelInput):
         self,
         chemical: protein.Chemical,
         compartment: str
-    ) -> Tuple[Dict, bool]:
+    ) -> Tuple[Dict[str, Any], bool]:
         if pd.isna(chemical.select_bigg_id):
             compound_id = chemical.modelseed_compound_id
         else:

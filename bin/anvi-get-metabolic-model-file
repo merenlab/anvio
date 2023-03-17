@@ -9,6 +9,7 @@ import anvio.proteinorthology.refdbs as refdbs
 import anvio.proteinorthology.metabolicmodel as metabolicmodel
 
 from anvio import A, K
+from anvio.terminal import Run
 from anvio.errors import ConfigError
 from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
@@ -29,7 +30,9 @@ def main() -> None:
     args = get_args()
     if args.contigs_db:
         external_genome = metabolicmodel.ExternalGenome(
-            args.contigs_db, db_superdir=args.db_superdir
+            args.contigs_db,
+            db_superdir=args.db_superdir,
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
         )
         external_genome.write_cobrapy_json(args.output_file)
     elif args.genomes_storage and args.pan_db:
@@ -40,7 +43,8 @@ def main() -> None:
             bin_id=args.bin_id,
             db_superdir=args.db_superdir,
             discard_ties=args.discard_ties,
-            consensus_threshold=args.consensus_threshold
+            consensus_threshold=args.consensus_threshold,
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
         )
         pangenome.write_cobrapy_json(args.output_file)
 
@@ -48,8 +52,7 @@ def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
     groupA = parser.add_argument_group(
-        "SINGLE GENOME INPUT",
-        "Generate a metabolic model file from an \"external\" genome."
+        "SINGLE GENOME INPUT", "Generate a metabolic model file from an \"external\" genome."
     )
     groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
 
@@ -84,11 +87,25 @@ def get_args() -> Namespace:
         )
     )
 
-    groupC = parser.add_argument_group("OUTPUT", "Output path of COBRApy JSON file.")
+    groupC = parser.add_argument_group("OUTPUT", "Output path of COBRApy JSON file")
     groupC.add_argument(*A('output-file'), **K('output-file'))
 
-    groupD = parser.add_argument_group("DATABASE", "Protein reference database information.")
+    groupD = parser.add_argument_group(
+        "MODEL", "Parameterization of the COBRApy JSON file unrelated to genomic inputs"
+    )
     groupD.add_argument(
+        '--remove-missing-objective-metabolites', default=False, action='store_true',
+        help=(
+            "The metabolic model file includes the core E. coli biomass objective function (BOF), "
+            "as in the COBRApy example file, 'e_coli_core.json'. With this flag, metabolites in "
+            "the BOF are removed if they are not produced or consumed by enzymes in the model. "
+            "Without this flag, COBRApy cannot load the output JSON file if there are missing BOF "
+            "metabolites. Removed BOF metabolite data are reported to the terminal."
+        )
+    )
+
+    groupE = parser.add_argument_group("DATABASE", "Protein reference database information")
+    groupE.add_argument(
         '--db-superdir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
         help=(
             "Directory in which database subdirectories (e.g., 'modelseed', 'kegg') are located."
