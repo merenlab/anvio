@@ -283,6 +283,7 @@ function setEventListeners(){
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
+          drawer.draw();
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
@@ -295,6 +296,7 @@ function setEventListeners(){
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
+          drawer.draw();
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
@@ -1291,6 +1293,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
             if (!bySetColor) $(el).val(hex);
             if(!settings.display.colors.genes.annotations[fn_type]) settings.display.colors.genes.annotations[fn_type] = {};
             settings.display.colors.genes.annotations[fn_type][category] = '#' + hex;
+            drawer.draw();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
@@ -1338,6 +1341,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
             $(el).attr('color', '#' + hex);
             //state['highlight-genes'][el.id.substring(7)] = '#' + hex;
             if (!bySetColor) $(el).val(hex);
+            drawer.draw();
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
