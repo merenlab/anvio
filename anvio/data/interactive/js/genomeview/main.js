@@ -477,7 +477,6 @@ function processState(stateName, stateData) {
   if(stateData?.['display']?.hasOwnProperty('adlPtsPerLayer')) {
     settings['display']['adlPtsPerLayer'] = stateData['display']['adlPtsPerLayer']
   } else {
-    console.log(stateData?.display?.adlPtsPerLayer)
     settings['display']['adlPtsPerLayer'] = 10000 // number of data points to be subsampled per ADL. TODO: more meaningful default?
   }
   $('#adl_pts_per_layer').val(settings['display']['adlPtsPerLayer'])

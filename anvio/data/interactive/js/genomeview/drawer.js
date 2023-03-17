@@ -684,7 +684,6 @@ GenomeDrawer.prototype.setPtsPerADL = function (newResolution) {
     return;
   }
   settings['display']['adlPtsPerLayer'] = newResolution;
-  console.log(settings['display']['adlPtsPerLayer'])
   this.draw();
 }
 
