@@ -179,6 +179,8 @@ function drawScale() {
       $('#brush_end').val(b[1]);
 
       let ntsToShow = b[1] - b[0];
+      // NOTE: there is a bug in the following line for percent scale where the scaleFactor is not calculated correctly and as a result the viewport window is incorrect.
+      // Need to determine the number of nucleotides that correspond to a given proportional range (e.g. [0.1, 0.234]) after sliding a genome 
       scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
       updateRenderWindow();
 

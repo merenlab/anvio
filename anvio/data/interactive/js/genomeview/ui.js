@@ -75,7 +75,14 @@ function setEventListeners(){
       drawer.redrawSingleGenome(opt.target.groupID);
     }
   });
+  /*
+   *  ***NOTE: Genome sliding and proportional scale functionality is currently disabled***
+   *  All proportional scale functionality is under the feature flag `percentScale` which at this time should always be equal to false.
+   *  At its current state, proportional scale has some bugs with calculating the viewport window for a given selection range. Bookmarks should also be disabled for proportional scale.
+   */
   canvas.on('object:moving', function (opt) {
+    console.log("Warning: Object moving event listener triggered. This listener should never be triggered as long as genome dragging is disabled, so if you're seeing this message, there may be an error somewhere.");
+    return;
     var gid = opt.target ? opt.target.groupID : null;
     if (gid == null) return;
 

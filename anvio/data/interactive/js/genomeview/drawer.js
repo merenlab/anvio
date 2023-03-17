@@ -106,6 +106,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
     fill: "pink",
     opacity: .2,
     selectable: false,
+    hoverCursor: 'default'
   })
 
   canvas.sendToBack(rect)
@@ -148,7 +149,8 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     lockMovementY: true,
     hasControls: false,
     hasBorders: false,
-    lockScaling: true
+    lockScaling: true,
+    hoverCursor: 'default'
   });
   canvas.add(lineObj);
   this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
@@ -333,6 +335,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     fill: stroke,
     selectable: false,
     objectCaching: false,
+    hoverCursor: 'default',
     id: `${layer}-graph-shaded`,
     groupID: genomeID,
     genome: genomeID
@@ -383,6 +386,8 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
       hasBorders: false,
       lockScaling: true,
       objectCaching: false,
+      selectable: false,
+      hoverCursor: 'default',
       groupID: genomeID,
       class: 'ruler'
     });
@@ -419,6 +424,7 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     height: height,
     fill: "#b0b0b0",
     selectable: false,
+    hoverCursor: 'default',
     opacity: .5
   });
   // canvas.sendToBack(border)
@@ -506,11 +512,13 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   arrow.set({
     id: 'arrow',
     groupID: genomeID,
+    lockMovementX: true,
     lockMovementY: true,
     selectable: true,
     hasControls: false,
     hasBorders: false,
     lockScaling: true,
+    hoverCursor: 'pointer',
     opacity: settings['display']['hidden']?.[genomeID]?.[geneID] ? .2 : 1.0,
     aaSequence: genomeOfInterest[0][1]['genes']['aa'][geneID]['sequence'],
     dnaSequence: genomeOfInterest[0][1]['genes']['dna'][geneID]['sequence'],
