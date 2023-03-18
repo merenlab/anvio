@@ -1073,7 +1073,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
             # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
             # time on those gene caller ids that do not occur in the split name we are interested in.
-            all_item_stats_in_split = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
+            all_item_stats_in_split, failed_gene_calls = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
 
             for item_stats in all_item_stats_in_split.values():
                 for entry in item_stats.values():

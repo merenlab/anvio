@@ -1983,11 +1983,13 @@ class VariabilitySuper(VariabilityFilter, object):
         for split_name in self.splits_of_interest:
             entry_ids = self.split_name_to_genes_in_splits_entry_ids[split_name]
             for entry_id in entry_ids:
-                gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(
+                gene_cov_stats, falied_gene_calls = profile_super.get_gene_level_coverage_stats(
                     self.genes_in_splits[entry_id]['split'],
                     self,
                     gene_caller_ids_of_interest = set([self.genes_in_splits[entry_id]['gene_callers_id']])
-                ))
+                )
+
+                gene_cov_dict.update(gene_cov_stats)
 
         gene_coverage_columns = ['gene_coverage',
                                  'non_outlier_gene_coverage',
