@@ -90,14 +90,6 @@ class ProteinReferenceDatabase(ABC):
                 f"--download-references {self.pretty_db_name}."
             )
 
-    @property
-    def subclass_db_names(self) -> List[str]:
-        return sorted(db.db_name for db in ProteinReferenceDatabase.__subclasses__())
-
-    @property
-    def subclass_pretty_db_names(self) -> List[str]:
-        return sorted(db.pretty_db_name for db in ProteinReferenceDatabase.__subclasses__())
-
     def _set_up_db_dir(self, reset: bool) -> None:
         if os.path.exists(self.db_dir):
             if reset:
@@ -124,6 +116,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
     The database is set up in a default directory if a directory is not provided.
     """
     db_name = 'modelseed'
+    pretty_db_name = 'ModelSEED'
     dl_root = 'https://raw.githubusercontent.com/ModelSEED/ModelSEEDDatabase/master/Biochemistry/'
     # These files have the same names as the downloaded files but are changed by setup.
     files = ('compounds.tsv', 'reactions.tsv')
@@ -397,6 +390,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
 
 class KEGGDatabase(ProteinReferenceDatabase):
     db_name = 'kegg'
+    pretty_db_name = 'KEGG'
     dl_root = 'https://rest.kegg.jp/' # See: https://www.kegg.jp/kegg/rest/keggapi.html
     # These files are set up from downloaded files.
     files = ('ko_data.tsv', 'reaction_data.tsv')
@@ -426,8 +420,8 @@ class KEGGDatabase(ProteinReferenceDatabase):
         self._set_up_db_dir(reset=reset)
         if self.num_threads == 1:
             self.run.warning(
-                "Only 1 thread is being used to download from KEGG. Set a higher number of threads "
-                "to download faster."
+                "Only 1 thread is being used to download from KEGG. It is advisable to set a "
+                "higher number of threads to download faster."
             )
         for db_category in self.db_categories:
             self._download_kegg_db_txt_files(db_category)

@@ -36,20 +36,23 @@ def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
     parser.add_argument(
-        '--db', choices=refdbs.ProteinReferenceDatabase.subclass_pretty_db_names, type=str,
+        '--db',
+        choices=('KEGG', 'ModelSEED'),
+        type=str,
         help=(
             "The protein reference database of interest. "
-            "1) KEGG protein ortholog and reaction entries are downloaded and processed. "
-            "2) The ModelSEED Biochemistry database cross-references multiple protein orthology "
-            "and metabolic model databases. The reaction and compound tables are downloaded and "
-            "processed."
+            "1) KEGG: All items from the Ortholog and Reaction databases are downloaded and "
+            "processed. "
+            "2) ModelSEED: The ModelSEED Biochemistry database harmonizes multiple reference "
+            "databases, including KEGG, MetaCyc, and BiGG. The reactions and compounds tables are "
+            "downloaded and processed."
         )
     )
     parser.add_argument(
         '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
         help=(
-            "Directory in which a new subdirectory with the name of the database is created "
-            "containing database files."
+            "Directory in which a new subdirectory with the name of the database (e.g., 'kegg', "
+            "'modelseed') is created containing database files."
         )
     )
     parser.add_argument(*A('num-threads'), **K('num-threads'))
