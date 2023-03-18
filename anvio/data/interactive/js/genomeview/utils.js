@@ -31,9 +31,7 @@
 function calculateMainCanvasHeight(){
   let additionalSpacing = 100 // arbitrary additional spacing for cosmetics
   let scaleHeight = 230
-  let nGenomes = settings['genomeData']['genomes'].length;
-
-  //let mainCanvasHeight =  marginTop + spacing * settings['genomeData']['genomes'].length + groupMargin*(settings['genomeData']['genomes'].length-1) + additionalSpacing
+  let nGenomes = settings['genomeData']['genomes'].length
   let mainCanvasHeight = marginTop + nGenomes*(spacing+maxGroupSize*groupLayerPadding) + groupMargin*(nGenomes-1) + scaleHeight + additionalSpacing
   return mainCanvasHeight
 }

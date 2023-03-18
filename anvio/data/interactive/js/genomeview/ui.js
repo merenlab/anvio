@@ -426,7 +426,7 @@ function showDeepDiveToolTip(event){
   <button type="button" id="gene-blastx-at-refseq-button" class="btn btn-default btn-sm">blastx @ refseq_genomic</button>
   <br>
 
-  <h2>Visible Geen Range</h2>
+  <h2>Visible Gene Range</h2>
   <label for='hide-range-low'>Downstream Visible Gene Range</label>
   <input type='number' id='hide-range-low'  min='1' step='1'/>
   <label for='hide-range-high'>Upstream Visible Gene Range</label>
