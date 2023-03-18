@@ -3350,6 +3350,31 @@ class ProfileSuperclass(object):
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
                                       zeros_are_outliers=False, mode=None, gene_caller_ids_of_interest=set([])):
+        """THE function that returns the gene level coverage stats.
+
+        Please note that the function returns a tuple of two items.
+
+        Returns
+        =======
+        gene_coverage_stats : dict
+            A nested dictionary that for each gene caller id, and sample name, contains
+            a dictionary that looks like this:
+                >>> (...): {'gene_callers_id': 0,
+                            'sample_name': 'USA_0114C_007D',
+                            'mean_coverage': 0.050724637681159424,
+                            'detection': 0.050724637681159424,
+                            'non_outlier_mean_coverage': 0.050724637681159424,
+                            'non_outlier_coverage_std': 0.2194348395612568,
+                            'gene_coverage_values_per_nt': array([1, 1, 1, ..., 0, 0, 0], dtype=uint16),
+                            'non_outlier_positions': array([ True,  True,  True, ...,  True,  True,  True])
+                            }, { (...)
+                >>>
+
+        failed_gene_caller_ids : set
+            A set of gene caller ids for which anvi'o failed to recover coverage
+            information for any reason.
+        """
+
 
         failed_gene_caller_ids = set([])
 
