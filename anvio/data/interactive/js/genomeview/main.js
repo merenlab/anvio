@@ -509,7 +509,7 @@ function loadAll(loadType) {
 
   if (settings['display']['show-gene-labels'] && parseInt(settings['display']['arrow-style']) != 3) {
     marginTop = 60;
-    spacing = settings['display']['genome-spacing'] ? settings['display']['genome-spacing'] : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
+    spacing = settings['display']['genome-spacing'] ? parseInt(settings['display']['genome-spacing']) : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
     $("#genome_spacing").val(spacing);
   }
 
