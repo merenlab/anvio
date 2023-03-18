@@ -3008,12 +3008,17 @@ class ProfileSuperclass(object):
         self.genes_db_path = self.genes_db_path
 
 
-    def store_gene_level_coverage_stats_into_genes_db(self, parameters):
+    def store_gene_level_coverage_stats_into_genes_db(self, parameters, gene_caller_ids_to_exclude=None):
         table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
                                                                     parameters,
                                                                     split_names=self.split_names_of_interest,
                                                                     mode="INSEQ" if self.inseq_stats else "STANDARD",
                                                                     run=self.run)
+
+        if gene_caller_ids_to_exclude:
+            for gene_callers_id in gene_caller_ids_to_exclude:
+                if gene_callers_id in self.gene_level_coverage_stats_dict:
+                    self.gene_level_coverage_stats_dict.pop(gene_callers_id)
 
         table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
@@ -3138,15 +3143,21 @@ class ProfileSuperclass(object):
         self.progress.update('...')
 
         num_splits, counter = len(split_names), 1
+        failed_gene_caller_ids_set = set([])
         # go through all the split names
         for split_name in split_names:
             if num_splits > 10 and counter % 10 == 0:
                 self.progress.update('%d of %d splits ...' % (counter, num_splits))
 
             if len(gene_caller_ids_of_interest):
-                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest, **parameters))
+                gene_level_coverage_stats, failed_gene_caller_ids = self.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest, **parameters)
             else:
-                self.gene_level_coverage_stats_dict.update(self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters))
+                gene_level_coverage_stats, failed_gene_caller_ids = self.get_gene_level_coverage_stats(split_name, contigs_db, **parameters)
+
+            if len(failed_gene_caller_ids):
+                failed_gene_caller_ids_set.update(failed_gene_caller_ids)
+
+            self.gene_level_coverage_stats_dict.update(gene_level_coverage_stats)
 
             if callback and counter % callback_interval == 0:
                 callback()
@@ -3155,12 +3166,22 @@ class ProfileSuperclass(object):
 
         self.progress.end()
 
+        if len(failed_gene_caller_ids_set):
+            self.run.warning(f"Please read this carefully as something sad just happened. While anvi'o was trying to recover "
+                             f"gene level coverage stats, it became clear that a few gene calls were not found in splits they "
+                             f"were meant to be found. These genes will not be a part of any downstream reporting :/ It is "
+                             f"extremely difficult to even entertain the idea why this might have happened, we suspect it "
+                             f"is some sort of artifact left behind from the use of external gene calls. Regardless, here "
+                             f"are the gene calls that cause you this headache, in case you would like to go after this and "
+                             f"find out why is this happening: {', '.join([str(f) for f in failed_gene_caller_ids_set])}",
+                             header="🚑 SOMETHING WEIRD HAPPENED 🚑")
+
         if callback:
             callback()
         else:
             if self.genes_db_path:
                 # we computed all the stuff, and we can as well store them into the genes db.
-                self.store_gene_level_coverage_stats_into_genes_db(parameters)
+                self.store_gene_level_coverage_stats_into_genes_db(parameters, gene_caller_ids_to_exclude=failed_gene_caller_ids_set)
 
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
@@ -3192,6 +3213,12 @@ class ProfileSuperclass(object):
         """
         # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+        # if we fail the following, there is something absolutely very very wrong with
+        # this gene call as it does not seem to be in the split in which it is supposed
+        # to be.
+        if not len(gene_coverage_values_per_nt):
+            return None
 
         mean_coverage = numpy.mean(gene_coverage_values_per_nt)
         detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
@@ -3241,6 +3268,12 @@ class ProfileSuperclass(object):
 
         total_read_counts_in_sample = self.num_mapped_reads_per_sample[sample_name]
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+        # if we fail the following, there is something absolutely very very wrong with
+        # this gene call as it does not seem to be in the split in which it is supposed
+        # to be.
+        if not len(gene_coverage_values_per_nt):
+            return None
 
         # variables for INSEQ/Tn-SEQ views
         mean_coverage = 0
@@ -3317,6 +3350,34 @@ class ProfileSuperclass(object):
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
                                       zeros_are_outliers=False, mode=None, gene_caller_ids_of_interest=set([])):
+        """THE function that returns the gene level coverage stats.
+
+        Please note that the function returns a tuple of two items.
+
+        Returns
+        =======
+        gene_coverage_stats : dict
+            A nested dictionary that for each gene caller id, and sample name, contains
+            a dictionary that looks like this:
+                >>> (...): {'gene_callers_id': 0,
+                            'sample_name': 'USA_0114C_007D',
+                            'mean_coverage': 0.050724637681159424,
+                            'detection': 0.050724637681159424,
+                            'non_outlier_mean_coverage': 0.050724637681159424,
+                            'non_outlier_coverage_std': 0.2194348395612568,
+                            'gene_coverage_values_per_nt': array([1, 1, 1, ..., 0, 0, 0], dtype=uint16),
+                            'non_outlier_positions': array([ True,  True,  True, ...,  True,  True,  True])
+                            }, { (...)
+                >>>
+
+        failed_gene_caller_ids : set
+            A set of gene caller ids for which anvi'o failed to recover coverage
+            information for any reason.
+        """
+
+
+        failed_gene_caller_ids = set([])
+
         # sanity check
         if not isinstance(gene_caller_ids_of_interest, set):
             raise ConfigError("`gene_caller_ids_of_interest` must be of type `set`")
@@ -3361,23 +3422,36 @@ class ProfileSuperclass(object):
             # the magic happens here:
             for sample_name in self.p_meta['samples']:
                 if self.inseq_stats:
-                    output[gene_callers_id][sample_name] = self.get_gene_level_coverage_stats_entry_for_inseq(gene_callers_id=gene_callers_id,
-                        split_coverage=split_coverage,
-                        sample_name=sample_name,
-                        gene_start=gene_start,
-                        gene_stop=gene_stop,
-                        gene_length=gene_length,
-                        outliers_threshold=outliers_threshold)
+                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_inseq(gene_callers_id=gene_callers_id,
+                                                                                             split_coverage=split_coverage,
+                                                                                             sample_name=sample_name,
+                                                                                             gene_start=gene_start,
+                                                                                             gene_stop=gene_stop,
+                                                                                             gene_length=gene_length,
+                                                                                             outliers_threshold=outliers_threshold)
                 else:
-                    output[gene_callers_id][sample_name] = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
-                        split_coverage=split_coverage,
-                        sample_name=sample_name,
-                        gene_start=gene_start,
-                        gene_stop=gene_stop,
-                        gene_length=gene_length,
-                        outliers_threshold=outliers_threshold)
+                    gene_coverage_stats = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
+                                                                                               split_coverage=split_coverage,
+                                                                                               sample_name=sample_name,
+                                                                                               gene_start=gene_start,
+                                                                                               gene_stop=gene_stop,
+                                                                                               gene_length=gene_length,
+                                                                                               outliers_threshold=outliers_threshold)
 
-        return output
+                if not gene_coverage_stats:
+                    # if we got a None here, it means there was something wrong with this gene caller.
+                    failed_gene_caller_ids.add(gene_callers_id)
+
+                output[gene_callers_id][sample_name] = gene_coverage_stats
+
+        # in case there are genes that failed, we need to clean up the output before
+        # we return it
+        if len(failed_gene_caller_ids):
+            for gene_callers_id in failed_gene_caller_ids:
+                output.pop(gene_callers_id)
+
+        # now good to go
+        return output, failed_gene_caller_ids
 
 
     def get_blank_variability_dict(self):
