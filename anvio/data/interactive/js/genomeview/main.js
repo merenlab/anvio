@@ -334,7 +334,6 @@ function processState(stateName, stateData) {
   settings['state-name'] = stateName
   console.log('processing this state obj', stateData)
 
-  //calculateMaxGenomeLength()
   if (stateData.hasOwnProperty('group-layer-order')) {
     settings['group-layer-order'] = stateData['group-layer-order']
   }
@@ -486,8 +485,6 @@ function processState(stateName, stateData) {
   } else {
     settings['display']['link-gene-label-color-source'] = false
   }
-
-  // annotation color dict?
 }
 
 function loadAll(loadType) {
@@ -548,6 +545,7 @@ function loadAll(loadType) {
 
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
-  drawer.draw('draw from loadAll')
+  drawer.draw()
+  console.log('draw from loadAll')
   toastr.success(`Successfully loaded from ${settings['state-name']} state`)
 }
