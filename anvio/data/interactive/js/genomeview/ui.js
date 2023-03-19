@@ -1452,3 +1452,14 @@ function showAllHiddenGenes(){
   settings['display']['hidden'] = {}
   drawer.draw()
 }
+
+function exportToSVG() {
+  // TODO: 1) clip to viewbox (including vertical scroll?) 2) delete hidden canvas elements like labels
+  let filedata = canvas.toSVG();
+  let locfile = new Blob([filedata], {type: "image/svg+xml;charset=utf-8"});
+
+  let link = document.createElement("a");
+  link.href = URL.createObjectURL(locfile);
+  link.download = "myGenomeViewSession.svg";
+  link.click();
+}
