@@ -436,7 +436,7 @@ function showDeepDiveToolTip(event){
   <br>
 
   <h2>color</h2>
-  <div id="picker_tooltip" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
+  <div id="picker_tooltip" class="colorpicker" color="${event.target.fill}" background-color="${event.target.fill}" style="background-color: ${event.target.fill}; margin-right:16px; margin-left:16px"></div>
   <p>set gene arrow color</p>
   <br>
   <h2>metadata</h2>
@@ -785,10 +785,7 @@ function showTabularModal(){
           `
         })
       }
-      let geneHex
-      if(settings['display']['colors']['genes']?.[genome[0]]?.[gene['geneID']]){
-        geneHex = settings['display']['colors']['genes']?.[genome[0]]?.[gene['geneID']]
-      }
+      let geneHex = gene.fill
       totalTableString += `
       <tr id='${genome[0]}-table-row-${gene['geneID']}'>
         <td class='select'><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
@@ -820,7 +817,7 @@ function showTabularModal(){
 
         let [geneID, genomeID] = [el.id.split('-')[0], el.id.split('-')[1]]
 
-        if(settings['display']['colors']['genes']?.[genomeID]?.[geneID]){
+        if(settings['display']['colors']['genes']?.[genomeID]){
           settings['display']['colors']['genes'][genomeID][geneID] = '#' + hex
         } else {
           settings['display']['colors']['genes'][genomeID] = {}
@@ -860,13 +857,16 @@ function gatherTabularModalSelectedItems(action){
 
 function transitionTabularModalToDeepdive(event){
   let [genomeID, geneID] = event.target.id.split('-')
-  let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)
+  let genomeOfInterest = this.settings['genomeData']['genomes'].find(genome => genome[0] == genomeID)
 
   // this object generation is to mimick the expected behavior of a click event that the deepdive tooltip expects
   let generatedEventObj = {}
   generatedEventObj.target = {}
-  generatedEventObj.target.gene = genomeOfInterest[0][1]['genes']['dna'][geneID]
-  generatedEventObj.target.functions = genomeOfInterest[0][1]['genes']['functions'][geneID]
+  generatedEventObj.target.gene = genomeOfInterest[1]['genes']['dna'][geneID]
+  generatedEventObj.target.functions = genomeOfInterest[1]['genes']['functions'][geneID]
+  generatedEventObj.target.genomeID = genomeID
+  generatedEventObj.target.geneID = geneID
+  generatedEventObj.target.fill = canvas.getObjects().find(obj => obj.id == 'arrow' && obj.genomeID == genomeID && obj.geneID == geneID).fill
   $('#tabular-modal-body').modal('hide')
   showDeepDiveToolTip(generatedEventObj)
 }
