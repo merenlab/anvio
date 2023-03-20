@@ -1068,8 +1068,8 @@ function buildGroupLayersTable(layerLabel){
   let color;
   let show = settings['display']['layers'][layerLabel]
 
-  if(layerLabel == 'GC_Content') color = settings['display']['colors']['GC_Content'] // TODO: replace hardcoded values w state data
-  if(layerLabel == 'Coverage') color = settings['display']['colors']['coverage']
+  if(layerLabel == 'GC_Content') color = settings['display']['colors']['GC_Content']
+  if(layerLabel == 'Coverage') color = settings['display']['colors']['Coverage']
 
   if(layerLabel === 'Ruler' || layerLabel === 'Genome'){
     var template =  `<tr id=${layerLabel}>
@@ -1102,8 +1102,8 @@ function buildGroupLayersTable(layerLabel){
     onChange: function(hsb, hex, rgb, el, bySetColor) {
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
-        if(layerLabel == 'Coverage' && settings['display']['colors']['coverage'] != `#${hex}`){
-          settings['display']['colors']['coverage'] = `#${hex}`
+        if(layerLabel == 'Coverage' && settings['display']['colors']['Coverage'] != `#${hex}`){
+          settings['display']['colors']['Coverage'] = `#${hex}`
           drawer.draw()
         }
         else if(layerLabel == 'GC_Content' && settings['display']['colors']['GC_Content'] != `#${hex}`){
@@ -1116,6 +1116,7 @@ function buildGroupLayersTable(layerLabel){
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
   });
+  $(`#${layerLabel}_color`).css('background-color', settings['display']['colors'][layerLabel]);
 }
 
 function toggleAdditionalDataLayer(e){

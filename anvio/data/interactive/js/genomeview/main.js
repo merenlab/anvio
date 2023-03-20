@@ -122,8 +122,8 @@ function loadAdditionalDataLayers(){
 
       if (settings['additional-data-layers']['layers'].includes('Coverage')) {
         settings['group-layer-order'].unshift('Coverage')
-        settings['display']['layers']['coverage'] = true
-        settings['display']['colors']['coverage'] = '#000000'
+        settings['display']['layers']['Coverage'] = true
+        settings['display']['colors']['Coverage'] = '#000000'
         maxGroupSize += 1
       }
 
