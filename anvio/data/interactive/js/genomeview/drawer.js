@@ -131,7 +131,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
   if (settings['display']['show-genome-labels']) {
-    canvas.add(new fabric.Text(genomeID, { top: y - 5, selectable: false, fontSize: settings['display']['genome-label-size'], fontFamily: 'sans-serif', fontWeight: 'bold' }));
+    canvas.add(new fabric.Text(genomeID, { top: y - 5, selectable: false, fontSize: settings['display']['genome-label-size'], fontFamily: 'sans-serif', fontWeight: 'bold', fill: $('#genome_label_color').attr('color') }));
   }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x * scaleFactor + xDisps[genomeID]);
@@ -178,6 +178,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
         fontSize: settings['display']['gene-label-size'],
         angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
         left: xDisps[genomeID] + (gene.start + 50) * scaleFactor,
+        fill: $('#gene_label_color').attr('color'),
         scaleX: 0.5,
         scaleY: 0.5,
         editable: true,

@@ -297,15 +297,15 @@ function serializeSettings() {
   state['display']['gene-shade-style'] = $('#shade_by').val()
   state['display']['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
   state['display']['genome-label-size'] = $('#genome_label').val() 
-  state['display']['colors']['genome-label'] = $('#genome_label_color').attr(':color')
+  state['display']['colors']['genome-label'] = $('#genome_label_color').attr('color')
   state['display']['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
   state['display']['gene-label-size'] = $('#gene_label').val() 
-  state['display']['colors']['gene-label'] = $('#gene_label_color').attr(':color')
+  state['display']['colors']['gene-label'] = $('#gene_label_color').attr('color')
   state['display']['gene-text-position'] = $('#gene_text_pos').val() // gene label position; one of "above", "inside"
   state['display']['gene-text-angle'] = $('#gene_text_angle').val()
   state['display']['gc-window-size'] = $('#gc_window_size').val()
   state['display']['gc-step-size'] = $('#gc_step_size').val()
-  state['display']['gc-overlay-color'] = $('#gc_overlay_color').attr(':color')
+  state['display']['gc-overlay-color'] = $('#gc_overlay_color').attr('color')
   state['display']['color_db'] = $('#gene_color_order').val()
   state['display']['gene-label-source'] = $('#gene_label_source').val()
   state['display']['link-gene-label-color-source'] = $('#link_gene_label_color_source').is(':checked') // by default, allow users to display different gene arrow color / gene label source (false)
@@ -485,6 +485,19 @@ function processState(stateName, stateData) {
   } else {
     settings['display']['link-gene-label-color-source'] = false
   }
+
+  if(stateData?.['display']?.['colors']?.hasOwnProperty('genome-label')) {
+    settings['display']['colors']['genome-label'] = stateData['display']['colors']['genome-label'];
+  } else {
+    console.log("OOPS")
+    settings['display']['colors']['genome-label'] = '#000000'
+  }
+
+  if(stateData?.['display']?.['colors']?.hasOwnProperty('gene-label')) {
+    settings['display']['colors']['gene-label'] = stateData['display']['colors']['gene-label'];
+  } else {
+    settings['display']['colors']['gene-label'] = '#000000'
+  }
 }
 
 function loadAll(loadType) {
@@ -522,6 +535,11 @@ function loadAll(loadType) {
       }));
     }
   }
+
+  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
+  $('#gene_label_color').css('background-color', settings['display']['colors']['gene-label']);
+  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
+  $('#gene_label_color').attr('color', settings['display']['colors']['gene-label']);
 
   color_db = settings?.['display']?.['color_db'] ? settings['display']['color_db'] : $('#gene_color_order').val();
   $('#gene_color_order').val(color_db);
