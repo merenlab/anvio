@@ -1454,7 +1454,12 @@ function showAllHiddenGenes(){
 }
 
 function exportToSVG() {
-  // TODO: 1) clip to viewbox (including vertical scroll?) 2) delete hidden canvas elements like labels
+  // TODO: 1) clip to viewbox (including vertical scroll?)
+
+  // remove invisible objects so they don't show up on SVG export
+  // if this becomes a problem, an alternative is to clone canvas so we can remove invisible objects
+  canvas.getObjects().filter(obj => obj.visible == false).forEach(o => canvas.remove(o))
+
   let filedata = canvas.toSVG();
   let locfile = new Blob([filedata], {type: "image/svg+xml;charset=utf-8"});
 
