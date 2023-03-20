@@ -269,7 +269,7 @@ function toggleRightPanel(name) {
       $('#toggle-panel-settings-inner').html('&#9658;');
   } else {
       $('#toggle-panel-settings').removeClass('toggle-panel-settings-pos');
-      $('#toggle-panel-settings').html('&#9664;');
+      $('#toggle-panel-settings-inner').html('&#9664;');
   }
 
   if ($('#query-panel').is(':visible')) {
