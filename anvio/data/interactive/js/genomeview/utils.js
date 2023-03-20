@@ -247,7 +247,7 @@ function filterColorTable(thresh) {
 }
 
 function toggleRightPanel(name) {
-  ['#mouseover_panel', '#settings-panel', '#query-panel'].forEach(function(right_panel) {
+  ['#mouseover-panel', '#settings-panel', '#query-panel'].forEach(function(right_panel) {
       if (right_panel == name)
           return;
 
@@ -256,7 +256,7 @@ function toggleRightPanel(name) {
   console.log(name);
   $(name).toggle();
 
-  if ($('#mouseover_panel').is(':visible')) {
+  if ($('#mouseover-panel').is(':visible')) {
       $('#toggle-panel-mouseover').addClass('toggle-panel-mouseover-pos');
       $('#toggle-panel-mouseover-inner').html('&#9658;');
   } else {
