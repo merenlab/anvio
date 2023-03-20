@@ -146,7 +146,7 @@ function setEventListeners(){
   });
   document.body.addEventListener("keydown", function (ev) {
     if (ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
-      toggleSettingsPanel();
+      toggleRightPanel('#settings-panel')
     }
   });
   document.body.addEventListener("keydown", function (ev) {
@@ -1034,18 +1034,6 @@ function applyLasso() {
 }
 
 
-
-function toggleSettingsPanel() {
-  $('#settings-panel').toggle();
-
-  if ($('#settings-panel').is(':visible')) {
-    $('#toggle-panel-settings').addClass('toggle-panel-settings-pos');
-    $('#toggle-panel-settings-inner').html('&#9658;');
-  } else {
-    $('#toggle-panel-settings').removeClass('toggle-panel-settings-pos');
-    $('#toggle-panel-settings-inner').html('&#9664;');
-  }
-}
 
 function buildGenomesTable(genomes, order){
   $("#tbody_genomes").empty() // clear table before redraw
