@@ -67,16 +67,6 @@ def get_args() -> Namespace:
     groupB.add_argument(*A('collection-name'), **K('collection-name'))
     groupB.add_argument(*A('bin-id'), **K('bin-id'))
     groupB.add_argument(
-        '--discard-ties', default=False, action='store_true',
-        help=(
-            "The protein annotation assigned to the most genes in a gene cluster is imparted to "
-            "the cluster itself (also see '--consensus-threshold'). If a cluster has multiple "
-            "most-frequent gene annotations, then by default without this flag, one of these "
-            "annotations would be chosen arbitrarily for the cluster. With this flag, the cluster "
-            "would not be assigned a protein annotation due to the tie."
-        )
-    )
-    groupB.add_argument(
         '--consensus-threshold', default=None, type=float,
         help=(
             "If this argument is provided, then a protein annotation must be assigned to this "
@@ -84,6 +74,15 @@ def get_args() -> Namespace:
             "By default, without this argument, the annotation assigned to the most genes becomes "
             "that of the cluster (also see '--discard-ties'). The consensus threshold must be a "
             "number from 0 to 1."
+        )
+    )
+    groupB.add_argument(
+        '--discard-ties', default=False, action='store_true',
+        help=(
+            "By default, a gene cluster is assigned a protein ortholog annotation by finding the "
+            "ortholog that occurs in the greatest number of genes in the cluster (see "
+            "--consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With "
+            "this flag, the cluster is not assigned an ortholog annotation in case of a tie."
         )
     )
 
