@@ -456,7 +456,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
         cag = 'rRNA';
       } else if (gene.source == 'Transfer_RNAs') {
         cag = 'tRNA';
-      } else if (gene.functions !== null) {
+      } else if (functions != null) {
         cag = 'Function';
       }
       if ($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
