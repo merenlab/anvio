@@ -492,7 +492,8 @@ class KeggSetup(KeggContext):
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-setup-kegg-kofams
+        All the arguments supplied by user to anvi-setup-kegg-kofams. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
         Developers can use this flag to skip the sanity checks and creation of directories when testing this class
     """
@@ -502,11 +503,11 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.kegg_archive_path = args.kegg_archive
-        self.download_from_kegg = True if args.download_from_kegg else False
+        self.kegg_archive_path = A('kegg_archive')
+        self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
         self.only_database = True if A('only_database') else False
-        self.kegg_snapshot = args.kegg_snapshot
+        self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
@@ -638,7 +639,8 @@ class KeggSetup(KeggContext):
                     raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
                                       "or delete the KEGG data directory manually if you want to re-download KEGG data. "
                                       "See also the --only-database option, which you can use if you already "
-                                      "have all required KEGG data in that folder.")
+                                      "have all required KEGG data in that folder. (API users: skip this sanity "
+                                      "check by initializing this class with `skip_init=True`)")
                 else:
                     files_that_exist.append(f)
 
@@ -858,6 +860,157 @@ class KeggSetup(KeggContext):
                                       "If we cannot fix it, we may be able to provide you with a legacy KEGG "
                                       "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_pathway_file, first_char))
         self.progress.end()
+
+    def get_accessions_from_htext_file(self, htext_file):
+        """This function can read generic KEGG htext files to get a list of accessions.
+
+        Here is one example of the file structure, taken from a COMPOUND htext file:
+        +D	Biochemical compound
+        #<h2><a href="/kegg/brite.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; Compounds with Biological Roles</h2>
+        !
+        A<b>Organic acids</b>
+        B  Carboxylic acids [Fig]
+        C    Monocarboxylic acids
+        D      C00058  Formate; Methanoate
+        D      C00033  Acetate; Ethanoate
+        D      C00163  Propionate; Propanoate
+        D      C00246  Butyrate; Butanoate
+
+        The +(letter) at the start of the first line indicates how many levels the hierarchy contains (often C or D). For the purpose of
+        downloading other files, we only need the accessions from the lowest level. All other information is skipped when reading the file.
+
+        PARAMETERS
+        ==========
+        htext_file : str
+            The filename of the hierachical text file downloaded from KEGG
+        
+        RETURNS
+        =======
+        accession_list : list of str
+            Contains the KEGG identifiers contained in the lowest hierarchy of this file.
+        """
+
+        accession_list = []
+
+        filesnpaths.is_file_exists(htext_file)
+        filesnpaths.is_file_plain_text(htext_file)
+
+        f = open(htext_file, 'rU')
+        self.progress.new(f"Parsing KEGG htext file: {htext_file}")
+
+        target_level = None
+        for line in f.readlines():
+            line = line.strip('\n')
+            first_char = line[0]
+
+            if first_char == '+':  # first line of the file; second character gives us target level
+                target_level = line[1]
+            elif first_char == target_level: # need to extract the accession, which is second field (split on spaces)
+                fields = re.split('\s+', line)
+                accession_list.append(fields[1])
+            else: # skip everything else
+                continue
+
+        self.progress.end()
+
+        num_acc = len(accession_list)
+        self.run.info("Number of accessions found in htext file", num_acc)
+        return accession_list
+
+    
+    def download_generic_htext(self, h_accession, download_dir="./"):
+        """Downloads the KEGG htext file for the provided accession.
+        
+        PARAMETERS
+        ==========
+        h_accession : str
+            The accession for a KEGG hierarchy file
+        download_dir : str
+            Path to directory where file will be downloaded. Current working directory by default.
+        """
+
+        htext_url_prefix = "https://www.genome.jp/kegg-bin/download_htext?htext="
+        htext_url_suffix = ".keg&format=htext&filedir="
+        htext_url = htext_url_prefix+h_accession+htext_url_suffix
+
+        htext_file = h_accession + ".keg"
+        path_to_download_to = os.path.join(download_dir,htext_file)
+
+        if filesnpaths.is_file_exists(path_to_download_to, dont_raise=True):
+            if not self.args.reset:
+                raise ConfigError(f"The file at {path_to_download_to} already exists. If you are "
+                                  f"sure that you want to download it, you can avoid this error message "
+                                  f"by using the 'reset' parameter. Make sure that won't erase your other "
+                                  f"KEGG data, though.")
+
+        try:
+            utils.download_file(htext_url, path_to_download_to, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError(f"Anvi'o failed to download the KEGG htext file for {h_accession} from {htext_url}.")
+
+        return path_to_download_to
+
+    
+    def download_generic_flat_file(self, accession, download_dir="./"):
+        """Downloads the flat file for the given accession from the KEGG API.
+        
+        PARAMETERS
+        ==========
+        accession : str
+            A KEGG identifier
+        download_dir : str
+            Path to the directory in which to download the file. Current working directory by default.
+        """
+
+        file_path = os.path.join(download_dir, accession)
+        if filesnpaths.is_file_exists(file_path, dont_raise=True):
+            if not self.args.reset:
+                raise ConfigError(f"The file at {file_path} already exists. If you are "
+                                  f"sure that you want to download it, you can avoid this error message "
+                                  f"by using the 'reset' parameter. Make sure that won't erase your other "
+                                  f"KEGG data, though.")
+
+        utils.download_file(self.kegg_rest_api_get + '/' + accession,
+            file_path, progress=self.progress, run=self.run)
+        # verify entire file has been downloaded
+        f = open(file_path, 'rU')
+        f.seek(0, os.SEEK_END)
+        f.seek(f.tell() - 4, os.SEEK_SET)
+        last_line = f.readline().strip('\n')
+        if not last_line == '///':
+            raise ConfigError(f"The KEGG flat file {file_path} was not downloaded properly. We were expecting the last line in the file "
+                              f"to be '///', but instead it was {last_line}. Formatting of these files may have changed on the KEGG website. "
+                              f"Please contact the developers to see if this is a fixable issue.")
+
+    
+    def download_kegg_files_from_hierarchy(self, h_accession, download_dir="./"):
+        """Given the accession of a KEGG hierarchy, this function downloads all of its flat files.
+        
+        PARAMETERS
+        ==========
+        h_accession : str
+            The accession for a KEGG hierarchy file
+        download_dir : str
+            Path to the directory in which to download the files. Current working directory by default.
+            (a folder to store the hierarchy's flat files will be generated in this folder)
+        """
+
+        filesnpaths.is_output_dir_writable(download_dir)
+
+        htext_filename = self.download_generic_htext(h_accession, download_dir)
+        acc_list = self.get_accessions_from_htext_file(htext_filename)
+        
+        download_dir_name = os.path.join(download_dir,h_accession)
+        filesnpaths.gen_output_directory(download_dir_name, delete_if_exists=self.args.reset)
+
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        self.run.info("Number of KEGG files to download", len(acc_list))
+        self.run.info("Directory to store files", download_dir_name)
+
+        # download all modules
+        for acc in acc_list:
+            self.download_generic_flat_file(acc, download_dir_name)
 
 
     def process_brite_hierarchy_of_hierarchies(self):
