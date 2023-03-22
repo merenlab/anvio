@@ -32,6 +32,15 @@
 #     FASTA files from GTDB. For this, you could do something like this in msa_individual_genes
 #     directory anvi'o generates, and carefully survey the OUTPUT.
 #
+#             # first, some cleanup (many of the FASTA files from GTDB includes entries with
+#             # blank sequences, which upset NCBI toolkit)
+#             for i in *faa
+#             do
+#               sed -i '' 's/-//g' $i
+#               anvi-script-reformat-fasta $i --overwrite-input --ignore-empty-sequences
+#             done
+#
+#             # prepare all the search databases
 #             for i in *faa
 #             do
 #               makeblastdb -in $i -dbtype prot
