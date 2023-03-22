@@ -918,13 +918,15 @@ class KeggSetup(KeggContext):
         return accession_list
 
     
-    def download_generic_htext(self, h_accession):
+    def download_generic_htext(self, h_accession, download_dir="./"):
         """Downloads the KEGG htext file for the provided accession.
         
         PARAMETERS
         ==========
         h_accession : str
             The accession for a KEGG hierarchy file
+        download_dir : str
+            Path to directory where file will be downloaded. Current working directory by default.
         """
 
         htext_url_prefix = "https://www.genome.jp/kegg-bin/download_htext?htext="
@@ -932,17 +934,25 @@ class KeggSetup(KeggContext):
         htext_url = htext_url_prefix+h_accession+htext_url_suffix
 
         htext_file = h_accession + ".keg"
+        path_to_download_to = os.path.join(download_dir,htext_file)
+
+        if filesnpaths.is_file_exists(path_to_download_to, dont_raise=True):
+            if not self.args.reset:
+                raise ConfigError(f"The file at {path_to_download_to} already exists. If you are "
+                                  f"sure that you want to download it, you can avoid this error message "
+                                  f"by using the 'reset' parameter. Make sure that won't erase your other "
+                                  f"KEGG data, though.")
 
         try:
-            utils.download_file(htext_url, htext_file, progress=self.progress, run=self.run)
+            utils.download_file(htext_url, path_to_download_to, progress=self.progress, run=self.run)
         except Exception as e:
             print(e)
             raise ConfigError(f"Anvi'o failed to download the KEGG htext file for {h_accession} from {htext_url}.")
 
-        return htext_file
+        return path_to_download_to
 
     
-    def download_generic_flat_file(self, accession, download_dir):
+    def download_generic_flat_file(self, accession, download_dir="./"):
         """Downloads the flat file for the given accession from the KEGG API.
         
         PARAMETERS
@@ -950,10 +960,17 @@ class KeggSetup(KeggContext):
         accession : str
             A KEGG identifier
         download_dir : str
-            Path to the directory in which to download the file
+            Path to the directory in which to download the file. Current working directory by default.
         """
 
         file_path = os.path.join(download_dir, accession)
+        if filesnpaths.is_file_exists(file_path, dont_raise=True):
+            if not self.args.reset:
+                raise ConfigError(f"The file at {file_path} already exists. If you are "
+                                  f"sure that you want to download it, you can avoid this error message "
+                                  f"by using the 'reset' parameter. Make sure that won't erase your other "
+                                  f"KEGG data, though.")
+
         utils.download_file(self.kegg_rest_api_get + '/' + accession,
             file_path, progress=self.progress, run=self.run)
         # verify entire file has been downloaded
@@ -967,18 +984,24 @@ class KeggSetup(KeggContext):
                               f"Please contact the developers to see if this is a fixable issue.")
 
     
-    def download_kegg_files_from_hierarchy(self, h_accession):
+    def download_kegg_files_from_hierarchy(self, h_accession, download_dir="./"):
         """Given the accession of a KEGG hierarchy, this function downloads all of its flat files.
         
         PARAMETERS
         ==========
         h_accession : str
             The accession for a KEGG hierarchy file
+        download_dir : str
+            Path to the directory in which to download the files. Current working directory by default.
+            (a folder to store the hierarchy's flat files will be generated in this folder)
         """
 
-        htext_filename = self.download_generic_htext(h_accession)
+        filesnpaths.is_output_dir_writable(download_dir)
+
+        htext_filename = self.download_generic_htext(h_accession, download_dir)
         acc_list = self.get_accessions_from_htext_file(htext_filename)
-        download_dir_name = h_accession
+        
+        download_dir_name = os.path.join(download_dir,h_accession)
         filesnpaths.gen_output_directory(download_dir_name, delete_if_exists=self.args.reset)
 
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
