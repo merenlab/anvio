@@ -553,6 +553,11 @@ function showDeepDiveToolTip(event){
     submit: 0,
     colorScheme: 'light',
     onChange: function(hsb, hex, rgb, el, bySetColor) {
+        if(!$('#user_defined_colors').is(':checked')) {
+          $('#picker_tooltip').colpickHide();
+          toastr.warning('Cannot color genes manually when user-defined colors are turned off: please enable user-defined colors in the settings panel');
+          return;
+        }
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
@@ -815,6 +820,11 @@ function showTabularModal(){
     submit: 0,
     colorScheme: 'light',
     onChange: function(hsb, hex, rgb, el, bySetColor) {
+        if(!$('#user_defined_colors').is(':checked')) {
+          $('.colorpicker').colpickHide();
+          toastr.warning('Cannot color genes manually when user-defined colors are turned off: please enable user-defined colors in the settings panel')
+          return;
+        }
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
@@ -977,6 +987,11 @@ function showLassoMenu(selected_genes, x, y) {
       submit: 0,
       colorScheme: 'light',
       onChange: function(hsb, hex, rgb, el, bySetColor) {
+          if(!$('#user_defined_colors').is(':checked')) {
+            $('#picker_lasso').colpickHide();
+            toastr.warning('Cannot color genes manually when user-defined colors are turned off: please enable user-defined colors in the settings panel')
+            return;
+          }
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
