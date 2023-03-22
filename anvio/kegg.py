@@ -492,7 +492,8 @@ class KeggSetup(KeggContext):
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-setup-kegg-kofams
+        All the arguments supplied by user to anvi-setup-kegg-kofams. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
         Developers can use this flag to skip the sanity checks and creation of directories when testing this class
     """
@@ -502,11 +503,11 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.kegg_archive_path = args.kegg_archive
-        self.download_from_kegg = True if args.download_from_kegg else False
+        self.kegg_archive_path = A('kegg_archive')
+        self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
         self.only_database = True if A('only_database') else False
-        self.kegg_snapshot = args.kegg_snapshot
+        self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
@@ -638,7 +639,8 @@ class KeggSetup(KeggContext):
                     raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
                                       "or delete the KEGG data directory manually if you want to re-download KEGG data. "
                                       "See also the --only-database option, which you can use if you already "
-                                      "have all required KEGG data in that folder.")
+                                      "have all required KEGG data in that folder. (API users: skip this sanity "
+                                      "check by initializing this class with `skip_init=True`)")
                 else:
                     files_that_exist.append(f)
 
