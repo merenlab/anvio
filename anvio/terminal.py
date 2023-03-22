@@ -73,10 +73,10 @@ def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
 
     >>> f"You have {num_sequences_in_fasta_file} sequences in your FASTA file."
 
-    This will print "You have 1 seqeunces in your FASTA file" like an idiot when there is only
+    This will print "You have 1 sequences in your FASTA file" like an idiot when there is only
     one sequence. An alternative is to do something more elaborate:
 
-    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'seqeunces'}"
+    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'sequences'}"
 
     Even though this will work beautifully, it works at the expense of the readability of the code
     for a minor inconvenience.
