@@ -94,7 +94,7 @@ If you have an unbinned metagenome assembly, you can estimate metabolism for it 
 anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 {{ codestop }}
 
-{: .notice}
+{:.notice}
 In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 ### Estimation for a set of enzymes
@@ -480,11 +480,37 @@ If you have gotten an error that looks something like this:
 Config Error: The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now.
 ```
 
-This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
+This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen:
 
-1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently replaced that data with a new version by running %(anvi-setup-kegg-kofams)s again with the `--reset` flag (and likely also with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
-2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program. You can use %(anvi-db-info)s on the %(modules-db)s to learn the hash value.
-3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) have probably been using a non-default (or outdated) version of %(kegg-data)s. Note that this mismatch will definitely occur if you are using different versions of anvi'o. If they have the current default snapshot of KEGG data but you do not, then you can get that version onto your computer via the default usage of %(anvi-setup-kegg-kofams)s (with the same anvi'o version that they have). Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
+1. You upgraded to a new anvi'o version and downloaded the default %(kegg-data)s associated with that release, but are working with a %(contigs-db)s that was annotated with a previous anvi'o version (and therefore a different instance of %(kegg-data)s).
+2. Without changing anvi'o versions, you annotated your %(contigs-db)s with default %(kegg-data)s, and subsequently replaced that data with a different instance by running %(anvi-setup-kegg-kofams)s again with the `--reset` flag (and likely also with the `--kegg-archive`, `--kegg-snapshot`, or `--download-from-kegg` options, all of which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new data.
+3. You have multiple instances of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. 
+4. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer.
+
+There are two main solutions for most of these situations, which differ according to which set of annotations you would prefer to use.
+
+**First option**: you want to update your %(contigs-db)s to have new annotations that match to the current %(modules-db)s. In this case, you have to rerun %(anvi-run-kegg-kofams)s on the %(contigs-db)s. Make sure you provide the same `--kegg-data-dir` value (if any) that you put in the `anvi-estimate-metabolism` command that gave you this error. 
+
+**Second option**: you want to continue working with the existing set of annotations in the %(contigs-db)s. This means you need to change which %(modules-db)s you are using for %(anvi-estimate-metabolism)s. The error message should tell you the hash of the %(modules-db)s used for annotation. You can use that hash to identify the matching database so that you can either re-download that database, or (if you already have it) find it on your computer. 
+
+If you have multiple instances of %(kegg-data)s on your computer, you can run `anvi-db-info` on the %(modules-db)s in each of those directories until you find the one with the hash you are looking for. Then provide the path to that directory using the `kegg-data-dir` parameter of `anvi-estimate-metabolism`.
+
+{:.notice}
+If you've recently upgraded your anvi'o version (i.e., situation 1 from above) and you kept your previous installation of anvi'o, the database you want should still be available as part of that environment. You can find its location by activating the environment and running the following code in your terminal: `export ANVIO_MODULES_DB=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db'))"``. Use `echo $ANVIO_MODULES_DB` to print the path in your terminal, and `anvi-db-info $ANVIO_MODULES_DB` to verify that its hash matches to the one in your contigs database.
+
+If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following: 
+
+{{ codestart }}
+export ANVIO_KEGG_SNAPSHOTS=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml'))"`
+cat $ANVIO_KEGG_SNAPSHOTS`. 
+{{ codestop }}
+
+Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-kofams)s.
+
+**I can't find KEGG data with a matching hash!**
+If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
+
+If none of these solutions help you to get rid of the version incompatibility error, please feel free to reach out to the anvi'o developers for help.
 
 
 ## What to do if estimation is not working as expected for user-defined metabolic modules?
