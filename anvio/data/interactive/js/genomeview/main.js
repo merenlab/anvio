@@ -317,6 +317,7 @@ function serializeSettings() {
   state['display']['xDisps'] = xDisps;
   state['display']['thresh-count-gene-colors'] = $('#thresh_count').val() // min # occurences of annotation for filtering gene color table
   state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
+  state['display']['user-defined-colors'] = $('#user_defined_colors').is(':checked')
 
   $('.annotation_color').each((idx, row) => {
     let color = $(row).attr('color')
@@ -489,7 +490,6 @@ function processState(stateName, stateData) {
   if(stateData?.['display']?.['colors']?.hasOwnProperty('genome-label')) {
     settings['display']['colors']['genome-label'] = stateData['display']['colors']['genome-label'];
   } else {
-    console.log("OOPS")
     settings['display']['colors']['genome-label'] = '#000000'
   }
 

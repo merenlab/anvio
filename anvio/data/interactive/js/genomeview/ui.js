@@ -231,6 +231,9 @@ function setEventListeners(){
     settings['display']['link-gene-label-color-source'] = !settings['display']['link-gene-label-color-source'];
     drawer.draw()
   })
+  $('#user_defined_colors').on('change', function () {
+    drawer.draw();
+  });
   $('#show_only_cags_in_window').on('change', function () {
     filter_gene_colors_to_window = !filter_gene_colors_to_window;
     generateColorTable(settings.display.colors.genes.annotations[color_db], color_db);
@@ -315,6 +318,7 @@ function setEventListeners(){
   $('#show_gene_labels_box').prop("checked", settings['display']['show-gene-labels']);
   $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
   $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);
+  $('#user_defined_colors').prop("checked", settings['display']['user-defined-colors']);
 
   $("#tabular-modal-body").on('shown.bs.modal', function(){
     showTabularModal()

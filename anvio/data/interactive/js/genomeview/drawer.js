@@ -435,18 +435,26 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
 GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   let ind = this.settings['genomeData']['genomes'].findIndex(g => g[0] == genomeID);
   let functions = this.settings['genomeData']['genomes'][ind][1].genes.functions[geneID];
+  let color;
 
-  let color = $('#picker_None').length > 0 ? $('#picker_None').attr('color') : 'gray';
-  let cag = getCagForType(functions, color_db);
+  if($('#user_defined_colors').is(':checked')) {
+    color = '#808080' // default = grey
 
-  // TODO: use state instead of hardcoded color pickers
+    // check if gene is highlighted
+    // possibly deprecated - requires new table for user-defined colors
+    let pickerCode = genomeID + '-' + geneID;
+    if ($('#picker_' + pickerCode).length > 0) {
+      console.log(pickerCode)
+      color = $('#picker_' + pickerCode).attr('color');
+    }
 
-  // check if gene is highlighted
-  // possibly deprecated - requires new table for user-defined colors
-  let pickerCode = genomeID + '-' + geneID;
-  if ($('#picker_' + pickerCode).length > 0) {
-    color = $('#picker_' + pickerCode).attr('color');
+    // check for set colors
+    if (settings['display']['colors']['genes'][genomeID] && settings['display']['colors']['genes'][genomeID][geneID]) {
+      color = settings['display']['colors']['genes'][genomeID][geneID];
+    }
   } else {
+    color = $('#picker_None').length > 0 ? $('#picker_None').attr('color') : 'gray';
+    let cag = getCagForType(functions, color_db);
     if (cag) {
       cag = getCleanCagCode(cag);
       let color_other = $('#picker_Other').length > 0 ? $('#picker_Other').attr('color') : 'white';
@@ -461,11 +469,6 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
       }
       if ($('#picker_' + cag).length > 0) color = $('#picker_' + cag).attr('color');
     }
-  }
-
-  // check for set colors
-  if (settings['display']['colors']['genes'][genomeID] && settings['display']['colors']['genes'][genomeID][geneID]) {
-    color = settings['display']['colors']['genes'][genomeID][geneID];
   }
 
   let length = (gene.stop - gene.start) * scaleFactor;
