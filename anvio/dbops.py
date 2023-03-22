@@ -1372,6 +1372,9 @@ class PanSuperclass(object):
         self.skip_init_functions = A('skip_init_functions')
         self.just_do_it = A('just_do_it')
         self.include_gc_identity_as_function = A('include_gc_identity_as_function')
+        # these attributes involve determination of gene cluster function summaries
+        self.discard_ties = A('discard_ties')
+        self.consensus_threshold = A('consensus_threshold')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -1812,12 +1815,23 @@ class PanSuperclass(object):
         self.run.info('Output file for phylogenomics', output_file_path, mc='green')
 
 
-    def get_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source):
-        """Returns the most frequently occurring functional annotation across genes in a gene cluster
+    def get_gene_cluster_function_summary(
+        self,
+        gene_cluster_id,
+        functional_annotation_source,
+        discard_ties: bool = False,
+        consensus_threshold: float = None
+    ):
+        """
+        Returns the most frequently occurring functional annotation across genes in a gene cluster
         for a given functional annotation source.
 
-        A single function and accession number is determined purely based on frequencies of occurrence.
-        If multiple functions have the same number of votes then one will be chosen arbitrarily.
+        A single function and accession number is determined purely based on frequencies of
+        occurrence. If multiple most frequent functions are tied, then, by default, one is chosen
+        arbitrarily.
+
+        A threshold can be set for the proportion of the genes that must contain the most frequent
+        annotation.
 
         Parameters
         ==========
@@ -1827,10 +1841,22 @@ class PanSuperclass(object):
         functional_annotation_source : str
             A known functional annotation source
 
+        discard_ties : bool
+            If multiple annotations are most frequent among genes in a cluster, then do not assign
+            an annotation to the cluster itself when this argument is True. By default, this
+            argument is False, so one of the most frequent annotations would be arbitrarily chosen.
+
+        consensus_threshold : float
+            Without this argument (default None), the annotation most frequent among genes in a
+            cluster is assigned to the cluster itself. With this argument (a value on [0, 1]), at
+            least this proportion of genes in the cluster must have the most frequent annotation for
+            the cluster to be annotated.
+
         Returns
         =======
         (most_common_accession, most_common_function) : tuple
-            The representative function and its accession id for `gene_cluster_id` and `functional_annotation_source`
+            The representative function and its accession id for `gene_cluster_id` and
+            `functional_annotation_source`
         """
 
         if not self.functions_initialized:
@@ -1841,16 +1867,34 @@ class PanSuperclass(object):
                               "cluster).")
 
         functions_counter = Counter({})
+        num_annotated_genes = 0
         for genome_name in self.gene_clusters_functions_dict[gene_cluster_id]:
             for gene_caller_id in self.gene_clusters_functions_dict[gene_cluster_id][genome_name]:
                 if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id]:
                     annotation_blob = self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_caller_id][functional_annotation_source]
                     functions_counter[annotation_blob] += 1
+                    num_annotated_genes += 1
 
         if not len(functions_counter):
             return (None, None)
 
-        most_common_accession, most_common_function = functions_counter.most_common()[0][0].split('|||')
+        functions_counter = functions_counter.most_common()
+
+        if consensus_threshold and functions_counter[0][1] / num_annotated_genes < consensus_threshold:
+            return (None, None)
+
+        max_freq = 0
+        candidates = []
+        for annotation_blob, freq in functions_counter:
+            if freq < max_freq:
+                break
+            max_freq = freq
+            candidates.append(annotation_blob)
+
+        if discard_ties and len(candidates) > 1:
+            return (None, None)
+
+        most_common_accession, most_common_function = functions_counter[0][0].split('|||')
 
         return (most_common_accession, most_common_function)
 
@@ -1879,7 +1923,7 @@ class PanSuperclass(object):
         self.progress.new(f'Summarizing "{functional_annotation_source}" for gene clusters')
         self.progress.update('Creating a dictionary')
         for gene_cluster in self.gene_clusters_functions_dict:
-            accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source)
+            accession, function = self.get_gene_cluster_function_summary(gene_cluster, functional_annotation_source, discard_ties=self.discard_ties, consensus_threshold=self.consensus_threshold)
             gene_clusters_functions_summary_dict[gene_cluster] = {'gene_cluster_function': function, 'gene_cluster_function_accession': accession}
 
         self.progress.end()
@@ -1913,7 +1957,7 @@ class PanSuperclass(object):
             self.gene_clusters_functions_summary_dict[gene_cluster_id] = {}
 
             for functional_annotation_source in self.gene_clusters_function_sources:
-                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source)
+                accession, function = self.get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source, discard_ties=self.discard_ties, consensus_threshold=self.consensus_threshold)
                 self.gene_clusters_functions_summary_dict[gene_cluster_id][functional_annotation_source] = {'function': function, 'accession': accession}
 
             counter += 1

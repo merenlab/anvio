@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+DESCRIPTION = """This program writes a file of metabolic data for FBA models."""
+
+from sys import exit
+from argparse import Namespace
+
+import anvio.proteinorthology.refdbs as refdbs
+import anvio.proteinorthology.metabolicmodel as metabolicmodel
+
+from anvio import A, K
+from anvio.terminal import Run
+from anvio.errors import ConfigError
+from anvio import __version__ as VERSION
+from anvio.argparse import ArgumentParser
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = VERSION
+__authors__ = ['semiller10']
+__requires__ = ['functions']
+__provides__ = []
+__description__ = DESCRIPTION
+
+
+def main() -> None:
+    args = get_args()
+    if args.contigs_db:
+        external_genome = metabolicmodel.ExternalGenome(
+            args.contigs_db,
+            db_superdir=args.db_superdir,
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
+        )
+        external_genome.write_cobrapy_json(args.output_file)
+    elif args.genomes_storage and args.pan_db:
+        pangenome = metabolicmodel.Pangenome(
+            args.genomes_storage,
+            args.pan_db,
+            collection_name=args.collection_name,
+            bin_id=args.bin_id,
+            db_superdir=args.db_superdir,
+            discard_ties=args.discard_ties,
+            consensus_threshold=args.consensus_threshold,
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
+        )
+        pangenome.write_cobrapy_json(args.output_file)
+
+def get_args() -> Namespace:
+    parser = ArgumentParser(description=DESCRIPTION)
+
+    groupA = parser.add_argument_group(
+        "SINGLE GENOME INPUT", "Generate a metabolic model file from an \"external\" genome."
+    )
+    groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
+
+    groupB = parser.add_argument_group(
+        "PANGENOME INPUT",
+        "Generate a metabolic model file from a pangenome. 'genomes-storage' and 'pan-db' are "
+        "required. Gene clusters can be selected from the pangenome with both 'collection-name' "
+        "and 'bin-id'."
+    )
+    groupB.add_argument(*A('genomes-storage'), **K('genomes-storage'))
+    groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
+    groupB.add_argument(*A('collection-name'), **K('collection-name'))
+    groupB.add_argument(*A('bin-id'), **K('bin-id'))
+    groupB.add_argument(
+        '--consensus-threshold', default=None, type=float,
+        help=(
+            "If this argument is provided, then a protein annotation must be assigned to this "
+            "minimum proportion of genes in a cluster to be imparted to the cluster itself. "
+            "By default, without this argument, the annotation assigned to the most genes becomes "
+            "that of the cluster (also see '--discard-ties'). The consensus threshold must be a "
+            "number from 0 to 1."
+        )
+    )
+    groupB.add_argument(
+        '--discard-ties', default=False, action='store_true',
+        help=(
+            "By default, a gene cluster is assigned a protein ortholog annotation by finding the "
+            "ortholog that occurs in the greatest number of genes in the cluster (see "
+            "--consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With "
+            "this flag, the cluster is not assigned an ortholog annotation in case of a tie."
+        )
+    )
+
+    groupC = parser.add_argument_group("OUTPUT", "Output path of COBRApy JSON file")
+    groupC.add_argument(*A('output-file'), **K('output-file'))
+
+    groupD = parser.add_argument_group(
+        "MODEL", "Parameterization of the COBRApy JSON file unrelated to genomic inputs"
+    )
+    groupD.add_argument(
+        '--remove-missing-objective-metabolites', default=False, action='store_true',
+        help=(
+            "The metabolic model file includes the core E. coli biomass objective function (BOF), "
+            "as in the COBRApy example file, 'e_coli_core.json'. With this flag, metabolites in "
+            "the BOF are removed if they are not produced or consumed by enzymes in the model. "
+            "Without this flag, COBRApy cannot load the output JSON file if there are missing BOF "
+            "metabolites. Removed BOF metabolite data are reported to the terminal."
+        )
+    )
+
+    groupE = parser.add_argument_group("DATABASE", "Protein reference database information")
+    groupE.add_argument(
+        '--db-superdir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
+        help=(
+            "Directory in which database subdirectories (e.g., 'modelseed', 'kegg') are located."
+        )
+    )
+
+    args = parser.get_args(parser)
+    return args
+
+if __name__ == '__main__':
+    try:
+        main()
+    except ConfigError as e:
+        print(e)
+        exit(-1)
