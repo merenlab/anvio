@@ -30,6 +30,7 @@ __description__ =  ("Reformat FASTA file (remove contigs based on length, or bas
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 def reformat_FASTA(args):
@@ -58,8 +59,26 @@ def reformat_FASTA(args):
        if args.contigs_fasta.endswith(".gz"):
             args.output_file += ".gz"
 
-    filesnpaths.is_file_exists(args.contigs_fasta)
+    filesnpaths.is_file_fasta_formatted(args.contigs_fasta)
     filesnpaths.is_output_file_writable(args.output_file)
+
+    if not args.ignore_empty_sequences:
+        # check for empty sequences
+        fasta = u.SequenceSource(args.contigs_fasta)
+
+        sequence_lenghts = []
+        while next(fasta):
+            sequence_lenghts.append(len(fasta.seq))
+
+        num_empty_sequences = sequence_lenghts.count(0)
+        if num_empty_sequences:
+            raise ConfigError(f"We have a problem, Houston. Of the total {len(sequence_lenghts)} entries "
+                              f"in your FASTA file, {num_empty_sequences} {P('has', num_empty_sequences, alt='have' )} "
+                              f"no sequences (i.e., they're blank). You have two options: either (1) use the "
+                              f"flag `--ignore-empty-seqeunces` so anvi'o can ignore these FASTA entries, or "
+                              f"(2) go back to your FASTA file and figure out why they are empty.")
+    else:
+        pass
 
     report_file = open(args.report_file, 'w') if args.report_file and args.simplify_names else None
     prefix = args.prefix if args.prefix else None
@@ -117,6 +136,11 @@ def reformat_FASTA(args):
 
         total_num_nucleotides += l
         total_num_contigs += 1
+
+        if not l:
+            # this is an entry with a blank sequence
+            total_num_contigs_removed += 1
+            continue
 
         if replace_chars:
             seq = []
@@ -205,6 +229,8 @@ def reformat_FASTA(args):
     run.info('Enforce sequence type?', f"Yes, enforce '{args.seq_type}'" if args.seq_type else "No")
 
     run.warning(None, header='WHAT HAPPENED', lc="cyan")
+    if args.ignore_empty_sequences:
+        run.info('Entries w/blank sequences discarded', 'Yes', mc='red')
     run.info('Contigs removed', f'{pp(total_num_contigs_removed)} ({total_num_contigs_removed * 100.0 / total_num_contigs:.2f}% of all)', mc='green')
     run.info('Nucleotides removed', f'{pp(total_num_nucleotides_removed)} ({total_num_nucleotides_removed * 100.0 / total_num_nucleotides:.2f}% of all)', mc='green')
     run.info('Nucleotides modified', f'{pp(total_num_nucleotides_modified)} ({total_num_nucleotides_modified * 100.0 / total_num_nucleotides:.5f}% of all)', mc='green')
@@ -277,7 +303,10 @@ if __name__ == '__main__':
                               "by replaced with 'N'. If 'AA', any characters that are not 1-letter amino acid "
                               "characters will be replaced with 'X'. If you don't supply anything, no charaters will be "
                               "modified."))
-
+    groupD.add_argument('--ignore-empty-sequences', default=False, action="store_true",
+                        help=("If your FASTA file contains entries with no sequences, you will either have to ask anvi'o "
+                              "to ignore them, or go back to your file and figure out why it is the case (because you will "
+                              "certainly get an error somewhere during the process)."))
     args = parser.get_args(parser)
 
     try:

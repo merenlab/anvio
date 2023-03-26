@@ -150,3 +150,61 @@ Available KEGG snapshots are stored in the anvi'o code repository in `anvio/data
 5. If setup worked in the last step without errors, upload the `.tar.gz` archive to [Figshare](https://figshare.com/). If you need inspiration for filling out the keywords, categories, and description fields for the archive, you can check the previous KEGG snapshots that have been uploaded - for instance, [this one](https://figshare.com/articles/dataset/KEGG_build_2023-01-10/21862494) or [this one](https://figshare.com/articles/dataset/KEGG_build_2022-04-14/19601761). At minimum, we typically indicate the database version and hash value, and an example setup command (ie, the one from step 4), in the description of the dataset. Once the archive is published on Figshare (warning: this usually takes a while due to the large file size), you can get the download url of the archive by right-clicking on the Download button and copying the address, which should be a URL with a format similar to this example (but different numbers): `https://figshare.com/ndownloader/files/34817812`
 6. Add an entry to the bottom of the `anvio/data/misc/KEGG-SNAPSHOTS.yaml` file with the Figshare download URL, archive name, and MODULES.db hash and version. If you want this to become the default snapshot (which usually only changes before the next anvi'o release), you should also update the default `self.target_snapshot` variable in `anvio/kegg.py` to be this latest version that you have added.
 7. Test it by running `anvi-setup-kegg-kofams --kegg-data-dir TEST_NEW_KEGG`, and if it works you are done, and can push your changes to the anvi'o repository. :)
+
+## Downloading generic KEGG data in Python
+
+If you want to get some data from the KEGG website that is not included in our default download (or, if you only want a subset of that data without going through the whole setup process), you can use the anvi'o API to utilize our download functions. Here are some examples for using the `KeggSetup` class (for example, in the Python interpreter):
+
+### Loading the `KeggSetup` class
+
+`KeggSetup` is the class for downloading KEGG data (using KEGG's API). To use it in Python, you need to load the `kegg` module from anvi'o. When using it this way, we recommend skipping a variety of sanity checks using the `skip_init` parameter - this is mainly so that the class doesn't check for, remove, or complain about existing KEGG data on your computer.
+
+```python
+import anvio
+import argparse
+from anvio import kegg
+args = argparse.Namespace(reset=False)
+setup = kegg.KeggSetup(args, skip_init=True)
+```
+
+Once you have this class loaded, you can use its functions for a variety of download and processing tasks. We'll show some examples below.
+
+### Downloading all flat files associated with a KEGG hierarchy
+
+ The following example demonstrates the download of all KEGG COMPOUND files belonging to the BRITE hierarchy with accession `br08001`. Note that if you do not specify a download directory, the files will by default be downloaded to the current working directory.
+
+ ```python
+setup.download_kegg_files_from_hierarchy('br08001', download_dir='KEGG_COMPOUND')
+ ```
+
+ ### Downloading a hierarchical text file
+
+ If you just want to get a KEGG `htext` file (with extension `.keg`), use the following function:
+
+ ```python
+etup.download_generic_htext('br08001', download_dir='KEGG_COMPOUND')
+ ```
+
+ ### Processing a hierarchical text file
+
+ We have a few functions for reading KEGG's `htext` files. If all you want is a list of the accessions involved in this heirarchy (for instance, all compounds in a BRITE hierarchy for KEGG COMPOUND), use this one (the argument should be the path to the `htext` file):
+
+ ```python
+accession_list = setup.get_accessions_from_htext_file("br08001.keg")
+ ```
+
+ If you want to process the KEGG module `htext` file to get a dictionary of all modules and their names/classes/etc, use the following function. You will need to set the `kegg_module_file` attribute (of the KeggSetup class) to point to the location of the `modules.keg` file, and the function will store the module dictionary in the `module_dict` attribute.
+
+ ```python
+setup.kegg_module_file = "modules.keg"
+setup.process_module_file()
+setup.module_dict  # this attribute now stores the module dictionary
+ ```
+
+ ### Downloading a flat file using the KEGG API
+
+ Here is a wrapper function that will 'get' a flat file with the KEGG API. You can provide this function with the accession of the data you want (for instance, a module accession), and optionally a directory to download it into.
+
+ ```python
+setup.download_generic_flat_file('C00058',  download_dir='KEGG_COMPOUND')
+ ```
