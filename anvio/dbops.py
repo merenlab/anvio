@@ -3442,7 +3442,7 @@ class ProfileSuperclass(object):
 
         # we have to go back, Kate :(
         if not genes_in_splits_entries:
-            return {}
+            return {}, failed_gene_caller_ids
 
         output = {}
 
