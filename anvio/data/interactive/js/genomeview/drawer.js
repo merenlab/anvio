@@ -396,7 +396,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
     ruler.addWithUpdate();
     canvas.add(ruler);
   }
-  this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex)
 }
 
 /*
