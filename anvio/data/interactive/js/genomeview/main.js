@@ -522,7 +522,7 @@ function loadAll(loadType) {
     let label = new fabric.Text(genomeName, {
       angle: 270,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
-      stroke: settings['display']['genome-label-color'],
+      fill: settings['display']['colors']['genome-label'],
       fontSize: 30,
       fontFamily: 'sans-serif'
     });
