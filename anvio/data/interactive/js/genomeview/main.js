@@ -512,10 +512,12 @@ function loadAll(loadType) {
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   labelCanvas = new fabric.Canvas('genomeLabelCanvas');
-  toggleLabelCanvas();
+  setLabelCanvas();
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
+  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
+  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
   drawGenomeLabels();
 
   if(settings?.['display']?.['xDisps']) {
@@ -541,9 +543,7 @@ function loadAll(loadType) {
     }
   }
 
-  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
   $('#gene_label_color').css('background-color', settings['display']['colors']['gene-label']);
-  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
   $('#gene_label_color').attr('color', settings['display']['colors']['gene-label']);
 
   color_db = settings?.['display']?.['color_db'] ? settings['display']['color_db'] : $('#gene_color_order').val();

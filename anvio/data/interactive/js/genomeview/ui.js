@@ -212,7 +212,7 @@ function setEventListeners(){
   $('#show_genome_labels_box').on('change', function () {
     settings['display']['show-genome-labels'] = !settings['display']['show-genome-labels'];
     alignToGC = null;
-    toggleLabelCanvas();
+    setLabelCanvas();
   });
   $('#gene_label_source').on('change', function(){
     if(settings['display']['link-gene-label-color-source']){
@@ -1150,10 +1150,11 @@ function toggleAdditionalDataLayer(e){
   drawer.draw()
 }
 
-function toggleLabelCanvas() {
+function setLabelCanvas() {
+  let labelCanvasWidth = 70; // hardcoded based on fontSize=30
   if(settings['display']['show-genome-labels']) {
-    labelCanvas.setWidth(VIEWER_WIDTH * 0.05);
-    canvas.setWidth(VIEWER_WIDTH * 0.85);
+    labelCanvas.setWidth(labelCanvasWidth);
+    canvas.setWidth((VIEWER_WIDTH * 0.90) - labelCanvasWidth);
   } else {
     labelCanvas.setWidth(0);
     canvas.setWidth(VIEWER_WIDTH * 0.90);
