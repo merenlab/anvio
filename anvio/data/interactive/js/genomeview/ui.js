@@ -1079,6 +1079,7 @@ function buildGenomesTable(genomes, order){
 
   $("#tbody_genomes").on("sortupdate", (event, ui) => {
     changeGenomeOrder($("#tbody_genomes").sortable('toArray'))
+    drawGenomeLabels() // update label order
   })
 }
 
