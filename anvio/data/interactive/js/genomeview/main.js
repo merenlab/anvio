@@ -503,6 +503,12 @@ function processState(stateName, stateData) {
     spacing = 200
   }
   $("#genome_spacing").val(spacing);
+
+  $('#show_genome_labels_box').prop("checked", settings['display']['show-genome-labels']);
+  $('#show_gene_labels_box').prop("checked", settings['display']['show-gene-labels']);
+  $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
+  $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);
+  $('#user_defined_colors').prop("checked", settings['display']['user-defined-colors']);
 }
 
 function loadAll(loadType) {
