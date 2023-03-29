@@ -31,3 +31,4 @@ anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/output
 anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR
 anvio/data/misc/KEGG/
 anvio/data/misc/TRNA_TAXONOMY/
+anvio/data/misc/PROTEIN_DATA/
