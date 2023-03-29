@@ -99,7 +99,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
   let rect = new fabric.Rect({
     id: 'groupBorder' + orderIndex,
     top: top,
-    left: left,
+    left: left-50,
     width: width,
     height: height,
     stroke: 'pink',
@@ -130,10 +130,6 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
-
-  if (settings['display']['show-genome-labels']) {
-    canvas.add(new fabric.Text(genomeID, { top: y - 5, selectable: false, fontSize: settings['display']['genome-label-size'], fontFamily: 'sans-serif', fontWeight: 'bold', fill: $('#genome_label_color').attr('color') }));
-  }
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x * scaleFactor + xDisps[genomeID]);
   start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBounds()[0], calcXBounds()[1]);
@@ -708,7 +704,7 @@ GenomeDrawer.prototype.showAllADLPts = function () {
 
 GenomeDrawer.prototype.alignRulers = function () {
   for (genome of this.settings['genomeData']['genomes']) {
-    xDisps[genome[0]] = xDisplacement;
+    xDisps[genome[0]] = 0;
   }
   percentScale = false;
   drawScale();

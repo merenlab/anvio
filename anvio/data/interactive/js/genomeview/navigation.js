@@ -187,7 +187,7 @@ function drawScale() {
       if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
 
       drawer.draw()
-      let moveToX = percentScale ? getVPTForFrac()[0] : xDisplacement+scaleFactor*b[0];
+      let moveToX = percentScale ? getVPTForFrac()[0] : scaleFactor*b[0];
       canvas.absolutePan({x: moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)

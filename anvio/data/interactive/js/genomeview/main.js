@@ -34,7 +34,6 @@ var xDisps = {};
 var renderWindow = []; 
 var genomeMax = 0;
 var yOffset = 0 // y-location for the current additional data layer
-var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
 var marginTop = 20; // vertical margin at the top of the genome display
@@ -47,7 +46,7 @@ var order_gene_colors_by_count = true; // if true, order annotations on gene col
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
 var canvas;
-var genomeLabelsCanvas;
+var labelCanvas;
 var brush;
 var drawer
 var color_db; // functional annotation type currently being used to color genes
@@ -513,7 +512,7 @@ function loadAll(loadType) {
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
   labelCanvas = new fabric.Canvas('genomeLabelCanvas');
-  labelCanvas.setWidth(settings['display']['show-genome-labels'] ? VIEWER_WIDTH * 0.05 : 0);
+  toggleLabelCanvas();
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
@@ -530,12 +529,11 @@ function loadAll(loadType) {
     labelCanvas.add(label);
   });
 
-  xDisplacement = settings['display']['show-genome-labels'] ? 120 : 0;
   if(settings?.['display']?.['xDisps']) {
     xDisps = settings?.['display']['xDisps'];
   } else {
     for (genome of settings['genomeData']['genomes']) {
-      xDisps[genome[0]] = xDisplacement;
+      xDisps[genome[0]] = 0;
     }
   }
 
