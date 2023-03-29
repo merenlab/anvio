@@ -1151,7 +1151,20 @@ function toggleAdditionalDataLayer(e){
 }
 
 function toggleLabelCanvas() {
-  labelCanvas.setWidth(settings['display']['show-genome-labels'] ? VIEWER_WIDTH * 0.05 : 0);
+  if(settings['display']['show-genome-labels']) {
+    labelCanvas.setWidth(VIEWER_WIDTH * 0.05);
+    canvas.setWidth(VIEWER_WIDTH * 0.85);
+  } else {
+    labelCanvas.setWidth(0);
+    canvas.setWidth(VIEWER_WIDTH * 0.90);
+  }
+  if(!firstDraw) {
+    let ntsToShow = $('#brush_end').val() - $('#brush_start').val();
+    scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
+    drawer.draw();
+    let moveToX = percentScale ? getVPTForFrac()[0] : scaleFactor*$('#brush_start').val();
+    canvas.absolutePan({x: moveToX, y: 0});
+  }
 }
 
 /*
