@@ -33,7 +33,7 @@ var settings = {} // packaged obj sent off to GenomeDrawer
 var xDisps = {};
 var renderWindow = []; 
 var genomeMax = 0;
-var yOffset = 0 // vertical space between additional data layers
+var yOffset = 0 // y-location for the current additional data layer
 var xDisplacement = 0; // x-offset of genome start, activated if genome labels are shown
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
@@ -498,6 +498,13 @@ function processState(stateName, stateData) {
   } else {
     settings['display']['colors']['gene-label'] = '#000000'
   }
+
+  if(stateData?.['display']?.hasOwnProperty('genome-spacing')) {
+    spacing = parseInt(stateData['display']['genome-spacing']);
+  } else {
+    spacing = 200
+  }
+  $("#genome_spacing").val(spacing);
 }
 
 function loadAll(loadType) {
@@ -505,7 +512,24 @@ function loadAll(loadType) {
   canvas = new fabric.Canvas('myCanvas');
   canvas.setWidth(VIEWER_WIDTH * 0.85);
 
+  labelCanvas = new fabric.Canvas('genomeLabelCanvas');
+  labelCanvas.setWidth(settings['display']['show-genome-labels'] ? VIEWER_WIDTH * 0.05 : 0);
+
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
+
+  // draw genome labels
+  settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
+    let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
+    let label = new fabric.Text(genomeName, {
+      angle: 270,
+      top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
+      stroke: settings['display']['genome-label-color'],
+      fontSize: 30,
+      fontFamily: 'sans-serif'
+    });
+    labelCanvas.add(label);
+  });
+
   xDisplacement = settings['display']['show-genome-labels'] ? 120 : 0;
   if(settings?.['display']?.['xDisps']) {
     xDisps = settings?.['display']['xDisps'];
@@ -516,12 +540,6 @@ function loadAll(loadType) {
   }
 
   calculateMaxGenomeLength()
-
-  if (settings['display']['show-gene-labels'] && parseInt(settings['display']['arrow-style']) != 3) {
-    marginTop = 60;
-    spacing = settings['display']['genome-spacing'] ? parseInt(settings['display']['genome-spacing']) : 200; // TODO maybe we refactor this out into a setSpacing() method for clarity?
-    $("#genome_spacing").val(spacing);
-  }
 
   if(loadType == 'init') {
     $('#gene_color_order').append($('<option>', {
