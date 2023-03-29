@@ -571,6 +571,7 @@ function loadAll(loadType) {
   brush.extent([start, stop]);
   brush(d3.select(".brush"));
   updateRenderWindow();
+  setLabelCanvas(); // set a second time to adjust to new brush extent
 
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
