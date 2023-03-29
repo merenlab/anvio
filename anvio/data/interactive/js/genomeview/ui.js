@@ -292,7 +292,6 @@ function setEventListeners(){
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
-          drawer.draw();
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
