@@ -514,10 +514,10 @@ function processState(stateName, stateData) {
 function loadAll(loadType) {
   if(canvas) canvas.dispose(); // clear old canvas in fabric if we are calling loadAll from loadState (bugs here cause mismatch b/w 'this' and 'canvas')
   canvas = new fabric.Canvas('myCanvas');
-  //canvas.setWidth((VIEWER_WIDTH * 0.90) - 70);
 
+  if(labelCanvas) labelCanvas.dispose();
   labelCanvas = new fabric.Canvas('genomeLabelCanvas');
-  setLabelCanvas();
+  setLabelCanvas(); // also sets canvas width
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
