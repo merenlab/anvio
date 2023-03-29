@@ -692,7 +692,7 @@ GenomeDrawer.prototype.setPtsPerADL = function (newResolution) {
   if (isNaN(newResolution)) return;
   newResolution = parseInt(newResolution);
   if (newResolution < 0 || newResolution > genomeMax) {
-    alert(`Invalid value, genome spacing must be in range 0-${genomeMax}.`);
+    alert(`Invalid value, points per additional data layer must be in range 0-${genomeMax}.`);
     return;
   }
   settings['display']['adlPtsPerLayer'] = newResolution;
