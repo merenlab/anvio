@@ -1478,6 +1478,20 @@ function showAllHiddenGenes(){
   drawer.draw()
 }
 
+function drawGenomeLabels() {
+  settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
+    let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
+    let label = new fabric.Text(genomeName, {
+      angle: 270,
+      top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
+      fill: settings['display']['colors']['genome-label'],
+      fontSize: 30,
+      fontFamily: 'sans-serif'
+    });
+    labelCanvas.add(label);
+  });
+}
+
 function exportToSVG() {
   // TODO: 1) clip to viewbox (including vertical scroll?)
 

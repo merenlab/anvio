@@ -516,18 +516,7 @@ function loadAll(loadType) {
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
-  // draw genome labels
-  settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
-    let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
-    let label = new fabric.Text(genomeName, {
-      angle: 270,
-      top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
-      fill: settings['display']['colors']['genome-label'],
-      fontSize: 30,
-      fontFamily: 'sans-serif'
-    });
-    labelCanvas.add(label);
-  });
+  drawGenomeLabels();
 
   if(settings?.['display']?.['xDisps']) {
     xDisps = settings?.['display']['xDisps'];
