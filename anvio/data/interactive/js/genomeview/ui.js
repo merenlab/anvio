@@ -1391,6 +1391,7 @@ function resetFunctionColors(fn_colors=null) {
   if($('#gene_color_order') == null) return;
   delete settings['display']['colors']['genes']['annotations'][color_db];
   generateColorTable(fn_colors, color_db);
+  drawer.draw();
 }
 
 /*
