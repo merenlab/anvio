@@ -292,6 +292,7 @@ function setEventListeners(){
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
+          drawGenomeLabels();
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
@@ -1478,12 +1479,13 @@ function showAllHiddenGenes(){
 }
 
 function drawGenomeLabels() {
+  labelCanvas.clear();
   settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
     let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
     let label = new fabric.Text(genomeName, {
       angle: 270,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
-      fill: settings['display']['colors']['genome-label'],
+      fill: $('#genome_label_color').attr('color'),
       fontSize: 30,
       fontFamily: 'sans-serif'
     });
