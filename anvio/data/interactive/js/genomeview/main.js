@@ -155,7 +155,6 @@ function loadState() {
       try {
         processState(state_name, response['content']);
         loadAll('reload')
-        setEventListeners() // this needs to be called a second time on reload for some reason...
       } catch (e) {
         console.error("Exception thrown", e.stack);
         toastr.error('Failed to parse state data, ' + e);

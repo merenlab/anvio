@@ -24,9 +24,9 @@
  */
 
 /*
- *  set event listeners for DOM elements, user input, default jquery values
+ *  set event listeners for fabric canvas (must be called whenever canvas is reloaded)
  */
-function setEventListeners(){
+function setCanvasListeners(){
   canvas.on('mouse:over', (event) => {
     if (event.target && event.target.id === 'arrow') {
       showToolTip(event)
@@ -132,6 +132,34 @@ function setEventListeners(){
     // }
   })
 
+  // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
+
+  // drag box selection
+  canvas.on('selection:created', (e) => {
+    let selected_genes = e.selected.filter(obj => obj.id == 'arrow');
+
+    if(selected_genes.length > 1) {
+      showLassoMenu(selected_genes, e.e.clientX, e.e.clientY);
+    }
+
+    // disable group selection
+    if (e.target.type === 'activeSelection') {
+      canvas.discardActiveObject();
+    }
+  })
+
+  canvas.on('mouse:down', (event) => {
+    if(event.target && event.target.id === 'arrow'){
+      showDeepDiveToolTip(event)
+    }
+    $('#lasso-modal-body').modal('hide')
+  })
+}
+
+/*
+ *  set event listeners for DOM elements, user input, default jquery values (this should only be called once)
+ */
+function setEventListeners(){
   $('#alignClusterInput').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.alignToCluster($(this).val());
@@ -326,29 +354,6 @@ function setEventListeners(){
     $('#tabular-modal-nav-tabs').html('')
     $('#modal-tab-content').html('')
   });
-
-  // can either set arrow click listener on the canvas to check for all arrows, or when arrow is created.
-
-  // drag box selection
-  canvas.on('selection:created', (e) => {
-    let selected_genes = e.selected.filter(obj => obj.id == 'arrow');
-
-    if(selected_genes.length > 1) {
-      showLassoMenu(selected_genes, e.e.clientX, e.e.clientY);
-    }
-
-    // disable group selection
-    if (e.target.type === 'activeSelection') {
-      canvas.discardActiveObject();
-    }
-  })
-
-  canvas.on('mouse:down', (event) => {
-    if(event.target && event.target.id === 'arrow'){
-      showDeepDiveToolTip(event)
-    }
-    $('#lasso-modal-body').modal('hide')
-  })
 }
 function showDeepDiveToolTip(event){
   $('.canvas-container').dblclick(function(){
