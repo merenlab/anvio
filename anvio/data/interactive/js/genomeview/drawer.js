@@ -724,6 +724,7 @@ GenomeDrawer.prototype.setGenomeSpacing = function (newSpacing) {
   }
   spacing = newSpacing;
   this.draw();
+  drawGenomeLabels();
 }
 
 GenomeDrawer.prototype.setScaleInterval = function (newScale) {
