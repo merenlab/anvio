@@ -508,7 +508,7 @@ function processState(stateName, stateData) {
 function loadAll(loadType) {
   if(canvas) canvas.dispose(); // clear old canvas in fabric if we are calling loadAll from loadState (bugs here cause mismatch b/w 'this' and 'canvas')
   canvas = new fabric.Canvas('myCanvas');
-  canvas.setWidth(VIEWER_WIDTH * 0.85);
+  //canvas.setWidth((VIEWER_WIDTH * 0.90) - 70);
 
   labelCanvas = new fabric.Canvas('genomeLabelCanvas');
   setLabelCanvas();
@@ -551,7 +551,8 @@ function loadAll(loadType) {
 
   buildGenomesTable(settings['genomeData']['genomes'], 'alphabetical') // hardcode order method until backend order data is hooked in
   drawScale();
-  setEventListeners()
+  if(firstDraw) setEventListeners();
+  setCanvasListeners();
 
   buildGeneLabelsSelect()
   let [start, stop] = settings['display']['nt_window'];
