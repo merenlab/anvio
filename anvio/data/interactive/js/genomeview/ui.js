@@ -1000,7 +1000,8 @@ function showLassoMenu(selected_genes, x, y) {
           selected_genes.forEach(gene => {
             gene.fill = '#' + hex;
             gene.dirty = true;
-            settings['display']['colors']['genes'][selected_genes[0].genomeID][gene.geneID] = '#' + hex;
+            if(!settings['display']['colors']['genes'][gene.genomeID]) settings['display']['colors']['genes'][gene.genomeID] = {};
+            settings['display']['colors']['genes'][gene.genomeID][gene.geneID] = '#' + hex;
           });
           canvas.renderAll();
       }
