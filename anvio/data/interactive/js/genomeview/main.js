@@ -546,6 +546,7 @@ function loadAll(loadType) {
         text: fn
       }));
     }
+    buildGeneLabelsSelect()
   }
 
   $('#gene_label_color').css('background-color', settings['display']['colors']['gene-label']);
@@ -560,7 +561,6 @@ function loadAll(loadType) {
   if(firstDraw) setEventListeners();
   setCanvasListeners();
 
-  buildGeneLabelsSelect()
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);
   $('#brush_end').val(stop);
