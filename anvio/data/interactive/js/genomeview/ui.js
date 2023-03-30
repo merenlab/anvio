@@ -1489,7 +1489,9 @@ function drawGenomeLabels() {
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
       fill: $('#genome_label_color').attr('color'),
       fontSize: spacing * 3/20,
-      fontFamily: 'sans-serif'
+      fontFamily: 'sans-serif',
+      selectable: false,
+      hoverCursor: 'default'
     });
     labelCanvas.add(label);
   });
