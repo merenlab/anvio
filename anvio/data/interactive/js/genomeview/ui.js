@@ -1149,6 +1149,7 @@ function toggleAdditionalDataLayer(e){
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   drawer.draw()
+  drawGenomeLabels()
 }
 
 function setLabelCanvas() {
