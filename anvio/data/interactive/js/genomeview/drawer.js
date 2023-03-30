@@ -116,10 +116,11 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
  */
 GenomeDrawer.prototype.calculateLayerSizes = function () {
   let parityHeight = spacing / maxGroupSize
-  let rulerHeight = Math.floor(parityHeight * .5) // some arbitrary percentage of parity since ruler should get less y-axis space
+  let rulerHeight = settings['display']['layers']['Ruler'] ? Math.floor(parityHeight * .5) : 0 // some arbitrary percentage of parity since ruler should get less y-axis space
 
   // with the extra space carved out by a smaller rulerHeight, distribute the excess evenly amongst all layers that are NOT rulers
-  let dataLayerHeight = Math.floor(parityHeight * (1 + (.5 / (maxGroupSize - 1))))
+  let dataLayerHeight = Math.floor(parityHeight + rulerHeight / (maxGroupSize - 1))
+  if(maxGroupSize == 1) dataLayerHeight = parityHeight;
   return [dataLayerHeight, rulerHeight]
 }
 
