@@ -41,6 +41,7 @@ var groupLayerPadding = 10 // padding between each layer in a given genome group
 var groupMargin = 100 // space between each genome group
 var labelSpacing = 30;  // spacing default for genomeLabel canvas
 var spacing = 50; // multiplied by maxGroupSize to determine group height allocation
+var labelCanvasWidth = 70 // default width of genomeLabelCanvas
 var percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
 var order_gene_colors_by_count = true; // if true, order annotations on gene color table by descending order of count, otherwise order alphabetically
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split

@@ -1152,7 +1152,7 @@ function toggleAdditionalDataLayer(e){
 }
 
 function setLabelCanvas() {
-  let labelCanvasWidth = 70; // hardcoded based on fontSize=30
+  labelCanvasWidth = spacing * 7/20;
   if(settings['display']['show-genome-labels']) {
     labelCanvas.setWidth(labelCanvasWidth);
     canvas.setWidth((VIEWER_WIDTH * 0.90) - labelCanvasWidth);
