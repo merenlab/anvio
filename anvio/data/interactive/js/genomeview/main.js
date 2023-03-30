@@ -39,7 +39,6 @@ var maxGroupSize = 2 // used to calculate group height. base of 2 as each group 
 var marginTop = 20; // vertical margin at the top of the genome display
 var groupLayerPadding = 10 // padding between each layer in a given genome group
 var groupMargin = 100 // space between each genome group
-var labelSpacing = 30;  // spacing default for genomeLabel canvas
 var spacing = 50; // multiplied by maxGroupSize to determine group height allocation
 var labelCanvasWidth = 70 // default width of genomeLabelCanvas
 var percentScale = false; // if true, scale measured in proportions (0-1) of total sequence breadth rather than NT ranges.
