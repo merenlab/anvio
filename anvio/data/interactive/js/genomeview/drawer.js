@@ -213,7 +213,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
         if (this.settings['display']?.hasOwnProperty('gene-labels')) {
           return this.settings['display']['gene-labels'][genomeID][geneID]
         } else {
-          return 'None'
+          return ''
         }
       } else {
         // operating under the assumption that
