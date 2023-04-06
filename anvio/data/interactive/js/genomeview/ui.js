@@ -193,6 +193,12 @@ function setEventListeners(){
       $(this).blur();
     }
   });
+  $('#genome_margin').on('keydown', function (e) {
+    if (e.keyCode == 13) { // 13 = enter key
+      drawer.setGenomeMargin($(this).val());
+      $(this).blur();
+    }
+  });
   $('#gene_label').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGeneLabelSize($(this).val());

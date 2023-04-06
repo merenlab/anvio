@@ -727,6 +727,18 @@ GenomeDrawer.prototype.setGenomeSpacing = function (newSpacing) {
   setLabelCanvas(); // update label canvas width
 }
 
+GenomeDrawer.prototype.setGenomeMargin = function (newMargin) {
+  if (isNaN(newMargin)) return;
+  newMargin = parseInt(newMargin);
+  if (newMargin < 0 || newMargin > 1000) {
+    alert(`Invalid value, genome margin must be in range 0-1000.`);
+    return;
+  }
+  groupMargin = newMargin;
+  this.draw();
+  drawGenomeLabels(); // update label font size
+}
+
 GenomeDrawer.prototype.setScaleInterval = function (newScale) {
   if (isNaN(newScale)) return;
   newScale = parseInt(newScale);

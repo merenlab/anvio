@@ -290,6 +290,7 @@ function serializeSettings() {
   state['display']['dynamic-scale-interval'] = $('#show_dynamic_scale_box').is(':checked') // if true, scale interval automatically adjusts to zoom level
   state['display']['genome-scale-interval'] = parseInt($('#genome_scale_interval').val())
   state['display']['genome-spacing'] = $('#genome_spacing').val()
+  state['display']['genome-margin'] = $('#genome_margin').val()
   state['display']['arrow-style'] = $('#arrow_style').val()
   state['display']['gene-link-style'] = $('#link_style').val()
   state['display']['gene-shade-style'] = $('#shade_by').val()
@@ -503,6 +504,13 @@ function processState(stateName, stateData) {
     spacing = 200
   }
   $("#genome_spacing").val(spacing);
+
+  if(stateData?.['display']?.hasOwnProperty('genome-margin')) {
+    groupMargin = parseInt(stateData['display']['genome-margin']);
+  } else {
+    groupMargin = 100
+  }
+  $("#genome_margin").val(groupMargin);
 
   $('#show_genome_labels_box').prop("checked", settings['display']['show-genome-labels']);
   $('#show_gene_labels_box').prop("checked", settings['display']['show-gene-labels']);
