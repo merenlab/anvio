@@ -1498,7 +1498,7 @@ function drawGenomeLabels() {
   labelCanvas.clear();
   settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
     let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
-    let label = new fabric.Text(genomeName, {
+    let label = new fabric.Text(genomeName.substring(0,GENOME_LABEL_CHAR_LIMIT), {
       angle: $('#rotate_genome_labels_box').prop("checked") ? 270 : 0,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
       fill: $('#genome_label_color').attr('color'),
