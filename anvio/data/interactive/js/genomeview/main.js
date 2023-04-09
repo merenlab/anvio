@@ -295,6 +295,7 @@ function serializeSettings() {
   state['display']['gene-link-style'] = $('#link_style').val()
   state['display']['gene-shade-style'] = $('#shade_by').val()
   state['display']['show-genome-labels'] = $('#show_genome_labels_box').is(':checked')
+  state['display']['rotate-genome-labels'] = $('#rotate_genome_labels_box').is(':checked')
   state['display']['genome-label-size'] = $('#genome_label').val() 
   state['display']['colors']['genome-label'] = $('#genome_label_color').attr('color')
   state['display']['show-gene-labels'] = $('#show_gene_labels_box').is(':checked')
@@ -513,6 +514,7 @@ function processState(stateName, stateData) {
   $("#genome_margin").val(groupMargin);
 
   $('#show_genome_labels_box').prop("checked", settings['display']['show-genome-labels']);
+  $('#rotate_genome_labels_box').prop("checked", settings['display']['rotate-genome-labels']);
   $('#show_gene_labels_box').prop("checked", settings['display']['show-gene-labels']);
   $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
   $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);

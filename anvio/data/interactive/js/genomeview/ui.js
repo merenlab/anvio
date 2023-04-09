@@ -248,6 +248,12 @@ function setEventListeners(){
     alignToGC = null;
     setLabelCanvas();
   });
+  $('#rotate_genome_labels_box').on('change', function () {
+    settings['display']['rotate-genome-labels'] = !settings['display']['rotate-genome-labels'];
+    alignToGC = null;
+    drawGenomeLabels();
+    setLabelCanvas();
+  });
   $('#gene_label_source').on('change', function(){
     if(settings['display']['link-gene-label-color-source']){
       color_db = $(this).val();
@@ -1160,7 +1166,7 @@ function toggleAdditionalDataLayer(e){
 }
 
 function setLabelCanvas() {
-  labelCanvasWidth = spacing * 7/20;
+  labelCanvasWidth = $('#rotate_genome_labels_box').prop("checked") ? spacing * 7/20 : spacing * 1.25;
   if(settings['display']['show-genome-labels']) {
     labelCanvas.setWidth(labelCanvasWidth);
     canvas.setWidth((VIEWER_WIDTH * 0.90) - labelCanvasWidth);
@@ -1493,7 +1499,7 @@ function drawGenomeLabels() {
   settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
     let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
     let label = new fabric.Text(genomeName, {
-      angle: 270,
+      angle: $('#rotate_genome_labels_box').prop("checked") ? 270 : 0,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
       fill: $('#genome_label_color').attr('color'),
       fontSize: spacing * 3/20,
@@ -1501,6 +1507,7 @@ function drawGenomeLabels() {
       selectable: false,
       hoverCursor: 'default'
     });
+    if(!$('#rotate_genome_labels_box').prop("checked")) label.top -= genomeHeight/2;
     labelCanvas.add(label);
   });
 }
