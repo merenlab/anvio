@@ -173,6 +173,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
         id: 'geneLabel',
         groupID: genomeID,
         fontSize: settings['display']['gene-label-size'],
+        fontFamily: 'sans-serif',
         angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
         left: xDisps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
         fill: $('#gene_label_color').attr('color'),
