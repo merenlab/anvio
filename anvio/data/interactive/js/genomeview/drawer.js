@@ -93,7 +93,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
 
   let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
   let left = -20
-  let width = genomeMax*scaleFactor + 40
+  let width = genomeMax*scaleFactor + 50
   let height = spacing + 50
 
   let rect = new fabric.Rect({
