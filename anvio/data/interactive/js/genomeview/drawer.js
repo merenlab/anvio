@@ -89,21 +89,22 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
  */
 GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
 
-  let top = yOffset + marginTop - 20 + (orderIndex * groupMargin)
-  let left = 0
-  let width = genomeMax
-  let height = spacing + 60
+  if(maxGroupSize == 1) return;
+
+  let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
+  let left = -20
+  let width = genomeMax*scaleFactor + 40
+  let height = spacing + 50
 
   let rect = new fabric.Rect({
     id: 'groupBorder' + orderIndex,
     top: top,
-    left: left-50,
+    left: left,
     width: width,
     height: height,
-    stroke: 'pink',
-    strokeWidth: 2,
-    fill: "pink",
-    opacity: .2,
+    stroke: 'black',
+    strokeWidth: 0.5,
+    fill: '',
     selectable: false,
     hoverCursor: 'default'
   })
@@ -149,7 +150,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     hoverCursor: 'default'
   });
   canvas.add(lineObj);
-  this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
+  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
 
   // draw set labels
   if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
@@ -338,7 +339,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     genome: genomeID
   })
   canvas.bringToFront(shadedObj)
-  this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight, orderIndex)
+  this.addBackgroundShade(startingTop, startingLeft, genomeMax*scaleFactor, layerHeight, orderIndex)
 }
 
 /*
@@ -391,7 +392,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
     ruler.addWithUpdate();
     canvas.add(ruler);
   }
-  this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex)
+  //this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex)
 }
 
 /*
