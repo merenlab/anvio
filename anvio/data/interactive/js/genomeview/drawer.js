@@ -174,7 +174,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
         groupID: genomeID,
         fontSize: settings['display']['gene-label-size'],
         angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
-        left: xDisps[genomeID] + (gene.start + 50) * scaleFactor,
+        left: xDisps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
         fill: $('#gene_label_color').attr('color'),
         scaleX: 0.5,
         scaleY: 0.5,
@@ -532,7 +532,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
     left: xDisps[genomeID] + (1.5 + gene.start) * scaleFactor,
     fill: color,
     stroke: 'gray',
-    strokeWidth: style == 3 ? 3 : 1.5
+    strokeWidth: 1.5
   });
   if (gene.direction == 'r') arrow.rotate(180);
 
