@@ -421,9 +421,10 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     width: width,
     height: height,
     fill: "#b0b0b0",
+    stroke: 'black',
     selectable: false,
     hoverCursor: 'default',
-    opacity: .5
+    opacity: .25
   });
   // canvas.sendToBack(border)
   canvas.sendToBack(background)
