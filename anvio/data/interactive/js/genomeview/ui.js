@@ -1069,19 +1069,10 @@ function applyLasso() {
 function buildGenomesTable(genomes, order){
   $("#tbody_genomes").empty() // clear table before redraw
   genomes.map(genome => {
-    var height = '50';
-    var margin = '15';
     let genomeLabel= genome[0];
     var template = `<tr id=${genomeLabel}>
                   <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
                   <td> ${genomeLabel} </td>
-                  <td>n/a</td>
-                  <td>n/a</td>
-                  <td>n/a</td>
-                  <td><input class="input-height" type="text" size="3" id="height_${genomeLabel}" value="${height}"></input></td>
-                  <td class="column-margin"><input class="input-margin" type="text" size="3" id="margin_${genomeLabel}" value="${margin}"></input></td>
-                  <td>n/a</td>
-                  <td>n/a</td>
                   <td><input type="checkbox" class="layer_selectors"></input></td>
                   </tr>;`
 
