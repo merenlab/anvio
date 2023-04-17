@@ -1520,6 +1520,12 @@ function exportToSVG() {
   canvas.getObjects().filter(obj => obj.visible == false).forEach(o => canvas.remove(o))
 
   let filedata = canvas.toSVG();
+
+  // append labelSVG to end of main canvas SVG
+  let labelSVG = labelCanvas.toSVG();
+  labelSVG = labelSVG.substring(labelSVG.indexOf("<g"), labelSVG.length-7);
+  filedata = filedata.slice(0, filedata.length-6) + labelSVG + filedata.slice(filedata.length-6, filedata.length);
+
   let locfile = new Blob([filedata], {type: "image/svg+xml;charset=utf-8"});
 
   let link = document.createElement("a");
