@@ -910,6 +910,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
   let glowPayload = Array()
   let foundInGenomes = Object()
   let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
+                                               .filter( m => m.type == 'tag')
   matches.map(metadata => {
     glowPayload.push({
       geneID: metadata.gene,
