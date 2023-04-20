@@ -373,7 +373,8 @@ function showDeepDiveToolTip(event){
   let totalMetadataString = String()
   let totalAnnotationsString = String()
   let metadataLabel = String()
-  let button = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query Sequence for matches</button>`
+  let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
+  let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
 
   if(settings['display']?.['metadata']){
     let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
@@ -383,8 +384,9 @@ function showDeepDiveToolTip(event){
 
         totalMetadataString += `
         <tr>
-        <td>${metadata.label}</td>
-        <td>${metadata.type == 'tag'? button : 'n/a'}</td>
+        <td class='metadata'>${metadata.label}</td>
+        <td>${metadata.type == 'tag'? queryBtn : 'n/a'}</td>
+        <td>${removeBtn}</td>
         </tr>
         `
       })
@@ -462,8 +464,8 @@ function showDeepDiveToolTip(event){
       <textarea id='metadata-gene-description' placeholder='metadata description'></textarea>
       <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
       <br>
-      <table class="table table-striped">
-        <thead><th>metadata</th><th>action</th></thead>
+      <table class="table table-striped" id="metadata-deepdive-table">
+        <thead><th>metadata</th><th>action</th><th>remove</th></thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
@@ -485,6 +487,17 @@ function showDeepDiveToolTip(event){
 
   $('#metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
+  })
+
+  $('#metadata-remove').on('click', function(){
+    let gene = event.target.geneID
+    let genome = event.target.genomeID
+    let label = $(this).parent().siblings('td').first().html()
+    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
+
+    settings['display']['metadata'].splice(index, 1)
+    
+    $(this).closest('tr').remove();
   })
 
   $('#gene-visibility-range-set').click(function(){
@@ -532,12 +545,24 @@ function showDeepDiveToolTip(event){
     $('#metadata-gene-label').val('')
     $('#metadata-body').append(`
       <tr>
-        <td>${metadataObj.label}</td>
-        <td>${button}</td>
+        <td class='metadata'>${metadataObj.label}</td>
+        <td>${queryBtn}</td>
+        <td>${removeBtn}</td>
       </tr>
     `)
     $('#metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
       drawer.queryMetadata(metadataLabel)
+    })
+
+    $('#metadata-remove').on('click', function(){      
+      let gene = event.target.geneID
+      let genome = event.target.genomeID
+      let label = $(this).parent().siblings('td').first().html()
+      let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
+
+      settings['display']['metadata'].splice(index, 1)
+      
+      $(this).closest('tr').remove();
     })
   })
   $('#metadata-gene-description-add').on('click', function(){
@@ -550,13 +575,25 @@ function showDeepDiveToolTip(event){
     settings['display']['metadata'].push(metadataObj)
     $('#metadata-gene-description').val('')
     $('#metadata-body').append(`
-      <tr>
+      <tr class='metadata'>
         <td>${metadataObj.label}</td>
         <td>description</td>
+        <td>${removeBtn}</td>
       </tr>
     `)
     $('#metadata-query').on('click', function(){
       drawer.queryMetadata(metadataLabel)
+    })
+
+    $('#metadata-remove').on('click', function(){
+      let gene = event.target.geneID
+      let genome = event.target.genomeID
+      let label = $(this).parent().siblings('td').first().html()
+      let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
+
+      settings['display']['metadata'].splice(index, 1)
+      
+      $(this).closest('tr').remove();
     })
   })
   $('#picker_tooltip').colpick({
