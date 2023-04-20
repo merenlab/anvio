@@ -552,7 +552,7 @@ function showDeepDiveToolTip(event){
     $('#metadata-body').append(`
       <tr>
         <td>${metadataObj.label}</td>
-        <td>n/a</td>
+        <td>description</td>
       </tr>
     `)
     $('#metadata-query').on('click', function(){
