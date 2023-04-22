@@ -877,29 +877,7 @@ function showTabularModal(){
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
 
-        // multiselect
-        if(el.id == 'multiselect-picker-tabular-modal') {
-          $('.form-check-input').each((_,v) => {
-            if(v.id && $('#' + v.id).is(':checked')) {
-              let [genomeID, geneID] = v.id.split('-');
-              $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', '#' + hex);
-              $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', '#' + hex);
-
-              if(settings['display']['colors']['genes']?.[genomeID]){
-                settings['display']['colors']['genes'][genomeID][geneID] = '#' + hex
-              } else {
-                settings['display']['colors']['genes'][genomeID] = {}
-                settings['display']['colors']['genes'][genomeID][geneID] = '#' + hex
-              }
-      
-              let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
-              arrow.fill = '#' + hex
-              arrow.dirty = true
-              canvas.renderAll();
-            }
-          });
-          return;
-        }
+        if(el.id == 'multiselect-picker-tabular-modal') return;
 
         let [geneID, genomeID] = [el.id.split('-')[0], el.id.split('-')[1]]
 
@@ -917,6 +895,30 @@ function showTabularModal(){
     }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
+  });
+}
+
+function colorSelectedTabularModal() {
+  let hex = $('#multiselect-picker-tabular-modal').attr('color');
+
+  $('.form-check-input').each((_,v) => {
+    if(v.id && $('#' + v.id).is(':checked')) {
+      let [genomeID, geneID] = v.id.split('-');
+      $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', hex);
+      $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', hex);
+
+      if(settings['display']['colors']['genes']?.[genomeID]){
+        settings['display']['colors']['genes'][genomeID][geneID] = hex
+      } else {
+        settings['display']['colors']['genes'][genomeID] = {}
+        settings['display']['colors']['genes'][genomeID][geneID] = hex
+      }
+
+      let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
+      arrow.fill = hex
+      arrow.dirty = true
+      canvas.renderAll();
+    }
   });
 }
 
