@@ -535,66 +535,7 @@ function showDeepDiveToolTip(event){
   })
   // TODO consider metadata option to include 'author' field
   $('#metadata-gene-label-add').on('click', function(){
-    let metadataObj = {
-      label  : $('#metadata-gene-label').val(),
-      genome : event.target.genomeID,
-      gene   : event.target.geneID,
-      type   : 'tag'
-    }
-    settings['display']['metadata'].push(metadataObj)
-    $('#metadata-gene-label').val('')
-    $('#metadata-body').append(`
-      <tr>
-        <td class='metadata'>${metadataObj.label}</td>
-        <td>${queryBtn}</td>
-        <td>${removeBtn}</td>
-      </tr>
-    `)
-    $('#metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
-      drawer.queryMetadata(metadataLabel)
-    })
-
-    $('#metadata-remove').on('click', function(){      
-      let gene = event.target.geneID
-      let genome = event.target.genomeID
-      let label = $(this).parent().siblings('td').first().html()
-      let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
-
-      settings['display']['metadata'].splice(index, 1)
-      
-      $(this).closest('tr').remove();
-    })
-  })
-  $('#metadata-gene-description-add').on('click', function(){
-    let metadataObj = {
-      label  : $('#metadata-gene-description').val(),
-      genome : event.target.genomeID,
-      gene   : event.target.geneID,
-      type   : 'description'
-    }
-    settings['display']['metadata'].push(metadataObj)
-    $('#metadata-gene-description').val('')
-    $('#metadata-body').append(`
-      <tr class='metadata'>
-        <td>${metadataObj.label}</td>
-        <td>description</td>
-        <td>${removeBtn}</td>
-      </tr>
-    `)
-    $('#metadata-query').on('click', function(){
-      drawer.queryMetadata(metadataLabel)
-    })
-
-    $('#metadata-remove').on('click', function(){
-      let gene = event.target.geneID
-      let genome = event.target.genomeID
-      let label = $(this).parent().siblings('td').first().html()
-      let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
-
-      settings['display']['metadata'].splice(index, 1)
-      
-      $(this).closest('tr').remove();
-    })
+    addMetadataTag(event.target.genomeID, event.target.geneID, $('#metadata-gene-label').val());
   })
   $('#picker_tooltip').colpick({
     layout: 'hex',
@@ -920,6 +861,39 @@ function colorSelectedTabularModal() {
   })
 }
 
+function addMetadataTag(genomeID, geneID, label) {
+  // TODO: create warning popup if this genomeID & geneID already has a tag
+
+  let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
+  let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
+
+  let metadataObj = {
+    label  : label,
+    genome : genomeID,
+    gene   : geneID,
+    type   : 'tag'
+  }
+  settings['display']['metadata'].push(metadataObj)
+  $('#metadata-gene-label').val('')
+  $('#metadata-body').append(`
+    <tr>
+      <td class='metadata'>${metadataObj.label}</td>
+      <td>${queryBtn}</td>
+      <td>${removeBtn}</td>
+    </tr>
+  `)
+  $('#metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
+    drawer.queryMetadata(label)
+  })
+
+  $('#metadata-remove').on('click', function(){      
+    let label = $(this).parent().siblings('td').first().html()
+    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID)
+
+    settings['display']['metadata'].splice(index, 1)
+    
+    $(this).closest('tr').remove();
+  })
 }
 
 function gatherTabularModalSelectedItems(action){
