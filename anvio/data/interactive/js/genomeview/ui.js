@@ -872,8 +872,6 @@ function addMetadataToSelectedTabularModal() {
 }
 
 function addMetadataTag(genomeID, geneID, label) {
-  // TODO: create warning popup if this genomeID & geneID already has a tag
-
   let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
   let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
 
