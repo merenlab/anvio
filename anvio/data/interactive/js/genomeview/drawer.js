@@ -296,7 +296,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   let j = 0
   let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
   let [l, r] = getRenderNTRange(genomeID);
-  for (let i = 0; i < nGroups; i++) {
+  for (let i = 0; i <= nGroups; i++) {
     for (; j < i * genomeMax / nGroups; j += ptInterval) {
       if (j < l) continue;
       if (j > r) break;
