@@ -31,8 +31,12 @@ GenomeDrawer.prototype.draw = function () {
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
   labelCanvas.setHeight(calculateMainCanvasHeight());
 
+  let orderIndex = 0
   this.settings['genomeData']['genomes'].map((genome, idx) => {
-    this.addLayers(idx)
+    if($('#' + genome[0] + '-show').is(':checked')) {
+      this.addLayers(idx, orderIndex)
+      orderIndex++
+    }
   })
 
   checkGeneLabels();
@@ -48,13 +52,13 @@ GenomeDrawer.prototype.draw = function () {
 /*
  *  For each genome group, iterate additional all layers and render where appropriate
  */
-GenomeDrawer.prototype.addLayers = function (orderIndex) {
+GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
   let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
 
   yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
   let layerPos = 0
-  let genomeID = this.settings['genomeData']['genomes'][orderIndex][0];
-  // let genome = this.settings['genomeData']['genomes'][orderIndex][1];
+  let genomeID = this.settings['genomeData']['genomes'][genomeIndex][0];
+  // let genome = this.settings['genomeData']['genomes'][genomeIndex][1];
   // let label = genome.genes.gene_calls[0].contig;
 
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
@@ -63,15 +67,15 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
-      this.addGenome(orderIndex, dataLayerHeight, layerPos)
+      this.addGenome(orderIndex, dataLayerHeight, layerPos, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
     }
     if (layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')) {
-      this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex)
+      this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
     }
     if (layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')) {
-      this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex)
+      this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
     }
     if (layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
@@ -80,7 +84,7 @@ GenomeDrawer.prototype.addLayers = function (orderIndex) {
     }
   })
 
-  canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + orderIndex));
+  canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + genomeIndex));
   this.addGroupBorder(yOffset, orderIndex)
 }
 
@@ -125,8 +129,8 @@ GenomeDrawer.prototype.calculateLayerSizes = function () {
   return [dataLayerHeight, rulerHeight]
 }
 
-GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) {
-  let genome = this.settings['genomeData']['genomes'][orderIndex];
+GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, genomeIndex) {
+  let genome = this.settings['genomeData']['genomes'][genomeIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
@@ -150,7 +154,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     hoverCursor: 'default'
   });
   canvas.add(lineObj);
-  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex)
+  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex, genomeIndex)
 
   // draw set labels
   if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
@@ -266,7 +270,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
 /*
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
-GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex) {
+GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex, genomeIndex) {
   // TODO this will need to be refactored once we begin testing genomes comprised of multiple contigs
   let contigObj = Object.values(additionalDataLayers)[0]
   let contigArr = Object.values(contigObj)[0]
@@ -340,7 +344,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     genome: genomeID
   })
   canvas.bringToFront(shadedObj)
-  this.addBackgroundShade(startingTop, startingLeft, genomeMax*scaleFactor, layerHeight, orderIndex)
+  this.addBackgroundShade(startingTop, startingLeft, genomeMax*scaleFactor, layerHeight, orderIndex, genomeIndex)
 }
 
 /*
@@ -393,18 +397,18 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
     ruler.addWithUpdate();
     canvas.add(ruler);
   }
-  //this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex)
+  //this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex, genomeIndex)
 }
 
 /*
  *  adds an alternating shade to each genome group for easier visual distinction amongst adjacent groups
  */
-GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, orderIndex) {
+GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, orderIndex, genomeIndex) {
   let backgroundShade;
   orderIndex % 2 == 0 ? backgroundShade = '#b8b8b8' : backgroundShade = '#f5f5f5'
 
   let border = new fabric.Rect({
-    groupID: this.settings['genomeData']['genomes'][orderIndex][0],
+    groupID: this.settings['genomeData']['genomes'][genomeIndex][0],
     top: top,
     left: left,
     width: width,
@@ -416,7 +420,7 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     // opacity : .5
   });
   let background = new fabric.Rect({
-    groupID: this.settings['genomeData']['genomes'][orderIndex][0],
+    groupID: this.settings['genomeData']['genomes'][genomeIndex][0],
     top: top,
     left: left,
     width: width,

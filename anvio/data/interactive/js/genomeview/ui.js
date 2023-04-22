@@ -1145,7 +1145,7 @@ function buildGenomesTable(genomes, order){
     var template = `<tr id=${genomeLabel}>
                   <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
                   <td> ${genomeLabel} </td>
-                  <td><input type="checkbox" class="layer_selectors"></input></td>
+                  <td><input type="checkbox" class="genome_selectors" onclick="drawer.draw(); drawGenomeLabels()" id="${genomeLabel}-show"></input></td>
                   </tr>;`
 
     $('#tbody_genomes').append(template);
@@ -1559,7 +1559,12 @@ function showAllHiddenGenes(){
 
 function drawGenomeLabels() {
   labelCanvas.clear();
-  settings['genomeData']['genomes'].map(g => g[0]).forEach((genomeName,i) => {
+
+  let genomes = ($('.genome_selectors:checked').length > 0) 
+                ? ($('.genome_selectors:checked').map((_,el) => el.id.split('-')[0]).toArray())
+                : (settings['genomeData']['genomes'].map(g => g[0]));
+  
+  genomes.forEach((genomeName,i) => {
     let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
     let label = new fabric.Text(genomeName.substring(0,GENOME_LABEL_CHAR_LIMIT), {
       angle: $('#rotate_genome_labels_box').prop("checked") ? 270 : 0,

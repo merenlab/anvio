@@ -320,6 +320,11 @@ function serializeSettings() {
   state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
   state['display']['user-defined-colors'] = $('#user_defined_colors').is(':checked')
 
+  $('.genome_selectors').each((idx, row) => {
+    let genome = row.id.split('-')[0]
+    settings['display']['show-genomes'][genome] = $('#' + genome + '-show').is(':checked')
+  })
+
   $('.annotation_color').each((idx, row) => {
     let color = $(row).attr('color')
     let id = ($(row).attr('id').split('_')[1])
@@ -413,6 +418,15 @@ function processState(stateName, stateData) {
 
   if(stateData?.['display']?.['xDisps']) {
     settings['display']['xDisps'] = stateData['display']['xDisps']
+  }
+
+  if(settings?.['display']?.['show-genomes']) {
+    settings['display']['show-genomes'] = stateData['display']['show-genomes']
+  } else {
+    settings['display']['show-genomes'] = {};
+    for(genomeID of settings['genomeData']['genomes'].map(g => g[0])) {
+      settings['display']['show-genomes'][genomeID] = true;
+    }
   }
 
   if(stateData?.['display']?.['genome-label-size']) {
@@ -532,10 +546,6 @@ function loadAll(loadType) {
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
-  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
-  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
-  drawGenomeLabels();
-
   if(settings?.['display']?.['xDisps']) {
     xDisps = settings?.['display']['xDisps'];
   } else {
@@ -572,6 +582,15 @@ function loadAll(loadType) {
   if(firstDraw) setEventListeners();
   setCanvasListeners();
 
+  $('.genome_selectors').each((idx, row) => {
+    let genome = row.id.split('-')[0]
+    $('#' + genome + '-show').prop('checked', settings['display']['show-genomes'][genome])
+  })
+
+  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
+  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
+  drawGenomeLabels();
+
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);
   $('#brush_end').val(stop);
@@ -583,7 +602,7 @@ function loadAll(loadType) {
   brush(d3.select(".brush"));
   updateRenderWindow();
   setLabelCanvas(); // set a second time to adjust to new brush extent
-
+  
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)
   drawer.draw()
