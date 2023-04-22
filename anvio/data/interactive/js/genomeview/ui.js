@@ -861,6 +861,16 @@ function colorSelectedTabularModal() {
   })
 }
 
+function addMetadataToSelectedTabularModal() {
+  let label = $('#metadata-tag-multiselect').val();
+  if(label.length == 0) return;
+
+  $('#modal-tab-content :checked').each(function(){
+    let [genomeID, geneID] = $(this).val().split('-')
+    addMetadataTag(genomeID, geneID, label);
+  })
+}
+
 function addMetadataTag(genomeID, geneID, label) {
   // TODO: create warning popup if this genomeID & geneID already has a tag
 
@@ -873,6 +883,7 @@ function addMetadataTag(genomeID, geneID, label) {
     gene   : geneID,
     type   : 'tag'
   }
+  if(!settings['display']['metadata']) settings['display']['metadata'] = []
   settings['display']['metadata'].push(metadataObj)
   $('#metadata-gene-label').val('')
   $('#metadata-body').append(`
