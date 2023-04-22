@@ -189,7 +189,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
       });
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
-          top: settings['display']['gene-text-position'] == "inside" ? y + 15 - settings['display']['gene-label-size'] / 2 : y - 10 - settings['display']['gene-label-size'] / 2,
+          top: settings['display']['gene-text-position'] == "inside" ? y + 13 - settings['display']['gene-label-size'] / 2 : y - 20 - settings['display']['gene-label-size'] / 2,
           selectionColor: 'rgba(128,128,128,.5)'
         });
       } else {
