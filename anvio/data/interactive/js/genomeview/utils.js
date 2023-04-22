@@ -253,7 +253,6 @@ function toggleRightPanel(name) {
 
       $(right_panel).hide();
   });
-  console.log(name);
   $(name).toggle();
 
   if ($('#mouseover-panel').is(':visible')) {
