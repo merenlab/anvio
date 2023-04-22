@@ -901,25 +901,25 @@ function showTabularModal(){
 function colorSelectedTabularModal() {
   let hex = $('#multiselect-picker-tabular-modal').attr('color');
 
-  $('.form-check-input').each((_,v) => {
-    if(v.id && $('#' + v.id).is(':checked')) {
-      let [genomeID, geneID] = v.id.split('-');
-      $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', hex);
-      $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', hex);
+  $('#modal-tab-content :checked').each(function(){
+    let [genomeID, geneID] = $(this).val().split('-');
+    $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', hex);
+    $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', hex);
 
-      if(settings['display']['colors']['genes']?.[genomeID]){
-        settings['display']['colors']['genes'][genomeID][geneID] = hex
-      } else {
-        settings['display']['colors']['genes'][genomeID] = {}
-        settings['display']['colors']['genes'][genomeID][geneID] = hex
-      }
-
-      let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
-      arrow.fill = hex
-      arrow.dirty = true
-      canvas.renderAll();
+    if(settings['display']['colors']['genes']?.[genomeID]){
+      settings['display']['colors']['genes'][genomeID][geneID] = hex
+    } else {
+      settings['display']['colors']['genes'][genomeID] = {}
+      settings['display']['colors']['genes'][genomeID][geneID] = hex
     }
-  });
+
+    let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
+    arrow.fill = hex
+    arrow.dirty = true
+    canvas.renderAll();
+  })
+}
+
 }
 
 function gatherTabularModalSelectedItems(action){
