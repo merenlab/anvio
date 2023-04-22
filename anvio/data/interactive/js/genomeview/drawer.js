@@ -168,7 +168,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos) 
     canvas.add(geneObj)
     canvas.bringToFront(geneObj);
 
-    if (settings['display']['show-gene-labels']) {
+    if (settings['display']['show-gene-labels'] && ($('#brush_end').val() - $('#brush_start').val()) < 10000) {
       var label = new fabric.IText(setGeneLabelFromSource(geneID, genomeID), {
         id: 'geneLabel',
         groupID: genomeID,
