@@ -187,6 +187,32 @@ function setEventListeners(){
       toggleRightPanel('#query-panel')
     }
   });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 37 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Left Arrow = 37
+      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+      if(start - 1000 < 0) return;
+      $('#brush_start').val(start - 1000);
+      $('#brush_end').val(stop - 1000);
+      brush.extent([start-1000, stop-1000]);
+      brush(d3.select(".brush").transition());
+      brush.event(d3.select(".brush").transition());
+      updateRenderWindow();
+      drawer.draw();
+    }
+  });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Right Arrow = 39
+      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+      if(stop + 1000 > genomeMax) return;
+      $('#brush_start').val(start + 1000);
+      $('#brush_end').val(stop + 1000);
+      brush.extent([start+1000, stop+1000]);
+      brush(d3.select(".brush").transition());
+      brush.event(d3.select(".brush").transition());
+      updateRenderWindow();
+      drawer.draw();
+    }
+  });
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGenomeSpacing($(this).val());
