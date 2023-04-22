@@ -213,6 +213,11 @@ function setEventListeners(){
       drawer.draw();
     }
   });
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 86 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // V = 86
+      $('#toggle-tabular-modal-button').click();
+    }
+  }, {passive: true});
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGenomeSpacing($(this).val());
@@ -778,7 +783,7 @@ function showTabularModal(){
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead id='tabular-modal-table-head'>
             <tr id='${genome}-tabular-modal-table-header-tr'>
-              <th id="${genome}-select"><input class="form-check-input" type='checkbox'></input>Select</th>
+              <th id="${genome}-select"><input class="form-check-input" type='checkbox' id='total-select'></input>Select</th>
               <th>Gene Caller ID</th>
               <th>Start</th>
               <th>Stop</th>
