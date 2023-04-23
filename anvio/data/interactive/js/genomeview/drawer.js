@@ -306,7 +306,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
       if (j > r) break;
 
       let left = j * scaleFactor + startingLeft
-      let top = layerHeight - ([contigArr[j] / maxDataLayerValue] * layerHeight)
+      let top = layerHeight - ((contigArr[j] / maxDataLayerValue) * layerHeight)
       let segment = `L ${left} ${top}`
       final_l = left // final_l is always last-seen x coordinate
       pathDirective.push(segment)
@@ -328,7 +328,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     // canvas.bringToFront(graphObj)
     pathDirective = []
   }
-  layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight}`
+  layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight} z`
   globalPathDirective.push(layer_end_final_coordinates)
 
   let shadedObj = new fabric.Path(globalPathDirective.join(' '))
