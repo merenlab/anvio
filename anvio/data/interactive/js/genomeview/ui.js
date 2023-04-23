@@ -870,38 +870,6 @@ function showTabularModal(){
   });
 }
 
-function colorSelectedTabularModal() {
-  let hex = $('#multiselect-picker-tabular-modal').attr('color');
-
-  $('#modal-tab-content :checked').each(function(){
-    let [genomeID, geneID] = $(this).val().split('-');
-    $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', hex);
-    $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', hex);
-
-    if(settings['display']['colors']['genes']?.[genomeID]){
-      settings['display']['colors']['genes'][genomeID][geneID] = hex
-    } else {
-      settings['display']['colors']['genes'][genomeID] = {}
-      settings['display']['colors']['genes'][genomeID][geneID] = hex
-    }
-
-    let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
-    arrow.fill = hex
-    arrow.dirty = true
-    canvas.renderAll();
-  })
-}
-
-function addMetadataToSelectedTabularModal() {
-  let label = $('#metadata-tag-multiselect').val();
-  if(label.length == 0) return;
-
-  $('#modal-tab-content :checked').each(function(){
-    let [genomeID, geneID] = $(this).val().split('-')
-    addMetadataTag(genomeID, geneID, label);
-  })
-}
-
 function addMetadataTag(genomeID, geneID, label) {
   let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
   let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
@@ -938,7 +906,7 @@ function addMetadataTag(genomeID, geneID, label) {
 
 function gatherTabularModalSelectedItems(action){
   let targetedGenes = []
-  $('#modal-tab-content :checked').each(function(){
+  $('.form-check-input:checked').each(function(){
     let [genome, gene] = $(this).val().split('-')
     targetedGenes.push({genomeID: genome, geneID: gene})
   })
@@ -949,8 +917,31 @@ function gatherTabularModalSelectedItems(action){
       $('#tabular-modal-body').fadeOut(1000).delay(3000).fadeIn(1000)
       break;
     case 'color':
+      let hex = $('#multiselect-picker-tabular-modal').attr('color');
+      targetedGenes.forEach(gene => {
+        let [genomeID, geneID] = [gene['genomeID'], gene['geneID']];
+        $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').css('background-color', hex);
+        $('#' + geneID + '-' + genomeID + '-picker-tabular-modal').attr('color', hex);
+    
+        if(settings['display']['colors']['genes']?.[genomeID]){
+          settings['display']['colors']['genes'][genomeID][geneID] = hex
+        } else {
+          settings['display']['colors']['genes'][genomeID] = {}
+          settings['display']['colors']['genes'][genomeID][geneID] = hex
+        }
+    
+        let arrow = canvas.getObjects().filter(obj => obj.id == 'arrow').find(arrow => arrow.geneID == geneID && arrow.genomeID == genomeID)
+        arrow.fill = hex
+        arrow.dirty = true
+        canvas.renderAll();
+      });
       break;
     case 'metadata':
+      let label = $('#metadata-tag-multiselect').val();
+      if(label.length == 0) return;
+      targetedGenes.forEach(gene => {
+        addMetadataTag(gene['genomeID'], gene['geneID'], label);
+      });
       break;
     default:
       break;

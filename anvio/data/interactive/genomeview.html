@@ -129,13 +129,13 @@
               <div id="tabular-modal-sequence-checkboxes"></div>
               <div>
                 <input type='text' placeholder='metadata tag' id='metadata-tag-multiselect' />
-                <button class="btn btn-default" onclick=addMetadataToSelectedTabularModal()>Add metadata tag to selected</button>
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('metadata')">Add metadata tag to selected</button>
               </div>
               <div>
                 <div id="multiselect-picker-tabular-modal" class="colorpicker" color="#808080"
                   background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px">
                 </div>
-                <button class="btn btn-default" onclick="colorSelectedTabularModal()">Color selected</button>
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('color')">Color selected</button>
               </div>
               <div id="tabular-modal-annotation-checkboxes"></div>
             </div>
