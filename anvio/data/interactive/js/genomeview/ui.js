@@ -751,6 +751,11 @@ function showTabularModal(){
     canvas.renderAll()
   }
 
+  handleTotalSelect = () => {
+    let curr_genome = $('.active')[1].id;
+    $(`.${curr_genome}-input`).prop('checked', $('#total-select').prop('checked'));
+  }
+
   $('#tabular-modal-annotation-checkboxes').empty()
   functionSourcesArr.map(s => {
     $('#tabular-modal-annotation-checkboxes').append(
@@ -783,7 +788,7 @@ function showTabularModal(){
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead id='tabular-modal-table-head'>
             <tr id='${genome}-tabular-modal-table-header-tr'>
-              <th id="${genome}-select"><input class="form-check-input" type='checkbox' id='total-select'></input>Select</th>
+              <th id="${genome}-select"><input class="form-check-input" type='checkbox' id='total-select' onclick="handleTotalSelect()"></input>Select</th>
               <th>Gene Caller ID</th>
               <th>Start</th>
               <th>Stop</th>
@@ -817,7 +822,7 @@ function showTabularModal(){
       let geneHex = gene.fill
       totalTableString += `
       <tr id='${genome[0]}-table-row-${gene['geneID']}'>
-        <td class='select'><input class="form-check-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
+        <td class='select'><input class="form-check-input ${genome[0]}-input" id="${genome[0]}-${gene['geneID']}" value="${genome[0]}-${gene['geneID']}" type='checkbox'></input></td>
         <td>${gene['geneID']}</td>
         <td>${gene['gene']['start']}</td>
         <td>${gene['gene']['stop']}</td>
@@ -906,7 +911,8 @@ function addMetadataTag(genomeID, geneID, label) {
 
 function gatherTabularModalSelectedItems(action){
   let targetedGenes = []
-  $('.form-check-input:checked').each(function(){
+  let curr_genome = $('.active')[1].id;
+  $(`.${curr_genome}-input`).each(function(){
     let [genome, gene] = $(this).val().split('-')
     targetedGenes.push({genomeID: genome, geneID: gene})
   })
