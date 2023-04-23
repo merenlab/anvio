@@ -306,7 +306,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
       if (j > r) break;
 
       let left = j * scaleFactor + startingLeft
-      let top = [contigArr[j] / maxDataLayerValue] * layerHeight
+      let top = layerHeight - ([contigArr[j] / maxDataLayerValue] * layerHeight)
       let segment = `L ${left} ${top}`
       final_l = left // final_l is always last-seen x coordinate
       pathDirective.push(segment)
