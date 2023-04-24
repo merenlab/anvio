@@ -179,7 +179,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         fontSize: settings['display']['gene-label-size'],
         fontFamily: 'sans-serif',
         angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
-        left: xDisps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
+        //left: xDisps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
         fill: $('#gene_label_color').attr('color'),
         scaleX: 0.5,
         scaleY: 0.5,
@@ -191,6 +191,9 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         lockScaling: true,
         hoverCursor: 'text'
       });
+      
+      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2)  - label.width/2) * scaleFactor;
+
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
           top: settings['display']['gene-text-position'] == "inside" ? y + 13 - settings['display']['gene-label-size'] / 2 : y - 20 - settings['display']['gene-label-size'] / 2,
@@ -205,7 +208,9 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
       label.on("editing:exited", function (e) {
         console.log(label.text)
       });
-      canvas.add(label);
+
+      // do not add label if label width > gene width
+      if(label.width <= scaleFactor * (gene.stop - gene.start)) canvas.add(label);
     }
 
     function setGeneLabelFromSource(geneID, genomeID) {
