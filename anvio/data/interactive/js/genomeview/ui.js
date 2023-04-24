@@ -912,7 +912,7 @@ function addMetadataTag(genomeID, geneID, label) {
 function gatherTabularModalSelectedItems(action){
   let targetedGenes = []
   let curr_genome = $('.active')[1].id;
-  $(`.${curr_genome}-input`).each(function(){
+  $(`.${curr_genome}-input:checked`).each(function(){
     let [genome, gene] = $(this).val().split('-')
     targetedGenes.push({genomeID: genome, geneID: gene})
   })
