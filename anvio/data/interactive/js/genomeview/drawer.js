@@ -192,7 +192,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         hoverCursor: 'text'
       });
       
-      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2)  - label.width/2) * scaleFactor;
+      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2) - label.width/2) * scaleFactor;
 
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
@@ -209,8 +209,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         console.log(label.text)
       });
 
-      // do not add label if label width > gene width
-      if(label.width <= scaleFactor * (gene.stop - gene.start)) canvas.add(label);
+      canvas.add(label);
     }
 
     function setGeneLabelFromSource(geneID, genomeID) {
