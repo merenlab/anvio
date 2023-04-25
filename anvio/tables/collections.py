@@ -210,8 +210,17 @@ class TablesForCollections(Table):
         return db_entries_for_contigs
 
 
-    def add_default_collection_to_db(self, contigs_db_path=None, collection_name="DEFAULT", bin_name="EVERYTHING"):
-        """A helper function to add a default collection to a given database that describes all items in a single bin"""
+    def add_default_collection_to_db(self, contigs_db_path=None, collection_name="DEFAULT", bin_name="EVERYTHING", bin_each_item_separately=False):
+        """A helper function to add a default collection.
+
+        This function will either add a collection to a given database that describes all items
+        in it in a single bin, or each item in it in a separate bin.
+        """
+
+        if bin_each_item_separately:
+            run.warning("Since you passed the flag '--bin-each-item-separately', anvi'o will create a separate bin for each "
+                        "item in your database. This is likely a very bad idea, but anvi'o trusts that you know what you are "
+                        "doing.")
 
         utils.is_pan_or_profile_db(self.db_path)
 
@@ -237,4 +246,13 @@ class TablesForCollections(Table):
 
             all_items = utils.get_all_item_names_from_the_database(self.db_path)
 
-        self.append(collection_name, {bin_name: all_items})
+        bins = {}
+        if bin_each_item_separately:
+            counter = 1
+            for item in all_items:
+                bins[f"BIN_{counter:07}"] = {item}
+                counter += 1
+        else:
+            bins = {bin_name: all_items}
+
+        self.append(collection_name, bins)
