@@ -1290,13 +1290,17 @@ function respondToBookmarkSelect(){
     $('#brush_end').val(stop);
     try {
       brush.extent([start, stop]);
-          brush(d3.select(".brush").transition());
-          brush.event(d3.select(".brush").transition());
+      brush(d3.select(".brush").transition());
+      brush.event(d3.select(".brush").transition());
       let selectedBookmark = settings['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
       $('#bookmark-description').text(selectedBookmark['description'])
       toastr.success("Bookmark successfully loaded")
     } catch (error) {
       toastr.warn(`Unable to load bookmark because of an error ${error}`)
+    }
+    if($('#bookmarks-select').val() != 'Bookmarks') {
+      $('#bookmark-description').css('border-style', 'solid');
+      $('#bookmark-description').css('border-width', '1px');
     }
   })
 }
