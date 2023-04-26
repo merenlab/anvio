@@ -1592,9 +1592,11 @@ function exportToSVG() {
   let filedata = canvas.toSVG();
 
   // append labelSVG to end of main canvas SVG
-  let labelSVG = labelCanvas.toSVG();
-  labelSVG = labelSVG.substring(labelSVG.indexOf("<g"), labelSVG.length-7);
-  filedata = filedata.slice(0, filedata.length-6) + labelSVG + filedata.slice(filedata.length-6, filedata.length);
+  if($('#show_genome_labels_box').prop('checked')) {
+    let labelSVG = labelCanvas.toSVG();
+    labelSVG = labelSVG.substring(labelSVG.indexOf("<g"), labelSVG.length-7);
+    filedata = filedata.slice(0, filedata.length-6) + labelSVG + filedata.slice(filedata.length-6, filedata.length);
+  }
 
   let locfile = new Blob([filedata], {type: "image/svg+xml;charset=utf-8"});
 
