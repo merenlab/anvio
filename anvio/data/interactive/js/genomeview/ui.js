@@ -1344,7 +1344,7 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       let gene_calls = genome[1].genes.gene_calls;
       let gene_funs = genome[1].genes.functions;
 
-      for(let i = 0; i < Object.keys(gene_calls)[Object.keys(gene_calls).length-1]; i++) {
+      for(i of Object.keys(gene_calls)) {
         if(filter_to_window && (gene_calls[i].start < renderWindow[0] || gene_calls[i].stop > renderWindow[1])) continue;
         let cag = getCagForType(gene_funs[i], fn_type);
         counts.push(cag ? cag : "None");
