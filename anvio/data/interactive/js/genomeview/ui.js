@@ -948,6 +948,7 @@ function gatherTabularModalSelectedItems(action){
       targetedGenes.forEach(gene => {
         addMetadataTag(gene['genomeID'], gene['geneID'], label);
       });
+      $('#metadata-tag-multiselect').val('');
       break;
     default:
       break;
