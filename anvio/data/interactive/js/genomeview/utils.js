@@ -196,7 +196,7 @@ function getFunctionalAnnotations() {
  *  @returns arbitrary category:color dict given a list of categories
  */
 function getCustomColorDict(fn_type, cags=null, order=null) {
-  if(!Object.keys(genomeData.genomes[0][1].genes.functions[0]).includes(fn_type)) return null;
+  if(!getFunctionalAnnotations().includes(fn_type)) return null;
 
   if(!cags) {
     cags = [];
