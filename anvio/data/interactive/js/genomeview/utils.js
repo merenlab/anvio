@@ -170,15 +170,20 @@ function getRenderNTRange(genomeID) {
 
 /*
  *  @returns array [min, max] where
+ *    min = x-start of the given genome, max = x-end of the given genome
+ */
+function calcXBoundsForGenome(genomeID) {
+  return [xDisps[genomeID], xDisps[genomeID] + genomeMax[genomeID]*scaleFactor];
+}
+
+/*
+ *  @returns array [min, max] where
  *    min = x-start of the leftmost genome, max = x-end of the rightmost genome
  */
 function calcXBounds() {
   let min = 9*(10**9), max = -9*(10**9);
   for(genome of genomeData.genomes) {
-    let genomeName = genome[0];
-    let genes = genome[1].genes.gene_calls;
-    let start = xDisps[genomeName];
-    let end = xDisps[genomeName] + scaleFactor*genes[Object.keys(genes).length-1].stop;
+    let [start, end] = calcXBoundsForGenome(genome[0]);
     if(start < min) min = start;
     if(end > max) max = end;
   }
