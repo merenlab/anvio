@@ -69,7 +69,11 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     console.log("groupLayerOrder index "+ idx)
+    console.log(layer)
+    console.log($('#Genome-show'))
+    console.log($('#Genome-show').is(':checked'))
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
+      console.log("check for adding a genome passed=====\n======")
       this.addGenome(orderIndex, dataLayerHeight, layerPos, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
       console.log("genome added successfully")
