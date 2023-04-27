@@ -30,9 +30,10 @@ GenomeDrawer.prototype.draw = function () {
   canvas.clear()
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
   labelCanvas.setHeight(calculateMainCanvasHeight());
-
+console.log("canvas height set")
   let orderIndex = 0
   this.settings['genomeData']['genomes'].map((genome, idx) => {
+    console.log("inside addLayers loop iteration: " + idx)
     if($('#' + genome[0] + '-show').is(':checked')) {
       this.addLayers(idx, orderIndex)
       orderIndex++
@@ -53,6 +54,7 @@ GenomeDrawer.prototype.draw = function () {
  *  For each genome group, iterate additional all layers and render where appropriate
  */
 GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
+  console.log("inside addLayers orderIndex" + orderIndex)
   let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
 
   yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
