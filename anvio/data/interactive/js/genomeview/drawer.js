@@ -66,24 +66,28 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
 
   let ptInterval = Math.floor(globalGenomeMax / settings['display']['adlPtsPerLayer']);
-console.log("set ADLs and ptInterval")
+
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     console.log("groupLayerOrder index "+ idx)
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
       this.addGenome(orderIndex, dataLayerHeight, layerPos, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
+      console.log("genome added successfully")
     }
     if (layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')) {
       this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
+      console.log("coverage added successfully")
     }
     if (layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')) {
       this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
+      console.log("GC Content added successfully")
     }
     if (layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
       this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
       layerPos += rulerHeight + groupLayerPadding
+      console.log("Ruler added successfully")
     }
   })
 console.log("groupLayer loop done")
@@ -133,6 +137,7 @@ GenomeDrawer.prototype.calculateLayerSizes = function () {
 }
 
 GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, genomeIndex) {
+  console.log("addGenome function")
   let genome = this.settings['genomeData']['genomes'][genomeIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
@@ -167,6 +172,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   }
 
   for (let geneID in gene_list) {
+    console.log("inside for geneID in gene_list geneID: " + geneID)
     let gene = gene_list[geneID];
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
     if (gene.start < ntStart) continue;
