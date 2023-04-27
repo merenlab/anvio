@@ -1253,14 +1253,36 @@ function setLabelCanvas() {
  *  capture user bookmark values and store obj in state
  */
 function createBookmark(){
-  if(!$('#create_bookmark_input').val()){
+  let bookmark_name = $('#create_bookmark_input').val()
+  if(!bookmark_name){
     alert('please provide a name for your bookmark :)')
+    return
+  } else if(settings['display']['bookmarks'].find(obj => obj.name == bookmark_name)) {
+    alert('an existing bookmark already has this name! please provide a unique name for your bookmark :)')
     return
   }
   try {
+    if(Object.keys(settings['display']['bookmarks']).length == 0) {
+      $('#currBookmarksTableHead').append(`
+          <tr><th>Bookmark Name</th>
+          <th>Start</th>
+          <th>Stop</th>
+          <th>Action</th>
+          </tr>`
+      )
+    }
+    $('#curr-bookmarks-table').append(`
+      <tr id=bookmark-row-${bookmark_name}>
+        <td>${bookmark_name}</td>
+        <td>${$('#brush_start').val()}</td>
+        <td>${$('#brush_end').val()}</td>
+        <td><button onclick="removeBookmark('${bookmark_name}')">Remove bookmark</button></td>
+      </tr>`
+    )
+
     settings['display']['bookmarks'].push(
       {
-        name : $('#create_bookmark_input').val(),
+        name : bookmark_name,
         start : $('#brush_start').val(),
         stop : $('#brush_end').val(),
         description : $('#create_bookmark_description').val(),
@@ -1297,12 +1319,29 @@ function respondToBookmarkSelect(){
       $('#bookmark-description').text(selectedBookmark['description'])
       toastr.success("Bookmark successfully loaded")
     } catch (error) {
-      toastr.warn(`Unable to load bookmark because of an error ${error}`)
+      toastr.warning(`Unable to load bookmark because of an error ${error}`)
     }
     if($('#bookmarks-select').val() != 'Bookmarks') {
       $('#bookmark-description').css('border-style', 'solid');
       $('#bookmark-description').css('border-width', '1px');
     }
+  })
+}
+/*
+ *  remove bookmark with a given name
+ */
+function removeBookmark(name) {
+  settings['display']['bookmarks'] = settings['display']['bookmarks'].filter(bookmark => bookmark.name != name);
+  if(settings['display']['bookmarks'].length == 0) {
+    $('#currBookmarksTableHead').empty();
+  }
+  $(`#curr-bookmarks-table tr#bookmark-row-${name}`).remove();
+
+  $('#bookmark-description').empty()
+  $('#bookmarks-select').empty()
+  $('#bookmarks-select').prepend('<option>Bookmarks</option>')
+  settings['display']['bookmarks'].map(bookmark => {
+    $('#bookmarks-select').append((new Option(bookmark['name'], [bookmark["start"], bookmark['stop']])))
   })
 }
 
