@@ -207,7 +207,8 @@ function updateScalePos() {
   $('#brush_end').val(newEnd);
 }
 
-function updateRenderWindow() {
+function updateRenderWindow(genomeID=null) {
+  let max = genomeID ? genomeMax[genomeID] : globalGenomeMax;
   if(percentScale) {
     let resolution = 4; // # decimals to show for renderw window
     let [start, end] = [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())];
@@ -216,7 +217,7 @@ function updateRenderWindow() {
   } else {
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
     let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
-    renderWindow = [clamp(start - diff, 0, globalGenomeMax), clamp(end + diff, 0, globalGenomeMax)]; // TODO: use genomeMax[genomeID] for currently selected genomeID
+    renderWindow = [clamp(start - diff, 0, max), clamp(end + diff, 0, max)]; // TODO: use genomeMax[genomeID] for currently selected genomeID
 
     if(filter_gene_colors_to_window) {
       generateColorTable(null, color_db);
