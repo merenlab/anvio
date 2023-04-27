@@ -136,8 +136,8 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
   let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x * scaleFactor + xDisps[genomeID]);
-  start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBounds()[0], calcXBounds()[1]);
-  stop = clamp(stop, calcXBounds()[0], calcXBounds()[1]);
+  start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
+  stop = clamp(stop, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
 
   // line
   let lineObj = new fabric.Line([start, 0, stop, 0], {
