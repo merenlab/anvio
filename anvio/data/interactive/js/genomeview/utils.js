@@ -37,13 +37,15 @@ function calculateMainCanvasHeight(){
 }
 
 /*
- *  Save NT length of the largest genome in `genomeMax`.
+ *  Save NT length of each genome in `genomeMax` dict, and save length of the largest genome in `globalGenomeMax`.
  */
-function calculateMaxGenomeLength(){
+function calculateGenomeLengths(){
   for(genome of genomeData.genomes) {
+    let genomeID = genome[0]
     genome = genome[1].genes.gene_calls;
     let genomeEnd = genome[Object.keys(genome).length-1].stop;
-    if(genomeEnd > genomeMax) genomeMax = genomeEnd;
+    genomeMax[genomeID] = genomeEnd;
+    if(genomeEnd > globalGenomeMax) globalGenomeMax = genomeEnd;
   }
 }
 
@@ -109,9 +111,9 @@ function checkGeneLabels() {
     window_right -= window_left;
     window_left = 0;
   }
-  if(window_right > genomeMax) {
-    window_left -= (window_right - genomeMax);
-    window_right = genomeMax;
+  if(window_right > globalGenomeMax) {
+    window_left -= (window_right - globalGenomeMax);
+    window_right = globalGenomeMax;
   }
   return [window_left, window_right];
 }
@@ -163,7 +165,7 @@ function getRenderNTRange(genomeID) {
   if(!percentScale) return renderWindow;
   //let [l,r] = calcXBounds();
   let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
-  return [clamp(start,0,genomeMax), clamp(end,0,genomeMax)];
+  return [clamp(start,0,genomeMax[genomeID]), clamp(end,0,genomeMax[genomeID])];
 }
 
 /*

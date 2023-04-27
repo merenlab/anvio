@@ -33,7 +33,7 @@ function generateMockADL() {
   for (let i = 0; i < settings['genomeData']['genomes'].length; i++) { // generate mock additional data layer content
     let gcContent = []
     let coverage = []
-    for (let j = 0; j < genomeMax; j++) {
+    for (let j = 0; j < genomeMax[settings['genomeData']['genomes'][i][0]]; j++) {
       gcContent.push(Math.floor(Math.random() * 45))
       coverage.push(Math.floor(Math.random() * 45))
     }

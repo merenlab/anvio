@@ -24,6 +24,7 @@
  */
 
  function zoomIn() {
+    // TODO: instead of globalGenomeMax, use genomeMax[genomeID] for currently selected genomeID
     let start = percentScale ? parseFloat($('#brush_start').val()) : parseInt($('#brush_start').val());
     let end = percentScale ? parseFloat($('#brush_end').val()) : parseInt($('#brush_end').val());
     let newStart, newEnd;
@@ -40,8 +41,8 @@
         if(newEnd - newStart <= 0) return;
       }
     } else {
-      if(len > 4*genomeMax/50) {
-        newStart = Math.floor(start + genomeMax/50), newEnd = Math.floor(end - genomeMax/50);
+      if(len > 4*globalGenomeMax/50) {
+        newStart = Math.floor(start + globalGenomeMax/50), newEnd = Math.floor(end - globalGenomeMax/50);
       } else {
         if(len < 50) return;
         newStart = Math.floor(start + len/4);
@@ -56,11 +57,12 @@
   }
 
   function zoomOut(type, start, end) {
+    // TODO: instead of globalGenomeMax, use genomeMax[genomeID] for currently selected genomeID
     let newStart, newEnd
 
     if(type && type == 'fully'){
       newStart = 0
-      newEnd = percentScale ? 1 : genomeMax
+      newEnd = percentScale ? 1 : globalGenomeMax
     } else if(type && type == 'partial'){
       newStart = start - (percentScale ? .02 : 10000)
       newEnd = end + (percentScale ? .02 : 10000)
@@ -72,9 +74,9 @@
       } else {
         let start = parseInt($('#brush_start').val());
         let end = parseInt($('#brush_end').val());
-        newStart = start - genomeMax/50, newEnd = end + genomeMax/50;
+        newStart = start - globalGenomeMax/50, newEnd = end + globalGenomeMax/50;
       }
-      if(newStart == 0 && newEnd == genomeMax) { // for extra-zoomed-out view
+      if(newStart == 0 && newEnd == genoglobalGenomeMaxmeMax) { // for extra-zoomed-out view
         scaleFactor = 0.01;
         if(settings['display']['dynamic-scale-interval']) adjustScaleInterval();
       drawer.draw()
@@ -82,7 +84,7 @@
       }
     }
     if(newStart < 0) newStart = 0;
-    newEnd = clamp(newEnd, 0, percentScale ? 1 : genomeMax);
+    newEnd = clamp(newEnd, 0, percentScale ? 1 : globalGenomeMax);
 
     brush.extent([newStart, newEnd]);
     brush(d3.select(".brush").transition());
@@ -128,7 +130,7 @@ function setPercentScale() {
 function drawScale() {
   let scaleWidth = canvas.getWidth();
   let scaleHeight = 100;
-  let domain = percentScale ? [0,1] : [0,genomeMax];
+  let domain = percentScale ? [0,1] : [0,globalGenomeMax]; // TODO: use genomeMax[genomeID] for currently selected genomeID
   let xScale = d3.scale.linear().range([0, scaleWidth]).domain(domain);
   let scaleAxis = d3.svg.axis()
               .scale(xScale)
@@ -214,7 +216,7 @@ function updateRenderWindow() {
   } else {
     let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
     let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
-    renderWindow = [clamp(start - diff, 0, genomeMax), clamp(end + diff, 0, genomeMax)];
+    renderWindow = [clamp(start - diff, 0, globalGenomeMax), clamp(end + diff, 0, globalGenomeMax)]; // TODO: use genomeMax[genomeID] for currently selected genomeID
 
     if(filter_gene_colors_to_window) {
       generateColorTable(null, color_db);
@@ -249,7 +251,7 @@ function viewCluster(gc) {
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
         canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
-        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax*scaleFactor - xDisps[genome[0]] - 125, 125);
+        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax[genome[0]]*scaleFactor - xDisps[genome[0]] - 125, 125);
         firstGenomeID = genome[0];
         first = false;
       }

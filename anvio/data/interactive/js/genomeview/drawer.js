@@ -63,7 +63,7 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
 
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
 
-  let ptInterval = Math.floor(genomeMax / settings['display']['adlPtsPerLayer']);
+  let ptInterval = Math.floor(genomeMax[genomeID] / settings['display']['adlPtsPerLayer']);
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
@@ -97,7 +97,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
 
   let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
   let left = -20
-  let width = genomeMax*scaleFactor + 50
+  let width = genomeMax[genomeID]*scaleFactor + 50
   let height = spacing + 50
 
   let rect = new fabric.Rect({
@@ -154,7 +154,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
     hoverCursor: 'default'
   });
   canvas.add(lineObj);
-  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax, layerHeight, orderIndex, genomeIndex)
+  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax[genomeID], layerHeight, orderIndex, genomeIndex)
 
   // draw set labels
   if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
@@ -305,7 +305,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
   let [l, r] = getRenderNTRange(genomeID);
   for (let i = 0; i <= nGroups; i++) {
-    for (; j < i * genomeMax / nGroups; j += ptInterval) {
+    for (; j < i * contigArr.length / nGroups; j += ptInterval) {
       if (j < l) continue;
       if (j > r) break;
 
@@ -348,7 +348,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     genome: genomeID
   })
   canvas.bringToFront(shadedObj)
-  this.addBackgroundShade(startingTop, startingLeft, genomeMax*scaleFactor, layerHeight, orderIndex, genomeIndex)
+  this.addBackgroundShade(startingTop, startingLeft, genomeMax[genomeID]*scaleFactor, layerHeight, orderIndex, genomeIndex)
 }
 
 /*
@@ -365,7 +365,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
   let [l, r] = getRenderNTRange(genomeID);
   for (let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
-    for (; w < (i + 1) * genomeMax / nRulers; w += settings['display']['genome-scale-interval']) {
+    for (; w < (i + 1) * genomeMax[genomeID] / nRulers; w += settings['display']['genome-scale-interval']) {
       if (w < l) continue;
       if (w > r) break;
       let tick = new fabric.Line([0, 0, 0, 20], {
@@ -401,7 +401,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
     ruler.addWithUpdate();
     canvas.add(ruler);
   }
-  //this.addBackgroundShade(startingTop, startingLeft, genomeMax, layerHeight+5, orderIndex, genomeIndex)
+  //this.addBackgroundShade(startingTop, startingLeft, genomeMax[genomeID], layerHeight+5, orderIndex, genomeIndex)
 }
 
 /*
@@ -698,8 +698,8 @@ GenomeDrawer.prototype.clearShades = function () {
 GenomeDrawer.prototype.setPtsPerADL = function (newResolution) {
   if (isNaN(newResolution)) return;
   newResolution = parseInt(newResolution);
-  if (newResolution < 0 || newResolution > genomeMax) {
-    alert(`Invalid value, points per additional data layer must be in range 0-${genomeMax}.`);
+  if (newResolution < 0 || newResolution > globalGenomeMax) {
+    alert(`Invalid value, points per additional data layer must be in range 0-${globalGenomeMax}.`);
     return;
   }
   settings['display']['adlPtsPerLayer'] = newResolution;
@@ -707,8 +707,8 @@ GenomeDrawer.prototype.setPtsPerADL = function (newResolution) {
 }
 
 GenomeDrawer.prototype.showAllADLPts = function () {
-  this.setPtsPerADL(genomeMax);
-  $('#adl_pts_per_layer').val(genomeMax);
+  this.setPtsPerADL(globalGenomeMax); // TODO: account for different genome maxes
+  $('#adl_pts_per_layer').val(globalGenomeMax);
   $('#showAllADLPtsBtn').blur();
 }
 
@@ -884,7 +884,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
   })
   let lowestStart, highestEnd = null
   function renderAllGenes(){
-    if(genomeMax > 35000){
+    if(globalGenomeMax > 35000){
       glowPayload.map(gene => {
         let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
         let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
@@ -903,7 +903,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
       })
     } else {
       lowestStart = 0
-      highestEnd = genomeMax
+      highestEnd = globalGenomeMax
     }
   }
   renderAllGenes()
@@ -933,7 +933,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
     return
   }
   let lowestStart, highestEnd = null
-  if (genomeMax > 35000) {
+  if (globalGenomeMax > 35000) { // TODO: instead of globalGenomeMax, use genomeMax[genomeID] for currently selected genomeID
     glowPayload.map(gene => {
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
@@ -952,7 +952,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
     })
   } else {
     lowestStart = 0
-    highestEnd = genomeMax
+    highestEnd = globalGenomeMax
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload, true)
@@ -960,6 +960,6 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
 
 GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
-    let stop = genomeMax > 35000 ? 35000 : genomeMax
+    let stop = globalGenomeMax > 35000 ? 35000 : globalGenomeMax
     zoomOut('partial', start, stop)
 }

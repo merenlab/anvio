@@ -32,7 +32,8 @@ var stateData = {};
 var settings = {} // packaged obj sent off to GenomeDrawer
 var xDisps = {};
 var renderWindow = []; 
-var genomeMax = 0;
+var genomeMax = {};
+var globalGenomeMax = 0;
 var yOffset = 0 // y-location for the current additional data layer
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
@@ -554,7 +555,7 @@ function loadAll(loadType) {
     }
   }
 
-  calculateMaxGenomeLength()
+  calculateGenomeLengths()
 
   if(loadType == 'init') {
     $('#gene_color_order').append($('<option>', {

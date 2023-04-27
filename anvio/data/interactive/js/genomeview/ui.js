@@ -114,9 +114,9 @@ function setCanvasListeners(){
     let [start, end] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] 
                                     : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
     let [newStart, newEnd] = percentScale ? [Math.floor((start - diff)*10000)/10000, Math.floor((end + diff)*10000)/10000]
-                                          : [Math.floor(start - diff * genomeMax), Math.floor(end + diff * genomeMax)];
+                                          : [Math.floor(start - diff * globalGenomeMax), Math.floor(end + diff * globalGenomeMax)];
     if (newStart < 0) newStart = 0;
-    newEnd = clamp(newEnd, 0, percentScale ? 1 : genomeMax);
+    newEnd = clamp(newEnd, 0, percentScale ? 1 : globalGenomeMax); // TODO: for genome sliding, use genomeMax[genomeID]
     if(percentScale && newEnd - newStart < 0.02) return;
     if(!percentScale && newEnd - newStart < 50) return;
 
@@ -203,7 +203,7 @@ function setEventListeners(){
   document.body.addEventListener("keydown", function (ev) {
     if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Right Arrow = 39
       let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      if(stop + 1000 > genomeMax) return;
+      if(stop + 1000 > globalGenomeMax) return;
       $('#brush_start').val(start + 1000);
       $('#brush_end').val(stop + 1000);
       brush.extent([start+1000, stop+1000]);
@@ -325,7 +325,7 @@ function setEventListeners(){
     if (ev.which == 13) { // enter key
       let [start, end] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())]
         : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      let endBound = percentScale ? 1 : genomeMax;
+      let endBound = percentScale ? 1 : globalGenomeMax; // TODO: for genome sliding, check genomeMax[genomeID] for currently selected genomeID
 
       if (isNaN(start) || isNaN(end) || start < 0 || start > endBound || end < 0 || end > endBound) {
         alert(`Invalid value, value needs to be in range 0-${endBound}.`);
