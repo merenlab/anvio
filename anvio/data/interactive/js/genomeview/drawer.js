@@ -288,6 +288,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
 GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex, genomeIndex) {
+  console.log("inside buildNumericalDataLayer for layer " + layer + " and layerPos " + layerPos)
   // TODO this will need to be refactored once we begin testing genomes comprised of multiple contigs
   let contigObj = Object.values(additionalDataLayers)[0]
   let contigArr = Object.values(contigObj)[0]
@@ -312,6 +313,8 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   for (let i = 0; i < contigArr.length; i++) {
     contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
   }
+  console.log("contigArr is")
+  console.log(contigArr)
 
   let nGroups = 20
   let j = 0
@@ -347,7 +350,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   }
   layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight} z`
   globalPathDirective.push(layer_end_final_coordinates)
-
+console.log("completed path")
   let shadedObj = new fabric.Path(globalPathDirective.join(' '))
   shadedObj.set({
     top: startingTop,
@@ -361,7 +364,9 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     genome: genomeID
   })
   canvas.bringToFront(shadedObj)
+  console.log("added path")
   this.addBackgroundShade(startingTop, startingLeft, genomeMax[genomeID]*scaleFactor, layerHeight, orderIndex, genomeIndex)
+  console.log("buildNumericalDataLayer fn complete")
 }
 
 /*
