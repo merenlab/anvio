@@ -66,8 +66,9 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
 
   let ptInterval = Math.floor(globalGenomeMax / settings['display']['adlPtsPerLayer']);
-
+console.log("set ADLs and ptInterval")
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
+    console.log("groupLayerOrder index "+ idx)
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
       this.addGenome(orderIndex, dataLayerHeight, layerPos, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
@@ -85,7 +86,7 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
       layerPos += rulerHeight + groupLayerPadding
     }
   })
-
+console.log("groupLayer loop done")
   canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + genomeIndex));
   this.addGroupBorder(yOffset, orderIndex)
 }
