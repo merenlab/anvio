@@ -433,7 +433,7 @@ function processState(stateName, stateData) {
   if(stateData?.['display']?.['genome-label-size']) {
     settings['display']['genome-label-size'] = stateData['display']['genome-label-size'];
   } else {
-    settings['display']['genome-label-size'] = 15
+    settings['display']['genome-label-size'] = 30;
   }
   $('#genome_label').val(settings['display']['genome-label-size'])
 
@@ -590,7 +590,7 @@ function loadAll(loadType) {
 
   $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
   $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
-  drawGenomeLabels();
+  drawGenomeLabels(settings['display']['genome-label-size']);
 
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);

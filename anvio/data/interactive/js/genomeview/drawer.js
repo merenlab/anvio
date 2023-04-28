@@ -752,7 +752,7 @@ GenomeDrawer.prototype.setGenomeMargin = function (newMargin) {
   }
   groupMargin = newMargin;
   this.draw();
-  drawGenomeLabels(); // update label font size
+  drawGenomeLabels(settings['display']['genome-label-size']);
 }
 
 GenomeDrawer.prototype.setScaleInterval = function (newScale) {
@@ -784,8 +784,8 @@ GenomeDrawer.prototype.setGenomeLabelSize = function (newSize) {
     alert(`Invalid value, genome label size must be in range 0-1000.`);
     return;
   }
-  settings['display']['genome-label-size'] = newSize;
-  if (settings['display']['show-genome-labels']) this.draw();
+  drawGenomeLabels(newSize);
+  setLabelCanvas();
 }
 
 GenomeDrawer.prototype.redrawSingleGenome = function (genomeID) {

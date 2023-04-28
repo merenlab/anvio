@@ -363,7 +363,7 @@ function setEventListeners(){
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
           if (!bySetColor) $(el).val(hex);
-          drawGenomeLabels();
+          drawGenomeLabels(settings['display']['genome-label-size']);
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
@@ -1148,7 +1148,7 @@ function buildGenomesTable(genomes, order){
     var template = `<tr id=${genomeLabel}>
                   <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
                   <td> ${genomeLabel} </td>
-                  <td><input type="checkbox" class="genome_selectors" onclick="drawer.draw(); drawGenomeLabels()" id="${genomeLabel}-show"></input></td>
+                  <td><input type="checkbox" class="genome_selectors" onclick="drawer.draw(); drawGenomeLabels(settings['display']['genome-label-size'])" id="${genomeLabel}-show"></input></td>
                   </tr>;`
 
     $('#tbody_genomes').append(template);
@@ -1158,7 +1158,7 @@ function buildGenomesTable(genomes, order){
 
   $("#tbody_genomes").on("sortupdate", (event, ui) => {
     changeGenomeOrder($("#tbody_genomes").sortable('toArray'))
-    drawGenomeLabels() // update label order
+    drawGenomeLabels(settings['display']['genome-label-size']) // update label order
   })
 }
 
@@ -1228,11 +1228,11 @@ function toggleAdditionalDataLayer(e){
     maxGroupSize -= 1 // decrease group height if hiding the layer
   }
   drawer.draw()
-  drawGenomeLabels()
+  drawGenomeLabels(settings['display']['genome-label-size'])
 }
 
 function setLabelCanvas() {
-  labelCanvasWidth = $('#rotate_genome_labels_box').prop("checked") ? spacing * 7/20 : spacing * 1.25;
+  labelCanvasWidth = $('#rotate_genome_labels_box').prop("checked") ? settings['display']['genome-label-size'] * 7/3 : settings['display']['genome-label-size'] * 25/3;
   if(settings['display']['show-genome-labels']) {
     labelCanvas.setWidth(labelCanvasWidth);
     canvas.setWidth((VIEWER_WIDTH * 0.90) - labelCanvasWidth);
@@ -1603,7 +1603,11 @@ function showAllHiddenGenes(){
   drawer.draw()
 }
 
-function drawGenomeLabels() {
+function drawGenomeLabels(fontsize=null) {
+  if(!fontsize) fontsize = spacing * 3/20;
+  $('#genome_label').val(fontsize);
+  settings['display']['genome-label-size'] = fontsize;
+
   labelCanvas.clear();
 
   let genomes = ($('.genome_selectors:checked').length > 0) 
@@ -1616,7 +1620,7 @@ function drawGenomeLabels() {
       angle: $('#rotate_genome_labels_box').prop("checked") ? 270 : 0,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
       fill: $('#genome_label_color').attr('color'),
-      fontSize: spacing * 3/20,
+      fontSize: fontsize,
       fontFamily: 'sans-serif',
       selectable: false,
       hoverCursor: 'default'
