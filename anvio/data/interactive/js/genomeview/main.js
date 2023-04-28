@@ -56,7 +56,6 @@ var counts; // stores # occurences for each category in the current function typ
 var genomeData;
 
 $(document).ready(function () {
-  console.log("GOT HERE ====================\n\n")
   toastr.options = {
     "closeButton": true,
     "debug": false,
