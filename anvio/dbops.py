@@ -1321,6 +1321,13 @@ class ContigsSuperclass(object):
                     if gene_callers_id in self.gene_function_calls_dict:
                         accession, function, evalue = self.gene_function_calls_dict[gene_callers_id][gene_annotation_source]
                         accession, function = accession.split('!!!')[0], function.split('!!!')[0]
+
+                        # now we have the function text, but it may contain characters that are offensive to the GFF3
+                        # specifications, so we will simply replace them with space character. for more information
+                        # please see https://github.com/merenlab/anvio/issues/2070
+                        for character in [':', ';', ',', '&', '\t']:
+                            function = function.replace(character, ' ')
+
                         attributes += f";Name={accession};db_xref={gene_annotation_source}:{accession};product={function}"
 
                 output.write(f"{entry['contig']}\t.\t{seq_type}\t{entry['start'] + 1}\t{entry['stop']}\t.\t{strand}\t.\t{attributes}")
