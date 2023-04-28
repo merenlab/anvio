@@ -40,6 +40,7 @@ function calculateMainCanvasHeight(){
  *  Save NT length of each genome in `genomeMax` dict, and save length of the largest genome in `globalGenomeMax`.
  */
 function calculateGenomeLengths(){
+  globalGenomeMax = -999999;
   for(genome of genomeData.genomes) {
     let genomeID = genome[0]
     genome = genome[1].genes.gene_calls;

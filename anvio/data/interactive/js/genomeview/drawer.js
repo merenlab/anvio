@@ -63,7 +63,7 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
 
   let additionalDataLayers = this.settings['additional-data-layers']['data'][genomeID]
 
-  let ptInterval = Math.floor(globalGenomeMax / settings['display']['adlPtsPerLayer']);
+  let ptInterval = globalGenomeMax > settings['display']['adlPtsPerLayer'] ? Math.floor(globalGenomeMax / settings['display']['adlPtsPerLayer']) : 1;
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
@@ -298,6 +298,11 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
 
   for (let i = 0; i < contigArr.length; i++) {
     contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
+  }
+  
+  if(ptInterval == 0) {
+    console.log("error: ptInterval for numerical additional data layer was set to 0. if you are getting this error, ptInterval was likely calculated wrong due to some rounding error (perhaps you are using a short genome), and you should contact the developers.")
+    return;
   }
 
   let nGroups = 20

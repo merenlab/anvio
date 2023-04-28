@@ -33,7 +33,7 @@ var settings = {} // packaged obj sent off to GenomeDrawer
 var xDisps = {};
 var renderWindow = []; 
 var genomeMax = {};
-var globalGenomeMax = 0;
+var globalGenomeMax;
 var yOffset = 0 // y-location for the current additional data layer
 var scaleFactor = 1; // widths of all objects are scaled by this value to zoom in/out
 var maxGroupSize = 2 // used to calculate group height. base of 2 as each group will contain at minimum a genome layer + group ruler.
@@ -491,10 +491,12 @@ function processState(stateName, stateData) {
   }
   $('#thresh_count').val(settings['display']['thresh-count-gene-colors'])
 
+  calculateGenomeLengths()
+  
   if(stateData?.['display']?.hasOwnProperty('adlPtsPerLayer')) {
     settings['display']['adlPtsPerLayer'] = stateData['display']['adlPtsPerLayer']
   } else {
-    settings['display']['adlPtsPerLayer'] = 10000 // number of data points to be subsampled per ADL. TODO: more meaningful default?
+    settings['display']['adlPtsPerLayer'] = Math.min(10000, globalGenomeMax) // number of data points to be subsampled per ADL. TODO: more meaningful default?
   }
   $('#adl_pts_per_layer').val(settings['display']['adlPtsPerLayer'])
   
@@ -555,8 +557,6 @@ function loadAll(loadType) {
       xDisps[genome[0]] = 0;
     }
   }
-
-  calculateGenomeLengths()
 
   if(loadType == 'init') {
     $('#gene_color_order').append($('<option>', {
