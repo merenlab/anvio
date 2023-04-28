@@ -30,10 +30,9 @@ GenomeDrawer.prototype.draw = function () {
   canvas.clear()
   canvas.setHeight(calculateMainCanvasHeight()) // set canvas height dynamically
   labelCanvas.setHeight(calculateMainCanvasHeight());
-console.log("canvas height set")
+
   let orderIndex = 0
   this.settings['genomeData']['genomes'].map((genome, idx) => {
-    console.log("inside addLayers loop iteration: " + idx)
     if($('#' + genome[0] + '-show').is(':checked')) {
       this.addLayers(idx, orderIndex)
       orderIndex++
@@ -54,7 +53,6 @@ console.log("canvas height set")
  *  For each genome group, iterate additional all layers and render where appropriate
  */
 GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
-  console.log("inside addLayers orderIndex" + orderIndex)
   let [dataLayerHeight, rulerHeight] = [this.calculateLayerSizes()[0], this.calculateLayerSizes()[1]]
 
   yOffset = orderIndex * spacing + (orderIndex * maxGroupSize * groupLayerPadding);
@@ -68,33 +66,24 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
   let ptInterval = Math.floor(globalGenomeMax / settings['display']['adlPtsPerLayer']);
 
   this.settings['group-layer-order'].map((layer, idx) => {  // render out layers, ordered via group-layer-order array
-    console.log("groupLayerOrder index "+ idx)
-    console.log(layer)
-    console.log($('#Genome-show'))
-    console.log($('#Genome-show').is(':checked'))
     if (layer == 'Genome' && $('#Genome-show').is(':checked')) {
-      console.log("check for adding a genome passed=====\n======")
       this.addGenome(orderIndex, dataLayerHeight, layerPos, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
-      console.log("genome added successfully")
     }
     if (layer == 'Coverage' && this.settings['additional-data-layers']['layers'].includes('Coverage') && $('#Coverage-show').is(':checked')) {
       this.buildNumericalDataLayer('Coverage', layerPos, genomeID, additionalDataLayers, ptInterval, 'blue', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
-      console.log("coverage added successfully")
     }
     if (layer == 'GC_Content' && this.settings['additional-data-layers']['layers'].includes('GC_content') && $('#GC_Content-show').is(':checked')) {
       this.buildNumericalDataLayer('GC_content', layerPos, genomeID, additionalDataLayers, ptInterval, 'purple', dataLayerHeight, orderIndex, genomeIndex)
       layerPos += dataLayerHeight + groupLayerPadding
-      console.log("GC Content added successfully")
     }
     if (layer == 'Ruler' && this.settings['additional-data-layers']['layers'].includes('ruler') && $('#Ruler-show').is(':checked')) {
       this.buildGroupRulerLayer(genomeID, layerPos, rulerHeight, orderIndex)
       layerPos += rulerHeight + groupLayerPadding
-      console.log("Ruler added successfully")
     }
   })
-console.log("groupLayer loop done")
+
   canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + genomeIndex));
   this.addGroupBorder(yOffset, orderIndex)
 }
@@ -141,7 +130,6 @@ GenomeDrawer.prototype.calculateLayerSizes = function () {
 }
 
 GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, genomeIndex) {
-  console.log("addGenome function")
   let genome = this.settings['genomeData']['genomes'][genomeIndex];
   let gene_list = genome[1].genes.gene_calls;
   let genomeID = genome[0];
@@ -176,7 +164,6 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   }
 
   for (let geneID in gene_list) {
-    console.log("inside for geneID in gene_list geneID: " + geneID)
     let gene = gene_list[geneID];
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
     if (gene.start < ntStart) continue;
@@ -288,7 +275,6 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
  *  Process to generate numerical ADL for genome groups (ie Coverage, GC Content )
  */
 GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, genomeID, additionalDataLayers, ptInterval, defaultColor, layerHeight, orderIndex, genomeIndex) {
-  console.log("inside buildNumericalDataLayer for layer " + layer + " and layerPos " + layerPos)
   // TODO this will need to be refactored once we begin testing genomes comprised of multiple contigs
   let contigObj = Object.values(additionalDataLayers)[0]
   let contigArr = Object.values(contigObj)[0]
@@ -313,8 +299,6 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   for (let i = 0; i < contigArr.length; i++) {
     contigArr[i] > maxDataLayerValue ? maxDataLayerValue = contigArr[i] : null
   }
-  console.log("contigArr is")
-  console.log(contigArr)
 
   let nGroups = 20
   let j = 0
@@ -350,7 +334,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   }
   layer_end_final_coordinates = `L ${final_l} ${layerHeight} L ${startingLeft} ${layerHeight} z`
   globalPathDirective.push(layer_end_final_coordinates)
-console.log("completed path")
+
   let shadedObj = new fabric.Path(globalPathDirective.join(' '))
   shadedObj.set({
     top: startingTop,
@@ -364,9 +348,7 @@ console.log("completed path")
     genome: genomeID
   })
   canvas.bringToFront(shadedObj)
-  console.log("added path")
   this.addBackgroundShade(startingTop, startingLeft, genomeMax[genomeID]*scaleFactor, layerHeight, orderIndex, genomeIndex)
-  console.log("buildNumericalDataLayer fn complete")
 }
 
 /*
