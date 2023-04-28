@@ -1183,9 +1183,9 @@ class LocusSplitter:
                                   project_name=os.path.basename(output_path_prefix),
                                   split_length=sys.maxsize,
                                   kmer_size=4,
-                                  external_gene_calls=locus_external_gene_calls)
-        #FIXME: it would be great if anvio could give a warning about internal stop codons
-        # rather than killing the whole export-locus interation
+                                  external_gene_calls=locus_external_gene_calls,
+                                  ignore_internal_stop_codons=True)
+
         dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
 
         # while we are at it, here we generate a blank profile, too. so visualization of the
