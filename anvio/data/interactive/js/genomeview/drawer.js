@@ -85,18 +85,19 @@ GenomeDrawer.prototype.addLayers = function (genomeIndex, orderIndex) {
   })
 
   canvas.remove(canvas.getObjects().find(obj => obj.id == 'groupBorder' + genomeIndex));
-  this.addGroupBorder(yOffset, orderIndex)
+  this.addGroupBorder(yOffset, orderIndex, genomeIndex)
 }
 
 /*
  *  add a stylish and visually significant border around each group
  */
-GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex) {
+GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex, genomeIndex) {
 
   if(maxGroupSize == 1) return;
 
   let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
   let left = -20
+  let genomeID = this.settings['genomeData']['genomes'][genomeIndex][0]
   let width = genomeMax[genomeID]*scaleFactor + 50
   let height = spacing + 50
 
