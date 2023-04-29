@@ -753,7 +753,7 @@ function showTabularModal(){
 
   handleTotalSelect = () => {
     let curr_genome = $('.active')[1].id;
-    $(`.${curr_genome}-input`).prop('checked', $('#total-select').prop('checked'));
+    $(`.${curr_genome}-input`).prop('checked', $(`#${curr_genome}-total-select`).prop('checked'));
   }
 
   $('#tabular-modal-annotation-checkboxes').empty()
@@ -788,7 +788,7 @@ function showTabularModal(){
         <table id="${genome}-table"class="table table-striped" style="width: 100%; text-align: left; font-size: 12px; background: white">
           <thead id='tabular-modal-table-head'>
             <tr id='${genome}-tabular-modal-table-header-tr'>
-              <th id="${genome}-select"><input class="form-check-input" type='checkbox' id='total-select' onclick="handleTotalSelect()"></input>Select</th>
+              <th id="${genome}-select"><input class="form-check-input" type='checkbox' id='${genome}-total-select' onclick="handleTotalSelect()"></input>Select</th>
               <th>Gene Caller ID</th>
               <th>Start</th>
               <th>Stop</th>
