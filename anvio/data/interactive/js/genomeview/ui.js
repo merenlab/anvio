@@ -404,8 +404,8 @@ function showDeepDiveToolTip(event){
   let totalMetadataString = String()
   let totalAnnotationsString = String()
   let metadataLabel = String()
-  let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
-  let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
+  let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
+  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
 
   if(settings['display']?.['metadata']){
     let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
@@ -516,11 +516,11 @@ function showDeepDiveToolTip(event){
   </table>;
   `)
 
-  $('#metadata-query').on('click', function(){
+  $('.metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
   })
 
-  $('#metadata-remove').on('click', function(){
+  $('.metadata-remove').on('click', function(){
     let gene = event.target.geneID
     let genome = event.target.genomeID
     let label = $(this).parent().siblings('td').first().html()
@@ -876,8 +876,8 @@ function showTabularModal(){
 }
 
 function addMetadataTag(genomeID, geneID, label) {
-  let queryBtn = `<button type='button' id='metadata-query' class='btn btn-default btn-sm'>Query sequence for matches</button>`
-  let removeBtn = `<button type='button' id='metadata-remove' class='btn btn-default btn-sm'>Remove metadata item</button>`
+  let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
+  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
 
   let metadataObj = {
     label  : label,
@@ -895,11 +895,11 @@ function addMetadataTag(genomeID, geneID, label) {
       <td>${removeBtn}</td>
     </tr>
   `)
-  $('#metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
+  $('.metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
     drawer.queryMetadata(label)
   })
 
-  $('#metadata-remove').on('click', function(){      
+  $('.metadata-remove').on('click', function(){      
     let label = $(this).parent().siblings('td').first().html()
     let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID)
 
