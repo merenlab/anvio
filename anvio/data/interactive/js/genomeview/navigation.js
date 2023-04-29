@@ -51,9 +51,7 @@
       }
     }
 
-    brush.extent([newStart, newEnd]);
-    brush(d3.select(".brush").transition());
-    brush.event(d3.select(".brush").transition());
+    moveToAndUpdateScale(newStart, newEnd);
   }
 
   function zoomOut(type, start, end) {
@@ -79,16 +77,14 @@
       if(newStart == 0 && newEnd == genoglobalGenomeMaxmeMax) { // for extra-zoomed-out view
         scaleFactor = 0.01;
         if(settings['display']['dynamic-scale-interval']) adjustScaleInterval();
-      drawer.draw()
+        drawer.draw()
         return;
       }
     }
     if(newStart < 0) newStart = 0;
     newEnd = clamp(newEnd, 0, percentScale ? 1 : globalGenomeMax);
 
-    brush.extent([newStart, newEnd]);
-    brush(d3.select(".brush").transition());
-    brush.event(d3.select(".brush").transition());
+    moveToAndUpdateScale(newStart, newEnd);
   }
 
   async function zoomOutAndWait(type, start, end, time) {
@@ -180,20 +176,60 @@ function drawScale() {
       $('#brush_start').val(b[0]);
       $('#brush_end').val(b[1]);
 
-      let ntsToShow = b[1] - b[0];
-      // NOTE: there is a bug in the following line for percent scale where the scaleFactor is not calculated correctly and as a result the viewport window is incorrect.
-      // Need to determine the number of nucleotides that correspond to a given proportional range (e.g. [0.1, 0.234]) after sliding a genome 
-      scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
-      updateRenderWindow();
+      moveTo(b[0], b[1]);
 
-      if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
+      // let ntsToShow = b[1] - b[0];
+      // // NOTE: there is a bug in the following line for percent scale where the scaleFactor is not calculated correctly and as a result the viewport window is incorrect.
+      // // Need to determine the number of nucleotides that correspond to a given proportional range (e.g. [0.1, 0.234]) after sliding a genome 
+      // scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
+      // updateRenderWindow();
 
-      drawer.draw()
-      let moveToX = percentScale ? getVPTForFrac()[0] : scaleFactor*b[0];
-      canvas.absolutePan({x: moveToX, y: 0});
+      // if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
+
+      // drawer.draw()
+      // let moveToX = percentScale ? getVPTForFrac()[0] : scaleFactor*b[0];
+      // canvas.absolutePan({x: moveToX, y: 0});
 
       // TODO: restrict min view to 300 NTs? (or e.g. scaleFactor <= 4)
   }
+}
+
+/*
+ *  Pan viewport to new [start, stop] location and update scale UI. Setting transition=false creates a choppier but faster animation.
+ */
+function moveToAndUpdateScale(start, stop, transition=true) {
+  brush.extent([start, stop]);
+  brush(d3.select(".brush").transition());
+  if(transition) {
+    brush.event(d3.select(".brush").transition()); // triggers onBrush() => triggers moveTo()
+  } else {
+    brush.event(d3.select(".brush"));
+  }
+}
+
+/*
+ *  Pan viewport to new [start, stop] location.
+ */
+function moveTo(start, stop) {
+  // if genome sliding is activated, set x-displacement for currently selected genome
+  // let pad = 0;
+  // if(percentScale) {
+  //   let selected_genome = "REPLACE_WITH_CURRENTLY_SELECTED_GENOME_ID"; // TEMPORARY - REPLACE 
+  //   pad = xDisps[selected_genome];
+  // }
+
+  // zoom + pan viewport to new location
+  let ntsToShow = stop - start;
+  scaleFactor = canvas.getWidth() / ntsToShow;
+  let moveToX = scaleFactor * start;
+  canvas.absolutePan({x: moveToX, y: 0});
+
+  // update rulers based on new zoom
+  if(settings['display']['dynamic-scale-interval']) drawer.adjustScaleInterval();
+  
+  // render newly selected nt range
+  updateRenderWindow();
+  drawer.draw();
 }
 
 /*

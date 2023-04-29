@@ -120,11 +120,7 @@ function setCanvasListeners(){
     if(percentScale && newEnd - newStart < 0.02) return;
     if(!percentScale && newEnd - newStart < 50) return;
 
-    brush.extent([newStart, newEnd]);
-    brush(d3.select(".brush").transition()); // if zoom is slow or choppy, try removing .transition()
-    brush.event(d3.select(".brush"));
-    $('#brush_start').val(newStart);
-    $('#brush_end').val(newEnd);
+    moveToAndUpdateScale(newStart, newEnd, transition=false);
   });
   canvas.on('mouse:over', function(event) {
     // if(event.target.class == 'ruler'){
@@ -191,26 +187,14 @@ function setEventListeners(){
     if (ev.which == 37 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Left Arrow = 37
       let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
       if(start - 1000 < 0) return;
-      $('#brush_start').val(start - 1000);
-      $('#brush_end').val(stop - 1000);
-      brush.extent([start-1000, stop-1000]);
-      brush(d3.select(".brush").transition());
-      brush.event(d3.select(".brush").transition());
-      updateRenderWindow();
-      drawer.draw();
+      moveToAndUpdateScale(start - 1000, stop - 1000, transition=false);
     }
   });
   document.body.addEventListener("keydown", function (ev) {
     if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Right Arrow = 39
       let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
       if(stop + 1000 > globalGenomeMax) return;
-      $('#brush_start').val(start + 1000);
-      $('#brush_end').val(stop + 1000);
-      brush.extent([start+1000, stop+1000]);
-      brush(d3.select(".brush").transition());
-      brush.event(d3.select(".brush").transition());
-      updateRenderWindow();
-      drawer.draw();
+      moveToAndUpdateScale(start + 1000, stop + 1000, transition=false);
     }
   });
   document.body.addEventListener("keydown", function (ev) {
@@ -337,9 +321,8 @@ function setEventListeners(){
         return;
       }
 
-      brush.extent([start, end]);
-      brush(d3.select(".brush").transition());
-      brush.event(d3.select(".brush").transition());
+      moveToAndUpdateScale(start, end);
+      $('#brush_start, #brush_end').blur();
     }
   });
   $('#batch_colorpicker').colpick({
@@ -1241,11 +1224,7 @@ function setLabelCanvas() {
     canvas.setWidth(VIEWER_WIDTH * 0.90);
   }
   if(!firstDraw) {
-    let ntsToShow = $('#brush_end').val() - $('#brush_start').val();
-    scaleFactor = percentScale ? canvas.getWidth()/(ntsToShow*(calcXBounds()[1]-calcXBounds()[0])/scaleFactor) : canvas.getWidth()/ntsToShow;
-    drawer.draw();
-    let moveToX = percentScale ? getVPTForFrac()[0] : scaleFactor*$('#brush_start').val();
-    canvas.absolutePan({x: moveToX, y: 0});
+    moveTo($('#brush_start').val(), $('#brush_end').val()); // reset scaleFactor to new canvas width and redraw
   }
 }
 
@@ -1309,12 +1288,8 @@ function respondToBookmarkSelect(){
   $('#bookmarks-select').change(function(e){
     let [start, stop] = [$(this).val().split(',')[0], $(this).val().split(',')[1] ]
     if(!stop)return // edge case for empty 'Bookmarks' placeholder select value
-    $('#brush_start').val(start);
-    $('#brush_end').val(stop);
     try {
-      brush.extent([start, stop]);
-      brush(d3.select(".brush").transition());
-      brush.event(d3.select(".brush").transition());
+      moveToAndUpdateScale(start, stop);
       let selectedBookmark = settings['display']['bookmarks'].find(bookmark => bookmark.start == start && bookmark.stop == stop)
       $('#bookmark-description').text(selectedBookmark['description'])
       toastr.success("Bookmark successfully loaded")
