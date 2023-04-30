@@ -587,11 +587,7 @@ class Pangenome(ModelInput):
         reversibility: bool,
         genome_ids: Set[str]
     ) -> Tuple[Dict[str, Any], bool]:
-        if pd.isna(chemical.select_bigg_id):
-            compound_id = chemical.modelseed_compound_id
-        else:
-            compound_id = chemical.select_bigg_id
-        metabolite_id = f'{compound_id}_{compartment}'
+        metabolite_id = f'{chemical.id}_{compartment}'
         try:
             cobrapy_metabolite_dict = self.recorded_metabolites[metabolite_id]
             already_recorded_metabolite = True
