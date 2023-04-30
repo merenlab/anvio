@@ -390,8 +390,11 @@ function showDeepDiveToolTip(event){
   let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
   let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
 
+  let includeMetadataHeader = false;
   if(settings['display']?.['metadata']){
     let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
+    if(geneMetadata.length > 0) includeMetadataHeader = true;
+    
     const createMetadataContent = () => {
       geneMetadata.map(metadata => {
         metadataLabel = metadata.label
@@ -479,7 +482,7 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
-        <thead><th>metadata</th><th>action</th><th>remove</th></thead>
+        <thead id="metadata-deepdive-header"></thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
@@ -499,6 +502,8 @@ function showDeepDiveToolTip(event){
   </table>;
   `)
 
+  if(includeMetadataHeader) $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
+
   $('.metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
   })
@@ -510,6 +515,11 @@ function showDeepDiveToolTip(event){
     let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
 
     settings['display']['metadata'].splice(index, 1)
+
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
+    if(geneMetadata.length == 0) {
+      $('#metadata-deepdive-header').empty();
+    }
     
     $(this).closest('tr').remove();
   })
@@ -549,6 +559,10 @@ function showDeepDiveToolTip(event){
   })
   // TODO consider metadata option to include 'author' field
   $('#metadata-gene-label-add').on('click', function(){
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
+    if(geneMetadata.length == 0) {
+      $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
+    }
     addMetadataTag(event.target.genomeID, event.target.geneID, $('#metadata-gene-label').val());
   })
   $('#picker_tooltip').colpick({
@@ -878,6 +892,9 @@ function addMetadataTag(genomeID, geneID, label) {
       <td>${removeBtn}</td>
     </tr>
   `)
+
+  $('.metadata-remove, .metadata-query').unbind('click')
+
   $('.metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
     drawer.queryMetadata(label)
   })
@@ -887,6 +904,11 @@ function addMetadataTag(genomeID, geneID, label) {
     let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID)
 
     settings['display']['metadata'].splice(index, 1)
+
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID)
+    if(geneMetadata.length == 0) {
+      $('#metadata-deepdive-header').empty();
+    }
     
     $(this).closest('tr').remove();
   })
