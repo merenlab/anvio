@@ -793,7 +793,7 @@ class Pangenome(object):
     def compute_alignments_for_gene_clusters(self, gene_clusters_dict):
         if self.skip_alignments:
             self.run.warning('Skipping gene alignments.')
-            return gene_clusters_dict
+            return gene_clusters_dict, set([])
 
         # we run "select aligner" to print the citation information (the actual selection is
         # done in the `alignment_worker` down below)

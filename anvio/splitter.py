@@ -780,6 +780,8 @@ class LocusSplitter:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
                 self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
+        
+        utils.check_sample_id(self.output_file_prefix)
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
@@ -1183,9 +1185,9 @@ class LocusSplitter:
                                   project_name=os.path.basename(output_path_prefix),
                                   split_length=sys.maxsize,
                                   kmer_size=4,
-                                  external_gene_calls=locus_external_gene_calls)
-        #FIXME: it would be great if anvio could give a warning about internal stop codons
-        # rather than killing the whole export-locus interation
+                                  external_gene_calls=locus_external_gene_calls,
+                                  ignore_internal_stop_codons=True)
+
         dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
 
         # while we are at it, here we generate a blank profile, too. so visualization of the
