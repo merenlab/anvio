@@ -491,7 +491,7 @@ function showDeepDiveToolTip(event){
 
   <h2>Annotations</h2>;
   <table class="table table-striped">;
-    <thead>
+    <thead id="annotations-deepdive-header">
       <th>Source</th>;
       <th>Accession</th>;
       <th>Annotation</th>
@@ -501,6 +501,10 @@ function showDeepDiveToolTip(event){
     </tbody>
   </table>;
   `)
+
+  if(!event.target.functions){
+    $('#annotations-deepdive-header').empty()
+  }
 
   if(includeMetadataHeader) $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
 
