@@ -252,6 +252,34 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             reaction.chemicals.append(chemical)
         return reaction
 
+    def _add_ids(self, obj: protein.Reaction, data: Dict, source: str) -> bool:
+        """Add reference IDs to the reaction or metabolite object. Return True if ID(s) exist for
+        the reaction or metabolite in the ModelSEED database else False."""
+        ref_ids: str = data[source]
+        if pd.isna(ref_ids):
+            return False
+        # IDs in "aliases" should be delimited by '; '. EC numbers should be delimited by '|'.
+        if source == 'id':
+            # This is an "id" entry in the ModelSEED reaction table, a single ModelSEED ID for the
+            # reaction or compound.
+            obj.reference_ids['ModelSEED_ID'] = [ref_ids]
+        elif source == 'name':
+            # This is a "name" entry in the ModelSEED reactions table, or a single name for the
+            # reaction or compound. This is found among the "Name" values (see below), or, absent
+            # "Name" values, this is the same as the ModelSEED "id" entry.
+            obj.reference_ids['ModelSEED_Name'] = [ref_ids]
+        elif source == 'inchikey':
+            obj.reference_ids['InChIKey'] = [ref_ids]
+        elif source == 'ec_numbers':
+            obj.reference_ids['EC'] = ref_ids.split('|')
+        elif source == 'Name':
+            # In the original ModelSEED reactions table, this is the "Name" field of an entry in the
+            # "aliases" column.
+            obj.reference_ids['ModelSEED_Alternate_Name'] = ref_ids.split('; ')
+        else:
+            obj.reference_ids[source] = ref_ids.split('; ')
+        return True
+
     def _to_lcm_denominator(self, floats) -> Tuple[int]:
         def lcm(a, b):
             return a * b // gcd(a, b)
