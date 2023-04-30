@@ -594,25 +594,25 @@ class Pangenome(ModelInput):
         except KeyError:
             cobrapy_metabolite_dict = COBRApyJSONStructure.get_metabolite_entry()
             already_recorded_metabolite = False
-        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        cobrapy_metabolite_notes = cobrapy_metabolite_dict['notes']
         if already_recorded_metabolite:
             if reversibility:
-                recorded_consuming_genome_ids: List = cobrapy_metabolite_annotation['consuming_genomes']
-                recorded_producing_genome_ids: List = cobrapy_metabolite_annotation['producing_genomes']
-                cobrapy_metabolite_annotation['consuming_genomes'] = sorted(
+                recorded_consuming_genome_ids: List = cobrapy_metabolite_notes['consuming_genomes']
+                recorded_producing_genome_ids: List = cobrapy_metabolite_notes['producing_genomes']
+                cobrapy_metabolite_notes['consuming_genomes'] = sorted(
                     genome_ids.union(set(recorded_consuming_genome_ids))
                 )
-                cobrapy_metabolite_annotation['producing_genomes'] = sorted(
+                cobrapy_metabolite_notes['producing_genomes'] = sorted(
                     genome_ids.union(set(recorded_producing_genome_ids))
                 )
             elif coefficient < 0:
-                recorded_consuming_genome_ids: List = cobrapy_metabolite_annotation['consuming_genomes']
-                cobrapy_metabolite_annotation['consuming_genomes'] = sorted(
+                recorded_consuming_genome_ids: List = cobrapy_metabolite_notes['consuming_genomes']
+                cobrapy_metabolite_notes['consuming_genomes'] = sorted(
                     genome_ids.union(set(recorded_consuming_genome_ids))
                 )
             elif coefficient > 0:
-                recorded_producing_genome_ids: List = cobrapy_metabolite_annotation['producing_genomes']
-                cobrapy_metabolite_annotation['producing_genomes'] = sorted(
+                recorded_producing_genome_ids: List = cobrapy_metabolite_notes['producing_genomes']
+                cobrapy_metabolite_notes['producing_genomes'] = sorted(
                     genome_ids.union(set(recorded_producing_genome_ids))
                 )
             return cobrapy_metabolite_dict, already_recorded_metabolite
@@ -622,14 +622,14 @@ class Pangenome(ModelInput):
         cobrapy_metabolite_dict['charge'] = chemical.charge if chemical.charge else 0
         cobrapy_metabolite_dict['formula'] = chemical.formula if chemical.formula else ""
         if reversibility:
-            cobrapy_metabolite_annotation['consuming_genomes'] = sorted(genome_ids)
-            cobrapy_metabolite_annotation['producing_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['consuming_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['producing_genomes'] = sorted(genome_ids)
         elif coefficient < 0:
-            cobrapy_metabolite_annotation['consuming_genomes'] = sorted(genome_ids)
-            cobrapy_metabolite_annotation['producing_genomes'] = []
+            cobrapy_metabolite_notes['consuming_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['producing_genomes'] = []
         elif coefficient > 0:
-            cobrapy_metabolite_annotation['consuming_genomes'] = []
-            cobrapy_metabolite_annotation['producing_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['consuming_genomes'] = []
+            cobrapy_metabolite_notes['producing_genomes'] = sorted(genome_ids)
         return cobrapy_metabolite_dict, already_recorded_metabolite
 
 class ExternalGenome(ModelInput):
