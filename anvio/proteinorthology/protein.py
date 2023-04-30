@@ -47,8 +47,8 @@ class Chemical:
 class Reaction:
     """A chemical reaction."""
     def __init__(self) -> None:
-        self.id: str = None
-        self.name: str = None
+        # The reaction may have one or more IDs (values) per reference database (key).
+        self.reference_ids: Dict[str, List[str]] = {}
         self.chemicals: List[Chemical] = []
         self.coefficients: List[float] = []
         self.compartments: List[str] = []
