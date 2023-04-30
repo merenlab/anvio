@@ -486,9 +486,7 @@ class Pangenome(ModelInput):
                     f"The protein annotation source, '{self.protein_annotation_source}', is not "
                     "recognized."
                 )
-            reactions = ortholog.get_protein_data(
-                self.source_db, cross_reference_dbs=self.cross_ref_dbs
-            ).reactions
+            reactions = ortholog.get_reactions(self.source_db, cross_reference_dbs=self.cross_ref_dbs)
             if not reactions:
                 # No reference reaction data could be assigned to the ortholog.
                 continue
