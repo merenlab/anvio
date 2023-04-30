@@ -27,11 +27,6 @@ __status__ = "Development"
 
 run_quiet = terminal.Run(verbose=False)
 
-class Protein:
-    """A protein."""
-    def __init__(self) -> None:
-        self.ortholog_annotations: List[OrthologAnnotation] = []
-
 class Chemical:
     """A chemical."""
     def __init__(self) -> None:
