@@ -30,11 +30,10 @@ run_quiet = terminal.Run(verbose=False)
 class Chemical:
     """A chemical."""
     def __init__(self) -> None:
-        self.modelseed_compound_id: str = None
-        self.select_bigg_id: str = None
+        # The chemical may have one or more IDs (values) per reference database (key).
+        self.reference_ids: Dict[str, List[str]] = {}
         self.charge: int = None
         self.formula: str = None
-        self.inchi_key: str = None
         self.smiles_string: str = None
 
 class Reaction:
