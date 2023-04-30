@@ -634,6 +634,19 @@ class Pangenome(ModelInput):
         elif coefficient > 0:
             cobrapy_metabolite_notes['consuming_genomes'] = []
             cobrapy_metabolite_notes['producing_genomes'] = sorted(genome_ids)
+        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.metabolite'),
+            ('KEGG', 'kegg.compound'),
+            ('InChIKey', 'inchi_key'),
+            ('MetaCyc', 'metacyc.compound'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = chemical.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_metabolite_annotation[json_key] = ids
         return cobrapy_metabolite_dict, already_recorded_metabolite
 
 class ExternalGenome(ModelInput):
