@@ -617,7 +617,11 @@ class Pangenome(ModelInput):
                 )
             return cobrapy_metabolite_dict, already_recorded_metabolite
         cobrapy_metabolite_dict['id'] = metabolite_id
-        cobrapy_metabolite_dict['name'] = chemical.name if chemical.name else ""
+        try:
+            modelseed_name = chemical.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_metabolite_dict['name'] = modelseed_name
         cobrapy_metabolite_dict['compartment'] = compartment
         cobrapy_metabolite_dict['charge'] = chemical.charge if chemical.charge else 0
         cobrapy_metabolite_dict['formula'] = chemical.formula if chemical.formula else ""
