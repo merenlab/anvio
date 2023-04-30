@@ -564,6 +564,19 @@ class Pangenome(ModelInput):
             if not already_recorded_metabolite:
                 self.cobrapy_metabolites.append(cobrapy_metabolite_dict)
                 self.recorded_metabolites[metabolite_id] = cobrapy_metabolite_dict
+        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.reaction'),
+            ('EC', 'ec-code'),
+            ('KEGG', 'kegg.reaction'),
+            ('MetaCyc', 'metacyc.reaction'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = reaction.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_reaction_annotation[json_key] = ids
         return cobrapy_reaction_dict, already_recorded_reaction
 
     def _get_cobrapy_metabolite_dict(
