@@ -761,7 +761,11 @@ class ExternalGenome(ModelInput):
             cobrapy_reaction_dict = COBRApyJSONStructure.get_reaction_entry()
         # List the genomes encoding the reaction in the JSON reaction object.
         cobrapy_reaction_dict['id'] = reaction.id
-        cobrapy_reaction_dict['name'] = reaction.name
+        try:
+            modelseed_name = reaction.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_reaction_dict['name'] = modelseed_name
         reversibility = reaction.reversibility
         if not reversibility:
             cobrapy_reaction_dict['lower_bound'] = 0.0
@@ -776,6 +780,19 @@ class ExternalGenome(ModelInput):
             if not already_recorded_metabolite:
                 self.cobrapy_metabolites.append(cobrapy_metabolite_dict)
                 self.recorded_metabolites[metabolite_id] = cobrapy_metabolite_dict
+        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.reaction'),
+            ('EC', 'ec-code'),
+            ('KEGG', 'kegg.reaction'),
+            ('MetaCyc', 'metacyc.reaction'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = reaction.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_reaction_annotation[json_key] = ids
         return cobrapy_reaction_dict, False
 
     def _get_cobrapy_metabolite_dict(
@@ -783,19 +800,32 @@ class ExternalGenome(ModelInput):
         chemical: protein.Chemical,
         compartment: str
     ) -> Tuple[Dict[str, Any], bool]:
-        if pd.isna(chemical.select_bigg_id):
-            compound_id = chemical.modelseed_compound_id
-        else:
-            compound_id = chemical.select_bigg_id
-        metabolite_id = f'{compound_id}_{compartment}'
+        metabolite_id = f'{chemical.id}_{compartment}'
         try:
             cobrapy_metabolite_dict = self.recorded_metabolites[metabolite_id]
             return cobrapy_metabolite_dict, True
         except KeyError:
             cobrapy_metabolite_dict = COBRApyJSONStructure.get_metabolite_entry()
         cobrapy_metabolite_dict['id'] = metabolite_id
-        cobrapy_metabolite_dict['name'] = chemical.name if chemical.name else ""
+        try:
+            modelseed_name = chemical.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_metabolite_dict['name'] = modelseed_name
         cobrapy_metabolite_dict['compartment'] = compartment
         cobrapy_metabolite_dict['charge'] = chemical.charge if chemical.charge else 0
         cobrapy_metabolite_dict['formula'] = chemical.formula if chemical.formula else ""
+        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.metabolite'),
+            ('KEGG', 'kegg.compound'),
+            ('InChIKey', 'inchi_key'),
+            ('MetaCyc', 'metacyc.compound'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = chemical.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_metabolite_annotation[json_key] = ids
         return cobrapy_metabolite_dict, False
