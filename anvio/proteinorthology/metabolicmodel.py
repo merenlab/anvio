@@ -544,7 +544,11 @@ class Pangenome(ModelInput):
             )
             return cobrapy_reaction_dict, already_recorded_reaction
         cobrapy_reaction_dict['id'] = reaction.id
-        cobrapy_reaction_dict['name'] = reaction.name
+        try:
+            modelseed_name = reaction.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_reaction_dict['name'] = modelseed_name
         reversibility = reaction.reversibility
         if not reversibility:
             cobrapy_reaction_dict['lower_bound'] = 0.0
