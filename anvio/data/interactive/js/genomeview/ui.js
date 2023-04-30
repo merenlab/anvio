@@ -469,11 +469,11 @@ function showDeepDiveToolTip(event){
   <button id='gene-visibility-range-set' class="btn btn-default btn-sm" >Set Visible Range</button>
   <br>
 
-  <h2>color</h2>
+  <h2>Color</h2>
   <div id="picker_tooltip" class="colorpicker" color="${event.target.fill}" background-color="${event.target.fill}" style="background-color: ${event.target.fill}; margin-right:16px; margin-left:16px"></div>
   <p>set gene arrow color</p>
   <br>
-  <h2>metadata</h2>
+  <h2>Metadata</h2>
   <div id='metadata-container'>
       <input    id='metadata-gene-label' type='text' placeholder='metadata tag'>
       <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add tag</button>
@@ -489,17 +489,17 @@ function showDeepDiveToolTip(event){
       </table>
   </div>
 
-  <h2>Annotations</h2>;
-  <table class="table table-striped">;
+  <h2>Annotations</h2>
+  <table class="table table-striped">
     <thead id="annotations-deepdive-header">
       <th>Source</th>;
-      <th>Accession</th>;
+      <th>Accession</th>
       <th>Annotation</th>
-    </thead>;
-    <tbody>;
+    </thead>
+    <tbody>
       ${totalAnnotationsString}
     </tbody>
-  </table>;
+  </table>
   `)
 
   if(!event.target.functions){
