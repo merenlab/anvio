@@ -536,10 +536,10 @@ class Pangenome(ModelInput):
             cobrapy_reaction_dict = COBRApyJSONStructure.get_reaction_entry()
             already_recorded_reaction = False
         # List the genomes encoding the reaction in the JSON reaction object.
-        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        cobrapy_reaction_notes = cobrapy_reaction_dict['notes']
         if already_recorded_reaction:
-            recorded_genomes: List = cobrapy_reaction_annotation['genomes']
-            cobrapy_reaction_annotation['genomes'] = sorted(
+            recorded_genomes: List = cobrapy_reaction_notes['genomes']
+            cobrapy_reaction_notes['genomes'] = sorted(
                 genome_ids.union(set(recorded_genomes))
             )
             return cobrapy_reaction_dict, already_recorded_reaction
@@ -548,7 +548,7 @@ class Pangenome(ModelInput):
         reversibility = reaction.reversibility
         if not reversibility:
             cobrapy_reaction_dict['lower_bound'] = 0.0
-        cobrapy_reaction_annotation['genomes'] = sorted(genome_ids)
+        cobrapy_reaction_notes['genomes'] = sorted(genome_ids)
         for chemical, coefficient, compartment in zip(
             reaction.chemicals, reaction.coefficients, reaction.compartments
         ):
