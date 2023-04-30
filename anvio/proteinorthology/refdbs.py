@@ -240,12 +240,14 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             reaction.compartments.append(self.compartment_ids[int(split_entry[2])])
             chemical = protein.Chemical()
             compound_id = split_entry[1]
-            chemical.modelseed_compound_id = compound_id
             chemical_data = self.compounds_table.loc[compound_id].to_dict()
-            if chemical_data['BiGG']:
-                chemical.select_bigg_id = chemical_data['select_bigg_id']
-            if pd.notna(chemical_data['name']):
-                chemical.name = chemical_data['name']
+            chemical.reference_ids['ModelSEED_ID'] = [compound_id]
+            self._add_ids(chemical, chemical_data, 'name')
+            self._add_ids(chemical, chemical_data, 'inchikey')
+            self._add_ids(chemical, chemical_data, 'BiGG')
+            self._add_ids(chemical, chemical_data, 'KEGG')
+            self._add_ids(chemical, chemical_data, 'MetaCyc')
+            self._add_ids(chemical, chemical_data, 'Name')
             if pd.notna(chemical_data['charge']):
                 chemical.charge = chemical_data['charge']
             if pd.notna(chemical_data['formula']):
