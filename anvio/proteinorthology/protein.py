@@ -32,7 +32,7 @@ class Chemical:
     def __init__(self) -> None:
         self.modelseed_compound_id: str = None
         self.select_bigg_id: str = None
-        self.name: str = None
+        self.charge: int = None
         self.formula: str = None
         self.inchi_key: str = None
         self.smiles_string: str = None
