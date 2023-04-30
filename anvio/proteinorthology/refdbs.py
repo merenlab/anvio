@@ -207,14 +207,19 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             # Ignore a reaction if it does not have a chemical equation for some reason.
             return None
         reaction = protein.Reaction()
-        # Prefer to ID the reaction by BiGG ID, and if there are multiple BiGG IDs and one
-        # corresponds to the ModelSEED reaction ID, by that BiGG ID.
-        if pd.isna(reaction_data['select_bigg_id']):
-            reaction.id: str = reaction_data['id']
-        else:
-            reaction.id: str = reaction_data['select_bigg_id']
-        reaction.id.replace(' ', '_')
-        reaction.name = '' if pd.isna(reaction_data['name']) else reaction_data['name']
+        modelseed_id = reaction_data['id']
+        if pd.isna(modelseed_id):
+            raise ConfigError(
+                "The row for the reaction in the ModelSEED table does not but should have an ID. "
+                f"Here is the data in the row: '{reaction_data}'"
+            )
+        self._add_ids(reaction, reaction_data, 'id')
+        self._add_ids(reaction, reaction_data, 'name')
+        self._add_ids(reaction, reaction_data, 'ec_numbers')
+        self._add_ids(reaction, reaction_data, 'BiGG')
+        self._add_ids(reaction, reaction_data, 'KEGG')
+        self._add_ids(reaction, reaction_data, 'MetaCyc')
+        self._add_ids(reaction, reaction_data, 'Name')
         reversibility = reaction_data['reversibility']
         if reversibility == '=' or reversibility == '?':
             # Assume that reactions lacking data ('?') are reversible.
