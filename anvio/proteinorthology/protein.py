@@ -54,10 +54,13 @@ class Reaction:
         self.compartments: List[str] = []
         self.reversibility: bool = None
 
-class ProteinData:
-    """Data regarding a protein."""
-    def __init__(self) -> None:
-        self.reactions: List[Reaction] = [] # catalyzed reactions
+    @property
+    def id(self) -> str:
+        """The first recorded reference database/ID. If none is recorded, return None."""
+        try:
+            return next(iter(self.reference_ids.values()))[0]
+        except StopIteration:
+            return None
 
 class OrthologAnnotation:
     """Data regarding a group of protein functional orthologs."""
