@@ -36,6 +36,14 @@ class Chemical:
         self.formula: str = None
         self.smiles_string: str = None
 
+    @property
+    def id(self) -> str:
+        """The first recorded reference database/ID. If none is recorded, return None."""
+        try:
+            return next(iter(self.reference_ids.values()))[0]
+        except StopIteration:
+            return None
+
 class Reaction:
     """A chemical reaction."""
     def __init__(self) -> None:
