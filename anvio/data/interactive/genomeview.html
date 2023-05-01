@@ -185,23 +185,6 @@
             <td>Genome margin:</td>
             <td><input type="text" class="form-control input-sm" id="genome_margin" value="100"></td>
           </tr>
-          <tr>
-            <td>Plot scale:</td>
-            <td><input type="text" class="form-control input-sm" id="plot_scale" value="(TODO)"></td>
-          </tr>
-          <tr>
-            <td>Align to Gene Cluster: </td>
-            <td><input id="alignClusterInput" class="form-control input-sm" type="text" value="" size="4"></td>
-          </tr>
-          <tr>
-            <td>Pan to Gene Cluster: </td>
-            <td><input id="panClusterInput" class="form-control input-sm" type="text" value="" size="4"></td>
-          </tr>
-          <tr>
-            <td>Order Method: </td>
-            <td><select class="type_multiple" id='genome_order_select' style="width: 100px;" class="type"></select>
-            </td>
-          </tr>
         </tbody>
       </table>
 
@@ -381,27 +364,6 @@
         </div>
         <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()"
           class="btn btn-outline-primary">Reset Function colors</button>
-
-        <span class="settings-header">Gene links</span>
-        <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-          <label id="link_style_label" style="padding-left: 0px;" class="col-md-4 settings-label" data-help="link_style"
-            data-original-title="" title="">Link style:</label>
-          <div class="col-md-8">
-            <select id="link_style" style="margin-bottom: 10px" class="form-control input-xs">
-              <option value=1>Straight</option>
-              <option value=2>Curved</option>
-              <option value=3>Line</option>
-              <option value=4>None</option>
-            </select>
-          </div>
-        </div>
-        <select id="shade_by" style="margin-bottom: 10px" class="form-control input-xs">
-          <option value=1>Gene Cluster</option>
-          <option value=2>COG Category</option>
-          <option value=3>KEGG Category</option>
-          <option value=4>Custom</option>
-        </select>
-        <p>TODO: Color table for shades (with opacity option too?)</p>
 
         <span class="settings-header">Labels</span>
         <table id="labels-table" style="margin-bottom: 180px;">

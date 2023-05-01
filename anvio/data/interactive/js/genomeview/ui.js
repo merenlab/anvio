@@ -156,18 +156,18 @@ function setCanvasListeners(){
  *  set event listeners for DOM elements, user input, default jquery values (this should only be called once)
  */
 function setEventListeners(){
-  $('#alignClusterInput').on('keydown', function (e) {
-    if (e.keyCode == 13) { // 13 = enter key
-      drawer.alignToCluster($(this).val());
-      $(this).blur();
-    }
-  });
-  $('#panClusterInput').on('keydown', function (e) {
-    if (e.keyCode == 13) { // 13 = enter key
-      viewCluster($(this).val());
-      $(this).blur();
-    }
-  });
+  // $('#alignClusterInput').on('keydown', function (e) {
+  //   if (e.keyCode == 13) { // 13 = enter key
+  //     drawer.alignToCluster($(this).val());
+  //     $(this).blur();
+  //   }
+  // });
+  // $('#panClusterInput').on('keydown', function (e) {
+  //   if (e.keyCode == 13) { // 13 = enter key
+  //     viewCluster($(this).val());
+  //     $(this).blur();
+  //   }
+  // });
   document.body.addEventListener("keydown", function (ev) {
     if (ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
       toggleRightPanel('#settings-panel')
