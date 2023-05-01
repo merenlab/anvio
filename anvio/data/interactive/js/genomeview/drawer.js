@@ -489,7 +489,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
 
   var arrowPathStr;
   switch (parseInt(style)) {
-    case 2: // thicker arrows
+    case 2: // pentagon arrows
       arrowPathStr = `M ${stemLength} -10
                       L 0 -10
                       L 0 20
@@ -499,19 +499,13 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
                       L ${length} 5
                       L ${stemLength} -10 z`;
       break;
-    case 3: // pentagon arrows
+    case 3: // pentagon (wide) arrows
       arrowPathStr = `M 0 0
                       L ${stemLength} 0
                       L ${length} 20
                       L ${stemLength} 40
                       L 0 40
                       L 0 0 z`;
-      break;
-    case 4: // rect arrows
-      arrowPathStr = `M ${length} -5
-                      L 0 -5
-                      L 0 15
-                      L ${length} 15 z`;
       break;
     default: // 'inspect page' arrows
       arrowPathStr = `M ${stemLength} -2.5

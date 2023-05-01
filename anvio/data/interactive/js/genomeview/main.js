@@ -375,6 +375,7 @@ function processState(stateName, stateData) {
   } else {
     $('#arrow_style').val(1)
   }
+  $('#gene_text_pos').prop("disabled", $('#arrow_style').val() != 3); // disable gene label position dropdown if arrow style is not 'pentagon (wide)'
 
   if (stateData?.['display']?.['bookmarks']) {
     settings['display']['bookmarks'].map(bookmark => {
