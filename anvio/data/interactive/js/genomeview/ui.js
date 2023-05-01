@@ -571,11 +571,12 @@ function showDeepDiveToolTip(event){
   })
   // TODO consider metadata option to include 'author' field
   $('#metadata-gene-label-add').on('click', function(){
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
-    if(geneMetadata.length == 0) {
-      $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
+    // geneMetadata must be set before tag is added
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID && metadata.type == 'tag')
+    let tagAdded = addMetadataTag(event.target.genomeID, event.target.geneID, $('#metadata-gene-label').val());
+    if(tagAdded && geneMetadata.length == 0) {
+      $('#metadata-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
     }
-    addMetadataTag(event.target.genomeID, event.target.geneID, $('#metadata-gene-label').val());
   })
   $('#picker_tooltip').colpick({
     layout: 'hex',
@@ -885,6 +886,13 @@ function showTabularModal(){
 }
 
 function addMetadataTag(genomeID, geneID, label) {
+  if(label.trim().length == 0) return false;
+  let geneTags = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'tag')
+  if(geneTags.some(tag => tag.label == label)) {
+    toastr.warning(`'Cannot add duplicate tag to gene ${geneID} of ${genomeID}'`);
+    return false;
+  }
+  
   let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
   let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
 
@@ -917,13 +925,14 @@ function addMetadataTag(genomeID, geneID, label) {
 
     settings['display']['metadata'].splice(index, 1)
 
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID)
-    if(geneMetadata.length == 0) {
+    if(geneTags.length == 0) {
       $('#metadata-deepdive-header').empty();
     }
     
     $(this).closest('tr').remove();
   })
+
+  return true;
 }
 
 function gatherTabularModalSelectedItems(action){
