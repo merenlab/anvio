@@ -1280,8 +1280,8 @@ function createBookmark(){
           <tr><th>Bookmark Name</th>
           <th>Start</th>
           <th>Stop</th>
-          <th>Remove</th>
           <th>Go To</th>
+          <th>Remove</th>
           </tr>`
       )
     }
