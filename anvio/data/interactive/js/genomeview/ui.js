@@ -105,6 +105,9 @@ function setCanvasListeners(){
     this.prev = opt.target.left;
   });
   canvas.on('mouse:wheel', function (opt) {
+    if (opt.e.shiftKey === false) {
+      return;
+    }
     opt.e.preventDefault();
     opt.e.stopPropagation();
 
