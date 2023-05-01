@@ -561,7 +561,7 @@ function loadAll(loadType) {
   if(loadType == 'init') {
     $('#gene_color_order').append($('<option>', {
       value: 'Source',
-      text: 'Source'
+      text: 'Gene caller source'
     }));
     for (fn of getFunctionalAnnotations()) {
       $('#gene_color_order').append($('<option>', {
