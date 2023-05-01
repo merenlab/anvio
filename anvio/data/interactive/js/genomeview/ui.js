@@ -1277,7 +1277,8 @@ function createBookmark(){
           <tr><th>Bookmark Name</th>
           <th>Start</th>
           <th>Stop</th>
-          <th>Action</th>
+          <th>Remove</th>
+          <th>Go To</th>
           </tr>`
       )
     }
@@ -1286,6 +1287,7 @@ function createBookmark(){
         <td>${bookmark_name}</td>
         <td>${$('#brush_start').val()}</td>
         <td>${$('#brush_end').val()}</td>
+        <td><button onclick="moveToAndUpdateScale(parseInt(${$('#brush_start').val()}), parseInt(${$('#brush_end').val()}))">Go to bookmark</button></td>
         <td><button onclick="removeBookmark('${bookmark_name}')">Remove bookmark</button></td>
       </tr>`
     )
