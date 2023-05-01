@@ -95,35 +95,36 @@ class COBRApyJSONStructure:
 
     @staticmethod
     def get_ecoli_objective() -> Dict[str, Any]:
-        """Biomass objective from JSON 'reactions' array in COBRApy example file,
-        'e_coli_core.json'"""
+        """Biomass objective from JSON 'reactions' array in the COBRApy example file,
+        'e_coli_core.json'. BiGG metabolite IDs have been replaced with KBase/ModelSEED compound
+        IDs."""
         return {
             'id': 'BIOMASS_Ecoli_core_w_GAM',
             'name': 'Biomass Objective Function with GAM',
             'metabolites': {
-                '3pg_c': -1.496,
-                'accoa_c': -3.7478,
-                'adp_c': 59.81,
-                'akg_c': 4.1182,
-                'atp_c': -59.81,
-                'coa_c': 3.7478,
-                'e4p_c': -0.361,
-                'f6p_c': -0.0709,
-                'g3p_c': -0.129,
-                'g6p_c': -0.205,
-                'gln__L_c': -0.2557,
-                'glu__L_c': -4.9414,
-                'h2o_c': -59.81,
-                'h_c': 59.81,
-                'nad_c': -3.547,
-                'nadh_c': 3.547,
-                'nadp_c': 13.0279,
-                'nadph_c': -13.0279,
-                'oaa_c': -1.7867,
-                'pep_c': -0.5191,
-                'pi_c': 59.81,
-                'pyr_c': -2.8328,
-                'r5p_c': -0.8977
+                'cpd00169_c': -1.496,
+                'cpd00022_c': -3.7478,
+                'cpd00008_c': 59.81,
+                'cpd00024_c': 4.1182,
+                'cpd00002_c': -59.81,
+                'cpd00010_c': 3.7478,
+                'cpd00236_c': -0.361,
+                'cpd00072_c': -0.0709,
+                'cpd00102_c': -0.129,
+                'cpd00079_c': -0.205,
+                'cpd00053_c': -0.2557,
+                'cpd00023_c': -4.9414,
+                'cpd00001_c': -59.81,
+                'cpd00067_c': 59.81,
+                'cpd00003_c': -3.547,
+                'cpd00004_c': 3.547,
+                'cpd00006_c': 13.0279,
+                'cpd00005_c': -13.0279,
+                'cpd00032_c': -1.7867,
+                'cpd00061_c': -0.5191,
+                'cpd00009_c': 59.81,
+                'cpd00020_c': -2.8328,
+                'cpd00101_c': -0.8977
             },
             'lower_bound': 0.0,
             'upper_bound': 1000.0,
@@ -133,7 +134,32 @@ class COBRApyJSONStructure:
             'notes': {
                 'original_bigg_ids': [
                     'Biomass_Ecoli_core_w_GAM'
-                ]
+                ],
+                'original_metabolite_names': {
+                    '3pg_c': -1.496,
+                    'accoa_c': -3.7478,
+                    'adp_c': 59.81,
+                    'akg_c': 4.1182,
+                    'atp_c': -59.81,
+                    'coa_c': 3.7478,
+                    'e4p_c': -0.361,
+                    'f6p_c': -0.0709,
+                    'g3p_c': -0.129,
+                    'g6p_c': -0.205,
+                    'gln__L_c': -0.2557,
+                    'glu__L_c': -4.9414,
+                    'h2o_c': -59.81,
+                    'h_c': 59.81,
+                    'nad_c': -3.547,
+                    'nadh_c': 3.547,
+                    'nadp_c': 13.0279,
+                    'nadph_c': -13.0279,
+                    'oaa_c': -1.7867,
+                    'pep_c': -0.5191,
+                    'pi_c': 59.81,
+                    'pyr_c': -2.8328,
+                    'r5p_c': -0.8977
+                }
             },
             'annotation': {
                 'bigg.reaction': [
@@ -460,9 +486,7 @@ class Pangenome(ModelInput):
                     f"The protein annotation source, '{self.protein_annotation_source}', is not "
                     "recognized."
                 )
-            reactions = ortholog.get_protein_data(
-                self.source_db, cross_reference_dbs=self.cross_ref_dbs
-            ).reactions
+            reactions = ortholog.get_reactions(self.source_db, cross_reference_dbs=self.cross_ref_dbs)
             if not reactions:
                 # No reference reaction data could be assigned to the ortholog.
                 continue
@@ -512,19 +536,23 @@ class Pangenome(ModelInput):
             cobrapy_reaction_dict = COBRApyJSONStructure.get_reaction_entry()
             already_recorded_reaction = False
         # List the genomes encoding the reaction in the JSON reaction object.
-        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        cobrapy_reaction_notes = cobrapy_reaction_dict['notes']
         if already_recorded_reaction:
-            recorded_genomes: List = cobrapy_reaction_annotation['genomes']
-            cobrapy_reaction_annotation['genomes'] = sorted(
+            recorded_genomes: List = cobrapy_reaction_notes['genomes']
+            cobrapy_reaction_notes['genomes'] = sorted(
                 genome_ids.union(set(recorded_genomes))
             )
             return cobrapy_reaction_dict, already_recorded_reaction
         cobrapy_reaction_dict['id'] = reaction.id
-        cobrapy_reaction_dict['name'] = reaction.name
+        try:
+            modelseed_name = reaction.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_reaction_dict['name'] = modelseed_name
         reversibility = reaction.reversibility
         if not reversibility:
             cobrapy_reaction_dict['lower_bound'] = 0.0
-        cobrapy_reaction_annotation['genomes'] = sorted(genome_ids)
+        cobrapy_reaction_notes['genomes'] = sorted(genome_ids)
         for chemical, coefficient, compartment in zip(
             reaction.chemicals, reaction.coefficients, reaction.compartments
         ):
@@ -536,6 +564,19 @@ class Pangenome(ModelInput):
             if not already_recorded_metabolite:
                 self.cobrapy_metabolites.append(cobrapy_metabolite_dict)
                 self.recorded_metabolites[metabolite_id] = cobrapy_metabolite_dict
+        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.reaction'),
+            ('EC', 'ec-code'),
+            ('KEGG', 'kegg.reaction'),
+            ('MetaCyc', 'metacyc.reaction'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = reaction.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_reaction_annotation[json_key] = ids
         return cobrapy_reaction_dict, already_recorded_reaction
 
     def _get_cobrapy_metabolite_dict(
@@ -546,53 +587,66 @@ class Pangenome(ModelInput):
         reversibility: bool,
         genome_ids: Set[str]
     ) -> Tuple[Dict[str, Any], bool]:
-        if pd.isna(chemical.select_bigg_id):
-            compound_id = chemical.modelseed_compound_id
-        else:
-            compound_id = chemical.select_bigg_id
-        metabolite_id = f'{compound_id}_{compartment}'
+        metabolite_id = f'{chemical.id}_{compartment}'
         try:
             cobrapy_metabolite_dict = self.recorded_metabolites[metabolite_id]
             already_recorded_metabolite = True
         except KeyError:
             cobrapy_metabolite_dict = COBRApyJSONStructure.get_metabolite_entry()
             already_recorded_metabolite = False
-        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        cobrapy_metabolite_notes = cobrapy_metabolite_dict['notes']
         if already_recorded_metabolite:
             if reversibility:
-                recorded_consuming_genome_ids: List = cobrapy_metabolite_annotation['consuming_genomes']
-                recorded_producing_genome_ids: List = cobrapy_metabolite_annotation['producing_genomes']
-                cobrapy_metabolite_annotation['consuming_genomes'] = sorted(
+                recorded_consuming_genome_ids: List = cobrapy_metabolite_notes['consuming_genomes']
+                recorded_producing_genome_ids: List = cobrapy_metabolite_notes['producing_genomes']
+                cobrapy_metabolite_notes['consuming_genomes'] = sorted(
                     genome_ids.union(set(recorded_consuming_genome_ids))
                 )
-                cobrapy_metabolite_annotation['producing_genomes'] = sorted(
+                cobrapy_metabolite_notes['producing_genomes'] = sorted(
                     genome_ids.union(set(recorded_producing_genome_ids))
                 )
             elif coefficient < 0:
-                recorded_consuming_genome_ids: List = cobrapy_metabolite_annotation['consuming_genomes']
-                cobrapy_metabolite_annotation['consuming_genomes'] = sorted(
+                recorded_consuming_genome_ids: List = cobrapy_metabolite_notes['consuming_genomes']
+                cobrapy_metabolite_notes['consuming_genomes'] = sorted(
                     genome_ids.union(set(recorded_consuming_genome_ids))
                 )
             elif coefficient > 0:
-                recorded_producing_genome_ids: List = cobrapy_metabolite_annotation['producing_genomes']
-                cobrapy_metabolite_annotation['producing_genomes'] = sorted(
+                recorded_producing_genome_ids: List = cobrapy_metabolite_notes['producing_genomes']
+                cobrapy_metabolite_notes['producing_genomes'] = sorted(
                     genome_ids.union(set(recorded_producing_genome_ids))
                 )
             return cobrapy_metabolite_dict, already_recorded_metabolite
         cobrapy_metabolite_dict['id'] = metabolite_id
-        cobrapy_metabolite_dict['name'] = chemical.name if chemical.name else ""
+        try:
+            modelseed_name = chemical.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_metabolite_dict['name'] = modelseed_name
         cobrapy_metabolite_dict['compartment'] = compartment
         cobrapy_metabolite_dict['charge'] = chemical.charge if chemical.charge else 0
         cobrapy_metabolite_dict['formula'] = chemical.formula if chemical.formula else ""
         if reversibility:
-            cobrapy_metabolite_annotation['consuming_genomes'] = sorted(genome_ids)
-            cobrapy_metabolite_annotation['producing_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['consuming_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['producing_genomes'] = sorted(genome_ids)
         elif coefficient < 0:
-            cobrapy_metabolite_annotation['consuming_genomes'] = sorted(genome_ids)
-            cobrapy_metabolite_annotation['producing_genomes'] = []
+            cobrapy_metabolite_notes['consuming_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['producing_genomes'] = []
         elif coefficient > 0:
-            cobrapy_metabolite_annotation['consuming_genomes'] = []
-            cobrapy_metabolite_annotation['producing_genomes'] = sorted(genome_ids)
+            cobrapy_metabolite_notes['consuming_genomes'] = []
+            cobrapy_metabolite_notes['producing_genomes'] = sorted(genome_ids)
+        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.metabolite'),
+            ('KEGG', 'kegg.compound'),
+            ('InChIKey', 'inchi_key'),
+            ('MetaCyc', 'metacyc.compound'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = chemical.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_metabolite_annotation[json_key] = ids
         return cobrapy_metabolite_dict, already_recorded_metabolite
 
 class ExternalGenome(ModelInput):
@@ -673,9 +727,7 @@ class ExternalGenome(ModelInput):
                     f"The protein annotation source, '{self.protein_annotation_source}', is not "
                     "recognized."
                 )
-            reactions = ortholog.get_protein_data(
-                self.source_db, cross_reference_dbs=self.cross_ref_dbs
-            ).reactions
+            reactions = ortholog.get_reactions(self.source_db, cross_reference_dbs=self.cross_ref_dbs)
             if not reactions:
                 # No reference reaction data could be assigned to the ortholog.
                 continue
@@ -709,7 +761,11 @@ class ExternalGenome(ModelInput):
             cobrapy_reaction_dict = COBRApyJSONStructure.get_reaction_entry()
         # List the genomes encoding the reaction in the JSON reaction object.
         cobrapy_reaction_dict['id'] = reaction.id
-        cobrapy_reaction_dict['name'] = reaction.name
+        try:
+            modelseed_name = reaction.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_reaction_dict['name'] = modelseed_name
         reversibility = reaction.reversibility
         if not reversibility:
             cobrapy_reaction_dict['lower_bound'] = 0.0
@@ -724,6 +780,19 @@ class ExternalGenome(ModelInput):
             if not already_recorded_metabolite:
                 self.cobrapy_metabolites.append(cobrapy_metabolite_dict)
                 self.recorded_metabolites[metabolite_id] = cobrapy_metabolite_dict
+        cobrapy_reaction_annotation = cobrapy_reaction_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.reaction'),
+            ('EC', 'ec-code'),
+            ('KEGG', 'kegg.reaction'),
+            ('MetaCyc', 'metacyc.reaction'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = reaction.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_reaction_annotation[json_key] = ids
         return cobrapy_reaction_dict, False
 
     def _get_cobrapy_metabolite_dict(
@@ -731,19 +800,32 @@ class ExternalGenome(ModelInput):
         chemical: protein.Chemical,
         compartment: str
     ) -> Tuple[Dict[str, Any], bool]:
-        if pd.isna(chemical.select_bigg_id):
-            compound_id = chemical.modelseed_compound_id
-        else:
-            compound_id = chemical.select_bigg_id
-        metabolite_id = f'{compound_id}_{compartment}'
+        metabolite_id = f'{chemical.id}_{compartment}'
         try:
             cobrapy_metabolite_dict = self.recorded_metabolites[metabolite_id]
             return cobrapy_metabolite_dict, True
         except KeyError:
             cobrapy_metabolite_dict = COBRApyJSONStructure.get_metabolite_entry()
         cobrapy_metabolite_dict['id'] = metabolite_id
-        cobrapy_metabolite_dict['name'] = chemical.name if chemical.name else ""
+        try:
+            modelseed_name = chemical.reference_ids['ModelSEED_Name'][0]
+        except KeyError:
+            modelseed_name = ''
+        cobrapy_metabolite_dict['name'] = modelseed_name
         cobrapy_metabolite_dict['compartment'] = compartment
         cobrapy_metabolite_dict['charge'] = chemical.charge if chemical.charge else 0
         cobrapy_metabolite_dict['formula'] = chemical.formula if chemical.formula else ""
+        cobrapy_metabolite_annotation = cobrapy_metabolite_dict['annotation']
+        for reference, json_key in [
+            ('BiGG', 'bigg.metabolite'),
+            ('KEGG', 'kegg.compound'),
+            ('InChIKey', 'inchi_key'),
+            ('MetaCyc', 'metacyc.compound'),
+            ('ModelSEED_Alternate_Name', 'modelseed-name')
+        ]:
+            try:
+                ids = chemical.reference_ids[reference]
+            except KeyError:
+                continue
+            cobrapy_metabolite_annotation[json_key] = ids
         return cobrapy_metabolite_dict, False

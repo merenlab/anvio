@@ -207,14 +207,19 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             # Ignore a reaction if it does not have a chemical equation for some reason.
             return None
         reaction = protein.Reaction()
-        # Prefer to ID the reaction by BiGG ID, and if there are multiple BiGG IDs and one
-        # corresponds to the ModelSEED reaction ID, by that BiGG ID.
-        if pd.isna(reaction_data['select_bigg_id']):
-            reaction.id: str = reaction_data['id']
-        else:
-            reaction.id: str = reaction_data['select_bigg_id']
-        reaction.id.replace(' ', '_')
-        reaction.name = '' if pd.isna(reaction_data['name']) else reaction_data['name']
+        modelseed_id = reaction_data['id']
+        if pd.isna(modelseed_id):
+            raise ConfigError(
+                "The row for the reaction in the ModelSEED table does not but should have an ID. "
+                f"Here is the data in the row: '{reaction_data}'"
+            )
+        self._add_ids(reaction, reaction_data, 'id')
+        self._add_ids(reaction, reaction_data, 'name')
+        self._add_ids(reaction, reaction_data, 'ec_numbers')
+        self._add_ids(reaction, reaction_data, 'BiGG')
+        self._add_ids(reaction, reaction_data, 'KEGG')
+        self._add_ids(reaction, reaction_data, 'MetaCyc')
+        self._add_ids(reaction, reaction_data, 'Name')
         reversibility = reaction_data['reversibility']
         if reversibility == '=' or reversibility == '?':
             # Assume that reactions lacking data ('?') are reversible.
@@ -235,12 +240,14 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             reaction.compartments.append(self.compartment_ids[int(split_entry[2])])
             chemical = protein.Chemical()
             compound_id = split_entry[1]
-            chemical.modelseed_compound_id = compound_id
             chemical_data = self.compounds_table.loc[compound_id].to_dict()
-            if chemical_data['BiGG']:
-                chemical.select_bigg_id = chemical_data['select_bigg_id']
-            if pd.notna(chemical_data['name']):
-                chemical.name = chemical_data['name']
+            chemical.reference_ids['ModelSEED_ID'] = [compound_id]
+            self._add_ids(chemical, chemical_data, 'name')
+            self._add_ids(chemical, chemical_data, 'inchikey')
+            self._add_ids(chemical, chemical_data, 'BiGG')
+            self._add_ids(chemical, chemical_data, 'KEGG')
+            self._add_ids(chemical, chemical_data, 'MetaCyc')
+            self._add_ids(chemical, chemical_data, 'Name')
             if pd.notna(chemical_data['charge']):
                 chemical.charge = chemical_data['charge']
             if pd.notna(chemical_data['formula']):
@@ -251,6 +258,34 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
                 chemical.smiles_string = chemical_data['smiles']
             reaction.chemicals.append(chemical)
         return reaction
+
+    def _add_ids(self, obj: protein.Reaction, data: Dict, source: str) -> bool:
+        """Add reference IDs to the reaction or metabolite object. Return True if ID(s) exist for
+        the reaction or metabolite in the ModelSEED database else False."""
+        ref_ids: str = data[source]
+        if pd.isna(ref_ids):
+            return False
+        # IDs in "aliases" should be delimited by '; '. EC numbers should be delimited by '|'.
+        if source == 'id':
+            # This is an "id" entry in the ModelSEED reaction table, a single ModelSEED ID for the
+            # reaction or compound.
+            obj.reference_ids['ModelSEED_ID'] = [ref_ids]
+        elif source == 'name':
+            # This is a "name" entry in the ModelSEED reactions table, or a single name for the
+            # reaction or compound. This is found among the "Name" values (see below), or, absent
+            # "Name" values, this is the same as the ModelSEED "id" entry.
+            obj.reference_ids['ModelSEED_Name'] = [ref_ids]
+        elif source == 'inchikey':
+            obj.reference_ids['InChIKey'] = [ref_ids]
+        elif source == 'ec_numbers':
+            obj.reference_ids['EC'] = ref_ids.split('|')
+        elif source == 'Name':
+            # In the original ModelSEED reactions table, this is the "Name" field of an entry in the
+            # "aliases" column.
+            obj.reference_ids['ModelSEED_Alternate_Name'] = ref_ids.split('; ')
+        else:
+            obj.reference_ids[source] = ref_ids.split('; ')
+        return True
 
     def _to_lcm_denominator(self, floats) -> Tuple[int]:
         def lcm(a, b):

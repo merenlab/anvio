@@ -27,35 +27,40 @@ __status__ = "Development"
 
 run_quiet = terminal.Run(verbose=False)
 
-class Protein:
-    """A protein."""
-    def __init__(self) -> None:
-        self.ortholog_annotations: List[OrthologAnnotation] = []
-
 class Chemical:
     """A chemical."""
     def __init__(self) -> None:
-        self.modelseed_compound_id: str = None
-        self.select_bigg_id: str = None
-        self.name: str = None
+        # The chemical may have one or more IDs (values) per reference database (key).
+        self.reference_ids: Dict[str, List[str]] = {}
+        self.charge: int = None
         self.formula: str = None
-        self.inchi_key: str = None
         self.smiles_string: str = None
+
+    @property
+    def id(self) -> str:
+        """The first recorded reference database/ID. If none is recorded, return None."""
+        try:
+            return next(iter(self.reference_ids.values()))[0]
+        except StopIteration:
+            return None
 
 class Reaction:
     """A chemical reaction."""
     def __init__(self) -> None:
-        self.id: str = None
-        self.name: str = None
+        # The reaction may have one or more IDs (values) per reference database (key).
+        self.reference_ids: Dict[str, List[str]] = {}
         self.chemicals: List[Chemical] = []
         self.coefficients: List[float] = []
         self.compartments: List[str] = []
         self.reversibility: bool = None
 
-class ProteinData:
-    """Data regarding a protein."""
-    def __init__(self) -> None:
-        self.reactions: List[Reaction] = [] # catalyzed reactions
+    @property
+    def id(self) -> str:
+        """The first recorded reference database/ID. If none is recorded, return None."""
+        try:
+            return next(iter(self.reference_ids.values()))[0]
+        except StopIteration:
+            return None
 
 class OrthologAnnotation:
     """Data regarding a group of protein functional orthologs."""
@@ -101,13 +106,13 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
     def __init__(self, entry: Dict) -> None:
         super().__init__(entry)
 
-    def get_protein_data(
+    def get_reactions(
         self,
         kegg_db: refdbs.KEGGDatabase,
         cross_reference_dbs: Tuple[refdbs.ProteinReferenceDatabase] = None
-    ) -> ProteinData:
+    ) -> List[Reaction]:
         """
-        Get protein reference data regarding the ortholog.
+        Get reaction data for the ortholog.
 
         Parameters
         ==========
@@ -117,12 +122,16 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
             Protein reference databases ('anvio.proteinorthology.refdbs.ProteinReferenceDatabase')
             with which KOs are cross-referenced. For now, a ModelSEED database must be supplied as
             the sole cross-reference database.
+
+        Returns
+        =======
+        List[Reaction]
         """
         for db in (kegg_db, ) + cross_reference_dbs:
             db._check_reference_database_initialization()
         cross_ref_db_names = tuple(db.db_name for db in cross_reference_dbs)
         if cross_ref_db_names == ('modelseed', ):
-            protein_data = self._get_protein_data_from_kegg_and_modelseed(
+            reactions = self._get_reactions_from_kegg_and_modelseed(
                 kegg_db, cross_reference_dbs[0]
             )
         else:
@@ -130,15 +139,20 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
                 "For now, a ModelSEED database must be supplied as the sole cross-reference "
                 "database."
             )
-        return protein_data
+        return reactions
 
-    def _get_protein_data_from_kegg_and_modelseed(
+    def _get_reactions_from_kegg_and_modelseed(
         self,
         kegg_db: refdbs.KEGGDatabase,
         modelseed_db: refdbs.ModelSEEDDatabase
-    ) -> ProteinData:
+    ) -> List[Reaction]:
         """
-        Get protein reference data regarding the ortholog from KEGG and ModelSEED.
+        Get reaction data for the ortholog from KEGG and ModelSEED reference databases.
+
+        A KO may be associated with KEGG Reactions and EC numbers. This method first considers KEGG
+        Reactions and, absent these, EC numbers. Reaction IDs and EC numbers are cross-referenced to
+        the ModelSEED database. Reaction data is not returned for Reaction IDs and EC numbers that
+        are not found in the ModelSEED database!
 
         Parameters
         ==========
@@ -150,7 +164,7 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
 
         Returns
         =======
-        ProteinData
+        List[Reaction]
         """
         # Retrieve or generate ModelSEED reactions tables for looking up reactions by KEGG Reaction
         # ID and EC number, respectively.
@@ -172,8 +186,8 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
             modelseed_db._set_reaction_lookup_table('ec_numbers')
         kegg_reactions_table = modelseed_db.reaction_lookup_tables['KEGG']
         ec_numbers_reactions_table = modelseed_db.reaction_lookup_tables['ec_numbers']
-        # Remove KEGG or EC lookup tables that were added by this method to the passed ModelSEED
-        # database object: restore the object to its original state.
+        # Restore the passed ModelSEED database object to its original state by removing KEGG or EC
+        # lookup tables added by the current method.
         if not lookup_dict_existed:
             delattr(modelseed_db, 'reaction_lookup_tables')
         elif not lookup_tables_existed:
@@ -182,8 +196,7 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
         # Use any KEGG Reaction IDs associated with the KO to find cross-referenced ModelSEED
         # reactions.
         kegg_series = kegg_db.ko_data.loc[self.accession]
-        protein_data = ProteinData()
-        reactions = protein_data.reactions
+        reactions = []
         reaction_accessions = kegg_series.loc['reactions']
         if pd.notna(reaction_accessions):
             reaction_accessions: str
@@ -195,7 +208,7 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
                     continue
                 reactions.append(reaction)
             if reactions:
-                return protein_data
+                return reactions
         # Reaching this point, either no KEGG Reaction IDs were associated with the KO, or Reaction
         # IDs for the KO were not cross-referenced with any ModelSEED reactions. Next use any EC
         # numbers associated with the KO to find cross-referenced ModelSEED reactions. KO Reactions
@@ -212,6 +225,6 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
                     continue
                 reactions.append(reaction)
             if reactions:
-                return protein_data
+                return reactions
         # No reaction data could be recovered for the KO.
-        return protein_data
+        return reactions
