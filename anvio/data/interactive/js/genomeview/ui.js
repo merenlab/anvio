@@ -471,15 +471,15 @@ function showDeepDiveToolTip(event){
 
   <h2>Color</h2>
   <div id="picker_tooltip" class="colorpicker" color="${event.target.fill}" background-color="${event.target.fill}" style="background-color: ${event.target.fill}; margin-right:16px; margin-left:16px"></div>
-  <p>set gene arrow color</p>
+  <p>Set gene arrow color</p>
   <br>
   <h2>Metadata</h2>
   <div id='metadata-container'>
-      <input    id='metadata-gene-label' type='text' placeholder='metadata tag'>
-      <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">add tag</button>
+      <input    id='metadata-gene-label' type='text' placeholder='Metadata tag'>
+      <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">Add tag</button>
       <br>
-      <textarea id='metadata-gene-description' placeholder='metadata description'></textarea>
-      <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">add description</button>
+      <textarea id='metadata-gene-description' placeholder='Metadata description'></textarea>
+      <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">Add description</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
         <thead id="metadata-deepdive-header"></thead>
