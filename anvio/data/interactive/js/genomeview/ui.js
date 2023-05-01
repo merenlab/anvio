@@ -248,7 +248,10 @@ function setEventListeners(){
   });
   $('#arrow_style').on('change', function () {
     settings['display']['arrow-style'] = parseInt($(this).val());
-    if($(this).val() != 3) $('#gene_text_pos').val('above');
+    if($(this).val() != 3) {
+      $('#gene_text_pos').val('above');
+      settings['display']['gene-text-position'] = 'above';
+    }
     $('#gene_text_pos').prop("disabled", $(this).val() != 3);
     drawer.draw()
     $(this).blur();
