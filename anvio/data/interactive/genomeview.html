@@ -365,8 +365,10 @@
           class="btn btn-outline-primary" style="margin-top: 10px; margin-bottom: 10px">Reset Function colors</button>
 
         <span class="settings-header">Labels</span>
-        <table id="labels-table" style="margin-bottom: 180px;">
+
+        <table id="labels-table">
           <tbody>
+            <tr><td><strong style="font-size:12px">Genome Labels</strong></td></tr>
             <tr id="show_genome_labels">
               <td>Show genome labels</td>
               <td style="float: right">
@@ -393,6 +395,8 @@
                   style="background-color: #000000; margin-bottom: 10px"></div>
               </td>
             </tr>
+            <tr><td><br></td></tr>
+            <tr><td><strong style="font-size:12px">Gene Labels</strong></td></tr>
             <tr id="show_gene_labels">
               <td>Show gene labels:</td>
               <td style="float: right">
@@ -448,6 +452,9 @@
               <td><input type="text" class="form-control input-sm" id="gene_text_angle" value="0"
                   style="margin-bottom: 10px"></td>
             </tr>
+        </tbody>
+        <tr><td><br><br></td></tr>
+        <table style="margin-bottom: 180px;">
             <tr>
               <td><button onclick="showAllHiddenGenes()">Show all hidden genes</button></td>
             </tr>
