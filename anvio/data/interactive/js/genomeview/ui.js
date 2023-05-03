@@ -897,15 +897,20 @@ function showTabularModal(){
 function addMetadataNote(genomeID, geneID, payload) {
   if(payload.trim().length === 0) return false; 
 
-  let noteObj = {
-    label   : payload,
-    genome  : genomeID,
-    gene    : geneID, 
-    type    : 'note'
-  }
-
   if(!settings['display']['metadata']) settings['display']['metadata'] = []
-  settings['display']['metadata'].push(noteObj)
+
+  let currentNoteIdx = settings['display']['metadata'].findIndex(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'note');
+  if(currentNoteIdx == -1) {
+    let noteObj = {
+      label   : payload,
+      genome  : genomeID,
+      gene    : geneID, 
+      type    : 'note'
+    }
+    settings['display']['metadata'].push(noteObj)
+  } else {
+    settings['display']['metadata'][currentNoteIdx].label = payload
+  }
   toastr.success('Saved metadata note')
 }
 
