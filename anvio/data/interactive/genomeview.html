@@ -365,8 +365,10 @@
           class="btn btn-outline-primary" style="margin-top: 10px; margin-bottom: 10px">Reset Function colors</button>
 
         <span class="settings-header">Labels</span>
-        <table id="labels-table" style="margin-bottom: 180px;">
+
+        <table id="labels-table">
           <tbody>
+            <tr><td><strong style="font-size:12px">Genome Labels</strong></td></tr>
             <tr id="show_genome_labels">
               <td>Show genome labels</td>
               <td style="float: right">
@@ -393,6 +395,8 @@
                   style="background-color: #000000; margin-bottom: 10px"></div>
               </td>
             </tr>
+            <tr><td><br></td></tr>
+            <tr><td><strong style="font-size:12px">Gene Labels</strong></td></tr>
             <tr id="show_gene_labels">
               <td>Show gene labels:</td>
               <td style="float: right">
@@ -448,6 +452,9 @@
               <td><input type="text" class="form-control input-sm" id="gene_text_angle" value="0"
                   style="margin-bottom: 10px"></td>
             </tr>
+        </tbody>
+        <tr><td><br><br></td></tr>
+        <table style="margin-bottom: 180px;">
             <tr>
               <td><button onclick="showAllHiddenGenes()">Show all hidden genes</button></td>
             </tr>
@@ -456,15 +463,15 @@
             </tr>
           </tbody>
         </table>
-        <span style="margin-bottom:600px"></span>
+
       </div>
 
       <div class="btn-group sidebar-footer" role="group"
-        style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px;">
-        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 45px"
+        style="margin-top: 5px; padding-right: 20px; padding-bottom: 5px; height:40px">
+        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px"
           onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span
             class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 45px"
+        <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 5px"
           onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"
           data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span>
           Save State</button>
