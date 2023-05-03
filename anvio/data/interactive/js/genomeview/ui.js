@@ -618,6 +618,13 @@ function showDeepDiveToolTip(event){
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
   });
+
+  $('#deepdive-modal-body').unbind('hidden.bs.modal');
+  $('#deepdive-modal-body').on('hidden.bs.modal', function () {
+    let note = $('#metadata-gene-note').val()
+    if(!note || note.trim().length == 0) return;
+    addMetadataNote(event.target.genomeID, event.target.geneID, note);
+  });
 }
 
 function showToolTip(event){
