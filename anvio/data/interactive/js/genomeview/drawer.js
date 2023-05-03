@@ -814,10 +814,12 @@ GenomeDrawer.prototype.queryFunctions = async function () {
     alert('please provide values for function category and/or query')
     return
   }
-  if (category == 'metadata'){
-    drawer.queryMetadata(query)
-    return
+  if (category.split(' ')[0] == 'metadata'){
+    type = category.split(' ')[1]
+    drawer.queryMetadata(query, type)
+    return;
   }
+
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
       if (value[category]?.[0].toLowerCase().includes(query)) {
@@ -913,12 +915,12 @@ GenomeDrawer.prototype.queryFunctions = async function () {
   this.glowGenes(glowPayload, true)
 }
 
-GenomeDrawer.prototype.queryMetadata = async function(metadataLabel){
+GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   $('#query-results-table').empty()
   let glowPayload = Array()
   let foundInGenomes = Object()
   let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
-                                               .filter( m => m.type == 'tag')
+                                               .filter( m => m.type == type )
   matches.map(metadata => {
     glowPayload.push({
       geneID: metadata.gene,

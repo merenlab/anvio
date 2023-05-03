@@ -395,22 +395,25 @@ function showDeepDiveToolTip(event){
   let totalMetadataString = String()
   let totalAnnotationsString = String()
   let metadataLabel = String()
+  let geneNote = String()
   let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
-  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
+  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata tag</button>`
 
   let includeMetadataHeader = false;
   if(settings['display']?.['metadata']){
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID )
-    if(geneMetadata.length > 0) includeMetadataHeader = true;
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
+    let geneTags = geneMetadata.filter(metadata => metadata.type === 'tag')
+    geneNote = geneMetadata.filter(metadata => metadata.type === 'note')[0]
+    if(geneTags.length > 0) includeMetadataHeader = true;
     
     const createMetadataContent = () => {
-      geneMetadata.map(metadata => {
+      geneTags.map(metadata => {
         metadataLabel = metadata.label
 
         totalMetadataString += `
         <tr>
         <td class='metadata'>${metadata.label}</td>
-        <td>${metadata.type == 'tag'? queryBtn : 'n/a'}</td>
+        <td>${queryBtn}</td>
         <td>${removeBtn}</td>
         </tr>
         `
@@ -486,8 +489,8 @@ function showDeepDiveToolTip(event){
       <input    id='metadata-gene-label' type='text' placeholder='Metadata tag'>
       <button   id='metadata-gene-label-add' type='button' class="btn btn-default btn-sm">Add tag</button>
       <br>
-      <textarea id='metadata-gene-description' placeholder='Metadata description'></textarea>
-      <button   id='metadata-gene-description-add' type='button' class="btn btn-default btn-sm">Add description</button>
+      <textarea id='metadata-gene-note' rows='15' cols='100' placeholder='Metadata Note'></textarea>
+      <button   id='metadata-gene-note-save' type='button' class="btn btn-default btn-sm">Save Note</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
         <thead id="metadata-deepdive-header"></thead>
@@ -514,6 +517,9 @@ function showDeepDiveToolTip(event){
     $('#annotations-deepdive-header').empty()
   }
 
+  if(geneNote){
+    $('#metadata-gene-note').val(geneNote.label)
+  }
   if(includeMetadataHeader) $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
 
   $('.metadata-query').on('click', function(){
@@ -578,6 +584,9 @@ function showDeepDiveToolTip(event){
       $('#metadata-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
     }
   })
+  $('#metadata-gene-note-save').on('click', function(){
+    addMetadataNote(event.target.genomeID, event.target.geneID, $('#metadata-gene-note').val());
+  })
   $('#picker_tooltip').colpick({
     layout: 'hex',
     submit: 0,
@@ -608,6 +617,13 @@ function showDeepDiveToolTip(event){
     }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
+  });
+
+  $('#deepdive-modal-body').unbind('hidden.bs.modal');
+  $('#deepdive-modal-body').on('hidden.bs.modal', function () {
+    let note = $('#metadata-gene-note').val()
+    if(!note || note.trim().length == 0) return;
+    addMetadataNote(event.target.genomeID, event.target.geneID, note);
   });
 }
 
@@ -885,6 +901,26 @@ function showTabularModal(){
   });
 }
 
+function addMetadataNote(genomeID, geneID, payload) {
+  if(payload.trim().length === 0) return false; 
+
+  if(!settings['display']['metadata']) settings['display']['metadata'] = []
+
+  let currentNoteIdx = settings['display']['metadata'].findIndex(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'note');
+  if(currentNoteIdx == -1) {
+    let noteObj = {
+      label   : payload,
+      genome  : genomeID,
+      gene    : geneID, 
+      type    : 'note'
+    }
+    settings['display']['metadata'].push(noteObj)
+  } else {
+    settings['display']['metadata'][currentNoteIdx].label = payload
+  }
+  toastr.success('Saved metadata note')
+}
+
 function addMetadataTag(genomeID, geneID, label) {
   if(label.trim().length == 0) return false;
   let geneTags = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'tag')
@@ -894,7 +930,7 @@ function addMetadataTag(genomeID, geneID, label) {
   }
   
   let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
-  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata item</button>`
+  let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata tag</button>`
 
   let metadataObj = {
     label  : label,
@@ -1594,7 +1630,8 @@ function buildGeneLabelsSelect(){
   })
   // while we're here, we add 'metadata' to the function_search_category dropdown select
   // TODO refactor naming convention to sequence_search_category, bc we're not just querying functions!
-  $('#function_search_category').append(new Option('metadata', 'metadata'))
+  $('#function_search_category').append(new Option('metadata tag', 'metadata tag'))
+  $('#function_search_category').append(new Option('metadata note', 'metadata note'))
 }
 
 function setGeneVisibilityRange(targetGene, targetGenome){
