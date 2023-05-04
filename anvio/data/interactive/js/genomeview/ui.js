@@ -1692,7 +1692,6 @@ function drawGenomeLabels(fontsize=null) {
       }
       let [dataLayerHeight, rulerHeight] = drawer.calculateLayerSizes();
       // center label on genome layer
-      console.log(label.height)
       label.top = label.top - genomeHeight + (rulerBefore ? rulerHeight : 0) + layersBefore*dataLayerHeight + dataLayerHeight/2 + (layersBefore+rulerBefore)*groupLayerPadding - label.height/2 + 5;
     }
     labelCanvas.add(label);
