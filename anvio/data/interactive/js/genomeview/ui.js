@@ -1253,6 +1253,7 @@ function buildGroupLayersTable(layerLabel){
 
   $("#tbody_additionalDataLayers").on("sortupdate", (event, ui) => {
     changeGroupLayersOrder($("#tbody_additionalDataLayers").sortable('toArray'))
+    drawGenomeLabels()
   })
 
   $(`#${layerLabel}_color`).colpick({
@@ -1682,7 +1683,18 @@ function drawGenomeLabels(fontsize=null) {
       selectable: false,
       hoverCursor: 'default'
     });
-    if(!$('#rotate_genome_labels_box').prop("checked")) label.top -= genomeHeight/2;
+    if(!$('#rotate_genome_labels_box').prop("checked")) {
+      let layersBefore = settings['group-layer-order'].indexOf('Genome');
+      let rulerBefore = false;
+      if(settings['group-layer-order'].indexOf('Ruler') < layersBefore) {
+        layersBefore--;
+        rulerBefore = true;
+      }
+      let [dataLayerHeight, rulerHeight] = drawer.calculateLayerSizes();
+      // center label on genome layer
+      console.log(label.height)
+      label.top = label.top - genomeHeight + (rulerBefore ? rulerHeight : 0) + layersBefore*dataLayerHeight + dataLayerHeight/2 + (layersBefore+rulerBefore)*groupLayerPadding - label.height/2 + 5;
+    }
     labelCanvas.add(label);
   });
 }

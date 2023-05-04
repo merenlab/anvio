@@ -589,10 +589,6 @@ function loadAll(loadType) {
     $('#' + genome + '-show').prop('checked', settings['display']['show-genomes'][genome])
   })
 
-  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
-  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
-  drawGenomeLabels(settings['display']['genome-label-size']);
-
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);
   $('#brush_end').val(stop);
@@ -609,5 +605,10 @@ function loadAll(loadType) {
   drawer = new GenomeDrawer(settings)
   drawer.draw()
   console.log('draw from loadAll')
+
+  $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
+  $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
+  drawGenomeLabels(settings['display']['genome-label-size']);
+
   toastr.success(`Successfully loaded from ${settings['state-name']} state`)
 }
