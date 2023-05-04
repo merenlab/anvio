@@ -915,7 +915,7 @@ function addMetadataNote(genomeID, geneID, payload) {
 
 function addMetadataTag(genomeID, geneID, label) {
   if(label.trim().length == 0) return false;
-  let geneTags = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'tag')
+  let geneTags = settings['display']['metadata'] ? settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'tag') : []
   if(geneTags.some(tag => tag.label == label)) {
     toastr.warning(`'Cannot add duplicate tag to gene ${geneID} of ${genomeID}'`);
     return false;
