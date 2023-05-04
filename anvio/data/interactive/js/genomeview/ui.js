@@ -455,7 +455,7 @@ function showDeepDiveToolTip(event){
         <td>${event.target.gene?.call_type}</td>
       </tr>
     </tbody>
-  </table>;
+  </table>
 
   <button type="button" id="gene-dna-sequence-button"class="btn btn-default btn-sm" >DNA</button>
   <button type="button" id="gene-aa-sequence-button" class="btn btn-default btn-sm" >AA</button>
@@ -498,7 +498,7 @@ function showDeepDiveToolTip(event){
   <table class="table table-striped">
     <thead id="annotations-deepdive-header">
       ${event.target.functions ? `
-        <th>Source</th>;
+        <th>Source</th>
         <th>Accession</th>
         <th>Annotation</th>` 
         : ''
@@ -1120,7 +1120,7 @@ function showLassoMenu(selected_genes, x, y) {
       <tr><td>Stop</td><td>${stop}</td></tr> \
       <tr><td>Length</td><td>${length}</td></tr> \
       <tr><td>Gene count</td><td>${selected_genes.length}</td></tr> \
-    </table>';
+    </table>'
 
     <div id="picker_lasso" class="colorpicker" color="#808080" background-color="#808080" style="background-color: #808080; margin-right:16px; margin-left:16px"></div>
     <br><br>
@@ -1211,7 +1211,7 @@ function buildGenomesTable(genomes, order){
                   <td><img src="images/drag.gif" class="drag-icon" id=${genomeLabel} /></td>
                   <td> ${genomeLabel} </td>
                   <td><input type="checkbox" class="genome_selectors" onclick="drawer.draw(); drawGenomeLabels(settings['display']['genome-label-size'])" id="${genomeLabel}-show"></input></td>
-                  </tr>;`
+                  </tr>`
 
     $('#tbody_genomes').append(template);
   })
@@ -1237,14 +1237,14 @@ function buildGroupLayersTable(layerLabel){
                     <td> ${layerLabel} </td>
                     <td style="margin-left: 5px;"> n/a </td>
                     <td><input type="checkbox" class="additional_selectors" id="${layerLabel}-show" onclick="toggleAdditionalDataLayer(event)" checked=${show}></input></td>
-                    </tr>;`
+                    </tr>`
   } else {
     var template =  `<tr id=${layerLabel}>
                      <td><img src="images/drag.gif" class="drag-icon" id=${layerLabel} /></td>
                      <td> ${layerLabel} </td>' +
                      <td><div id="${layerLabel}_color" style="margin-left: 5px;" class="colorpicker" style="background-color: ${color}" color=${color} background-color=${color} ></div></td>
                      <td><input type="checkbox" class="additional_selectors" id="${layerLabel}-show" onclick="toggleAdditionalDataLayer(event)" checked=''></input></td>
-                     </tr>;`
+                     </tr>`
   }
   $('#tbody_additionalDataLayers').append(template);
   $("#tbody_additionalDataLayers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
