@@ -392,10 +392,12 @@ function showDeepDiveToolTip(event){
   let geneNote = String()
   let queryBtn = `<button type='button' class='btn btn-default btn-sm metadata-query'>Query sequence for matches</button>`
   let removeBtn = `<button type='button' class='btn btn-default btn-sm metadata-remove'>Remove metadata tag</button>`
+  let genomeID = event.target.genomeID;
+  let geneID = event.target.geneID;
 
   let includeMetadataHeader = false;
   if(settings['display']?.['metadata']){
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID)
     let geneTags = geneMetadata.filter(metadata => metadata.type === 'tag')
     geneNote = geneMetadata.filter(metadata => metadata.type === 'note')[0]
     if(geneTags.length > 0) includeMetadataHeader = true;
@@ -446,7 +448,7 @@ function showDeepDiveToolTip(event){
     </thead>
     <tbody>
       <tr>
-        <td>${event.target.geneID}</td>
+        <td>${geneID}</td>
         <td>${event.target.gene?.source}</td>
         <td>${event.target.gene.stop - event.target.gene.start}</td>
         <td>${event.target.gene.direction}</td>
@@ -519,14 +521,12 @@ function showDeepDiveToolTip(event){
   })
 
   $('.metadata-remove').on('click', function(){
-    let gene = event.target.geneID
-    let genome = event.target.genomeID
     let label = $(this).parent().siblings('td').first().html()
-    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == gene && m.genome == genome)
+    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID)
 
     settings['display']['metadata'].splice(index, 1)
 
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID)
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID)
     if(geneMetadata.length == 0) {
       $('#metadata-deepdive-header').empty();
     }
@@ -535,49 +535,50 @@ function showDeepDiveToolTip(event){
   })
 
   $('#gene-visibility-range-set').click(function(){
-    setGeneVisibilityRange(event.target.geneID, event.target.genomeID)
+    setGeneVisibilityRange(geneID, genomeID)
   })
 
   $('#gene-dna-sequence-button').on('click', function(){
-    show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID], event.target.geneID, event.target.genomeID)
+    show_sequence_modal('DNA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['dna'][geneID], geneID, genomeID)
   })
 
   $('#gene-aa-sequence-button').on('click', function(){
-    show_sequence_modal('AA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['aa'][event.target.geneID], event.target.geneID, event.target.genomeID)
+    show_sequence_modal('AA Sequence', settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['aa'][geneID], geneID, genomeID)
   })
 
   $('#gene-blastx-at-nr-button').on('click', function(){
-    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
+    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['dna'][geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastx', 'nr', 'gene')
   })
   $('#gene-blastn-at-nr-button').on('click', function(){
-    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
+    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['dna'][geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastn', 'nr', 'gene')
   })
 
   $('#gene-blastx-at-refseq-button').on('click', function(){
-    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
+    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['dna'][geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastx', 'refseq_genomic', 'gene')
   })
   $('#gene-blastn-at-refseq-button').on('click', function(){
-    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == event.target.genomeID)[0][1]['genes']['dna'][event.target.geneID]['sequence']
+    let sequence = settings['genomeData']['genomes'].filter(genome => genome[0] == genomeID)[0][1]['genes']['dna'][geneID]['sequence']
     let sequenceConcat = '>' + 'DNA_SEQUENCE' + '\n' + sequence
     fire_up_ncbi_blast(sequenceConcat, 'blastn', 'refseq_genomic', 'gene')
   })
   // TODO consider metadata option to include 'author' field
   $('#metadata-gene-label-add').on('click', function(){
     // geneMetadata must be set before tag is added
-    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == event.target.genomeID && metadata.gene == event.target.geneID && metadata.type == 'tag')
-    let tagAdded = addMetadataTag(event.target.genomeID, event.target.geneID, $('#metadata-gene-label').val());
+    let geneMetadata = settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'tag')
+    let tagAdded = addMetadataTag(genomeID, geneID, $('#metadata-gene-label').val());
     if(tagAdded && geneMetadata.length == 0) {
       $('#metadata-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
     }
   })
   $('#metadata-gene-note-save').on('click', function(){
-    addMetadataNote(event.target.genomeID, event.target.geneID, $('#metadata-gene-note').val());
+    addMetadataNote(genomeID, geneID, $('#metadata-gene-note').val());
+  })
   })
   $('#picker_tooltip').colpick({
     layout: 'hex',
@@ -592,18 +593,16 @@ function showDeepDiveToolTip(event){
         $(el).css('background-color', '#' + hex);
         $(el).attr('color', '#' + hex);
         if (!bySetColor) $(el).val(hex);
-        let gene = canvas.getObjects().find(obj => obj.id == 'arrow' &&
-                       event.target.genomeID == obj.genomeID &&
-                       event.target.geneID == obj.geneID);
+        let gene = canvas.getObjects().find(obj => obj.id == 'arrow' && genomeID == obj.genomeID && geneID == obj.geneID);
         gene.fill = `#${hex}`
         gene.dirty = true
-        if(!settings['display']['colors']['genes']?.[event.target.genomeID]?.[event.target.geneID]){
-          if(!settings['display']['colors']['genes'][event.target.genomeID]) {
-            settings['display']['colors']['genes'][event.target.genomeID] = [];
+        if(!settings['display']['colors']['genes']?.[genomeID]?.[geneID]){
+          if(!settings['display']['colors']['genes'][genomeID]) {
+            settings['display']['colors']['genes'][genomeID] = [];
           }
-          settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
+          settings['display']['colors']['genes'][genomeID][geneID] = `#${hex}`
         } else {
-          settings['display']['colors']['genes'][event.target.genomeID][event.target.geneID] = `#${hex}`
+          settings['display']['colors']['genes'][genomeID][geneID] = `#${hex}`
         }
         canvas.renderAll()
     }
@@ -615,7 +614,7 @@ function showDeepDiveToolTip(event){
   $('#deepdive-modal-body').on('hidden.bs.modal', function () {
     let note = $('#metadata-gene-note').val()
     if(!note || note.trim().length == 0) return;
-    addMetadataNote(event.target.genomeID, event.target.geneID, note);
+    addMetadataNote(genomeID, geneID, note);
   });
 }
 
