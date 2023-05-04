@@ -917,6 +917,10 @@ GenomeDrawer.prototype.queryFunctions = async function () {
 
 GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   $('#query-results-table').empty()
+  if(!settings['display']['metadata']) {
+    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    return
+  }
   let glowPayload = Array()
   let foundInGenomes = Object()
   let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
