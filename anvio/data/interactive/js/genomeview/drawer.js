@@ -803,6 +803,15 @@ GenomeDrawer.prototype.adjustScaleInterval = function () {
 
 GenomeDrawer.prototype.queryFunctions = async function () {
   $('#query-results-table').empty()
+  $('#query-results-head').empty().append(`
+    <tr>
+      <th>Gene ID</th>
+      <th>Genome</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Go To</th>
+    </tr>
+  `);
   $('#query-results-span').empty()
   let query = $('#function_search_query').val().toLowerCase()
   let category = $('#function_search_category').val()
@@ -917,6 +926,16 @@ GenomeDrawer.prototype.queryFunctions = async function () {
 
 GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   $('#query-results-table').empty()
+  $('#query-results-head').empty().append(`
+    <tr>
+      <th>Gene ID</th>
+      <th>Genome</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Go To</th>
+    </tr>
+  `);
+
   if(!settings['display']['metadata']) {
     alert(`No hits were found matching ${metadataLabel} in metadata`)
     return
@@ -962,6 +981,44 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload, true)
+}
+
+GenomeDrawer.prototype.showAllTags = function(){
+  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(metadata => metadata.type == 'tag').length == 0) {
+    alert('No metadata tags currently exist');
+    return;
+  }
+
+  $('#query-results-table').empty();
+  $('#query-results-head').empty().append(`
+    <tr>
+      <th>Tag</th>
+      <th>Gene ID</th>
+      <th>Genome</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Go To</th>
+      <th>Remove</th>
+    </tr>
+  `);
+
+  settings['display']['metadata'].filter(metadata => metadata.type == 'tag').forEach(tag => {
+    let genome = this.settings['genomeData']['genomes'].filter(genome => genome[0] == tag.genome)
+    let start = genome[0][1]['genes']['gene_calls'][tag.gene]['start']
+    let end = genome[0][1]['genes']['gene_calls'][tag.gene]['stop']
+
+    $('#query-results-table').append(`
+      <tr>
+        <td>${tag.label}</td>
+        <td>${tag.gene}</td>
+        <td>${tag.genome}</td>
+        <td>${start}</td>
+        <td>${end}</td>
+        <td><button onclick="goToGene('${tag.genome}',${tag.gene},${start},${end})">Go To</button</td>
+        <td><button onclick="$(this).closest('tr').remove(); removeTagFromQueryTable('${tag.genome}',${tag.gene},'${tag.label}')">Remove Tag</button</td>
+      </tr>
+    `)
+  });
 }
 
 GenomeDrawer.prototype.setInitialZoom = function(){
