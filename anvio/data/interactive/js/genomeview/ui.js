@@ -493,19 +493,22 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-note-save' type='button' class="btn btn-default btn-sm">Save Note</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
-        <thead id="metadata-deepdive-header"></thead>
+        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<th>metadata</th><th>action</th><th>remove</th>' : ''}</thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
       </table>
   </div>
 
-  <h2>Annotations</h2>
+  <h2>${event.target.functions ? 'Annotations' : ''}</h2>
   <table class="table table-striped">
     <thead id="annotations-deepdive-header">
-      <th>Source</th>;
-      <th>Accession</th>
-      <th>Annotation</th>
+      ${event.target.functions ? `
+        <th>Source</th>;
+        <th>Accession</th>
+        <th>Annotation</th>` 
+        : ''
+      }
     </thead>
     <tbody>
       ${totalAnnotationsString}
@@ -513,14 +516,9 @@ function showDeepDiveToolTip(event){
   </table>
   `)
 
-  if(!event.target.functions){
-    $('#annotations-deepdive-header').empty()
-  }
-
   if(geneNote){
     $('#metadata-gene-note').val(geneNote.label)
   }
-  if(includeMetadataHeader) $('#metadata-deepdive-header').append('<th>metadata</th><th>action</th><th>remove</th>')
 
   $('.metadata-query').on('click', function(){
     drawer.queryMetadata(metadataLabel)
