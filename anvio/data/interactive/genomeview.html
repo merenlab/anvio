@@ -504,6 +504,7 @@
           <td>
             <button onclick='drawer.queryFunctions()'>Let's Go!</button>
             <button onclick='drawer.removeAllGeneGlows()'>Clear All Gene Glows</button>
+            <button onclick='$("#query-results-head, #query-results-table").empty()'>Clear Results</button>
           </td>
           <br>
           <td>
@@ -514,7 +515,7 @@
     </table>
     <span id="query-results-span"></span>
     <table class="table table-striped" style="width: 100%; text-align: center;">
-      <thead>
+      <thead id="query-results-head">
         <th>Gene ID</th>
         <th>Genome</th>
         <th>Start</th>
