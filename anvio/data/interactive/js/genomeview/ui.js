@@ -515,7 +515,7 @@ function showDeepDiveToolTip(event){
   }
 
   $('.metadata-query').on('click', function(){
-    drawer.queryMetadata(metadataLabel)
+    drawer.queryMetadata(metadataLabel, 'tag')
   })
 
   $('.metadata-remove').on('click', function(){
@@ -944,7 +944,7 @@ function addMetadataTag(genomeID, geneID, label) {
   $('.metadata-remove, .metadata-query').unbind('click')
 
   $('.metadata-query').on('click', function(){ // re-trigger listener for new DOM buttons
-    drawer.queryMetadata(label)
+    drawer.queryMetadata(label, 'tag')
   })
 
   $('.metadata-remove').on('click', function(){      
