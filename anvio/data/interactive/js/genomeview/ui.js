@@ -385,12 +385,6 @@ function setEventListeners(){
   });
 }
 function showDeepDiveToolTip(event){
-  $('.canvas-container').dblclick(function(){
-    if($("#deepdive-tooltip-body").is(":visible")){
-      $("#deepdive-tooltip-body").hide()
-    }
-  })
-
   $('#deepdive-modal-tab-content').html('')
   let totalMetadataString = String()
   let totalAnnotationsString = String()
