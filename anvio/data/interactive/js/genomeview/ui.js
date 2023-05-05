@@ -692,6 +692,16 @@ function showToolTip(event){
       `
     })
   }
+  let user_defined = settings['display']['metadata'].filter(m => m.genome == event.target.genomeID && m.gene == event.target.geneID && m.type == 'annotation');
+  if(user_defined.length > 0) {
+    totalAnnotationsString += `
+    <tr id="user-defined-annotation-row">
+    <td>User_Defined</td>
+    <td>${user_defined[0].accession}</td>
+    <td>${user_defined[0].annotation}</td>
+    </tr>
+    `
+  }
   $('#mouseover-panel-table-body').append(`
     <tr>
       <td> ${event.target.geneID}</td>
