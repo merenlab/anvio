@@ -128,8 +128,12 @@
               </div>
               <div id="tabular-modal-sequence-checkboxes"></div>
               <div>
-                <input type='text' placeholder='metadata tag' id='metadata-tag-multiselect' />
+                <input type='text' placeholder='Metadata tag' id='metadata-tag-multiselect' />
                 <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('metadata')">Add metadata tag to selected</button>
+              </div>
+              <div>
+                <input type='text' placeholder='User-defined annotation' id='metadata-annotation-multiselect' />
+                <button class="btn btn-default" onclick="gatherTabularModalSelectedItems('annotation')">Add user-defined annotation to selected</button>
               </div>
               <div>
                 <div id="multiselect-picker-tabular-modal" class="colorpicker" color="#808080"
@@ -505,6 +509,7 @@
             <button onclick='drawer.queryFunctions()'>Let's Go!</button>
             <button onclick='drawer.removeAllGeneGlows()'>Clear All Gene Glows</button>
             <button onclick='drawer.showAllTags()'>Show All Metadata Tags</button>
+            <button onclick='drawer.showAllUserDefined()'>Show All User-Defined Annotations</button>
             <button onclick='$("#query-results-head, #query-results-table").empty()'>Clear Results</button>
           </td>
           <br>

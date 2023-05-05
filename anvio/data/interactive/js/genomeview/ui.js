@@ -431,6 +431,16 @@ function showDeepDiveToolTip(event){
       `
     })
   }
+  let annotations = settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation');
+  if(annotations.length > 0) {
+    totalAnnotationsString += `
+    <tr id="user-defined-annotation-row">
+    <td>User_Defined</td>
+    <td>${annotations[0].accession}</td>
+    <td>${annotations[0].annotation}</td>
+    </tr>
+    `
+  }
 
   $('#deepdive-modal-body').modal('show')
   $('#deepdive-modal-tab-content').append(`
@@ -489,24 +499,28 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-note-save' type='button' class="btn btn-default btn-sm">Save Note</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
-        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<th>metadata</th><th>action</th><th>remove</th>' : ''}</thead>
+        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<tr><th>Tag</th><th>Query</th><th>Remove</th></tr>' : ''}</thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
       </table>
   </div>
 
-  <h2>${event.target.functions ? 'Annotations' : ''}</h2>
+  <h2>Annotations</h2>
+  <input id="annotation-deepdive-input" type="text" placeholder="User-defined annotation" size='50'>
+  <button id='annotation-add' type='button' class="btn btn-default btn-sm">Add custom annotation</button>
+  <button id='annotation-remove' type='button' class="btn btn-default btn-sm">Remove custom annotation</button>
   <table class="table table-striped">
     <thead id="annotations-deepdive-header">
-      ${event.target.functions ? `
-        <th>Source</th>
-        <th>Accession</th>
-        <th>Annotation</th>` 
-        : ''
-      }
+      ${totalAnnotationsString.length == 0 ? '' : `
+        <tr>
+          <th>Source</th>
+          <th>Accession</th>
+          <th>Annotation</th> 
+        </tr>
+      `}
     </thead>
-    <tbody>
+    <tbody id="annotations-deepdive-body">
       ${totalAnnotationsString}
     </tbody>
   </table>
@@ -579,7 +593,61 @@ function showDeepDiveToolTip(event){
   $('#metadata-gene-note-save').on('click', function(){
     addMetadataNote(genomeID, geneID, $('#metadata-gene-note').val());
   })
+  $('#annotation-add').on('click', function(){
+    let annotation = $('#annotation-deepdive-input').val();
+    $('#annotation-deepdive-input').val('');
+    if(annotation.trim().length == 0) return;
+
+    if(!settings['display']['metadata']) settings['display']['metadata'] = [];
+
+    if(settings['display']['metadata'].some(m => m.type == 'annotation' && m.gene == geneID && m.genome == genomeID)) {
+      toastr.warning(`Cannot add more than one annotation to gene ${geneID} of ${genomeID}`);
+      return;
+    }
+
+    let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
+    if(settings['display']['metadata']) {
+      let same_annotations = settings['display']['metadata'].filter(m => m.type == 'annotation' && m.annotation == annotation);
+      if(same_annotations.length > 0) {
+        accession = same_annotations[0].accession;
+        settings['display']['accessionNum']--; // compensate for increment so we stay at the same accession number
+      }
+    }
+
+    if(!event.target.functions && settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'annotation').length == 0) {
+      $('#annotations-deepdive-header').append('<tr><th>Source</th><th>Accession</th><th>Annotation</th></tr>')
+    }
+    $('#annotations-deepdive-body').append(`
+      <tr id='user-defined-annotation-row'>
+        <td>User_Defined</td>
+        <td>${accession}</td>
+        <td>${annotation}</td>
+      </tr>
+    `);
+
+    settings['display']['metadata'].push({
+      gene: geneID,
+      genome: genomeID,
+      accession: accession,
+      annotation: annotation,
+      type: 'annotation'
+    });
+    settings['display']['accessionNum']++;
+
+    if($('#gene_label_source').val() == 'user') drawer.redrawSingleGenome(genomeID);
   })
+  $('#annotation-remove').on('click',function(){
+    if(!settings['display']['metadata']) return;
+
+    $('#user-defined-annotation-row').remove();
+    let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
+    if(index == -1) return;
+    settings['display']['metadata'].splice(index, 1);
+
+    if($('#annotations-deepdive-body').children().length == 0) $('#annotations-deepdive-header').empty();
+
+    if($('#gene_label_source').val() == 'user') drawer.redrawSingleGenome(genomeID);
+  });
   $('#picker_tooltip').colpick({
     layout: 'hex',
     submit: 0,
@@ -632,6 +700,18 @@ function showToolTip(event){
       </tr>
       `
     })
+  }
+  if(settings['display']['metadata']) {
+    let user_defined = settings['display']['metadata'].filter(m => m.genome == event.target.genomeID && m.gene == event.target.geneID && m.type == 'annotation');
+    if(user_defined.length > 0) {
+      totalAnnotationsString += `
+      <tr id="user-defined-annotation-row">
+      <td>User_Defined</td>
+      <td>${user_defined[0].accession}</td>
+      <td>${user_defined[0].annotation}</td>
+      </tr>
+      `
+    }
   }
   $('#mouseover-panel-table-body').append(`
     <tr>
@@ -962,12 +1042,36 @@ function addMetadataTag(genomeID, geneID, label) {
   return true;
 }
 
-function removeTagFromQueryTable(genomeID, geneID, label) {
-  let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID && m.type == 'tag');
-  settings['display']['metadata'].splice(index, 1);
-  if($('#query-results-table').children().length == 0) {
-    $('#query-results-head').empty();
+function addAnnotation(genomeID, geneID, label){
+  // called from the viewport menu
+
+  if(label.trim().length == 0) return false;
+  let annotation = settings['display']['metadata'] ? settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation') : []
+  if(annotation.length > 0) {
+    toastr.warning(`'Cannot add more than one user-defined annotation to gene ${geneID} of ${genomeID}'`);
+    return false;
   }
+
+  let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
+  if(settings['display']['metadata']) {
+    let same_annotations = settings['display']['metadata'].filter(m => m.type == 'annotation' && m.annotation == label);
+    if(same_annotations.length > 0) {
+      accession = same_annotations[0].accession;
+      settings['display']['accessionNum']--; // compensate for increment so we stay at the same accession number
+    }
+  }
+
+  if(!settings['display']['metadata']) settings['display']['metadata'] = []
+  settings['display']['metadata'].push({
+    genome : genomeID,
+    gene   : geneID,
+    accession : accession,
+    annotation : label,
+    type   : 'annotation'
+  })
+  settings['display']['accessionNum']++;
+
+  return true;
 }
 
 function gatherTabularModalSelectedItems(action){
@@ -1010,6 +1114,15 @@ function gatherTabularModalSelectedItems(action){
         addMetadataTag(gene['genomeID'], gene['geneID'], label);
       });
       $('#metadata-tag-multiselect').val('');
+      break;
+    case 'annotation':
+      let annotation = $('#metadata-annotation-multiselect').val();
+      if(annotation.trim().length == 0) return;
+      targetedGenes.forEach(gene => {
+        addAnnotation(gene['genomeID'], gene['geneID'], annotation);
+      });
+      $('#metadata-annotation-multiselect').val('');
+      if($('#gene_label_source').val() == 'user') drawer.draw();
       break;
     default:
       break;
@@ -1628,8 +1741,9 @@ function buildGeneLabelsSelect(){
     // we can also build the dropdown UI element for source-selection in functional querying
     $("#function_search_category").append(new Option(source, source))
   })
-  // while we're here, we add 'metadata' to the function_search_category dropdown select
+  // while we're here, we add 'user-defined annotations' 'metadata' to the function_search_category dropdown select
   // TODO refactor naming convention to sequence_search_category, bc we're not just querying functions!
+  $('#function_search_category').append(new Option('User-defined', 'metadata annotation'))
   $('#function_search_category').append(new Option('metadata tag', 'metadata tag'))
   $('#function_search_category').append(new Option('metadata note', 'metadata note'))
 }

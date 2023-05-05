@@ -219,10 +219,9 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
 
       if (source == 'default') {
         return `${geneID}`
-      }
-      if (source == 'user') {
-        if (this.settings['display']?.hasOwnProperty('gene-labels')) {
-          return this.settings['display']['gene-labels'][genomeID][geneID]
+      } else if (source == 'user') {
+        if (this.settings['display']?.['metadata']?.filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation')?.length > 0) {
+          return this.settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation')[0].annotation;
         } else {
           return ''
         }
@@ -784,9 +783,16 @@ GenomeDrawer.prototype.setGenomeLabelSize = function (newSize) {
 }
 
 GenomeDrawer.prototype.redrawSingleGenome = function (genomeID) {
+  if(!$('#' + genomeID + '-show').is(':checked')) return;
+
   canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
   let idx = this.settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
-  this.addLayers(idx);
+  let orderIndex = idx;
+  for(genome of this.settings['genomeData']['genomes']) {
+    if(genome[0] == genomeID) break;
+    if(!$('#' + genome[0] + '-show').is(':checked')) orderIndex--;
+  }
+  this.addLayers(idx, orderIndex);
   checkGeneLabels();
 }
 
@@ -937,13 +943,21 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   `);
 
   if(!settings['display']['metadata']) {
-    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    alert(`No hits were found matching ${metadataLabel} in ${type == 'annotation' ? 'user-defined annotations' : 'metadata'}`)
     return
   }
   let glowPayload = Array()
   let foundInGenomes = Object()
-  let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
-                                               .filter( m => m.type == type )
+  let typeMatches = settings['display']['metadata'].filter(m => m.type == type);
+  let matches;
+  if(type == 'annotation') {
+    matches = typeMatches.filter(m => m.accession.toLowerCase().includes(metadataLabel.toLowerCase()))
+    if(matches.length == 0) {
+      matches = typeMatches.filter(m => m.annotation.toLowerCase().includes(metadataLabel.toLowerCase()))
+    }
+  } else {
+    matches = typeMatches.filter(m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
+  }
   matches.map(metadata => {
     glowPayload.push({
       geneID: metadata.gene,
@@ -954,7 +968,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
     }
   })
   if (glowPayload.length < 1) {
-    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    alert(`No hits were found matching ${metadataLabel} in ${type == 'annotation' ? 'user-defined annotations' : 'metadata'}`)
     return
   }
   let lowestStart, highestEnd = null
@@ -1019,6 +1033,56 @@ GenomeDrawer.prototype.showAllTags = function(){
       </tr>
     `)
   });
+
+  removeTagFromQueryTable = (genomeID, geneID, label) => {
+    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID && m.type == 'tag');
+    settings['display']['metadata'].splice(index, 1);
+    if($('#query-results-table').children().length == 0) {
+      $('#query-results-head').empty();
+    }
+  }
+}
+
+GenomeDrawer.prototype.showAllUserDefined = function(){
+  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(metadata => metadata.type == 'annotation').length == 0) {
+    alert('No user-defined annotations currently exist');
+    return;
+  }
+
+  $('#query-results-table').empty();
+  $('#query-results-head').empty().append(`
+    <tr>
+      <th>Gene ID</th>
+      <th>Genome</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Go To</th>
+      <th>Remove</th>
+    </tr>
+  `);
+
+  settings['display']['metadata'].filter(metadata => metadata.type == 'annotation').forEach(annotation => {
+    let genome = this.settings['genomeData']['genomes'].filter(genome => genome[0] == annotation.genome)
+    let start = genome[0][1]['genes']['gene_calls'][annotation.gene]['start']
+    let end = genome[0][1]['genes']['gene_calls'][annotation.gene]['stop']
+
+    $('#query-results-table').append(`
+      <tr>
+        <td>${annotation.gene}</td>
+        <td>${annotation.genome}</td>
+        <td>${start}</td>
+        <td>${end}</td>
+        <td><button onclick="goToGene('${annotation.genome}',${annotation.gene},${start},${end})">Go To</button</td>
+        <td><button onclick="$(this).closest('tr').remove(); removeAnnotation('${annotation.genome}',${annotation.gene})">Remove Tag</button</td>
+      </tr>
+    `)
+  });
+
+  removeAnnotation = (genomeID, geneID) => {
+    let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
+    settings['display']['metadata'].splice(index, 1);
+    if($('#gene_label_source').val() == 'user') this.redrawSingleGenome(genomeID);
+  }
 }
 
 GenomeDrawer.prototype.setInitialZoom = function(){
