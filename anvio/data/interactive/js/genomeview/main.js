@@ -422,6 +422,12 @@ function processState(stateName, stateData) {
     settings['display']['xDisps'] = stateData['display']['xDisps']
   }
 
+  if(stateData?.['display']?.['accessionNum']) {
+    settings['display']['accessionNum'] = stateData['display']['accessionNum'];
+  } else {
+    settings['display']['accessionNum'] = 0;
+  }
+
   if(settings?.['display']?.['show-genomes']) {
     settings['display']['show-genomes'] = stateData['display']['show-genomes']
   } else {

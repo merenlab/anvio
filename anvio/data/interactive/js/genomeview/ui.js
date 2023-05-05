@@ -489,27 +489,27 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-note-save' type='button' class="btn btn-default btn-sm">Save Note</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
-        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<th>metadata</th><th>action</th><th>remove</th>' : ''}</thead>
+        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<th>Tag</th><th>Query</th><th>Remove</th>' : ''}</thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
       </table>
   </div>
 
-  <h2>${event.target.functions ? 'Annotations' : ''}</h2>
-  <table class="table table-striped">
-    <thead id="annotations-deepdive-header">
-      ${event.target.functions ? `
+  ${event.target.functions ?
+    `<h2>Annotations</h2>
+    <input id="annotation-deepdive-input" type="text" placeholder="User-defined annotation" size='50'>
+    <button id='annotation-add' type='button' class="btn btn-default btn-sm">Add custom annotation</button>
+    <table class="table table-striped">
+      <thead id="annotations-deepdive-header">
         <th>Source</th>
         <th>Accession</th>
-        <th>Annotation</th>` 
-        : ''
-      }
-    </thead>
-    <tbody>
-      ${totalAnnotationsString}
-    </tbody>
-  </table>
+        <th>Annotation</th> 
+      </thead>
+      <tbody id="annotations-deepdive-body">
+        ${totalAnnotationsString}
+      </tbody>
+    </table>` : ''}
   `)
 
   if(geneNote){
@@ -579,6 +579,40 @@ function showDeepDiveToolTip(event){
   $('#metadata-gene-note-save').on('click', function(){
     addMetadataNote(genomeID, geneID, $('#metadata-gene-note').val());
   })
+  $('#annotation-add').on('click', function(){
+    let annotation = $('#annotation-deepdive-input').val();
+    if(annotation.trim().length == 0) return;
+
+    if(!settings['display']['metadata']) settings['display']['metadata'] = [];
+
+    if(settings['display']['metadata'].some(m => m.type == 'annotation' && m.gene == geneID && m.genome == genomeID)) {
+      toastr.warning(`Cannot add more than one annotation to gene ${geneID} of ${genomeID}`);
+      return;
+    }
+
+    let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
+
+    if(!event.target.functions && settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'annotation').length == 0) {
+      $('#annotations-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
+    }
+    $('#annotations-deepdive-body').append(`
+      <tr>
+        <td>User_Defined</td>
+        <td>${accession}</td>
+        <td>${annotation}</td>
+      </tr>
+    `);
+
+    settings['display']['metadata'].push({
+      gene: geneID,
+      genome: genomeID,
+      accession: accession,
+      annotation: annotation,
+      type: 'annotation'
+    });
+    settings['display']['accessionNum']++;
+
+    // add remove button: remove from settings and accessionNum-- 
   })
   $('#picker_tooltip').colpick({
     layout: 'hex',
