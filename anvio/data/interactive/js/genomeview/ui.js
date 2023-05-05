@@ -1662,8 +1662,9 @@ function buildGeneLabelsSelect(){
     // we can also build the dropdown UI element for source-selection in functional querying
     $("#function_search_category").append(new Option(source, source))
   })
-  // while we're here, we add 'metadata' to the function_search_category dropdown select
+  // while we're here, we add 'user-defined annotations' 'metadata' to the function_search_category dropdown select
   // TODO refactor naming convention to sequence_search_category, bc we're not just querying functions!
+  $('#function_search_category').append(new Option('User-defined', 'User-defined'))
   $('#function_search_category').append(new Option('metadata tag', 'metadata tag'))
   $('#function_search_category').append(new Option('metadata note', 'metadata note'))
 }
