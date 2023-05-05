@@ -828,10 +828,6 @@ GenomeDrawer.prototype.queryFunctions = async function () {
     drawer.queryMetadata(query, type)
     return;
   }
-  if(category == 'User-defined') {
-    drawer.queryUserDefined(query);
-    return;
-  }
 
   this.settings['genomeData']['genomes'].map(genome => {
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
@@ -941,13 +937,21 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   `);
 
   if(!settings['display']['metadata']) {
-    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    alert(`No hits were found matching ${metadataLabel} in ${type == 'annotation' ? 'user-defined annotations' : 'metadata'}`)
     return
   }
   let glowPayload = Array()
   let foundInGenomes = Object()
-  let matches = settings['display']['metadata'].filter( m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
-                                               .filter( m => m.type == type )
+  let typeMatches = settings['display']['metadata'].filter(m => m.type == type);
+  let matches;
+  if(type == 'annotation') {
+    matches = typeMatches.filter(m => m.accession.toLowerCase().includes(metadataLabel.toLowerCase()))
+    if(matches.length == 0) {
+      matches = typeMatches.filter(m => m.annotation.toLowerCase().includes(metadataLabel.toLowerCase()))
+    }
+  } else {
+    matches = typeMatches.filter(m => m.label.toLowerCase().includes(metadataLabel.toLowerCase()))
+  }
   matches.map(metadata => {
     glowPayload.push({
       geneID: metadata.gene,
@@ -958,7 +962,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
     }
   })
   if (glowPayload.length < 1) {
-    alert(`No hits were found matching ${metadataLabel} in metadata`)
+    alert(`No hits were found matching ${metadataLabel} in ${type == 'annotation' ? 'user-defined annotations' : 'metadata'}`)
     return
   }
   let lowestStart, highestEnd = null
@@ -985,17 +989,6 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload, true)
-}
-
-GenomeDrawer.prototype.queryUserDefined = async function (query) {
-  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(m => m.type == 'annotation').length == 0) {
-    alert(`No hits were found matching ${query} in user-defined annotations`)
-    return
-  }
-
-  let distinctQueryMatches = Object()
-  let glowPayload = Array()
-  let foundInGenomes = Object()
 }
 
 GenomeDrawer.prototype.showAllTags = function(){
