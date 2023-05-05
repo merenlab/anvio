@@ -634,7 +634,7 @@ function showDeepDiveToolTip(event){
     });
     settings['display']['accessionNum']++;
 
-    // add remove button: remove from settings and accessionNum-- 
+    if($('#gene_label_source').val() == 'user') drawer.redrawSingleGenome(genomeID);
   })
   $('#annotation-remove').on('click',function(){
     if(!settings['display']['metadata']) return;
@@ -645,6 +645,8 @@ function showDeepDiveToolTip(event){
     settings['display']['metadata'].splice(index, 1);
 
     if($('#annotations-deepdive-body').children().length == 0) $('#annotations-deepdive-header').empty();
+
+    if($('#gene_label_source').val() == 'user') drawer.redrawSingleGenome(genomeID);
   });
   $('#picker_tooltip').colpick({
     layout: 'hex',
@@ -1120,6 +1122,7 @@ function gatherTabularModalSelectedItems(action){
         addAnnotation(gene['genomeID'], gene['geneID'], annotation);
       });
       $('#metadata-annotation-multiselect').val('');
+      if($('#gene_label_source').val() == 'user') drawer.draw();
       break;
     default:
       break;

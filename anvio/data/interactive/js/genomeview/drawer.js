@@ -1081,6 +1081,7 @@ GenomeDrawer.prototype.showAllUserDefined = function(){
   removeAnnotation = (genomeID, geneID) => {
     let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
     settings['display']['metadata'].splice(index, 1);
+    if($('#gene_label_source').val() == 'user') this.redrawSingleGenome(genomeID);
   }
 }
 
