@@ -783,9 +783,16 @@ GenomeDrawer.prototype.setGenomeLabelSize = function (newSize) {
 }
 
 GenomeDrawer.prototype.redrawSingleGenome = function (genomeID) {
+  if(!$('#' + genomeID + '-show').is(':checked')) return;
+
   canvas.getObjects().filter(o => o.groupID == genomeID).forEach(obj => canvas.remove(obj));
   let idx = this.settings['genomeData']['genomes'].findIndex(obj => obj[0] == genomeID);
-  this.addLayers(idx);
+  let orderIndex = idx;
+  for(genome of this.settings['genomeData']['genomes']) {
+    if(genome[0] == genomeID) break;
+    if(!$('#' + genome[0] + '-show').is(':checked')) orderIndex--;
+  }
+  this.addLayers(idx, orderIndex);
   checkGeneLabels();
 }
 
