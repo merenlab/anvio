@@ -430,16 +430,16 @@ function showDeepDiveToolTip(event){
       </tr>
       `
     })
-    let annotations = settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation');
-    if(annotations.length > 0) {
-      totalAnnotationsString += `
-      <tr id="user-defined-annotation-row">
-      <td>User_Defined</td>
-      <td>${annotations[0].accession}</td>
-      <td>${annotations[0].annotation}</td>
-      </tr>
-      `
-    }
+  }
+  let annotations = settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation');
+  if(annotations.length > 0) {
+    totalAnnotationsString += `
+    <tr id="user-defined-annotation-row">
+    <td>User_Defined</td>
+    <td>${annotations[0].accession}</td>
+    <td>${annotations[0].annotation}</td>
+    </tr>
+    `
   }
 
   $('#deepdive-modal-body').modal('show')
@@ -499,28 +499,31 @@ function showDeepDiveToolTip(event){
       <button   id='metadata-gene-note-save' type='button' class="btn btn-default btn-sm">Save Note</button>
       <br>
       <table class="table table-striped" id="metadata-deepdive-table">
-        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<th>Tag</th><th>Query</th><th>Remove</th>' : ''}</thead>
+        <thead id="metadata-deepdive-header">${includeMetadataHeader ? '<tr><th>Tag</th><th>Query</th><th>Remove</th></tr>' : ''}</thead>
         <tbody id="metadata-body">
          ${totalMetadataString}
         </tbody>
       </table>
   </div>
 
-  ${event.target.functions ?
-    `<h2>Annotations</h2>
-    <input id="annotation-deepdive-input" type="text" placeholder="User-defined annotation" size='50'>
-    <button id='annotation-add' type='button' class="btn btn-default btn-sm">Add custom annotation</button>
-    <button id='annotation-remove' type='button' class="btn btn-default btn-sm">Remove custom annotation</button>
-    <table class="table table-striped">
-      <thead id="annotations-deepdive-header">
-        <th>Source</th>
-        <th>Accession</th>
-        <th>Annotation</th> 
-      </thead>
-      <tbody id="annotations-deepdive-body">
-        ${totalAnnotationsString}
-      </tbody>
-    </table>` : ''}
+  <h2>Annotations</h2>
+  <input id="annotation-deepdive-input" type="text" placeholder="User-defined annotation" size='50'>
+  <button id='annotation-add' type='button' class="btn btn-default btn-sm">Add custom annotation</button>
+  <button id='annotation-remove' type='button' class="btn btn-default btn-sm">Remove custom annotation</button>
+  <table class="table table-striped">
+    <thead id="annotations-deepdive-header">
+      ${totalAnnotationsString.length == 0 ? '' : `
+        <tr>
+          <th>Source</th>
+          <th>Accession</th>
+          <th>Annotation</th> 
+        </tr>
+      `}
+    </thead>
+    <tbody id="annotations-deepdive-body">
+      ${totalAnnotationsString}
+    </tbody>
+  </table>
   `)
 
   if(geneNote){
@@ -605,7 +608,7 @@ function showDeepDiveToolTip(event){
     let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
 
     if(!event.target.functions && settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'annotation').length == 0) {
-      $('#annotations-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
+      $('#annotations-deepdive-header').append('<tr><th>Source</th><th>Accession</th><th>Annotation</th></tr>')
     }
     $('#annotations-deepdive-body').append(`
       <tr id='user-defined-annotation-row'>
