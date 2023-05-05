@@ -997,16 +997,16 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
   this.glowGenes(glowPayload, true)
 }
 
-GenomeDrawer.prototype.showAllTags = function(){
-  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(metadata => metadata.type == 'tag').length == 0) {
-    alert('No metadata tags currently exist');
+GenomeDrawer.prototype.showAllMetadata = function(type){
+  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(metadata => metadata.type == type).length == 0) {
+    alert(`No metadata ${type}s currently exist`);
     return;
   }
 
   $('#query-results-table').empty();
   $('#query-results-head').empty().append(`
     <tr>
-      <th>Tag</th>
+      ${type == 'tag' ? '<th>Tag</th>' : ''}
       <th>Gene ID</th>
       <th>Genome</th>
       <th>Start</th>
@@ -1016,26 +1016,26 @@ GenomeDrawer.prototype.showAllTags = function(){
     </tr>
   `);
 
-  settings['display']['metadata'].filter(metadata => metadata.type == 'tag').forEach(tag => {
-    let genome = this.settings['genomeData']['genomes'].filter(genome => genome[0] == tag.genome)
-    let start = genome[0][1]['genes']['gene_calls'][tag.gene]['start']
-    let end = genome[0][1]['genes']['gene_calls'][tag.gene]['stop']
+  settings['display']['metadata'].filter(metadata => metadata.type == type).forEach(metadata => {
+    let genome = this.settings['genomeData']['genomes'].filter(genome => genome[0] == metadata.genome)
+    let start = genome[0][1]['genes']['gene_calls'][metadata.gene]['start']
+    let end = genome[0][1]['genes']['gene_calls'][metadata.gene]['stop']
 
     $('#query-results-table').append(`
       <tr>
-        <td>${tag.label}</td>
-        <td>${tag.gene}</td>
-        <td>${tag.genome}</td>
+        ${type == 'tag' ? '<td>' + metadata.label + '</td>' : ''}
+        <td>${metadata.gene}</td>
+        <td>${metadata.genome}</td>
         <td>${start}</td>
         <td>${end}</td>
-        <td><button onclick="goToGene('${tag.genome}',${tag.gene},${start},${end})">Go To</button</td>
-        <td><button onclick="$(this).closest('tr').remove(); removeTagFromQueryTable('${tag.genome}',${tag.gene},'${tag.label}')">Remove Tag</button</td>
+        <td><button onclick="goToGene('${metadata.genome}',${metadata.gene},${start},${end})">Go To</button</td>
+        <td><button onclick="$(this).closest('tr').remove(); removeMetadataFromQueryTable('${metadata.genome}',${metadata.gene},'${type=='tag' ? metadata.label : null}')">Remove ${type}</button</td>
       </tr>
     `)
   });
 
-  removeTagFromQueryTable = (genomeID, geneID, label) => {
-    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID && m.type == 'tag');
+  removeMetadataFromQueryTable = (genomeID, geneID, label=null) => {
+    let index = settings['display']['metadata'].findIndex(m => (type=='tag' ? m.label == label : true) && m.gene == geneID && m.genome == genomeID && m.type == type);
     settings['display']['metadata'].splice(index, 1);
     if($('#query-results-table').children().length == 0) {
       $('#query-results-head').empty();
