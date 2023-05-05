@@ -219,10 +219,9 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
 
       if (source == 'default') {
         return `${geneID}`
-      }
-      if (source == 'user') {
-        if (this.settings['display']?.hasOwnProperty('gene-labels')) {
-          return this.settings['display']['gene-labels'][genomeID][geneID]
+      } else if (source == 'user') {
+        if (this.settings['display']?.['metadata']?.filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation')?.length > 0) {
+          return this.settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation')[0].annotation;
         } else {
           return ''
         }
