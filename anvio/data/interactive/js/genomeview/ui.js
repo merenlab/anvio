@@ -606,6 +606,13 @@ function showDeepDiveToolTip(event){
     }
 
     let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
+    if(settings['display']['metadata']) {
+      let same_annotations = settings['display']['metadata'].filter(m => m.type == 'annotation' && m.annotation == annotation);
+      if(same_annotations.length > 0) {
+        accession = same_annotations[0].accession;
+        settings['display']['accessionNum']--; // compensate for increment so we stay at the same accession number
+      }
+    }
 
     if(!event.target.functions && settings['display']['metadata'].filter(metadata => metadata.genome == genomeID && metadata.gene == geneID && metadata.type == 'annotation').length == 0) {
       $('#annotations-deepdive-header').append('<tr><th>Source</th><th>Accession</th><th>Annotation</th></tr>')
@@ -1043,11 +1050,20 @@ function addAnnotation(genomeID, geneID, label){
     return false;
   }
 
+  let accession = 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'];
+  if(settings['display']['metadata']) {
+    let same_annotations = settings['display']['metadata'].filter(m => m.type == 'annotation' && m.annotation == label);
+    if(same_annotations.length > 0) {
+      accession = same_annotations[0].accession;
+      settings['display']['accessionNum']--; // compensate for increment so we stay at the same accession number
+    }
+  }
+
   if(!settings['display']['metadata']) settings['display']['metadata'] = []
   settings['display']['metadata'].push({
     genome : genomeID,
     gene   : geneID,
-    accession : 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'],
+    accession : accession,
     annotation : label,
     type   : 'annotation'
   })
