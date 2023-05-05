@@ -1033,14 +1033,6 @@ function addMetadataTag(genomeID, geneID, label) {
   return true;
 }
 
-function removeTagFromQueryTable(genomeID, geneID, label) {
-  let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID && m.type == 'tag');
-  settings['display']['metadata'].splice(index, 1);
-  if($('#query-results-table').children().length == 0) {
-    $('#query-results-head').empty();
-  }
-}
-
 function gatherTabularModalSelectedItems(action){
   let targetedGenes = []
   let curr_genome = $('.active')[1].id;

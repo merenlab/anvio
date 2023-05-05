@@ -1027,6 +1027,14 @@ GenomeDrawer.prototype.showAllTags = function(){
       </tr>
     `)
   });
+
+  removeTagFromQueryTable = (genomeID, geneID, label) => {
+    let index = settings['display']['metadata'].findIndex(m => m.label == label && m.gene == geneID && m.genome == genomeID && m.type == 'tag');
+    settings['display']['metadata'].splice(index, 1);
+    if($('#query-results-table').children().length == 0) {
+      $('#query-results-head').empty();
+    }
+  }
 }
 
 GenomeDrawer.prototype.showAllUserDefined = function(){
