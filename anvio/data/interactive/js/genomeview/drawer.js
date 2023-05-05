@@ -1029,6 +1029,47 @@ GenomeDrawer.prototype.showAllTags = function(){
   });
 }
 
+GenomeDrawer.prototype.showAllUserDefined = function(){
+  if(!settings['display']['metadata'] || settings['display']['metadata'].filter(metadata => metadata.type == 'annotation').length == 0) {
+    alert('No user-defined annotations currently exist');
+    return;
+  }
+
+  $('#query-results-table').empty();
+  $('#query-results-head').empty().append(`
+    <tr>
+      <th>Gene ID</th>
+      <th>Genome</th>
+      <th>Start</th>
+      <th>Stop</th>
+      <th>Go To</th>
+      <th>Remove</th>
+    </tr>
+  `);
+
+  settings['display']['metadata'].filter(metadata => metadata.type == 'annotation').forEach(annotation => {
+    let genome = this.settings['genomeData']['genomes'].filter(genome => genome[0] == annotation.genome)
+    let start = genome[0][1]['genes']['gene_calls'][annotation.gene]['start']
+    let end = genome[0][1]['genes']['gene_calls'][annotation.gene]['stop']
+
+    $('#query-results-table').append(`
+      <tr>
+        <td>${annotation.gene}</td>
+        <td>${annotation.genome}</td>
+        <td>${start}</td>
+        <td>${end}</td>
+        <td><button onclick="goToGene('${annotation.genome}',${annotation.gene},${start},${end})">Go To</button</td>
+        <td><button onclick="$(this).closest('tr').remove(); removeAnnotation('${annotation.genome}',${annotation.gene})">Remove Tag</button</td>
+      </tr>
+    `)
+  });
+
+  removeAnnotation = (genomeID, geneID) => {
+    let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
+    settings['display']['metadata'].splice(index, 1);
+  }
+}
+
 GenomeDrawer.prototype.setInitialZoom = function(){
     let start = 0
     let stop = globalGenomeMax > 35000 ? 35000 : globalGenomeMax
