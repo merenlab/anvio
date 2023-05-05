@@ -582,6 +582,7 @@ function showDeepDiveToolTip(event){
   })
   $('#annotation-add').on('click', function(){
     let annotation = $('#annotation-deepdive-input').val();
+    $('#annotation-deepdive-input').val('');
     if(annotation.trim().length == 0) return;
 
     if(!settings['display']['metadata']) settings['display']['metadata'] = [];
