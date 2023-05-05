@@ -1033,6 +1033,29 @@ function addMetadataTag(genomeID, geneID, label) {
   return true;
 }
 
+function addAnnotation(genomeID, geneID, label){
+  // called from the viewport menu
+
+  if(label.trim().length == 0) return false;
+  let annotation = settings['display']['metadata'] ? settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation') : []
+  if(annotation.length > 0) {
+    toastr.warning(`'Cannot add more than one user-defined annotation to gene ${geneID} of ${genomeID}'`);
+    return false;
+  }
+
+  if(!settings['display']['metadata']) settings['display']['metadata'] = []
+  settings['display']['metadata'].push({
+    genome : genomeID,
+    gene   : geneID,
+    accession : 'UD_' + "0".repeat(5-settings['display']['accessionNum'].toString().length) + settings['display']['accessionNum'],
+    annotation : label,
+    type   : 'annotation'
+  })
+  settings['display']['accessionNum']++;
+
+  return true;
+}
+
 function gatherTabularModalSelectedItems(action){
   let targetedGenes = []
   let curr_genome = $('.active')[1].id;
@@ -1073,6 +1096,14 @@ function gatherTabularModalSelectedItems(action){
         addMetadataTag(gene['genomeID'], gene['geneID'], label);
       });
       $('#metadata-tag-multiselect').val('');
+      break;
+    case 'annotation':
+      let annotation = $('#metadata-annotation-multiselect').val();
+      if(annotation.trim().length == 0) return;
+      targetedGenes.forEach(gene => {
+        addAnnotation(gene['genomeID'], gene['geneID'], annotation);
+      });
+      $('#metadata-annotation-multiselect').val('');
       break;
     default:
       break;
