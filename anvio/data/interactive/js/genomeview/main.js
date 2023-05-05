@@ -578,6 +578,9 @@ function loadAll(loadType) {
     buildGeneLabelsSelect()
   }
 
+  $('#query-results-table').empty();
+  $('#query-results-head').empty();
+
   $('#gene_label_color').css('background-color', settings['display']['colors']['gene-label']);
   $('#gene_label_color').attr('color', settings['display']['colors']['gene-label']);
 
