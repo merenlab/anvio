@@ -430,6 +430,16 @@ function showDeepDiveToolTip(event){
       </tr>
       `
     })
+    let annotations = settings['display']['metadata'].filter(m => m.genome == genomeID && m.gene == geneID && m.type == 'annotation');
+    if(annotations.length > 0) {
+      totalAnnotationsString += `
+      <tr id="user-defined-annotation-row">
+      <td>User_Defined</td>
+      <td>${annotations[0].accession}</td>
+      <td>${annotations[0].annotation}</td>
+      </tr>
+      `
+    }
   }
 
   $('#deepdive-modal-body').modal('show')
