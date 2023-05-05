@@ -500,6 +500,7 @@ function showDeepDiveToolTip(event){
     `<h2>Annotations</h2>
     <input id="annotation-deepdive-input" type="text" placeholder="User-defined annotation" size='50'>
     <button id='annotation-add' type='button' class="btn btn-default btn-sm">Add custom annotation</button>
+    <button id='annotation-remove' type='button' class="btn btn-default btn-sm">Remove custom annotation</button>
     <table class="table table-striped">
       <thead id="annotations-deepdive-header">
         <th>Source</th>
@@ -596,7 +597,7 @@ function showDeepDiveToolTip(event){
       $('#annotations-deepdive-header').append('<th>Tag</th><th>Query</th><th>Remove</th>')
     }
     $('#annotations-deepdive-body').append(`
-      <tr>
+      <tr id='user-defined-annotation-row'>
         <td>User_Defined</td>
         <td>${accession}</td>
         <td>${annotation}</td>
@@ -614,6 +615,14 @@ function showDeepDiveToolTip(event){
 
     // add remove button: remove from settings and accessionNum-- 
   })
+  $('#annotation-remove').on('click',function(){
+    if(!settings['display']['metadata']) return;
+
+    $('#user-defined-annotation-row').remove();
+    let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
+    if(index == -1) return;
+    settings['display']['metadata'].splice(index, 1);
+  });
   $('#picker_tooltip').colpick({
     layout: 'hex',
     submit: 0,
