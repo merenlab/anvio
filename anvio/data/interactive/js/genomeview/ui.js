@@ -636,6 +636,8 @@ function showDeepDiveToolTip(event){
     let index = settings['display']['metadata'].findIndex(m => m.gene == geneID && m.genome == genomeID && m.type == 'annotation');
     if(index == -1) return;
     settings['display']['metadata'].splice(index, 1);
+
+    if($('#annotations-deepdive-body').children().length == 0) $('#annotations-deepdive-header').empty();
   });
   $('#picker_tooltip').colpick({
     layout: 'hex',
