@@ -1821,11 +1821,13 @@ function toggleScaleAttributes() {
     toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
     $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
     $('#bookmarks-header').text('Bookmarks (disabled)');
+    $('#currBookmarksTable').hide();
     $('#bookmarks-disabled-warning-info').show();
   } else {
     $('#scaleContainer').show();
     $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
     $('#bookmarks-header').text('Bookmarks');
+    $('#currBookmarksTable').show();
     $('#bookmarks-disabled-warning-info').hide();
   }
 }
