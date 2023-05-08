@@ -107,14 +107,15 @@ function checkGeneLabels() {
   let vpt = canvas.viewportTransform;
   let window_left = Math.floor((-1*vpt[4])/scaleFactor);
   let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
+  let [lbound, rbound] = calcXBounds().map(x => x/scaleFactor);
   // if window is out of bounds, shift to be in bounds
-  if(window_left < 0) {
-    window_right -= window_left;
-    window_left = 0;
+  if(window_left < lbound) {
+    window_right += (lbound - window_left);
+    window_left = lbound;
   }
-  if(window_right > globalGenomeMax) {
-    window_left -= (window_right - globalGenomeMax);
-    window_right = globalGenomeMax;
+  if(window_right > rbound) {
+    window_left -= (window_right - rbound);
+    window_right = rbound;
   }
   return [window_left, window_right];
 }

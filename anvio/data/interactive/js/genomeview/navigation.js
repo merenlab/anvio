@@ -243,18 +243,17 @@ function updateScalePos() {
   $('#brush_end').val(newEnd);
 }
 
-function updateRenderWindow(genomeID=null) {
-  let max = genomeID ? genomeMax[genomeID] : globalGenomeMax;
+function updateRenderWindow() {
   if(percentScale) {
-    let resolution = 4; // # decimals to show for renderw window
+    let resolution = 4; // # decimals to show for render window
     let [start, end] = [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())];
     let diff = end - start > 0.1 ? Math.round(10**resolution*(end - start) / 2)/10**resolution : 0.05;
     renderWindow = [clamp(start - diff, 0, 1), clamp(end + diff, 0, 1)];
   } else {
-    let [start, end] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+    let [start, end] = getNTRangeForVPT();
     let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
-    renderWindow = [clamp(start - diff, 0, max), clamp(end + diff, 0, max)]; // TODO: use genomeMax[genomeID] for currently selected genomeID
-
+    let [lbound, rbound] = calcXBounds().map(x => x/scaleFactor);
+    renderWindow = [clamp(start - diff, lbound, rbound), clamp(end + diff, lbound, rbound)];
     if(filter_gene_colors_to_window) {
       generateColorTable(null, color_db);
       // TODO: filter to window for percent scale, too

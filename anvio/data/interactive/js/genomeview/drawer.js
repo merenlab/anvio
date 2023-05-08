@@ -139,12 +139,13 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
   // get x-range for this genome
-  let [start, stop] = percentScale ? getRenderXRangeForFrac() : getRenderXRangeForGenome(genomeID)
-  start = clamp(start > nt_disps[genomeID]*scaleFactor ? start : nt_disps[genomeID]*scaleFactor, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
-  stop = clamp(stop, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
-  
+  //let [startX, stopX] = percentScale ? getRenderXRangeForFrac() : getRenderXRangeForGenome(genomeID)
+  let [startX, stopX] = renderWindow.map(pos => pos * scaleFactor)
+  startX = clamp(startX > nt_disps[genomeID]*scaleFactor ? startX : nt_disps[genomeID]*scaleFactor, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
+  stopX = clamp(stopX, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
+
   // genome line
-  let lineObj = new fabric.Line([start, 0, stop, 0], {
+  let lineObj = new fabric.Line([startX, 0, stopX, 0], {
     id: 'genomeLine',
     groupID: genomeID,
     top: y + 4,
@@ -158,7 +159,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
     hoverCursor: 'default'
   });
   canvas.add(lineObj);
-  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax[genomeID], layerHeight, orderIndex, genomeIndex)
+  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), startX, genomeMax[genomeID], layerHeight, orderIndex, genomeIndex)
 
   // draw set labels
   if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
