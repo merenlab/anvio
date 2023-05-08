@@ -171,7 +171,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
     // TODO: renderWindow needs to compensate for genomes slid left of 0...don't clamp to 0, end etc
     // rather than clamping to [0,max], clamp to [-PAD, max-PAD]
     let gene = gene_list[geneID];
-    let [ntStart, ntStop] = getRenderNTRange(genomeID);
+    let [ntStart, ntStop] = getGenomeRenderWindow(genomeID);
     if (gene.stop < ntStart) continue;
     if (gene.start > ntStop) return;
     var geneObj = this.geneArrow(gene, geneID, y, genomeID, this.settings['display']['arrow-style']);
@@ -313,7 +313,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   let nGroups = 20
   let j = 0
   let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
-  let [l, r] = getRenderNTRange(genomeID);
+  let [l, r] = getGenomeRenderWindow(genomeID);
   for (let i = 0; i <= nGroups; i++) {
     for (; j < i * contigArr.length / nGroups; j += ptInterval) {
       if (j < l) continue;
@@ -373,7 +373,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
   let w = 0;
-  let [l, r] = getRenderNTRange(genomeID);
+  let [l, r] = getGenomeRenderWindow(genomeID);
   for (let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
     for (; w < (i + 1) * genomeMax[genomeID] / nRulers; w += settings['display']['genome-scale-interval']) {
@@ -571,8 +571,8 @@ GenomeDrawer.prototype.shadeGeneClusters = function (geneClusters, colors) {
     let genomeB = this.settings['genomeData']['genomes'][i + 1][1].genes.gene_calls;
     let genomeID_A = this.settings['genomeData']['genomes'][i][0];
     let genomeID_B = this.settings['genomeData']['genomes'][i + 1][0];
-    let [l1, r1] = getRenderNTRange(genomeID_A);
-    let [l2, r2] = getRenderNTRange(genomeID_B);
+    let [l1, r1] = getGenomeRenderWindow(genomeID_A);
+    let [l2, r2] = getGenomeRenderWindow(genomeID_B);
 
     for (gc of geneClusters) {
       let g1 = [], g2 = [];

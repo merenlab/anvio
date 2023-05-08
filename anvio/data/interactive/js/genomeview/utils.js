@@ -131,7 +131,7 @@ function getRenderXRangeForGenome(genomeID) {
  *  @returns nt range of a specific genome that appears in the current render window (since they can be dragged)
  *  - used to determine which gene arrows to draw for a given genome while genome sliding is activated
  */
-function getRenderNTRange(genomeID) {
+function getGenomeRenderWindow(genomeID) {
   if(!slidingActive) return renderWindow;
 
   let [start, end] = renderWindow.map(pos => Math.floor(pos - nt_disps[genomeID]));
