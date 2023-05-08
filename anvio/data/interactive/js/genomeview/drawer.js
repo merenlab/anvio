@@ -721,23 +721,20 @@ GenomeDrawer.prototype.showAllADLPts = function () {
 }
 
 GenomeDrawer.prototype.alignRulers = function () {
+  if(!slidingActive) return;
+
+  toggleGenomeSliding();
+
   for (genome of this.settings['genomeData']['genomes']) {
     nt_disps[genome[0]] = 0;
   }
-  percentScale = false;
-  slidingActive = false;
-  $('#scaleContainer').show();
+  //percentScale = false;
   drawScale();
   bindViewportToWindow();
   updateScalePos();
   updateRenderWindow();
   this.draw();
   $('#alignRulerBtn').blur();
-
-  // enable bookmarks
-  $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
-  $('#bookmarks-header').text('Bookmarks');
-  $('#bookmarks-disabled-warning-info').hide();
 }
 
 GenomeDrawer.prototype.setGenomeSpacing = function (newSpacing) {

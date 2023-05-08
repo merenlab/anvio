@@ -104,16 +104,7 @@ function setCanvasListeners(){
     //setPercentScale();
     this.prev = opt.target.left;
 
-    if(!slidingActive) {
-      $('#scaleContainer').hide();
-      toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
-      slidingActive = true;
-
-      // disable bookmarks
-      $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
-      $('#bookmarks-header').text('Bookmarks (disabled)');
-      $('#bookmarks-disabled-warning-info').show();
-    }
+    if(!slidingActive) toggleGenomeSliding();
   });
   canvas.on('mouse:wheel', function (opt) {
     if (opt.e.shiftKey === false) {
@@ -1820,6 +1811,23 @@ function drawGenomeLabels(fontsize=null) {
     }
     labelCanvas.add(label);
   });
+}
+
+function toggleGenomeSliding() {
+  if(!slidingActive) {
+    slidingActive = true;
+    $('#scaleContainer').hide();
+    toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
+    $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
+    $('#bookmarks-header').text('Bookmarks (disabled)');
+    $('#bookmarks-disabled-warning-info').show();
+  } else {
+    slidingActive = false;
+    $('#scaleContainer').show();
+    $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
+    $('#bookmarks-header').text('Bookmarks');
+    $('#bookmarks-disabled-warning-info').hide();
+  }
 }
 
 function exportToSVG() {
