@@ -112,6 +112,7 @@ function setCanvasListeners(){
       // disable bookmarks
       $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
       $('#bookmarks-header').text('Bookmarks (disabled)');
+      $('#bookmarks-disabled-warning-info').show();
     }
   });
   canvas.on('mouse:wheel', function (opt) {

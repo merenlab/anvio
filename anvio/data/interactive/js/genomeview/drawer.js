@@ -737,6 +737,7 @@ GenomeDrawer.prototype.alignRulers = function () {
   // enable bookmarks
   $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
   $('#bookmarks-header').text('Bookmarks');
+  $('#bookmarks-disabled-warning-info').hide();
 }
 
 GenomeDrawer.prototype.setGenomeSpacing = function (newSpacing) {
