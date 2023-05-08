@@ -215,7 +215,7 @@ function moveTo(start, stop) {
   // let pad = 0;
   // if(percentScale) {
   //   let selected_genome = "REPLACE_WITH_CURRENTLY_SELECTED_GENOME_ID"; // TEMPORARY - REPLACE 
-  //   pad = xDisps[selected_genome];
+  //   pad = nt_disps[selected_genome];
   // }
 
   // zoom + pan viewport to new location
@@ -287,8 +287,8 @@ function viewCluster(gc) {
       genes.push({genomeID:genome[0],geneID:targetGeneID});
       if(first) {
         geneMid = targetGene.start + (targetGene.stop - targetGene.start) / 2;
-        canvas.absolutePan({x: scaleFactor*geneMid + xDisps[genome[0]] - canvas.getWidth()/2, y: 0});
-        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - genomeMax[genome[0]]*scaleFactor - xDisps[genome[0]] - 125, 125);
+        canvas.absolutePan({x: scaleFactor*(geneMid + nt_disps[genome[0]]) - canvas.getWidth()/2, y: 0});
+        canvas.viewportTransform[4] = clamp(canvas.viewportTransform[4], canvas.getWidth() - (genomeMax[genome[0]] - nt_disps[genome[0]])*scaleFactor - 125, 125);
         firstGenomeID = genome[0];
         first = false;
       }

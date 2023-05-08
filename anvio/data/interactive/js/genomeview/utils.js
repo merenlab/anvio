@@ -159,13 +159,21 @@ function getRenderXRangeForFrac() {
 }
 
 /* 
- *  @returns nt range of a specific genome (since they can be dragged) for a given proportional range 
- *  - used to determine which gene arrows to draw for a given genome while proportional scale is activated
+ *  @returns x-range of a specific genome based on its current nt range (since they can be dragged)
+ *  - used to draw genome line, ruler
+ */
+function getRenderXRangeForGenome(genomeID) {
+  return renderWindow.map(pos => Math.floor((pos+nt_disps[genomeID])*scaleFactor));
+}
+
+/* 
+ *  @returns nt range of a specific genome that appears in the current render window (since they can be dragged)
+ *  - used to determine which gene arrows to draw for a given genome while genome sliding is activated
  */
 function getRenderNTRange(genomeID) {
-  if(!percentScale) return renderWindow;
-  //let [l,r] = calcXBounds();
-  let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
+  if(!slidingActive) return renderWindow;
+
+  let [start, end] = renderWindow.map(pos => Math.floor(pos - nt_disps[genomeID]));
   return [clamp(start,0,genomeMax[genomeID]), clamp(end,0,genomeMax[genomeID])];
 }
 
@@ -174,7 +182,7 @@ function getRenderNTRange(genomeID) {
  *    min = x-start of the given genome, max = x-end of the given genome
  */
 function calcXBoundsForGenome(genomeID) {
-  return [xDisps[genomeID], xDisps[genomeID] + genomeMax[genomeID]*scaleFactor];
+  return [nt_disps[genomeID]*scaleFactor, (nt_disps[genomeID]+genomeMax[genomeID])*scaleFactor];
 }
 
 /*

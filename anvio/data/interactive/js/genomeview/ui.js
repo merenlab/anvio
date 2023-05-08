@@ -98,7 +98,7 @@ function setCanvasListeners(){
     canvas.getObjects().filter(obj => obj.groupID == gid).forEach(o => {
       if (o !== opt.target) o.left += delta;
     });
-    xDisps[gid] += delta;
+    nt_disps[gid] += delta/scaleFactor;
 
     this.setViewportTransform(this.viewportTransform);
     setPercentScale();
