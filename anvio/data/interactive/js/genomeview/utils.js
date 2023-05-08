@@ -119,45 +119,6 @@ function checkGeneLabels() {
   return [window_left, window_right];
 }
 
-/*
- *  @returns [start, stop] proportional (0-1) range, used with scale for non-aligned genomes
- */
-function getFracForVPT() {
-  let resolution = 4; // number of decimals to show
-  let [x1, x2] = calcXBounds();
-  let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
-  let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
-  // if window is out of bounds, shift to be in bounds
-  if(window_left < 0) {
-    window_right -= window_left;
-    window_left = 0;
-  }
-  if(window_right > 1) {
-    window_left -= (window_right - 1);
-    window_right = 1;
-  }
-  return [window_left, window_right];
-}
-
-/*
- *  @returns absolute x-position viewport range for a given proportional selection range
- */
-function getVPTForFrac() {
-  if(!percentScale) return null;
-  let [l,r] = calcXBounds();
-  return [$('#brush_start').val(),$('#brush_end').val()].map(x => l+x*(r-l));
-}
-
-/*
- *  @returns absolute x-position viewport range for a given proportional renderWindow range
- */
-function getRenderXRangeForFrac() {
-  if(!percentScale) return null;
-  let [l,r] = calcXBounds();
-  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
-  return [x1, x2];
-}
-
 /* 
  *  @returns x-range of a specific genome based on its current nt range (since they can be dragged)
  *  - used to draw genome line, ruler
@@ -298,3 +259,52 @@ function toggleRightPanel(name) {
   }
 }
 
+
+
+
+
+// ================================================================================================================================
+// DEPRECATED FUNCTIONS
+// ================================================================================================================================
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns [start, stop] proportional (0-1) range, used with scale for non-aligned genomes
+ */
+function getFracForVPT() {
+  let resolution = 4; // number of decimals to show
+  let [x1, x2] = calcXBounds();
+  let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
+  let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
+  // if window is out of bounds, shift to be in bounds
+  if(window_left < 0) {
+    window_right -= window_left;
+    window_left = 0;
+  }
+  if(window_right > 1) {
+    window_left -= (window_right - 1);
+    window_right = 1;
+  }
+  return [window_left, window_right];
+}
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns absolute x-position viewport range for a given proportional selection range
+ */
+function getVPTForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  return [$('#brush_start').val(),$('#brush_end').val()].map(x => l+x*(r-l));
+}
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns absolute x-position viewport range for a given proportional renderWindow range
+ */
+function getRenderXRangeForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
+  return [x1, x2];
+}
