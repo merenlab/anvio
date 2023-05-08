@@ -108,6 +108,12 @@ function setCanvasListeners(){
       $('#scaleContainer').hide();
       toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
       slidingActive = true;
+
+      // disable bookmarks
+      $('#create_bookmark_input').prop('disabled', true);
+      $('#create_bookmark_description').prop('disabled', true);
+      $('#createBookmarkBtn').prop('disabled', true);
+      $('#bookmarks-header').text('Bookmarks (disabled)');
     }
   });
   canvas.on('mouse:wheel', function (opt) {
