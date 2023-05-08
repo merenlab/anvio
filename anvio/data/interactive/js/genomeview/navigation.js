@@ -210,18 +210,12 @@ function moveToAndUpdateScale(start, stop, transition=true) {
 /*
  *  Pan viewport to new [start, stop] location.
  */
-function moveTo(start, stop) {
-  // if genome sliding is activated, set x-displacement for currently selected genome
-  // let pad = 0;
-  // if(percentScale) {
-  //   let selected_genome = "REPLACE_WITH_CURRENTLY_SELECTED_GENOME_ID"; // TEMPORARY - REPLACE 
-  //   pad = nt_disps[selected_genome];
-  // }
-
+function moveTo(start, stop, genomeID=null) {
   // zoom + pan viewport to new location
   let ntsToShow = stop - start;
   scaleFactor = canvas.getWidth() / ntsToShow;
   let moveToX = scaleFactor * start;
+  if(genomeID) moveToX += scaleFactor * nt_disps[genomeID];
   canvas.absolutePan({x: moveToX, y: 0});
 
   // update rulers based on new zoom
