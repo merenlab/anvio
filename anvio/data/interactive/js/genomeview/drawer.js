@@ -735,9 +735,7 @@ GenomeDrawer.prototype.alignRulers = function () {
   $('#alignRulerBtn').blur();
 
   // enable bookmarks
-  $('#create_bookmark_input').prop('disabled', false);
-  $('#create_bookmark_description').prop('disabled', false);
-  $('#createBookmarkBtn').prop('disabled', false);
+  $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
   $('#bookmarks-header').text('Bookmarks');
 }
 

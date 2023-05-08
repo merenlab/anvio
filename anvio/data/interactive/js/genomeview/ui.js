@@ -110,9 +110,7 @@ function setCanvasListeners(){
       slidingActive = true;
 
       // disable bookmarks
-      $('#create_bookmark_input').prop('disabled', true);
-      $('#create_bookmark_description').prop('disabled', true);
-      $('#createBookmarkBtn').prop('disabled', true);
+      $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
       $('#bookmarks-header').text('Bookmarks (disabled)');
     }
   });
