@@ -106,7 +106,7 @@ function setCanvasListeners(){
 
     if(!slidingActive) {
       $('#scaleContainer').hide();
-      toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align Genomes" in settings.');
+      toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
       slidingActive = true;
     }
   });
