@@ -103,8 +103,10 @@ function setCanvasListeners(){
     this.setViewportTransform(this.viewportTransform);
     //setPercentScale();
     this.prev = opt.target.left;
-
-    if(!slidingActive) toggleGenomeSliding();
+    if(!slidingActive) {
+      slidingActive = true;
+      toggleScaleAttributes();
+    }
   });
   canvas.on('mouse:wheel', function (opt) {
     if (opt.e.shiftKey === false) {
@@ -1813,16 +1815,14 @@ function drawGenomeLabels(fontsize=null) {
   });
 }
 
-function toggleGenomeSliding() {
-  if(!slidingActive) {
-    slidingActive = true;
+function toggleScaleAttributes() {
+  if(slidingActive) {
     $('#scaleContainer').hide();
     toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
     $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
     $('#bookmarks-header').text('Bookmarks (disabled)');
     $('#bookmarks-disabled-warning-info').show();
   } else {
-    slidingActive = false;
     $('#scaleContainer').show();
     $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
     $('#bookmarks-header').text('Bookmarks');

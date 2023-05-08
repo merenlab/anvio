@@ -47,7 +47,7 @@ var order_gene_colors_by_count = true; // if true, order annotations on gene col
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
 var GENOME_LABEL_CHAR_LIMIT = 20; // truncate to arbitrary character limit for genome labels
-var slidingActive = false;
+var slidingActive;
 var canvas;
 var labelCanvas;
 var brush;
@@ -317,6 +317,7 @@ function serializeSettings() {
   state['display']['nt_window'] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
   state['display']['scaleFactor'] = scaleFactor;
   state['display']['percentScale'] = percentScale;
+  state['display']['slidingActive'] = slidingActive;
   state['display']['nt_disps'] = nt_disps;
   state['display']['thresh-count-gene-colors'] = $('#thresh_count').val() // min # occurences of annotation for filtering gene color table
   state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
@@ -401,6 +402,12 @@ function processState(stateName, stateData) {
     percentScale = stateData['display']['percentScale']
   } else {
     percentScale = false;
+  }
+
+  if(stateData?.['display']?.['slidingActive']) {
+    slidingActive = stateData['display']['slidingActive']
+  } else {
+    slidingActive = false;
   }
 
   if(stateData?.['display']?.['scaleFactor']) {
@@ -610,6 +617,8 @@ function loadAll(loadType) {
   brush(d3.select(".brush"));
   updateRenderWindow();
   setLabelCanvas(); // set a second time to adjust to new brush extent
+
+  if(slidingActive) toggleScaleAttributes();
   
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)

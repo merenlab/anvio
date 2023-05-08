@@ -723,7 +723,8 @@ GenomeDrawer.prototype.showAllADLPts = function () {
 GenomeDrawer.prototype.alignRulers = function () {
   if(!slidingActive) return;
 
-  toggleGenomeSliding();
+  slidingActive = false;
+  toggleScaleAttributes();
 
   for (genome of this.settings['genomeData']['genomes']) {
     nt_disps[genome[0]] = 0;
