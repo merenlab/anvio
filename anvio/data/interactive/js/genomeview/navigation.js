@@ -54,13 +54,14 @@
     moveToAndUpdateScale(newStart, newEnd);
   }
 
-  function zoomOut(type, start, end) {
+  function zoomOut(type, start, end, genomeID=null) {
     // TODO: instead of globalGenomeMax, use genomeMax[genomeID] for currently selected genomeID
     let newStart, newEnd
+    let [lbound, rbound] = calcNTBounds();
 
     if(type && type == 'fully'){
-      newStart = 0
-      newEnd = percentScale ? 1 : globalGenomeMax
+      newStart = lbound
+      newEnd = percentScale ? 1 : rbound
     } else if(type && type == 'partial'){
       newStart = start - (percentScale ? .02 : 10000)
       newEnd = end + (percentScale ? .02 : 10000)
@@ -70,25 +71,28 @@
         let end = parseFloat($('#brush_end').val());
         newStart = start - 0.02, newEnd = end + 0.02;
       } else {
-        let start = parseInt($('#brush_start').val());
-        let end = parseInt($('#brush_end').val());
-        newStart = start - globalGenomeMax/50, newEnd = end + globalGenomeMax/50;
+        let [start, end] = getNTRangeForVPT();
+        newStart = start - rbound/50, newEnd = end + rbound/50;
       }
-      if(newStart == 0 && newEnd == genoglobalGenomeMaxmeMax) { // for extra-zoomed-out view
+      if(newStart == lbound && newEnd == rbound) { // for extra-zoomed-out view
         scaleFactor = 0.01;
         if(settings['display']['dynamic-scale-interval']) adjustScaleInterval();
         drawer.draw()
         return;
       }
     }
-    if(newStart < 0) newStart = 0;
-    newEnd = clamp(newEnd, 0, percentScale ? 1 : globalGenomeMax);
+    if(newStart < lbound) newStart = lbound;
+    newEnd = clamp(newEnd, lbound, percentScale ? 1 : rbound);
 
-    moveToAndUpdateScale(newStart, newEnd);
+    if(slidingActive) {
+      moveTo(newStart, newEnd, genomeID);
+    } else {
+      moveToAndUpdateScale(newStart, newEnd);
+    }
   }
 
-  async function zoomOutAndWait(type, start, end, time) {
-    zoomOut(type, start, end);
+  async function zoomOutAndWait(type, start, end, time, genomeID=null) {
+    zoomOut(type, start, end, genomeID);
 
     return new Promise(resolve => {
       setTimeout(() => {
@@ -98,8 +102,8 @@
   }
 
   async function goToGene(genomeID, geneID, start, end) {
-    await zoomOutAndWait('partial', start, end, 500);
-    drawer.glowGenes([{genomeID: genomeID, geneID: geneID}]);
+    await zoomOutAndWait('partial', start, end, 500, genomeID);
+    drawer.glowGenes([{genomeID: genomeID, geneID: geneID}]); 
   }
 
 /*
@@ -246,7 +250,7 @@ function updateRenderWindow() {
   } else {
     let [start, end] = getNTRangeForVPT();
     let diff = end - start > 10000 ? Math.floor((end - start)/2) : 5000;
-    let [lbound, rbound] = calcXBounds().map(x => x/scaleFactor);
+    let [lbound, rbound] = calcNTBounds();
     renderWindow = [clamp(start - diff, lbound, rbound), clamp(end + diff, lbound, rbound)];
     if(filter_gene_colors_to_window) {
       generateColorTable(null, color_db);

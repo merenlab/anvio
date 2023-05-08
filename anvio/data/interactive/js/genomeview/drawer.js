@@ -921,8 +921,9 @@ GenomeDrawer.prototype.queryFunctions = async function () {
         let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
         let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
         let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-        if (start < lowestStart || lowestStart == null) lowestStart = start
-        if (end > highestEnd || highestEnd == null) highestEnd = end
+        let [globalStart, globalEnd] = [start, end].map(pos => pos + nt_disps[gene['genomeID']])
+        if (globalStart < lowestStart || lowestStart == null) lowestStart = globalStart
+        if (globalEnd > highestEnd || highestEnd == null) highestEnd = globalEnd
         $('#query-results-table').append(`
           <tr>
             <td>${gene['geneID']}</td>
@@ -934,8 +935,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
         `)
       })
     } else {
-      lowestStart = 0
-      highestEnd = globalGenomeMax
+      [lowestStart, highestEnd] = calcNTBounds();
     }
   }
   renderAllGenes()
@@ -992,8 +992,9 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
       let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-      if (start < lowestStart || lowestStart == null) lowestStart = start
-      if (end > highestEnd || highestEnd == null) highestEnd = end
+      let [globalStart, globalEnd] = [start, end].map(pos => pos + nt_disps[gene['genomeID']])
+      if (globalStart < lowestStart || lowestStart == null) lowestStart = globalStart
+      if (globalEnd > highestEnd || highestEnd == null) highestEnd = globalEnd
       $('#query-results-table').append(`
         <tr>
           <td>${gene['geneID']}</td>
@@ -1005,8 +1006,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
       `)
     })
   } else {
-    lowestStart = 0
-    highestEnd = globalGenomeMax
+    [lowestStart, highestEnd] = calcNTBounds()
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload, true)

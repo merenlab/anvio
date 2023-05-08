@@ -107,7 +107,7 @@ function checkGeneLabels() {
   let vpt = canvas.viewportTransform;
   let window_left = Math.floor((-1*vpt[4])/scaleFactor);
   let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
-  let [lbound, rbound] = calcXBounds().map(x => x/scaleFactor);
+  let [lbound, rbound] = calcNTBounds();
   // if window is out of bounds, shift to be in bounds
   if(window_left < lbound) {
     window_right += (lbound - window_left);
@@ -159,6 +159,14 @@ function calcXBounds() {
     if(end > max) max = end;
   }
   return [min, max];
+}
+
+/*
+ *  @returns array [lowestStart, highestEnd] of nt positions for all genomes
+ *    note if slidingActive = false, this will always equal [0, globalGenomeMax]
+ */
+function calcNTBounds() {
+  return calcXBounds().map(x => x/scaleFactor);
 }
 
 /*
