@@ -81,8 +81,8 @@ function setCanvasListeners(){
    *  At its current state, proportional scale has some bugs with calculating the viewport window for a given selection range. Bookmarks should also be disabled for proportional scale.
    */
   canvas.on('object:moving', function (opt) {
-    console.log("Warning: Object moving event listener triggered. This listener should never be triggered as long as genome dragging is disabled, so if you're seeing this message, there may be an error somewhere.");
-    return;
+    //console.log("Warning: Object moving event listener triggered. This listener should never be triggered as long as genome dragging is disabled, so if you're seeing this message, there may be an error somewhere.");
+    //return;
     var gid = opt.target ? opt.target.groupID : null;
     if (gid == null) return;
 
@@ -101,8 +101,14 @@ function setCanvasListeners(){
     nt_disps[gid] += delta/scaleFactor;
 
     this.setViewportTransform(this.viewportTransform);
-    setPercentScale();
+    //setPercentScale();
     this.prev = opt.target.left;
+
+    if(!slidingActive) {
+      $('#scaleContainer').hide();
+      toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align Genomes" in settings.');
+      slidingActive = true;
+    }
   });
   canvas.on('mouse:wheel', function (opt) {
     if (opt.e.shiftKey === false) {

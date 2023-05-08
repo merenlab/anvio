@@ -104,6 +104,7 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex, genomeInd
 
   let rect = new fabric.Rect({
     id: 'groupBorder' + orderIndex,
+    groupID: genomeID,
     top: top,
     left: left,
     width: width,
@@ -149,7 +150,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
     top: y + 4,
     stroke: 'black',
     strokeWidth: 2,
-    selectable: false,
+    selectable: true,
     lockMovementY: true,
     hasControls: false,
     hasBorders: false,
@@ -167,10 +168,12 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   }
 
   for (let geneID in gene_list) {
+    // TODO: renderWindow needs to compensate for genomes slid left of 0...don't clamp to 0, end etc
+    // rather than clamping to [0,max], clamp to [-PAD, max-PAD]
     let gene = gene_list[geneID];
     let [ntStart, ntStop] = getRenderNTRange(genomeID);
-    if (gene.start < ntStart) continue;
-    if (gene.stop > ntStop) return;
+    if (gene.stop < ntStart) continue;
+    if (gene.start > ntStop) return;
     var geneObj = this.geneArrow(gene, geneID, y, genomeID, this.settings['display']['arrow-style']);
     canvas.add(geneObj)
     canvas.bringToFront(geneObj);
@@ -348,6 +351,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     stroke: stroke,
     fill: stroke,
     selectable: false,
+    lockMovementY: true,
     objectCaching: false,
     hoverCursor: 'default',
     id: `${layer}-graph-shaded`,
@@ -400,7 +404,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
       hasBorders: false,
       lockScaling: true,
       objectCaching: false,
-      selectable: false,
+      selectable: true,
       hoverCursor: 'default',
       groupID: genomeID,
       class: 'ruler'
@@ -439,6 +443,7 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     fill: "#b0b0b0",
     stroke: 'black',
     selectable: false,
+    lockMovementY: true,
     hoverCursor: 'default',
     opacity: .25
   });
@@ -720,6 +725,8 @@ GenomeDrawer.prototype.alignRulers = function () {
     nt_disps[genome[0]] = 0;
   }
   percentScale = false;
+  slidingActive = false;
+  $('#scaleContainer').show();
   drawScale();
   bindViewportToWindow();
   updateScalePos();

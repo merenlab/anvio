@@ -47,6 +47,7 @@ var order_gene_colors_by_count = true; // if true, order annotations on gene col
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
 var GENOME_LABEL_CHAR_LIMIT = 20; // truncate to arbitrary character limit for genome labels
+var slidingActive = false;
 var canvas;
 var labelCanvas;
 var brush;
