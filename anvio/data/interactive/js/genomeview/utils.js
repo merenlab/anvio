@@ -75,6 +75,15 @@ function getGenesOfGC(genomeID, gc) {
   return targetGenes.length > 0 ? targetGenes : null;
 }
 
+/* 
+ *  @returns NT position of the middle of a given gene
+ */
+function getGeneMid(genomeID, geneID) {
+  let gene = settings['genomeData']['genomes'].find(g => g[0]==genomeID)[1].genes.gene_calls[geneID];
+  if(!gene) return null;
+  return (gene.start + gene.stop) / 2;
+}
+
 /*
  *  Show/hide gene labels to show the max amount possible s.t. none overlap.
  */

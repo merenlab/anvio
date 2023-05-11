@@ -664,6 +664,43 @@ GenomeDrawer.prototype.removeAllGeneGlows = function () {
 }
 
 /*
+ *  Shift genomes horizontally to align around the target gene's centers. Pan viewport to first target gene (on first genome).
+ *  Note: if there are multiple genes for a single genome, it will center around the first (lowest geneID) gene in the genome.
+ *
+ *  @param genes: list of target genes in format [{genomeID: 'ABC', geneID: 1}]
+ */
+GenomeDrawer.prototype.centerGenes = function (genes) {
+  let firstGenome = true;
+  let basePad = 0;
+  let centeredGenes = [];
+  this.settings['genomeData']['genomes'].map(g => g[0]).forEach(genomeID => {
+    let geneIDs = genes.filter(gene => gene.genomeID == genomeID).map(gene => gene.geneID).sort();
+    if(geneIDs.length == 0) return;
+    let targetGeneID = geneIDs[0]; // TODO: for loop through genes and allow user to select a gene ID
+    centeredGenes.push({genomeID: genomeID, geneID: targetGeneID});
+    
+    if(firstGenome) {
+      firstGenome = false;
+      basePad = nt_disps[genomeID] + getGeneMid(genomeID, targetGeneID);
+      // pan to this gene
+      let gene = this.settings['genomeData']['genomes'].find(g=>g[0]==genomeID)[1].genes.gene_calls[targetGeneID];
+      let len = gene.stop - gene.start;
+      moveTo(gene.start - len*3, gene.stop + len*3, genomeID);
+      return;
+    }
+
+    nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+getGeneMid(genomeID, targetGeneID)));
+  });
+  this.draw();
+  this.glowGenes(centeredGenes);
+
+  if(!slidingActive) {
+    slidingActive = true;
+    toggleScaleAttributes();
+  }
+}
+
+/*
  *  Shift genomes horizontally to align genes around the target gene cluster.
  *
  *  @param gc : target gene cluster ID
