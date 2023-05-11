@@ -114,6 +114,7 @@ function getGenesWithAnnotation(annotation_type, annotation_value) {
 function getGenesWithMetadata(metadata_type, metadata_value) {
   let targetGenes = [];
 
+  if(!settings.display.metadata) return [];
   settings['display']['metadata'].filter(m => m.type == metadata_type).forEach(metadata => {
     if(metadata_type == 'tag') {
       if(metadata.label.toLowerCase() == metadata_value.toLowerCase()) {
