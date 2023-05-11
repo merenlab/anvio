@@ -322,6 +322,7 @@ function serializeSettings() {
   state['display']['thresh-count-gene-colors'] = $('#thresh_count').val() // min # occurences of annotation for filtering gene color table
   state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
   state['display']['user-defined-colors'] = $('#user_defined_colors').is(':checked')
+  state['display']['center-genes-to-start'] = $('#center_to_gene_start_box').is(':checked')
 
   $('.genome_selectors').each((idx, row) => {
     let genome = row.id.split('-')[0]
@@ -552,6 +553,7 @@ function processState(stateName, stateData) {
   $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
   $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);
   $('#user_defined_colors').prop("checked", settings['display']['user-defined-colors']);
+  $('#center_to_gene_start_box').prop('checked', settings['display']['center-genes-to-start'])
 }
 
 function loadAll(loadType) {
