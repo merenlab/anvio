@@ -85,6 +85,45 @@ function getGeneMid(genomeID, geneID) {
 }
 
 /*
+ *  @returns array of genes in the form [{genomeID: 'ABC', geneID: 1}] with a specified functional annotation
+ */
+function getGenesWithAnnotation(annotation_type, annotation_value) {
+  let targetGenes = [];
+  settings['genomeData']['genomes'].forEach(genome => {
+    let geneFunctions = genome[1]['genes']['functions'];
+    if(geneFunctions) {
+      for(geneID in geneFunctions) {
+        if(geneFunctions[geneID][annotation_type] && geneFunctions[geneID][annotation_type][1].includes(annotation_value)) {
+          targetGenes.push({genomeID: genome[0], geneID: geneID});
+        }
+      }
+    }
+  });
+  return targetGenes;
+}
+
+/*
+ *  @returns array of genes in the form [{genomeID: 'ABC', geneID: 1}] with a specified metadata value
+ */
+function getGenesWithMetadata(metadata_type, metadata_value) {
+  let targetGenes = [];
+
+  settings['display']['metadata'].filter(m => m.type == metadata_type).forEach(metadata => {
+    if(metadata_type == 'tag') {
+      if(metadata.label.toLowerCase() == metadata_value.toLowerCase()) {
+        targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
+      }
+    } else if(metadata_type == 'annotation') {
+      if(metadata.accession == metadata_value || metadata.annotation == metadata_value) {
+        targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
+      }
+    }
+  });
+  
+  return targetGenes;
+}
+
+/*
  *  Show/hide gene labels to show the max amount possible s.t. none overlap.
  */
 function checkGeneLabels() {
