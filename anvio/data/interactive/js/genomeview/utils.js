@@ -84,6 +84,12 @@ function getGeneMid(genomeID, geneID) {
   return (gene.start + gene.stop) / 2;
 }
 
+function getGeneStart(genomeID, geneID) {
+  let gene = settings['genomeData']['genomes'].find(g => g[0]==genomeID)[1].genes.gene_calls[geneID];
+  if(!gene) return null;
+  return gene.start;
+}
+
 /*
  *  @returns array of genes in the form [{genomeID: 'ABC', geneID: 1}] with a specified functional annotation
  */
