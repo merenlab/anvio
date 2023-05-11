@@ -228,6 +228,12 @@ function moveTo(start, stop, genomeID=null) {
   // render newly selected nt range
   updateRenderWindow();
   drawer.draw();
+
+  if(slidingActive) {
+    // update hidden UI so they will be saved in state
+    $('#brush_start').val(start);
+    $('#brush_end').val(stop);
+  }
 }
 
 /*
