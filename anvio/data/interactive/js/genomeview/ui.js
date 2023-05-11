@@ -1808,15 +1808,21 @@ function drawGenomeLabels(fontsize=null) {
       hoverCursor: 'default'
     });
     if(!$('#rotate_genome_labels_box').prop("checked")) {
-      let layersBefore = settings['group-layer-order'].indexOf('Genome');
+      let layers = settings['group-layer-order'].filter(layer => $(`#${layer}-show`).is(':checked'));
+      let layersBefore = layers.indexOf('Genome');
       let rulerBefore = false;
-      if(settings['group-layer-order'].indexOf('Ruler') < layersBefore) {
+      if((layers.indexOf('Ruler') != -1) && (layers.indexOf('Ruler') < layersBefore)) {
         layersBefore--;
         rulerBefore = true;
       }
       let [dataLayerHeight, rulerHeight] = drawer.calculateLayerSizes();
       // center label on genome layer
-      label.top = label.top - genomeHeight + (rulerBefore ? rulerHeight : 0) + layersBefore*dataLayerHeight + dataLayerHeight/2 + (layersBefore+rulerBefore)*groupLayerPadding - label.height/2 + 5;
+      if(layers.length == 1 || layersBefore == -1) { // just one layer or no genome layer
+        if(layers[0] == 'Ruler') return;
+        label.top -= (genomeHeight/2 + label.height/2);
+      } else {
+        label.top = label.top - genomeHeight + (rulerBefore ? rulerHeight : 0) + layersBefore*dataLayerHeight + dataLayerHeight/2 + (layersBefore+rulerBefore)*groupLayerPadding - label.height/2 + 5;
+      }
     }
     labelCanvas.add(label);
   });
