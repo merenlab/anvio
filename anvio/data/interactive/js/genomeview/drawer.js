@@ -692,12 +692,30 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
 
     nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+genePos));
   });
-  this.draw();
-  this.glowGenes(centeredGenes);
 
   if(!slidingActive) {
     slidingActive = true;
     toggleScaleAttributes();
+  }
+
+  this.draw();
+  this.glowGenes(centeredGenes);
+}
+
+GenomeDrawer.prototype.centerGenesToProp = function (category, type, value) {
+  let targetGenes;
+  switch(category) {
+    case 'annotation':
+      targetGenes = getGenesWithAnnotation(type, value);
+      break;
+    case 'metadata':
+      targetGenes = getGenesWithMetadata(type, value);
+      break;
+    default:
+      break;
+  }
+  if(targetGenes.length > 0) {
+    this.centerGenes(targetGenes);
   }
 }
 
