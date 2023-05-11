@@ -738,7 +738,7 @@ GenomeDrawer.prototype.centerGenesFromPropUI = function () {
 
   let value = $('#center_genes_prop_value').val();
 
-  this.centerGenesToProp(category, type, value);
+  this.centerGenesToProp(category, type, value, $('#center_to_gene_start_box').prop('checked'));
 }
 
 /*
