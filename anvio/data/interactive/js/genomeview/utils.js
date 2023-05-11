@@ -99,7 +99,7 @@ function getGenesWithAnnotation(annotation_type, annotation_value) {
     let geneFunctions = genome[1]['genes']['functions'];
     if(geneFunctions) {
       for(geneID in geneFunctions) {
-        if(geneFunctions[geneID][annotation_type] && geneFunctions[geneID][annotation_type][1].includes(annotation_value)) {
+        if(geneFunctions[geneID][annotation_type] && geneFunctions[geneID][annotation_type][1].toLowerCase().includes(annotation_value.toLowerCase())) {
           targetGenes.push({genomeID: genome[0], geneID: geneID});
         }
       }
