@@ -719,6 +719,28 @@ GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, cent
   }
 }
 
+GenomeDrawer.prototype.centerGenesFromPropUI = function () {
+  let category, type;
+  switch($('#center_genomes_category').val()) {
+    case 'metadata tag':
+      category = 'metadata';
+      type = 'tag';
+      break;
+    case 'user-defined annotation':
+      category = 'metadata';
+      type = 'annotation';
+      break;
+    default:
+      category = 'annotation';
+      type = $('#center_genomes_category').val();
+      break;
+  }
+
+  let value = $('#center_genes_prop_value').val();
+
+  this.centerGenesToProp(category, type, value);
+}
+
 /*
  *  Shift genomes horizontally to align genes around the target gene cluster.
  *

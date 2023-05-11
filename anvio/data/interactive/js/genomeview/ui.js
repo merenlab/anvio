@@ -1752,6 +1752,13 @@ function buildGeneLabelsSelect(){
   $('#function_search_category').append(new Option('metadata note', 'metadata note'))
 }
 
+function buildCenterGenomesSelect(){
+  let options = ['metadata tag', 'user-defined annotation'].concat(getFunctionalAnnotations());
+  options.forEach(opt => {
+    $('#center_genomes_category').append(new Option(opt, opt));
+  });
+}
+
 function setGeneVisibilityRange(targetGene, targetGenome){
   let genomeOfInterest = settings['genomeData']['genomes'].filter(genome => genome[0] == targetGenome)
   let maxGeneID = Object.keys(genomeOfInterest[0][1]['genes']['dna']).length

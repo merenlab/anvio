@@ -584,6 +584,7 @@ function loadAll(loadType) {
       }));
     }
     buildGeneLabelsSelect()
+    buildCenterGenomesSelect()
   }
 
   $('#query-results-table').empty();
