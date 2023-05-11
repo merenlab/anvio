@@ -693,9 +693,25 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
     nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+genePos));
   });
 
-  if(!slidingActive) {
-    slidingActive = true;
+  // reenable scale if all genomes are aligned
+  let disps = Object.values(settings.display.nt_disps);
+  if(disps.every(x => x==disps[0])) {
+    for (genome of this.settings['genomeData']['genomes']) {
+      nt_disps[genome[0]] = 0;
+    }
+    moveTo(parseInt($('#brush_start').val())-disps[0], parseInt($('#brush_end').val())-disps[0]) // shift viewport to same location
+    drawScale();
+    bindViewportToWindow();
+    updateScalePos();
+    updateRenderWindow();
+    slidingActive = false;
     toggleScaleAttributes();
+    toastr.success('Genomes aligned perfectly! Scale and bookmarks have been reenabled :)');
+  } else {
+    if(!slidingActive) {
+      slidingActive = true;
+      toggleScaleAttributes();
+    }
   }
 
   this.draw();
