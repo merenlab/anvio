@@ -694,8 +694,8 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
   });
 
   // reenable scale if all genomes are aligned
-  let disps = Object.values(settings.display.nt_disps);
-  if(disps.every(x => x==disps[0])) {
+  let disps = settings['display']['nt_disps'] ? Object.values(settings.display.nt_disps) : null;
+  if(disps && disps.every(x => x==disps[0])) {
     for (genome of this.settings['genomeData']['genomes']) {
       nt_disps[genome[0]] = 0;
     }
