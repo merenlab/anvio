@@ -702,7 +702,7 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
   this.glowGenes(centeredGenes);
 }
 
-GenomeDrawer.prototype.centerGenesToProp = function (category, type, value) {
+GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, centerToGeneStart=false) {
   let targetGenes;
   switch(category) {
     case 'annotation':
@@ -715,7 +715,7 @@ GenomeDrawer.prototype.centerGenesToProp = function (category, type, value) {
       break;
   }
   if(targetGenes.length > 0) {
-    this.centerGenes(targetGenes);
+    this.centerGenes(targetGenes, centerToGeneStart);
   }
 }
 
