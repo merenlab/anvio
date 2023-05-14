@@ -52,7 +52,7 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
     groupE.add_argument(*anvio.A('tree'), **anvio.K('tree'))
 
-    groupF = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
+    groupF = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustments regarding\
                                                            the interface.")
     groupF.add_argument(*anvio.A('title'), **anvio.K('title'))
 
