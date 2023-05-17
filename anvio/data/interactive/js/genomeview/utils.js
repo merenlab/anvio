@@ -44,7 +44,7 @@ function calculateGenomeLengths(){
   for(genome of genomeData.genomes) {
     let genomeID = genome[0]
     genome = genome[1].genes.gene_calls;
-    let genomeEnd = genome[Object.keys(genome).length-1].stop;
+    let genomeEnd = Object.values(genome)[Object.keys(genome).length-1].stop;
     genomeMax[genomeID] = genomeEnd;
     if(genomeEnd > globalGenomeMax) globalGenomeMax = genomeEnd;
   }
