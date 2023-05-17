@@ -713,6 +713,7 @@ function showToolTip(event){
       `
     }
   }
+  $('#mouseover-panel-genome').text(`Genome: ${event.target.genomeID}`)
   $('#mouseover-panel-table-body').append(`
     <tr>
       <td> ${event.target.geneID}</td>
