@@ -35,40 +35,30 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('GENOMES', "Tell anvi'o where your genomes are.")
+    groupA = parser.add_argument_group('GENOMES', "Tell anvi'o where to find your contigs-dbs.")
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
 
-    groupB = parser.add_argument_group('GENOME VIEW DB', "This is a database to store the display settings, bookmarks, etc. If "
-                                "there is no database at the path specified, it will be AUTOMATICALLY generated.")
+    groupB = parser.add_argument_group('GENOME VIEW DB', "This is an anvi'o database to store genome-view the display settings, bookmarks, etc. If "
+                                                         "there is no database at the path specified, it will be AUTOMATICALLY generated.")
     groupB.add_argument(*anvio.A('genome-view-db'), **anvio.K('genome-view-db', {'required': True}))
 
-    groupC = parser.add_argument_group('GENE ASSOCIATIONS', "Tell anvi'o how genes in your genomes relate to one another.")
-    groupC.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupC = parser.add_argument_group("PRO STUFF", "Tell anvi'o which gene caller to use.")
+    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
 
-    groupD = parser.add_argument_group("PRO STUFF", "Tell anvi'o which gene caller to use.")
-    groupD.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+    groupD = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but nice to have).")
+    groupD.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupD.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
+    groupD.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
 
-    groupE = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")
-    groupE.add_argument(*anvio.A('tree'), **anvio.K('tree'))
-
-    groupF = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\
-                                                           the interface.")
-    groupF.add_argument(*anvio.A('title'), **anvio.K('title'))
-
-    groupG = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but nice to have).")
-    groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-    groupG.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))
-    groupG.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
-
-    groupH = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-    groupH.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupH.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupH.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-    groupH.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
-    groupH.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-    groupH.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
-    groupH.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
+    groupE = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupE.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupE.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupE.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupE.add_argument(*anvio.A('read-only'), **anvio.K('read-only'))
+    groupE.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupE.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupE.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
 
     args = parser.get_args(parser)
 

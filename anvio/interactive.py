@@ -1905,12 +1905,23 @@ class GenomeView(AggregateGenomes):
             self.init_genome_view_db()
 
 
+
     def init_genome_view_db(self):
         """Dealings with the genome view database.
         This function will 'create' a genome view database if there is no such database
         exists at the path provided. If there is one already, it will ensure
         that it matches to the list of genomes aggregated during init.
         """
+
+        for name in self.genome_names:
+            num_contigs = len(self.get_contigs_dict(name)['info'].keys())
+            if num_contigs > 1:
+                raise ConfigError(f"The genome-view only works with contigs-dbs that have a single contig. "
+                                  f"The genome {name} has {num_contigs} contigs. "
+                                  f"anvi'o is sorry about this limitation and will try to fix it in the future. "
+                                  f"Meanwhile, you can use the `anvi-export-contigs` program to split up your contigs-db. "
+                                  f"Common scenarios: (1) You might have a sneaky plasmid contig in your contigs-db :) "
+                                  f"(2) You might be trying to visualize a MAG that that contains multiple contigs.")
 
         if not len(self.genomes):
             raise ConfigError("Someone asked anvi'o to initialize a genome view databse, but then "
