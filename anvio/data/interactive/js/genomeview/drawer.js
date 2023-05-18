@@ -193,7 +193,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         hoverCursor: 'text'
       });
       
-      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2) - label.width/2) * scaleFactor;
+      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2)) * scaleFactor - label.width/4;
 
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
