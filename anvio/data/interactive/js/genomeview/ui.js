@@ -41,7 +41,6 @@ function setCanvasListeners(){
       this.selection = false;
       this.lastPosX = evt.clientX;
     } else if (evt.altKey) {
-      this.shades = true;
       if (opt.target && opt.target.groupID) this.prev = opt.target.left;
     } else {
       if(opt.target && opt.target.id === 'arrow'){
@@ -49,6 +48,7 @@ function setCanvasListeners(){
       }
       $('#lasso-modal-body').modal('hide')
     }
+    this.shades = true;
   });
   canvas.on('mouse:move', function (opt) {
     if (this.isDragging) {
@@ -175,49 +175,44 @@ function setEventListeners(){
   //   }
   // });
   document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
-      toggleRightPanel('#settings-panel')
+    if(ev.target.nodeName === 'TEXTAREA' || ev.target.nodeName === 'INPUT') return;
+    switch(ev.which) {
+      case 83: // S = 83
+        toggleRightPanel('#settings-panel')
+        break
+      case 77: // M
+        toggleRightPanel('#mouseover-panel')
+        break
+      case 81: // Q
+        toggleRightPanel('#query-panel')
+        break
+      case 37: // Left Arrow
+        let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+        if(start - 1000 < 0) return;
+        moveToAndUpdateScale(start - 1000, stop - 1000, transition=false);
+        break;
+      case 39: // Right Arrow
+        if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') {
+          let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+          if(stop + 1000 > globalGenomeMax) return;
+          moveToAndUpdateScale(start + 1000, stop + 1000, transition=false);
+        }
+        break;
+      case 86: // V
+        $('#toggle-tabular-modal-button').click();
+        break
+      case 18: // Alt
+        canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
+        console.log("objects are now selectable.")
+        break
     }
   });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 77 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // M = 77
-      toggleRightPanel('#mouseover-panel')
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 81 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Q = 81
-      toggleRightPanel('#query-panel')
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 37 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Left Arrow = 37
-      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      if(start - 1000 < 0) return;
-      moveToAndUpdateScale(start - 1000, stop - 1000, transition=false);
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Right Arrow = 39
-      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      if(stop + 1000 > globalGenomeMax) return;
-      moveToAndUpdateScale(start + 1000, stop + 1000, transition=false);
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 86 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // V = 86
-      $('#toggle-tabular-modal-button').click();
-    }
-  }, {passive: true});
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
-      canvas.getObjects().forEach(o => o.selectable = true);
-    }
-  }, {passive: true});
   document.body.addEventListener("keyup", function (ev) {
     if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
-      canvas.getObjects().forEach(o => o.selectable = false);
+      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = false);
     }
   }, {passive: true});
+
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGenomeSpacing($(this).val());
