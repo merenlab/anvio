@@ -202,7 +202,7 @@ function setEventListeners(){
         $('#toggle-tabular-modal-button').click();
         break
       case 18: // Alt
-        if(ev.shiftKey) {console.log("shift+alt");break;}
+        if(ev.shiftKey) break;
         canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
         break
     }
