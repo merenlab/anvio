@@ -36,10 +36,15 @@ function setCanvasListeners(){
   // panning
   canvas.on('mouse:down', function (opt) {
     var evt = opt.e;
-    if (evt.shiftKey === true) {
+    if (evt.shiftKey) {
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
+    } else {
+      if(opt.target && opt.target.id === 'arrow'){
+        showDeepDiveToolTip(opt)
+      }
+      $('#lasso-modal-body').modal('hide')
     }
     this.shades = true;
     if (opt.target && opt.target.groupID) this.prev = opt.target.left;
@@ -149,13 +154,6 @@ function setCanvasListeners(){
     if (e.target.type === 'activeSelection') {
       canvas.discardActiveObject();
     }
-  })
-
-  canvas.on('mouse:down', (event) => {
-    if(event.target && event.target.id === 'arrow'){
-      showDeepDiveToolTip(event)
-    }
-    $('#lasso-modal-body').modal('hide')
   })
 }
 
