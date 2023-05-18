@@ -40,15 +40,15 @@ function setCanvasListeners(){
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
-      canvas.discardActiveObject();
+    } else if (evt.altKey) {
+      this.shades = true;
+      if (opt.target && opt.target.groupID) this.prev = opt.target.left;
     } else {
       if(opt.target && opt.target.id === 'arrow'){
         showDeepDiveToolTip(opt)
       }
       $('#lasso-modal-body').modal('hide')
     }
-    this.shades = true;
-    if (opt.target && opt.target.groupID) this.prev = opt.target.left;
   });
   canvas.on('mouse:move', function (opt) {
     if (this.isDragging) {
@@ -206,6 +206,16 @@ function setEventListeners(){
   document.body.addEventListener("keydown", function (ev) {
     if (ev.which == 86 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // V = 86
       $('#toggle-tabular-modal-button').click();
+    }
+  }, {passive: true});
+  document.body.addEventListener("keydown", function (ev) {
+    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
+      canvas.getObjects().forEach(o => o.selectable = true);
+    }
+  }, {passive: true});
+  document.body.addEventListener("keyup", function (ev) {
+    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
+      canvas.getObjects().forEach(o => o.selectable = false);
     }
   }, {passive: true});
   $('#genome_spacing').on('keydown', function (e) {
