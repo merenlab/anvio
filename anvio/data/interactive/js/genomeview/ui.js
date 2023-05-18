@@ -40,6 +40,7 @@ function setCanvasListeners(){
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
+      canvas.discardActiveObject();
     } else {
       if(opt.target && opt.target.id === 'arrow'){
         showDeepDiveToolTip(opt)
