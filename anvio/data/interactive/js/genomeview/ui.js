@@ -717,6 +717,7 @@ function showToolTip(event){
       `
     }
   }
+  $('#mouseover-panel-genome').text(`Genome: ${event.target.genomeID}`)
   $('#mouseover-panel-table-body').append(`
     <tr>
       <td> ${event.target.geneID}</td>
@@ -1411,7 +1412,7 @@ function toggleAdditionalDataLayer(e){
 }
 
 function setLabelCanvas() {
-  labelCanvasWidth = $('#rotate_genome_labels_box').prop("checked") ? settings['display']['genome-label-size'] * 7/3 : settings['display']['genome-label-size'] * 25/3;
+  labelCanvasWidth = $('#rotate_genome_labels_box').prop("checked") ? settings['display']['genome-label-size'] * 7/3 : maxLabelWidth * 1.15;
   if(settings['display']['show-genome-labels']) {
     labelCanvas.setWidth(labelCanvasWidth);
     canvas.setWidth((VIEWER_WIDTH * 0.90) - labelCanvasWidth);
@@ -1796,9 +1797,11 @@ function drawGenomeLabels(fontsize=null) {
                 ? ($('.genome_selectors:checked').map((_,el) => el.id.split('-')[0]).toArray())
                 : (settings['genomeData']['genomes'].map(g => g[0]));
   
+  let labelWidth = 0;
+
   genomes.forEach((genomeName,i) => {
     let genomeHeight = spacing + maxGroupSize * groupLayerPadding;
-    let label = new fabric.Text(genomeName.substring(0,GENOME_LABEL_CHAR_LIMIT), {
+    let label = new fabric.Text(genomeName, {
       angle: $('#rotate_genome_labels_box').prop("checked") ? 270 : 0,
       top: marginTop + genomeHeight + i*(groupMargin+genomeHeight),
       fill: $('#genome_label_color').attr('color'),
@@ -1807,6 +1810,7 @@ function drawGenomeLabels(fontsize=null) {
       selectable: false,
       hoverCursor: 'default'
     });
+    labelWidth = Math.max(label.width, labelWidth);
     if(!$('#rotate_genome_labels_box').prop("checked")) {
       let layers = settings['group-layer-order'].filter(layer => $(`#${layer}-show`).is(':checked'));
       let layersBefore = layers.indexOf('Genome');
@@ -1825,6 +1829,7 @@ function drawGenomeLabels(fontsize=null) {
       }
     }
     labelCanvas.add(label);
+    maxLabelWidth = labelWidth;
   });
 }
 

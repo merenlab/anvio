@@ -199,7 +199,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         hoverCursor: 'text'
       });
       
-      label.left = nt_disps[genomeID]*scaleFactor + (((gene.start + gene.stop) / 2) - label.width/2) * scaleFactor;
+      label.left = (scaleFactor * (nt_disps[genomeID] + (gene.start + gene.stop)/2)) - label.width/4;
 
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
@@ -237,16 +237,21 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         // B) the selected value from the #gene_label_source dropdown === the source object itself (and it should, since we build the dropdown programmatically!)
         // this below logic should retrieve the correct annotation value, regardless of source
         if (genomeOfInterest[0][1]['genes']['functions'][geneID]?.hasOwnProperty(source) && genomeOfInterest[0][1]['genes']['functions'][geneID][source]) {
-          return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID][source][1])
+          let gene = genomeOfInterest[0][1]['genes']['gene_calls'][geneID]
+          let geneWidth = scaleFactor * (gene.stop - gene.start)
+          let charWidthEstimate = 0.3 * settings['display']['gene-label-size'];
+          let charLimit = Math.floor(geneWidth / charWidthEstimate)
+          if(charLimit < 5) return ""; 
+          return ellipsisMachine(genomeOfInterest[0][1]['genes']['functions'][geneID][source][1], charLimit)
         } else {
           return 'None'
         }
       }
     }
 
-    function ellipsisMachine(string) { // add ellipsis only to truncated gene label values
-      if (string.substring(0, 20).length == 20) {
-        return `${string.substring(0, 20)}...`
+    function ellipsisMachine(string, maxLen=20) { // add ellipsis only to truncated gene label values
+      if (string.substring(0, maxLen).length == maxLen) {
+        return `${string.substring(0, maxLen)}...`
       } else {
         return string
       }

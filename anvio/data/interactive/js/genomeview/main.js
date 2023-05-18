@@ -46,8 +46,8 @@ var percentScale = false; // if true, scale measured in proportions (0-1) of tot
 var order_gene_colors_by_count = true; // if true, order annotations on gene color table by descending order of count, otherwise order alphabetically
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
-var GENOME_LABEL_CHAR_LIMIT = 20; // truncate to arbitrary character limit for genome labels
 var slidingActive;
+var maxLabelWidth = 0;
 var canvas;
 var labelCanvas;
 var brush;
@@ -631,6 +631,7 @@ function loadAll(loadType) {
   $('#genome_label_color').css('background-color', settings['display']['colors']['genome-label']);
   $('#genome_label_color').attr('color', settings['display']['colors']['genome-label']);
   drawGenomeLabels(settings['display']['genome-label-size']);
+  setLabelCanvas(); // set a second time to adjust to new brush extent
 
   toastr.success(`Successfully loaded from ${settings['state-name']} state`)
 }
