@@ -36,12 +36,12 @@ function setCanvasListeners(){
   // panning
   canvas.on('mouse:down', function (opt) {
     var evt = opt.e;
-    if (evt.shiftKey) {
+    if(evt.altKey) {
+      if (opt.target && opt.target.groupID) this.prev = opt.target.left;
+    } else if (evt.shiftKey) {
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
-    } else if (evt.altKey) {
-      if (opt.target && opt.target.groupID) this.prev = opt.target.left;
     } else {
       if(opt.target && opt.target.id === 'arrow'){
         showDeepDiveToolTip(opt)
@@ -202,6 +202,7 @@ function setEventListeners(){
         $('#toggle-tabular-modal-button').click();
         break
       case 18: // Alt
+        if(ev.shiftKey) {console.log("shift+alt");break;}
         canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
         break
     }
