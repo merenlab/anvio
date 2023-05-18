@@ -203,7 +203,6 @@ function setEventListeners(){
         break
       case 18: // Alt
         canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
-        console.log("objects are now selectable.")
         break
     }
   });
