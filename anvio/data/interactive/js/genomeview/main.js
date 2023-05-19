@@ -608,6 +608,7 @@ function loadAll(loadType) {
     let genome = row.id.split('-')[0]
     $('#' + genome + '-show').prop('checked', settings['display']['show-genomes'][genome])
   })
+  maxGroupSize = $('.additional_selectors:checked').length;
 
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);
