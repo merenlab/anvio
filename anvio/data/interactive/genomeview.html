@@ -242,7 +242,7 @@
           <tr id="dynamic_scale">
             <td>Dynamic scale interval</td>
             <td style="float: right">
-              <div style="width: 20px;"><input id="show_dynamic_scale_box" type="checkbox" class="layer_selectors">
+              <div style="width: 20px;"><input id="show_dynamic_scale_box" type="checkbox">
               </div>
             </td>
           </tr>
@@ -250,10 +250,39 @@
             <td>Genome scale interval: </td>
             <td><input id="genome_scale_interval" class="form-control input-sm" type="text" value="100" size="4"></td>
           </tr>
-          <!--<tr>
+        </tbody>
+      </table>
+
+      <span class="settings-header">Genome Alignment</span>
+      <table id="genomeAlignmentTable" style="margin-bottom: 20px;">
+        <tbody>
+          <tr>
+            <td>Category: </td>
+            <td>
+              <select class="type_multiple" id='center_genomes_category' style="width: 100px;" class="type"></select>
+            </td>
+          </tr>
+          <tr>
+            <td>Value:</td>
+            <td><input type="text" class="form-control input-sm" id="center_genes_prop_value" placeholder="e.g. 'lipid transport'">
+            </td>
+          </tr>
+          <tr>
+            <td>Center to gene start:</td>
+            <td >
+              <div style="width: 20px;"><input id="center_to_gene_start_box" type="checkbox">
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <button onclick='drawer.centerGenesFromPropUI()' style="margin-bottom:10px;">Let's Go!</button>
+            </td>
+          </tr>
+          <tr>
             <td><button id="alignRulerBtn" type="button" class="btn btn-primary btn-xs" onclick="drawer.alignRulers()"
                 class="btn btn-outline-primary">Align genome rulers</button></td>
-          </tr>-->
+          </tr>
         </tbody>
       </table>
 
@@ -500,8 +529,8 @@
           </td>
         </tr>
         <tr>
-          <td>Function Name:</td>
-          <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="IE 'borp'">
+          <td>Value:</td>
+          <td><input type="text" class="form-control input-sm" id="function_search_query" placeholder="e.g. 'lipid transport'">
           </td>
         </tr>
         <tr>
@@ -532,7 +561,7 @@
       <tbody id="query-results-table">
       </tbody>
     </table>
-    <span class="settings-header">Bookmarks</span>
+    <span id="bookmarks-header" class="settings-header">Bookmarks</span>
     <table id="bookmarksTable" style="margin-bottom: 20px;">
       <tbody>
         <tr id="create_bookmark">
@@ -544,9 +573,11 @@
           </td>
         </tr>
         <tr id="show_scale">
-          <td style="float: right"><button onclick='createBookmark()'>New Bookmark from Current Position</button>
+          <td style="float: right"><button id="createBookmarkBtn" onclick='createBookmark()'>New Bookmark from Current Position</button>
           </td>
         </tr>
+        <tr>
+          <p hidden id="bookmarks-disabled-warning-info" class="settings-section-info" style="color:red">Bookmarks are disabled while genome sliding is active. To reenable bookmarks, press "Align genome rulers" in the settings panel.</p>
         </tr>
       </tbody>
     </table>
@@ -561,7 +592,7 @@
       style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
   </div>
   <div id="mouseover-panel">
-    <h3 id='mouseover-panel-genome' style="font-size: 20px"></h3>
+    <h3 id='mouseover-panel-genome' style="font-size: 20px; word-wrap: break-word;"></h3>
     <h2>Gene Call</h2>
     <table class="table table-striped" style="width: 100%; text-align: center;">
       <thead>

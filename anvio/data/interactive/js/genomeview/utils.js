@@ -43,8 +43,7 @@ function calculateGenomeLengths(){
   globalGenomeMax = -999999;
   for(genome of genomeData.genomes) {
     let genomeID = genome[0]
-    genome = genome[1].genes.gene_calls;
-    let genomeEnd = Object.values(genome)[Object.keys(genome).length-1].stop;
+    let genomeEnd = Object.values(genome[1].contigs.info)[0].length;
     genomeMax[genomeID] = genomeEnd;
     if(genomeEnd > globalGenomeMax) globalGenomeMax = genomeEnd;
   }
@@ -73,6 +72,62 @@ function getGenePosForGenome(genomeID, gc) {
 function getGenesOfGC(genomeID, gc) {
   var targetGenes = settings['genomeData']['gene_associations']["anvio-pangenome"]["gene-cluster-name-to-genomes-and-genes"][gc][genomeID];
   return targetGenes.length > 0 ? targetGenes : null;
+}
+
+/* 
+ *  @returns NT position of the middle of a given gene
+ */
+function getGeneMid(genomeID, geneID) {
+  let gene = settings['genomeData']['genomes'].find(g => g[0]==genomeID)[1].genes.gene_calls[geneID];
+  if(!gene) return null;
+  return (gene.start + gene.stop) / 2;
+}
+
+function getGeneStart(genomeID, geneID) {
+  let gene = settings['genomeData']['genomes'].find(g => g[0]==genomeID)[1].genes.gene_calls[geneID];
+  if(!gene) return null;
+  return gene.start;
+}
+
+/*
+ *  @returns array of genes in the form [{genomeID: 'ABC', geneID: 1}] with a specified functional annotation
+ */
+function getGenesWithAnnotation(annotation_type, annotation_value) {
+  let targetGenes = [];
+  settings['genomeData']['genomes'].forEach(genome => {
+    let geneFunctions = genome[1]['genes']['functions'];
+    if(geneFunctions) {
+      for(geneID in geneFunctions) {
+        let annotation_info = geneFunctions[geneID][annotation_type];
+        if(annotation_info && annotation_info[0].toLowerCase().includes(annotation_value.toLowerCase()) || annotation_info[1].toLowerCase().includes(annotation_value.toLowerCase())) {
+          targetGenes.push({genomeID: genome[0], geneID: geneID});
+        }
+      }
+    }
+  });
+  return targetGenes;
+}
+
+/*
+ *  @returns array of genes in the form [{genomeID: 'ABC', geneID: 1}] with a specified metadata value
+ */
+function getGenesWithMetadata(metadata_type, metadata_value) {
+  let targetGenes = [];
+
+  if(!settings.display.metadata) return [];
+  settings['display']['metadata'].filter(m => m.type == metadata_type).forEach(metadata => {
+    if(metadata_type == 'tag') {
+      if(metadata.label.toLowerCase() == metadata_value.toLowerCase()) {
+        targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
+      }
+    } else if(metadata_type == 'annotation') {
+      if(metadata.accession == metadata_value || metadata.annotation == metadata_value) {
+        targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
+      }
+    }
+  });
+  
+  return targetGenes;
 }
 
 /*
@@ -107,65 +162,35 @@ function checkGeneLabels() {
   let vpt = canvas.viewportTransform;
   let window_left = Math.floor((-1*vpt[4])/scaleFactor);
   let window_right = Math.floor(window_left + canvas.getWidth()/scaleFactor);
+  let [lbound, rbound] = calcNTBounds();
   // if window is out of bounds, shift to be in bounds
-  if(window_left < 0) {
-    window_right -= window_left;
-    window_left = 0;
+  if(window_left < lbound) {
+    window_right += (lbound - window_left);
+    window_left = lbound;
   }
-  if(window_right > globalGenomeMax) {
-    window_left -= (window_right - globalGenomeMax);
-    window_right = globalGenomeMax;
+  if(window_right > rbound) {
+    window_left -= (window_right - rbound);
+    window_right = rbound;
   }
   return [window_left, window_right];
-}
-
-/*
- *  @returns [start, stop] proportional (0-1) range, used with scale for non-aligned genomes
- */
-function getFracForVPT() {
-  let resolution = 4; // number of decimals to show
-  let [x1, x2] = calcXBounds();
-  let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
-  let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
-  // if window is out of bounds, shift to be in bounds
-  if(window_left < 0) {
-    window_right -= window_left;
-    window_left = 0;
-  }
-  if(window_right > 1) {
-    window_left -= (window_right - 1);
-    window_right = 1;
-  }
-  return [window_left, window_right];
-}
-
-/*
- *  @returns absolute x-position viewport range for a given proportional selection range
- */
-function getVPTForFrac() {
-  if(!percentScale) return null;
-  let [l,r] = calcXBounds();
-  return [$('#brush_start').val(),$('#brush_end').val()].map(x => l+x*(r-l));
-}
-
-/*
- *  @returns absolute x-position viewport range for a given proportional renderWindow range
- */
-function getRenderXRangeForFrac() {
-  if(!percentScale) return null;
-  let [l,r] = calcXBounds();
-  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
-  return [x1, x2];
 }
 
 /* 
- *  @returns nt range of a specific genome (since they can be dragged) for a given proportional range 
- *  - used to determine which gene arrows to draw for a given genome while proportional scale is activated
+ *  @returns x-range of a specific genome based on its current nt range (since they can be dragged)
+ *  - used to draw genome line, ruler
  */
-function getRenderNTRange(genomeID) {
-  if(!percentScale) return renderWindow;
-  //let [l,r] = calcXBounds();
-  let [start, end] = getRenderXRangeForFrac().map(x => (x-xDisps[genomeID])/scaleFactor);
+function getRenderXRangeForGenome(genomeID) {
+  return renderWindow.map(pos => Math.floor((pos+nt_disps[genomeID])*scaleFactor));
+}
+
+/* 
+ *  @returns nt range of a specific genome that appears in the current render window (since they can be dragged)
+ *  - used to determine which gene arrows to draw for a given genome while genome sliding is activated
+ */
+function getGenomeRenderWindow(genomeID) {
+  if(!slidingActive) return renderWindow;
+
+  let [start, end] = renderWindow.map(pos => Math.floor(pos - nt_disps[genomeID]));
   return [clamp(start,0,genomeMax[genomeID]), clamp(end,0,genomeMax[genomeID])];
 }
 
@@ -174,7 +199,7 @@ function getRenderNTRange(genomeID) {
  *    min = x-start of the given genome, max = x-end of the given genome
  */
 function calcXBoundsForGenome(genomeID) {
-  return [xDisps[genomeID], xDisps[genomeID] + genomeMax[genomeID]*scaleFactor];
+  return [nt_disps[genomeID]*scaleFactor, (nt_disps[genomeID]+genomeMax[genomeID])*scaleFactor];
 }
 
 /*
@@ -189,6 +214,14 @@ function calcXBounds() {
     if(end > max) max = end;
   }
   return [min, max];
+}
+
+/*
+ *  @returns array [lowestStart, highestEnd] of nt positions for all genomes
+ *    note if slidingActive = false, this will always equal [0, globalGenomeMax]
+ */
+function calcNTBounds() {
+  return calcXBounds().map(x => x/scaleFactor);
 }
 
 /*
@@ -290,3 +323,52 @@ function toggleRightPanel(name) {
   }
 }
 
+
+
+
+
+// ================================================================================================================================
+// DEPRECATED FUNCTIONS
+// ================================================================================================================================
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns [start, stop] proportional (0-1) range, used with scale for non-aligned genomes
+ */
+function getFracForVPT() {
+  let resolution = 4; // number of decimals to show
+  let [x1, x2] = calcXBounds();
+  let window_left = Math.round(10**resolution * (-1*canvas.viewportTransform[4] - x1) / (x2 - x1)) / 10**resolution;
+  let window_right = Math.round(10**resolution * (window_left + (canvas.getWidth()) / (x2 - x1))) / 10**resolution;
+  // if window is out of bounds, shift to be in bounds
+  if(window_left < 0) {
+    window_right -= window_left;
+    window_left = 0;
+  }
+  if(window_right > 1) {
+    window_left -= (window_right - 1);
+    window_right = 1;
+  }
+  return [window_left, window_right];
+}
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns absolute x-position viewport range for a given proportional selection range
+ */
+function getVPTForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  return [$('#brush_start').val(),$('#brush_end').val()].map(x => l+x*(r-l));
+}
+
+/*
+ *  [NOTE: DEPRECATED]
+ *  @returns absolute x-position viewport range for a given proportional renderWindow range
+ */
+function getRenderXRangeForFrac() {
+  if(!percentScale) return null;
+  let [l,r] = calcXBounds();
+  let [x1, x2] = renderWindow.map(x => l+x*(r-l));
+  return [x1, x2];
+}

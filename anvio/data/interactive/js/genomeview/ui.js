@@ -36,13 +36,20 @@ function setCanvasListeners(){
   // panning
   canvas.on('mouse:down', function (opt) {
     var evt = opt.e;
-    if (evt.shiftKey === true) {
+    if(evt.altKey) {
+      if (opt.target && opt.target.groupID) this.prev = opt.target.left;
+    } else if (evt.shiftKey) {
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
+      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = false);
+    } else {
+      if(opt.target && opt.target.id === 'arrow'){
+        showDeepDiveToolTip(opt)
+      }
+      $('#lasso-modal-body').modal('hide')
     }
     this.shades = true;
-    if (opt.target && opt.target.groupID) this.prev = opt.target.left;
   });
   canvas.on('mouse:move', function (opt) {
     if (this.isDragging) {
@@ -81,8 +88,8 @@ function setCanvasListeners(){
    *  At its current state, proportional scale has some bugs with calculating the viewport window for a given selection range. Bookmarks should also be disabled for proportional scale.
    */
   canvas.on('object:moving', function (opt) {
-    console.log("Warning: Object moving event listener triggered. This listener should never be triggered as long as genome dragging is disabled, so if you're seeing this message, there may be an error somewhere.");
-    return;
+    //console.log("Warning: Object moving event listener triggered. This listener should never be triggered as long as genome dragging is disabled, so if you're seeing this message, there may be an error somewhere.");
+    //return;
     var gid = opt.target ? opt.target.groupID : null;
     if (gid == null) return;
 
@@ -98,11 +105,15 @@ function setCanvasListeners(){
     canvas.getObjects().filter(obj => obj.groupID == gid).forEach(o => {
       if (o !== opt.target) o.left += delta;
     });
-    xDisps[gid] += delta;
+    nt_disps[gid] += delta/scaleFactor;
 
     this.setViewportTransform(this.viewportTransform);
-    setPercentScale();
+    //setPercentScale();
     this.prev = opt.target.left;
+    if(!slidingActive) {
+      slidingActive = true;
+      toggleScaleAttributes();
+    }
   });
   canvas.on('mouse:wheel', function (opt) {
     if (opt.e.shiftKey === false) {
@@ -146,13 +157,6 @@ function setCanvasListeners(){
       canvas.discardActiveObject();
     }
   })
-
-  canvas.on('mouse:down', (event) => {
-    if(event.target && event.target.id === 'arrow'){
-      showDeepDiveToolTip(event)
-    }
-    $('#lasso-modal-body').modal('hide')
-  })
 }
 
 /*
@@ -172,39 +176,44 @@ function setEventListeners(){
   //   }
   // });
   document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 83 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // S = 83
-      toggleRightPanel('#settings-panel')
+    if(ev.target.nodeName === 'TEXTAREA' || ev.target.nodeName === 'INPUT') return;
+    switch(ev.which) {
+      case 83: // S = 83
+        toggleRightPanel('#settings-panel')
+        break
+      case 77: // M
+        toggleRightPanel('#mouseover-panel')
+        break
+      case 81: // Q
+        toggleRightPanel('#query-panel')
+        break
+      case 37: // Left Arrow
+        let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+        if(start - 1000 < 0) return;
+        moveToAndUpdateScale(start - 1000, stop - 1000, transition=false);
+        break;
+      case 39: // Right Arrow
+        if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') {
+          let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
+          if(stop + 1000 > globalGenomeMax) return;
+          moveToAndUpdateScale(start + 1000, stop + 1000, transition=false);
+        }
+        break;
+      case 86: // V
+        $('#toggle-tabular-modal-button').click();
+        break
+      case 18: // Alt
+        if(ev.shiftKey) break;
+        canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
+        break
     }
   });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 77 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // M = 77
-      toggleRightPanel('#mouseover-panel')
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 81 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Q = 81
-      toggleRightPanel('#query-panel')
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 37 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Left Arrow = 37
-      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      if(start - 1000 < 0) return;
-      moveToAndUpdateScale(start - 1000, stop - 1000, transition=false);
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 39 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Right Arrow = 39
-      let [start, stop] = [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
-      if(stop + 1000 > globalGenomeMax) return;
-      moveToAndUpdateScale(start + 1000, stop + 1000, transition=false);
-    }
-  });
-  document.body.addEventListener("keydown", function (ev) {
-    if (ev.which == 86 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // V = 86
-      $('#toggle-tabular-modal-button').click();
+  document.body.addEventListener("keyup", function (ev) {
+    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
+      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = false);
     }
   }, {passive: true});
+
   $('#genome_spacing').on('keydown', function (e) {
     if (e.keyCode == 13) { // 13 = enter key
       drawer.setGenomeSpacing($(this).val());
@@ -1749,6 +1758,13 @@ function buildGeneLabelsSelect(){
   $('#function_search_category').append(new Option('metadata note', 'metadata note'))
 }
 
+function buildCenterGenomesSelect(){
+  let options = ['metadata tag', 'user-defined annotation'].concat(getFunctionalAnnotations());
+  options.forEach(opt => {
+    $('#center_genomes_category').append(new Option(opt, opt));
+  });
+}
+
 function setGeneVisibilityRange(targetGene, targetGenome){
   let genomeOfInterest = settings['genomeData']['genomes'].filter(genome => genome[0] == targetGenome)
   let maxGeneID = Object.keys(genomeOfInterest[0][1]['genes']['dna']).length
@@ -1820,6 +1836,23 @@ function drawGenomeLabels(fontsize=null) {
     labelCanvas.add(label);
     maxLabelWidth = labelWidth;
   });
+}
+
+function toggleScaleAttributes() {
+  if(slidingActive) {
+    $('#scaleContainer').hide();
+    toastr.warning('Genome Scale was HIDDEN while genome sliding is active. To reenable scale, press "Align genome rulers" in settings.');
+    $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', true);
+    $('#bookmarks-header').text('Bookmarks (disabled)');
+    $('#currBookmarksTable').hide();
+    $('#bookmarks-disabled-warning-info').show();
+  } else {
+    $('#scaleContainer').show();
+    $('#create_bookmark_input, #create_bookmark_description, #createBookmarkBtn').prop('disabled', false);
+    $('#bookmarks-header').text('Bookmarks');
+    $('#currBookmarksTable').show();
+    $('#bookmarks-disabled-warning-info').hide();
+  }
 }
 
 function exportToSVG() {

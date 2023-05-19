@@ -30,7 +30,7 @@ var current_state_name = null
 var alignToGC = null;
 var stateData = {};
 var settings = {} // packaged obj sent off to GenomeDrawer
-var xDisps = {};
+var nt_disps = {};
 var renderWindow = []; 
 var genomeMax = {};
 var globalGenomeMax;
@@ -46,6 +46,7 @@ var percentScale = false; // if true, scale measured in proportions (0-1) of tot
 var order_gene_colors_by_count = true; // if true, order annotations on gene color table by descending order of count, otherwise order alphabetically
 var filter_gene_colors_to_window = false; // if true, only display gene colors in current render window, otherwise show all gene colors in split
 var firstDraw = true // flag to determine whether to set zoom to initial zoom level
+var slidingActive;
 var maxLabelWidth = 0;
 var canvas;
 var labelCanvas;
@@ -316,10 +317,12 @@ function serializeSettings() {
   state['display']['nt_window'] = percentScale ? [parseFloat($('#brush_start').val()), parseFloat($('#brush_end').val())] : [parseInt($('#brush_start').val()), parseInt($('#brush_end').val())];
   state['display']['scaleFactor'] = scaleFactor;
   state['display']['percentScale'] = percentScale;
-  state['display']['xDisps'] = xDisps;
+  state['display']['slidingActive'] = slidingActive;
+  state['display']['nt_disps'] = nt_disps;
   state['display']['thresh-count-gene-colors'] = $('#thresh_count').val() // min # occurences of annotation for filtering gene color table
   state['display']['adlPtsPerLayer'] = $('#adl_pts_per_layer').val() // number of data points to be subsampled per ADL. TODO: more meaningful default?
   state['display']['user-defined-colors'] = $('#user_defined_colors').is(':checked')
+  state['display']['center-genes-to-start'] = $('#center_to_gene_start_box').is(':checked')
 
   $('.genome_selectors').each((idx, row) => {
     let genome = row.id.split('-')[0]
@@ -402,6 +405,12 @@ function processState(stateName, stateData) {
     percentScale = false;
   }
 
+  if(stateData?.['display']?.['slidingActive']) {
+    slidingActive = stateData['display']['slidingActive']
+  } else {
+    slidingActive = false;
+  }
+
   if(stateData?.['display']?.['scaleFactor']) {
     scaleFactor = stateData['display']['scaleFactor']
   } else {
@@ -418,8 +427,8 @@ function processState(stateName, stateData) {
     settings['display']['viewportTransform'] = stateData['display']['viewportTransform']
   }
 
-  if(stateData?.['display']?.['xDisps']) {
-    settings['display']['xDisps'] = stateData['display']['xDisps']
+  if(stateData?.['display']?.['nt_disps']) {
+    settings['display']['nt_disps'] = stateData['display']['nt_disps']
   }
 
   if(stateData?.['display']?.['accessionNum']) {
@@ -544,6 +553,7 @@ function processState(stateName, stateData) {
   $('#show_dynamic_scale_box').prop("checked", settings['display']['dynamic-scale-interval']);
   $('#link_gene_label_color_source_box').prop("checked", settings['display']['link-gene-label-color-source']);
   $('#user_defined_colors').prop("checked", settings['display']['user-defined-colors']);
+  $('#center_to_gene_start_box').prop('checked', settings['display']['center-genes-to-start'])
 }
 
 function loadAll(loadType) {
@@ -556,11 +566,11 @@ function loadAll(loadType) {
 
   $('.container').css({ 'height': VIEWER_HEIGHT + 'px', 'overflow-y': 'auto' })
 
-  if(settings?.['display']?.['xDisps']) {
-    xDisps = settings?.['display']['xDisps'];
+  if(settings?.['display']?.['nt_disps']) {
+    nt_disps = settings?.['display']['nt_disps'];
   } else {
     for (genome of settings['genomeData']['genomes']) {
-      xDisps[genome[0]] = 0;
+      nt_disps[genome[0]] = 0;
     }
   }
 
@@ -576,6 +586,7 @@ function loadAll(loadType) {
       }));
     }
     buildGeneLabelsSelect()
+    buildCenterGenomesSelect()
   }
 
   $('#query-results-table').empty();
@@ -597,6 +608,7 @@ function loadAll(loadType) {
     let genome = row.id.split('-')[0]
     $('#' + genome + '-show').prop('checked', settings['display']['show-genomes'][genome])
   })
+  maxGroupSize = $('.additional_selectors:checked').length;
 
   let [start, stop] = settings['display']['nt_window'];
   $('#brush_start').val(start);
@@ -608,6 +620,9 @@ function loadAll(loadType) {
   brush.extent([start, stop]);
   brush(d3.select(".brush"));
   updateRenderWindow();
+  setLabelCanvas(); // set a second time to adjust to new brush extent
+
+  if(slidingActive) toggleScaleAttributes();
   
   console.log('Sending this data obj to GenomeDrawer', settings)
   drawer = new GenomeDrawer(settings)

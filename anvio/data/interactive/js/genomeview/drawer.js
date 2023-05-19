@@ -95,14 +95,16 @@ GenomeDrawer.prototype.addGroupBorder = function (yOffset, orderIndex, genomeInd
 
   if(maxGroupSize == 1) return;
 
-  let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
-  let left = -20
   let genomeID = this.settings['genomeData']['genomes'][genomeIndex][0]
+
+  let top = yOffset + marginTop - 10 + (orderIndex * groupMargin)
+  let left = -20 + nt_disps[genomeID]*scaleFactor
   let width = genomeMax[genomeID]*scaleFactor + 50
   let height = spacing + 50
 
   let rect = new fabric.Rect({
     id: 'groupBorder' + orderIndex,
+    groupID: genomeID,
     top: top,
     left: left,
     width: width,
@@ -136,12 +138,14 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   let genomeID = genome[0];
   let y = marginTop + yOffset + layerPos + (layerHeight / 2) + (orderIndex * groupMargin) // render arrows in the center of genome layer's allotted vertical space
 
-  let [start, stop] = percentScale ? getRenderXRangeForFrac() : renderWindow.map(x => x * scaleFactor + xDisps[genomeID]);
-  start = clamp(start > xDisps[genomeID] ? start : xDisps[genomeID], calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
-  stop = clamp(stop, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
+  // get x-range for this genome
+  //let [startX, stopX] = percentScale ? getRenderXRangeForFrac() : getRenderXRangeForGenome(genomeID)
+  let [startX, stopX] = renderWindow.map(pos => pos * scaleFactor)
+  startX = clamp(startX > nt_disps[genomeID]*scaleFactor ? startX : nt_disps[genomeID]*scaleFactor, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
+  stopX = clamp(stopX, calcXBoundsForGenome(genomeID)[0], calcXBoundsForGenome(genomeID)[1]);
 
-  // line
-  let lineObj = new fabric.Line([start, 0, stop, 0], {
+  // genome line
+  let lineObj = new fabric.Line([startX, 0, stopX, 0], {
     id: 'genomeLine',
     groupID: genomeID,
     top: y + 4,
@@ -155,7 +159,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
     hoverCursor: 'default'
   });
   canvas.add(lineObj);
-  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), start, genomeMax[genomeID], layerHeight, orderIndex, genomeIndex)
+  //this.addBackgroundShade((marginTop + yOffset + layerPos + (orderIndex * groupMargin)), startX, genomeMax[genomeID], layerHeight, orderIndex, genomeIndex)
 
   // draw set labels
   if (settings['display']['show-gene-labels'] && settings['display']['labels']['gene-sets'][genomeID]) {
@@ -165,10 +169,12 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
   }
 
   for (let geneID in gene_list) {
+    // TODO: renderWindow needs to compensate for genomes slid left of 0...don't clamp to 0, end etc
+    // rather than clamping to [0,max], clamp to [-PAD, max-PAD]
     let gene = gene_list[geneID];
-    let [ntStart, ntStop] = getRenderNTRange(genomeID);
-    if (gene.start < ntStart) continue;
-    if (gene.stop > ntStop) return;
+    let [ntStart, ntStop] = getGenomeRenderWindow(genomeID);
+    if (gene.stop < ntStart) continue;
+    if (gene.start > ntStop) return;
     var geneObj = this.geneArrow(gene, geneID, y, genomeID, this.settings['display']['arrow-style']);
     canvas.add(geneObj)
     canvas.bringToFront(geneObj);
@@ -180,7 +186,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         fontSize: settings['display']['gene-label-size'],
         fontFamily: 'sans-serif',
         angle: settings['display']['gene-text-position'] == "above" ? -1 * settings['display']['gene-text-angle'] : 0,
-        //left: xDisps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
+        //left: nt_disps[genomeID] + (((gene.start + gene.stop) / 2) - $('#gene_label').val()*2) * scaleFactor,
         fill: $('#gene_label_color').attr('color'),
         scaleX: 0.5,
         scaleY: 0.5,
@@ -193,7 +199,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
         hoverCursor: 'text'
       });
       
-      label.left = xDisps[genomeID] + (((gene.start + gene.stop) / 2)) * scaleFactor - label.width/4;
+      label.left = (scaleFactor * (nt_disps[genomeID] + (gene.start + gene.stop)/2)) - label.width/4;
 
       if (this.settings['display']['arrow-style'] == 3) {
         label.set({
@@ -261,7 +267,7 @@ GenomeDrawer.prototype.addGenome = function (orderIndex, layerHeight, layerPos, 
       id: 'setLabel',
       groupID: genomeID,
       fontSize: settings['display']['gene-label-size'],
-      left: xDisps[genomeID] + x_set_label * scaleFactor,
+      left: nt_disps[genomeID]*scaleFactor + x_set_label * scaleFactor,
       top: y_set_label,
       scaleX: 0.5,
       scaleY: 0.5,
@@ -294,7 +300,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
 
   let maxDataLayerValue = 0
   let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
-  let startingLeft = xDisps[genomeID]
+  let startingLeft = nt_disps[genomeID]*scaleFactor
 
   let globalPathDirective = [`L ${startingLeft} ${layerHeight}`]
   let layer_end_final_coordinates
@@ -313,7 +319,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
   let nGroups = 20
   let j = 0
   let final_l = 0 //used to create final line segments to 'close out' path obj for shading purposes.
-  let [l, r] = getRenderNTRange(genomeID);
+  let [l, r] = getGenomeRenderWindow(genomeID);
   for (let i = 0; i <= nGroups; i++) {
     for (; j < i * contigArr.length / nGroups; j += ptInterval) {
       if (j < l) continue;
@@ -351,6 +357,7 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
     stroke: stroke,
     fill: stroke,
     selectable: false,
+    lockMovementY: true,
     objectCaching: false,
     hoverCursor: 'default',
     id: `${layer}-graph-shaded`,
@@ -366,13 +373,13 @@ GenomeDrawer.prototype.buildNumericalDataLayer = function (layer, layerPos, geno
  */
 GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, layerHeight, orderIndex) {
   let startingTop = marginTop + yOffset + layerPos + (orderIndex * groupMargin)
-  let startingLeft = xDisps[genomeID]
+  let startingLeft = nt_disps[genomeID]*scaleFactor
   // let layerHeight = (spacing / maxGroupSize)
 
   // split ruler into several objects to avoid performance cost of large object pixel size
   let nRulers = 20;
   let w = 0;
-  let [l, r] = getRenderNTRange(genomeID);
+  let [l, r] = getGenomeRenderWindow(genomeID);
   for (let i = 0; i < nRulers; i++) {
     let ruler = new fabric.Group();
     for (; w < (i + 1) * genomeMax[genomeID] / nRulers; w += settings['display']['genome-scale-interval']) {
@@ -403,7 +410,7 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
       hasBorders: false,
       lockScaling: true,
       objectCaching: false,
-      selectable: false,
+      selectable: canvas.shades, // if a genome is currently being dragged
       hoverCursor: 'default',
       groupID: genomeID,
       class: 'ruler'
@@ -442,6 +449,7 @@ GenomeDrawer.prototype.addBackgroundShade = function (top, left, width, height, 
     fill: "#b0b0b0",
     stroke: 'black',
     selectable: false,
+    lockMovementY: true,
     hoverCursor: 'default',
     opacity: .25
   });
@@ -527,9 +535,9 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   arrow.set({
     id: 'arrow',
     groupID: genomeID,
-    lockMovementX: true,
+    lockMovementX: false,
     lockMovementY: true,
-    selectable: true,
+    selectable: canvas.shades, // if a genome is currently being dragged
     hasControls: false,
     hasBorders: false,
     lockScaling: true,
@@ -542,7 +550,7 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
     geneID: geneID,
     genomeID: genomeID,
     top: style == 3 ? y - 17 : y - 11, // TODO update this offset to reflect genome layer height (we want to render this arrow in the middle of its allocated height)
-    left: xDisps[genomeID] + (1.5 + gene.start) * scaleFactor,
+    left: (1.5 + gene.start + nt_disps[genomeID]) * scaleFactor,
     fill: color,
     stroke: 'gray',
     strokeWidth: 1.5
@@ -569,8 +577,8 @@ GenomeDrawer.prototype.shadeGeneClusters = function (geneClusters, colors) {
     let genomeB = this.settings['genomeData']['genomes'][i + 1][1].genes.gene_calls;
     let genomeID_A = this.settings['genomeData']['genomes'][i][0];
     let genomeID_B = this.settings['genomeData']['genomes'][i + 1][0];
-    let [l1, r1] = getRenderNTRange(genomeID_A);
-    let [l2, r2] = getRenderNTRange(genomeID_B);
+    let [l1, r1] = getGenomeRenderWindow(genomeID_A);
+    let [l2, r2] = getGenomeRenderWindow(genomeID_B);
 
     for (gc of geneClusters) {
       let g1 = [], g2 = [];
@@ -585,8 +593,8 @@ GenomeDrawer.prototype.shadeGeneClusters = function (geneClusters, colors) {
       if (g1[1] < l1 && g2[1] < l2) continue;
       if (g1[0] > r1 && g2[0] > r2) break;
 
-      g1 = g1.map(val => val * scaleFactor + xDisps[genomeID_A]);
-      g2 = g2.map(val => val * scaleFactor + xDisps[genomeID_B]);
+      g1 = g1.map(val => (val + nt_disps[genomeID_A]) * scaleFactor)
+      g2 = g2.map(val => (val + nt_disps[genomeID_B]) * scaleFactor);
 
       /* TODO: implementation for multiple genes of the same genome in the same gene cluster */
       var path = new fabric.Path("M " + g1[0] + " " + y + " L " + g1[1] + " " + y + " L " + g2[1] + " " + (y + spacing) + " L " + g2[0] + " " + (y + spacing) + " z", {
@@ -661,6 +669,102 @@ GenomeDrawer.prototype.removeAllGeneGlows = function () {
 }
 
 /*
+ *  Shift genomes horizontally to align around the target gene's centers. Pan viewport to first target gene (on first genome).
+ *  Note: if there are multiple genes for a single genome, it will center around the first (lowest geneID) gene in the genome.
+ *
+ *  @param genes: list of target genes in format [{genomeID: 'ABC', geneID: 1}]
+ */
+GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
+  let firstGenome = true;
+  let basePad = 0;
+  let centeredGenes = [];
+  this.settings['genomeData']['genomes'].map(g => g[0]).forEach(genomeID => {
+    let geneIDs = genes.filter(gene => gene.genomeID == genomeID).map(gene => gene.geneID).sort();
+    if(geneIDs.length == 0) return;
+    let targetGeneID = geneIDs[0]; // TODO: for loop through genes and allow user to select a gene ID
+    let genePos = centerToGeneStart ? getGeneStart(genomeID, targetGeneID) : getGeneMid(genomeID, targetGeneID);
+    centeredGenes.push({genomeID: genomeID, geneID: targetGeneID});
+    
+    if(firstGenome) {
+      firstGenome = false;
+      basePad = nt_disps[genomeID] + genePos;
+      // pan to this gene
+      let gene = this.settings['genomeData']['genomes'].find(g=>g[0]==genomeID)[1].genes.gene_calls[targetGeneID];
+      let len = gene.stop - gene.start;
+      let ntsToShow = parseInt($('#brush_end').val()) - parseInt($('#brush_start').val());
+      let extraNts = ntsToShow - len;
+      moveTo(gene.start - extraNts/2, gene.stop + extraNts/2, genomeID);
+      return;
+    }
+
+    nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+genePos));
+  });
+
+  // reenable scale if all genomes are aligned
+  let disps = Object.values(nt_disps);
+  if(disps.every(x => x==disps[0])) {
+    for (genome of this.settings['genomeData']['genomes']) {
+      nt_disps[genome[0]] = 0;
+    }
+    moveTo(parseInt($('#brush_start').val())-disps[0], parseInt($('#brush_end').val())-disps[0]) // shift viewport to same location
+    drawScale();
+    bindViewportToWindow();
+    updateScalePos();
+    updateRenderWindow();
+    slidingActive = false;
+    toggleScaleAttributes();
+    toastr.success('Genomes aligned perfectly! Scale and bookmarks have been reenabled :)');
+  } else {
+    if(!slidingActive) {
+      slidingActive = true;
+      toggleScaleAttributes();
+    }
+  }
+
+  this.draw();
+  this.glowGenes(centeredGenes);
+}
+
+GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, centerToGeneStart=false) {
+  let targetGenes;
+  switch(category) {
+    case 'annotation':
+      targetGenes = getGenesWithAnnotation(type, value);
+      break;
+    case 'metadata':
+      targetGenes = getGenesWithMetadata(type, value);
+      break;
+    default:
+      break;
+  }
+  if(targetGenes.length > 0) {
+    this.centerGenes(targetGenes, centerToGeneStart);
+  }
+}
+
+GenomeDrawer.prototype.centerGenesFromPropUI = function () {
+  let category, type;
+  switch($('#center_genomes_category').val()) {
+    case 'metadata tag':
+      category = 'metadata';
+      type = 'tag';
+      break;
+    case 'user-defined annotation':
+      category = 'metadata';
+      type = 'annotation';
+      break;
+    default:
+      category = 'annotation';
+      type = $('#center_genomes_category').val();
+      break;
+  }
+
+  let value = $('#center_genes_prop_value').val();
+
+  this.centerGenesToProp(category, type, value, $('#center_to_gene_start_box').is(':checked'));
+}
+
+/*
  *  Shift genomes horizontally to align genes around the target gene cluster.
  *
  *  @param gc : target gene cluster ID
@@ -679,10 +783,12 @@ GenomeDrawer.prototype.alignToCluster = function (gc) {
       let geneMids = getGenePosForGenome(genomeData.genomes[i][0], alignToGC);
       if (geneMids == null) continue;
       let geneMid = geneMids[0]; /* TODO: implementation for multiple matching gene IDs */
-      let shift = scaleFactor * (targetGeneMid - geneMid) + (xDisps[firstGenomeID] - xDisps[gid]);
+
+      let nt_shift = targetGeneMid - geneMid + nt_disps[firstGenomeID] - nt_disps[gid];
+      let x_shift = nt_shift * scaleFactor;
       let objs = canvas.getObjects().filter(obj => obj.groupID == gid);
-      for (o of objs) o.left += shift;
-      xDisps[gid] += shift;
+      for (o of objs) o.left += x_shift;
+      nt_disps[gid] += nt_shift;
       canvas.setViewportTransform(canvas.viewportTransform);
 
       // clear and redraw shades
@@ -717,10 +823,15 @@ GenomeDrawer.prototype.showAllADLPts = function () {
 }
 
 GenomeDrawer.prototype.alignRulers = function () {
+  if(!slidingActive) return;
+
+  slidingActive = false;
+  toggleScaleAttributes();
+
   for (genome of this.settings['genomeData']['genomes']) {
-    xDisps[genome[0]] = 0;
+    nt_disps[genome[0]] = 0;
   }
-  percentScale = false;
+  //percentScale = false;
   drawScale();
   bindViewportToWindow();
   updateScalePos();
@@ -911,8 +1022,9 @@ GenomeDrawer.prototype.queryFunctions = async function () {
         let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
         let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
         let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-        if (start < lowestStart || lowestStart == null) lowestStart = start
-        if (end > highestEnd || highestEnd == null) highestEnd = end
+        let [globalStart, globalEnd] = [start, end].map(pos => pos + nt_disps[gene['genomeID']])
+        if (globalStart < lowestStart || lowestStart == null) lowestStart = globalStart
+        if (globalEnd > highestEnd || highestEnd == null) highestEnd = globalEnd
         $('#query-results-table').append(`
           <tr>
             <td>${gene['geneID']}</td>
@@ -924,8 +1036,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
         `)
       })
     } else {
-      lowestStart = 0
-      highestEnd = globalGenomeMax
+      [lowestStart, highestEnd] = calcNTBounds();
     }
   }
   renderAllGenes()
@@ -982,8 +1093,9 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
       let genomeOfInterest = this.settings['genomeData']['genomes'].filter(genome => genome[0] == gene['genomeID'])
       let start = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['start']
       let end = genomeOfInterest[0][1]['genes']['gene_calls'][gene['geneID']]['stop']
-      if (start < lowestStart || lowestStart == null) lowestStart = start
-      if (end > highestEnd || highestEnd == null) highestEnd = end
+      let [globalStart, globalEnd] = [start, end].map(pos => pos + nt_disps[gene['genomeID']])
+      if (globalStart < lowestStart || lowestStart == null) lowestStart = globalStart
+      if (globalEnd > highestEnd || highestEnd == null) highestEnd = globalEnd
       $('#query-results-table').append(`
         <tr>
           <td>${gene['geneID']}</td>
@@ -995,8 +1107,7 @@ GenomeDrawer.prototype.queryMetadata = async function(metadataLabel, type){
       `)
     })
   } else {
-    lowestStart = 0
-    highestEnd = globalGenomeMax
+    [lowestStart, highestEnd] = calcNTBounds()
   }
   await zoomOutAndWait('partial', lowestStart, highestEnd, 350)
   this.glowGenes(glowPayload, true)
