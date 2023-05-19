@@ -681,7 +681,12 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
   this.settings['genomeData']['genomes'].map(g => g[0]).forEach(genomeID => {
     let geneIDs = genes.filter(gene => gene.genomeID == genomeID).map(gene => gene.geneID).sort();
     if(geneIDs.length == 0) return;
-    let targetGeneID = geneIDs[0]; // TODO: for loop through genes and allow user to select a gene ID
+
+    // select targetGeneID
+    let targetGeneID = geneIDs[0];
+    if(geneIDs.length > 1) {
+      toastr.warning(`${geneIDs.length} gene hits were found on genome ${genomeID}, so the first one (gene ID ${targetGeneID}) was selected as the anchor gene.`);
+    }
     let genePos = centerToGeneStart ? getGeneStart(genomeID, targetGeneID) : getGeneMid(genomeID, targetGeneID);
     centeredGenes.push({genomeID: genomeID, geneID: targetGeneID});
     
