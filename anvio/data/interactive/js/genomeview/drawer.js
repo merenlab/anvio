@@ -691,7 +691,7 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
       // pan to this gene
       let gene = this.settings['genomeData']['genomes'].find(g=>g[0]==genomeID)[1].genes.gene_calls[targetGeneID];
       let len = gene.stop - gene.start;
-      moveTo(gene.start - len*3, gene.stop + len*3, genomeID);
+      moveTo(gene.start - len*3 - 10000, gene.stop + len*3 + 10000, genomeID);
       return;
     }
 

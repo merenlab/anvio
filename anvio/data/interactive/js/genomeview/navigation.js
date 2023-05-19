@@ -214,7 +214,12 @@ function moveToAndUpdateScale(start, stop, transition=true) {
 /*
  *  Pan viewport to new [start, stop] location.
  */
-function moveTo(start, stop, genomeID=null) {
+function moveTo(start, stop, genomeID=null) { // make sure start, stop in bounds of genome
+  // clamp start and stop to bounds of genome
+  let [lbound, rbound] = genomeID ? calcXBoundsForGenome(genomeID).map(x => x / scaleFactor) : calcNTBounds();
+  start = clamp(start, lbound, rbound);
+  stop = clamp(stop, lbound, rbound);
+
   // zoom + pan viewport to new location
   let ntsToShow = stop - start;
   scaleFactor = canvas.getWidth() / ntsToShow;
