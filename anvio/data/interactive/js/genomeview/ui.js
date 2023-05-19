@@ -42,6 +42,7 @@ function setCanvasListeners(){
       this.isDragging = true;
       this.selection = false;
       this.lastPosX = evt.clientX;
+      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = false);
     } else {
       if(opt.target && opt.target.id === 'arrow'){
         showDeepDiveToolTip(opt)
