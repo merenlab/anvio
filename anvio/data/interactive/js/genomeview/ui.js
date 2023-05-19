@@ -204,7 +204,7 @@ function setEventListeners(){
         break
       case 18: // Alt
         if(ev.shiftKey) break;
-        canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
+        canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded') && !String(o.id).includes('groupBorder')).forEach(o => o.selectable = true);
         break
     }
   });
