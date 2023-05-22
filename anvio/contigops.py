@@ -524,7 +524,8 @@ class Auxiliary:
 
             read_count += 1
 
-        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG:
+            self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
@@ -553,8 +554,9 @@ class Auxiliary:
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
-        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
-        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG:
+            self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
