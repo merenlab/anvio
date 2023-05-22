@@ -505,6 +505,23 @@ D = {
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
                 ),
+    'num-nts-to-ignore-from-short-read-ends': (
+            ['--num-nts-to-ignore-from-short-read-ends'],
+            {'default': 0,
+             'type': int,
+             'metavar': 'NUM NUCLEOTIDES',
+             'choices': range(0, 51),
+             'help': "By default, anvi'o will report variable nucletodies and their alelle frequencies from any nucleotide ."
+                     "position in a given short read found in the BAM file. Although, there are some applications where "
+                     "the observed variation in short reads depend on the location of the nucleotide positions in the read. "
+                     "For instance, in ancient DNA sequencing, the start and the end of short reads are often suffer from "
+                     "DNA damage, leading to an increased number of single-nucleotide variants when they are aligned to a "
+                     "reference. This parameter enables the user to ask anvi'o to ignore a few number of nucleotides from "
+                     "the beginning and the end of any given short read. For instance, if you provide `5` as a parameter, "
+                     "the mismatches of a given read to the reference at the first and the last 5 nucleotides will not be "
+                     "reported in the varaibility table. The coverage will not be impacted by the use of this parameter -- "
+                     "only what is reported as variants, decreasing the impact of noise in specific applications."}
+                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
