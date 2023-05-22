@@ -91,7 +91,7 @@ if __name__ == '__main__':
     groupK.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupK.add_argument(*anvio.A('skip-INDEL-profiling'), **anvio.K('skip-INDEL-profiling'))
     groupK.add_argument(*anvio.A('profile-SCVs'), **anvio.K('profile-SCVs'))
-    groupK.add_argument(*anvio.A('num-nts-to-ignore-from-short-read-ends'), **anvio.K('num-nts-to-ignore-from-short-read-ends'))
+    groupK.add_argument(*anvio.A('skip-edges'), **anvio.K('skip-edges'))
 
     #############################################################################################################################
     groupX = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Do you want your splits to be clustered? Yes? No?\

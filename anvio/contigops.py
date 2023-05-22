@@ -178,7 +178,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
-                 min_percent_identity=None, num_nts_to_ignore_from_short_read_ends=0):
+                 min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -191,7 +191,7 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
-        self.num_nts_to_ignore_from_short_read_ends = num_nts_to_ignore_from_short_read_ends
+        self.skip_edges = skip_edges
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -488,9 +488,9 @@ class Auxiliary:
             # if the user is asking some nucleotides to be excluded from the calculation of
             # single-nucleotide variants due to DNA damage or other reasons, don't take them
             # into consideration:
-            if self.num_nts_to_ignore_from_short_read_ends > 0:
-                aligned_sequence_as_ord = aligned_sequence_as_ord[self.num_nts_to_ignore_from_short_read_ends:-self.num_nts_to_ignore_from_short_read_ends]
-                reference_positions = reference_positions[self.num_nts_to_ignore_from_short_read_ends:-self.num_nts_to_ignore_from_short_read_ends]
+            if self.skip_edges > 0:
+                aligned_sequence_as_ord = aligned_sequence_as_ord[self.skip_edges:-self.skip_edges]
+                reference_positions = reference_positions[self.skip_edges:-self.skip_edges]
 
             aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start

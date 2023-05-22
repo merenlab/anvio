@@ -325,7 +325,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
         self.report_variability_full = A('report_variability_full')
-        self.num_nts_to_ignore_from_short_read_ends = A('num_nts_to_ignore_from_short_read_ends')
+        self.skip_edges = A('skip_edges')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
@@ -1007,7 +1007,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity,
-                                                      num_nts_to_ignore_from_short_read_ends=self.num_nts_to_ignore_from_short_read_ends)
+                                                      skip_edges=self.skip_edges)
 
                 split.auxiliary.process(bam_file)
 
