@@ -180,11 +180,14 @@ Tree.prototype.NewNode = function() {
 
 
 Tree.prototype.Parse = function(str, edge_length_norm) {
-    str = str.replace(/\(|\)|,|:|;/g, function(match) {
-        return '|' + match + '|';
-      });
-    str = str.replace(/\|\|/g, '|');
-    str = str.replace(/^\||\|$/g, '');
+    str = str.replace(/\(/g, "|(|");
+    str = str.replace(/\)/g, "|)|");
+    str = str.replace(/,/g, "|,|");
+    str = str.replace(/:/g, "|:|");
+    str = str.replace(/;/g, "|;|");
+    str = str.replace(/\|\|/g, "|");
+    str = str.replace(/^\|/, "");
+    str = str.replace(/\|$/, "");
 
     var token = str.split("|");
     var curnode = this.NewNode();
