@@ -260,13 +260,13 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
             if(supportValueData.textRotation == '0'){
                 drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'right', supportValueData.fontSize, 'black', 'baseline', true)            
             }
         } else {
             if(supportValueData.textRotation == '0'){
-                drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, -90, 'left', supportValueData.fontSize, 'black', 'baseline', true)
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), 'left', supportValueData.fontSize, 'black', 'baseline', true)
             }
         }
     }
