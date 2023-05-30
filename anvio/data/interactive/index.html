@@ -286,7 +286,7 @@
                                     <div class="form-group form-margin" id='show_font_size'>
                                         <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
                                         <div class="col-md-8">
-                                            <input type="number" id="support_font_size" style="width: 60px;" value='15' max='100' min='1'>
+                                            <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin" id='show_text_rotation'>
@@ -315,7 +315,7 @@
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
-                                            <span class="bin_labels_details" style="margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
+                                            <span class="bin_labels_details" style="margin-left:5px;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin bin_labels_details">
@@ -323,7 +323,7 @@
                                         <div class="col-md-8">
                                             <input type="checkbox" id="autorotate_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
-                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
+                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
@@ -331,14 +331,14 @@
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                             <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                                            <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
+                                            <span class="grid_details" style="display: none; margin-left:5px;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
                                         <Label class="col-md-4 settings-label" for="show_shade_for_bins" data-help="show-shade">Show shade: </Label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
-                                            <span class="shade_details" style="display: float; margin-left:5px; float-left;">Shade opacity:        
+                                            <span class="shade_details" style="display: float; margin-left:5px;">Shade opacity:        
                                                 <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="shade_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
                                             </span>
                                         </div>
@@ -348,7 +348,7 @@
                                     <div class="col-md-8">
                                         <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color').show(); } else { $('.inverse_details, #inverse_color').hide(); }" style="float: left;" unchecked>
                                         <div id="inverse_color"onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #000" color="#000"></div>
-                                        <span class="inverse_details" style="display: float; margin-left:5px; float-left;">Opacity:        
+                                        <span class="inverse_details" style="display: float; margin-left:5px;">Opacity:        
                                             <input type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
                                         </span> 
                                     </div>
