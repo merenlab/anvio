@@ -1424,7 +1424,9 @@ class BottleApplication(Bottle):
 
     def reroot_tree(self):
         newick = request.forms.get('newick')
-        tree = Tree(newick, format=1)
+        #Ete3 format=0 is flexible with support values but we have to remove Root from the Tree.
+        newick_tree = re.sub('[R;]',";",newick)
+        tree = Tree(newick_tree, format=0)
 
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
         right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
@@ -1438,7 +1440,7 @@ class BottleApplication(Bottle):
         for node in tree.traverse('preorder'):
             node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
 
-        new_newick = tree.write(format=1)
+        new_newick = tree.write(format=0)
 
         # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
         new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
