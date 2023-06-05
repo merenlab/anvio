@@ -71,7 +71,19 @@ def main(args):
 
             if L('# start gene'):
                 in_gene = True
-                gene_call = input_file.readline().strip().split('\t')
+
+                l = input_file.readline()
+                if '\t' not in l:
+                    progress.reset()
+                    raise ConfigError(f"The following gene entry does not seem to have any TAB characters for anvi'o "
+                                      f"to parse fields accurately: \"{l}\"")
+
+                gene_call = l.strip().split('\t')
+
+                if len(gene_call) != 9:
+                    progress.reset()
+                    raise ConfigError(f"The entry does not seem to have as many fields as anvi'o expects: {gene_call} :/")
+
                 gene_calls[gene_num] = {'contig': gene_call[0],
                                         'start': int(gene_call[3]) - 1,
                                         'stop': int(gene_call[4]),
