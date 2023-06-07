@@ -110,7 +110,14 @@ class CAZymeSetup(object):
         """Download CAZyme database and compress with hmmpress"""
         self.run.info("Database URL", self.database_url)
 
-        utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress, run=self.run)
+        try:
+            utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress, run=self.run)
+        except Exception as e:
+            raise ConfigError(f"Anvi'o failed to setup your CAZymes at the stage of downloading the data :/ It is very likely that "
+                              f"the version '{self.page_index}' does not exist on the server, or the locations of the files have "
+                              f"changed. If you are certain that your internet connection works well otherwise, please let "
+                              f"the anvi'o developers know about this issue, and they will find a solution. Here is the error message "
+                              f"that came from the depths of the code for your reference: '{e.clear_text()}'.")
 
         message = f"CAZyme_HMMs.txt was downloaded from this URL: {self.database_url}"
         with open(os.path.join(self.cazyme_data_dir, "version.txt"), 'w') as f:
