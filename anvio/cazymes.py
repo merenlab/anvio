@@ -56,7 +56,7 @@ class CAZymeSetup(object):
         self.cazyme_data_dir = args.cazyme_data_dir
 
         filesnpaths.is_program_exists('hmmpress')
-        
+
         if self.cazyme_data_dir and args.reset:
             raise ConfigError("You are attempting to run CAZyme setup on a non-default data directory (%s) using the --reset flag. "
                               "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
@@ -84,19 +84,19 @@ class CAZymeSetup(object):
         """Create path to CAZyme ftp
 
         Added self values
-        ================= 
+        =================
         - self.page_index : string
             version of CAZyme database
 
         """
         if self.args.cazyme_version:
-            self.page_index = self.args.cazyme_version 
+            self.page_index = self.args.cazyme_version
             self.run.info('Attempting to use version', self.args.cazyme_version)
         else:
             self.page_index = 'V11'
             self.run.info_single(f"No CAZyme version specified. Using {self.page_index}.")
 
-        self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.page_index}", f"dbCAN-HMMdb-{self.page_index}.txt") 
+        self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.page_index}", f"dbCAN-HMMdb-{self.page_index}.txt")
 
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
@@ -185,7 +185,7 @@ class CAZyme(object):
         # Read version_txt to get CAZyme database version
         with open(self.version_txt, 'r') as f:
             output = f.read()
-        
+
         URL = output.split(' ')[-1]
         self.run.warning(f"Running CAZyme version: {os.path.basename(URL)}", lc='green', header="VERSION")
 
@@ -205,7 +205,7 @@ class CAZyme(object):
 
         # Glob and find what files we have then check if we have them all
         downloaded_files = glob.glob(os.path.join(self.cazyme_data_dir, '*'))
-        
+
         # here we check if the HMM profile is compressed so we can decompress it for next time
         hmmpress_file_extensions = ["h3f", "h3i", "h3m", "h3p", "txt"]
         extant_extensions = [os.path.basename(file).split(".")[-1] for file in downloaded_files]
