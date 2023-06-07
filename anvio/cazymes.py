@@ -86,45 +86,51 @@ class CAZymeSetup(object):
 
         Added self values
         =================
-        - self.page_index : string
+        - self.db_version : string
             version of CAZyme database
 
         """
         if self.args.cazyme_version:
-            self.page_index = self.args.cazyme_version
-            self.run.info('Attempting to use version', self.args.cazyme_version)
+            self.db_version = self.args.cazyme_version.upper()
         else:
-            self.page_index = 'V11'
-            self.run.info_single(f"No CAZyme version specified. Using {self.page_index}.")
+            self.db_version = 'V11'
 
-        self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.page_index}", f"dbCAN-HMMdb-{self.page_index}.txt")
+        self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
 
 
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
         if os.path.exists(os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")):
-            raise ConfigError(f"It seems you already have CAZyme database installed in {self.cazyme_data_dir}, please use --reset flag if you want to re-download it.")
+            raise ConfigError(f"It seems you already have CAZyme database installed in the following directory: {self.cazyme_data_dir}"
+                              f"You can use the flag `--reset` to instruct anvi'o to set everything up from scratch at that location, "
+                              f"or you can use the parameter `--cazyme-data-dir` to setup the CAZyme databases in a different directory.")
 
 
     def download(self, hmmpress_files=True):
         """Download CAZyme database and compress with hmmpress"""
-        self.run.info("Database URL", self.database_url)
+
+        self.run.info("CAZyme database version", self.db_version)
+        self.run.info("Remote database location", self.database_url)
+        self.run.info("Local database path", self.cazyme_data_dir)
 
         try:
-            utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress, run=self.run)
+            utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress)
         except Exception as e:
             raise ConfigError(f"Anvi'o failed to setup your CAZymes at the stage of downloading the data :/ It is very likely that "
-                              f"the version '{self.page_index}' does not exist on the server, or the locations of the files have "
+                              f"the version '{self.db_version}' does not exist on the server, or the locations of the files have "
                               f"changed. If you are certain that your internet connection works well otherwise, please let "
                               f"the anvi'o developers know about this issue, and they will find a solution. Here is the error message "
                               f"that came from the depths of the code for your reference: '{e.clear_text()}'.")
 
-        message = f"CAZyme_HMMs.txt was downloaded from this URL: {self.database_url}"
         with open(os.path.join(self.cazyme_data_dir, "version.txt"), 'w') as f:
-            f.write(message)
+            f.write(f"{self.db_version} (via '{self.database_url}')\n")
 
         if hmmpress_files:
             self.hmmpress_files()
+
+        self.run.info_single("The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
+                             "can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
+                             nl_before=1, nl_after=1, mc='green')
 
 
     def hmmpress_files(self):
@@ -165,6 +171,7 @@ class CAZyme(object):
     progress : terminal.Progress, optional
         An object for printing progress bars to the console.
     """
+
     def __init__(self, args, run=run, progress=progress):
         self.run = run
         self.progress = progress
