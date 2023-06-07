@@ -70,7 +70,7 @@ class CAZymeSetup(object):
 
         filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.cazyme_data_dir)))
 
-        self.resolve_database_url()
+        self.resolve_db_url()
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
@@ -81,7 +81,7 @@ class CAZymeSetup(object):
             filesnpaths.gen_output_directory(self.cazyme_data_dir)
 
 
-    def resolve_database_url(self):
+    def resolve_db_url(self):
         """Create path to CAZyme ftp
 
         Added self values
@@ -95,7 +95,7 @@ class CAZymeSetup(object):
         else:
             self.db_version = 'V11'
 
-        self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
+        self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
 
 
     def is_database_exists(self):
@@ -110,11 +110,11 @@ class CAZymeSetup(object):
         """Download CAZyme database and compress with hmmpress"""
 
         self.run.info("CAZyme database version", self.db_version)
-        self.run.info("Remote database location", self.database_url)
+        self.run.info("Remote database location", self.db_url)
         self.run.info("Local database path", self.cazyme_data_dir)
 
         try:
-            utils.download_file(self.database_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress)
+            utils.download_file(self.db_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress)
         except Exception as e:
             raise ConfigError(f"Anvi'o failed to setup your CAZymes at the stage of downloading the data :/ It is very likely that "
                               f"the version '{self.db_version}' does not exist on the server, or the locations of the files have "
@@ -123,13 +123,16 @@ class CAZymeSetup(object):
                               f"that came from the depths of the code for your reference: '{e.clear_text()}'.")
 
         with open(os.path.join(self.cazyme_data_dir, "version.txt"), 'w') as f:
-            f.write(f"{self.db_version} (via '{self.database_url}')\n")
+            f.write(f"{self.db_version}\n")
+
+        with open(os.path.join(self.cazyme_data_dir, "db_url.txt"), 'w') as f:
+            f.write(f"{self.db_url}\n")
 
         if hmmpress_files:
             self.hmmpress_files()
 
-        self.run.info_single("The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
-                             "can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
+        self.run.info_single(f"The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
+                             f"can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
                              nl_before=1, nl_after=1, mc='green')
 
 
@@ -199,28 +202,29 @@ class CAZyme(object):
 
         self.hmm_file =  os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")
         self.version_txt = os.path.join(self.cazyme_data_dir, "version.txt")
-
-        # Read version_txt to get CAZyme database version
-        with open(self.version_txt, 'r') as f:
-            output = f.read()
-
-        URL = output.split(' ')[-1]
-        self.run.warning(f"Running CAZyme version: {os.path.basename(URL)}", lc='green', header="VERSION")
+        self.db_url_txt = os.path.join(self.cazyme_data_dir, "db_url.txt")
 
         self.is_database_exists()
 
+        # Learn about the local database
+        self.db_version = open(self.version_txt).readline().strip()
+        self.db_url = open(self.db_url_txt).readline().strip()
+
         # reminder to be a good citizen (Good idea Iva!)
-        self.run.warning("Anvi'o will annotate your contigs-db genes with the dbCAN CAZyme database. "
+        self.run.warning("Anvi'o will annotate genes in your contigs-db with the dbCAN CAZyme database. "
                          "Please do not forget to cite this database when you publish your science :) "
-                         "(http://www.cazy.org/Citing-CAZy).", lc='green', header="CITATION")
+                         "Here is the best way to cite this resource: http://www.cazy.org/Citing-CAZy",
+                         lc='green', header="CITATION")
 
 
     def is_database_exists(self):
         """Checks if decompressed database files exist"""
 
         if not glob.glob(self.cazyme_data_dir):
-            raise ConfigError(f"It seems you do not have the CAZyme database installed in {self.cazyme_data_dir}, "
-                              f"please run 'anvi-setup-cazymes' download it.")
+            raise ConfigError("It seems the CAZyme database is not setup on this system :/ Please run the program "
+                              "`anvi-setup-cazymes` to set it up. If you set up CAZyme database at a location that "
+                              "is different than the default location using the `--cazyme-data-dir` flag before, "
+                              "please makes sure to provide the same path to `anvi-run-cazymes`.")
 
         # Glob and find what files we have then check if we have them all
         downloaded_files = glob.glob(os.path.join(self.cazyme_data_dir, '*'))
@@ -229,23 +233,27 @@ class CAZyme(object):
         hmmpress_file_extensions = ["h3f", "h3i", "h3m", "h3p", "txt"]
         extant_extensions = [os.path.basename(file).split(".")[-1] for file in downloaded_files]
 
-        if hmmpress_file_extensions.sort() != extant_extensions.sort():
-            raise ConfigError("Anvi'o detected that the CAZyme database was not properly compressed with hmmpress. "
-                              "Please 'anvi-setup-cazymes --reset'")
+        if hmmpress_file_extensions.sort() != extant_extensions.sort() or not os.path.exists(self.version_txt) or not os.path.exists(self.db_url_txt):
+            raise ConfigError("Something is not right with the files associated with the CAZyme database. Please run "
+                              "'anvi-setup-cazymes --reset' to repeat the setup.")
 
 
     def process(self):
         """Search CAZyme HMMs over contigs-db, parse, and filter results"""
 
+        self.run.info("CAZyme database version", f"{self.db_version} (originally from {self.db_url})" )
+
         # initialize contigs database
         class Args: pass
         args = Args()
         args.contigs_db = self.contigs_db_path
-        contigs_db = dbops.ContigsSuperclass(args)
+        run_quiet = terminal.Run(verbose=False)
+
+        contigs_db = dbops.ContigsSuperclass(args, r=run_quiet)
         tmp_directory_path = filesnpaths.get_temp_directory_path()
 
         # get an instance of gene functions table
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path)
 
         # export AA sequences for genes
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
