@@ -80,6 +80,7 @@ class CAZymeSetup(object):
         else:
             filesnpaths.gen_output_directory(self.cazyme_data_dir)
 
+
     def resolve_database_url(self):
         """Create path to CAZyme ftp
 
@@ -98,10 +99,12 @@ class CAZymeSetup(object):
 
         self.database_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.page_index}", f"dbCAN-HMMdb-{self.page_index}.txt")
 
+
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
         if os.path.exists(os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")):
             raise ConfigError(f"It seems you already have CAZyme database installed in {self.cazyme_data_dir}, please use --reset flag if you want to re-download it.")
+
 
     def download(self, hmmpress_files=True):
         """Download CAZyme database and compress with hmmpress"""
@@ -115,6 +118,7 @@ class CAZymeSetup(object):
 
         if hmmpress_files:
             self.hmmpress_files()
+
 
     def hmmpress_files(self):
         """Runs hmmpress on CAZyme HMM profiles."""
@@ -130,6 +134,7 @@ class CAZymeSetup(object):
         else:
             # getting rid of the log file because hmmpress was successful
             os.remove(log_file_path)
+
 
 class CAZyme(object):
     """Search CAZyme database over contigs-db
@@ -154,7 +159,6 @@ class CAZyme(object):
         An object for printing progress bars to the console.
     """
     def __init__(self, args, run=run, progress=progress):
-
         self.run = run
         self.progress = progress
 
@@ -196,6 +200,7 @@ class CAZyme(object):
                          "Please do not forget to cite this database when you publish your science :) "
                          "(http://www.cazy.org/Citing-CAZy).", lc='green', header="CITATION")
 
+
     def is_database_exists(self):
         """Checks if decompressed database files exist"""
 
@@ -213,6 +218,7 @@ class CAZyme(object):
         if hmmpress_file_extensions.sort() != extant_extensions.sort():
             raise ConfigError("Anvi'o detected that the CAZyme database was not properly compressed with hmmpress. "
                               "Please 'anvi-setup-cazymes --reset'")
+
 
     def process(self):
         """Search CAZyme HMMs over contigs-db, parse, and filter results"""
