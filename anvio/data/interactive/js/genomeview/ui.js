@@ -38,6 +38,8 @@ function setCanvasListeners(){
     var evt = opt.e;
     if(evt.altKey) {
       if (opt.target && opt.target.groupID) this.prev = opt.target.left;
+      // allow horizontal movement
+      canvas.getObjects().filter(o => o.class == 'ruler' || o.id == 'arrow').forEach(o => o.lockMovementX = false);
     } else if (evt.shiftKey) {
       this.isDragging = true;
       this.selection = false;
@@ -204,13 +206,13 @@ function setEventListeners(){
         break
       case 18: // Alt
         if(ev.shiftKey) break;
-        canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded') && !String(o.id).includes('groupBorder')).forEach(o => o.selectable = true);
         break
     }
   });
   document.body.addEventListener("keyup", function (ev) {
-    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // Alt = 18
-      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = false);
+    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // 18
+      // restrict horizontal movement
+      canvas.getObjects().filter(o => o.class == 'ruler' || o.id == 'arrow').forEach(o => o.lockMovementX = true);
     }
   }, {passive: true});
 

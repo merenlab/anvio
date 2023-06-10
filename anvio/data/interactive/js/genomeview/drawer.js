@@ -406,11 +406,12 @@ GenomeDrawer.prototype.buildGroupRulerLayer = function (genomeID, layerPos, laye
       left: startingLeft,
       top: startingTop + (layerHeight / 2),
       lockMovementY: true,
+      lockMovementX: true,
       hasControls: false,
       hasBorders: false,
       lockScaling: true,
       objectCaching: false,
-      selectable: canvas.shades, // if a genome is currently being dragged
+      selectable: true,
       hoverCursor: 'default',
       groupID: genomeID,
       class: 'ruler'
@@ -535,9 +536,9 @@ GenomeDrawer.prototype.geneArrow = function (gene, geneID, y, genomeID, style) {
   arrow.set({
     id: 'arrow',
     groupID: genomeID,
-    lockMovementX: false,
+    lockMovementX: true,
     lockMovementY: true,
-    selectable: canvas.shades, // if a genome is currently being dragged
+    selectable: true,
     hasControls: false,
     hasBorders: false,
     lockScaling: true,
