@@ -957,9 +957,17 @@ GenomeDrawer.prototype.queryFunctions = async function () {
     return;
   }
 
+  let matchByAccession = false;
   this.settings['genomeData']['genomes'].map(genome => {
+    // if we start with finding accession, stay with accession
     for (const [key, value] of Object.entries(genome[1]['genes']['functions'])) {
-      if (value[category]?.[0].toLowerCase().includes(query)) {
+      if (value[category]?.[0].toLowerCase().includes(query)) { // accession
+        if(!matchByAccession) {
+          matchByAccession = true;
+          glowPayload = [];
+          foundInGenomes = {};
+          distinctQueryMatches = {};
+        }
         let glowObject = {
           genomeID: genome[0],
           geneID: key,
@@ -973,7 +981,7 @@ GenomeDrawer.prototype.queryFunctions = async function () {
           distinctQueryMatches[value[category][0]] = true
         }
       }  // check for accession and annotation values separately, as we want to capture the exact match for sorting results
-      else if (value[category]?.[1].toLowerCase().includes(query)) {
+      else if (!matchByAccession && value[category]?.[1].toLowerCase().includes(query)) { // annotation
         let glowObject = {
           genomeID: genome[0],
           geneID: key,

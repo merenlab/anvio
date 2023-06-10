@@ -94,14 +94,25 @@ function getGeneStart(genomeID, geneID) {
  */
 function getGenesWithAnnotation(annotation_type, annotation_value) {
   let targetGenes = [];
+  let getByAnnotation = false;
   settings['genomeData']['genomes'].forEach(genome => {
     let geneFunctions = genome[1]['genes']['functions'];
     if(geneFunctions) {
       for(geneID in geneFunctions) {
+
         let annotation_info = geneFunctions[geneID][annotation_type];
-        if(annotation_info && annotation_info[0].toLowerCase().includes(annotation_value.toLowerCase()) || annotation_info[1].toLowerCase().includes(annotation_value.toLowerCase())) {
-          targetGenes.push({genomeID: genome[0], geneID: geneID});
+        if(annotation_info) {
+          if(annotation_info[0].toLowerCase().includes(annotation_value.toLowerCase())) { // accession 
+            if(!getByAnnotation) {
+              getByAnnotation = true;
+              targetGenes = [];
+            }
+            targetGenes.push({genomeID: genome[0], geneID: geneID});
+          } else if(!getByAnnotation && annotation_info[1].toLowerCase().includes(annotation_value.toLowerCase())) { // annotation
+            targetGenes.push({genomeID: genome[0], geneID: geneID});
+          }
         }
+
       }
     }
   });
@@ -115,13 +126,20 @@ function getGenesWithMetadata(metadata_type, metadata_value) {
   let targetGenes = [];
 
   if(!settings.display.metadata) return [];
+  let getByAnnotation = false;
   settings['display']['metadata'].filter(m => m.type == metadata_type).forEach(metadata => {
     if(metadata_type == 'tag') {
       if(metadata.label.toLowerCase() == metadata_value.toLowerCase()) {
         targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
       }
     } else if(metadata_type == 'annotation') {
-      if(metadata.accession == metadata_value || metadata.annotation == metadata_value) {
+      if(metadata.accession.toLowerCase().includes(annotation_value.toLowerCase())) { // accession
+        if(!getByAnnotation) {
+          getByAnnotation = true;
+          targetGenes = [];
+        }
+        targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
+      } else if(!getByAnnotation && metadata.annotation.toLowerCase().includes(annotation_value.toLowerCase())) { // annotation
         targetGenes.push({genomeID: metadata.genome, geneID: metadata.gene});
       }
     }
