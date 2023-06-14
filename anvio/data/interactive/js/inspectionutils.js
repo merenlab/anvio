@@ -63,6 +63,29 @@ $(document).ready(function() {
 
 
 function get_gene_functions_table_html(gene){
+    const blast_button = `<div class="container"> \
+    <link rel="stylesheet" type="text/css" href="../css/inspection.css" \
+    <div class="dropdown"> \
+    <a id="dLabel" role="button" data-toggle="dropdown" class="btn btn-primary" data-target="#" href="#"> \
+              SEARCH <span class="caret"></span> \
+          </a> \
+    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"> \
+      <li><a href="#">Some action</a></li> \
+      <li><a href="#">Some other action</a></li> \
+      <li class="divider"></li> \
+      <li class="dropdown-submenu"> \
+        <a tabindex="-1" href="#">Hover me for more options</a> \
+        <ul class="dropdown-menu"> \
+          <li><a tabindex="-1" href="#">Second level</a></li> \
+          <li><a href="#">Second level</a></li> \
+          <li><a href="#">Second level</a></li> \
+        </ul> \
+      </li> \
+    </ul> \
+  </div> \
+  </div> \
+</div>`;
+
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
@@ -86,10 +109,11 @@ function get_gene_functions_table_html(gene){
     else
         functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
+    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
+    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
+    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    functions_table_html += blast_button;
 
     if(!gene.functions)
         return functions_table_html;
