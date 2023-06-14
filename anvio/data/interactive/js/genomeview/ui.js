@@ -1591,11 +1591,12 @@ function generateColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_
       })
     );
 
-    // Save pre-sort order
+    // Save pre-sort order based on counts
     let order = {};
-    for(let i = 0; i < Object.keys(counts).length; i++) {
-      order[Object.keys(counts)[i]] = i;
-    }
+    let cags_sorted_by_count = Object.entries(counts).sort((first, second) => {return second[1] - first[1]}).map(e => e[0]);
+    Object.keys(counts).forEach(category => {
+      order[category] = cags_sorted_by_count.indexOf(category);
+    });
 
     // Sort categories
     counts = Object.fromEntries(

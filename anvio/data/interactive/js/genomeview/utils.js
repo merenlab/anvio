@@ -252,6 +252,10 @@ function getFunctionalAnnotations() {
 }
 
 /*
+ *  @param fn_type: the functional annotation type we use to retrieve function values
+ *  @param cags: array of categories (strings) in a given order that we will sequentially assign colors to
+ *  @param order: dict mapping each category to an index of the default color array. If null, 
+ *                 colors will be assigned sequentially in the order specified by the cags array.
  *  @returns arbitrary category:color dict given a list of categories
  */
 function getCustomColorDict(fn_type, cags=null, order=null) {
