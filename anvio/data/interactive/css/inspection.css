@@ -1,4 +1,6 @@
-
+.dp-button {
+    padding-left: 5px;
+}
 
 .dropdown-submenu {
     position: relative;
@@ -46,4 +48,8 @@
     -webkit-border-radius: 6px 0 6px 6px;
     -moz-border-radius: 6px 0 6px 6px;
     border-radius: 6px 0 6px 6px;
+  }
+
+  .multi-level{
+    margin-left: 5px;
   }
