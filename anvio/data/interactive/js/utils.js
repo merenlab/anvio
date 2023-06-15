@@ -98,7 +98,7 @@ function getCleanCagCode(code) {
 
 //-----------------------------------------------------------------------------
 
-function get_sequence_and_blast(item_name, program, database, target, type) {
+function get_sequence_and_blast(item_name, program, database, target) {
     $.ajax({
         type: 'GET',
         cache: false,
@@ -113,13 +113,13 @@ function get_sequence_and_blast(item_name, program, database, target, type) {
                 toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             } else {
               var sequence = '>' + data['header'] + '\n' + data['sequence'];
-              fire_up_ncbi_blast(sequence, program, database, target, type)
+              fire_up_ncbi_blast(sequence, program, database, target)
             }
         }
     });
 }
 
-function fire_up_ncbi_blast(sequence, program, database, target, type)
+function fire_up_ncbi_blast(sequence, program, database, target)
 {
     if (["gene", "contig"].indexOf(target) < 0){
         console.log("fire_up_ncbi_blast: Unrecognized target. Target must be either 'gene', or 'contig'.");
@@ -127,10 +127,9 @@ function fire_up_ncbi_blast(sequence, program, database, target, type)
     }
 
     var post_variables = {
-        'PROGRAM': type,
-        'DATABASE': 'nr',
+        'PROGRAM': '',
+        'DATABASE': '',
         'QUERY': '',
-        'BLAST_PROGRAMS': 'megaBlast',
         'PAGE_TYPE': 'BlastSearch',
         'SHOW_DEFAULTS': 'on',
         'SHOW_OVERVIEW': 'on',
@@ -169,6 +168,9 @@ function fire_up_ncbi_blast(sequence, program, database, target, type)
     for (name in post_variables)
     {
         $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+    }
+    if(program=='blastn'){
+        $(form).append('<input type="hidden" name="BLAST_PROGRAMS" value="megaBlast" />');
     }
 
     blast_window.document.body.appendChild(form);
