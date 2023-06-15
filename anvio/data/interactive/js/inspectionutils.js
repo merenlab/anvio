@@ -63,28 +63,50 @@ $(document).ready(function() {
 
 
 function get_gene_functions_table_html(gene){
-    const blast_button = `<div class="container"> \
-    <link rel="stylesheet" type="text/css" href="../css/inspection.css" \
-    <div class="dropdown"> \
-    <a id="dLabel" role="button" data-toggle="dropdown" class="btn btn-primary" data-target="#" href="#"> \
-              SEARCH <span class="caret"></span> \
-          </a> \
-    <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"> \
-      <li><a href="#">Some action</a></li> \
-      <li><a href="#">Some other action</a></li> \
-      <li class="divider"></li> \
-      <li class="dropdown-submenu"> \
-        <a tabindex="-1" href="#">Hover me for more options</a> \
-        <ul class="dropdown-menu"> \
-          <li><a tabindex="-1" href="#">Second level</a></li> \
-          <li><a href="#">Second level</a></li> \
-          <li><a href="#">Second level</a></li> \
+  //Blast search button created here
+  const blast_button = `<div class="col-xs-1 dp-button"> \
+      <link rel="stylesheet" type="text/css" href="css/inspection.css" \
+      <div class="dropdown"> \
+        <a id="dLabel" role="button" data-toggle="dropdown" class="btn btn-default btn-sm" data-target="#" href="#"> \
+                  SEARCH <span class="caret"></span> \
+              </a> \
+        <ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu"> \
+          <li class="dropdown-submenu"> \
+            <a tabindex="-1" href="#">Nucleotide -> Nucleotide</a> \
+            <ul class="dropdown-menu"> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastn', 'nr', 'gene');">(nr/nt)</a></li> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastn', 'refseq_genomic', 'gene');">(refseq_select)</a></li> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastn', 'refseq_rna', 'gene');">(refseq_rna)</a></li> \
+            </ul> \
+          </li> \
+          <li class="dropdown-submenu"> \
+          <a tabindex="-1" href="#">Trans Nucleotide -> Protein</a> \
+            <ul class="dropdown-menu"> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastx', 'nr', 'gene');">(nr)</a></li> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastx', 'refseq_select', 'gene');">(refseq_select)</a></li> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastx', 'refseq_rna', 'gene');">(refseq_rna)</a></li> \
+            </ul> \
+          </li> \
+          <li class="dropdown-submenu"> \
+          <a tabindex="-1" href="#"> Protein -> Protein </a> \
+            <ul class="dropdown-menu"> \
+              <li><a href="#" onClick="get_sequence_and_blast(amino_acid, 'blastp', 'nr', 'gene');">(nr)</a></li> \
+              <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'blastp', 'refseq_select', 'gene');">(refseq_select)</a></li> \
+              <li><a href="#" onClick="fire_up_ncbi_blast($('#aa_sequence_fasta').val(), 'blastp', 'refseq_rna', 'gene');">(refseq_rna)</a></li> \
+            </ul> \
+          </li> \
+        <li class="dropdown-submenu"> \
+        <a tabindex="-1" href="#"> Protein -> Trans Nucleotide </a> \
+          <ul class="dropdown-menu"> \
+            <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'tblastn', 'nr', 'gene');">(nr/nt)</a></li> \
+            <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'tblastn', 'refseq_select', 'gene');">(refseq_select)</a></li> \
+            <li><a href="#" onClick="get_sequence_and_blast(gene.gene_callers_id , 'tblastn', 'refseq_rna', 'gene');">(refseq_rna)</a></li> \
+          </ul> \
+        </li> \
         </ul> \
-      </li> \
-    </ul> \
-  </div> \
-  </div> \
-</div>`;
+      </div> \
+    </div> \
+    </div>`;
 
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
@@ -102,17 +124,18 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
+    functions_table_html += '<div class="row">'
+    functions_table_html += '<div class="col-xs-1">'
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '</div>'
+    functions_table_html += '<div class="col-xs-1">'
 
     if(gene.call_type == 1)
         functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
     else
         functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
+    functions_table_html += '</div>'
 
-    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    //functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
     functions_table_html += blast_button;
 
     if(!gene.functions)
