@@ -210,9 +210,12 @@ function setEventListeners(){
     }
   });
   document.body.addEventListener("keyup", function (ev) {
-    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // 18
+    if (ev.which == 18 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // 18 = alt key
       // restrict horizontal movement
       canvas.getObjects().filter(o => o.class == 'ruler' || o.id == 'arrow').forEach(o => o.lockMovementX = true);
+    } else if(ev.which == 16 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // 16 = shift key
+      // restore horizontal movement
+      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
     }
   }, {passive: true});
 
