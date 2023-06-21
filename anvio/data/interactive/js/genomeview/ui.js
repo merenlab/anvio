@@ -215,7 +215,7 @@ function setEventListeners(){
       canvas.getObjects().filter(o => o.class == 'ruler' || o.id == 'arrow').forEach(o => o.lockMovementX = true);
     } else if(ev.which == 16 && ev.target.nodeName !== 'TEXTAREA' && ev.target.nodeName !== 'INPUT') { // 16 = shift key
       // restore horizontal movement
-      canvas.getObjects().filter(o => o.id != 'genomeLine' && !String(o.id).includes('graph-shaded')).forEach(o => o.selectable = true);
+      canvas.getObjects().filter(o => o.id == 'arrow' || o.class == 'ruler').forEach(o => o.selectable = true);
     }
   }, {passive: true});
 
