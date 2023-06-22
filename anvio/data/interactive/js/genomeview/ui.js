@@ -1804,7 +1804,7 @@ function buildGeneLabelsSelect(){
 }
 
 function buildCenterGenomesSelect(){
-  let options = ['metadata tag', 'user-defined annotation'].concat(getFunctionalAnnotations());
+  let options = ['Metadata tag', 'User-defined annotation'].concat(getFunctionalAnnotations());
   options.forEach(opt => {
     $('#center_genomes_category').append(new Option(opt, opt));
   });

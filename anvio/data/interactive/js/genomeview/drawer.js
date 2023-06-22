@@ -757,11 +757,11 @@ GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, cent
 GenomeDrawer.prototype.centerGenesFromPropUI = function () {
   let category, type;
   switch($('#center_genomes_category').val()) {
-    case 'metadata tag':
+    case 'Metadata tag':
       category = 'metadata';
       type = 'tag';
       break;
-    case 'user-defined annotation':
+    case 'User-defined annotation':
       category = 'metadata';
       type = 'annotation';
       break;
