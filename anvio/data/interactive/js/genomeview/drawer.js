@@ -676,36 +676,40 @@ GenomeDrawer.prototype.removeAllGeneGlows = function () {
  *
  *  @param genes: list of target genes in format [{genomeID: 'ABC', geneID: 1}]
  */
-GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
+GenomeDrawer.prototype.centerGenes = async function (genes, centerToGeneStart=false) {
   let firstGenome = true;
   let basePad = 0;
   let centeredGenes = [];
-  this.settings['genomeData']['genomes'].map(g => g[0]).forEach(genomeID => {
-    let geneIDs = genes.filter(gene => gene.genomeID == genomeID).map(gene => gene.geneID).sort();
-    if(geneIDs.length == 0) return;
 
-    // select targetGeneID
-    let targetGeneID = geneIDs[0];
-    if(geneIDs.length > 1) {
-      toastr.warning(`${geneIDs.length} gene hits were found on genome ${genomeID}, so the first one (gene ID ${targetGeneID}) was selected as the anchor gene.`);
-    }
-    let genePos = centerToGeneStart ? getGeneStart(genomeID, targetGeneID) : getGeneMid(genomeID, targetGeneID);
-    centeredGenes.push({genomeID: genomeID, geneID: targetGeneID});
-    
-    if(firstGenome) {
-      firstGenome = false;
-      basePad = nt_disps[genomeID] + genePos;
-      // pan to this gene
-      let gene = this.settings['genomeData']['genomes'].find(g=>g[0]==genomeID)[1].genes.gene_calls[targetGeneID];
-      let len = gene.stop - gene.start;
-      let ntsToShow = parseInt($('#brush_end').val()) - parseInt($('#brush_start').val());
-      let extraNts = ntsToShow - len;
-      moveTo(gene.start - extraNts/2, gene.stop + extraNts/2, genomeID);
-      return;
-    }
+  await (async function() {
+    for await (genomeID of this.settings['genomeData']['genomes'].map(g=>g[0])) {
+      let geneIDs = genes.filter(gene => gene.genomeID == genomeID).map(gene => gene.geneID).sort((a,b)=>{return a-b;});
+      if(geneIDs.length == 0) continue;
 
-    nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+genePos));
-  });
+      // select targetGeneID - loop through genes and allow user to select a gene ID
+      let targetGeneID = geneIDs[0];
+      if(geneIDs.length > 1) {
+        targetGeneID = await showGeneCenteringMenu(genomeID, geneIDs);
+      }
+
+      let genePos = centerToGeneStart ? getGeneStart(genomeID, targetGeneID) : getGeneMid(genomeID, targetGeneID);
+      centeredGenes.push({genomeID: genomeID, geneID: targetGeneID});
+      
+      if(firstGenome) {
+        firstGenome = false;
+        basePad = nt_disps[genomeID] + genePos;
+        // pan to this gene
+        let gene = this.settings['genomeData']['genomes'].find(g=>g[0]==genomeID)[1].genes.gene_calls[targetGeneID];
+        let len = gene.stop - gene.start;
+        let ntsToShow = parseInt($('#brush_end').val()) - parseInt($('#brush_start').val());
+        let extraNts = ntsToShow - len;
+        moveTo(gene.start - extraNts/2, gene.stop + extraNts/2, genomeID);
+        continue;
+      }
+
+      nt_disps[genomeID] += (basePad - (nt_disps[genomeID]+genePos));
+    }
+  })();
 
   // reenable scale if all genomes are aligned
   let disps = Object.values(nt_disps);
@@ -728,6 +732,7 @@ GenomeDrawer.prototype.centerGenes = function (genes, centerToGeneStart=false) {
     }
   }
 
+  updateRenderWindow();
   this.draw();
   this.glowGenes(centeredGenes);
 }

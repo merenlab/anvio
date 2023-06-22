@@ -1295,6 +1295,45 @@ function showLassoMenu(selected_genes, x, y) {
     }
 }
 
+async function showGeneCenteringMenu(genomeID, targetGeneIDs) {
+  let selectOptions = '';
+  let geneOptions = '';
+  targetGeneIDs.forEach(geneID => {
+    selectOptions += `<option value=${geneID}>${geneID}</option>`;
+    let gene_call = this.settings['genomeData']['genomes'].find(g => g[0]==genomeID)[1].genes.gene_calls[geneID];
+    geneOptions += `<tr><td>${geneID}</td><td>${gene_call.start}</td><td>${gene_call.stop}</td><td><button onclick='selectAnchorGene(${geneID})'>Select</button></td></tr>`;
+  });
+
+  $('#centering-options-modal-body').modal('show')
+  $('#centering-options-modal-content').empty().append(`
+    <h1>Genome <u>${genomeID}</u> has multiple hits!</h1>
+    <table><tr>
+      <td><p>Select an anchor gene ID:</p></td>
+      <td><select id='anchor-gene-select' style="margin-bottom: 10px" class="form-control input-xs">${selectOptions}</select></td>
+    </tr></table>
+    <button id='useAnchorGene'>Let's go!</button>
+    <table class="table table-striped" style="text-align: center; margin-bottom: 10px;">
+      <thead><tr><th class='text-center'>ID</th><th class='text-center'>Start</th><th class='text-center'>Stop</th><th class='text-center'>Select</th></tr></thead>
+      <tbody>${geneOptions}</tbody>
+    </table>
+  `)
+  $('#centering-options-title').text(`Select an anchor gene: ${genomeID}`);
+
+  selectAnchorGene = (geneID) => {
+    $('#anchor-gene-select').val(geneID);
+    $('#useAnchorGene').click();
+  }
+
+  function pauseUntilButtonPress(target) {
+    return new Promise((resolve) => target.addEventListener('click', resolve));
+  }
+
+  await pauseUntilButtonPress(document.getElementById('useAnchorGene'));
+  $('#centering-options-modal-body').modal('hide')
+
+  return $('#anchor-gene-select').val();
+}
+
 function createGeneSetLabel(selected_genes, title) {
   // assume selected_genes are from the same genomeID
   let genomeID = selected_genes[0].genomeID;
