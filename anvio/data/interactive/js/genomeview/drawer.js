@@ -676,7 +676,7 @@ GenomeDrawer.prototype.removeAllGeneGlows = function () {
  *
  *  @param genes: list of target genes in format [{genomeID: 'ABC', geneID: 1}]
  */
-GenomeDrawer.prototype.centerGenes = async function (genes, centerToGeneStart=false) {
+GenomeDrawer.prototype.centerGenes = async function (genes, centerToGeneStart=false, alwaysUseFirstHit=false) {
   let firstGenome = true;
   let basePad = 0;
   let centeredGenes = [];
@@ -688,7 +688,7 @@ GenomeDrawer.prototype.centerGenes = async function (genes, centerToGeneStart=fa
 
       // select targetGeneID - loop through genes and allow user to select a gene ID
       let targetGeneID = geneIDs[0];
-      if(geneIDs.length > 1) {
+      if(geneIDs.length > 1 && !alwaysUseFirstHit) {
         targetGeneID = await showGeneCenteringMenu(genomeID, geneIDs);
       }
 
@@ -737,7 +737,7 @@ GenomeDrawer.prototype.centerGenes = async function (genes, centerToGeneStart=fa
   this.glowGenes(centeredGenes);
 }
 
-GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, centerToGeneStart=false) {
+GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, centerToGeneStart=false, alwaysUseFirstHit=false) {
   let targetGenes;
   switch(category) {
     case 'annotation':
@@ -750,7 +750,7 @@ GenomeDrawer.prototype.centerGenesToProp = function (category, type, value, cent
       break;
   }
   if(targetGenes.length > 0) {
-    this.centerGenes(targetGenes, centerToGeneStart);
+    this.centerGenes(targetGenes, centerToGeneStart, alwaysUseFirstHit);
   }
 }
 
@@ -773,7 +773,7 @@ GenomeDrawer.prototype.centerGenesFromPropUI = function () {
 
   let value = $('#center_genes_prop_value').val();
 
-  this.centerGenesToProp(category, type, value, $('#center_to_gene_start_box').is(':checked'));
+  this.centerGenesToProp(category, type, value, $('#center_to_gene_start_box').is(':checked'), $('#always_use_first_hit_box').is(':checked'));
 }
 
 /*

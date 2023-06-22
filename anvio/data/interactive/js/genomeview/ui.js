@@ -1306,9 +1306,9 @@ async function showGeneCenteringMenu(genomeID, targetGeneIDs) {
 
   $('#centering-options-modal-body').modal('show')
   $('#centering-options-modal-content').empty().append(`
-    <h1>Genome <u>${genomeID}</u> has multiple hits!</h1>
+    <h1 style='font-size:16px'>Genome <u style='font-size:16px'>${genomeID}</u> has multiple hits!</h1>
     <table><tr>
-      <td><p>Select an anchor gene ID:</p></td>
+      <td><p style='font-size:14px'>Select an anchor gene ID:</p></td>
       <td><select id='anchor-gene-select' style="margin-bottom: 10px" class="form-control input-xs">${selectOptions}</select></td>
     </tr></table>
     <button id='useAnchorGene'>Let's go!</button>
