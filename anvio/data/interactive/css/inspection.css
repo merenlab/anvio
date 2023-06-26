@@ -1,3 +1,7 @@
+.gene-section{
+  max-width: 50px;
+}
+
 .fa-ul {
     --icon-size: 12px;
     --gutter: 4px;
@@ -53,8 +57,8 @@
   
   .dropdown-submenu:hover>a:after {
     border-left-color: #fff;
-    transition: all .4s ease;
-    -webkit-transition: all .4s ease;
+    transition: all .5s ease;
+    -webkit-transition: all .5s ease;
   }
   
   .dropdown-submenu.pull-left {
