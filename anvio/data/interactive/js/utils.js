@@ -98,25 +98,43 @@ function getCleanCagCode(code) {
 
 //-----------------------------------------------------------------------------
 
-function get_sequence_and_blast(item_name, program, database, target) {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        // async: false is important here. DO NOT REMOVE.
-        // If direct call chain between event handler and the code that opens new window is broken
-        // chrome popup blocker will not allow opening new window.
-        // async: false does not use asynchronus callbacks so protects direct call chain.
-        async: false,
-        url: '/data/' + target + '/' + item_name,
-        success: function(data) {
-            if ('error' in data){
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
-              var sequence = '>' + data['header'] + '\n' + data['sequence'];
-              fire_up_ncbi_blast(sequence, program, database, target)
+function search_gene_sequence_in_remote_dbs(item_name, program, database, target, search_type) {
+    
+    if(search_type !== 'NT'){
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/gene/' + item_name,
+            success: function(data) {
+                if ('error' in data){
+                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                } else {
+                    var sequence = '>' + data['header'] + '\n' + data['aa_sequence'];
+                    fire_up_ncbi_blast(sequence, program, database, target);
+                }
             }
-        }
-    });
+        });
+    } else{
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            // async: false is important here. DO NOT REMOVE.
+            // If direct call chain between event handler and the code that opens new window is broken
+            // chrome popup blocker will not allow opening new window.
+            // async: false does not use asynchronus callbacks so protects direct call chain.
+            async: false,
+            url: '/data/' + target + '/' + item_name,
+            success: function(data) {
+                if ('error' in data){
+                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                } else {
+                    var sequence = '>' + data['header'] + '\n' + data['sequence'];
+                    fire_up_ncbi_blast(sequence, program, database, target)
+                }
+            }
+        });
+    }
+
 }
 
 function fire_up_ncbi_blast(sequence, program, database, target)
