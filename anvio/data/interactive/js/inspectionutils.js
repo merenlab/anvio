@@ -107,19 +107,15 @@ function get_gene_functions_table_html(gene){
     functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
     functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
     functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
-
-    functions_table_html += `</ul> \
-    </li> \
-    <li class="dropdown-submenu"> \
-    <a tabindex="-1" href="#">Trans. Nucleotide <span></span> Protein</a> \
-      <ul class="dropdown-menu"> `;
-
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
-    functions_table_html += '</ul> </li>';
+    functions_table_html += '</ul></li>';
 
     if(gene.call_type == 1){
+
+      functions_table_html += '<li class="dropdown-submenu"> <a tabindex="-1" href="#">Trans. Nucleotide <span></span> Protein</a><ul class="dropdown-menu">';
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
+      functions_table_html += '</ul> </li>';
 
       functions_table_html += `<li class="dropdown-submenu"> \
       <a tabindex="-1" href="#"> Protein <span></span> Protein </a> \
@@ -139,20 +135,16 @@ function get_gene_functions_table_html(gene){
       functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
       functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
       functions_table_html += '</ul> </li>';
-    }
-    functions_table_html += `<li class="dropdown-submenu"> \
-    <a tabindex="-1" href="#"> Trans. Nucleotide <span></span> Trans. Nucleotide </a> \
+      functions_table_html += `<li class="dropdown-submenu"> \
+      <a tabindex="-1" href="#"> Trans. Nucleotide <span></span> Trans. Nucleotide </a> \
       <ul class="dropdown-menu">`;
-
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
-    functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
-    functions_table_html += `</ul> \
-        </li> \
-        </ul> \
-      </div> \
-    </div> \
-    </div>`;
+      
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+      functions_table_html += '</ul></li></ul> ';
+    }
+    functions_table_html += '</div></div></div>';
 
     if(!gene.functions)
         return functions_table_html;
