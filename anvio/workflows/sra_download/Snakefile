@@ -73,10 +73,11 @@ rule prefetch:
     output:
         SRA = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra"))
     params:
-        SRA_output_dir = os.path.join(dirs_dict['SRA_prefetch'])
+        SRA_output_dir = os.path.join(dirs_dict['SRA_prefetch']),
+        max_size = M.get_param_value_from_config(['prefetch', '--max-size'])
     threads: M.T('prefetch')
     run:
-        shell("prefetch {wildcards.accession} --output-directory {params.SRA_output_dir} --max-size 40g >> {log} 2>&1")
+        shell("prefetch {wildcards.accession} --output-directory {params.SRA_output_dir} --max-size {params.max_size} >> {log} 2>&1")
 
 
 rule fasterq_dump:
