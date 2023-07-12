@@ -688,7 +688,7 @@ class HMMERTableOutput(Parser):
 
 
     def get_col_info_for_CONTIG_context(self):
-        """Get column names and types for GENE context
+        """Get column names and types for CONTIG context
 
         See class docstring for details of the fields for AA sequence search, and DNA sequence search.
         """
