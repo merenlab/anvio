@@ -141,6 +141,7 @@ class ProfileSplitter:
 
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
+        self.list_collections = A('list_collections')
         self.bin_name = A('bin_id')
         self.output_directory = A('output_dir')
         self.skip_variability_tables = A('skip_variability_tables')
@@ -150,6 +151,16 @@ class ProfileSplitter:
 
 
     def sanity_check(self):
+        if self.list_collections:
+            self.collections.list_collections()
+            sys.exit(0)
+
+        if not self.collection_name:
+            raise ConfigError("You must provide a collection name for this to work. If you want to know about "
+                              "all the collections in your pan database you can use the program "
+                              "`anvi-show-collections-and-bins` or run the same command with the flag "
+                              "`--list-collections`.")
+
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
         if not self.contigs_db_path:
