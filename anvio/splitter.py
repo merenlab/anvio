@@ -201,8 +201,6 @@ class ProfileSplitter:
         """This is the function that goes through each bin loaded in the class and proecesses them."""
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory)
-
         self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. As of "
                          "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
                          "still quite a tricky operation and you must double-check things once your split data is ready.",
