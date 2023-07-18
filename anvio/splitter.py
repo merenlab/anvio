@@ -147,6 +147,8 @@ class ProfileSplitter:
         self.skip_variability_tables = A('skip_variability_tables')
 
         self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.profile_db_path)
+
         self.summary = None
 
 
@@ -182,13 +184,15 @@ class ProfileSplitter:
         # anvi-split runs to work on bins in the same collection in parallel:
         self.args.delete_output_directory_if_exists = False
 
-        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
-        self.summary.init()
+        if self.collection_name not in self.collections.collections_dict:
+            raise ConfigError(f"Your profile database does not know about a collection called "
+                              f"'{self.collection_name}' :/")
 
-        self.bin_names_of_interest = sorted(self.summary.bin_ids)
+        self.bin_names_of_interest = sorted([b.strip() for b in self.collections.collections_dict[self.collection_name]['bin_names'].split(',')])
         if self.bin_name:
             if self.bin_name not in self.bin_names_of_interest:
-                raise ConfigError("The bin name you wish to split from this profile database is not in the collection. Busted!")
+                raise ConfigError(f"The bin name you wish to split from this profile database, '{self.bin_name}', "
+                                  f"is not in the collection. Busted!")
             else:
                 self.bin_names_of_interest = [self.bin_name]
 
@@ -203,6 +207,9 @@ class ProfileSplitter:
                          "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
                          "still quite a tricky operation and you must double-check things once your split data is ready.",
                          header="ANVI'O TRICKY OPERATIONS DEPARTMENT", lc="green")
+
+        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
+        self.summary.init()
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
