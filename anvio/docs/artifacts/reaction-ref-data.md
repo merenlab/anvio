@@ -1,0 +1,3 @@
+Reference databases required for %(anvi-reaction-network)s are stored in **directories of downloaded files set up by %(anvi-setup-protein-reference-database)s**.
+
+%(anvi-reaction-network)s currently relies upon comparison of KEGG Orthology (KO) gene annotations (%(kegg-functions)s) stored in a %(contigs-db) to reference databases: KEGG [KO](https://www.genome.jp/kegg/ko.html), [REACTION](https://www.genome.jp/kegg/reaction/), and [COMPOUND](https://www.genome.jp/kegg/compound/) and [ModelSEED Biochemistry](https://github.com/ModelSEED/ModelSEEDDatabase). The ModelSEED Biochemistry database harmonizes and consolidates reference data from multiple sources, including KEGG, in two comprehensive tables of reactions and compounds.
