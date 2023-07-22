@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+from anvio import __version__ as VERSION
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
-__version__ = anvio.__version__
+__version__ = VERSION
 __authors__ = ["semiller10"]
 __requires__ = ["contigs-db", "kegg-functions", "reaction-ref-data"]
 __provides__ = ["reaction-network"]
