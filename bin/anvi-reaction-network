@@ -7,5 +7,5 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ["semiller10"]
 __requires__ = ["contigs-db", "kegg-functions", "reaction-ref-data"]
-__provides__ = ["function-reaction-network"]
+__provides__ = ["reaction-network"]
 __description__ = "Generate a metabolic reaction network in an anvi'o contigs database"
