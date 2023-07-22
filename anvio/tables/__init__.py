@@ -86,6 +86,14 @@ gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
 gene_function_calls_table_types        = [    'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
+gene_function_reactions_table_name        = 'gene_function_reactions'
+gene_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_mapping', 'ko_ec_mapping', 'metabolite_modelseed_ids', 'stoichiometry', 'reversibility']
+gene_function_reactions_table_types       = [         'text'        ,            'text'        ,             'text'        ,      'text'    ,           'text'          ,      'text'    ,      'text'    ]
+
+gene_function_metabolites_table_name      = 'gene_function_metabolites'
+gene_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'formula', 'charge', 'compartment']
+gene_function_metabolites_table_types     = [         'text'        ,             'text'       ,   'text' , 'numeric',    'text'   ]
+
 taxon_names_table_name                 = 'taxon_names'
 taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 taxon_names_table_types                = [ 'numeric',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
@@ -380,6 +388,8 @@ table_requires_unique_entry_id = {'self': False,
                                   pan_gene_clusters_table_name: True,
                                   genes_in_splits_table_name: True,
                                   gene_function_calls_table_name: True,
+                                  gene_function_reactions_table_name: False,
+                                  gene_function_metabolites_table_name: False,
                                   hmm_hits_splits_table_name: True,
                                   scg_taxonomy_table_name: True,
                                   trna_taxonomy_table_name: True,
