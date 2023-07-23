@@ -4,9 +4,10 @@
 import sys
 
 from anvio import A as A, K as K, __version__ as VERSION
-from anvio.argparse import ArgumentParser
 
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.biochemistry.reactionnetwork import Constructor
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
@@ -23,7 +24,12 @@ def main():
 
     parser.add_argument(*A('contigs-db'), **K('contigs-db'))
 
+    parser.add_argument(*A('kegg-data-dir'), **K('kegg-data-dir'))
+    parser.add_argument(*A('modelseed-data-dir'), **K('modelseed-data-dir'))
+
     args = parser.get_args(parser)
+
+    constructor = Constructor(kegg_data_dir=args.kegg_data_dir, modelseed_data_dir=args.modelseed_data_dir)
 
 if __name__ == '__main__':
     try:
