@@ -5,7 +5,7 @@ DESCRIPTION = """This program downloads and sets up files of reference protein p
 from sys import exit
 from argparse import Namespace
 
-import anvio.proteinorthology.refdbs as refdbs
+import anvio.biochemistry.refdbs as refdbs
 
 from anvio import A, K
 from anvio.errors import ConfigError
