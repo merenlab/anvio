@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    name: Daily Component Tests and Migrations (Python ${{ matrix.python-version }})
+    name: Daily Component Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -42,7 +42,9 @@ jobs:
       shell: bash -l {0}
       run: |
         anvi-self-test --suite metabolism --no-interactive
-    - name: "Migrate ancient anvi'o databases"
-      shell: bash -l {0}
-      run: |
-        anvi-self-test --suite database-migrations
+# the following causes our actions to fail due to space limitations :/
+# please do not uncomment this until we have a solution.
+    #- name: "Migrate ancient anvi'o databases"
+    #  shell: bash -l {0}
+    #  run: |
+    #    anvi-self-test --suite database-migrations
