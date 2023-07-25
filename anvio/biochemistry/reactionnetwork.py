@@ -18,20 +18,15 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-class Gene:
-    """Representation of a gene in the metabolic network."""
+class ModelSEEDCompound:
+    """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
     def __init__(self) -> None:
-        self.gcid: int = None
-        self.kos: List[KO] = []
+        self.modelseed_id: str = None
+        self.modelseed_name: str = None
+        self.kegg_id_aliases: List[str] = []
+        self.charge: int = None
+        self.formula: str = None
 
-class KO:
-    """Representation of a KEGG Ortholog in the network."""
-    def __init__(self) -> None:
-        self.id: str = None
-        self.name: str = None
-        self.reactions: List[ModelSEEDReaction] = []
-        # Record how KOs were associated with ModelSEED reactions, e.g., KEGG REACTION ID alias or EC number.
-        self.modelseed_associations: List[str] = []
 class ModelSEEDReaction:
     """Representation of a reaction in the network, with properties given by the ModelSEED Biochemistry database."""
     def __init__(self) -> None:
@@ -42,8 +37,21 @@ class ModelSEEDReaction:
         self.compartments: List[str] = []
         self.reversibility: bool = None
 
-class ModelSEEDCompound:
-    """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
+class KO:
+    """Representation of a KEGG Ortholog in the network."""
+    def __init__(self) -> None:
+        self.id: str = None
+        self.name: str = None
+        self.reactions: List[ModelSEEDReaction] = []
+        # Record how KOs were associated with ModelSEED reactions, e.g., KEGG REACTION ID alias or EC number.
+        self.modelseed_associations: List[str] = []
+
+class Gene:
+    """Representation of a gene in the metabolic network."""
+    def __init__(self) -> None:
+        self.gcid: int = None
+        self.kos: List[KO] = []
+
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
