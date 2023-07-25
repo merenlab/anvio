@@ -93,3 +93,6 @@ class Constructor:
         self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
         self.progress = progress
+
+        self.kegg_db = KEGGDatabase()
+        self.kegg_db.load(self.kegg_dir)
