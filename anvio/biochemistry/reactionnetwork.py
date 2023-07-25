@@ -18,6 +18,16 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+class ModelSEEDReaction:
+    """Representation of a reaction in the network, with properties given by the ModelSEED Biochemistry database."""
+    def __init__(self) -> None:
+        self.modelseed_id: str = None
+        self.modelseed_name: str = None
+        self.kegg_id_aliases: Tuple[str] = []
+        self.compounds: Tuple[ModelSEEDCompound] = []
+        self.compartments: List[str] = []
+        self.reversibility: bool = None
+
 class ModelSEEDCompound:
     """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
     def __init__(self) -> None:
