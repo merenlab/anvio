@@ -60,6 +60,24 @@ class KEGGDatabase:
         # facilitate the lookup of KO IDs, names, EC numbers, and KEGG reactions.
         self.ko_table: pd.DataFrame = None
         self.reaction_table: pd.DataFrame = None
+
+    def load(self, db_dir: str = None) -> None:
+        """Load KO and reaction tables from the data directory."""
+        if db_dir:
+            if not os.path.isdir(db_dir):
+                raise ConfigError(f"The provided KEGG database directory, '{db_dir}', was not recognized as a directory.")
+        else:
+            db_dir = KEGGDatabase.default_dir
+        ko_data_path = os.path.join(db_dir, 'ko_data.tsv')
+        if not os.path.isfile(ko_data_path):
+            raise ConfigError(f"The KO data table, 'ko_data.tsv', was not found in the database directory, '{db_dir}'.")
+        reaction_data_path = os.path.join(db_dir, 'reaction_data.tsv')
+        if not os.path.isfile(reaction_data_path):
+            raise ConfigError(f"The KEGG REACTION data table, 'reaction_data.tsv', was not found in the database directory, '{db_dir}'.")
+
+        self.ko_table = pd.read_csv(ko_data_path, sep='\t', header=0, index_col=0, low_memory=False)
+        self.reaction_table = pd.read_csv(reaction_data_path, sep='\t', header=0, index_col=0, low_memory=False)
+
 class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
