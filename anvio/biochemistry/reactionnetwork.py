@@ -78,6 +78,16 @@ class KEGGDatabase:
         self.ko_table = pd.read_csv(ko_data_path, sep='\t', header=0, index_col=0, low_memory=False)
         self.reaction_table = pd.read_csv(reaction_data_path, sep='\t', header=0, index_col=0, low_memory=False)
 
+class ModelSEEDDatabase:
+    """The ModelSEED Biochemistry database set up by anvi'o."""
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/modelseed')
+
+    def __init__(self) -> None:
+        # The KO and EC tables are rearrangements of the ModelSEED reactions table facilitating
+        # lookup of reaction data by KO ID or EC number rather than ModelSEED reaction ID.
+        self.ko_reactions_table: pd.DataFrame = None
+        self.ec_reactions_table: pd.DataFrame = None
+        self.compounds_table: pd.DataFrame = None
 class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
