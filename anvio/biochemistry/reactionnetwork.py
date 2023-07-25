@@ -50,6 +50,16 @@ class ModelSEEDCompound:
         self.kegg_id_aliases: List[str] = []
         self.charge: int = None
         self.formula: str = None
+
+class KEGGDatabase:
+    """The KEGG KO and REACTION databases set up by anvi'o."""
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/kegg')
+
+    def __init__(self) -> None:
+        # The KO and reaction tables are derived from the downloaded definition files. They
+        # facilitate the lookup of KO IDs, names, EC numbers, and KEGG reactions.
+        self.ko_table: pd.DataFrame = None
+        self.reaction_table: pd.DataFrame = None
 class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
