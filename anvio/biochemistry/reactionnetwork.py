@@ -18,7 +18,14 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-class Constructor(object):
+class ModelSEEDCompound:
+    """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
+    def __init__(self) -> None:
+        self.modelseed_id: str = None
+        self.modelseed_name: str = None
+        self.kegg_id_aliases: List[str] = []
+        self.charge: int = None
+        self.formula: str = None
     """
     Construct a metabolic reaction network within an anvi'o database.
 
