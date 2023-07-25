@@ -160,3 +160,5 @@ class Constructor:
 
         self.kegg_db = KEGGDatabase()
         self.kegg_db.load(self.kegg_dir)
+        self.modelseed_db = ModelSEEDDatabase()
+        self.modelseed_db.load(self.modelseed_dir)
