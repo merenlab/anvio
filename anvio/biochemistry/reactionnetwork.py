@@ -50,24 +50,18 @@ class ModelSEEDCompound:
         self.kegg_id_aliases: List[str] = []
         self.charge: int = None
         self.formula: str = None
+class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
 
     This currently uses KO annotations and the ModelSEED Biochemistry database.
     """
-    def __init__(self, kegg_dir: str, modelseed_dir: str):
-        self.ko_dir = os.path.join(kegg_dir, 'ko')
-        self.kegg_reaction_dir = os.path.join(kegg_dir, 'reaction')
-        self.kegg_compound_dir = os.path.join(kegg_dir, 'compound')
+    def __init__(
+        self,
+        kegg_dir: str,
+        modelseed_dir: str,
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
+        self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
-
-        for db, db_dir in (
-            ('KEGG KO', self.ko_dir),
-            ('KEGG REACTION', self.kegg_reaction_dir),
-            ('KEGG COMPOUND', self.kegg_compound_dir),
-            ('ModelSEED Biochemistry', self.modelseed_dir)
-        ):
-            if not os.path.isdir(db_dir):
-                raise ConfigError(
-                    f"'{db}' database files were expected but not found in the directory, '{db_dir}'."
-                )
+        self.progress = progress
