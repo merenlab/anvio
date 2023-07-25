@@ -88,6 +88,60 @@ class ModelSEEDDatabase:
         self.ko_reactions_table: pd.DataFrame = None
         self.ec_reactions_table: pd.DataFrame = None
         self.compounds_table: pd.DataFrame = None
+
+    def load(self, db_dir: str = None) -> None:
+        """Load and set up reaction and compound tables from the data directory."""
+        if db_dir:
+            if not os.path.isdir(db_dir):
+                raise ConfigError(f"The provided ModelSEED database directory, '{db_dir}', was not recognized as a directory.")
+        else:
+            db_dir = ModelSEEDDatabase.default_dir
+        reactions_path = os.path.join(db_dir, 'reactions.tsv')
+        if not os.path.isfile(reactions_path):
+            raise ConfigError(f"The ModelSEED reactions table, 'reactions.tsv', was not found in the database directory, '{db_dir}'.")
+        compounds_path = os.path.join(db_dir, 'compounds.tsv')
+        if not os.path.isfile(compounds_path):
+            raise ConfigError(f"The ModelSEED compounds table, 'compounds.tsv', was not found in the database directory, '{db_dir}'.")
+
+        reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
+        self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
+
+        # Reorganize the reactions table to facilitate lookup of reaction data by KO ID.
+        # Remove reactions without KO aliases.
+        reactions_table_without_na = reactions_table.dropna(subset=['KEGG'])
+        expanded = []
+        ko_id_col = []
+        for ko_ids, row in zip(
+            reactions_table_without_na['KEGG'],
+            reactions_table_without_na.drop('KEGG', axis=1).itertuples(index=False)
+        ):
+            ko_ids: str
+            # A ModelSEED reaction can have multiple KO aliases.
+            for ko_id in ko_ids.split('; '):
+                ko_id_col.append(ko_id)
+                expanded.append(row)
+        ko_reactions_table = pd.DataFrame(expanded)
+        ko_reactions_table['KEGG'] = ko_id_col
+        self.ko_reactions_table = ko_reactions_table
+
+        # Reorganize the reactions table to facilitate lookup of reaction data by EC number.
+        # Remove reactions without EC number aliases.
+        reactions_table_without_na = reactions_table.dropna(subset=['ec_numbers'])
+        expanded = []
+        ec_number_col = []
+        for ec_numbers, row in zip(
+            reactions_table_without_na['ec_numbers'],
+            reactions_table_without_na.drop('ec_numbers', axis=1).itertuples(index=False)
+        ):
+            ec_numbers: str
+            # A ModelSEED reaction can have multiple EC number aliases.
+            for ec_number in ec_numbers.split('|'):
+                ec_number_col.append(ec_number)
+                expanded.append(row)
+        ec_reactions_table = pd.DataFrame(expanded)
+        ec_reactions_table['ec_numbers'] = ec_number_col
+        self.ec_reactions_table = ec_reactions_table
+
 class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
