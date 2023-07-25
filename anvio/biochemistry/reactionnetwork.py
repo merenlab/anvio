@@ -18,6 +18,12 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+class Gene:
+    """Representation of a gene in the metabolic network."""
+    def __init__(self) -> None:
+        self.gcid: int = None
+        self.kos: List[KO] = []
+
 class KO:
     """Representation of a KEGG Ortholog in the network."""
     def __init__(self) -> None:
