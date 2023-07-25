@@ -180,3 +180,15 @@ class Constructor:
         self.kegg_db.load(self.kegg_dir)
         self.modelseed_db = ModelSEEDDatabase()
         self.modelseed_db.load(self.modelseed_dir)
+
+    def make_single_genome_network(self, contigs_db_path: str):
+        contigs_super = self._load_contigs_db(contigs_db_path)
+
+        network = SingleGenomeNetwork()
+    def _load_contigs_db(contigs_db_path: str) -> ContigsSuperclass:
+        is_contigs_db(contigs_db_path)
+        args = Namespace()
+        args.contigs_db = contigs_db_path
+        contigs_super = ContigsSuperclass(args, r=run_quiet)
+        contigs_super.init_functions(requested_sources=['KOfam'])
+        return contigs_super
