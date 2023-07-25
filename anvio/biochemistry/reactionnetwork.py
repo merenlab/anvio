@@ -52,12 +52,14 @@ class Gene:
         self.gcid: int = None
         self.kos: List[KO] = []
 
+
+class SingleGenomeNetwork:
+    """A reaction network predicted from the KEGG and ModelSEED annotations of a single genome."""
     def __init__(self) -> None:
-        self.modelseed_id: str = None
-        self.modelseed_name: str = None
-        self.kegg_id_aliases: List[str] = []
-        self.charge: int = None
-        self.formula: str = None
+        self.genes: List[Gene] = []
+        self.kos: List[KO] = []
+        self.reactions: List[ModelSEEDReaction] = []
+        self.metabolites: List[ModelSEEDCompound] = []
 
 class KEGGDatabase:
     """The KEGG KO and REACTION databases set up by anvi'o."""
