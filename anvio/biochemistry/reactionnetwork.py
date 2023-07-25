@@ -18,6 +18,14 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+class KO:
+    """Representation of a KEGG Ortholog in the network."""
+    def __init__(self) -> None:
+        self.id: str = None
+        self.name: str = None
+        self.reactions: List[ModelSEEDReaction] = []
+        # Record how KOs were associated with ModelSEED reactions, e.g., KEGG REACTION ID alias or EC number.
+        self.modelseed_associations: List[str] = []
 class ModelSEEDReaction:
     """Representation of a reaction in the network, with properties given by the ModelSEED Biochemistry database."""
     def __init__(self) -> None:
