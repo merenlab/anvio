@@ -375,3 +375,20 @@
       inst: Melbourne Integrative Genomics - University of Melbourne
       inst_link: https://sites.research.unimelb.edu.au/integrative-genomics/MIG-home
       current: True
+
+- github: ctb
+  name: C. Titus Brown
+  bio: "Bioinformatics software developera and "
+  email: ctbrown@ucdavis.edu
+  avatar: ctitusbrown.jpg
+  web: https://ivory.idyll.org/lab/
+  twitter: ctitusbrown
+  linkedin: ctitusbrown
+  orcid: 0000-0001-6001-2677
+  intellectual-contributions:
+    - contribution: "Nothing but minor updates and corrections so far!"
+  affiliations:
+    - title: Professor
+      inst: University of California Davis
+      inst_link: http://www.ucdavis.edu/
+      current: true
