@@ -25,7 +25,7 @@ jobs:
       run: |
         conda info -a
         conda install -y "mamba >=0.24.0"
-        mamba env create -f .conda/environment.yaml
+        mamba env create -f ../.conda/environment.yaml
     - uses: actions/checkout@v2
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
