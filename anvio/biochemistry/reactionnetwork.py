@@ -53,9 +53,14 @@ class KO:
     def __init__(self) -> None:
         self.id: str = None
         self.name: str = None
-        self.reactions: List[ModelSEEDReaction] = []
-        # Record how KOs were associated with ModelSEED reactions, e.g., KEGG REACTION ID alias or EC number.
-        self.modelseed_associations: List[str] = []
+        # map *ModelSEED reaction ID* to *ModelSEED reaction object or reaction aliases* in the
+        # following dictionaries
+        self.reactions: Dict[str, ModelSEEDReaction] = {}
+        # Record the KEGG REACTION IDs *encoded by the KO* that are aliases of the ModelSEED
+        # reaction ID. These could be a subset of the KEGG reaction aliases of the ModelSEED
+        # reaction. The same is true of EC numbers.
+        self.kegg_reaction_aliases: Dict[str, Tuple[str]] = {}
+        self.ec_number_aliases: Dict[str, Tuple[str]] = {}
 
 class Gene:
     """Representation of a gene in the metabolic network."""
