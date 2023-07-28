@@ -99,7 +99,7 @@ class KEGGDatabase:
             if not os.path.isdir(db_dir):
                 raise ConfigError(f"The provided KEGG database directory, '{db_dir}', was not recognized as a directory.")
         else:
-            db_dir = KEGGDatabase.default_dir
+            db_dir = self.default_dir
         ko_data_path = os.path.join(db_dir, 'ko_data.tsv')
         if not os.path.isfile(ko_data_path):
             raise ConfigError(f"The KO data table, 'ko_data.tsv', was not found in the database directory, '{db_dir}'.")
@@ -127,7 +127,7 @@ class ModelSEEDDatabase:
             if not os.path.isdir(db_dir):
                 raise ConfigError(f"The provided ModelSEED database directory, '{db_dir}', was not recognized as a directory.")
         else:
-            db_dir = ModelSEEDDatabase.default_dir
+            db_dir = self.default_dir
         reactions_path = os.path.join(db_dir, 'reactions.tsv')
         if not os.path.isfile(reactions_path):
             raise ConfigError(f"The ModelSEED reactions table, 'reactions.tsv', was not found in the database directory, '{db_dir}'.")
