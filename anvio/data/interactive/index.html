@@ -17,8 +17,9 @@
 
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <link rel="stylesheet" href="lib/bootstrap-5.0.2-dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap-5.0.2-dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
 
@@ -114,21 +115,21 @@
         <div id="panel-left">
             <div id="fixed-navbar-div">
                 <div id="multiUser">
-                    <a href="/" target="_parent" class="btn btn-default btn-sm home-button"><span class="glyphicon glyphicon-home" aria-hidden="true"></span> Home</a>
+                    <a href="/" target="_parent" class="btn btn-default btn-sm home-button"><span class="fa fa-home" aria-hidden="true"></span> Home</a>
                     <img src="#" />
                     <span class="project-name"></span>
-                    <a href="/" class="btn btn-default btn-sm download-button"><span class="glyphicon glyphicon-download" aria-hidden="true"></span> Download</a>
+                    <a href="/" class="btn btn-default btn-sm download-button"><span class="fa fa-download" aria-hidden="true"></span> Download</a>
                 </div>
                 <div role="tabpanel" style="margin: 0px;">
                     <ul class="nav nav-tabs" role="tablist">
-                      <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-picture" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
-                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true"></span> Layers</a></li>
-                      <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                      <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-list-alt" aria-hidden="true"></span> Legends</a></li>
-                      <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
+                      <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="fa fa-home" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
+                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="fa fa-briefcase" aria-hidden="true"></span> Layers</a></li>
+                      <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="fa fa-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
+                      <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="fa fa-list-alt" aria-hidden="true"></span> Legends</a></li>
+                      <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="fa fa-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                       <li role="presentation" class="dropdown-submenu pull-right">
                         <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
-                          <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true" style="color: #008A77;"></span>
+                          <span class="fa fa-menu-hamburger" aria-hidden="true" style="color: #008A77;"></span>
                         </a>
                         <ul class="dropdown-menu multi-level" role="menu">
                           <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
@@ -138,7 +139,7 @@
                           <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
                           <li><a href="http://merenlab.org/people/">Contact us</a></li>
                           <li role="separator" class="divider"></li>
-                          <li><a href="javascript:shutdownServer();"><span class="glyphicon glyphicon-off" aria-hidden="true"></span> Shutdown Server</a></li>
+                          <li><a href="javascript:shutdownServer();"><span class="fa fa-off" aria-hidden="true"></span> Shutdown Server</a></li>
                           <li><p>Show help tooltips for the interactive interface: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></p></li>
                         </ul>
                       </li>
@@ -502,7 +503,7 @@
                                             <th id="len_title">Len</th>
                                             <th id="completion_title" title="Completion">Comp.</th>
                                             <th id="redundancy_title" title="Redundancy">Red.</th>
-                                            <th data-defaultsort='disabled'><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();" style="color: red;"></span></th>
+                                            <th data-defaultsort='disabled'><span class="fa fa-trash" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();" style="color: red;"></span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbody_bins">
@@ -511,22 +512,22 @@
                                 </table>
 
                                 <div class="sidebar-bins-buttons btn-group col-md-12" role="group">
-                                    <button type="button" class="btn btn-default btn-sm" onclick="bins.NewBin();" style="width: 100%"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> New bin</button>
+                                    <button type="button" class="btn btn-default btn-sm" onclick="bins.NewBin();" style="width: 100%"><span class="fa fa-plus-sign" aria-hidden="true"></span> New bin</button>
                                 </div>
 
                                 <div class="">
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode gene-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load bin collection</button>
-                                        <button type="button" class="btn btn-default btn-sm" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="fa fa-upload" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="fa fa-download" aria-hidden="true"></span> Store bin collection</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="fa fa-file-image-o" aria-hidden="true"></span> Generate a static summary page</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode refine-mode" role="group" style="display: none">
-                                        <button type="button" id="show_taxonomy_button" class="btn btn-default btn-sm" onclick="showTaxonomy();" style="width: 100%"><span class="glyphicon glyphicon-gift" aria-hidden="true"></span> Recalculate / Show Taxonomy for Bins</button>
+                                        <button type="button" id="show_taxonomy_button" class="btn btn-default btn-sm" onclick="showTaxonomy();" style="width: 100%"><span class="fa fa-gift" aria-hidden="true"></span> Recalculate / Show Taxonomy for Bins</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>
+                                        <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="fa fa-save" aria-hidden="true"></span> Store refined bins in the database</button>
                                     </div>
                                 </div>
                             </div>
@@ -552,7 +553,7 @@
                                             <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
                                             <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
                                         </div>
-                                         <button type="button" class="btn btn-default btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
+                                         <button type="button" class="btn btn-default btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="fa fa-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                     </div>
                             </div>
 
@@ -652,7 +653,7 @@
                             </div>
                             <br />
                             <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                                <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                <button id="btn_redraw_samples" type="button" class="btn btn-default btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
                             </div>
                         </div>
                     </div>
@@ -686,7 +687,7 @@
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td><button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
+                                        <td><button type="button" class="btn btn-default btn-sm" onclick="searchContigs();" data-help="search-button"><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -713,7 +714,7 @@
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search functions</button></td>
+                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-default btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="fa fa-search" aria-hidden="true"></span> Search functions</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -787,7 +788,7 @@
                                         </tr>
                                         <tr>
                                             <td></td>
-                                            <td><button type="button" class="btn btn-default btn-sm" onclick="filterGeneClusters();" disabled><span class="glyphicon glyphicon-search" aria-hidden="true"></span> Search</button></td>
+                                            <td><button type="button" class="btn btn-default btn-sm" onclick="filterGeneClusters();" disabled><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
                                             <td></td>
                                         </tr>
                                         <tr>
@@ -810,16 +811,16 @@
                         </div>
                         <div class="form-horizontal" style="margin-top: 20px;">
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="glyphicon glyphicon-list" aria-hidden="true"></span> Show search results down below</button>
+                                <button type="button" class="btn btn-default btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="fa fa-list" aria-hidden="true"></span> Show search results down below</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="glyphicon glyphicon-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="fa fa-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-default btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="glyphicon glyphicon-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-default btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="fa fa-erase" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
-                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="glyphicon glyphicon-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="fa fa-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
+                                <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="fa fa-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
                             </div>
 
                             <span id="search-results-table-header" class="col-md-12"></span>
@@ -844,20 +845,20 @@
             <div class="sidebar-footer">
                 <div class="sidebar-footer-draw">
                     <button type="button" class="btn btn-default btn-sm glowing-button" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
-                        <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> <u>D</u>raw
+                        <span class="fa fa-pencil" aria-hidden="true"></span> <u>D</u>raw
                     </button>
                     <span id="draw_delta_time" style="padding-left: 10px;"></span>
                 </div>
                 <div class="btn-group sidebar-state-buttons sidebar-footer-draw" role="group" style="margin-bottom: 0px;">
-                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="fa fa-floppy-open" aria-hidden="true"></span> Load State</button>
+                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="fa fa-floppy-save" aria-hidden="true"></span> Save State</button>
                 </div>
                 <div class="btn-group btn-group-justified" id="sidebar-footer-controls" role="group">
-                    <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm upload-button" onclick="showUploadProject();"><span class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></span></a>
-                    <a class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="fa fa-search-plus" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="fa fa-search-minus" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="fa fa-plus-square-o" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm upload-button" onclick="showUploadProject();"><span class="fa fa-cloud-upload" aria-hidden="true"></span></a>
+                    <a class="btn btn-default btn-sm" data-help="save-svg" onclick="exportSvg();"><span class="fa fa-floppy-save" aria-hidden="true"></span></a>
                 </div>
             </div>
         </div>
