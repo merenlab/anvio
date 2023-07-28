@@ -66,8 +66,10 @@ class Gene:
     """Representation of a gene in the metabolic network."""
     def __init__(self) -> None:
         self.gcid: int = None
+        # KOs matching the gene
         self.kos: List[KO] = []
-
+        # record the strength of each KO match
+        self.e_values: List[float] = []
 
 class SingleGenomeNetwork:
     """A reaction network predicted from the KEGG and ModelSEED annotations of a single genome."""
