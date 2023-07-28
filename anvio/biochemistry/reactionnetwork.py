@@ -40,9 +40,12 @@ class ModelSEEDReaction:
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
-        self.kegg_id_aliases: Tuple[str] = []
-        self.compounds: Tuple[ModelSEEDCompound] = []
-        self.compartments: List[str] = []
+        self.kegg_id_aliases: Tuple[str] = None
+        self.ec_number_aliases: Tuple[str] = None
+        # compounds, coefficients, and compartments have corresponding elements
+        self.compounds: Tuple[ModelSEEDCompound] = None
+        self.coefficients: Tuple[int] = None
+        self.compartments: Tuple[str] = None
         self.reversibility: bool = None
 
 class KO:
