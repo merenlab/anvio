@@ -31,7 +31,7 @@ class ModelSEEDCompound:
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
-        self.kegg_id_aliases: List[str] = []
+        self.kegg_id_aliases: Tuple[str] = None
         self.charge: int = None
         self.formula: str = None
 
