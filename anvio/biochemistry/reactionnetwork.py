@@ -115,9 +115,9 @@ class ModelSEEDDatabase:
     default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/modelseed')
 
     def __init__(self) -> None:
-        # The KO and EC tables are rearrangements of the ModelSEED reactions table facilitating
-        # lookup of reaction data by KO ID or EC number rather than ModelSEED reaction ID.
-        self.ko_reactions_table: pd.DataFrame = None
+        # The KEGG and EC tables are rearrangements of the ModelSEED reactions table facilitating
+        # lookup of reaction data by KEGG REACTION ID or EC number rather than ModelSEED reaction ID.
+        self.kegg_reactions_table: pd.DataFrame = None
         self.ec_reactions_table: pd.DataFrame = None
         self.compounds_table: pd.DataFrame = None
 
@@ -154,7 +154,7 @@ class ModelSEEDDatabase:
                 expanded.append(row)
         ko_reactions_table = pd.DataFrame(expanded)
         ko_reactions_table['KEGG'] = ko_id_col
-        self.ko_reactions_table = ko_reactions_table
+        self.kegg_reactions_table = kegg_reactions_table
 
         # Reorganize the reactions table to facilitate lookup of reaction data by EC number.
         # Remove reactions without EC number aliases.
