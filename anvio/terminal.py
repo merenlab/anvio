@@ -14,7 +14,7 @@ import termios
 import datetime
 import textwrap
 
-from colored import fore, back, style
+from colored import Fore, Back, Style
 from collections import OrderedDict
 
 import anvio
@@ -223,20 +223,20 @@ class Progress:
 
                 # see a full list of color codes: https://gitlab.com/dslackw/colored
                 if p_length >= break_point:
-                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point] + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
-                                     back.CYAN + fore.CYAN + c[end_point] + \
-                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
-                                     style.RESET)
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point] + \
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
+                                     Back.CYAN + Fore.CYAN + c[end_point] + \
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                                     Style.RESET)
                 else:
-                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point - p_length] + \
-                                     back.SALMON_1 + fore.BLACK + p_text + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
-                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
-                                     style.RESET)
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point - p_length] + \
+                                     Back.SALMON_1 + Fore.BLACK + p_text + \
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                                     Style.RESET)
                 sys.stderr.flush()
             else:
-                sys.stderr.write(back.CYAN + fore.BLACK + c + style.RESET)
+                sys.stderr.write(Back.CYAN + Fore.BLACK + c + Style.RESET)
                 sys.stderr.flush()
 
 
