@@ -138,22 +138,22 @@ class ModelSEEDDatabase:
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
         self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
 
-        # Reorganize the reactions table to facilitate lookup of reaction data by KO ID.
-        # Remove reactions without KO aliases.
+        # Reorganize the reactions table to facilitate lookup of reaction data by KEGG REACTION ID.
+        # Remove reactions without KEGG aliases.
         reactions_table_without_na = reactions_table.dropna(subset=['KEGG'])
         expanded = []
         ko_id_col = []
         for ko_ids, row in zip(
             reactions_table_without_na['KEGG'],
-            reactions_table_without_na.drop('KEGG', axis=1).itertuples(index=False)
+            reactions_table_without_na.itertuples(index=False)
         ):
             ko_ids: str
-            # A ModelSEED reaction can have multiple KO aliases.
+            # A ModelSEED reaction can have multiple KEGG aliases.
             for ko_id in ko_ids.split('; '):
                 ko_id_col.append(ko_id)
                 expanded.append(row)
-        ko_reactions_table = pd.DataFrame(expanded)
-        ko_reactions_table['KEGG'] = ko_id_col
+        kegg_reactions_table = pd.DataFrame(expanded)
+        kegg_reactions_table['KEGG_REACTION_ID'] = ko_id_col
         self.kegg_reactions_table = kegg_reactions_table
 
         # Reorganize the reactions table to facilitate lookup of reaction data by EC number.
@@ -163,7 +163,7 @@ class ModelSEEDDatabase:
         ec_number_col = []
         for ec_numbers, row in zip(
             reactions_table_without_na['ec_numbers'],
-            reactions_table_without_na.drop('ec_numbers', axis=1).itertuples(index=False)
+            reactions_table_without_na.itertuples(index=False)
         ):
             ec_numbers: str
             # A ModelSEED reaction can have multiple EC number aliases.
@@ -171,7 +171,7 @@ class ModelSEEDDatabase:
                 ec_number_col.append(ec_number)
                 expanded.append(row)
         ec_reactions_table = pd.DataFrame(expanded)
-        ec_reactions_table['ec_numbers'] = ec_number_col
+        ec_reactions_table['EC_number'] = ec_number_col
         self.ec_reactions_table = ec_reactions_table
 
 class Constructor:
