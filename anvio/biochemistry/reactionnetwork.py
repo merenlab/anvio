@@ -74,10 +74,14 @@ class Gene:
 class SingleGenomeNetwork:
     """A reaction network predicted from the KEGG and ModelSEED annotations of a single genome."""
     def __init__(self) -> None:
-        self.genes: List[Gene] = []
-        self.kos: List[KO] = []
-        self.reactions: List[ModelSEEDReaction] = []
-        self.metabolites: List[ModelSEEDCompound] = []
+        # map gcid to gene object
+        self.genes: Dict[int, Gene] = {}
+        # map KO ID to KO object
+        self.kos: Dict[int, KO] = {}
+        # map ModelSEED reaction ID to reaction object
+        self.reactions: Dict[str, ModelSEEDReaction] = {}
+        # map ModelSEED compound ID to compound object
+        self.metabolites: Dict[str, ModelSEEDCompound] = {}
 
 class KEGGDatabase:
     """The KEGG KO and REACTION databases set up by anvi'o."""
