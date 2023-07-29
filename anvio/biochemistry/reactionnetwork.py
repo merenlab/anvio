@@ -303,3 +303,36 @@ class Constructor:
         lcm_denom = reduce(lcm, [r.denominator for r in rationals])
         return tuple(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
 
+    def _get_modelseed_compound(self, modelseed_compound_data: Dict) -> ModelSEEDCompound:
+        compound = ModelSEEDCompound()
+        compound.modelseed_id = modelseed_compound_data['id']
+
+        modelseed_name = modelseed_compound_data['name']
+        if pd.isna(modelseed_name):
+            compound.modelseed_name = None
+        else:
+            compound.modelseed_name = modelseed_name
+
+        kegg_id_aliases: str = modelseed_compound_data['KEGG']
+        if pd.isna(kegg_id_aliases):
+            compound.kegg_id_aliases = []
+        else:
+            compound.kegg_id_aliases = kegg_id_aliases.split('; ')
+
+        formula = modelseed_compound_data['formula']
+        if pd.isna(formula):
+            compound.formula = None
+            # compounds without formulas have a nominal charge of 10000000 in compounds.tsv
+            compound.charge = None
+        else:
+            compound.formula = formula
+            charge = modelseed_compound_data['charge']
+            if pd.isna(charge):
+                raise ConfigError(
+                    f"The charge of a ModelSEED compound, '{compound.modelseed_id}', was not recorded "
+                    "in 'compounds.tsv' but is expected to be present as an integer. Here is the data "
+                    f"in the row for the compound: '{modelseed_compound_data}'"
+                )
+            compound.charge = charge
+
+        return compound
