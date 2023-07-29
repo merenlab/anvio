@@ -358,7 +358,9 @@ class Constructor:
                     modelseed_reaction_id = modelseed_reaction_data['id']
                     if modelseed_reaction_id not in modelseed_reaction_data:
                         modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
-            assert len(modelseed_reactions_data) > 0
+            if not modelseed_reactions_data:
+                # the unadded KEGG REACTION IDs and EC numbers are not in the ModelSEED reactions table
+                continue
 
             # generate new reaction objects in the network
             for modelseed_reaction_id, modelseed_reaction_data in modelseed_reactions_data.items():
