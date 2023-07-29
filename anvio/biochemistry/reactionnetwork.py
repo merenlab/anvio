@@ -180,6 +180,9 @@ class Constructor:
 
     This currently depends on KEGG annotations of genes and the ModelSEED Biochemistry database.
     """
+    # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
+    compartment_ids = {0: 'c', 1: 'e'}
+
     def __init__(
         self,
         kegg_dir: str,
