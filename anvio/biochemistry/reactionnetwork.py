@@ -187,10 +187,12 @@ class Constructor:
         self,
         kegg_dir: str,
         modelseed_dir: str,
+        run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
+        self.run = run
         self.progress = progress
 
         self.kegg_db = KEGGDatabase()
