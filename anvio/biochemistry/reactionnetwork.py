@@ -219,3 +219,87 @@ class Constructor:
         contigs_super = ContigsSuperclass(args, r=run_quiet)
         contigs_super.init_functions(requested_sources=['KOfam'])
         return contigs_super
+
+    def _get_modelseed_reaction(self, modelseed_reaction_data: Dict) -> Tuple[ModelSEEDReaction, List[str]]:
+        """
+        Create a ModelSEED reaction object from its entry in the ModelSEED table.
+
+        Do not populate the reaction object with metabolite objects. Return both the new reaction
+        object and a list of associated ModelSEED compound IDs.
+        """
+        stoichiometry: str = modelseed_reaction_data['stoichiometry']
+        if pd.isna(stoichiometry):
+            # ignore any reaction lacking a chemical equation for some reason
+            return None, None
+
+        reaction = ModelSEEDReaction()
+
+        modelseed_id = modelseed_reaction_data['id']
+        if pd.isna(modelseed_id):
+            raise ConfigError(
+                "The row for the reaction in the ModelSEED table does not but should have an ID. "
+                f"Here is the data in the row: '{modelseed_reaction_data}'"
+            )
+        reaction.modelseed_id = modelseed_id
+
+        modelseed_name = modelseed_reaction_data['name']
+        if pd.isna(modelseed_name):
+            reaction.modelseed_name = None
+        else:
+            reaction.modelseed_name = modelseed_name
+
+        kegg_reaction_ids: str = modelseed_reaction_data['KEGG']
+        if pd.isna(kegg_reaction_ids):
+            reaction.kegg_id_aliases = []
+        else:
+            reaction.kegg_id_aliases = kegg_reaction_ids.split('; ')
+
+        ec_numbers: str = modelseed_reaction_data['ec_numbers']
+        if pd.isna(ec_numbers):
+            reaction.ec_number_aliases = []
+        else:
+            reaction.ec_number_aliases = ec_numbers.split('|')
+
+        reversibility = modelseed_reaction_data['reversibility']
+        if pd.isna(reversibility):
+            raise ConfigError(
+                "The row for the reaction in the ModelSEED table was expected to have a 'reversibility' value. "
+                f"Here is the data in the row: '{modelseed_reaction_data}'"
+            )
+        if reversibility == '=' or reversibility == '?':
+            # Assume that reactions lacking data ('?') are reversible.
+            reaction.reversibility = True
+        else:
+            reaction.reversibility = False
+
+        decimal_reaction_coefficients = []
+        split_stoichiometry = stoichiometry.split(';')
+        modelseed_compound_ids = []
+        compartments = []
+        for entry in split_stoichiometry:
+            split_entry = entry.split(':')
+            decimal_reaction_coefficients.append(split_entry[0])
+            modelseed_compound_ids.append(split_entry[1])
+            compartments.append(self.compartment_ids[int(split_entry[2])])
+        reaction.compartments = tuple(compartments)
+        reaction_coefficients = self._to_lcm_denominator(decimal_reaction_coefficients)
+        direction = modelseed_reaction_data['direction']
+        if pd.isna(direction):
+            raise ConfigError(
+                "The row for the reaction in the ModelSEED table was expected to have a 'direction' value. "
+                f"Here is the data in the row: '{modelseed_reaction_data}'"
+            )
+        if (direction == '>' and reversibility == '<') or (direction == '<' and reversibility == '>'):
+            # The way the reaction is written is the opposite of the way the reaction proceeds.
+            reaction_coefficients = [-c for c in reaction_coefficients]
+        reaction.coefficients = tuple(reaction_coefficients)
+
+        return reaction, modelseed_compound_ids
+
+    def _to_lcm_denominator(self, floats) -> Tuple[int]:
+        def lcm(a, b):
+            return a * b // gcd(a, b)
+        rationals = [Fraction(f).limit_denominator() for f in floats]
+        lcm_denom = reduce(lcm, [r.denominator for r in rationals])
+        return tuple(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
+
