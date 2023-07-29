@@ -229,9 +229,10 @@ class Constructor:
 
         gene_function_calls_dict: Dict = contigs_super.gene_function_calls_dict
         total_ko_matches = len(gene_function_calls_dict)
-        num_ko_matches_parsed = 0
+        num_ko_matches_parsed = -1
         # loop through gene-KO matches recorded in the contigs database
         for gcid, gene_dict in gene_function_calls_dict.items():
+            num_ko_matches_parsed += 1
             self.progress.update(f"{num_ko_matches_parsed} / {total_ko_matches}")
 
             if gcid in network.genes:
@@ -397,8 +398,6 @@ class Constructor:
                     reaction_compounds.append(compound)
                     network.metabolites[modelseed_compound_id] = compound
                 reaction.compounds = tuple(reaction_compounds)
-
-            num_ko_matches_parsed += 1
 
         if undefined_ko_ids:
             self.run.info_single(
