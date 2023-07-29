@@ -5,7 +5,10 @@
 import os
 import pandas as pd
 
+from math import gcd
+from functools import reduce
 from argparse import Namespace
+from fractions import Fraction
 from typing import Dict, List, Tuple
 
 import anvio.terminal as terminal
