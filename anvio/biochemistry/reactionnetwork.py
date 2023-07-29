@@ -406,7 +406,7 @@ class Constructor:
 
         self.progress.end()
 
-    def _load_contigs_db(contigs_db_path: str) -> ContigsSuperclass:
+    def _load_contigs_db(self, contigs_db_path: str) -> ContigsSuperclass:
         is_contigs_db(contigs_db_path)
         args = Namespace()
         args.contigs_db = contigs_db_path
