@@ -178,7 +178,7 @@ class Constructor:
     """
     Construct a metabolic reaction network within an anvi'o database.
 
-    This currently uses KO annotations and the ModelSEED Biochemistry database.
+    This currently depends on KEGG annotations of genes and the ModelSEED Biochemistry database.
     """
     def __init__(
         self,
