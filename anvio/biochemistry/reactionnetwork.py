@@ -345,8 +345,9 @@ class Constructor:
                 for modelseed_reaction_data in modelseed_kegg_reactions_dict.values():
                     # data on the ModelSEED reaction has already been added to the list using a
                     # different alias
-                    if modelseed_reaction_data['id'] not in modelseed_reactions_data:
-                        modelseed_reactions_data[modelseed_id] = modelseed_reaction_data
+                    modelseed_reaction_id = modelseed_reaction_data['id']
+                    if modelseed_reaction_id not in modelseed_reactions_data:
+                        modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
             if unadded_ec_numbers:
                 modelseed_ec_reactions_dict: Dict[str, Dict] = modelseed_ec_reactions_table[
                     modelseed_ec_reactions_table['EC_number'].isin(unadded_ec_numbers)
@@ -354,8 +355,9 @@ class Constructor:
                 for modelseed_reaction_data in modelseed_ec_reactions_dict.values():
                     # data on the ModelSEED reaction has already been added to the list using a
                     # different alias
-                    if modelseed_reaction_data['id'] not in modelseed_reaction_data:
-                        modelseed_reactions_data[modelseed_id] = modelseed_reaction_data
+                    modelseed_reaction_id = modelseed_reaction_data['id']
+                    if modelseed_reaction_id not in modelseed_reaction_data:
+                        modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
             assert len(modelseed_reactions_data) > 0
 
             # generate new reaction objects in the network
