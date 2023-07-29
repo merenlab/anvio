@@ -26,6 +26,9 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+run_quiet = terminal.Run(verbose=False)
+
+
 class ModelSEEDCompound:
     """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
     def __init__(self) -> None:
@@ -203,7 +206,12 @@ class Constructor:
     def make_single_genome_network(self, contigs_db_path: str):
         contigs_super = self._load_contigs_db(contigs_db_path)
 
+        self.progress.new("Building reaction network")
+        self.progress.update("...")
+
         network = SingleGenomeNetwork()
+
+        self.progress.end()
     def _load_contigs_db(contigs_db_path: str) -> ContigsSuperclass:
         is_contigs_db(contigs_db_path)
         args = Namespace()
