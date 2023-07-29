@@ -30,6 +30,7 @@ def main():
     args = parser.get_args(parser)
 
     constructor = Constructor(kegg_data_dir=args.kegg_data_dir, modelseed_data_dir=args.modelseed_data_dir)
+    network = constructor.make_single_genome_network(args.contigs_db)
 
 if __name__ == '__main__':
     try:
