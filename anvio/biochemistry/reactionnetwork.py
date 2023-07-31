@@ -11,10 +11,12 @@ from argparse import Namespace
 from fractions import Fraction
 from typing import Dict, List, Tuple
 
+import anvio.tables as tables
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.utils import is_contigs_db
+from anvio.dbops import ContigsDatabase
 from anvio.dbops import ContigsSuperclass
 from anvio import __file__ as ANVIO_PATH, __version__ as VERSION
 
