@@ -249,7 +249,7 @@ class Constructor:
         # loop through gene-KO matches recorded in the contigs database
         for gcid, gene_dict in gene_function_calls_dict.items():
             num_ko_matches_parsed += 1
-            self.progress.update(f"{num_ko_matches_parsed} / {total_ko_matches}")
+            self.progress.update(f"Gene-KO matches parsed: {num_ko_matches_parsed} / {total_ko_matches}")
 
             if gcid in network.genes:
                 # an object representing the gene was already added to the network
