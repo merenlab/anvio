@@ -411,6 +411,74 @@ class Constructor:
 
         self.progress.end()
 
+    def _store_reactions_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
+        """Store reaction data in the contigs database table."""
+        reactions_data = {}
+        # transfer data from reaction objects
+        for modelseed_reaction_id, reaction in network.reactions.items():
+            reaction_data = {}
+            reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
+            reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
+            reaction_data['metabolite_modelseed_ids'] = ', '.join([c.modelseed_id for c in reaction.compounds])
+            reaction_data['stoichiometry'] = ', '.join(reaction.coefficients)
+            reaction_data['compartments'] = ', '.join(reaction.compartments)
+            reaction_data['reversibility'] = reaction.reversibility
+            reactions_data[modelseed_reaction_id] = reaction_data
+
+        # Get *KO* KEGG REACTION ID and EC number aliases of each ModelSEED reaction. These are not
+        # all possible aliases, but only those associated with KOs that matched genes. Structure
+        # alias data as follows:
+        # <ModelSEED reaction ID>: {
+        #   <KEGG REACTION ID 1>: [<KO IDs associated with KEGG REACTION ID 1>],
+        #   <KEGG REACTION ID 2>: [<KO IDs associated with  KEGG REACTION ID 2>], ...}
+        # <ModelSEED reaction ID>: {
+        #   <EC number 1>: [<KO IDs associated with EC number 1>],
+        #   <EC number 2>: [<KO IDs associated with EC number 2>], ...}
+        ko_reaction_aliases = {modelseed_reaction_id: ({}, {}) for modelseed_reaction_id in reactions_data}
+        for ko_id, ko in network.kos.items():
+            for modelseed_reaction_id, reaction in ko.reactions.items():
+                aliases = ko_reaction_aliases[modelseed_reaction_id]
+
+                kegg_reaction_aliases = aliases[0]
+                kegg_reaction_ids = ko.kegg_reaction_aliases[modelseed_reaction_id]
+                for kegg_reaction_id in kegg_reaction_ids:
+                    try:
+                        ko_ids: list = kegg_reaction_aliases[kegg_reaction_id]
+                    except KeyError:
+                        kegg_reaction_aliases[kegg_reaction_id] = ko_ids = []
+                    ko_ids.append(ko_id)
+
+                ec_number_aliases = aliases[1]
+                ec_numbers = ko.ec_number_aliases[modelseed_reaction_id]
+                for ec_number in ec_numbers:
+                    try:
+                        ko_ids: list = ec_number_aliases[ec_number]
+                    except KeyError:
+                        ec_number_aliases[ec_number] = ko_ids = []
+                    ko_ids.append(ko_id)
+        for modelseed_reaction_id, aliases in ko_reaction_aliases.items():
+            reaction_data = reactions_data[modelseed_reaction_id]
+
+            kegg_reaction_aliases = aliases[0]
+            entry = []
+            for kegg_reaction_id, ko_ids in kegg_reaction_aliases.items():
+                entry.append(f'{kegg_reaction_id}: ({", ".join(sorted(ko_ids))})')
+            reaction_data['ko_kegg_reaction_source'] = '; '.join(sorted(entry))
+
+            ec_number_aliases = aliases[1]
+            entry = []
+            for ec_number, ko_ids in ec_number_aliases.items():
+                entry.append(f'{ec_number}: ({", ".join(sorted(ko_ids))})')
+            reaction_data['ko_ec_number_source'] = '; '.join(sorted(entry))
+
+        reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
+
+        contigs_db = ContigsDatabase(contigs_db_path)
+        contigs_db.db._exec_many(
+            f'''INSERT INTO %s VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
+            reactions_table.values
+        )
+        contigs_db.disconnect()
     def _load_contigs_db(self, contigs_db_path: str) -> ContigsSuperclass:
         is_contigs_db(contigs_db_path)
         args = Namespace()
