@@ -423,10 +423,10 @@ class Constructor:
                 f"matching genes in the contigs database: {', '.join(undefined_ko_ids)}"
             )
 
-        self.progress.end()
-
+        self.progress.update("Writing network to contigs database")
         self._store_reactions_in_contigs_db(network, contigs_db_path)
         self._store_metabolites_in_contigs_db(network, contigs_db_path)
+        self.progress.end()
     def _store_reactions_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
         """Store reaction data in the contigs database table."""
         reactions_data = {}
