@@ -411,6 +411,8 @@ class Constructor:
 
         self.progress.end()
 
+        self._store_reactions_in_contigs_db(network, contigs_db_path)
+        self._store_metabolites_in_contigs_db(network, contigs_db_path)
     def _store_reactions_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
         """Store reaction data in the contigs database table."""
         reactions_data = {}
