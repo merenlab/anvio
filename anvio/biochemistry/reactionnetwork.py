@@ -210,7 +210,8 @@ class Constructor:
         self.modelseed_db = ModelSEEDDatabase()
         self.modelseed_db.load(self.modelseed_dir)
 
-    def make_single_genome_network(self, contigs_db_path: str):
+    def make_single_genome_network(self, contigs_db_path: str) -> None:
+
         contigs_super = self._load_contigs_db(contigs_db_path)
 
         if contigs_super.a_meta['reaction_network_was_run']:

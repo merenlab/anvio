@@ -39,6 +39,8 @@ def main():
         modelseed_dir=args.modelseed_data_dir,
         overwrite_existing_network=args.overwrite_existing_network
     )
+    constructor.make_single_genome_network(args.contigs_db)
+
 
 if __name__ == '__main__':
     try:
