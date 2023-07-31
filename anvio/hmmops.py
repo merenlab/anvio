@@ -293,7 +293,7 @@ class SequencesForHMMHits:
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:
             l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
-            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l).mode[0]),
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l)[0]),
                                                       'domain': self.hmm_hits_info[SCG_source]['domain']}
 
         return num_genomes_per_SCG_source

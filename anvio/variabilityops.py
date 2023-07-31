@@ -2527,7 +2527,7 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFanc
         self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
 
         # This filters out positions that were variable as codons, but are non-varying as amino acids
-        smallest_float = np.finfo(np.float).eps
+        smallest_float = np.finfo(np.float_).eps
         self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
 
 
