@@ -221,7 +221,7 @@ class Constructor:
                 contigs_db.db._exec(f'''DELETE from {tables.gene_function_reactions_table_name}''')
                 contigs_db.db._exec(f'''DELETE from {tables.gene_function_metabolites_table_name}''')
                 contigs_db.disconnect()
-                self.run.info_single("Deleted data in gene function reactions and metabolites tables")
+                self.run.info_single("Deleted data in gene function reactions and metabolites tables", nl_after=1)
             else:
                 raise ConfigError("The existing reaction network in the contigs database must be explicitly overwritten.")
 
