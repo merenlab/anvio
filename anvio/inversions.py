@@ -982,6 +982,30 @@ class Inversions:
             output_queue.put(sample_counts)
 
 
+    def populate_consensus_inversions_from_input_file(self):
+        """Get the consensus inversions from a previously generated output file"""
+
+        # these are the keys we are interested in finding in that file. NOTE that these keys are not ALL
+        # keys, but the minimum set that co-occur both sample-specific and consensus inversion reports.
+        # this way, the user can attempt to characterize the activity of inversions found in a single
+        # sample if they wish:
+        keys_of_interest = [('contig_name', str), ('first_seq', str), ('midline', str), ('second_seq', str),
+                            ('first_start', int), ('first_end', int), ('first_oligo_primer', str),
+                            ('first_oligo_reference', str), ('second_start', int), ('second_end', int),
+                            ('second_oligo_primer', str), ('second_oligo_reference', str), ('num_mismatches', int),
+                            ('num_gaps', int), ('length', int), ('distance', int)]
+
+        inversions_dict = utils.get_TAB_delimited_file_as_dictionary(self.pre_computed_inversions_path)
+
+        self.consensus_inversions = []
+
+        for inversion_id in sorted(list(inversions_dict.keys())):
+            entry = OrderedDict({'inversion_id': inversion_id})
+            for tpl in keys_of_interest:
+                entry[tpl[0]] = tpl[1](inversions_dict[inversion_id][tpl[0]])
+            self.consensus_inversions.append(entry)
+
+
     def compute_inversion_activity(self):
         """Go back to the raw metagenomic reads to compute activity of inversions"""
 
