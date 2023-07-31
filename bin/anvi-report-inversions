@@ -38,7 +38,7 @@ if __name__ == '__main__':
                     "sample-specific inversions (i.e., 'INVERSIONS-IN-[SAMPLE-NAME].txt') calculated. This input option will "
                     "use the existing inversions reported in the input file and recalculate the inversion activity output. It is "
                     "a great way to calculate inversions or refine them from a smaller set of genomes / metagenomes, and scale "
-                    "up the characterizations of their activity to thousansds of metagenomes quickly (*chough* cheater *chough*). "
+                    "up the characterizations of their activity to thousands of metagenomes quickly (*cough* cheater *cough*). "
                     "Please note that if you use this flag, most other options EXCEPT those that are listed below 'KEY ALGORITHMIC "
                     "COMPONENT 04: COMPUTING INVERSION ACTIVITY' will be irrelevant, so you can skip all and take a look at the "
                     "parameters there.")
