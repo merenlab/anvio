@@ -1207,6 +1207,21 @@ class Inversions:
         self.run.info("[General] R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
         self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
 
+        # do we have a previously computed list of consensus inversions to focus for inversion
+        # activity calculations?
+        if self.pre_computed_inversions_path:
+            self.run.warning("Anvi'o is taking a shortcut to calculate inversion activity using the inversions you have "
+                             "provided in the 'consensus inversions' file. There is nothing for you to be concerned about "
+                             "-- except the fact that some very fancy coding is at play here and catastrophic failures "
+                             "are not a remote possibility. Still, anvi'o prints this message in green for positive "
+                             "vibes 🥲", header="🌈 PRE-COMPUTED INVERSIONS FOUND 🌈", lc="green")
+
+            self.populate_consensus_inversions_from_input_file()
+            self.compute_inversion_activity()
+
+            # WE'RE DOnE HERE. DoNe.
+            return
+
         self.run.info("[Defining stretches] Min FF/RR coverage to qualify", self.min_coverage_to_define_stretches)
         self.run.info("[Defining stretches] Min length", self.min_stretch_length)
         self.run.info("[Defining stretches] Min dist between independent stretches", self.min_distance_between_independent_stretches)
