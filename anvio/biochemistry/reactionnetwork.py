@@ -426,7 +426,52 @@ class Constructor:
         self.progress.update("Writing network to contigs database")
         self._store_reactions_in_contigs_db(network, contigs_db_path)
         self._store_metabolites_in_contigs_db(network, contigs_db_path)
+        self.progress.update("Calculating network statistics")
+
+        contributing_gcids = []
+        contributing_ko_ids = []
+        for gcid, gene in network.genes.items():
+            for ko in gene.kos:
+                if ko.reactions:
+                    contributing_gcids.append(gcid)
+                    contributing_ko_ids.append(ko.id)
+                    break
+        contributing_gcids = set(contributing_gcids)
+        contributing_ko_ids = set(contributing_ko_ids)
+
+        kegg_plus_ec_alias_count = 0
+        only_kegg_alias_count = 0
+        only_ec_alias_count = 0
+        contributing_kegg_reaction_ids = []
+        contributing_ec_numbers = []
+        for reaction in network.reactions.values():
+            if reaction.kegg_id_aliases and reaction.ec_number_aliases:
+                kegg_plus_ec_alias_count += 1
+            elif reaction.kegg_id_aliases:
+                only_kegg_alias_count += 1
+            elif reaction.ec_number_aliases:
+                only_ec_alias_count += 1
+            else:
+                raise ConfigError("It should not be possible for a reaction to have neither a KEGG REACTION ID nor EC number alias!")
+            contributing_kegg_reaction_ids += list(reaction.kegg_id_aliases)
+            contributing_ec_numbers += list(reaction.ec_number_aliases)
+        contributing_kegg_reaction_ids = set(contributing_kegg_reaction_ids)
+        contributing_ec_numbers = set(contributing_ec_numbers)
+
         self.progress.end()
+
+        self.run.info("Total genes processed", len(network.genes))
+        self.run.info("Genes contributing to network", len(contributing_gcids))
+        self.run.info("Total KOs processed", len(network.kos))
+        self.run.info("KOs contributing to network", len(contributing_ko_ids))
+        self.run.info("Reactions in network", len(network.reactions))
+        self.run.info("Reactions aliased by KEGG reaction + EC number", kegg_plus_ec_alias_count)
+        self.run.info("Reactions aliased only by KEGG reaction", only_kegg_alias_count)
+        self.run.info("Reactions aliased only by EC number", only_ec_alias_count)
+        self.run.info("KEGG reactions contributing to network", len(contributing_kegg_reaction_ids))
+        self.run.info("EC numbers contributing to network", len(contributing_ec_numbers))
+        self.run.info("Metabolites in network", len(network.metabolites))
+
     def _store_reactions_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
         """Store reaction data in the contigs database table."""
         reactions_data = {}
