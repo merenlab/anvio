@@ -533,10 +533,11 @@ class Constructor:
             reaction_data['ko_ec_number_source'] = '; '.join(sorted(entry))
 
         reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
+        reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
 
         contigs_db = ContigsDatabase(contigs_db_path)
         contigs_db.db._exec_many(
-            f'''INSERT INTO %s VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
+            f'''INSERT INTO {tables.gene_function_reactions_table_name} VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
             reactions_table.values
         )
         contigs_db.disconnect()
@@ -552,10 +553,11 @@ class Constructor:
             metabolite_data['charge'] = compound.charge
             metabolites_data[modelseed_compound_id] = metabolite_data
         metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
+        metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
 
         contigs_db = ContigsDatabase(contigs_db_path)
         contigs_db.db._exec_many(
-            f'''INSERT INTO %s VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
+            f'''INSERT INTO {tables.gene_function_metabolites_table_name} VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
             metabolites_table.values
         )
         contigs_db.disconnect()
