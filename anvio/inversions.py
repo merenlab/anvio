@@ -249,7 +249,7 @@ class Inversions:
             # but if there aren't any regions covered enough we want to stop:
             if not regions_of_contig_covered_enough.any():
                 continue
-            
+
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
             cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
@@ -263,11 +263,10 @@ class Inversions:
 
                 if (cov_stretch_end - cov_stretch_start) >= self.min_stretch_length:
                     coverage_stretches_in_contigs[contig_name].append((cov_stretch_start, cov_stretch_end),)
-            
+
             # and if there are no coverage stretches long enough, stop:
             if not coverage_stretches_in_contigs[contig_name]:
                 continue
-                
             # now it is time to merge those stretches of coverage if they are close to one another to avoid
             # over-splitting areas of coverage due to short regions with low-coverage in the middle like this,
             # where we wish to identify A and B together in a single stretch:
