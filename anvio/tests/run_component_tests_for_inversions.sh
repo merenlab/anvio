@@ -62,6 +62,11 @@ SHOW_FILE INVERSION_COMPLETE/INVERSION-ACTIVITY.txt
 SHOW_FILE INVERSION_COMPLETE/INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt
 SHOW_FILE INVERSION_COMPLETE/INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt
 
+INFO "Re-computing inversion activity using previous results (quietly)"
+anvi-report-inversions -P bams-and-profiles.txt \
+                       --pre-computed-inversions INVERSION_COMPLETE/INVERSIONS-CONSENSUS.txt \
+                       --quiet
+
 INFO "Running the analysis on a target region (quietly)"
 anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_TARGET \
