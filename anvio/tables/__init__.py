@@ -87,8 +87,8 @@ gene_function_calls_table_structure    = ['gene_callers_id', 'source', 'accessio
 gene_function_calls_table_types        = [    'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
 gene_function_reactions_table_name        = 'gene_function_reactions'
-gene_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_mapping', 'ko_ec_mapping', 'metabolite_modelseed_ids', 'stoichiometry', 'reversibility']
-gene_function_reactions_table_types       = [         'text'        ,            'text'        ,             'text'        ,      'text'    ,           'text'          ,      'text'    ,      'text'    ]
+gene_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'metabolite_modelseed_ids', 'stoichiometry', 'reversibility']
+gene_function_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'          ,      'text'    ,      'bool'    ]
 
 gene_function_metabolites_table_name      = 'gene_function_metabolites'
 gene_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'formula', 'charge', 'compartment']
