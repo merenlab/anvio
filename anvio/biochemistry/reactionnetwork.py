@@ -479,6 +479,26 @@ class Constructor:
             reactions_table.values
         )
         contigs_db.disconnect()
+
+    def _store_metabolites_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
+        """Store metabolite data in the contigs database table."""
+        metabolites_data = {}
+        for modelseed_compound_id, compound in network.metabolites.items():
+            metabolite_data = {}
+            metabolite_data['modelseed_compound_id'] = modelseed_compound_id
+            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
+            metabolite_data['formula'] = compound.formula
+            metabolite_data['charge'] = compound.charge
+            metabolites_data[modelseed_compound_id] = metabolite_data
+        metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
+
+        contigs_db = ContigsDatabase(contigs_db_path)
+        contigs_db.db._exec_many(
+            f'''INSERT INTO %s VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
+            metabolites_table.values
+        )
+        contigs_db.disconnect()
+
     def _load_contigs_db(self, contigs_db_path: str) -> ContigsSuperclass:
         is_contigs_db(contigs_db_path)
         args = Namespace()
