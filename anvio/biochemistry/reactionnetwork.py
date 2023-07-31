@@ -433,6 +433,11 @@ class Constructor:
         self.progress.update("Writing network to contigs database")
         self._store_reactions_in_contigs_db(network, contigs_db_path)
         self._store_metabolites_in_contigs_db(network, contigs_db_path)
+
+        contigs_db = ContigsDatabase(contigs_db_path)
+        gene_call_count = contigs_db.db.get_row_counts_from_table('genes_in_contigs')
+        contigs_db.disconnect()
+
         self.progress.update("Calculating network statistics")
 
         contributing_gcids = []
@@ -467,7 +472,7 @@ class Constructor:
 
         self.progress.end()
 
-        self.run.info("Total genes processed", len(network.genes))
+        self.run.info("Total gene calls", gene_call_count)
         self.run.info("Genes contributing to network", len(contributing_gcids))
         self.run.info("Total KOs processed", len(network.kos))
         self.run.info("KOs contributing to network", len(contributing_ko_ids))
