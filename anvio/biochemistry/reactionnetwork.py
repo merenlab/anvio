@@ -481,7 +481,7 @@ class Constructor:
             reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
             reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
             reaction_data['metabolite_modelseed_ids'] = ', '.join([c.modelseed_id for c in reaction.compounds])
-            reaction_data['stoichiometry'] = ', '.join(reaction.coefficients)
+            reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
             reaction_data['compartments'] = ', '.join(reaction.compartments)
             reaction_data['reversibility'] = reaction.reversibility
             reactions_data[modelseed_reaction_id] = reaction_data
