@@ -115,6 +115,7 @@ class Inversions:
 
         # compute inversion activity across samples?
         self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
+        self.pre_computed_inversions_path = A('pre_computed_inversions')
 
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
@@ -267,6 +268,7 @@ class Inversions:
             # and if there are no coverage stretches long enough, stop:
             if not coverage_stretches_in_contigs[contig_name]:
                 continue
+
             # now it is time to merge those stretches of coverage if they are close to one another to avoid
             # over-splitting areas of coverage due to short regions with low-coverage in the middle like this,
             # where we wish to identify A and B together in a single stretch:
@@ -1271,6 +1273,15 @@ class Inversions:
 
     def sanity_check(self):
         """Basic checks for a smooth operation"""
+
+        if self.pre_computed_inversions_path:
+            if self.skip_compute_inversion_activity:
+                raise ConfigError("You can't provide consensus inversions to calculate inversion activity, and then ask "
+                                  "anvi'o to skip calculating inversion activity :/")
+
+            if not self.raw_r1_r2_reads_are_present:
+                raise ConfigError("You asked anvi'o to calculate inversion activity across samples, but your bams-and-profiles-txt "
+                                  "does not include raw R1/R2 reads :(")
 
         if not self.skip_recovering_genomic_context:
             if not dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['genes_are_called']:
