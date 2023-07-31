@@ -386,6 +386,12 @@ class Constructor:
                     # the reaction does not have an equation in ModelSEED for some reason
                     continue
                 ko.reactions[modelseed_reaction_id] = reaction
+                ko.kegg_reaction_aliases[modelseed_reaction_id] = tuple(
+                    set(unadded_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases))
+                )
+                ko.ec_number_aliases[modelseed_reaction_id] = tuple(
+                    set(unadded_ec_numbers).intersection(set(reaction.ec_number_aliases))
+                )
                 network.reactions[modelseed_reaction_id] = reaction
 
                 # separate ModelSEED compund IDs that have previously been used to create
