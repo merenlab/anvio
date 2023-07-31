@@ -385,6 +385,7 @@ class Constructor:
                 if reaction is None:
                     # the reaction does not have an equation in ModelSEED for some reason
                     continue
+                ko.reactions[modelseed_reaction_id] = reaction
                 network.reactions[modelseed_reaction_id] = reaction
 
                 # separate ModelSEED compund IDs that have previously been used to create
