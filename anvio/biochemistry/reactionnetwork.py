@@ -214,7 +214,7 @@ class Constructor:
 
         contigs_super = self._load_contigs_db(contigs_db_path)
 
-        if contigs_super.a_meta['reaction_network_was_run']:
+        if int(contigs_super.a_meta['reaction_network_was_run']):
             if self.overwrite_existing_network:
                 self.run.warning("Deleting existing reaction network from contigs database")
                 contigs_db = ContigsDatabase(contigs_db_path)
