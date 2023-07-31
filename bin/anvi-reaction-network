@@ -27,10 +27,18 @@ def main():
     parser.add_argument(*A('kegg-data-dir'), **K('kegg-data-dir'))
     parser.add_argument(*A('modelseed-data-dir'), **K('modelseed-data-dir'))
 
+    parser.add_argument(
+        '--overwrite-existing-network', default=False, action='store_true',
+        help="Overwrite an existing reaction network in the database with the newly computed network."
+    )
+
     args = parser.get_args(parser)
 
-    constructor = Constructor(kegg_data_dir=args.kegg_data_dir, modelseed_data_dir=args.modelseed_data_dir)
-    network = constructor.make_single_genome_network(args.contigs_db)
+    constructor = Constructor(
+        kegg_dir=args.kegg_data_dir,
+        modelseed_dir=args.modelseed_data_dir,
+        overwrite_existing_network=args.overwrite_existing_network
+    )
 
 if __name__ == '__main__':
     try:

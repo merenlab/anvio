@@ -195,11 +195,13 @@ class Constructor:
         self,
         kegg_dir: str,
         modelseed_dir: str,
+        overwrite_existing_network: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
+        self.overwrite_existing_network = overwrite_existing_network
         self.run = run
         self.progress = progress
 
@@ -210,6 +212,17 @@ class Constructor:
 
     def make_single_genome_network(self, contigs_db_path: str):
         contigs_super = self._load_contigs_db(contigs_db_path)
+
+        if contigs_super.a_meta['reaction_network_was_run']:
+            if self.overwrite_existing_network:
+                self.run.warning("Deleting existing reaction network from contigs database")
+                contigs_db = ContigsDatabase(contigs_db_path)
+                contigs_db.db._exec(f'''DELETE from {tables.gene_function_reactions_table_name}''')
+                contigs_db.db._exec(f'''DELETE from {tables.gene_function_metabolites_table_name}''')
+                contigs_db.disconnect()
+                self.run.info_single("Deleted data in gene function reactions and metabolites tables")
+            else:
+                raise ConfigError("The existing reaction network in the contigs database must be explicitly overwritten.")
 
         self.progress.new("Building reaction network")
         self.progress.update("...")
