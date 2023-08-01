@@ -1,16 +1,16 @@
-This program allows you to find genomic inversions using short-read mapping information.
+This program allows you to find genomic inversions using metagenomic read recruitment results, and their activity patterns across samples.
 
 An inversion is typically carried out by an invertase. This enzyme recognizes a pair of inverted repeat (IR), which are a special case of palindromic sequence where the repeats are facing inward on different DNA strand. The IRs are distant from each other and the invertase will invert the DNA fragment between the IRs.
 
-In brief, anvi'o leverages paired-read orientation to locate regions of interest in a set of contigs. It screens for IRs whithin these regions, and uses short-reads to confirm which IRs corrrespond to real inversions. Eventually, anvi'o can compute the inversion activity: the relative proportion of an inversion's orientation in each sample.
+In brief, anvi'o leverages paired-read orientation (through the `--fetch-filter` mechanism in %(anvi-profile)s explained below) to locate regions of interest in a set of contigs. It screens for IRs whithin regions that are enriched in read pairs that are enriched in forward/forward or reverse/reverse orientations, and uses short-reads to confirm which IRs corrrespond to real inversions. Anvi'o can also compute the 'inversion activity', i.e., the relative proportion of each orientation of an inversion in each sample.
 
-### Anvi'o's philosophy to find inversions
+### Anvi'o philosophy to find inversions
 
-Much like a T-Rex, anvi'o's vision rely on movement and it cannot see an inversion if it does not move, or in this case, invert. So let's start with what you cannot do with this command: you cannot find inversions in a set of contigs alone.
+Much like a T-Rex, the vision of anvi'o rely on movement and it cannot see an inversion if it does not move, or in this case, invert. So let's start with what you cannot do with this command: you cannot find inversions in a set of contigs alone.
 
-To find an inversion, you need to have short-reads from at least one sample. If there is even a small fraction of a microbial population that have an inverted sequence compare to your contigs of reference, then anvi-report-inversions is for you!
+To find an inversion, you need to have short-reads from at least one sample. If there is even a small fraction of the members of a microbial population have an inverted sequence, then %(anvi-report-inversions)s will very likely find it for you!
 
-### Prerequistes to run this program
+### Before you run this program
 
 Anvi'o is able to locate inversion using the paired-end read orientation. Regular paired-end reads are facing inward with a FWD/REV orientation, but when an inversion happens, some reads will be mapping in the opposite orientation regarding the reference. As a consequence, some paired-end reads will have the same orientation: FWD/FWD or REV/REV.
 
@@ -22,16 +22,16 @@ anvi-profile -i %(bam-file)s \
              --fetch-filter inversion
 {{ codestop }}
 
-### Inputs
+### Other essential inputs to run this program
 
-The main input for this command is a %(bams-and-profiles-txt)s, which is a TAB-delimited file composed of at least four columns:
+The main input for %(anvi-report-inversions)s is a %(bams-and-profiles-txt)s, which is a TAB-delimited file composed of at least four columns:
 
 * Sample name,
 * %(contigs-db)s,
 * %(single-profile-db)s generated with the inversion fetch filter,
 * %(bam-file)s.
 
-You can also add two column for the R1 and R2 fastq files so that anvi'o can compute the inversion's activity.
+If you are interested in also characterizing inversion activity statistics across samples, you will also need to add two more columns into the %(bams-and-profiles-txt)s file to point out the paths for the R1 and R2 FASTQ files.
 
 Here is a standard run with default parameters:
 
@@ -111,6 +111,18 @@ anvi-report-inversions -P %(bams-and-profiles-txt)s \
                        --num-threads 12 \
                        --oligo-primer-base-length 12
 {{ codestop }}
+
+### Computing inversion activity using previously computed inversions
+
+It is possible to instruct anvi'o to use previously reported inversions to characterize their activity across a larger set of samples. This is possible by passing the program %(anvi-report-inversions)s the output file for consensus inversions (i.e., 'CONSENSUS-INVERSIONS.txt') or the output file for sample-specific inversions (i.e., 'INVERSIONS-IN-[SAMPLE-NAME].txt') from a previous run using the flag `--pre-computed-inversions`:
+
+{{ codestart }}
+anvi-report-inversions -P %(bams-and-profiles-txt)s \
+                       --pre-computed-inversions inversions_output/INVERSIONS-CONSENSUS.txt
+                       -o activity_calculations
+{{ codestop }}
+
+In this mode, %(anvi-report-inversions)s will not reclaculate inversions, and only report the activity of inversions found in the input file across samples listed in the %(bams-and-profiles-txt)s file.
 
 ### Reporting genomic context around inversions
 
