@@ -52,6 +52,7 @@ class FilterHmmHitsTable(object):
         self.list_hmm_sources=A("list_hmm_sources")
         self.hmm_profile_dir=A("hmm_profile_dir")
         self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
+        self.filter_out_partial_gene_calls = A('filter_out_partial_gene_calls')
 
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
@@ -400,6 +401,8 @@ if __name__ == '__main__':
                         "calculating the approximate coverage of the gene by the model). If you set this parameter to any distance, "
                         "anvi'o will first merge independent hits for the same gene/model that are closer to each other than that "
                         "distance.")
+    parser.add_argument('--filter-out-partial-gene-calls', default=False, type=bool, help="Only keep hmm-hits from open reading frames "
+                        "with start and stop codons.")
 
     args = parser.get_args(parser)
 
