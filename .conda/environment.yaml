@@ -10,6 +10,7 @@ dependencies:
 - idba
 - mcl
 - muscle=3.8.1551
+- famsa
 - hmmer
 - diamond
 - blast
