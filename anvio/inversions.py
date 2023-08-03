@@ -115,6 +115,7 @@ class Inversions:
 
         # compute inversion activity across samples?
         self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
+        self.pre_computed_inversions_path = A('pre_computed_inversions')
 
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
@@ -134,6 +135,17 @@ class Inversions:
         self.target_contig = A('target_contig')
         self.target_region_start = A('target_region_start')
         self.target_region_end = A('target_region_end')
+
+        # these are the keys we are interested in finding in input files offered to reconstruct
+        # inverson profiles via the --pre-computed-inversions flag. NOTE that these keys are not ALL
+        # keys that are used to build inversion profiles in the code, but the minimum set that
+        # co-occur both sample-specific and consensus inversion reports. this way, the user can
+        # attempt to characterize the activity of inversions found in a single sample if they wish:
+        self.essential_keys_to_describe_inversions = [('contig_name', str), ('first_seq', str), ('midline', str), ('second_seq', str),
+                                                      ('first_start', int), ('first_end', int), ('first_oligo_primer', str),
+                                                      ('first_oligo_reference', str), ('second_start', int), ('second_end', int),
+                                                      ('second_oligo_primer', str), ('second_oligo_reference', str), ('num_mismatches', int),
+                                                      ('num_gaps', int), ('length', int), ('distance', int)]
 
         if self.target_contig:
             self.verbose = True
@@ -249,7 +261,7 @@ class Inversions:
             # but if there aren't any regions covered enough we want to stop:
             if not regions_of_contig_covered_enough.any():
                 continue
-            
+
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
             cov_stretch_end_positions = np.where(regions_of_contig_covered_enough_diff == -1)[0]
@@ -263,11 +275,11 @@ class Inversions:
 
                 if (cov_stretch_end - cov_stretch_start) >= self.min_stretch_length:
                     coverage_stretches_in_contigs[contig_name].append((cov_stretch_start, cov_stretch_end),)
-            
+
             # and if there are no coverage stretches long enough, stop:
             if not coverage_stretches_in_contigs[contig_name]:
                 continue
-                
+
             # now it is time to merge those stretches of coverage if they are close to one another to avoid
             # over-splitting areas of coverage due to short regions with low-coverage in the middle like this,
             # where we wish to identify A and B together in a single stretch:
@@ -981,6 +993,20 @@ class Inversions:
             output_queue.put(sample_counts)
 
 
+    def populate_consensus_inversions_from_input_file(self):
+        """Get the consensus inversions from a previously generated output file"""
+
+        inversions_dict = utils.get_TAB_delimited_file_as_dictionary(self.pre_computed_inversions_path)
+
+        self.consensus_inversions = []
+
+        for inversion_id in sorted(list(inversions_dict.keys())):
+            entry = OrderedDict({'inversion_id': inversion_id})
+            for tpl in self.essential_keys_to_describe_inversions:
+                entry[tpl[0]] = tpl[1](inversions_dict[inversion_id][tpl[0]])
+            self.consensus_inversions.append(entry)
+
+
     def compute_inversion_activity(self):
         """Go back to the raw metagenomic reads to compute activity of inversions"""
 
@@ -996,14 +1022,14 @@ class Inversions:
 
         # let the user know what is going on
         msg = (f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
-              f"across {PL('sample', num_samples)}. Brace yourself and please not that this can "
-              f"take a very long time since for each sample, anvi'o will go through each short read to search for two "
-              f"sequences per inversion. IF IT COMES TO A POINT WHERE you (or your job on your HPC) can't continue running "
-              f"it, this process can be killed without any loss of data from the previous steps, as your primary output "
-              f"files must have already been reported. You can always skip this step and search for individual primers "
-              f"listed in the consensus output file using the program `anvi-search-primers` with the parameter "
-              f"`--min-remainder-length 6` and the flag `--only-report-remainders` to explore inversion activity "
-              f"manually")
+               f"across {PL('sample', num_samples)}. Brace yourself and please note that this can "
+               f"take a very long time since for each sample, anvi'o will go through each short read to search for two "
+               f"sequences per inversion. IF IT COMES TO A POINT WHERE you (or your job on your HPC) can't continue running "
+               f"it, this process can be killed without any loss of data from the previous steps, as your primary output "
+               f"files must have already been reported. You can always skip this step and search for individual primers "
+               f"listed in the consensus output file using the program `anvi-search-primers` with the parameter "
+               f"`--min-remainder-length 6` and the flag `--only-report-remainders` to explore inversion activity "
+               f"manually")
         self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
         if num_samples > self.num_threads:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Not all samples will be processed "
@@ -1182,6 +1208,21 @@ class Inversions:
         self.run.info("[General] R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
         self.run.info("[General] Be talkative (--verbose)?", "True" if self.verbose else "False", nl_after=1)
 
+        # do we have a previously computed list of consensus inversions to focus for inversion
+        # activity calculations?
+        if self.pre_computed_inversions_path:
+            self.run.warning("Anvi'o is taking a shortcut to calculate inversion activity using the inversions you have "
+                             "provided in the 'consensus inversions' file. There is nothing for you to be concerned about "
+                             "-- except the fact that some very fancy coding is at play here and catastrophic failures "
+                             "are not a remote possibility. Still, anvi'o prints this message in green for positive "
+                             "vibes 🥲", header="🌈 PRE-COMPUTED INVERSIONS FOUND 🌈", lc="green")
+
+            self.populate_consensus_inversions_from_input_file()
+            self.compute_inversion_activity()
+
+            # WE'RE DOnE HERE. DoNe.
+            return
+
         self.run.info("[Defining stretches] Min FF/RR coverage to qualify", self.min_coverage_to_define_stretches)
         self.run.info("[Defining stretches] Min length", self.min_stretch_length)
         self.run.info("[Defining stretches] Min dist between independent stretches", self.min_distance_between_independent_stretches)
@@ -1272,6 +1313,22 @@ class Inversions:
 
     def sanity_check(self):
         """Basic checks for a smooth operation"""
+
+        if self.pre_computed_inversions_path:
+            filesnpaths.is_file_tab_delimited(self.pre_computed_inversions_path)
+
+            columns = utils.get_columns_of_TAB_delim_file(self.pre_computed_inversions_path)
+            if any([True for k in self.essential_keys_to_describe_inversions if k[0] not in columns]):
+                raise ConfigError("The pre-computed inversions file you have provided does not look like a pre-computed "
+                                  "inversions file generated by `anvi-report-inversions`` :/")
+
+            if self.skip_compute_inversion_activity:
+                raise ConfigError("You can't provide consensus inversions to calculate inversion activity, and then ask "
+                                  "anvi'o to skip calculating inversion activity :/")
+
+            if not self.raw_r1_r2_reads_are_present:
+                raise ConfigError("You asked anvi'o to calculate inversion activity across samples, but your bams-and-profiles-txt "
+                                  "does not include raw R1/R2 reads :(")
 
         if not self.skip_recovering_genomic_context:
             if not dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['genes_are_called']:

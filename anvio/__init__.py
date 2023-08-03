@@ -403,10 +403,16 @@ D = {
                 ),
     'bams-and-profiles': (
             ['-P', '--bams-and-profiles'],
-            {'metavar': 'FILE_PATH',
+            {'metavar': 'BAMS-AND-PROFILES-FILE',
              'help': "A four-column TAB-delimited flat text file. The header line must contain these columns: 'name', "
                      "'contigs_db_path', 'profile_db_path', and 'bam_file_path'. See the profiles-and-bams.txt artifact "
                      "for the details of the file."}
+                ),
+    'pre-computed-inversions': (
+            ['--pre-computed-inversions'],
+            {'metavar': 'INVERSIONS-FILE',
+             'help': "A TAB-delimited file that lists sample-specific or consensus inversions identified by the program "
+                     "`anvi-report-inversions`."}
                 ),
     'gene-caller': (
             ['--gene-caller'],
