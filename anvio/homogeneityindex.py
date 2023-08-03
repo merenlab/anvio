@@ -46,7 +46,7 @@ class HomogeneityCalculator(object):
         max_score = 0
         for residue_number in range(0, num_residues):
             residues = []
-            for gene_sequence in range(0, (num_sequences)-1):
+            for gene_sequence in range(0, num_sequences):
                 residues.append(gene_cluster_sequences[gene_sequence][residue_number])
             for spot_a in range(0,len(residues)):
                 for spot_b in range(spot_a+1,len(residues)):
