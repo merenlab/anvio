@@ -12,6 +12,7 @@ import pandas as pd
 
 import anvio
 import anvio.data.hmm
+import anvio.db as db
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
@@ -306,11 +307,18 @@ class FilterHmmHitsTable(object):
 
 
     def filter_domtblout(self):
-        """Filter the hmm_hits table based on model and/or gene coverage"""
+        """
+        Filter the hmm_hits table based on HMM model coverage, gene coverage, or open reading frame completeness.
 
-        # Filtering conditions
+        Returns:
+            CSV: Filtered domtblout file from hmmsearch. 
+            str: The file path of the temporary file where the filtered DataFrame is saved.
+        """
+
+        # Alignment coverage filtering conditions
         if self.model_coverage and self.gene_coverage:
-            df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) & (self.df['gene_coverage'] > float(self.gene_coverage))]
+            df_filtered = self.df[(self.df['model_coverage'] > float(self.model_coverage)) &
+                                (self.df['gene_coverage'] > float(self.gene_coverage))]
         elif self.gene_coverage:
             df_filtered = self.df[self.df['gene_coverage'] > float(self.gene_coverage)]
         elif self.model_coverage:
@@ -318,18 +326,38 @@ class FilterHmmHitsTable(object):
         else:
             df_filtered = self.df.copy()
 
-        self.run.info("Num hits before filtering", self.df.shape[0])
-        self.run.info("Num hits after filtering", df_filtered.shape[0])
-        self.run.info("Num filtered", self.df.shape[0] - df_filtered.shape[0])
+        # Log filtering information
+        self.run.info("Num hmm-hits before alignment filtering", self.df.shape[0])
+        self.run.info("Num hmm-hits after alignment filtering", df_filtered.shape[0])
+        self.run.info("Num hmm-hits filtered from alignment coverage", self.df.shape[0] - df_filtered.shape[0])
 
-        # Reformat domtblout back to original
+        # Reformat domtblout back to the original format by dropping 'model_coverage' and 'gene_coverage' columns
         df_final = df_filtered.drop(columns=['model_coverage', 'gene_coverage'])
 
+        # Additional filtering for partial gene calls if required
+        if self.filter_out_partial_gene_calls:
+            # Load the genes_in_contigs table from a database
+            database = db.DB(self.contigs_db_path, None, ignore_version=True)
+            table_content = database.get_table_as_dataframe('genes_in_contigs')
+
+            # Filter the genes_in_contigs table to select only complete gene calls (partial == 0)
+            table = table_content.query('partial == 0')
+
+            # Apply the filtering on the final DataFrame using 'gene_callers_id' column
+            num_total_gene_calls = table_content.shape[0]
+            df_final = df_final[df_final['gene_callers_id'].isin(table['gene_callers_id'])]
+            num_complete_gene_calls = df_final.shape[0]
+
+            # Log the partial gene call filtering information
+            self.run.info("Number of gene-calls", num_total_gene_calls)
+            self.run.info("Number of complete gene-calls", num_complete_gene_calls)
+            self.run.info("Number of partial gene-calls filtered from hmm-hits", num_total_gene_calls - num_complete_gene_calls)
+
+        # Save the filtered DataFrame to a temporary file and return its file path
         domtblout_tmp_out = filesnpaths.get_temp_file_path()
-        df_final.to_csv(domtblout_tmp_out, sep = '\t', index=False)
+        df_final.to_csv(domtblout_tmp_out, sep='\t', index=False)
 
         return domtblout_tmp_out
-
 
     def parse_domtblout(self, hmmsearch_tbl=None):
         """Parse the new, filtered domtblout file"""
