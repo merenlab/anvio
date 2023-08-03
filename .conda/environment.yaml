@@ -10,8 +10,6 @@ dependencies:
 - idba
 - mcl
 - muscle=3.8.1551
-- famsa
-- sra-tools
 - hmmer
 - diamond
 - blast
