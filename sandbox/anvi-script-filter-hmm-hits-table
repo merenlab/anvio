@@ -344,13 +344,13 @@ class FilterHmmHitsTable(object):
             table = table_content.query('partial == 0')
 
             # Apply the filtering on the final DataFrame using 'gene_callers_id' column
-            num_total_gene_calls = table_content.shape[0]
+            num_total_gene_calls = df_final.shape[0]
             df_final = df_final[df_final['gene_callers_id'].isin(table['gene_callers_id'])]
             num_complete_gene_calls = df_final.shape[0]
 
             # Log the partial gene call filtering information
-            self.run.info("Number of gene-calls", num_total_gene_calls)
-            self.run.info("Number of complete gene-calls", num_complete_gene_calls)
+            self.run.info("Number of hmm-hits", num_total_gene_calls)
+            self.run.info("Number of hmm-hits with complete gene-calls", num_complete_gene_calls)
             self.run.info("Number of partial gene-calls filtered from hmm-hits", num_total_gene_calls - num_complete_gene_calls)
 
         # Save the filtered DataFrame to a temporary file and return its file path
