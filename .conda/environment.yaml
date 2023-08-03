@@ -13,6 +13,8 @@ dependencies:
 - hmmer
 - diamond
 - blast
+- megahit
+- spades
 - bowtie2
 - bwa
 - graphviz
@@ -20,3 +22,12 @@ dependencies:
 - trimal
 - iqtree
 - trnascan-se
+- fasttree
+- vmatch
+- r-base
+- r-tidyverse
+- r-optparse
+- r-stringi
+- r-magrittr
+- bioconductor-qvalue
+- fastani
