@@ -32,8 +32,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # check that NCBI SRA Toolkit is installed
         if not utils.is_program_exists("prefetch", dont_raise=True) or not utils.is_program_exists("fasterq-dump", dont_raise=True):
             raise ConfigError("'prefetch' and 'fasterq-dump' from the NCBI SRA toolkit must be installed for the "
-                              "sra_download workflow to work. Please check out the installation instructions here: "
-                              "https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
+                              "sra_download workflow to work.")
 
         # Snakemake rules
         self.rules.extend(['prefetch',
