@@ -4,7 +4,6 @@ set -e
 
 # this is necessary for any system that will run these tests
 # due to some historical crap:
-pip install h5py==2.8.0
 
 # Setup #############################
 SETUP_WITH_OUTPUT_DIR $1 $2
