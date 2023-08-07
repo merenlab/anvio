@@ -334,18 +334,35 @@ class KEGGDatabase:
         self.release = ko_release
 
 class ModelSEEDDatabase:
-    """The ModelSEED Biochemistry database set up by anvi'o."""
+    """
+    The ModelSEED Biochemistry database set up by anvi'o.
+
+    By default, the database is loaded from a default directory of ModelSEED files unless an
+    alternative directory is provided.
+    """
     default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/modelseed')
 
-    def __init__(self) -> None:
+    # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
+    compartment_ids = {0: 'c', 1: 'e'}
+
+    def __init__(self, db_dir: str = None) -> None:
+        """
+        Load and set up reaction and compound tables from the data directory.
+
+        Parameters
+        ==========
+        db_dir : str, None
+            Directory of ModelSEED files to use instead of the default.
+        """
         # The KEGG and EC tables are rearrangements of the ModelSEED reactions table facilitating
         # lookup of reaction data by KEGG REACTION ID or EC number rather than ModelSEED reaction ID.
         self.kegg_reactions_table: pd.DataFrame = None
         self.ec_reactions_table: pd.DataFrame = None
         self.compounds_table: pd.DataFrame = None
+        # The SHA is the git commit hash of the ModelSEED repository, stored in a file when
+        # anvi'o downloaded and set up the ModelSEED files.
+        self.sha: str = None
 
-    def load(self, db_dir: str = None) -> None:
-        """Load and set up reaction and compound tables from the data directory."""
         if db_dir:
             if not os.path.isdir(db_dir):
                 raise ConfigError(f"The provided ModelSEED database directory, '{db_dir}', was not recognized as a directory.")
@@ -357,9 +374,14 @@ class ModelSEEDDatabase:
         compounds_path = os.path.join(db_dir, 'compounds.tsv')
         if not os.path.isfile(compounds_path):
             raise ConfigError(f"The ModelSEED compounds table, 'compounds.tsv', was not found in the database directory, '{db_dir}'.")
+        sha_path = os.path.join(db_dir, 'sha.txt')
+        if not os.path.isfile(sha_path):
+            raise ConfigError(f"The file, 'sha.txt', which contains the git commit hash of the ModelSEED database, was not found in the database directory, '{db_dir}'.")
 
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
         self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
+        with open(sha_path) as f:
+            self.sha = f.readline().strip()
 
         # Reorganize the reactions table to facilitate lookup of reaction data by KEGG REACTION ID.
         # Remove reactions without KEGG aliases.
