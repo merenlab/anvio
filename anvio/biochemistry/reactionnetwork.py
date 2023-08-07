@@ -3,12 +3,15 @@
 """Generate a metabolic reaction network from gene annotations."""
 
 import os
+import numpy as np
 import pandas as pd
 
 from math import gcd
+from hashlib import sha1
 from functools import reduce
 from argparse import Namespace
 from fractions import Fraction
+from collections import Counter
 from typing import Dict, List, Tuple
 
 import anvio.tables as tables
