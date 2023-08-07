@@ -527,47 +527,77 @@ class Constructor:
             raise ConfigError("A reaction network cannot be made without a database source. Either a contigs database or a genomes storage database and pan database are required.")
         return network
 
+    def make_contigs_database_network(
+        self,
+        contigs_db: str,
+        store: bool = True,
+        overwrite_existing_network: bool = False
+    ) -> GenomicNetwork:
+        """
+        Make a metabolic reaction network from KEGG Orthologs stored in a contigs database.
+
+        Parameters
+        ==========
+        contigs_db : str
+            Path to a contigs database. The database can represent different types of samples,
+            including a single genome, metagenome, or transcriptome. The network is derived from
+            gene KO annotations stored in the database.
+
+        store : bool, True
+            Save the network to the contigs database.
+
+        overwrite_existing_network : bool, False
+            Overwrite an existing network stored in the contigs database. 'store' is also required.
+
+        Returns
+        =======
+        GenomicNetwork
+            The network derived from the contigs database.
+        """
+        # Load the contigs database.
+        self.run.info("Contigs database", contigs_db)
+        is_contigs_db(contigs_db)
+        args = Namespace()
+        args.contigs_db = contigs_db
+        contigs_super = ContigsSuperclass(args, r=run_quiet)
+        if store and contigs_super.a_meta['reaction_network_ko_annotations_hash'] and not overwrite_existing_network:
+            raise ConfigError("The existing reaction network in the contigs database must be explicitly overwritten.")
+        contigs_super.init_functions(requested_sources=['KOfam'])
 
         self.progress.new("Building reaction network")
         self.progress.update("...")
 
-        network = SingleGenomeNetwork()
+        network = GenomicNetwork()
 
         modelseed_kegg_reactions_table = self.modelseed_db.kegg_reactions_table
         modelseed_ec_reactions_table = self.modelseed_db.ec_reactions_table
         modelseed_compounds_table = self.modelseed_db.compounds_table
 
-        # the following dictionaries help track objects already added to the network
-        # KEGG REACTION ID -> ModelSEED reaction objects
-        added_kegg_reaction_dict: Dict[str, List[ModelSEEDReaction]] = {}
-        # EC number -> ModelSEED reaction objects
-        added_ec_number_dict: Dict[str, List[ModelSEEDReaction]] = {}
-
-        # record KOs that annotated genes but for some reason are not found in the KO database
+        # Record KOs that annotated genes but for some reason are not found in the KO database.
         undefined_ko_ids = []
 
+        # Parse gene-KO matches recorded in the contigs database.
         gene_function_calls_dict: Dict = contigs_super.gene_function_calls_dict
         total_ko_matches = len(gene_function_calls_dict)
         num_ko_matches_parsed = -1
-        # loop through gene-KO matches recorded in the contigs database
         for gcid, gene_dict in gene_function_calls_dict.items():
             num_ko_matches_parsed += 1
             self.progress.update(f"Gene-KO matches parsed: {num_ko_matches_parsed} / {total_ko_matches}")
 
             if gcid in network.genes:
-                # an object representing the gene was already added to the network
+                # An object representing the gene was already added to the network.
                 gene = network.genes[gcid]
             else:
                 gene = Gene()
                 gene.gcid = gcid
-                # add the gene to the network
+                # Add the gene to the network, regardless of whether it yields reactions.
                 network.genes[gcid] = gene
 
             ko_data = gene_dict['KOfam']
             gene.e_values.append(float(ko_data[2]))
             ko_id = ko_data[0]
             if ko_id in network.kos:
-                # An object representing the KO was already added to the network. Therefore, objects
+                # An object representing the KO was already added to the network, and objects
                 # representing associated reactions and metabolites were already added as well.
                 gene.kos.append(network.kos[ko_id])
                 continue
@@ -575,12 +605,11 @@ class Constructor:
                 ko = KO()
                 ko.id = ko_id
                 ko.name = ko_data[1]
-                # add the KO to the gene
                 gene.kos.append(ko)
-                # add the KO to the network
+                # Add the KO to the network, regardless of whether it yields reactions.
                 network.kos[ko_id] = ko
 
-            # find KEGG reactions and EC numbers associated with the KO
+            # Find KEGG reactions and EC numbers associated with the KO.
             try:
                 ko_info = self.kegg_db.ko_table.loc[ko.id]
             except KeyError:
@@ -588,127 +617,128 @@ class Constructor:
                 continue
             ko_kegg_reaction_info: str = ko_info.loc['reactions']
             if pd.isna(ko_kegg_reaction_info):
-                # the KO is not associated with KEGG reactions
-                kegg_reaction_ids = []
+                # The KO is not associated with KEGG reactions.
+                ko_kegg_reaction_ids = []
             else:
-                kegg_reaction_ids = ko_kegg_reaction_info.split()
+                ko_kegg_reaction_ids = ko_kegg_reaction_info.split()
             ko_ec_number_info: str = ko_info.loc['ec_numbers']
             if pd.isna(ko_ec_number_info):
-                # the KO is not associated with EC numbers
-                ec_numbers = []
+                # The KO is not associated with EC numbers.
+                ko_ec_numbers = []
             else:
-                ec_numbers = ko_ec_number_info.split()
+                ko_ec_numbers = ko_ec_number_info.split()
 
-            if not (kegg_reaction_ids or ec_numbers):
+            if not (ko_kegg_reaction_ids or ko_ec_numbers):
                 # ModelSEED reaction objects cannot be defined for the KO in the absence of
-                # either KEGG reactions or EC numbers associated with the KO
+                # either KEGG reactions or EC numbers associated with the KO.
                 continue
 
-            # separate KEGG REACTION IDs that have previously been used to create ModelSEEDReaction
-            # objects from those that have not
+            # Separate KEGG REACTION IDs that have previously been used to create ModelSEEDReaction
+            # objects from those that have not.
             unadded_kegg_reaction_ids = []
-            for kegg_reaction_id in kegg_reaction_ids:
-                if not kegg_reaction_id in added_kegg_reaction_dict:
+            for kegg_reaction_id in ko_kegg_reaction_ids:
+                if not kegg_reaction_id in network.kegg_reactions:
                     unadded_kegg_reaction_ids.append(kegg_reaction_id)
+                    network.kegg_reactions[kegg_reaction_id] = []
                     continue
-                # retrieve the one or more ModelSEED reactions aliased by the KEGG REACTION ID
-                reactions = added_kegg_reaction_dict[kegg_reaction_id]
-                for reaction in reactions:
-                    modelseed_id = reaction.modelseed_id
+                # Retrieve the one or more ModelSEED reactions aliased by the KEGG REACTION ID.
+                for modelseed_id in network.kegg_reactions[kegg_reaction_id]:
+                    reaction = network.reactions[modelseed_id]
                     ko.reactions[modelseed_id] = reaction
-                    ko.kegg_reaction_aliases[modelseed_id] = tuple(
-                        set(kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases))
-                    )
-                    ko.ec_number_aliases[modelseed_id] = tuple(
-                        set(ec_numbers).intersection(set(reaction.ec_number_aliases))
-                    )
+                    # Record the KEGG REACTION IDs and EC numbers from the KO that yield the ModelSEED reaction.
+                    ko.kegg_reaction_aliases[modelseed_id] = tuple(set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases)))
+                    ko.ec_number_aliases[modelseed_id] = tuple(set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases)))
 
-            # separate EC numbers that have previously been used to create ModelSEEDReaction objects
-            # from from those that have not
+            # Separate EC numbers that have previously been used to create ModelSEEDReaction objects
+            # from from those that have not.
             unadded_ec_numbers = []
-            for ec_number in ec_numbers:
-                if not ec_number in added_ec_number_dict:
+            for ec_number in ko_ec_numbers:
+                if not ec_number in network.ec_numbers:
                     unadded_ec_numbers.append(ec_number)
+                    network.ec_numbers[ec_number] = []
                     continue
-                # retrieve the one or more ModelSEED reactions aliased by the EC number
-                reactions = added_ec_number_dict[ec_number]
-                for reaction in reactions:
-                    modelseed_id = reaction.modelseed_id
-                    if reaction.modelseed_id in reaction.ec_number_aliases:
-                        # a KEGG REACTION ID associated with the KO was already linked to the
-                        # ModelSEED ID, so it would be redundant to create a new reaction object
-                        # given the EC number association
+                # Retrieve the one or more ModelSEED reactions aliased by the EC number.
+                for modelseed_id in network.ec_numbers[ec_number]:
+                    reaction = network.reactions[modelseed_id]
+                    if modelseed_id in reaction.ec_number_aliases:
+                        # A KEGG REACTION ID associated with the KO was already linked to the
+                        # ModelSEED ID, at which point KO EC number aliases were also recorded.
+                        # Avoid redundant work linking the ModelSEED reaction to the KO object.
                         continue
-                    # an EC number but no KEGG REACTION ID associated with the KO was linked to
-                    # the ModelSEED ID
                     ko.reactions[modelseed_id] = reaction
-                    ko.kegg_reaction_aliases[modelseed_id] = tuple(
-                        set(kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases))
-                    )
-                    assert len(ko.kegg_reaction_aliases) == 0
-                    ko.ec_number_aliases[modelseed_id] = tuple(
-                        set(ec_numbers).intersection(set(reaction.ec_number_aliases))
-                    )
+                    ko.kegg_reaction_aliases[modelseed_id] = tuple(set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases)))
+                    ko.ec_number_aliases[modelseed_id] = tuple(set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases)))
 
             if not (unadded_kegg_reaction_ids or unadded_ec_numbers):
-                # all of the KEGG reactions and EC numbers associated with the KO have already been
-                # encountered in previously processed KOs, so proceed to the next gene KO annotation
+                # All of the KEGG reactions and EC numbers associated with the KO have already been
+                # encountered in previously processed KOs and added to the network, so proceed to
+                # the next gene KO annotation.
                 continue
 
-            # get data on unencountered ModelSEED reactions aliased by KEGG REACTION IDs and EC
-            # numbers
+            # Get data on unencountered ModelSEED reactions aliased by KEGG REACTION IDs and EC
+            # numbers.
             modelseed_reactions_data = {}
             if unadded_kegg_reaction_ids:
+                # Each row of the table represents a unique KEGG REACTION -> ModelSEED reaction mapping.
                 modelseed_kegg_reactions_dict: Dict[str, Dict] = modelseed_kegg_reactions_table[
                     modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(unadded_kegg_reaction_ids)
                 ].to_dict(orient='index')
                 for modelseed_reaction_data in modelseed_kegg_reactions_dict.values():
-                    # data on the ModelSEED reaction has already been added to the list using a
-                    # different alias
                     modelseed_reaction_id = modelseed_reaction_data['id']
-                    if modelseed_reaction_id not in modelseed_reactions_data:
-                        modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
+                    if modelseed_reaction_id in modelseed_reactions_data:
+                        # Data on the ModelSEED reaction has already been added to the list using a
+                        # different KEGG REACTION ID.
+                        continue
+                    modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
             if unadded_ec_numbers:
+                # Each row of the table represents a unique EC number -> ModelSEED reaction mapping.
                 modelseed_ec_reactions_dict: Dict[str, Dict] = modelseed_ec_reactions_table[
                     modelseed_ec_reactions_table['EC_number'].isin(unadded_ec_numbers)
                 ].to_dict(orient='index')
                 for modelseed_reaction_data in modelseed_ec_reactions_dict.values():
-                    # data on the ModelSEED reaction has already been added to the list using a
-                    # different alias
                     modelseed_reaction_id = modelseed_reaction_data['id']
-                    if modelseed_reaction_id not in modelseed_reaction_data:
-                        modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
+                    if modelseed_reaction_id in modelseed_reactions_data:
+                        # Data on the ModelSEED reaction has already been added to the list using a
+                        # different EC number or KEGG REACTION ID.
+                        continue
+                    modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
             if not modelseed_reactions_data:
-                # the unadded KEGG REACTION IDs and EC numbers are not in the ModelSEED reactions table
+                # The unadded KEGG REACTION IDs and EC numbers do not map to ModelSEED reactions and are not in the table.
                 continue
 
-            # generate new reaction objects in the network
+            # Generate new reaction objects in the network.
             for modelseed_reaction_id, modelseed_reaction_data in modelseed_reactions_data.items():
+                # Get the reaction object without having also created associated metabolite objects.
                 reaction, modelseed_compound_ids = self._get_modelseed_reaction(modelseed_reaction_data)
                 if reaction is None:
-                    # the reaction does not have an equation in ModelSEED for some reason
+                    # For some reason, the reaction does not have a equation in the ModelSEED database.
                     continue
                 ko.reactions[modelseed_reaction_id] = reaction
-                ko.kegg_reaction_aliases[modelseed_reaction_id] = tuple(
+                # Record the KEGG REACTION IDs and EC numbers from the KO that yield the ModelSEED reaction.
+                ko.kegg_reaction_aliases[modelseed_reaction_id] = aliased_kegg_reaction_ids = tuple(
                     set(unadded_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases))
                 )
-                ko.ec_number_aliases[modelseed_reaction_id] = tuple(
+                ko.ec_number_aliases[modelseed_reaction_id] = aliased_ec_numbers = tuple(
                     set(unadded_ec_numbers).intersection(set(reaction.ec_number_aliases))
                 )
                 network.reactions[modelseed_reaction_id] = reaction
+                for kegg_reaction_id in aliased_kegg_reaction_ids:
+                    network.kegg_reactions[kegg_reaction_id].append(modelseed_reaction_id)
+                for ec_number in aliased_ec_numbers:
+                    network.ec_numbers[ec_number].append(modelseed_reaction_id)
 
-                # separate ModelSEED compund IDs that have previously been used to create
-                # ModelSEEDCompound objects from those that have not
+                # Separate ModelSEED compound IDs that have previously been used to create
+                # ModelSEEDCompound objects from those that have not.
                 unadded_modelseed_compound_ids = []
                 reaction_compounds = []
                 for modelseed_compound_id in modelseed_compound_ids:
                     if modelseed_compound_id in network.metabolites:
-                        # the ModelSEED compound ID has been encountered in previously processed reactions
+                        # The ModelSEED compound ID has been encountered in previously processed reactions.
                         reaction_compounds.append(network.metabolites[modelseed_compound_id])
                     else:
                         unadded_modelseed_compound_ids.append(modelseed_compound_id)
 
-                # generate new metabolite objects in the network
+                # Generate new metabolite objects in the network
                 for modelseed_compound_id in unadded_modelseed_compound_ids:
                     try:
                         modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[modelseed_compound_id]
@@ -732,166 +762,266 @@ class Constructor:
                 "database version as the KO definition files. Here are the unrecognized KO IDs "
                 f"matching genes in the contigs database: {', '.join(undefined_ko_ids)}"
             )
-
-        self.progress.update("Writing network to contigs database")
-        self._store_reactions_in_contigs_db(network, contigs_db_path)
-        self._store_metabolites_in_contigs_db(network, contigs_db_path)
-
-        contigs_db = ContigsDatabase(contigs_db_path)
-        gene_call_count = contigs_db.db.get_row_counts_from_table('genes_in_contigs')
-        contigs_db.disconnect()
-
-        self.progress.update("Calculating network statistics")
-
-        contributing_gcids = []
-        contributing_ko_ids = []
-        for gcid, gene in network.genes.items():
-            for ko in gene.kos:
-                if ko.reactions:
-                    contributing_gcids.append(gcid)
-                    contributing_ko_ids.append(ko.id)
-                    break
-        contributing_gcids = set(contributing_gcids)
-        contributing_ko_ids = set(contributing_ko_ids)
-
-        kegg_plus_ec_alias_count = 0
-        only_kegg_alias_count = 0
-        only_ec_alias_count = 0
-        contributing_kegg_reaction_ids = []
-        contributing_ec_numbers = []
-        for reaction in network.reactions.values():
-            if reaction.kegg_id_aliases and reaction.ec_number_aliases:
-                kegg_plus_ec_alias_count += 1
-            elif reaction.kegg_id_aliases:
-                only_kegg_alias_count += 1
-            elif reaction.ec_number_aliases:
-                only_ec_alias_count += 1
-            else:
-                raise ConfigError("It should not be possible for a reaction to have neither a KEGG REACTION ID nor EC number alias!")
-            contributing_kegg_reaction_ids += list(reaction.kegg_id_aliases)
-            contributing_ec_numbers += list(reaction.ec_number_aliases)
-        contributing_kegg_reaction_ids = set(contributing_kegg_reaction_ids)
-        contributing_ec_numbers = set(contributing_ec_numbers)
-
         self.progress.end()
 
-        self.run.info("Total gene calls", gene_call_count)
-        self.run.info("Genes annotated with KOs", len(network.genes))
-        self.run.info("Genes contributing to network", len(contributing_gcids))
-        self.run.info("KOs annotating genes", len(network.kos))
-        self.run.info("KOs contributing to network", len(contributing_ko_ids))
-        self.run.info("Reactions (ModelSEED) in network", len(network.reactions))
-        self.run.info("Reactions aliased by KEGG rxn & EC number", kegg_plus_ec_alias_count)
-        self.run.info("Reactions aliased only by KEGG reaction", only_kegg_alias_count)
-        self.run.info("Reactions aliased only by EC number", only_ec_alias_count)
-        self.run.info("KEGG reactions contributing to network", len(contributing_kegg_reaction_ids))
-        self.run.info("EC numbers contributing to network", len(contributing_ec_numbers))
-        self.run.info("Metabolites in network", len(network.metabolites))
+        if store:
+            if contigs_super.a_meta['reaction_network_ko_annotations_hash']:
+                self.run.warning("Deleting existing reaction network from contigs database")
+                cdb = ContigsDatabase(contigs_db)
+                cdb.db._exec(f'''DELETE from {tables.gene_function_reactions_table_name}''')
+                cdb.db._exec(f'''DELETE from {tables.gene_function_metabolites_table_name}''')
+                cdb.disconnect()
+                self.run.info_single("Deleted data in gene function reactions and metabolites tables", nl_after=1)
 
-    def _store_reactions_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
-        """Store reaction data in the contigs database table."""
-        reactions_data = {}
-        # transfer data from reaction objects
-        for modelseed_reaction_id, reaction in network.reactions.items():
-            reaction_data = {}
-            reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
-            reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
-            reaction_data['metabolite_modelseed_ids'] = ', '.join([c.modelseed_id for c in reaction.compounds])
-            reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
-            reaction_data['compartments'] = ', '.join(reaction.compartments)
-            reaction_data['reversibility'] = reaction.reversibility
-            reactions_data[modelseed_reaction_id] = reaction_data
+            self.progress.new("Saving reaction network to contigs database")
+            self.progress.update("Reactions table")
+            self._store_contigs_database_reactions(network, contigs_db)
+            self.progress.update("Metabolites table")
+            self._store_contigs_database_metabolites(network, contigs_db)
 
-        # Get *KO* KEGG REACTION ID and EC number aliases of each ModelSEED reaction. These are not
-        # all possible aliases, but only those associated with KOs that matched genes. Structure
-        # alias data as follows:
-        # <ModelSEED reaction ID>: {
-        #   <KEGG REACTION ID 1>: [<KO IDs associated with KEGG REACTION ID 1>],
-        #   <KEGG REACTION ID 2>: [<KO IDs associated with  KEGG REACTION ID 2>], ...}
-        # <ModelSEED reaction ID>: {
-        #   <EC number 1>: [<KO IDs associated with EC number 1>],
-        #   <EC number 2>: [<KO IDs associated with EC number 2>], ...}
-        ko_reaction_aliases = {modelseed_reaction_id: ({}, {}) for modelseed_reaction_id in reactions_data}
-        for ko_id, ko in network.kos.items():
-            for modelseed_reaction_id, reaction in ko.reactions.items():
-                aliases = ko_reaction_aliases[modelseed_reaction_id]
+            self.progress.update("Metadata")
+            ko_annotations_hash = self.hash_ko_annotations(gene_function_calls_dict)
+            cdb = ContigsDatabase(contigs_db)
+            cdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
+            cdb.db.set_meta_value('reaction_network_kegg_database_release', self.kegg_db.release)
+            cdb.db.set_meta_value('reaction_network_modelseed_database_sha', self.modelseed_db.sha)
+            cdb.disconnect()
+            self.progress.end()
 
-                kegg_reaction_aliases = aliases[0]
-                kegg_reaction_ids = ko.kegg_reaction_aliases[modelseed_reaction_id]
-                for kegg_reaction_id in kegg_reaction_ids:
+        stats = {}
+        self.run.info_single("METABOLIC REACTION NETWORK STATISTICS", mc='green', nl_after=1)
+
+        self.progress.new("Counting genes and KOs")
+        self.progress.update("...")
+
+        # Count all gene calls in the genome.
+        cdb = ContigsDatabase(contigs_db)
+        stats['Total gene calls in genome'] = gene_call_count = cdb.db.get_row_counts_from_table('genes_in_contigs')
+        cdb.disconnect()
+        stats['Genes annotated with KOs'] = ko_annotated_gene_count = len(network.genes)
+
+        # Count genes contributing to the reaction network.
+        contributing_gene_count = 0
+        for gene in network.genes.values():
+            for ko in gene.kos:
+                if ko.reactions:
+                    contributing_gene_count += 1
+                    break
+        stats['Genes contributing to network'] = contributing_gene_count
+
+        stats['KOs annotating genes'] = annotating_ko_count = len(network.kos)
+        # Count KOs contributing to the reaction network.
+        contributing_ko_count = 0
+        for ko in network.kos.values():
+            if ko.reactions:
+                contributing_ko_count += 1
+        stats['KOs contributing to network'] = contributing_ko_count
+        self.progress.end()
+
+        self.run.info_single("Gene calls and KEGG Ortholog (KO) annotations")
+        self.run.info("Total gene calls in genome", gene_call_count)
+        self.run.info("Genes annotated with KOs", ko_annotated_gene_count)
+        self.run.info("Genes contributing to network", contributing_gene_count)
+        self.run.info("KOs annotating genes", annotating_ko_count)
+        self.run.info("KOs contributing to network", contributing_ko_count, nl_after=1)
+
+        self.progress.new("Counting reactions and KO sources")
+        self.progress.update("...")
+
+        stats['Reactions (ModelSEED) in network'] = reaction_count = len(network.reactions)
+        contributing_reaction_counts = []
+        for ko in network.kos.values():
+            if ko.reactions:
+                contributing_reaction_counts.append(len(ko.reactions))
+        stats['Max rxns per KO'] = max_reactions_per_ko = max(contributing_reaction_counts)
+        stats['Mean rxns per contributing KO'] = mean_reactions_per_contributing_ko = round(np.mean(contributing_reaction_counts), 1)
+        stats['Stdev rxns per contributing KO'] = std_reactions_per_contributing_ko = round(np.std(contributing_reaction_counts), 1)
+        self.progress.end()
+
+        self.run.info_single("Reactions and KO sources")
+        self.run.info("Rxns (ModelSEED) in network", reaction_count)
+        self.run.info("Max rxns per KO", max_reactions_per_ko)
+        self.run.info("Mean rxns per KO", mean_reactions_per_contributing_ko)
+        self.run.info("Stdev rxns per KO", std_reactions_per_contributing_ko, nl_after=1)
+
+        self.progress.new("Counting reactions from each alias source")
+        self.progress.update("...")
+
+        kegg_reaction_source_count = 0
+        ec_number_source_count = 0
+        both_source_count = 0
+        for reaction in network.reactions.values():
+            if reaction.kegg_id_aliases:
+                kegg_reaction_source_count += 1
+            if reaction.ec_number_aliases:
+                ec_number_source_count += 1
+            if reaction.kegg_id_aliases and reaction.ec_number_aliases:
+                both_source_count += 1
+        only_kegg_reaction_source_count = kegg_reaction_source_count - both_source_count
+        only_ec_number_source_count = ec_number_source_count - both_source_count
+        self.progress.end()
+
+        self.run.info_single("Reaction alias source comparison")
+        self.run.info("Rxns aliased by KEGG rxn", kegg_reaction_source_count)
+        self.run.info("Rxns aliased by EC number", ec_number_source_count)
+        self.run.info("Rxns aliased by KEGG rxn & EC number", both_source_count)
+        self.run.info("Rxns aliased only by KEGG rxn", only_kegg_reaction_source_count)
+        self.run.info("Rxns aliased only by EC number", only_ec_number_source_count, nl_after=1)
+
+        self.progress.new("Counting KEGG REACTION sources")
+        self.progress.update("...")
+
+        modelseed_alias_counts = []
+        contributing_modelseed_alias_counts = []
+        for kegg_reaction_id, modelseed_reaction_ids in network.kegg_reactions.items():
+            modelseed_alias_counts.append(len(modelseed_reaction_ids))
+            if modelseed_reaction_ids:
+                contributing_modelseed_alias_counts.append(len(modelseed_reaction_ids))
+        stats['Mean rxns sourced per KO KEGG rxn'] = mean_reactions_per_kegg_id = round(np.mean(modelseed_alias_counts), 1)
+        stats['Stdev rxns sourced per KO KEGG rxn'] = std_reactions_per_kegg_id = round(np.std(modelseed_alias_counts), 1)
+        stats['Max rxns sourced per KO KEGG rxn'] = max_reactions_per_kegg_id = max(modelseed_alias_counts)
+        stats['KEGG rxns contributing to network'] = contributing_kegg_reaction_count = len(contributing_modelseed_alias_counts)
+        stats['Noncontributing KO KEGG rxns'] = noncontributing_kegg_reaction_count = len(network.kegg_reactions) - len(contributing_modelseed_alias_counts)
+        stats['Mean rxns sourced per contributing KEGG rxn'] = mean_reactions_per_contributing_kegg_id = round(np.mean(contributing_modelseed_alias_counts), 1)
+        stats['Stdev rxns sourced per contributing KEGG rxn'] = std_reactions_per_contributing_kegg_id = round(np.std(contributing_modelseed_alias_counts), 1)
+        self.progress.end()
+
+        self.run.info_single("KO KEGG REACTION sources")
+        self.run.info("Mean rxns sourced per KO KEGG rxn", mean_reactions_per_kegg_id)
+        self.run.info("Stdev rxns sourced per KO KEGG rxn", std_reactions_per_kegg_id)
+        self.run.info("Max rxns sourced per KO KEGG rxn", max_reactions_per_kegg_id)
+        self.run.info("KEGG rxns contributing to network", contributing_kegg_reaction_count)
+        self.run.info("Noncontributing KO KEGG rxns", noncontributing_kegg_reaction_count)
+        self.run.info("Mean rxns sourced per contributing KEGG rxn", mean_reactions_per_contributing_kegg_id)
+        self.run.info("Stdev rxns sourced per contributing KEGG rxn", std_reactions_per_contributing_kegg_id, nl_after=1)
+
+        self.progress.new("Counting EC number reaction sources")
+        self.progress.update("...")
+
+        modelseed_alias_counts = []
+        contributing_modelseed_alias_counts = []
+        for ec_number, modelseed_reaction_ids in network.ec_numbers.items():
+            modelseed_alias_counts.append(len(modelseed_reaction_ids))
+            if modelseed_reaction_ids:
+                contributing_modelseed_alias_counts.append(len(modelseed_reaction_ids))
+        stats['Mean rxns sourced per KO EC number'] = mean_reactions_per_ec_number = round(np.mean(modelseed_alias_counts), 1)
+        stats['Stdev rxns sourced per KO EC number'] = std_reactions_per_ec_number = round(np.std(modelseed_alias_counts), 1)
+        stats['Max rxns sourced per KO EC number'] = max_reactions_per_ec_number = max(modelseed_alias_counts)
+        stats['EC numbers contributing to network'] = contributing_ec_number_count = len(contributing_modelseed_alias_counts)
+        stats['Noncontributing EC numbers'] = noncontributing_ec_number_count = len(network.ec_numbers) - len(contributing_modelseed_alias_counts)
+        stats['Mean rxns sourced per contributing EC number'] = mean_reactions_per_contributing_ec_number = round(np.mean(contributing_modelseed_alias_counts), 1)
+        stats['Stdev rxns sourced per contributing EC number'] = std_reactions_per_contributing_ec_number = round(np.std(contributing_modelseed_alias_counts), 1)
+        self.progress.end()
+
+        self.run.info_single("KO EC number reaction sources")
+        self.run.info("Mean rxns sourced per KO EC number", mean_reactions_per_ec_number)
+        self.run.info("Stdev rxns sourced per KO EC number", std_reactions_per_ec_number)
+        self.run.info("Max rxns sourced per KO EC number", max_reactions_per_ec_number)
+        self.run.info("EC numbers contributing to network", contributing_ec_number_count)
+        self.run.info("Noncontributing KO EC numbers", noncontributing_ec_number_count)
+        self.run.info("Mean rxns sourced per contributing EC number", mean_reactions_per_contributing_ec_number)
+        self.run.info("Stdev rxns sourced per contributing EC number", std_reactions_per_contributing_ec_number, nl_after=1)
+
+        self.progress.new("Counting reactions and metabolites by property")
+        self.progress.update("...")
+
+        reversible_count = 0
+        irreversible_count = 0
+        cytoplasmic_compound_ids = []
+        extracellular_compound_ids = []
+        consumed_compound_ids = []
+        produced_compound_ids = []
+        compound_reaction_counts = {}
+        for reaction in network.reactions.values():
+            if reaction.reversibility:
+                reversible_count += 1
+            else:
+                irreversible_count += 1
+            encountered_compound_ids = []
+            for compartment, coefficient, compound in zip(reaction.compartments, reaction.coefficients, reaction.compounds):
+                compound_id = compound.modelseed_id
+                if compartment == 'c':
+                    cytoplasmic_compound_ids.append(compound_id)
+                else:
+                    extracellular_compound_ids.append(compound_id)
+                if reaction.reversibility:
+                    consumed_compound_ids.append(compound_id)
+                    produced_compound_ids.append(compound_id)
+                elif coefficient < 0:
+                    consumed_compound_ids.append(compound_id)
+                else:
+                    produced_compound_ids.append(compound_id)
+                if compound_id not in encountered_compound_ids:
                     try:
-                        ko_ids: list = kegg_reaction_aliases[kegg_reaction_id]
+                        compound_reaction_counts[compound_id] += 1
                     except KeyError:
-                        kegg_reaction_aliases[kegg_reaction_id] = ko_ids = []
-                    ko_ids.append(ko_id)
+                        compound_reaction_counts[compound_id] = 1
+        stats['Reversible rxns'] = reversible_count
+        stats['Irreversible rxns'] = irreversible_count
+        cytoplasmic_compound_ids = set(cytoplasmic_compound_ids)
+        extracellular_compound_ids = set(extracellular_compound_ids)
+        stats['Metabolites in network'] = metabolite_count = len(network.metabolites)
+        stats['Cytoplasmic metabolites'] = cytoplasmic_count = len(cytoplasmic_compound_ids)
+        stats['Extracellular metabolites'] = extracellular_count = len(extracellular_compound_ids)
+        stats['Exclusively cytoplasmic metabolites'] = exclusively_cytoplasmic_count = len(cytoplasmic_compound_ids.difference(extracellular_compound_ids))
+        stats['Exclusively extracellular metabolites'] = exclusively_extracellular_count = len(extracellular_compound_ids.difference(cytoplasmic_compound_ids))
+        stats['Cytoplasmic/extracellular metabolites'] = cytoplasmic_plus_extracellular_count = len(cytoplasmic_compound_ids.intersection(extracellular_compound_ids))
+        consumed_compound_ids = set(consumed_compound_ids)
+        produced_compound_ids = set(produced_compound_ids)
+        stats['Consumed metabolites'] = consumed_count = len(consumed_compound_ids)
+        stats['Produced metabolites'] = produced_count = len(produced_compound_ids)
+        stats['Exclusively consumed metabolites'] = exclusively_consumed_count = len(consumed_compound_ids.difference(produced_compound_ids))
+        stats['Exclusively produced metabolites'] = exclusively_produced_count = len(produced_compound_ids.difference(consumed_compound_ids))
+        stats['Consumed/produced metabolites'] = consumed_plus_produced_count = len(consumed_compound_ids.intersection(produced_compound_ids))
+        metabolite_reaction_counts = Counter(compound_reaction_counts.values())
+        stats['Metabolites consumed or produced by 1 rxns'] = one_reaction_count = metabolite_reaction_counts[1]
+        stats['Metabolites consumed or produced by 2 rxns'] = two_reactions_count = metabolite_reaction_counts[2]
+        stats['Metabolites consumed or produced by 3+ rxns'] = three_plus_reactions_count = metabolite_count - one_reaction_count - two_reactions_count
+        self.progress.end()
 
-                ec_number_aliases = aliases[1]
-                ec_numbers = ko.ec_number_aliases[modelseed_reaction_id]
-                for ec_number in ec_numbers:
-                    try:
-                        ko_ids: list = ec_number_aliases[ec_number]
-                    except KeyError:
-                        ec_number_aliases[ec_number] = ko_ids = []
-                    ko_ids.append(ko_id)
-        for modelseed_reaction_id, aliases in ko_reaction_aliases.items():
-            reaction_data = reactions_data[modelseed_reaction_id]
+        self.run.info_single("Reaction reversibility")
+        self.run.info("Reversible rxns", reversible_count)
+        self.run.info("Irreversible rxns", irreversible_count, nl_after=1)
 
-            kegg_reaction_aliases = aliases[0]
-            entry = []
-            for kegg_reaction_id, ko_ids in kegg_reaction_aliases.items():
-                entry.append(f'{kegg_reaction_id}: ({", ".join(sorted(ko_ids))})')
-            reaction_data['ko_kegg_reaction_source'] = '; '.join(sorted(entry))
+        self.run.info_single("Metabolites and localization")
+        self.run.info("Metabolites in network", metabolite_count)
+        self.run.info("Cytoplasmic metabolites", cytoplasmic_count)
+        self.run.info("Extracellular metabolites", extracellular_count)
+        self.run.info("Exclusively cytoplasmic metabolites", exclusively_cytoplasmic_count)
+        self.run.info("Exclusively extracellular metabolites", exclusively_extracellular_count)
+        self.run.info("Cytoplasmic/extracellular metabolites", cytoplasmic_plus_extracellular_count, nl_after=1)
 
-            ec_number_aliases = aliases[1]
-            entry = []
-            for ec_number, ko_ids in ec_number_aliases.items():
-                entry.append(f'{ec_number}: ({", ".join(sorted(ko_ids))})')
-            reaction_data['ko_ec_number_source'] = '; '.join(sorted(entry))
+        self.run.info_single("Metabolite consumption and production")
+        self.run.info("Consumed metabolites", consumed_count)
+        self.run.info("Produced metabolites", produced_count)
+        self.run.info("Exclusively consumed metabolites", exclusively_consumed_count)
+        self.run.info("Exclusively produced metabolites", exclusively_produced_count)
+        self.run.info("Consumed/produced metabolites", consumed_plus_produced_count)
+        self.run.info("Metabolites consumed or produced by 1 rxn", one_reaction_count)
+        self.run.info("Metabolites consumed or produced by 2 rxns", two_reactions_count)
+        self.run.info("Metabolites consumed or produced by 3+ rxns", three_plus_reactions_count)
 
-        reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
-        reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
-
-        contigs_db = ContigsDatabase(contigs_db_path)
-        contigs_db.db._exec_many(
-            f'''INSERT INTO {tables.gene_function_reactions_table_name} VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
-            reactions_table.values
-        )
-        contigs_db.disconnect()
-
-    def _store_metabolites_in_contigs_db(self, network: SingleGenomeNetwork, contigs_db_path: str) -> None:
-        """Store metabolite data in the contigs database table."""
-        metabolites_data = {}
-        for modelseed_compound_id, compound in network.metabolites.items():
-            metabolite_data = {}
-            metabolite_data['modelseed_compound_id'] = modelseed_compound_id
-            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
-            metabolite_data['formula'] = compound.formula
-            metabolite_data['charge'] = compound.charge
-            metabolites_data[modelseed_compound_id] = metabolite_data
-        metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
-        metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
-
-        contigs_db = ContigsDatabase(contigs_db_path)
-        contigs_db.db._exec_many(
-            f'''INSERT INTO {tables.gene_function_metabolites_table_name} VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
-            metabolites_table.values
-        )
-        contigs_db.disconnect()
-
-    def _load_contigs_db(self, contigs_db_path: str) -> ContigsSuperclass:
-        is_contigs_db(contigs_db_path)
-        args = Namespace()
-        args.contigs_db = contigs_db_path
-        contigs_super = ContigsSuperclass(args, r=run_quiet)
-        contigs_super.init_functions(requested_sources=['KOfam'])
-        return contigs_super
+        return network
 
     def _get_modelseed_reaction(self, modelseed_reaction_data: Dict) -> Tuple[ModelSEEDReaction, List[str]]:
         """
-        Create a ModelSEED reaction object from its entry in the ModelSEED table.
+        Generate a ModelSEED reaction object and list of associated ModelSEED compound IDs from the
+        ModelSEED reaction table entry. The reaction object is not populated with metabolite objects
+        from the list of associated compound IDs.
 
-        Do not populate the reaction object with metabolite objects. Return both the new reaction
-        object and a list of associated ModelSEED compound IDs.
+        Parameters
+        ==========
+        modelseed_reaction_data : Dict
+            A dictionary representation of a row for a reaction in the ModelSEED reaction table set
+            up by anvi'o.
+
+        Returns
+        =======
+        ModelSEEDReaction
+            An object representation of the ModelSEED reaction.
+
+        List[str]
+            ModelSEED compound IDs of reaction reactants and products.
         """
         stoichiometry: str = modelseed_reaction_data['stoichiometry']
         if pd.isna(stoichiometry):
@@ -946,7 +1076,7 @@ class Constructor:
             split_entry = entry.split(':')
             decimal_reaction_coefficients.append(split_entry[0])
             modelseed_compound_ids.append(split_entry[1])
-            compartments.append(self.compartment_ids[int(split_entry[2])])
+            compartments.append(ModelSEEDDatabase.compartment_ids[int(split_entry[2])])
         reaction.compartments = tuple(compartments)
         reaction_coefficients = self._to_lcm_denominator(decimal_reaction_coefficients)
         direction = modelseed_reaction_data['direction']
@@ -962,14 +1092,39 @@ class Constructor:
 
         return reaction, modelseed_compound_ids
 
-    def _to_lcm_denominator(self, floats) -> Tuple[int]:
+    def _to_lcm_denominator(self, floats: List[float]) -> Tuple[int]:
+        """
+        Convert a list of numbers to their lowest common integer multiples.
+
+        Parameters
+        ==========
+        floats : List[float]
+
+        Returns
+        =======
+        List[int]
+        """
         def lcm(a, b):
             return a * b // gcd(a, b)
         rationals = [Fraction(f).limit_denominator() for f in floats]
         lcm_denom = reduce(lcm, [r.denominator for r in rationals])
-        return tuple(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
+        return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
 
     def _get_modelseed_compound(self, modelseed_compound_data: Dict) -> ModelSEEDCompound:
+        """
+        Generate a ModelSEED compound object from its entry in the ModelSEED table.
+
+        Parameters
+        ==========
+        modelseed_compound_data : Dict
+            A dictionary representation of a row for a compound in the ModelSEED compound table set
+            up by anvi'o.
+
+        Returns
+        =======
+        ModelSEEDCompound
+            An object representation of the ModelSEED compound.
+        """
         compound = ModelSEEDCompound()
         compound.modelseed_id = modelseed_compound_data['id']
 
@@ -1002,6 +1157,164 @@ class Constructor:
             compound.charge = charge
 
         return compound
+
+    def _store_contigs_database_reactions(self, network: GenomicNetwork, contigs_db: str) -> None:
+        """
+        Store reaction data in the relevant contigs database table.
+
+        Parameters
+        ==========
+        network : GenomicNetwork
+            The reaction network generated from gene KO annotations in the contigs database.
+
+        contigs_db : str
+            The path to the contigs database from which the reaction network was generated.
+        """
+        # Transfer data from reaction objects to dictionaries mapping to table entries.
+        reactions_data: Dict[str, Dict] = {}
+        for modelseed_reaction_id, reaction in network.reactions.items():
+            reaction_data = {}
+            reaction_data['modelseed_reaction_id'] = modelseed_reaction_id
+            reaction_data['modelseed_reaction_name'] = reaction.modelseed_name
+            reaction_data['metabolite_modelseed_ids'] = ', '.join([c.modelseed_id for c in reaction.compounds])
+            reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
+            reaction_data['compartments'] = ', '.join(reaction.compartments)
+            reaction_data['reversibility'] = reaction.reversibility
+            reactions_data[modelseed_reaction_id] = reaction_data
+
+        # Get *KO* KEGG REACTION ID and EC number aliases of each ModelSEED reaction. These are not
+        # all possible aliases, but only those associated with KOs that matched genes. Structure
+        # alias data as follows:
+        # <ModelSEED reaction ID>: {
+        #   <KEGG REACTION ID 1>: [<KO IDs associated with KEGG REACTION ID 1>],
+        #   <KEGG REACTION ID 2>: [<KO IDs associated with KEGG REACTION ID 2>],
+        #   ...
+        # }
+        # <ModelSEED reaction ID>: {
+        #   <EC number 1>: [<KO IDs associated with EC number 1>],
+        #   <EC number 2>: [<KO IDs associated with EC number 2>],
+        # ...
+        # }
+        ko_reaction_aliases: Dict[str, Tuple[Dict[str, List[str]], Dict[str, List[str]]]] = {
+            modelseed_id: ({}, {}) for modelseed_id in reactions_data
+        }
+        for ko_id, ko in network.kos.items():
+            for modelseed_id, reaction in ko.reactions.items():
+                aliases = ko_reaction_aliases[modelseed_id]
+
+                kegg_reaction_aliases = aliases[0]
+                kegg_reaction_ids = ko.kegg_reaction_aliases[modelseed_id]
+                for kegg_reaction_id in kegg_reaction_ids:
+                    try:
+                        ko_ids: List = kegg_reaction_aliases[kegg_reaction_id]
+                    except KeyError:
+                        kegg_reaction_aliases[kegg_reaction_id] = ko_ids = []
+                    ko_ids.append(ko_id)
+
+                ec_number_aliases = aliases[1]
+                ec_numbers = ko.ec_number_aliases[modelseed_id]
+                for ec_number in ec_numbers:
+                    try:
+                        ko_ids: List = ec_number_aliases[ec_number]
+                    except KeyError:
+                        ec_number_aliases[ec_number] = ko_ids = []
+                    ko_ids.append(ko_id)
+        for modelseed_id, aliases in ko_reaction_aliases.items():
+            reaction_data = reactions_data[modelseed_id]
+
+            # Make the entry for KO KEGG REACTION aliases, which looks akin to the following arbitrary example:
+            # 'R00001: (K00010, K00100); R01234: (K54321)'
+            kegg_reaction_aliases = aliases[0]
+            entry = []
+            for kegg_reaction_id, ko_ids in kegg_reaction_aliases.items():
+                entry.append(f'{kegg_reaction_id}: ({", ".join(sorted(ko_ids))})')
+            reaction_data['ko_kegg_reaction_source'] = '; '.join(sorted(entry))
+
+            # Make the entry for KO EC number aliases, which looks akin to the following arbitrary example:
+            # '1.1.1.1: (K00010, K00100); 1.2.3.4: (K12345); 6.7.8.99: (K65432)
+            ec_number_aliases = aliases[1]
+            entry = []
+            for ec_number, ko_ids in ec_number_aliases.items():
+                entry.append(f'{ec_number}: ({", ".join(sorted(ko_ids))})')
+            reaction_data['ko_ec_number_source'] = '; '.join(sorted(entry))
+
+        reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
+        reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
+
+        cdb = ContigsDatabase(contigs_db)
+        cdb.db._exec_many(
+            f'''INSERT INTO {tables.gene_function_reactions_table_name} VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
+            reactions_table.values
+        )
+        cdb.disconnect()
+
+    def _store_contigs_database_metabolites(self, network: GenomicNetwork, contigs_db: str) -> None:
+        """
+        Store metabolite data in the relevant contigs database table.
+
+        Parameters
+        ==========
+        network : GenomicNetwork
+            The reaction network generated from gene KO annotations in the contigs database.
+
+        contigs_db : str
+            The path to the contigs database from which the reaction network was generated.
+
+        Returns
+        =======
+        None
+        """
+        # Transfer data from metabolite objects to dictionaries mapping to table entries.
+        metabolites_data = {}
+        for modelseed_compound_id, compound in network.metabolites.items():
+            metabolite_data = {}
+            metabolite_data['modelseed_compound_id'] = modelseed_compound_id
+            metabolite_data['modelseed_compound_name'] = compound.modelseed_name
+            metabolite_data['formula'] = compound.formula
+            metabolite_data['charge'] = compound.charge
+            metabolites_data[modelseed_compound_id] = metabolite_data
+
+        metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
+        metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
+
+        cdb = ContigsDatabase(contigs_db)
+        cdb.db._exec_many(
+            f'''INSERT INTO {tables.gene_function_metabolites_table_name} VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
+            metabolites_table.values
+        )
+        cdb.disconnect()
+
+    def hash_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
+        """
+        Hash gene KO annotations in a contigs database to concisely represent the data used to construct a reaction network.
+
+        Parameters
+        ==========
+        gene_function_calls_dict : str
+            Dictionary containing gene KO annotations loaded by a contigs superclass.
+
+        Returns
+        =======
+        str
+            Hash representation of all gene KO annotations.
+        """
+        ko_annotations = []
+        for gcid, gene_dict in gene_function_calls_dict.items():
+            ko_data = gene_dict['KOfam']
+            ko_id = ko_data[0]
+            ko_name = ko_data[1]
+            e_value = ko_data[2]
+            ko_annotations.append((str(gcid), ko_id, ko_name, str(e_value)))
+        # Sort KO annotation data in ascending order of gene caller ID and KO accession.
+        ko_annotations = sorted(ko_annotations, key=lambda x: (x[0], x[1]))
+
+        ko_annotations_string = ''
+        for ko_annotation in ko_annotations:
+            ko_annotations_string += ''.join(ko_annotation)
+
+        hashed_ko_annotations = sha1(ko_annotations_string.encode('utf-8')).hexdigest()
+        return hashed_ko_annotations
+
     def make_pangenomic_network(
         self,
         genomes_storage_db: str,
