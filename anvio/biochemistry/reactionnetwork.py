@@ -1002,3 +1002,30 @@ class Constructor:
             compound.charge = charge
 
         return compound
+    def make_pangenomic_network(
+        self,
+        genomes_storage_db: str,
+        pan_db: str,
+        store: bool = True,
+        overwrite_existing_network: bool = False
+    ) -> PangenomicNetwork:
+        """
+        Make a pangenomic metabolic reaction network from KEGG Orthologs stored a genomes storage
+        database and gene clusters stored in a pan database.
+
+        Parameters
+        ==========
+        genomes_storage_db : str
+            Path to a genomes storage database. The pangenomic network is derived from gene KO
+            annotations stored in the database.
+
+        pan_db : str
+            Path to a pan database. The pangenomic network is determined for gene clusters stored in
+            the database.
+
+        Returns
+        =======
+        PangenomicNetwork
+            The network derived from the pangenomic databases.
+        """
+        return
