@@ -479,6 +479,54 @@ class Constructor:
         """
         return
 
+    def make_network(
+        self,
+        contigs_db: str = None,
+        genomes_storage_db: str = None,
+        pan_db: str = None,
+        store: bool = True,
+        overwrite_existing_network: bool = False
+    ) -> ReactionNetwork:
+        """
+        Make a metabolic reaction network from KEGG Orthologs stored in an anvi'o database,
+        associated KEGG annotations, and the ModelSEED Biochemistry database.
+
+        Parameters
+        ==========
+        contigs_db : str, None
+            Path to a contigs database. The database can represent different types of samples,
+            including a single genome, metagenome, or transcriptome. The network is derived from
+            gene KO annotations stored in the database. If 'store' is True, the network is saved in
+            the database.
+
+        genomes_storage_db : str, None
+            Path to a genomes storage database. The pangenomic network is derived from gene KO
+            annotations stored in the database. 'pan_db' is also required.
+
+        pan_db : str, None
+            Path to a pan database. The pangenomic network is determined for gene clusters stored in
+            the database. If 'store' is True, the network is saved in the database.
+            'genomes_storage_db' is also required.
+
+        store : bool, True
+            Save the network. A network constructed from a contigs database is stored in that
+            database. A pangenomic network constructed from a genomes stroage database and pan
+            database is stored in the pan database.
+
+        overwrite_existing_network : bool, False
+            Overwrite an existing network stored in the contigs or pan database. 'store' is also
+            required.
+        """
+        if contigs_db:
+            self.run.info_single("A reaction network will be made from protein orthology annotations in the contigs database.")
+            network = self.make_contigs_database_network(contigs_db, store=store, overwrite_existing_network=overwrite_existing_network)
+        elif genomes_storage_db or pan_db:
+            self.run.info_single("A pangenomic reaction network will be made from protein orthology annotations in the genomes storage database and gene clusters in the pan database.")
+            network = self.make_pangenomic_network(genomes_storage_db, pan_db, store=store, overwrite_existing_network=overwrite_existing_network)
+        else:
+            raise ConfigError("A reaction network cannot be made without a database source. Either a contigs database or a genomes storage database and pan database are required.")
+        return network
+
 
         self.progress.new("Building reaction network")
         self.progress.update("...")
