@@ -34,13 +34,8 @@ def main():
 
     args = parser.get_args(parser)
 
-    constructor = Constructor(
-        kegg_dir=args.kegg_data_dir,
-        modelseed_dir=args.modelseed_data_dir,
-        overwrite_existing_network=args.overwrite_existing_network
-    )
-    constructor.make_single_genome_network(args.contigs_db)
-
+    constructor = Constructor(kegg_dir=args.kegg_data_dir, modelseed_dir=args.modelseed_data_dir)
+    constructor.make_network(contigs_db=args.contigs_db, overwrite_existing_network=args.overwrite_existing_network)
 
 if __name__ == '__main__':
     try:
