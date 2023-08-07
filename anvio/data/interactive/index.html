@@ -17,8 +17,8 @@
 
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
-    <link rel="stylesheet" href="lib/bootstrap-5.0.2-dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap-5.0.2-dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <link rel="stylesheet" href="lib/bootstrap-4.6.2-dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap-4.6.2-dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
 
@@ -150,7 +150,7 @@
             <div id="sidebar" onload="{$('#support_value_params').hide()}">
                 <!-- this hide function needs to happen upon initial render, currently only called onchange -->
                 <div class="tab-content">
-                    <div role="tabpanel" class="tab-pane fade in active" id="tree_settings">
+                    <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <span class="settings-header">Display</span>
                             <div class="form-group form-margin">
@@ -476,13 +476,13 @@
                             </div>
                         </div>
                     </div>
-                    <div role="tabpanel" class="tab-pane fade in" id="legend_settings">
+                    <div role="tabpanel" class="tab-pane fade show" id="legend_settings">
 
 
 
                     </div>
 
-                    <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
+                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
                             <div class="panel-body">
 
@@ -538,7 +538,7 @@
                         </div>
                     </div>
 
-                    <div role="tabpanel" class="tab-pane fade in" id="samples_settings">
+                    <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
                         <div id="sample-settings" class="form-horizontal">
                             <span class="settings-header">Organization</span>
                             <div class="form-group form-margin">
@@ -658,7 +658,7 @@
                         </div>
                     </div>
 
-                    <div role="tabpanel" class="tab-pane fade in" id="search_tab">
+                    <div role="tabpanel" class="tab-pane fade show" id="search_tab">
                         <div id="search_tab_content">
                             <span data-help='search-expression'>Search with expression</span>
                             <div class="form-horizontal">
