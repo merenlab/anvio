@@ -436,20 +436,49 @@ class Constructor:
         self.kegg_db = KEGGDatabase(self.kegg_dir)
         self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
-    def make_single_genome_network(self, contigs_db_path: str) -> None:
+    def import_network(self, json: str) -> ReactionNetwork:
+        """Import a reaction network from a metabolic model JSON file."""
+        pass
 
-        contigs_super = self._load_contigs_db(contigs_db_path)
+    def load_network(
+        self,
+        contigs_db: str = None,
+        genomes_storage_db: str = None,
+        pan_db: str = None
+    ) -> ReactionNetwork:
+        self.check_network(contigs_db=contigs_db, genomes_storage_db=genomes_storage_db, pan_db=pan_db)
 
-        if int(contigs_super.a_meta['reaction_network_was_run']):
-            if self.overwrite_existing_network:
-                self.run.warning("Deleting existing reaction network from contigs database")
-                contigs_db = ContigsDatabase(contigs_db_path)
-                contigs_db.db._exec(f'''DELETE from {tables.gene_function_reactions_table_name}''')
-                contigs_db.db._exec(f'''DELETE from {tables.gene_function_metabolites_table_name}''')
-                contigs_db.disconnect()
-                self.run.info_single("Deleted data in gene function reactions and metabolites tables", nl_after=1)
-            else:
-                raise ConfigError("The existing reaction network in the contigs database must be explicitly overwritten.")
+    def check_network(
+        self,
+        contigs_db: str = None,
+        genomes_storage_db: str = None,
+        pan_db: str = None
+    ) -> bool:
+        """
+        Check that the reaction network stored in a database is derived from the current gene KO
+        annotations in the database.
+
+        Parameters
+        ==========
+        contigs_db : str, None
+            Path to a contigs database in which a reaction network is stored.
+
+        genomes_storage_db: str, None
+            Path to a genomes storage database in which KO annotations are stored. 'pan_db' is also
+            required.
+
+        pan_db: str, None
+            Path to a pan database in which a reaction network is stored. 'genomes_storage_db' is
+            also required.
+
+        Returns
+        =======
+        bool
+            True if the reaction network is derived from the current gene KO annotations in the
+            database, else False.
+        """
+        return
+
 
         self.progress.new("Building reaction network")
         self.progress.update("...")
