@@ -271,17 +271,30 @@ class PangenomicNetwork(ReactionNetwork):
         pass
 
 class KEGGDatabase:
-    """The KEGG KO and REACTION databases set up by anvi'o."""
+    """
+    The KEGG KO and REACTION databases set up by anvi'o.
+
+    By default, the databases are loaded from a default directory of KEGG KO and REACTION files
+    unless an alternative directory is provided.
+    """
     default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/kegg')
 
-    def __init__(self) -> None:
-        # The KO and reaction tables are derived from the downloaded definition files. They
-        # facilitate the lookup of KO IDs, names, EC numbers, and KEGG reactions.
+    def __init__(self, db_dir: str = None) -> None:
+        """
+        Load and set up KO and reaction tables derived from downloaded definition files. These
+        tables facilitate the lookup of KO IDs and names, EC numbers, and KEGG REACTION IDs.
+
+        Parameters
+        ==========
+        db_dir : str, None
+            Directory of KEGG KO and REACTION files to use instead of the default.
+        """
         self.ko_table: pd.DataFrame = None
         self.reaction_table: pd.DataFrame = None
+        # The KEGG release is stored in the KO and REACTION info files downloaded at the time of the
+        # other database files.
+        self.release: str = None
 
-    def load(self, db_dir: str = None) -> None:
-        """Load KO and reaction tables from the data directory."""
         if db_dir:
             if not os.path.isdir(db_dir):
                 raise ConfigError(f"The provided KEGG database directory, '{db_dir}', was not recognized as a directory.")
@@ -293,9 +306,32 @@ class KEGGDatabase:
         reaction_data_path = os.path.join(db_dir, 'reaction_data.tsv')
         if not os.path.isfile(reaction_data_path):
             raise ConfigError(f"The KEGG REACTION data table, 'reaction_data.tsv', was not found in the database directory, '{db_dir}'.")
+        ko_info_path = os.path.join(db_dir, 'ko_info.txt')
+        if not os.path.isfile(ko_info_path):
+            raise ConfigError(f"The KO info file, 'ko_info.txt', was not found in the database directory, '{db_dir}'.")
+        reaction_info_path = os.path.join(db_dir, 'reaction_info.txt')
+        if not os.path.isfile(reaction_info_path):
+            raise ConfigError(f"The KEGG REACTION info file, 'reaction_info.txt', was not found in the database directory, '{db_dir}'.")
 
         self.ko_table = pd.read_csv(ko_data_path, sep='\t', header=0, index_col=0, low_memory=False)
         self.reaction_table = pd.read_csv(reaction_data_path, sep='\t', header=0, index_col=0, low_memory=False)
+
+        ko_release = None
+        with open(ko_info_path) as f:
+            for line in f:
+                if line[:2] == 'ko':
+                    ko_release = line[2:].strip()
+                    break
+        assert ko_release is not None
+        reaction_release = None
+        with open(reaction_info_path) as f:
+            for line in f:
+                if line[:2] == 'rn':
+                    reaction_release = line[2:].strip()
+                    break
+        assert reaction_release is not None
+        assert ko_release == reaction_release
+        self.release = ko_release
 
 class ModelSEEDDatabase:
     """The ModelSEED Biochemistry database set up by anvi'o."""
