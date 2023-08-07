@@ -420,32 +420,21 @@ class ModelSEEDDatabase:
         self.ec_reactions_table = ec_reactions_table
 
 class Constructor:
-    """
-    Construct a metabolic reaction network within an anvi'o database.
-
-    This currently depends on KEGG annotations of genes and the ModelSEED Biochemistry database.
-    """
-    # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
-    compartment_ids = {0: 'c', 1: 'e'}
-
+    """Construct metabolic reaction network objects."""
     def __init__(
         self,
         kegg_dir: str,
         modelseed_dir: str,
-        overwrite_existing_network: bool = False,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         self.kegg_dir = kegg_dir
         self.modelseed_dir = modelseed_dir
-        self.overwrite_existing_network = overwrite_existing_network
         self.run = run
         self.progress = progress
 
-        self.kegg_db = KEGGDatabase()
-        self.kegg_db.load(self.kegg_dir)
-        self.modelseed_db = ModelSEEDDatabase()
-        self.modelseed_db.load(self.modelseed_dir)
+        self.kegg_db = KEGGDatabase(self.kegg_dir)
+        self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
     def make_single_genome_network(self, contigs_db_path: str) -> None:
 
