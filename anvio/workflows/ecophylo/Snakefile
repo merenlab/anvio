@@ -213,7 +213,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
-                                                        --filter-out-partial-gene-calls {params.partial_ORFs} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             else:
 
@@ -222,7 +222,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --hmm-profile-dir {hmm_dir} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
-                                                        --filter-out-partial-gene-calls {params.partial_ORFs} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             
         else:
