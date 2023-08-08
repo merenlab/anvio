@@ -339,6 +339,7 @@ class FilterHmmHitsTable(object):
             # Load the genes_in_contigs table from a database
             database = db.DB(self.contigs_db_path, None, ignore_version=True)
             table_content = database.get_table_as_dataframe('genes_in_contigs')
+            database.disconnect()
 
             # Filter the genes_in_contigs table to select only complete gene calls (partial == 0)
             table = table_content.query('partial == 0')
