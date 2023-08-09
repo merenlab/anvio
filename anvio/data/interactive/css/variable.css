@@ -1,0 +1,42 @@
+/* Coloring */
+:root {
+    --white: #faf0e6;
+    --title-bg-white: #EEE; 
+    --white-bg: #f3f3f3;
+    --black: #333;
+    --border: #D3D3D3;
+    --text-black: #212529;
+    --gray: #828282;
+    --blue: #6495ed;
+    --red: #c7254e;
+}
+
+/* Text Style */
+
+
+/* Font Weight */
+.w100 {
+font-weight: 100;
+}
+.w200 {
+font-weight: 200;
+}
+.w300 {
+font-weight: 300;
+}
+.w400 {
+font-weight: 400;
+}
+.w500 {
+font-weight: 500;
+}
+.w600 {
+font-weight: 600;
+}
+.w700 {
+font-weight: 700;
+}
+.w800 {
+font-weight: 800;
+}
+    

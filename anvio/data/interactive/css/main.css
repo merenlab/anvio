@@ -1,3 +1,5 @@
+@import url('variable.css');
+
 *:not(text) {
     font-size: 10px;
     line-height: 1.428;
@@ -34,12 +36,25 @@
 
 .settings-header {
     font-variant: small-caps;
-    font-size: 1.2em;
-    border-bottom: 1px #969696 solid;
+    font-size: 1.4em;
+    border-bottom: 1px var(--gray) solid;
     display: block;
-    margin-bottom: 5px;
     margin-top: 12px;
+    color: var(--text-black);
 }
+
+.settings-label {
+    margin-left: 5px;
+    padding-top: 12px;
+    margin-bottom: 5px;
+    text-align: left;
+    font-size: 1em;
+    color: var(--gray);
+  }
+  
+  .label-big {
+    font-size: 14px;
+  }
 
 h4 {
     margin-top: 10px;
@@ -87,7 +102,7 @@ option {
 html, body, #wrapper {
     width: 100%;
     height: 100%;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: 'Montserrat', sans-serif;
     margin: 0px;
     padding: 0px;
     overflow: hidden;
@@ -97,13 +112,13 @@ html, body, #wrapper {
     position: absolute;
     top: 0px;
     display: inline-block;
-    background-color: #EEE;
+    background-color: var(--title-bg-white);
     min-width: 460px;
     left: calc(50% - 230px);
     height: 44px;
     text-align: center;
     border-radius: 0px 0px 8px 8px;
-    border: 1px solid #D3D3D3;
+    border: 1px solid var(--border);
     padding-left: 20px;
     padding-right: 20px;
     opacity: 0.9;
@@ -111,7 +126,7 @@ html, body, #wrapper {
 
 #title-panel-first-line {
     font-size: 20px;
-    color: rgb(58, 58, 58);
+    color: var(--black);
     line-height: 115%;
 }
 
@@ -122,7 +137,7 @@ html, body, #wrapper {
     position: absolute;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
-    border-left: 1px solid #D3D3D3;
+    border-left: 1px solid var(--border);
     padding: 8px;
     opacity: 0.9;
     width: 350px;
@@ -135,7 +150,7 @@ html, body, #wrapper {
     position: absolute;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
-    border-left: 1px solid #D3D3D3;
+    border-left: 1px solid var(--border);
     opacity: 0.9;
     width: 350px;
 }
@@ -147,7 +162,7 @@ html, body, #wrapper {
     position: absolute;
     height: 100%;
     background: url('../images/fractal.jpg') center center scroll;
-    border-left: 1px solid #D3D3D3;
+    border-left: 1px solid var(--border);
     opacity: 0.9;
     width: 350px;
     padding: 10px;
@@ -158,8 +173,8 @@ html, body, #wrapper {
 #news-panel code {
 	  padding: 1.4px 2px;
     font-size: 90%;
-    color: #c7254e;
-    background-color: #f3f3f3;
+    color: var(--red);
+    background-color: var(--white-bg);
     border-radius: 2px;
 }
 
@@ -192,7 +207,7 @@ html, body, #wrapper {
     width: 8px;
     height: 8px;
     border-radius: 4px;
-    background-color: #2681EF;
+    background-color: var(--blue);
     margin-right: 4px;
 }
 
@@ -214,7 +229,7 @@ html, body, #wrapper {
     height: 15px;
     width: 90px;
     background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    border: solid 1px var(--border);
     top: 0;
     left: calc(50% - 45px);
     border-radius: 0px 0px 10px 10px;
@@ -367,7 +382,7 @@ html, body, #wrapper {
 #sidebar {
     position: fixed;
     background: url('../images/fractal.jpg') center center scroll;
-    border-right: 1px solid #D3D3D3;
+    border-right: 1px solid var(--border);
     width: 400px;
     height: 100%;
     padding: 5px;
@@ -383,7 +398,8 @@ html, body, #wrapper {
 .input-xs {
     height: 22px;
     padding: 0px 5px;
-    font-size: 12px;
+    margin-left: 3px;
+    font-size: 1rem;
     line-height: 1.5;
     border-radius: 3px;
 }
@@ -393,13 +409,13 @@ html, body, #wrapper {
 }
 
 .sidebar-footer {
-    background-color: white;
+    background-color: var(--white-bg);
     height: 123px;
     width: 400px;
     position: fixed;
     bottom: -0px;
-    border-top: 1px solid #D3D3D3;
-    border-right: 1px solid #D3D3D3;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
 }
 
 .table-spacing td {
@@ -449,6 +465,7 @@ td > input[type='checkbox'] {
 
 .sidebar-state-buttons {
     width: 100%;
+    font-size: 1.2rem;
 }
 
 .sidebar-state-buttons > .btn {
@@ -486,7 +503,7 @@ td > input[type='checkbox'] {
 .colorpicker {
     float: left;
     display: inline-block;
-    background-color: #FFF;
+    background-color: var(--white-bg);
     border: 1px solid;
     border-color: #000;
     width: 16px;
@@ -526,18 +543,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   min-height: 1px;
   padding-right: 10px;
   padding-left: 5px;
-}
-
-.settings-label {
-  padding-top: 2px;
-  margin-bottom: 0;
-  text-align: right;
-  height: 25px;
-  text-align: right;
-}
-
-.label-big {
-  font-size: 14px;
 }
 
 #current_state {
@@ -780,4 +785,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     font-size: 10px;
     top: 1px;
     padding: 4px 4px;
+}
+
+.footer-btn{
+    align-content: center;
+    display: grid;
+    font-size: 1.3rem;
 }
