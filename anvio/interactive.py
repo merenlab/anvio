@@ -289,7 +289,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.prune_view_and_additional_data_dicts()
 
         self.process_external_item_order()
-        self.gen_alphabetical_orders_of_items()
+        self.gen_item_auto_order_alphabetical()
 
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
@@ -478,7 +478,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
 
 
-    def gen_alphabetical_orders_of_items(self):
+    def gen_item_auto_order_alphabetical(self):
         """This function populates self.p_meta with additional organizations of data, such as alphabetical ordering\
            of data items, etc. In the interface these additional orders appear in the 'items order' combo box"""
 
