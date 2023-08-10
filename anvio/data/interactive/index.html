@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="lib/bootstrap-4.6.2-dist/css/bootstrap.min.css" />
     <script type="text/javascript" src="lib/bootstrap-4.6.2-dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/octicons/6.0.1/octicons.min.css">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -157,7 +158,7 @@
                             <span class="settings-header">Display</span>
                             <div class="form-group form-margin">
                                     <label class="settings-label w600" for="tree_type" data-help="drawing-type">Drawing Type:</label>
-                                    <div class="col-md-10">
+                                    <div class="col-10">
                                         <select id="tree_type" class="form-control input-xs">
                                             <option value="phylogram">Phylogram</option>
                                             <option value="circlephylogram" selected>Circle Phylogram</option>
@@ -166,7 +167,7 @@
                             </div>
                             <div class="form-group form-margin">
                                     <label class="settings-label w600" for="trees_container" data-help="order-by">Items Order:</label>
-                                    <div class="col-md-10">
+                                    <div class="col-10">
                                         <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
                                         <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
                                             The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
@@ -178,7 +179,7 @@
                             </div>
                             <div class="form-group form-margin">
                                     <label class="settings-label w600" for="views_container" data-help="view">View Type:</label>
-                                    <div class="col-md-10">
+                                    <div class="col-10">
                                         <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
                                     </div>
                             </div>
@@ -187,41 +188,41 @@
                             <div id="additional_settings" style="display: none;">
                                 <span class="settings-header">Dendrogram</span>
                                 <div class="form-group form-margin circlephylogram_settings d-flex pt-1">
-                                        <label class="col-md-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
-                                        <div class="col-md-6 form-inline">
-                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-lg-2"> <span class="ml-1">to</span>
-                                            <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-lg-3">
+                                        <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
+                                        <div class="col-6 form-inline input-align">
+                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
+                                            <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin circlephylogram_settings d-flex">
-                                        <label class="col-md-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
-                                        <div class="col-md-2 d-flex">
-                                            <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
+                                        <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                        <label class="col-md-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
-                                        <div class="col-md-2 d-flex">
-                                            <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
+                                        <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                        <label class="col-md-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
-                                        <div class="col-md-2 d-flex">
-                                            <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
+                                        <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin d-flex">
-                                        <label class="col-md-4 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
-                                        <div class="col-md-2 d-flex">
+                                        <label class="col-3 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
+                                        <div class="col-2 d-flex">
                                             <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                         </div>
                                 </div>
 
                             <span class="settings-header" >Branch Support</span>
                                 <div class="form-group form-margin d-flex" >
-                                    <label class="col-md-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
-                                    <div class="col-md-3 d-flex">
+                                    <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
+                                    <div class="col-3 d-flex">
                                         <input type="checkbox"
                                                 onclick="checkMaxSupportValueSeen();"
                                                 onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
@@ -301,36 +302,40 @@
 
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin d-flex pt-1">
-                                        <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
-                                        <div class="col-md-4 d-flex align-item-center">
-                                            <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
+                                        <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
+                                        <div class="col-6 d-flex align-item-center input-align">
+                                            <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs col-3">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin d-flex">
-                                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
-                                        <div class="col-md-4 d-flex">
-                                            <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
+                                        <label class="col-2 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs col-3">
                                         </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
-                                        <div class="col-md-8">
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
+                                        <div class="col-12 input-align d-flex">
                                             <input type="checkbox" id="show_bin_labels" name="checkbox"
-                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
-                                            <span class="bin_labels_details" style="margin-left:5px;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
+                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" checked>
+                                            <div class="col-8" id="bin_labels_font_size" onchange="emit('bin-settings-changed');">
+                                                <span class="bin_labels_details input-align d-flex" style="display: flex;">Font Size:
+                                                    <input class="form-control input-xs col-2" size="5" value="128" />
+                                                </span>
+                                            </div>
                                         </div>
                                 </div>
-                                <div class="form-group form-margin bin_labels_details">
-                                        <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
-                                        <div class="col-md-8">
+                                <div class="form-group form-margin bin_labels_details d-flex">
+                                        <label class="col-2 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
+                                        <div class="col-6 d-flex input-align">
                                             <input type="checkbox" id="autorotate_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
                                             <span id="span_bin_labels_angle" style="display: none; margin-left:5px;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
-                                        <div class="col-md-8">
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-2 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
+                                        <div class="col-6 input-align">
                                             <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                             <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
                                             <span class="grid_details" style="display: none; margin-left:5px;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>

@@ -27,7 +27,7 @@
     margin-top: 8px;
     text-align: center;
     background-color: #CCCCCC;
-    color: #333;
+    color: var(--primary-text);
 }
 
 #additional_settings_label:hover {
@@ -791,4 +791,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     align-content: center;
     display: grid;
     font-size: 1.3rem;
+}
+
+.input-align{
+    padding-top: 5px;
+    text-align: center;
+    align-content: center;
 }
