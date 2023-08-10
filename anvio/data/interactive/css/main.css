@@ -504,8 +504,9 @@ td > input[type='checkbox'] {
     float: left;
     display: inline-block;
     background-color: var(--white-bg);
+    color: #fff;
     border: 1px solid;
-    border-color: #000;
+    border-color: var(--black);
     width: 16px;
     height: 16px;
     margin: auto;

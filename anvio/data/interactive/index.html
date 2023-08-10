@@ -319,26 +319,39 @@
                                             <input type="checkbox" id="show_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" checked>
                                             <div class="col-8" id="bin_labels_font_size" onchange="emit('bin-settings-changed');">
-                                                <span class="bin_labels_details input-align d-flex" style="display: flex;">Font Size:
+                                                <span class="bin_labels_details input-align" style="display: flex;">Font Size:
                                                     <input class="form-control input-xs col-2" size="5" value="128" />
                                                 </span>
                                             </div>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin bin_labels_details d-flex">
-                                        <label class="col-2 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
-                                        <div class="col-6 d-flex input-align">
+                                        <label class="col-3 settings-label d-flex" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
+                                        <div class="col-12 d-flex input-align">
                                             <input type="checkbox" id="autorotate_bin_labels" name="checkbox"
-                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
-                                            <span id="span_bin_labels_angle" style="display: none; margin-left:5px;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
+                                            value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" checked>
+                                            <div class="col-8 d-flex" id="bin_labels_angle" onchange="emit('bin-settings-changed');">
+                                                <div id="span_bin_labels_angle" style="display: none;">
+                                                    <div class="d-flex input-align">
+                                                        <span class="input-align d-flex mr-4">Angle: </span>
+                                                        <input class="form-control input-xs col-4 d-flex" size="5" value="0"/>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin d-flex">
-                                        <label class="col-2 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
+                                        <label class="col-3 settings-label d-flex" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
                                         <div class="col-6 input-align">
                                             <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
-                                            <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
-                                            <span class="grid_details" style="display: none; margin-left:5px;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
+                                            <div id="grid_color" style="display: none !important;" class="colorpicker ml-1 mr-1"></div>
+                                            <div class="mx-sm-3 d-flex" id="grid_width" onchange="emit('bin-settings-changed');">
+                                                <div class="d-flex">
+                                                    <span class="grid_details" id="grid_width" onchange="emit('bin-settings-changed');" style="display: none;">Width:
+                                                        <input class="form-control input-xs d-flex"  size="2" value="1" />
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
