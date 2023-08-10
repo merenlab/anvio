@@ -1085,7 +1085,7 @@ D = {
                      "but if you are using this program to scan a very large number of HMMs, hmmsearch might "
                      "be a better choice for performance. For this reason, hmmsearch is the default in operations like "
                      "anvi-run-pfams and anvi-run-kegg-kofams. See this article for a discussion on the performance "
-                     "of these two programs: https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/"}
+                     "of these two programs: http://cryptogenomicon.org/hmmscan-vs-hmmsearch-speed-the-numerology.html"}
                 ),
     'hmm-source': (
             ['--hmm-source'],
