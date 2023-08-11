@@ -3,22 +3,28 @@
 """Generate a metabolic reaction network from gene annotations."""
 
 import os
+import re
+import glob
+import math
+import time
+import shutil
+import hashlib
+import tarfile
+import argparse
+import fractions
+import functools
+import collections
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
 
-from math import gcd
-from hashlib import sha1
-from functools import reduce
-from argparse import Namespace
-from fractions import Fraction
-from collections import Counter
 from typing import Dict, List, Tuple
 
+import anvio.utils as utils
 import anvio.tables as tables
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
-from anvio.utils import is_contigs_db
 from anvio.dbops import ContigsDatabase
 from anvio.dbops import ContigsSuperclass
 from anvio import __file__ as ANVIO_PATH, __version__ as VERSION
@@ -556,8 +562,8 @@ class Constructor:
         """
         # Load the contigs database.
         self.run.info("Contigs database", contigs_db)
-        is_contigs_db(contigs_db)
-        args = Namespace()
+        utils.is_contigs_db(contigs_db)
+        args = argparse.Namespace()
         args.contigs_db = contigs_db
         contigs_super = ContigsSuperclass(args, r=run_quiet)
         if store and contigs_super.a_meta['reaction_network_ko_annotations_hash'] and not overwrite_existing_network:
@@ -973,7 +979,7 @@ class Constructor:
         stats['Exclusively consumed metabolites'] = exclusively_consumed_count = len(consumed_compound_ids.difference(produced_compound_ids))
         stats['Exclusively produced metabolites'] = exclusively_produced_count = len(produced_compound_ids.difference(consumed_compound_ids))
         stats['Consumed/produced metabolites'] = consumed_plus_produced_count = len(consumed_compound_ids.intersection(produced_compound_ids))
-        metabolite_reaction_counts = Counter(compound_reaction_counts.values())
+        metabolite_reaction_counts = collections.Counter(compound_reaction_counts.values())
         stats['Metabolites consumed or produced by 1 rxns'] = one_reaction_count = metabolite_reaction_counts[1]
         stats['Metabolites consumed or produced by 2 rxns'] = two_reactions_count = metabolite_reaction_counts[2]
         stats['Metabolites consumed or produced by 3+ rxns'] = three_plus_reactions_count = metabolite_count - one_reaction_count - two_reactions_count
@@ -1105,9 +1111,9 @@ class Constructor:
         List[int]
         """
         def lcm(a, b):
-            return a * b // gcd(a, b)
-        rationals = [Fraction(f).limit_denominator() for f in floats]
-        lcm_denom = reduce(lcm, [r.denominator for r in rationals])
+            return a * b // math.gcd(a, b)
+        rationals = [fractions.Fraction(f).limit_denominator() for f in floats]
+        lcm_denom = functools.reduce(lcm, [r.denominator for r in rationals])
         return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
 
     def _get_modelseed_compound(self, modelseed_compound_data: Dict) -> ModelSEEDCompound:
@@ -1312,7 +1318,7 @@ class Constructor:
         for ko_annotation in ko_annotations:
             ko_annotations_string += ''.join(ko_annotation)
 
-        hashed_ko_annotations = sha1(ko_annotations_string.encode('utf-8')).hexdigest()
+        hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
         return hashed_ko_annotations
 
     def make_pangenomic_network(
