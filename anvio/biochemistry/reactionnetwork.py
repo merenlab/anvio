@@ -556,50 +556,151 @@ class ModelSEEDDatabase:
     By default, the database is loaded from a default directory of ModelSEED files unless an
     alternative directory is provided.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/modelseed')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/REACTION_NETWORK/MODELSEED')
 
     # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
     compartment_ids = {0: 'c', 1: 'e'}
 
-    def __init__(self, db_dir: str = None) -> None:
+    def set_up(
+        dir: str = None,
+        reset: bool = False,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
         """
-        Load and set up reaction and compound tables from the data directory.
+        Download the ModelSEED Biochemistry database, which consists of two tables of reaction and
+        metabolite data, and reorganize the tables.
 
         Parameters
         ==========
-        db_dir : str, None
+        dir : str, None
+            Directory in which to create a new subdirectory called 'MODELSEED', in which files are
+            downloaded and set up. This argument overrides the default directory.
+
+        reset : bool, False
+            If True, remove any existing 'MODELSEED' database directory and the files therein. If
+            False, an exception is raised if there are files in this directory.
+
+        run : anvio.terminal.Run, None
+
+        progress : anvio.terminal.Progress, None
+        """
+        if dir:
+            if os.path.isdir(dir):
+                modelseed_dir = os.path.join(dir, 'MODELSEED')
+            else:
+                raise ConfigError(f"There is no such directory, '{dir}'.")
+        else:
+            modelseed_dir = ModelSEEDDatabase.default_dir
+            parent_dir = os.path.dirname(modelseed_dir)
+            if not os.path.exists(parent_dir):
+                os.mkdir(parent_dir)
+        if os.path.exists(modelseed_dir):
+            if reset:
+                shutil.rmtree(modelseed_dir)
+            else:
+                raise ConfigError(
+                    f"The ModelSEED database directory, '{modelseed_dir}', already exists. 'reset' "
+                    "can be used to remove the database at this location and set it up again."
+                )
+        os.mkdir(modelseed_dir)
+
+        progress.new("Downloading ModelSEED files")
+        progress.update("Latest version on GitHub master branch")
+        url = 'https://github.com/ModelSEED/ModelSEEDDatabase/archive/master.zip'
+        zip_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master.zip')
+        max_num_tries = 100,
+        wait_secs = 10.0
+        num_tries = 0
+        while True:
+            try:
+                utils.download_file(url, zip_path)
+                break
+            except ConnectionResetError:
+                num_tries += 1
+                if num_tries > max_num_tries:
+                    raise ConnectionResetError(
+                        f"The connection was reset by the peer more than {max_num_tries} times, "
+                        "the maximum number of attempts. Try setting up the ModelSEED database again."
+                    )
+                time.sleep(wait_secs)
+        progress.end()
+
+        progress.new("Setting up ModelSEED files")
+        progress.update("Extracting")
+        with zipfile.ZipFile(zip_path, 'r') as f:
+            f.extractall(modelseed_dir)
+        reactions_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master', 'Biochemistry', 'reactions.tsv')
+        compounds_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master', 'Biochemistry', 'compounds.tsv')
+        shutil.move(reactions_path, modelseed_dir)
+        shutil.move(compounds_path, modelseed_dir)
+        reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
+        compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
+        os.remove(zip_path)
+        shutil.rmtree(os.path.join(modelseed_dir, 'ModelSEEDDatabase-master'))
+
+        progress.update("Loading")
+        reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
+        compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, low_memory=False)
+
+        progress.update("Reorganizing tables")
+        # Reorganize the downloaded tables, storing in the same locations. The tables each have a
+        # column of aliases, or IDs for the same reaction or compound from various databases. Split
+        # these IDs into separate columns added to the end of the table, dropping the alias column.
+        def expand_aliases(table: pd.DataFrame) -> pd.DataFrame:
+            new_rows = []
+            for aliases in table.aliases:
+                aliases: str
+                new_row = {}
+                if pd.isna(aliases):
+                    new_rows.append(new_row)
+                    continue
+                split_aliases = aliases.split('|')
+                for alias in split_aliases:
+                    sep_index = alias.index(': ')
+                    alias_key = alias[: sep_index]
+                    alias_value = alias[sep_index + 2:].lstrip()
+                    new_row[alias_key] = alias_value
+                new_rows.append(new_row)
+            alias_df = pd.DataFrame(new_rows)
+            alias_df.fillna('')
+            new_table = pd.concat([table.drop('aliases', axis=1), alias_df], axis=1)
+            return new_table
+        reactions_table = expand_aliases(reactions_table)
+        compounds_table = expand_aliases(compounds_table)
+
+        progress.update("Saving reorganized tables")
+        reactions_table.to_csv(reactions_path, sep='\t', index=None)
+        compounds_table.to_csv(compounds_path, sep='\t', index=None)
+        progress.end()
+        run.info("Reorganized ModelSEED reactions table", reactions_path)
+        run.info("Reorganized ModelSEED compounds table", compounds_path)
+
+    def __init__(self, modelseed_dir: str = None) -> None:
+        """
+        Load and set up reorganized tables of reactions and compounds from the ModelSEED directory.
+
+        Parameters
+        ==========
+        modelseed_dir : str, None
             Directory of ModelSEED files to use instead of the default.
         """
-        # The KEGG and EC tables are rearrangements of the ModelSEED reactions table facilitating
-        # lookup of reaction data by KEGG REACTION ID or EC number rather than ModelSEED reaction ID.
-        self.kegg_reactions_table: pd.DataFrame = None
-        self.ec_reactions_table: pd.DataFrame = None
-        self.compounds_table: pd.DataFrame = None
-        # The SHA is the git commit hash of the ModelSEED repository, stored in a file when
-        # anvi'o downloaded and set up the ModelSEED files.
-        self.sha: str = None
-
-        if db_dir:
-            if not os.path.isdir(db_dir):
-                raise ConfigError(f"The provided ModelSEED database directory, '{db_dir}', was not recognized as a directory.")
+        if modelseed_dir:
+            if not os.path.isdir(modelseed_dir):
+                raise ConfigError(f"There is no such directory, '{modelseed_dir}'.")
         else:
-            db_dir = self.default_dir
-        reactions_path = os.path.join(db_dir, 'reactions.tsv')
+            modelseed_dir = self.default_dir
+        reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
         if not os.path.isfile(reactions_path):
-            raise ConfigError(f"The ModelSEED reactions table, 'reactions.tsv', was not found in the database directory, '{db_dir}'.")
-        compounds_path = os.path.join(db_dir, 'compounds.tsv')
+            raise ConfigError(f"No required file named 'reactions.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
+        compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
         if not os.path.isfile(compounds_path):
-            raise ConfigError(f"The ModelSEED compounds table, 'compounds.tsv', was not found in the database directory, '{db_dir}'.")
-        sha_path = os.path.join(db_dir, 'sha.txt')
-        if not os.path.isfile(sha_path):
-            raise ConfigError(f"The file, 'sha.txt', which contains the git commit hash of the ModelSEED database, was not found in the database directory, '{db_dir}'.")
+            raise ConfigError(f"No required file named 'compounds.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
 
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
         self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
-        with open(sha_path) as f:
-            self.sha = f.readline().strip()
 
-        # Reorganize the reactions table to facilitate lookup of reaction data by KEGG REACTION ID.
+        # Facilitate lookup of reaction data by KEGG REACTION ID via a reorganized reactions table.
         # Remove reactions without KEGG aliases.
         reactions_table_without_na = reactions_table.dropna(subset=['KEGG'])
         expanded = []
@@ -617,7 +718,7 @@ class ModelSEEDDatabase:
         kegg_reactions_table['KEGG_REACTION_ID'] = ko_id_col
         self.kegg_reactions_table = kegg_reactions_table
 
-        # Reorganize the reactions table to facilitate lookup of reaction data by EC number.
+        # Facilitate lookup of reaction data by EC number via a reorganized reactions table.
         # Remove reactions without EC number aliases.
         reactions_table_without_na = reactions_table.dropna(subset=['ec_numbers'])
         expanded = []
