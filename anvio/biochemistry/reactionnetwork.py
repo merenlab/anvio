@@ -277,68 +277,277 @@ class PangenomicNetwork(ReactionNetwork):
         """
         pass
 
-class KEGGDatabase:
+class KODatabase:
     """
-    The KEGG KO and REACTION databases set up by anvi'o.
+    Representation of the KEGG KO database used in the construction of reaction networks.
 
-    By default, the databases are loaded from a default directory of KEGG KO and REACTION files
-    unless an alternative directory is provided.
+    Unless an alternative directory is provided, the database is downloaded and set up in a
+    default anvi'o data directory, and loaded from this directory in network construction.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA/kegg')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/REACTION_NETWORK/KO')
 
-    def __init__(self, db_dir: str = None) -> None:
+    def set_up(
+        num_threads: int = 1,
+        dir: str = None,
+        reset: bool = False,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
         """
-        Load and set up KO and reaction tables derived from downloaded definition files. These
-        tables facilitate the lookup of KO IDs and names, EC numbers, and KEGG REACTION IDs.
+        Download KEGG KO entry files and parse these files to construct a tab-delimited file
+        relating KOs to KEGG reactions and EC numbers.
 
         Parameters
         ==========
-        db_dir : str, None
-            Directory of KEGG KO and REACTION files to use instead of the default.
+        num_threads : int, 1
+            Number of threads to use in parallelizing the download of KO files.
+
+        dir : str, None
+            Directory in which to create a new subdirectory called 'KO', in which files are
+            downloaded and set up. This argument overrides the default directory.
+
+        reset : bool, False
+            If True, remove any existing 'KO' database directory and the files therein. If False,
+            an exception is raised if there are files in this directory.
+
+        run : anvio.terminal.Run, None
+
+        progress : anvio.terminal.Progress, None
         """
-        self.ko_table: pd.DataFrame = None
-        self.reaction_table: pd.DataFrame = None
-        # The KEGG release is stored in the KO and REACTION info files downloaded at the time of the
-        # other database files.
-        self.release: str = None
-
-        if db_dir:
-            if not os.path.isdir(db_dir):
-                raise ConfigError(f"The provided KEGG database directory, '{db_dir}', was not recognized as a directory.")
+        if dir:
+            if os.path.isdir(dir):
+                ko_dir = os.path.join(dir, 'KO')
+            else:
+                raise ConfigError(f"There is no such directory, '{dir}'.")
         else:
-            db_dir = self.default_dir
-        ko_data_path = os.path.join(db_dir, 'ko_data.tsv')
-        if not os.path.isfile(ko_data_path):
-            raise ConfigError(f"The KO data table, 'ko_data.tsv', was not found in the database directory, '{db_dir}'.")
-        reaction_data_path = os.path.join(db_dir, 'reaction_data.tsv')
-        if not os.path.isfile(reaction_data_path):
-            raise ConfigError(f"The KEGG REACTION data table, 'reaction_data.tsv', was not found in the database directory, '{db_dir}'.")
-        ko_info_path = os.path.join(db_dir, 'ko_info.txt')
-        if not os.path.isfile(ko_info_path):
-            raise ConfigError(f"The KO info file, 'ko_info.txt', was not found in the database directory, '{db_dir}'.")
-        reaction_info_path = os.path.join(db_dir, 'reaction_info.txt')
-        if not os.path.isfile(reaction_info_path):
-            raise ConfigError(f"The KEGG REACTION info file, 'reaction_info.txt', was not found in the database directory, '{db_dir}'.")
+            ko_dir = KODatabase.default_dir
+            parent_dir = os.path.dirname(ko_dir)
+            if not os.path.exists(parent_dir):
+                os.mkdir(parent_dir)
+        if os.path.exists(ko_dir):
+            if reset:
+                shutil.rmtree(ko_dir)
+            else:
+                raise ConfigError(
+                    f"The KO database directory, '{ko_dir}', already exists. 'reset' can be used "
+                    "to remove the database at this location and set it up again."
+                )
+        os.mkdir(ko_dir)
 
-        self.ko_table = pd.read_csv(ko_data_path, sep='\t', header=0, index_col=0, low_memory=False)
-        self.reaction_table = pd.read_csv(reaction_data_path, sep='\t', header=0, index_col=0, low_memory=False)
+        if num_threads == 1:
+            run.warning(
+                "Only 1 thread will be used to download KO files. It is advisable to set a higher "
+                "number of threads to download faster."
+            )
+        assert type(num_threads) is int and num_threads > 0
 
-        ko_release = None
-        with open(ko_info_path) as f:
+        # Download a file for each entry in a KEGG database.
+        download_root = 'https://rest.kegg.jp/'
+        while True:
+            # Break out of this loop upon confirming that the KEGG release didn't change in the
+            # middle of downloading KO files.
+            progress.new(f"Downloading KEGG KO files")
+            # Get the database version before download.
+            progress.update("Database info")
+            info_before_path = os.path.join(ko_dir, 'ko_info_before.txt')
+            utils.download_file(f'{download_root}info/ko', info_before_path)
+            f = open(info_before_path)
+            f.readline()
+            release_before = ' '.join(f.readline().strip().split()[1:])
+            f.close()
+
+            # Get a list of all KO IDs.
+            progress.update("KO list")
+            list_path = os.path.join(ko_dir, 'ko_list.txt')
+            utils.download_file(f'{download_root}list/ko', list_path)
+            ko_ids = []
+            f = open(list_path)
             for line in f:
-                if line[:2] == 'ko':
-                    ko_release = line[2:].strip()
+                line.split()[0]
+                ko_ids.append(line.split('\t')[0])
+            f.close()
+
+            # Download KO entry files.
+            manager = mp.Manager()
+            input_queue = manager.Queue()
+            output_queue = manager.Queue()
+            for ko_id in ko_ids:
+                input_queue.put((f'{download_root}get/{ko_id}', os.path.join(ko_dir, f'{ko_id}.txt')))
+            workers: List[mp.Process] = []
+            for _ in range(num_threads):
+                worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+                workers.append(worker)
+                worker.start()
+            downloaded_count = 0
+            undownloaded_count = 0
+            total = len(ko_ids)
+            undownloaded = []
+            while downloaded_count + undownloaded_count < total:
+                output = output_queue.get()
+                if output is True:
+                    downloaded_count += 1
+                    progress.update(f"{downloaded_count} / {total} KO files")
+                else:
+                    undownloaded_count += 1
+                    undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+            for worker in workers:
+                worker.terminate()
+            if undownloaded:
+                raise ConfigError(
+                    "Unfortunately, files for the following KOs failed to download despite multiple attempts, "
+                    f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+                )
+
+            # Get the database version after download.
+            progress.update("Database info (again)")
+            info_after_path = os.path.join(ko_dir, 'ko_info.txt')
+            utils.download_file(f'{download_root}info/ko', info_after_path)
+            f = open(info_after_path)
+            f.readline()
+            release_after = ' '.join(f.readline().strip().split()[1:])
+            f.close()
+
+            # Check that the database had the same version before and after download.
+            progress.end()
+            if release_before == release_after:
+                # Retain one of the info files and delete the other.
+                info_path = info_after_path
+                os.remove(info_before_path)
+                break
+            else:
+                run.warning(
+                    "It's your lucky day! The version of KEGG appears to have changed from "
+                    f"'{release_before}' to '{release_after}' while anvi'o was downloading files "
+                    "from the KO database. Anvi'o will now attempt to redownload all of the files. "
+                )
+        run.info(f"Total number of KOs/entry files", total)
+        run.info("KEGG database version", release_after)
+        run.info("KEGG KO list", list_path)
+        run.info("KEGG KO info", info_path)
+
+        progress.new("Processing KEGG KO database")
+        # Make a tab-delimited file relating KO IDs and names to KEGG reactions and EC numbers.
+        kos_data = {}
+        paths = glob.glob(os.path.join(ko_dir, 'K*.txt'))
+        for num_processed, path in enumerate(paths):
+            progress.update(f"{num_processed} / {total} KO files")
+            # Parse the KO file.
+            ko_data = {}
+            section = None
+            # Unfortunately, a non-unicode character can crop up.
+            f = open(path, 'rb')
+            for line in f.read().decode(errors='replace').split('\n'):
+                if line[0] == ' ':
+                    pass
+                else:
+                    section = line.split()[0]
+                if section == 'NAME':
+                    # The name value follows 'NAME' at the beginning of the line.
+                    ko_data['name'] = line[4:].lstrip().rstrip()
+                    # EC numbers associated with the KO are recorded at the end of the name value.
+                    ec_string = re.search('\[EC:.*\]', line)
+                    if ec_string:
+                        ko_data['ec_numbers'] = ec_string[0][4:-1]
+                elif section == 'DBLINKS':
+                    # There is a row for each linked database in this section. There can be a row
+                    # for KEGG REACTION database entries. The first line of the section starts with
+                    # 'DBLINKS' and is followed by a value for a linked database. Values from the
+                    # linked database are separated by ': ' from the name of the database, e.g.,
+                    # 'RN: R00001'.
+                    split_line = line.split()
+                    try:
+                        rn_index = split_line.index('RN:')
+                    except ValueError:
+                        continue
+                    ko_data['reactions'] = ' '.join(split_line[rn_index + 1:])
+                elif section == 'GENES':
+                    # This is the section after DBLINKS.
                     break
-        assert ko_release is not None
-        reaction_release = None
-        with open(reaction_info_path) as f:
-            for line in f:
-                if line[:2] == 'rn':
-                    reaction_release = line[2:].strip()
+            f.close()
+            ko_id = os.path.splitext(os.path.basename(path))[0]
+            kos_data[ko_id] = ko_data
+        progress.update("Making a table mapping KOs to KEGG reactions and EC numbers")
+        columns = {h: [] for h in ['name', 'reactions', 'ec_numbers']}
+        for ko_data in kos_data.values():
+            for h, column in columns.items():
+                try:
+                    value = ko_data[h]
+                except KeyError:
+                    value = None
+                column.append(value)
+        table: pd.DataFrame = pd.DataFrame.from_dict(columns)
+        table.index = kos_data
+        table = table.sort_index()
+        table_path = os.path.join(ko_dir, 'ko_data.tsv')
+        table.to_csv(table_path, sep='\t')
+        progress.end()
+        run.info("Table of select KEGG KO data", table_path)
+
+        # Tarball the KO entry files.
+        progress.new("Compressing downloaded KEGG KO entry files")
+        progress.update("...")
+        ko_entries_dir = os.path.join(ko_dir, 'ko_entries')
+        os.mkdir(ko_entries_dir)
+        for path in paths:
+            shutil.move(path, ko_entries_dir)
+        tar_path = os.path.join(ko_dir, 'ko_entries.tar.gz')
+        with tarfile.open(tar_path, mode='w:gz') as tar:
+            tar.add(ko_entries_dir, arcname='.')
+        progress.end()
+        shutil.rmtree(ko_entries_dir)
+        run.info("Archived KEGG KO entry files", tar_path)
+
+    def __init__(self, ko_dir: str = None) -> None:
+        """
+        Load the table derived from downloaded KEGG KO entry files that relates KOs to KEGG
+        reactions and EC numbers.
+
+        Parameters
+        ==========
+        ko_dir : str, None
+            Directory containing KO data table to use rather than the default.
+        """
+        if ko_dir:
+            if not os.path.isdir(ko_dir):
+                raise ConfigError(f"There is no such directory, '{ko_dir}'.")
+        else:
+            ko_dir = self.default_dir
+        info_path = os.path.join(ko_dir, 'ko_info.txt')
+        if not os.path.isfile(info_path):
+            raise ConfigError(f"No required file named 'ko_info.txt' was found in the KO directory, '{ko_dir}'.")
+        table_path = os.path.join(ko_dir, 'ko_data.tsv')
+        if not os.path.isfile(table_path):
+            raise ConfigError(f"No required file named 'ko_data.tsv' was found in the KO directory, '{ko_dir}'.")
+
+        f = open(info_path)
+        f.readline()
+        self.release = ' '.join(f.readline().strip().split()[1:])
+        f.close()
+
+        self.ko_table = pd.read_csv(table_path, sep='\t', header=0, index_col=0, low_memory=False)
+
+def _download_worker(
+    input_queue: mp.Queue,
+    output_queue: mp.Queue,
+    max_num_tries: int = 100,
+    wait_secs: float = 10.0
+) -> None:
+    """Multiprocessing download worker."""
+    while True:
+        url, path = input_queue.get()
+        num_tries = 0
+        while True:
+            try:
+                utils.download_file(url, path)
+                output = True
+                break
+            except (ConfigError, ConnectionResetError) as e:
+                num_tries += 1
+                if num_tries > max_num_tries:
+                    output = path
                     break
-        assert reaction_release is not None
-        assert ko_release == reaction_release
-        self.release = ko_release
+                time.sleep(wait_secs)
+        output_queue.put(output)
 
 class ModelSEEDDatabase:
     """
@@ -440,7 +649,7 @@ class Constructor:
         self.run = run
         self.progress = progress
 
-        self.kegg_db = KEGGDatabase(self.kegg_dir)
+        self.kegg_db = KODatabase(self.kegg_dir)
         self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
     def import_network(self, json: str) -> ReactionNetwork:
