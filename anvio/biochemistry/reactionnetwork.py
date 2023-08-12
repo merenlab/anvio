@@ -10,6 +10,7 @@ import time
 import shutil
 import hashlib
 import tarfile
+import zipfile
 import argparse
 import fractions
 import functools
