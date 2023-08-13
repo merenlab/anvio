@@ -287,6 +287,35 @@ class KODatabase:
     """
     default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/REACTION_NETWORK/KO')
 
+    def __init__(self, ko_dir: str = None) -> None:
+        """
+        Load the table derived from downloaded KEGG KO entry files that relates KOs to KEGG
+        reactions and EC numbers.
+
+        Parameters
+        ==========
+        ko_dir : str, None
+            Directory containing KO data table to use rather than the default.
+        """
+        if ko_dir:
+            if not os.path.isdir(ko_dir):
+                raise ConfigError(f"There is no such directory, '{ko_dir}'.")
+        else:
+            ko_dir = self.default_dir
+        info_path = os.path.join(ko_dir, 'ko_info.txt')
+        if not os.path.isfile(info_path):
+            raise ConfigError(f"No required file named 'ko_info.txt' was found in the KO directory, '{ko_dir}'.")
+        table_path = os.path.join(ko_dir, 'ko_data.tsv')
+        if not os.path.isfile(table_path):
+            raise ConfigError(f"No required file named 'ko_data.tsv' was found in the KO directory, '{ko_dir}'.")
+
+        f = open(info_path)
+        f.readline()
+        self.release = ' '.join(f.readline().strip().split()[1:])
+        f.close()
+
+        self.ko_table = pd.read_csv(table_path, sep='\t', header=0, index_col=0, low_memory=False)
+
     def set_up(
         num_threads: int = 1,
         dir: str = None,
@@ -498,35 +527,6 @@ class KODatabase:
         shutil.rmtree(ko_entries_dir)
         run.info("Archived KEGG KO entry files", tar_path)
 
-    def __init__(self, ko_dir: str = None) -> None:
-        """
-        Load the table derived from downloaded KEGG KO entry files that relates KOs to KEGG
-        reactions and EC numbers.
-
-        Parameters
-        ==========
-        ko_dir : str, None
-            Directory containing KO data table to use rather than the default.
-        """
-        if ko_dir:
-            if not os.path.isdir(ko_dir):
-                raise ConfigError(f"There is no such directory, '{ko_dir}'.")
-        else:
-            ko_dir = self.default_dir
-        info_path = os.path.join(ko_dir, 'ko_info.txt')
-        if not os.path.isfile(info_path):
-            raise ConfigError(f"No required file named 'ko_info.txt' was found in the KO directory, '{ko_dir}'.")
-        table_path = os.path.join(ko_dir, 'ko_data.tsv')
-        if not os.path.isfile(table_path):
-            raise ConfigError(f"No required file named 'ko_data.tsv' was found in the KO directory, '{ko_dir}'.")
-
-        f = open(info_path)
-        f.readline()
-        self.release = ' '.join(f.readline().strip().split()[1:])
-        f.close()
-
-        self.ko_table = pd.read_csv(table_path, sep='\t', header=0, index_col=0, low_memory=False)
-
 def _download_worker(
     input_queue: mp.Queue,
     output_queue: mp.Queue,
@@ -561,6 +561,66 @@ class ModelSEEDDatabase:
 
     # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
     compartment_ids = {0: 'c', 1: 'e'}
+
+    def __init__(self, modelseed_dir: str = None) -> None:
+        """
+        Load and set up reorganized tables of reactions and compounds from the ModelSEED directory.
+
+        Parameters
+        ==========
+        modelseed_dir : str, None
+            Directory of ModelSEED files to use instead of the default.
+        """
+        if modelseed_dir:
+            if not os.path.isdir(modelseed_dir):
+                raise ConfigError(f"There is no such directory, '{modelseed_dir}'.")
+        else:
+            modelseed_dir = self.default_dir
+        reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
+        if not os.path.isfile(reactions_path):
+            raise ConfigError(f"No required file named 'reactions.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
+        compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
+        if not os.path.isfile(compounds_path):
+            raise ConfigError(f"No required file named 'compounds.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
+
+        reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
+        self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
+
+        # Facilitate lookup of reaction data by KEGG REACTION ID via a reorganized reactions table.
+        # Remove reactions without KEGG aliases.
+        reactions_table_without_na = reactions_table.dropna(subset=['KEGG'])
+        expanded = []
+        ko_id_col = []
+        for ko_ids, row in zip(
+            reactions_table_without_na['KEGG'],
+            reactions_table_without_na.itertuples(index=False)
+        ):
+            ko_ids: str
+            # A ModelSEED reaction can have multiple KEGG aliases.
+            for ko_id in ko_ids.split('; '):
+                ko_id_col.append(ko_id)
+                expanded.append(row)
+        kegg_reactions_table = pd.DataFrame(expanded)
+        kegg_reactions_table['KEGG_REACTION_ID'] = ko_id_col
+        self.kegg_reactions_table = kegg_reactions_table
+
+        # Facilitate lookup of reaction data by EC number via a reorganized reactions table.
+        # Remove reactions without EC number aliases.
+        reactions_table_without_na = reactions_table.dropna(subset=['ec_numbers'])
+        expanded = []
+        ec_number_col = []
+        for ec_numbers, row in zip(
+            reactions_table_without_na['ec_numbers'],
+            reactions_table_without_na.itertuples(index=False)
+        ):
+            ec_numbers: str
+            # A ModelSEED reaction can have multiple EC number aliases.
+            for ec_number in ec_numbers.split('|'):
+                ec_number_col.append(ec_number)
+                expanded.append(row)
+        ec_reactions_table = pd.DataFrame(expanded)
+        ec_reactions_table['EC_number'] = ec_number_col
+        self.ec_reactions_table = ec_reactions_table
 
     def set_up(
         dir: str = None,
@@ -688,66 +748,6 @@ class ModelSEEDDatabase:
         run.info("ModelSEED database version (git commit hash)", sha)
         run.info("Reorganized ModelSEED reactions table", reactions_path)
         run.info("Reorganized ModelSEED compounds table", compounds_path)
-
-    def __init__(self, modelseed_dir: str = None) -> None:
-        """
-        Load and set up reorganized tables of reactions and compounds from the ModelSEED directory.
-
-        Parameters
-        ==========
-        modelseed_dir : str, None
-            Directory of ModelSEED files to use instead of the default.
-        """
-        if modelseed_dir:
-            if not os.path.isdir(modelseed_dir):
-                raise ConfigError(f"There is no such directory, '{modelseed_dir}'.")
-        else:
-            modelseed_dir = self.default_dir
-        reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
-        if not os.path.isfile(reactions_path):
-            raise ConfigError(f"No required file named 'reactions.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
-        compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
-        if not os.path.isfile(compounds_path):
-            raise ConfigError(f"No required file named 'compounds.tsv' was found in the ModelSEED directory, '{modelseed_dir}'.")
-
-        reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
-        self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
-
-        # Facilitate lookup of reaction data by KEGG REACTION ID via a reorganized reactions table.
-        # Remove reactions without KEGG aliases.
-        reactions_table_without_na = reactions_table.dropna(subset=['KEGG'])
-        expanded = []
-        ko_id_col = []
-        for ko_ids, row in zip(
-            reactions_table_without_na['KEGG'],
-            reactions_table_without_na.itertuples(index=False)
-        ):
-            ko_ids: str
-            # A ModelSEED reaction can have multiple KEGG aliases.
-            for ko_id in ko_ids.split('; '):
-                ko_id_col.append(ko_id)
-                expanded.append(row)
-        kegg_reactions_table = pd.DataFrame(expanded)
-        kegg_reactions_table['KEGG_REACTION_ID'] = ko_id_col
-        self.kegg_reactions_table = kegg_reactions_table
-
-        # Facilitate lookup of reaction data by EC number via a reorganized reactions table.
-        # Remove reactions without EC number aliases.
-        reactions_table_without_na = reactions_table.dropna(subset=['ec_numbers'])
-        expanded = []
-        ec_number_col = []
-        for ec_numbers, row in zip(
-            reactions_table_without_na['ec_numbers'],
-            reactions_table_without_na.itertuples(index=False)
-        ):
-            ec_numbers: str
-            # A ModelSEED reaction can have multiple EC number aliases.
-            for ec_number in ec_numbers.split('|'):
-                ec_number_col.append(ec_number)
-                expanded.append(row)
-        ec_reactions_table = pd.DataFrame(expanded)
-        ec_reactions_table['EC_number'] = ec_number_col
-        self.ec_reactions_table = ec_reactions_table
 
 class Constructor:
     """Construct metabolic reaction network objects."""
