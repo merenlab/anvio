@@ -753,17 +753,17 @@ class Constructor:
     """Construct metabolic reaction network objects."""
     def __init__(
         self,
-        kegg_dir: str,
-        modelseed_dir: str,
+        ko_dir: str = None,
+        modelseed_dir: str = None,
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
-        self.kegg_dir = kegg_dir
+        self.ko_dir = ko_dir
         self.modelseed_dir = modelseed_dir
         self.run = run
         self.progress = progress
 
-        self.kegg_db = KODatabase(self.kegg_dir)
+        self.ko_db = KODatabase(self.ko_dir)
         self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
     def import_network(self, json: str) -> ReactionNetwork:
@@ -941,7 +941,7 @@ class Constructor:
 
             # Find KEGG reactions and EC numbers associated with the KO.
             try:
-                ko_info = self.kegg_db.ko_table.loc[ko.id]
+                ko_info = self.ko_db.ko_table.loc[ko.id]
             except KeyError:
                 undefined_ko_ids.append(ko_id)
                 continue
@@ -1113,7 +1113,7 @@ class Constructor:
             ko_annotations_hash = self.hash_ko_annotations(gene_function_calls_dict)
             cdb = ContigsDatabase(contigs_db)
             cdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
-            cdb.db.set_meta_value('reaction_network_kegg_database_release', self.kegg_db.release)
+            cdb.db.set_meta_value('reaction_network_kegg_database_release', self.ko_db.release)
             cdb.db.set_meta_value('reaction_network_modelseed_database_sha', self.modelseed_db.sha)
             cdb.disconnect()
             self.progress.end()
