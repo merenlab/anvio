@@ -5,6 +5,7 @@
 import os
 import re
 import glob
+import json
 import math
 import time
 import shutil
@@ -605,39 +606,49 @@ class ModelSEEDDatabase:
                 )
         os.mkdir(modelseed_dir)
 
-        progress.new("Downloading ModelSEED files")
-        progress.update("Latest version on GitHub master branch")
-        url = 'https://github.com/ModelSEED/ModelSEEDDatabase/archive/master.zip'
-        zip_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master.zip')
-        max_num_tries = 100,
-        wait_secs = 10.0
-        num_tries = 0
-        while True:
-            try:
-                utils.download_file(url, zip_path)
-                break
-            except ConnectionResetError:
-                num_tries += 1
-                if num_tries > max_num_tries:
-                    raise ConnectionResetError(
-                        f"The connection was reset by the peer more than {max_num_tries} times, "
-                        "the maximum number of attempts. Try setting up the ModelSEED database again."
-                    )
-                time.sleep(wait_secs)
-        progress.end()
+        def download(url, path):
+            max_num_tries = 100
+            wait_secs = 10.0
+            num_tries = 0
+            while True:
+                try:
+                    utils.download_file(url, path, progress=progress)
+                    break
+                except ConnectionResetError:
+                    num_tries += 1
+                    if num_tries > max_num_tries:
+                        raise ConnectionResetError(
+                            f"The connection was reset by the peer more than {max_num_tries} times, "
+                            "the maximum number of attempts. Try setting up the ModelSEED database again."
+                        )
+                    time.sleep(wait_secs)
+        # The commit SHA taken from the following file is stored in a text file to track the version
+        # of the ModelSEED database.
+        json_url = 'https://api.github.com/repos/ModelSEED/ModelSEEDDatabase/commits'
+        json_path = os.path.join(modelseed_dir, 'commits.json')
+        download(json_url, json_path)
+        with open(json_path) as f:
+            sha = json.load(f)[0]['sha']
+        zip_url = f'https://github.com/ModelSEED/ModelSEEDDatabase/archive/{sha}.zip'
+        zip_path = os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}.zip')
+        download(zip_url, zip_path)
 
         progress.new("Setting up ModelSEED files")
         progress.update("Extracting")
         with zipfile.ZipFile(zip_path, 'r') as f:
             f.extractall(modelseed_dir)
-        reactions_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master', 'Biochemistry', 'reactions.tsv')
-        compounds_path = os.path.join(modelseed_dir, 'ModelSEEDDatabase-master', 'Biochemistry', 'compounds.tsv')
+        reactions_path = os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'reactions.tsv')
+        compounds_path = os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}', 'Biochemistry', 'compounds.tsv')
         shutil.move(reactions_path, modelseed_dir)
         shutil.move(compounds_path, modelseed_dir)
         reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
         compounds_path = os.path.join(modelseed_dir, 'compounds.tsv')
+        sha_path = os.path.join(modelseed_dir, 'sha.txt')
+        with open(sha_path, 'w') as f:
+            f.write(sha)
+        os.remove(json_path)
         os.remove(zip_path)
-        shutil.rmtree(os.path.join(modelseed_dir, 'ModelSEEDDatabase-master'))
+        shutil.rmtree(os.path.join(modelseed_dir, f'ModelSEEDDatabase-{sha}'))
 
         progress.update("Loading")
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
@@ -673,6 +684,8 @@ class ModelSEEDDatabase:
         reactions_table.to_csv(reactions_path, sep='\t', index=None)
         compounds_table.to_csv(compounds_path, sep='\t', index=None)
         progress.end()
+
+        run.info("ModelSEED database version (git commit hash)", sha)
         run.info("Reorganized ModelSEED reactions table", reactions_path)
         run.info("Reorganized ModelSEED compounds table", compounds_path)
 
