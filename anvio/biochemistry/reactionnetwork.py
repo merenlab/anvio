@@ -767,7 +767,7 @@ class Constructor:
         self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
     def import_network(self, json: str) -> ReactionNetwork:
-        """Import a reaction network from a metabolic model JSON file."""
+        """Import a metabolic model JSON file as reaction network objects."""
         pass
 
     def load_network(
@@ -776,6 +776,7 @@ class Constructor:
         genomes_storage_db: str = None,
         pan_db: str = None
     ) -> ReactionNetwork:
+        """Load a reaction network stored in a database as reaction network objects."""
         self.check_network(contigs_db=contigs_db, genomes_storage_db=genomes_storage_db, pan_db=pan_db)
 
     def check_network(
@@ -903,7 +904,8 @@ class Constructor:
         modelseed_ec_reactions_table = self.modelseed_db.ec_reactions_table
         modelseed_compounds_table = self.modelseed_db.compounds_table
 
-        # Record KOs that annotated genes but for some reason are not found in the KO database.
+        # Record KOs that annotated genes in the contigs database but for some reason are not found
+        # in the KO database.
         undefined_ko_ids = []
 
         # Parse gene-KO matches recorded in the contigs database.
@@ -1616,7 +1618,8 @@ class Constructor:
 
     def hash_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
         """
-        Hash gene KO annotations in a contigs database to concisely represent the data used to construct a reaction network.
+        Hash gene KO annotations in a contigs database to concisely represent the data used to
+        construct a reaction network.
 
         Parameters
         ==========
