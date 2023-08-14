@@ -404,6 +404,15 @@ html, body, #wrapper {
     border-radius: 3px;
 }
 
+.input-dropdown-xs {
+    height: 22px;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 3px;
+    padding-top: 12px;
+    margin-bottom: 5px;
+}
+
 .form-margin {
     margin-bottom: 0px;
 }
@@ -798,4 +807,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-top: 5px;
     text-align: center;
     align-content: center;
+}
+
+.display-settings{
+    display: flex;
+}
+
+.colorpicker-width {
+    margin-right: 12px;
 }
