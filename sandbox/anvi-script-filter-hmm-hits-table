@@ -430,8 +430,10 @@ if __name__ == '__main__':
                         "calculating the approximate coverage of the gene by the model). If you set this parameter to any distance, "
                         "anvi'o will first merge independent hits for the same gene/model that are closer to each other than that "
                         "distance.")
-    parser.add_argument('--filter-out-partial-gene-calls', action='store_true', help="Only keep hmm-hits from open reading frames "
-                        "with start and stop codons.")
+    parser.add_argument('--filter-out-partial-gene-calls', action='store_true', help="Partial genes can lead to spurious branches "
+                        "and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. "
+                        "Using this flag you can instruct anvi'o to only keep HMM hits from open reading frames that represent complete "
+                        "genes (i.e., genes that are not partial and that start with a start codon and end with a stop codon).")
 
     args = parser.get_args(parser)
 
