@@ -1619,6 +1619,14 @@ class Constructor:
             reaction_data['stoichiometry'] = ', '.join([str(c) for c in reaction.coefficients])
             reaction_data['compartments'] = ', '.join(reaction.compartments)
             reaction_data['reversibility'] = reaction.reversibility
+            # Record KEGG REACTION IDs and EC numbers that are aliases of ModelSEED reactions but
+            # are *NOT* associated with gene KO annotations; associated aliases are recorded later.
+            reaction_data['other_kegg_reaction_ids'] = ', '.join(
+                set(reaction.kegg_aliases).difference(set(network.modelseed_kegg_aliases[modelseed_reaction_id]))
+            )
+            reaction_data['other_ec_numbers'] = ', '.join(
+                set(reaction.ec_number_aliases).difference(set(network.modelseed_ec_number_aliases[modelseed_reaction_id]))
+            )
             reactions_data[modelseed_reaction_id] = reaction_data
 
         # Get *KO* KEGG REACTION ID and EC number aliases of each ModelSEED reaction. These are not
@@ -1635,14 +1643,14 @@ class Constructor:
         # ...
         # }
         ko_reaction_aliases: Dict[str, Tuple[Dict[str, List[str]], Dict[str, List[str]]]] = {
-            modelseed_id: ({}, {}) for modelseed_id in reactions_data
+            modelseed_reaction_id: ({}, {}) for modelseed_reaction_id in reactions_data
         }
         for ko_id, ko in network.kos.items():
-            for modelseed_id, reaction in ko.reactions.items():
-                aliases = ko_reaction_aliases[modelseed_id]
+            for modelseed_reaction_id, reaction in ko.reactions.items():
+                aliases = ko_reaction_aliases[modelseed_reaction_id]
 
                 kegg_reaction_aliases = aliases[0]
-                kegg_reaction_ids = ko.kegg_reaction_aliases[modelseed_id]
+                kegg_reaction_ids = ko.kegg_reaction_aliases[modelseed_reaction_id]
                 for kegg_reaction_id in kegg_reaction_ids:
                     try:
                         ko_ids: List = kegg_reaction_aliases[kegg_reaction_id]
@@ -1651,15 +1659,15 @@ class Constructor:
                     ko_ids.append(ko_id)
 
                 ec_number_aliases = aliases[1]
-                ec_numbers = ko.ec_number_aliases[modelseed_id]
+                ec_numbers = ko.ec_number_aliases[modelseed_reaction_id]
                 for ec_number in ec_numbers:
                     try:
                         ko_ids: List = ec_number_aliases[ec_number]
                     except KeyError:
                         ec_number_aliases[ec_number] = ko_ids = []
                     ko_ids.append(ko_id)
-        for modelseed_id, aliases in ko_reaction_aliases.items():
-            reaction_data = reactions_data[modelseed_id]
+        for modelseed_reaction_id, aliases in ko_reaction_aliases.items():
+            reaction_data = reactions_data[modelseed_reaction_id]
 
             # Make the entry for KO KEGG REACTION aliases, which looks akin to the following arbitrary example:
             # 'R00001: (K00010, K00100); R01234: (K54321)'
