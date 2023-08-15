@@ -24,6 +24,62 @@ Here is a tutorial walking through more details regarding the ecophylo %(workflo
 - %(hmm-list)s: This file designates which HMM should be used to extract the target gene from your %(contigs-db)s.
 - %(metagenomes)s and/or %(external-genomes)s: These files hold the assemblies where you are looking for the target gene. Genomes in %(external-genomes)s can be reference genomes, [SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), and/or [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag).
 
+## Quality control and processing of hmm-hits
+
+[Hidden Markov Models](https://anvio.org/vocabulary/#hidden-markov-models-hmms) are the crux of the EcoPhylo workflow and will determine the sensitivity and specificity of the protein family hmm-hits you seek to investigate. However, not all %(hmm-hits)s are created equal. Just how BLAST can detect spurious hits with [high-scoring segment pairs](https://www.ncbi.nlm.nih.gov/books/NBK62051/), HMMER can detect non-homologous hits as well. To address this, we have a series of parameters you can adjust to fine tune the input set of %(hmm-hits)s that EcoPhylo will process. 
+
+### HMM alignment coverage filtering
+
+The first step to removing bad %(hmm-hits)s is to filter out hits with low quality alignment coverage. This is done with the rule `filter_hmm_hits_by_model_coverage` which leverages %(anvi-script-filter-hmm-hits-table)s. We recommend 80%% model coverage filter for most cases. However, it is always recommended to explore the distribution of model coverage with any new HMM which will help you determine a proper cutoff (citation). To adjust this parameter, go to the `filter_hmm_hits_by_model_coverage` rule and change the parameter `--model-coverage`. 
+
+{:.notice}
+Some full gene length HMM models align to a single hmm-hit independently at different coordinates when there should only be one annotation. To merge these independent alignment into one HMM alignment coverage stat, set `--merge-partial-hits-within-X-nts` to any distance between the hits for which you would like to merge.
+
+### Conservative mode: only complete open-reading frames
+
+Genes predicted from genomes and metagenomes can be partial or complete depending on whether a stop and stop codon is detected. Even if you filter out %(hmm-hits)s with bad alignment coverage as discussed above, HMMs can still detect low quality hits due to partial genes (i.e., genes that are not partial and that start with a start codon and end with a stop codon) with good alignment coverage and homology statistics. Unfortunately, partial genes can lead to spurious phylogenetic branches and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. 
+
+To remove partial genes from the EcoPhylo analysis, the user set `--filter-out-partial-gene-calls True` so that only complete open-reading frames are processed.
+
+```bash
+{
+    "filter_hmm_hits_by_model_coverage": {
+        "threads": 5,
+        "--model-coverage": 0.8,
+        "--filter-out-partial-gene-calls": true,
+        "additional_params": ""
+    },
+}
+```
+
+### Discovery-mode: ALL open-reading frames
+
+However, maybe you're a risk taker, a maverick explorer of metagenomes. Complete or incomplete you accept all genes and their potential tree bending shortcomings! In this case, set `--filter-out-partial-gene-calls false` in the config file.
+
+{:.notice}
+Exploring complete and incomplete ORFs will increase the distribution of sequence lengths and thus impact sequence clustering. We recommend adjusting `cluster_X_percent_sim_mmseqs` to `"--cov-mode": 1` to help insure ORFs of all length properly cluster together. Please refer to the [MMseqs2 user guide description of --cov-mode](https://mmseqs.com/latest/userguide.pdf) for more details.
+
+```bash
+{
+    "filter_hmm_hits_by_model_coverage": {
+        "threads": 5,
+        "--model-coverage": 0.8,
+        "--filter-out-partial-gene-calls": false,
+        "additional_params": ""
+    },
+      "cluster_X_percent_sim_mmseqs": {
+      "threads": 5,
+      "--min-seq-id": 0.94,
+      "--cov-mode": 1,
+      "clustering_threshold_for_OTUs": [
+          0.99,
+          0.98,
+          0.97
+      ],
+      "AA_mode": false
+    },
+}
+```
 ## tree-mode: Insights into the evolutionary patterns of target genes 
 
 This is the simplest implementation of ecophylo where only an amino acid based phylogenetic tree is calculated. The workflow will extract the target gene from input assemblies, cluster and pick representatives, then calculate a phylogenetic tree based on the amino acid representative sequences. There are two sub-modes of [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes) which depend on how you pick representative sequences, [NT-mode](#nt-mode) or [AA-mode](#aa-mode) where extracted genes associated nucleotide version (NT) or the amino acid (AA) can be used to cluster the dataset and pick representatives, respectively.
