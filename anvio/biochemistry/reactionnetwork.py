@@ -29,7 +29,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
 from anvio.dbops import ContigsSuperclass
-from anvio import __file__ as ANVIO_PATH, __version__ as VERSION
+from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
