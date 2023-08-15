@@ -46,13 +46,13 @@ def migrate(db_path):
     try:
         contigs_db.remove_meta_key_value_pair('reaction_network_ko_annotations_hash')
         contigs_db.remove_meta_key_value_pair('reaction_network_kegg_database_release')
-        contigs_db.remove_meta_key_value_pair('reaction_network_modelseed_database_hash')
+        contigs_db.remove_meta_key_value_pair('reaction_network_modelseed_database_sha')
     except:
         pass
 
     contigs_db.set_meta_value('reaction_network_ko_annotations_hash', None)
     contigs_db.set_meta_value('reaction_network_kegg_database_release', None)
-    contigs_db.set_meta_value('reaction_network_modelseed_database_hash', None)
+    contigs_db.set_meta_value('reaction_network_modelseed_database_sha', None)
     contigs_db.create_table(gene_function_reactions_table_name, gene_function_reactions_table_structure, gene_function_reactions_table_types)
     contigs_db.create_table(gene_function_metabolites_table_name, gene_function_metabolites_table_structure, gene_function_metabolites_table_types)
 
