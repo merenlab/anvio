@@ -791,9 +791,6 @@ class Constructor:
         self.run = run
         self.progress = progress
 
-        self.ko_db = KODatabase(self.ko_dir)
-        self.modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
-
     def import_network(self, json: str) -> ReactionNetwork:
         """Import a metabolic model JSON file as reaction network objects."""
         pass
