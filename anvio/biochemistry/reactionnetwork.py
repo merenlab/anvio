@@ -1264,8 +1264,8 @@ class Constructor:
             ko_annotations_hash = self.hash_ko_annotations(gene_function_calls_dict)
             cdb = ContigsDatabase(contigs_db)
             cdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
-            cdb.db.set_meta_value('reaction_network_kegg_database_release', self.ko_db.release)
-            cdb.db.set_meta_value('reaction_network_modelseed_database_sha', self.modelseed_db.sha)
+            cdb.db.set_meta_value('reaction_network_kegg_database_release', ko_db.release)
+            cdb.db.set_meta_value('reaction_network_modelseed_database_sha', modelseed_db.sha)
             cdb.disconnect()
             self.progress.end()
 
