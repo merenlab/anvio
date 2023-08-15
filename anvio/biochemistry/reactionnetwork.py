@@ -1275,55 +1275,39 @@ class Constructor:
         self.progress.new("Counting genes and KOs")
         self.progress.update("...")
 
-        # Count all gene calls in the genome.
         cdb = ContigsDatabase(contigs_db)
         stats['Total gene calls in genome'] = gene_call_count = cdb.db.get_row_counts_from_table('genes_in_contigs')
         cdb.disconnect()
-        stats['Genes annotated with KOs'] = ko_annotated_gene_count = len(network.genes)
-
-        # Count genes contributing to the reaction network.
-        contributing_gene_count = 0
-        for gene in network.genes.values():
-            for ko in gene.kos:
-                if ko.reactions:
-                    contributing_gene_count += 1
-                    break
-        stats['Genes contributing to network'] = contributing_gene_count
-
-        stats['KOs annotating genes'] = annotating_ko_count = len(network.kos)
-        # Count KOs contributing to the reaction network.
-        contributing_ko_count = 0
-        for ko in network.kos.values():
-            if ko.reactions:
-                contributing_ko_count += 1
-        stats['KOs contributing to network'] = contributing_ko_count
+        stats['Genes annotated with protein KOs'] = ko_annotated_gene_count = len(network.genes) + len(unnetworked_gcids)
+        stats['Genes in network'] = networked_gene_count = len(network.genes)
+        stats['Protein KOs annotating genes'] = annotating_ko_count = len(network.kos) + len(unnetworked_ko_ids)
+        stats['KOs in network'] = networked_ko_count = len(network.kos)
         self.progress.end()
 
         self.run.info_single("Gene calls and KEGG Ortholog (KO) annotations")
         self.run.info("Total gene calls in genome", gene_call_count)
-        self.run.info("Genes annotated with KOs", ko_annotated_gene_count)
-        self.run.info("Genes contributing to network", contributing_gene_count)
-        self.run.info("KOs annotating genes", annotating_ko_count)
-        self.run.info("KOs contributing to network", contributing_ko_count, nl_after=1)
+        self.run.info("Genes annotated with protein KOs", ko_annotated_gene_count)
+        self.run.info("Genes in network", networked_gene_count)
+        self.run.info("Protein KOs annotating genes", annotating_ko_count)
+        self.run.info("KOs in network", networked_ko_count, nl_after=1)
 
         self.progress.new("Counting reactions and KO sources")
         self.progress.update("...")
 
-        stats['Reactions (ModelSEED) in network'] = reaction_count = len(network.reactions)
-        contributing_reaction_counts = []
+        stats['Reactions in network'] = reaction_count = len(network.reactions)
+        reaction_counts = []
         for ko in network.kos.values():
-            if ko.reactions:
-                contributing_reaction_counts.append(len(ko.reactions))
-        stats['Max rxns per KO'] = max_reactions_per_ko = max(contributing_reaction_counts)
-        stats['Mean rxns per contributing KO'] = mean_reactions_per_contributing_ko = round(np.mean(contributing_reaction_counts), 1)
-        stats['Stdev rxns per contributing KO'] = std_reactions_per_contributing_ko = round(np.std(contributing_reaction_counts), 1)
+            reaction_counts.append(len(ko.reactions))
+        stats['Mean reactions per KO'] = mean_reactions_per_ko = round(np.mean(reaction_counts), 1)
+        stats['Stdev reactions per KO'] = std_reactions_per_ko = round(np.std(reaction_counts), 1)
+        stats['Max reactions per KO'] = max_reactions_per_ko = max(reaction_counts)
         self.progress.end()
 
-        self.run.info_single("Reactions and KO sources")
-        self.run.info("Rxns (ModelSEED) in network", reaction_count)
-        self.run.info("Max rxns per KO", max_reactions_per_ko)
-        self.run.info("Mean rxns per KO", mean_reactions_per_contributing_ko)
-        self.run.info("Stdev rxns per KO", std_reactions_per_contributing_ko, nl_after=1)
+        self.run.info_single("ModelSEED reactions in network and KO sources")
+        self.run.info("Reactions in network", reaction_count)
+        self.run.info("Mean reactions per KO", mean_reactions_per_ko)
+        self.run.info("Stdev reactions per KO", std_reactions_per_ko)
+        self.run.info("Max reactions per KO", max_reactions_per_ko, nl_after=1)
 
         self.progress.new("Counting reactions from each alias source")
         self.progress.update("...")
@@ -1331,77 +1315,51 @@ class Constructor:
         kegg_reaction_source_count = 0
         ec_number_source_count = 0
         both_source_count = 0
-        for reaction in network.reactions.values():
-            if reaction.kegg_id_aliases:
+        for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
+            ec_numbers = network.modelseed_ec_number_aliases[modelseed_reaction_id]
+            if kegg_reaction_ids:
                 kegg_reaction_source_count += 1
-            if reaction.ec_number_aliases:
+            if ec_numbers:
                 ec_number_source_count += 1
-            if reaction.kegg_id_aliases and reaction.ec_number_aliases:
+            if kegg_reaction_ids and ec_numbers:
                 both_source_count += 1
-        only_kegg_reaction_source_count = kegg_reaction_source_count - both_source_count
-        only_ec_number_source_count = ec_number_source_count - both_source_count
+        stats['Reactions aliased by KEGG reaction'] = kegg_reaction_source_count
+        stats['Reactions aliased by EC number'] = ec_number_source_count
+        stats['Rxns aliased by both KEGG rxn & EC number'] = both_source_count
+        stats['Reactions aliased only by KEGG reaction'] = only_kegg_reaction_source_count = kegg_reaction_source_count - both_source_count
+        stats['Reactions aliased only by EC number'] = only_ec_number_source_count = ec_number_source_count - both_source_count
+
+        stats['KEGG reactions contributing to network'] = kegg_reaction_count = len(network.kegg_modelseed_aliases)
+        reaction_counts = []
+        for kegg_reaction_id, modelseed_reaction_ids in network.kegg_modelseed_aliases.items():
+            reaction_counts.append(len(modelseed_reaction_ids))
+        stats['Mean reactions per KEGG reaction'] = mean_reactions_per_kegg_reaction = round(np.mean(reaction_counts), 1)
+        stats['Stdev reactions per KEGG reaction'] = std_reactions_per_kegg_reaction = round(np.std(reaction_counts), 1)
+        stats['Max reactions per KEGG reaction'] = max_reactions_per_kegg_reaction = max(reaction_counts)
+
+        stats['EC numbers contributing to network'] = ec_number_count = len(network.ec_number_modelseed_aliases)
+        reaction_counts = []
+        for ec_number, modelseed_reaction_ids in network.ec_number_modelseed_aliases.items():
+            reaction_counts.append(len(modelseed_reaction_ids))
+        stats['Mean reactions per EC number'] = mean_reactions_per_ec_number = round(np.mean(reaction_counts), 1)
+        stats['Stdev reactions per EC number'] = std_reactions_per_ec_number = round(np.std(reaction_counts), 1)
+        stats['Max reactions per EC number'] = max_reactions_per_ec_number = max(reaction_counts)
         self.progress.end()
 
         self.run.info_single("Reaction alias source comparison")
-        self.run.info("Rxns aliased by KEGG rxn", kegg_reaction_source_count)
-        self.run.info("Rxns aliased by EC number", ec_number_source_count)
-        self.run.info("Rxns aliased by KEGG rxn & EC number", both_source_count)
-        self.run.info("Rxns aliased only by KEGG rxn", only_kegg_reaction_source_count)
-        self.run.info("Rxns aliased only by EC number", only_ec_number_source_count, nl_after=1)
-
-        self.progress.new("Counting KEGG REACTION sources")
-        self.progress.update("...")
-
-        modelseed_alias_counts = []
-        contributing_modelseed_alias_counts = []
-        for kegg_reaction_id, modelseed_reaction_ids in network.kegg_reactions.items():
-            modelseed_alias_counts.append(len(modelseed_reaction_ids))
-            if modelseed_reaction_ids:
-                contributing_modelseed_alias_counts.append(len(modelseed_reaction_ids))
-        stats['Mean rxns sourced per KO KEGG rxn'] = mean_reactions_per_kegg_id = round(np.mean(modelseed_alias_counts), 1)
-        stats['Stdev rxns sourced per KO KEGG rxn'] = std_reactions_per_kegg_id = round(np.std(modelseed_alias_counts), 1)
-        stats['Max rxns sourced per KO KEGG rxn'] = max_reactions_per_kegg_id = max(modelseed_alias_counts)
-        stats['KEGG rxns contributing to network'] = contributing_kegg_reaction_count = len(contributing_modelseed_alias_counts)
-        stats['Noncontributing KO KEGG rxns'] = noncontributing_kegg_reaction_count = len(network.kegg_reactions) - len(contributing_modelseed_alias_counts)
-        stats['Mean rxns sourced per contributing KEGG rxn'] = mean_reactions_per_contributing_kegg_id = round(np.mean(contributing_modelseed_alias_counts), 1)
-        stats['Stdev rxns sourced per contributing KEGG rxn'] = std_reactions_per_contributing_kegg_id = round(np.std(contributing_modelseed_alias_counts), 1)
-        self.progress.end()
-
-        self.run.info_single("KO KEGG REACTION sources")
-        self.run.info("Mean rxns sourced per KO KEGG rxn", mean_reactions_per_kegg_id)
-        self.run.info("Stdev rxns sourced per KO KEGG rxn", std_reactions_per_kegg_id)
-        self.run.info("Max rxns sourced per KO KEGG rxn", max_reactions_per_kegg_id)
-        self.run.info("KEGG rxns contributing to network", contributing_kegg_reaction_count)
-        self.run.info("Noncontributing KO KEGG rxns", noncontributing_kegg_reaction_count)
-        self.run.info("Mean rxns sourced per contributing KEGG rxn", mean_reactions_per_contributing_kegg_id)
-        self.run.info("Stdev rxns sourced per contributing KEGG rxn", std_reactions_per_contributing_kegg_id, nl_after=1)
-
-        self.progress.new("Counting EC number reaction sources")
-        self.progress.update("...")
-
-        modelseed_alias_counts = []
-        contributing_modelseed_alias_counts = []
-        for ec_number, modelseed_reaction_ids in network.ec_numbers.items():
-            modelseed_alias_counts.append(len(modelseed_reaction_ids))
-            if modelseed_reaction_ids:
-                contributing_modelseed_alias_counts.append(len(modelseed_reaction_ids))
-        stats['Mean rxns sourced per KO EC number'] = mean_reactions_per_ec_number = round(np.mean(modelseed_alias_counts), 1)
-        stats['Stdev rxns sourced per KO EC number'] = std_reactions_per_ec_number = round(np.std(modelseed_alias_counts), 1)
-        stats['Max rxns sourced per KO EC number'] = max_reactions_per_ec_number = max(modelseed_alias_counts)
-        stats['EC numbers contributing to network'] = contributing_ec_number_count = len(contributing_modelseed_alias_counts)
-        stats['Noncontributing EC numbers'] = noncontributing_ec_number_count = len(network.ec_numbers) - len(contributing_modelseed_alias_counts)
-        stats['Mean rxns sourced per contributing EC number'] = mean_reactions_per_contributing_ec_number = round(np.mean(contributing_modelseed_alias_counts), 1)
-        stats['Stdev rxns sourced per contributing EC number'] = std_reactions_per_contributing_ec_number = round(np.std(contributing_modelseed_alias_counts), 1)
-        self.progress.end()
-
-        self.run.info_single("KO EC number reaction sources")
-        self.run.info("Mean rxns sourced per KO EC number", mean_reactions_per_ec_number)
-        self.run.info("Stdev rxns sourced per KO EC number", std_reactions_per_ec_number)
-        self.run.info("Max rxns sourced per KO EC number", max_reactions_per_ec_number)
-        self.run.info("EC numbers contributing to network", contributing_ec_number_count)
-        self.run.info("Noncontributing KO EC numbers", noncontributing_ec_number_count)
-        self.run.info("Mean rxns sourced per contributing EC number", mean_reactions_per_contributing_ec_number)
-        self.run.info("Stdev rxns sourced per contributing EC number", std_reactions_per_contributing_ec_number, nl_after=1)
+        self.run.info("Reactions aliased by KEGG reaction", kegg_reaction_source_count)
+        self.run.info("Reactions aliased by EC number", ec_number_source_count)
+        self.run.info("Rxns aliased by both KEGG rxn & EC number", both_source_count)
+        self.run.info("Reactions aliased only by KEGG reaction", only_kegg_reaction_source_count)
+        self.run.info("Reactions aliased only by EC number", only_ec_number_source_count)
+        self.run.info("KEGG reactions contributing to network", kegg_reaction_count)
+        self.run.info("Mean reactions per KEGG reaction", mean_reactions_per_kegg_reaction)
+        self.run.info("Stdev reactions per KEGG reaction", std_reactions_per_kegg_reaction)
+        self.run.info("Max reactions per KEGG reaction", max_reactions_per_kegg_reaction)
+        self.run.info("EC numbers contributing to network", ec_number_count)
+        self.run.info("Mean reactions per EC number", mean_reactions_per_ec_number)
+        self.run.info("Stdev reactions per EC number", std_reactions_per_ec_number)
+        self.run.info("Max reactions per EC number", max_reactions_per_ec_number, nl_after=1)
 
         self.progress.new("Counting reactions and metabolites by property")
         self.progress.update("...")
@@ -1437,8 +1395,8 @@ class Constructor:
                         compound_reaction_counts[compound_id] += 1
                     except KeyError:
                         compound_reaction_counts[compound_id] = 1
-        stats['Reversible rxns'] = reversible_count
-        stats['Irreversible rxns'] = irreversible_count
+        stats['Reversible reactions'] = reversible_count
+        stats['Irreversible reactions'] = irreversible_count
         cytoplasmic_compound_ids = set(cytoplasmic_compound_ids)
         extracellular_compound_ids = set(extracellular_compound_ids)
         stats['Metabolites in network'] = metabolite_count = len(network.metabolites)
@@ -1451,9 +1409,9 @@ class Constructor:
         produced_compound_ids = set(produced_compound_ids)
         stats['Consumed metabolites'] = consumed_count = len(consumed_compound_ids)
         stats['Produced metabolites'] = produced_count = len(produced_compound_ids)
+        stats['Both consumed & produced metabolites'] = consumed_plus_produced_count = len(consumed_compound_ids.intersection(produced_compound_ids))
         stats['Exclusively consumed metabolites'] = exclusively_consumed_count = len(consumed_compound_ids.difference(produced_compound_ids))
         stats['Exclusively produced metabolites'] = exclusively_produced_count = len(produced_compound_ids.difference(consumed_compound_ids))
-        stats['Consumed/produced metabolites'] = consumed_plus_produced_count = len(consumed_compound_ids.intersection(produced_compound_ids))
         metabolite_reaction_counts = collections.Counter(compound_reaction_counts.values())
         stats['Metabolites consumed or produced by 1 rxns'] = one_reaction_count = metabolite_reaction_counts[1]
         stats['Metabolites consumed or produced by 2 rxns'] = two_reactions_count = metabolite_reaction_counts[2]
@@ -1461,8 +1419,8 @@ class Constructor:
         self.progress.end()
 
         self.run.info_single("Reaction reversibility")
-        self.run.info("Reversible rxns", reversible_count)
-        self.run.info("Irreversible rxns", irreversible_count, nl_after=1)
+        self.run.info("Reversible reactions", reversible_count)
+        self.run.info("Irreversible reactions", irreversible_count, nl_after=1)
 
         self.run.info_single("Metabolites and localization")
         self.run.info("Metabolites in network", metabolite_count)
@@ -1475,9 +1433,9 @@ class Constructor:
         self.run.info_single("Metabolite consumption and production")
         self.run.info("Consumed metabolites", consumed_count)
         self.run.info("Produced metabolites", produced_count)
+        self.run.info("Both consumed & produced metabolites", consumed_plus_produced_count)
         self.run.info("Exclusively consumed metabolites", exclusively_consumed_count)
         self.run.info("Exclusively produced metabolites", exclusively_produced_count)
-        self.run.info("Consumed/produced metabolites", consumed_plus_produced_count)
         self.run.info("Metabolites consumed or produced by 1 rxn", one_reaction_count)
         self.run.info("Metabolites consumed or produced by 2 rxns", two_reactions_count)
         self.run.info("Metabolites consumed or produced by 3+ rxns", three_plus_reactions_count)
