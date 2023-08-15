@@ -929,13 +929,15 @@ class Constructor:
         contigs_super.init_functions(requested_sources=['KOfam'])
 
         self.progress.new("Building reaction network")
-        self.progress.update("...")
+
+        ko_db = KODatabase(self.ko_dir)
+        modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
         network = GenomicNetwork()
 
-        modelseed_kegg_reactions_table = self.modelseed_db.kegg_reactions_table
-        modelseed_ec_reactions_table = self.modelseed_db.ec_reactions_table
-        modelseed_compounds_table = self.modelseed_db.compounds_table
+        modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
+        modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
+        modelseed_compounds_table = modelseed_db.compounds_table
 
         # Record KOs that annotated genes in the contigs database but for some reason are not found
         # in the KO database.
@@ -976,7 +978,7 @@ class Constructor:
 
             # Find KEGG reactions and EC numbers associated with the KO.
             try:
-                ko_info = self.ko_db.ko_table.loc[ko.id]
+                ko_info = ko_db.ko_table.loc[ko.id]
             except KeyError:
                 undefined_ko_ids.append(ko_id)
                 continue
