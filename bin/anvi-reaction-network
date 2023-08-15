@@ -21,20 +21,28 @@ __description__ = "Generate a metabolic reaction network in an anvi'o contigs da
 
 def main():
     parser = ArgumentParser(description=__description__)
-
     parser.add_argument(*A('contigs-db'), **K('contigs-db'))
-
-    parser.add_argument(*A('kegg-data-dir'), **K('kegg-data-dir'))
-    parser.add_argument(*A('modelseed-data-dir'), **K('modelseed-data-dir'))
-
+    parser.add_argument(
+        '--ko-dir', type=str, metavar='PATH',
+        help=(
+            "Path to KEGG KO database directory. If this option is not used, the program expects a "
+            "database set up in the default location used by 'anvi-setup-protein-reference-database'."
+        )
+    )
+    parser.add_argument(
+        '--modelseed-dir', type=str, metavar='PATH',
+        help=(
+            "Path to ModelSEED Biochemistry database directory. If this option is not used, the program "
+            "expects a database set up in the default location used by 'anvi-setup-protein-reference-database'."
+        )
+    )
     parser.add_argument(
         '--overwrite-existing-network', default=False, action='store_true',
         help="Overwrite an existing reaction network in the database with the newly computed network."
     )
-
     args = parser.get_args(parser)
 
-    constructor = Constructor(kegg_dir=args.kegg_data_dir, modelseed_dir=args.modelseed_data_dir)
+    constructor = Constructor(ko_dir=args.ko_dir, modelseed_dir=args.modelseed_dir)
     constructor.make_network(contigs_db=args.contigs_db, overwrite_existing_network=args.overwrite_existing_network)
 
 if __name__ == '__main__':
