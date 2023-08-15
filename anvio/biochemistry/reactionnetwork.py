@@ -132,7 +132,22 @@ class ReactionNetwork:
         self.modelseed_ec_number_aliases: Dict[str, List[str]] = {}
 
 class GenomicNetwork(ReactionNetwork):
-    """A reaction network predicted from KEGG KO and ModelSEED annotations of genes."""
+    """
+    A reaction network predicted from KEGG KO and ModelSEED annotations of genes.
+
+    Here is an example of the information used to create a genomic network.
+    gene 1 ---> KO 1 ---> KEGG reaction 1 ---> ModelSEED reaction 1 ---> ModelSEED metabolites 1, 2, ...
+    |      |         |
+    |      |         ---> EC number 1 -------> ModelSEED reaction 1 ---> ModelSEED metabolites 1, 2, ...
+    |      |         |                |
+    |      |         |                -------> ModelSEED reaction 2 ---> ...
+    |      |         |
+    |      |         ---> EC number 2 -------> ...
+    |      |
+    |      ---> KO 2 ---> ...
+    |
+    gene 2 ---> ...
+    """
     def __init__(self) -> None:
         # map gene caller ID to gene object
         self.genes: Dict[int, Gene] = {}
