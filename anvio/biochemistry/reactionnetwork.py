@@ -925,10 +925,13 @@ class Constructor:
         args.contigs_db = contigs_db
         contigs_super = ContigsSuperclass(args, r=run_quiet)
         if store and contigs_super.a_meta['reaction_network_ko_annotations_hash'] and not overwrite_existing_network:
-            raise ConfigError("The existing reaction network in the contigs database must be explicitly overwritten.")
+            raise ConfigError(
+                "The existing reaction network in the contigs database must be explicitly overwritten."
+            )
         contigs_super.init_functions(requested_sources=['KOfam'])
 
         self.progress.new("Building reaction network")
+        self.progress.update("Loading reference databases")
 
         ko_db = KODatabase(self.ko_dir)
         modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
@@ -939,8 +942,8 @@ class Constructor:
         modelseed_ec_reactions_table = modelseed_db.ec_reactions_table
         modelseed_compounds_table = modelseed_db.compounds_table
 
-        # Record KOs that annotated genes in the contigs database but for some reason are not found
-        # in the KO database.
+        # List KOs that annotated genes in the contigs database but for some reason are not found in
+        # the KO database.
         undefined_ko_ids = []
 
         # Parse gene-KO matches recorded in the contigs database.
@@ -957,15 +960,17 @@ class Constructor:
             else:
                 gene = Gene()
                 gene.gcid = gcid
-                # Add the gene to the network, regardless of whether it yields reactions.
+                # Add the gene to the network, regardless of whether it yields reactions. Genes not
+                # contributing to the reaction network are removed later.
                 network.genes[gcid] = gene
 
             ko_data = gene_dict['KOfam']
             gene.e_values.append(float(ko_data[2]))
             ko_id = ko_data[0]
             if ko_id in network.kos:
-                # An object representing the KO was already added to the network, and objects
-                # representing associated reactions and metabolites were already added as well.
+                # The KO was associated with an already encountered gene and added to the network.
+                # Objects representing ModelSEED reactions and metabolites and other data associated
+                # with the KO were added to the network as well.
                 gene.kos.append(network.kos[ko_id])
                 continue
             else:
@@ -973,10 +978,11 @@ class Constructor:
                 ko.id = ko_id
                 ko.name = ko_data[1]
                 gene.kos.append(ko)
-                # Add the KO to the network, regardless of whether it yields reactions.
+                # Add the KO to the network, regardless of whether it yields reactions. KOs not
+                # contributing to the network are removed later.
                 network.kos[ko_id] = ko
 
-            # Find KEGG reactions and EC numbers associated with the KO.
+            # Find KEGG reactions and EC numbers associated with the newly encountered KO.
             try:
                 ko_info = ko_db.ko_table.loc[ko.id]
             except KeyError:
@@ -996,124 +1002,176 @@ class Constructor:
                 ko_ec_numbers = ko_ec_number_info.split()
 
             if not (ko_kegg_reaction_ids or ko_ec_numbers):
-                # ModelSEED reaction objects cannot be defined for the KO in the absence of
-                # either KEGG reactions or EC numbers associated with the KO.
+                # The KO is not associated with any KEGG reactions or EC numbers, and thereby cannot
+                # be associated with ModelSEED reactions.
                 continue
 
-            # Separate KEGG REACTION IDs that have previously been used to create ModelSEEDReaction
-            # objects from those that have not.
-            unadded_kegg_reaction_ids = []
+            # If a KEGG reaction has already been encountered, then aliased ModelSEED reactions have
+            # been processed and added as ModelSEEDReaction objects to the network. Therefore, KEGG
+            # reactions that have already been encountered are treated differently than KEGG
+            # reactions encountered for the first time.
+            new_kegg_reaction_ids = []
             for kegg_reaction_id in ko_kegg_reaction_ids:
-                if not kegg_reaction_id in network.kegg_reactions:
-                    unadded_kegg_reaction_ids.append(kegg_reaction_id)
-                    network.kegg_reactions[kegg_reaction_id] = []
+                try:
+                    # The KEGG reaction has already been encountered. Retrieve ModelSEED reactions
+                    # aliased by the KEGG reaction.
+                    modelseed_reaction_ids = network.kegg_modelseed_aliases[kegg_reaction_id]
+                except KeyError:
+                    new_kegg_reaction_ids.append(kegg_reaction_id)
+                    # The following list of ModelSEED reaction IDs associated with the KEGG reaction
+                    # is filled in later. If no ModelSEED reactions are associated with the KEGG
+                    # reaction, the entry in the dictionary will be removed.
+                    network.kegg_modelseed_aliases[kegg_reaction_id] = []
                     continue
-                # Retrieve the one or more ModelSEED reactions aliased by the KEGG REACTION ID.
-                for modelseed_id in network.kegg_reactions[kegg_reaction_id]:
-                    reaction = network.reactions[modelseed_id]
-                    ko.reactions[modelseed_id] = reaction
-                    # Record the KEGG REACTION IDs and EC numbers from the KO that yield the ModelSEED reaction.
-                    ko.kegg_reaction_aliases[modelseed_id] = tuple(set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases)))
-                    ko.ec_number_aliases[modelseed_id] = tuple(set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases)))
+                for modelseed_reaction_id in modelseed_reaction_ids:
+                    # Retrieve the existing ModelSEEDReaction object.
+                    reaction = network.reactions[modelseed_reaction_id]
+                    # Associate the ModelSEED reaction with the newly encountered KO.
+                    ko.reactions[modelseed_reaction_id] = reaction
+                    # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
+                    ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
+                        set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
+                    )
+                    ko.ec_number_aliases[modelseed_reaction_id] = list(
+                        set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases))
+                    )
 
-            # Separate EC numbers that have previously been used to create ModelSEEDReaction objects
-            # from from those that have not.
-            unadded_ec_numbers = []
+            # As above with KEGG reactions, if an EC number has already been encountered, then
+            # aliased ModelSEED reactions have been processed and added as ModelSEEDReaction objects
+            # to the network. Therefore, EC numbers that have already been encountered are treated
+            # differently than EC numbers encountered for the first time.
+            new_ec_numbers = []
             for ec_number in ko_ec_numbers:
-                if not ec_number in network.ec_numbers:
-                    unadded_ec_numbers.append(ec_number)
-                    network.ec_numbers[ec_number] = []
+                try:
+                    # The EC number has already been encountered. Retrieve ModelSEED reactions
+                    # aliased by the EC number.
+                    modelseed_reaction_ids = network.ec_number_modelseed_aliases[ec_number]
+                except KeyError:
+                    new_ec_numbers.append(ec_number)
+                    # The following list of ModelSEED reaction IDs associated with the EC number is
+                    # filled in later. If no ModelSEED reactions are associated with the EC number,
+                    # the entry in the dictionary will be removed.
+                    network.ec_number_modelseed_aliases[ec_number] = []
                     continue
-                # Retrieve the one or more ModelSEED reactions aliased by the EC number.
-                for modelseed_id in network.ec_numbers[ec_number]:
-                    reaction = network.reactions[modelseed_id]
-                    if modelseed_id in reaction.ec_number_aliases:
-                        # A KEGG REACTION ID associated with the KO was already linked to the
-                        # ModelSEED ID, at which point KO EC number aliases were also recorded.
-                        # Avoid redundant work linking the ModelSEED reaction to the KO object.
+                for modelseed_reaction_id in modelseed_reaction_ids:
+                    # Retrieve the existing ModelSEEDReaction object.
+                    reaction = network.reactions[modelseed_reaction_id]
+                    if modelseed_reaction_id in reaction.ec_number_aliases:
+                        # A KEGG reaction associated with the newly encountered KO was also
+                        # associated with the ModelSEED reaction. KO EC number aliases were
+                        # previously recorded along with KO KEGG reaction aliases. Redundant work
+                        # can be avoided here linking the ModelSEED reaction to the KO in the network.
                         continue
-                    ko.reactions[modelseed_id] = reaction
-                    ko.kegg_reaction_aliases[modelseed_id] = tuple(set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases)))
-                    ko.ec_number_aliases[modelseed_id] = tuple(set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases)))
+                    ko.reactions[modelseed_reaction_id] = reaction
+                    ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
+                        set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
+                    )
+                    ko.ec_number_aliases[modelseed_reaction_id] = list(
+                        set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases))
+                    )
 
-            if not (unadded_kegg_reaction_ids or unadded_ec_numbers):
+            if not (new_kegg_reaction_ids or new_ec_numbers):
                 # All of the KEGG reactions and EC numbers associated with the KO have already been
                 # encountered in previously processed KOs and added to the network, so proceed to
                 # the next gene KO annotation.
                 continue
 
-            # Get data on unencountered ModelSEED reactions aliased by KEGG REACTION IDs and EC
-            # numbers.
+            # Get data on ModelSEED reactions aliased by newly encountered KEGG REACTION IDs and EC numbers.
             modelseed_reactions_data = {}
-            if unadded_kegg_reaction_ids:
-                # Each row of the table represents a unique KEGG REACTION -> ModelSEED reaction mapping.
+            if new_kegg_reaction_ids:
+                # Each row of the table represents a unique KEGG reaction -> ModelSEED reaction mapping.
                 modelseed_kegg_reactions_dict: Dict[str, Dict] = modelseed_kegg_reactions_table[
-                    modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(unadded_kegg_reaction_ids)
+                    modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(new_kegg_reaction_ids)
                 ].to_dict(orient='index')
                 for modelseed_reaction_data in modelseed_kegg_reactions_dict.values():
+                    kegg_reaction_id = modelseed_reaction_data['KEGG_REACTION_ID']
                     modelseed_reaction_id = modelseed_reaction_data['id']
+                    # Record the association between the KEGG reaction and ModelSEED reaction in the
+                    # network, and vice versa.
+                    network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
+                    try:
+                        network.modelseed_kegg_aliases[modelseed_reaction_id].append(kegg_reaction_id)
+                    except KeyError:
+                        # This is the first time the ModelSEED reaction has been encountered.
+                        network.modelseed_kegg_aliases[modelseed_reaction_id] = [kegg_reaction_id]
+                        network.modelseed_ec_number_aliases[modelseed_reaction_id] = []
                     if modelseed_reaction_id in modelseed_reactions_data:
-                        # Data on the ModelSEED reaction has already been added to the list using a
-                        # different KEGG REACTION ID.
+                        # One of the other newly encountered KEGG reactions also mapped to this
+                        # ModelSEED reaction, so do not record redundant ModelSEED reaction data.
                         continue
                     modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
-            if unadded_ec_numbers:
+            if new_ec_numbers:
                 # Each row of the table represents a unique EC number -> ModelSEED reaction mapping.
                 modelseed_ec_reactions_dict: Dict[str, Dict] = modelseed_ec_reactions_table[
-                    modelseed_ec_reactions_table['EC_number'].isin(unadded_ec_numbers)
+                    modelseed_ec_reactions_table['EC_number'].isin(new_ec_numbers)
                 ].to_dict(orient='index')
                 for modelseed_reaction_data in modelseed_ec_reactions_dict.values():
+                    ec_number = modelseed_reaction_data['EC_number']
                     modelseed_reaction_id = modelseed_reaction_data['id']
+                    # Record the association between the EC number and ModelSEED reaction in the
+                    # network, and vice versa.
+                    network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
+                    try:
+                        network.modelseed_ec_number_aliases[modelseed_reaction_id].append(ec_number)
+                    except KeyError:
+                        # This is the first time the ModelSEED reaction has been encountered.
+                        network.modelseed_ec_number_aliases[modelseed_reaction_id] = [ec_number]
+                        network.modelseed_kegg_aliases[modelseed_reaction_id] = []
                     if modelseed_reaction_id in modelseed_reactions_data:
-                        # Data on the ModelSEED reaction has already been added to the list using a
-                        # different EC number or KEGG REACTION ID.
+                        # One of the other newly encountered KEGG reactions or EC numbers also
+                        # mapped to this ModelSEED reaction, so do not record redundant ModelSEED reaction data.
                         continue
                     modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
             if not modelseed_reactions_data:
-                # The unadded KEGG REACTION IDs and EC numbers do not map to ModelSEED reactions and are not in the table.
+                # The newly encountered KEGG REACTION IDs and EC numbers do not map to ModelSEED
+                # reactions (are not in the table).
                 continue
 
-            # Generate new reaction objects in the network.
+            # Process the ModelSEED reactions aliased by newly encountered KEGG reactions and EC numbers.
             for modelseed_reaction_id, modelseed_reaction_data in modelseed_reactions_data.items():
-                # Get the reaction object without having also created associated metabolite objects.
+                if modelseed_reaction_id in network.reactions:
+                    # The ModelSEED reaction is aliased by previously encountered KEGG reactions and
+                    # EC numbers, and so has already been added to the network.
+                    continue
+                # Make a new reaction object for the ModelSEED ID. This object does not yet have
+                # metabolite objects (for the ModelSEED compound IDs) added to it yet.
                 reaction, modelseed_compound_ids = self._get_modelseed_reaction(modelseed_reaction_data)
                 if reaction is None:
-                    # For some reason, the reaction does not have a equation in the ModelSEED database.
+                    # For some reason, the reaction does not have a equation in the ModelSEED
+                    # database. Associations between such reactions without equations and sourcing
+                    # KEGG reactions and EC numbers are later removed from the network attributes,
+                    # 'kegg_modelseed_aliases', 'ec_number_modelseed_aliases',
+                    # 'modelseed_kegg_aliases', and 'modelseed_ec_number_aliases'.
                     continue
                 ko.reactions[modelseed_reaction_id] = reaction
-                # Record the KEGG REACTION IDs and EC numbers from the KO that yield the ModelSEED reaction.
-                ko.kegg_reaction_aliases[modelseed_reaction_id] = aliased_kegg_reaction_ids = tuple(
-                    set(unadded_kegg_reaction_ids).intersection(set(reaction.kegg_id_aliases))
+                # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
+                ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
+                    set(new_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
                 )
-                ko.ec_number_aliases[modelseed_reaction_id] = aliased_ec_numbers = tuple(
-                    set(unadded_ec_numbers).intersection(set(reaction.ec_number_aliases))
+                ko.ec_number_aliases[modelseed_reaction_id] = list(
+                    set(new_ec_numbers).intersection(set(reaction.ec_number_aliases))
                 )
                 network.reactions[modelseed_reaction_id] = reaction
-                for kegg_reaction_id in aliased_kegg_reaction_ids:
-                    network.kegg_reactions[kegg_reaction_id].append(modelseed_reaction_id)
-                for ec_number in aliased_ec_numbers:
-                    network.ec_numbers[ec_number].append(modelseed_reaction_id)
 
-                # Separate ModelSEED compound IDs that have previously been used to create
-                # ModelSEEDCompound objects from those that have not.
-                unadded_modelseed_compound_ids = []
+                # If the ModelSEED compound ID has been encountered in previously processed
+                # reactions, then there is already a ModelSEEDCompound object for it.
+                new_modelseed_compound_ids = []
                 reaction_compounds = []
                 for modelseed_compound_id in modelseed_compound_ids:
                     if modelseed_compound_id in network.metabolites:
-                        # The ModelSEED compound ID has been encountered in previously processed reactions.
                         reaction_compounds.append(network.metabolites[modelseed_compound_id])
                     else:
-                        unadded_modelseed_compound_ids.append(modelseed_compound_id)
+                        new_modelseed_compound_ids.append(modelseed_compound_id)
 
                 # Generate new metabolite objects in the network
-                for modelseed_compound_id in unadded_modelseed_compound_ids:
+                for modelseed_compound_id in new_modelseed_compound_ids:
                     try:
                         modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[modelseed_compound_id]
                     except KeyError:
                         raise ConfigError(
                             f"A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected "
                             "but not found in the ModelSEED compounds table. This ID was found in the equation "
-                            f"for ModelSEED reaction, '{modelseed_reaction_id}'."
+                            f"for the ModelSEED reaction, '{modelseed_reaction_id}'."
                         )
                     modelseed_compound_data = modelseed_compound_series.to_dict()
                     modelseed_compound_data['id'] = modelseed_compound_id
@@ -1122,14 +1180,70 @@ class Constructor:
                     network.metabolites[modelseed_compound_id] = compound
                 reaction.compounds = tuple(reaction_compounds)
 
+        # List genes that do not contribute to the reaction network. Remove any trace of these genes
+        # from the network.
+        unnetworked_gcids = []
+        for gcid, gene in network.genes.items():
+            for ko in gene.kos:
+                if ko.reactions:
+                    break
+            else:
+                unnetworked_gcids.append(gcid)
+        for gcid in unnetworked_gcids:
+            network.genes.pop(gcid)
+
+        # List KOs that do not contribute to the reaction network. Remove any trace of these KOs
+        # from the network.
+        unnetworked_ko_ids = []
+        for ko_id, ko in network.kos.items():
+            if not ko.reactions:
+                unnetworked_ko_ids.append(ko_id)
+        for ko_id in unnetworked_ko_ids:
+            network.kos.pop(ko_id)
+
+        # List KO KEGG reactions that do not map to ModelSEED reactions. Remove any trace of these
+        # KEGG reactions from the network.
+        unnetworked_kegg_reaction_ids = []
+        for kegg_reaction_id, modelseed_reaction_ids in network.kegg_modelseed_aliases.items():
+            if not modelseed_reaction_ids:
+                unnetworked_kegg_reaction_ids.append(kegg_reaction_id)
+        for kegg_reaction_id in unnetworked_kegg_reaction_ids:
+            network.kegg_modelseed_aliases.pop(kegg_reaction_id)
+
+        # List KO EC numbers that do not map to ModelSEED reactions. Remove any trace of these EC
+        # numbers from the network.
+        unnetworked_ec_numbers = []
+        for ec_number, modelseed_reaction_ids in network.ec_number_modelseed_aliases.items():
+            if not modelseed_reaction_ids:
+                unnetworked_ec_numbers.append(ec_number)
+        for ec_number in unnetworked_ec_numbers:
+            network.ec_number_modelseed_aliases.pop(ec_number)
+
+        # List aliased ModelSEED reactions that did not yield a ModelSEEDReaction object due to the
+        # lack of an equation for the reaction in the ModelSEED database. Remove any trace of these
+        # reactions from the network.
+        undefined_modelseed_reaction_ids = list(
+            set(network.modelseed_kegg_aliases).difference(set(network.reactions))
+        )
+        for modelseed_reaction_id in undefined_modelseed_reaction_ids:
+            network.modelseed_kegg_aliases.pop(modelseed_reaction_id)
+            network.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+        self.progress.end()
+
+        if DEBUG:
+            self.run.info_single(
+                "The following ModelSEED reactions would have been added to the reaction network "
+                "had there been a chemical equation in the ModelSEED database; perhaps it is worth "
+                "investigating the ModelSEED reactions table to understand why this is not the case: "
+                f"{', '.join(undefined_modelseed_reaction_ids)}"
+            )
+
         if undefined_ko_ids:
             self.run.info_single(
-                "Certain genes matched KOs that were not found in the KO database. "
-                "It could be that the KOfams used to annotate genes were not from the same KEGG "
-                "database version as the KO definition files. Here are the unrecognized KO IDs "
-                f"matching genes in the contigs database: {', '.join(undefined_ko_ids)}"
+                "Certain genes matched KOs that were not found in the KO database. It could be that the "
+                "KOfams used to annotate genes were not from the same KEGG database version as the KO files. "
+                f"Here are the unrecognized KO IDs from the contigs database: {', '.join(undefined_ko_ids)}"
             )
-        self.progress.end()
 
         if store:
             if contigs_super.a_meta['reaction_network_ko_annotations_hash']:
