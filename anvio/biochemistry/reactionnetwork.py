@@ -50,7 +50,7 @@ class ModelSEEDCompound:
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
-        self.kegg_id_aliases: Tuple[str] = None
+        self.kegg_aliases: Tuple[str] = None
         self.charge: int = None
         self.formula: str = None
 
@@ -59,7 +59,7 @@ class ModelSEEDReaction:
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
-        self.kegg_id_aliases: Tuple[str] = None
+        self.kegg_aliases: Tuple[str] = None
         self.ec_number_aliases: Tuple[str] = None
         # compounds, coefficients, and compartments have corresponding elements
         self.compounds: Tuple[ModelSEEDCompound] = None
@@ -78,8 +78,8 @@ class KO:
         # Record the KEGG REACTION IDs *encoded by the KO* that are aliases of the ModelSEED
         # reaction ID. These could be a subset of the KEGG reaction aliases of the ModelSEED
         # reaction. The same is true of EC numbers.
-        self.kegg_reaction_aliases: Dict[str, Tuple[str]] = {}
-        self.ec_number_aliases: Dict[str, Tuple[str]] = {}
+        self.kegg_reaction_aliases: Dict[str, List[str]] = {}
+        self.ec_number_aliases: Dict[str, List[str]] = {}
 
 class Gene:
     """Representation of a gene in the metabolic network."""
@@ -119,15 +119,17 @@ class ReactionNetwork:
     """A reaction network predicted from KEGG KO and ModelSEED annotations."""
     def __init__(self) -> None:
         # map KO ID to KO object
-        self.kos: Dict[int, KO] = {}
+        self.kos: Dict[str, KO] = {}
         # map ModelSEED reaction ID to reaction object
         self.reactions: Dict[str, ModelSEEDReaction] = {}
         # map ModelSEED compound ID to compound object
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
-        # map KEGG REACTION ID to ModelSEED reaction IDs
-        self.kegg_reactions: Dict[str, List[str]] = {}
-        # map EC number to ModelSEED reaction IDs
-        self.ec_numbers: Dict[str, List[str]] = {}
+        # The following dictionaries map reaction aliases in the network: as in, not all known
+        # aliases, but only those sourced from KOs and contributing ModelSEEDReaction objects.
+        self.kegg_modelseed_aliases: Dict[str, List[str]] = {}
+        self.ec_number_modelseed_aliases: Dict[str, List[str]] = {}
+        self.modelseed_kegg_aliases: Dict[str, List[str]] = {}
+        self.modelseed_ec_number_aliases: Dict[str, List[str]] = {}
 
 class GenomicNetwork(ReactionNetwork):
     """A reaction network predicted from KEGG KO and ModelSEED annotations of genes."""
