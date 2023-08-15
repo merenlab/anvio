@@ -91,8 +91,8 @@ gene_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed
 gene_function_reactions_table_types       = [         'text'        ,            'text'        ,           'text'         ,         'text'       ,           'text'         ,       'text'      ,          'text'          ,      'text'    ,      'str'    ,      'bool'    ]
 
 gene_function_metabolites_table_name      = 'gene_function_metabolites'
-gene_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'formula', 'charge']
-gene_function_metabolites_table_types     = [         'text'        ,             'text'       ,   'text' , 'numeric']
+gene_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
+gene_function_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
 
 taxon_names_table_name                 = 'taxon_names'
 taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]

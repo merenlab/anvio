@@ -1717,6 +1717,7 @@ class Constructor:
             metabolite_data = {}
             metabolite_data['modelseed_compound_id'] = modelseed_compound_id
             metabolite_data['modelseed_compound_name'] = compound.modelseed_name
+            metabolite_data['kegg_aliases'] = ', '.join(compound.kegg_aliases)
             metabolite_data['formula'] = compound.formula
             metabolite_data['charge'] = compound.charge
             metabolites_data[modelseed_compound_id] = metabolite_data
