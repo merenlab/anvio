@@ -874,13 +874,21 @@ class Constructor:
             required.
         """
         if contigs_db:
-            self.run.info_single("A reaction network will be made from protein orthology annotations in the contigs database.")
+            self.run.info_single(
+                "A reaction network will be made from protein orthology annotations in the contigs database."
+            )
             network = self.make_contigs_database_network(contigs_db, store=store, overwrite_existing_network=overwrite_existing_network)
         elif genomes_storage_db or pan_db:
-            self.run.info_single("A pangenomic reaction network will be made from protein orthology annotations in the genomes storage database and gene clusters in the pan database.")
+            self.run.info_single(
+                "A pangenomic reaction network will be made from protein orthology annotations "
+                "in the genomes storage database and gene clusters in the pan database."
+            )
             network = self.make_pangenomic_network(genomes_storage_db, pan_db, store=store, overwrite_existing_network=overwrite_existing_network)
         else:
-            raise ConfigError("A reaction network cannot be made without a database source. Either a contigs database or a genomes storage database and pan database are required.")
+            raise ConfigError(
+                "A reaction network cannot be made without a database source. "
+                "Either a contigs database or a genomes storage database and pan database are required."
+            )
         return network
 
     def make_contigs_database_network(
