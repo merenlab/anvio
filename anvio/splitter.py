@@ -796,7 +796,7 @@ class LocusSplitter:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
                 self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
-        
+
         utils.check_sample_id(self.output_file_prefix)
 
         self.run.warning(None, header="Input / Output", lc="cyan")
@@ -1005,7 +1005,6 @@ class LocusSplitter:
             gene_caller_ids = list(gene_caller_ids_flank_pair)
             gene_callers_id = gene_caller_ids[0] # just for getting contig name from contigDB
 
-
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
 
@@ -1027,7 +1026,7 @@ class LocusSplitter:
                 raise ConfigError(f"Soooooo it turns out that the flanking genes you picked "
                                   f"are found on two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
                                   f"a smaller piece of DNA for you :/")
-            
+
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
 
         # Sort by gene start position
@@ -1058,7 +1057,7 @@ class LocusSplitter:
                     anchor_gene_index_flank_pair.append(counter)
                 counter = counter + 1
             first_gene_of_the_block, last_gene_of_the_block = sorted(anchor_gene_index_flank_pair)
-            
+
         # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
@@ -1185,7 +1184,6 @@ class LocusSplitter:
                 new_gene_calls[g] = gene_call
             gene_calls = new_gene_calls
 
-
         # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
         with open(locus_sequence_fasta, 'w') as f:
@@ -1217,7 +1215,7 @@ class LocusSplitter:
 
         # while we are at it, let's add a default collection to the resulting blank profile
         TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=terminal.Run(verbose=False), progress=self.progress).add_default_collection_to_db(contigs_db_path=locus_output_db_path)
- 
+
 
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the

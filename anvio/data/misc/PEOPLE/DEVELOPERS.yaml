@@ -48,9 +48,13 @@
   bio: "Microbiologist using advanced computational strategies to make sense of the microbial ecology of complex habitats."
   affiliations:
     - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: watsonar
   name: Andrea Watson
@@ -119,14 +123,18 @@
     - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-estimate-metabolism/>anvi'o metabolism framework</a>"
     - contribution: "Spearheaded <a href=https://anvio.org/vocabulary>the 'omics vocabulary</a> effort"
   affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
-      current: true
+      current: false
     - title: Fellow
       inst: NSF Graduate Research Fellowship Program
       inst_link: https://www.nsfgrfp.org/
-      current: true
+      current: false
 
 - github: moritzbuck
   name: Moritz Buck
@@ -166,7 +174,7 @@
     - title: Undergraduate Student
       inst: Computer Science
       inst_link: http://collegecatalog.uchicago.edu/thecollege/computerscience/
-      current: true
+      current: false
 
 - github: matthewlawrenceklein
   name: Matthew Lawrence Klein
@@ -179,7 +187,7 @@
     - title: Programmer
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: blankenberg
   name: Daniel Blankenberg
@@ -226,6 +234,7 @@
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
+      current: true
 
 - github: ozcan
   name: Özcan C. Esen
@@ -326,7 +335,7 @@
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
-      current: true
+      current: false
 
 - github: AstrobioMike
   name: Mike Lee

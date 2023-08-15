@@ -465,7 +465,8 @@ rule cluster_X_percent_sim_mmseqs:
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-tmp"),
-        min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id'])
+        min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id']),
+        cov_mode = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--cov-mode'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         if M.AA_mode == True:
@@ -485,7 +486,8 @@ rule cluster_X_percent_sim_mmseqs:
                                     {params.output_prefix} \
                                     {params.mmseqs_tmp} \
                                     --threads {threads} \
-                                    --min-seq-id {params.min_seq_id} >> {log} 2>&1")
+                                    --min-seq-id {params.min_seq_id} \
+                                    --cov-mode {params.cov_mode} >> {log} 2>&1")
 
 
 rule cluster_X_percent_sim_mmseqs_OTUs:
