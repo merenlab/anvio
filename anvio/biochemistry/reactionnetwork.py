@@ -1485,9 +1485,9 @@ class Constructor:
 
         kegg_reaction_ids: str = modelseed_reaction_data['KEGG']
         if pd.isna(kegg_reaction_ids):
-            reaction.kegg_id_aliases = []
+            reaction.kegg_aliases = []
         else:
-            reaction.kegg_id_aliases = kegg_reaction_ids.split('; ')
+            reaction.kegg_aliases = kegg_reaction_ids.split('; ')
 
         ec_numbers: str = modelseed_reaction_data['ec_numbers']
         if pd.isna(ec_numbers):
@@ -1573,11 +1573,11 @@ class Constructor:
         else:
             compound.modelseed_name = modelseed_name
 
-        kegg_id_aliases: str = modelseed_compound_data['KEGG']
-        if pd.isna(kegg_id_aliases):
-            compound.kegg_id_aliases = []
+        kegg_aliases: str = modelseed_compound_data['KEGG']
+        if pd.isna(kegg_aliases):
+            compound.kegg_aliases = []
         else:
-            compound.kegg_id_aliases = kegg_id_aliases.split('; ')
+            compound.kegg_aliases = kegg_aliases.split('; ')
 
         formula = modelseed_compound_data['formula']
         if pd.isna(formula):
