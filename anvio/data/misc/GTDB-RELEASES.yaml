@@ -56,6 +56,72 @@
 #   - Find a FASTA file for a complete archaeal genome. Do the same :)
 
 
+v214.1:
+  base_url: https://data.ace.uq.edu.au/public/gtdb/data/releases/release214/214.1/
+  files:
+    VERSION: VERSION.txt
+    MSA_ARCHAEA.tar.gz: genomic_files_reps/ar53_msa_marker_genes_reps_r214.tar.gz
+    MSA_BACTERIA.tar.gz: genomic_files_reps/bac120_msa_marker_genes_reps_r214.tar.gz
+    TAX_ARCHAEA.tsv: ar53_taxonomy_r214.tsv
+    TAX_BACTERIA.tsv: bac120_taxonomy_r214.tsv
+  genes:
+    Ribosomal_S2:
+      - ar53_r214_reps_TIGR01012.faa
+      - bac120_r214_reps_TIGR01011.faa
+    Ribosomal_S3_C:
+      - ar53_r214_reps_TIGR01008.faa
+      - bac120_r214_reps_TIGR01009.faa
+    Ribosomal_S6:
+      - bac120_r214_reps_TIGR00166.faa
+    Ribosomal_S7:
+      - ar53_r214_reps_TIGR01028.faa
+      - bac120_r214_reps_TIGR01029.faa
+    Ribosomal_S8:
+      - ar53_r214_reps_PF00410.20.faa
+      - bac120_r214_reps_PF00410.20.faa
+    Ribosomal_S9:
+      - ar53_r214_reps_TIGR03627.faa
+      - bac120_r214_reps_PF00380.20.faa
+    Ribosomal_S11:
+      - ar53_r214_reps_TIGR03628.faa
+      - bac120_r214_reps_TIGR03632.faa
+    Ribosomal_S20p:
+      - bac120_r214_reps_TIGR00029.faa
+    Ribosomal_L1:
+      - ar53_r214_reps_PF00687.22.faa
+      - bac120_r214_reps_TIGR01169.faa
+    Ribosomal_L2:
+      - ar53_r214_reps_TIGR01171.faa
+      - bac120_r214_reps_TIGR01171.faa
+    Ribosomal_L3:
+      - ar53_r214_reps_TIGR03626.faa
+      - bac120_r214_reps_TIGR03625.faa
+    Ribosomal_L4:
+      - ar53_r214_reps_TIGR03672.faa
+      - bac120_r214_reps_TIGR03953.faa
+    Ribosomal_L6:
+      - bac120_r214_reps_TIGR03654.faa
+    Ribosomal_L9_C:
+      - bac120_r214_reps_TIGR00158.faa
+    Ribosomal_L13:
+      - bac120_r214_reps_TIGR01066.faa
+    Ribosomal_L16:
+      - ar53_r214_reps_TIGR00279.faa
+      - bac120_r214_reps_TIGR01164.faa
+    Ribosomal_L17:
+      - bac120_r214_reps_TIGR00059.faa
+    Ribosomal_L20:
+      - bac120_r214_reps_TIGR01032.faa
+    Ribosomal_L21p:
+      - bac120_r214_reps_TIGR00061.faa
+    Ribosomal_L22:
+      - bac120_r214_reps_TIGR01044.faa
+    ribosomal_L24:
+      - bac120_r214_reps_TIGR01079.faa
+    Ribosomal_L27A:
+      - bac120_r214_reps_TIGR01071.faa
+
+
 v207.0:
   base_url: https://data.ace.uq.edu.au/public/gtdb/data/releases/release207/207.0
   files:
