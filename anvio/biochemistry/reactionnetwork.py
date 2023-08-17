@@ -1230,12 +1230,23 @@ class Constructor:
             charge: int = row.charge
             compound.charge = charge if not np.isnan(charge) else None
 
-        # Remove any trace of genes that do not contribute to the reaction network.
+        # Remove any trace of genes that do not contribute to the reaction network. Also remove
+        # unnetworked KO links to genes.
         unnetworked_gcids = []
         for gcid, gene in network.genes.items():
-            for ko in gene.kos:
+            gene_in_network = False
+            unnetworked_ko_indices = []
+            idx = 0
+            for ko, e_value in zip(gene.kos, gene.e_values):
                 if ko.reactions:
-                    break
+                    gene_in_network = True
+                else:
+                    unnetworked_ko_indices.append(idx)
+                idx += 1
+            if gene_in_network:
+                for unnetworked_ko_index in unnetworked_ko_indices[::-1]:
+                    gene.kos.pop(unnetworked_ko_index)
+                    gene.e_values.pop(unnetworked_ko_index)
             else:
                 unnetworked_gcids.append(gcid)
         for gcid in unnetworked_gcids:
