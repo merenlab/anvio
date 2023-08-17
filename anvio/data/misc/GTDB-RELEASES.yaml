@@ -57,7 +57,7 @@
 
 
 v214.1:
-  base_url: https://data.ace.uq.edu.au/public/gtdb/data/releases/release214/214.1/
+  base_url: https://data.ace.uq.edu.au/public/gtdb/data/releases/release214/214.1
   files:
     VERSION: VERSION.txt
     MSA_ARCHAEA.tar.gz: genomic_files_reps/ar53_msa_marker_genes_reps_r214.tar.gz
