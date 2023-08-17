@@ -40,7 +40,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 # default target release for everything:
-DEFAULT_GTDB_RELEASE = 'v207.0'
+DEFAULT_GTDB_RELEASE = 'v214.1'
 
 # if you need to change this, you're in trouble :) not really, but yes, you are..
 locally_known_SCG_names = ['Ribosomal_S2',
