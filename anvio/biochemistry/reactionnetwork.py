@@ -62,7 +62,7 @@ class ModelSEEDReaction:
         self.modelseed_name: str = None
         self.kegg_aliases: Tuple[str] = None
         self.ec_number_aliases: Tuple[str] = None
-        # compounds, coefficients, and compartments have corresponding elements
+        # Compounds, coefficients, and compartments have corresponding elements.
         self.compounds: Tuple[ModelSEEDCompound] = None
         self.coefficients: Tuple[int] = None
         self.compartments: Tuple[str] = None
@@ -73,8 +73,8 @@ class KO:
     def __init__(self) -> None:
         self.id: str = None
         self.name: str = None
-        # map *ModelSEED reaction ID* to *ModelSEED reaction object or reaction aliases* in the
-        # following dictionaries
+        # Map *ModelSEED reaction ID* to *ModelSEED reaction object or reaction aliases* in the
+        # following 3 dictionaries.
         self.reactions: Dict[str, ModelSEEDReaction] = {}
         # Record the KEGG REACTION IDs *encoded by the KO* that are aliases of the ModelSEED
         # reaction ID. These could be a subset of the KEGG reaction aliases of the ModelSEED
@@ -88,7 +88,7 @@ class Gene:
         self.gcid: int = None
         # KOs matching the gene
         self.kos: List[KO] = []
-        # record the strength of each KO match
+        # Record the strength of each KO match.
         self.e_values: List[float] = []
 
 class GeneCluster:
@@ -119,11 +119,11 @@ class BinCollection:
 class ReactionNetwork:
     """A reaction network predicted from KEGG KO and ModelSEED annotations."""
     def __init__(self) -> None:
-        # map KO ID to KO object
+        # Map KO ID to KO object.
         self.kos: Dict[str, KO] = {}
-        # map ModelSEED reaction ID to reaction object
+        # Map ModelSEED reaction ID to reaction object.
         self.reactions: Dict[str, ModelSEEDReaction] = {}
-        # map ModelSEED compound ID to compound object
+        # Map ModelSEED compound ID to compound object.
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
         # The following dictionaries map reaction aliases in the network: as in, not all known
         # aliases, but only those sourced from KOs and contributing ModelSEEDReaction objects.
@@ -793,7 +793,7 @@ class Constructor:
         self.progress = progress
 
     def import_network(self, json: str) -> ReactionNetwork:
-        """Import a metabolic model JSON file as reaction network objects."""
+        """Import a metabolic model JSON file as a reaction network object."""
         pass
 
     def load_network(
