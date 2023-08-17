@@ -1105,7 +1105,7 @@ class Constructor:
             reaction.compounds = tuple(reaction.compounds)
 
             stoichiometry: str = row.stoichiometry
-            reaction.coefficients = tuple(stoichiometry.split(', '))
+            reaction.coefficients = tuple(int(coeff) for coeff in stoichiometry.split(', '))
             compartments: str = row.compartments
             reaction.compartments = tuple(compartments.split(', '))
             reversibility: int = row.reversibility
