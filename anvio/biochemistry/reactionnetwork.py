@@ -156,6 +156,83 @@ class GenomicNetwork(ReactionNetwork):
         self.collection: BinCollection = None
         super().__init__()
 
+    def remove_metabolites_without_formula(self, path: str = None) -> None:
+        """
+        Remove from the network metabolites without a formula from the ModelSEED database, reactions
+        that involve the metabolite, and genes that are exclusively predicted to catalyze these reactions.
+
+        path : str, None
+            If not None, write 3 tab-delimited tables of metabolites, reactions, and genes removed
+            from the network to file locations based on the path. For example, if an argument of
+            'removed.tsv' is provided, then the following files will be written:
+            'removed-metabolites.tsv', 'removed-reactions.tsv', and 'removed-genes.tsv'.
+        """
+        if path:
+            filesnpaths.is_output_file_writable(path)
+            path_basename, path_extension = os.path.splitext(path)
+            metabolite_path = f"{path_basename}-metabolites{path_extension}"
+            reaction_path = f"{path_basename}-reactions{path_extension}"
+            gene_path = f"{path_basename}-genes{path_extension}"
+        else:
+            metabolite_path = None
+            reaction_path = None
+            gene_path = None
+
+        metabolites_to_remove = []
+        for modelseed_compound_id, metabolite in self.metabolites.items():
+            # ModelSEED compounds without a formula have a formula value of None in the network object.
+            if metabolite.formula is None:
+                metabolites_to_remove.append(modelseed_compound_id)
+        removed = self.purge_metabolites(metabolites_to_remove)
+
+        if not path:
+            return
+
+        metabolite_table = []
+        for metabolite in removed['metabolite']:
+            metabolite: ModelSEEDCompound
+            metabolite_table.append((metabolite.modelseed_id, metabolite.modelseed_name))
+
+        reaction_table = []
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            row = []
+            row.append(reaction.modelseed_id)
+            row.append(reaction.modelseed_name)
+            removed_metabolites = []
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in metabolites_to_remove:
+                    removed_metabolites.append(metabolite.modelseed_id)
+            row.append(', '.join(removed_metabolites))
+            reaction_table.append(row)
+
+        gene_table = []
+        removed_reactions = set([row[0] for row in reaction_table])
+        for gene in removed['gene']:
+            gene: Gene
+            row = []
+            row.append(gene.gcid)
+            gene_reactions = []
+            for ko in gene.kos:
+                for modelseed_reaction_id in ko.reactions:
+                    gene_reactions.append(modelseed_reaction_id)
+            gene_reactions = set(gene_reactions)
+            row.append(', '.join(gene_reactions.intersection(removed_reactions)))
+            gene_table.append(row)
+
+        pd.DataFrame(
+            metabolite_table,
+            columns=['modelseed_id', 'modelseed_name']
+        ).to_csv(metabolite_path, sep='\t', index=False)
+        pd.DataFrame(
+            reaction_table,
+            columns=['modelseed_id', 'modelseed_name', 'removed_metabolite_modelseed_ids']
+        ).to_csv(reaction_path)
+        pd.DataFrame(
+            gene_table,
+            columns=['gene_callers_id', 'removed_metabolite_modelseed_ids']
+        ).to_csv(gene_path)
+
     def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
         """
         Parameters
