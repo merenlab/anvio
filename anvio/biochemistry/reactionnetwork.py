@@ -233,7 +233,117 @@ class GenomicNetwork(ReactionNetwork):
 
         progress : terminal.Progress, terminal.Progress()
         """
-        pass
+        progress.new("Constructing JSON")
+        progress.update("Setting up")
+        filesnpaths.is_output_file_writable(path, ok_if_exists=overwrite)
+        json_dict = JSONStructure.get()
+        json_genes: List[Dict] = json_dict['genes']
+        json_reactions: List[Dict] = json_dict['reactions']
+        json_metabolites: List[Dict] = json_dict['metabolites']
+        if objective == 'e_coli_core':
+            objective_dict = JSONStructure.get_e_coli_core_objective()
+            if remove_missing_objective_metabolites:
+                objective_metabolites: Dict = objective_dict['metabolites']
+                objective_original_metabolites: Dict = objective_dict['original_metabolite_ids']
+                missing_metabolite_ids = []
+                missing_original_metabolite_ids = []
+                for metabolite_id, original_metabolite_id in zip(objective_metabolites, objective_original_metabolites):
+                    if metabolite_id[:-2] not in self.metabolites:
+                        missing_metabolite_ids.append(metabolite_id)
+                        missing_original_metabolite_ids.append(original_metabolite_id)
+                for metabolite_id in missing_metabolite_ids:
+                    objective_metabolites.pop(metabolite_id)
+                for original_metabolite_id in missing_original_metabolite_ids:
+                    objective_original_metabolites.pop(original_metabolite_id)
+            json_reactions.append(objective_dict)
+        elif objective != None:
+            raise ConfigError(f"Anvi'o does not recognize an objective with the name, '{objective}'.")
+
+        progress.update("Genes")
+        reaction_genes: Dict[str, List[str]] = {}
+        reaction_kos: Dict[str, List[KO]] = {}
+        for gcid, gene in self.genes.items():
+            gene_entry = JSONStructure.get_gene_entry()
+            gcid_str = str(gcid)
+            gene_entry['id'] = gcid_str
+            notes = gene_entry['notes']
+            notes['ko'] = notes_kos = {}
+            for ko, e_value in zip(gene.kos, gene.e_values):
+                notes_kos[ko.id] = str(e_value)
+                for modelseed_reaction_id in ko.reactions:
+                    try:
+                        reaction_genes[modelseed_reaction_id].append(gcid_str)
+                    except KeyError:
+                        reaction_genes[modelseed_reaction_id] = [gcid_str]
+                    try:
+                        reaction_kos[modelseed_reaction_id].append(ko)
+                    except KeyError:
+                        reaction_kos[modelseed_reaction_id] = [ko]
+            json_genes.append(gene_entry)
+
+        progress.update("Reactions")
+        compound_compartments: Dict[str, Set[str]] = {}
+        for modelseed_reaction_id, reaction in self.reactions.items():
+            reaction_entry = JSONStructure.get_reaction_entry()
+            reaction_entry['id'] = modelseed_reaction_id
+            reaction_entry['name'] = reaction.modelseed_name
+            metabolites = reaction_entry['metabolites']
+            for compound, compartment, coefficient in zip(reaction.compounds, reaction.compartments, reaction.coefficients):
+                modelseed_compound_id = compound.modelseed_id
+                metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
+                try:
+                    compound_compartments[modelseed_compound_id].add(compartment)
+                except KeyError:
+                    compound_compartments[modelseed_compound_id] = set(compartment)
+            if not reaction.reversibility:
+                reaction_entry['lower_bound'] = 0.0
+            reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_genes[modelseed_reaction_id]])
+            notes = reaction_entry['notes']
+            notes['ko'] = ko_notes = {}
+            ko_kegg_aliases = []
+            ko_ec_number_aliases = []
+            for ko in reaction_kos[modelseed_reaction_id]:
+                try:
+                    kegg_aliases = ko.kegg_reaction_aliases[modelseed_reaction_id]
+                except KeyError:
+                    kegg_aliases = []
+                try:
+                    ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                except KeyError:
+                    ec_number_aliases = []
+                ko_notes[ko.id] = {'kegg.reaction': kegg_aliases, 'ec-code': ec_number_aliases}
+                ko_kegg_aliases += kegg_aliases
+                ko_ec_number_aliases += ec_number_aliases
+            ko_kegg_aliases = set(ko_kegg_aliases)
+            ko_ec_number_aliases = set(ko_ec_number_aliases)
+            notes['other_aliases'] = {
+                'kegg.reaction': list(set(reaction.kegg_aliases).difference(ko_kegg_aliases)),
+                'ec-code': list(set(reaction.ec_number_aliases).difference(ko_ec_number_aliases))
+            }
+            json_reactions.append(reaction_entry)
+
+        progress.update("Metabolites")
+        for modelseed_compound_id, metabolite in self.metabolites.items():
+            modelseed_compound_name = metabolite.modelseed_name
+            charge = metabolite.charge
+            formula = metabolite.formula
+            kegg_compound_aliases = list(metabolite.kegg_aliases)
+            for compartment in compound_compartments[modelseed_compound_id]:
+                metabolite_entry = JSONStructure.get_metabolite_entry()
+                metabolite_entry['id'] = f"{modelseed_compound_id}_{compartment}"
+                metabolite_entry['name'] = modelseed_compound_name
+                metabolite_entry['compartment'] = compartment
+                # Compounds without a formula have a nominal charge of 10000000 in the ModelSEED
+                # compounds database, which is replaced by None in the reaction network and 0 in the JSON.
+                metabolite_entry['charge'] = charge if charge is not None else 0
+                metabolite_entry['formula'] = formula if formula is not None else ""
+                metabolite_entry['annotation']['kegg.compound'] = kegg_compound_aliases
+                json_metabolites.append(metabolite_entry)
+
+        progress.update("Saving")
+        with open(path, 'w') as f:
+            json.dump(json_dict, f, indent=indent)
+        progress.end()
 
 class PangenomicNetwork(ReactionNetwork):
     """A reaction network predicted from KEGG KO and ModelSEED annotations of pangenomic gene clusters."""
