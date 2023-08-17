@@ -162,9 +162,7 @@ class GenomicNetwork(ReactionNetwork):
         overwrite: bool = False,
         objective: str = None,
         remove_missing_objective_metabolites: bool = False,
-        annotate_genes: tuple = ('bin', ),
-        annotate_reactions: tuple = ('bin', 'kegg_reaction', 'ec_number'),
-        annotate_metabolites: tuple = ('bin', 'kegg_compound'),
+        record_bins: tuple = ('gene', ),
         indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
@@ -195,38 +193,13 @@ class GenomicNetwork(ReactionNetwork):
             If True, remove metabolites from the JSON objective that are not produced or consumed in
             the reaction network. FBA fails with metabolites outside the network.
 
-        annotate_genes : tuple, ('bin', )
-            Annotate gene entries in the JSON file with additional data, selecting from the following:
-
-            'bin' : bins in which the gene occurs
-
-            'all_ko' : all KOs associated with the gene
-
-            'ko' : KOs associated with the gene that yielded reactions in the network
-
-            'ko_e_value' : scores of KO associations with the gene; if 'all_ko' is provided, then
-                each value corresponds to a KO in 'all_ko', whereas if only 'ko' is provided, then each
-                value corresponds to a KO in 'ko'
-
-        annotate_reactions : tuple, ('bin', 'kegg_reaction', 'ec_number')
-            Annotate reaction entries in the JSON file with additional data, selecting from the following:
-
-            'bin' : bins in which the reaction occurs
-
-            'kegg_reaction' : KO-associated KEGG reaction IDs yielding the ModelSEED reaction
-
-            'ec_number' : KO-associated EC numbers yielding the ModelSEED reaction
-
-            'ko' : KOs yielding the ModelSEED reaction
-
-        annotate_metabolites : tuple, ('bin', 'kegg_compound')
-            Annotate metabolite entries in the JSON file with additional data, selecting from the following:
-
-            'bin' : bins in which the metabolite occurs
-
-            'kegg_compound' : KEGG compound aliases of the ModelSEED compound
-
-            'ko' : KOs yielding the ModelSEED compound
+        record_bins : tuple, ('gene', )
+            Record bin membership in JSON entries, if a collection of bins is present in the
+            reaction network. By default, bin membership is only recorded for genes with the
+            argument, ('gene', ). 'reaction' and 'metabolite' can also be provided in a tuple
+            argument (e.g., ('reaction', ) or ('metabolite', 'reaction', 'gene')) to likewise record
+            in which bins the reaction and metabolite entries occur. Pass an argument of None to not
+            record bin membership in the JSON at all.
 
         indent : int, 2
             spaces of indentation per nesting level in JSON file
