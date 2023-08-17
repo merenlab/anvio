@@ -350,8 +350,6 @@ class PangenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        Parameters
-        ==========
         path : str
             output JSON file path
 
