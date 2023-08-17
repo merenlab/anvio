@@ -319,6 +319,137 @@ class PangenomicNetwork(ReactionNetwork):
         """
         pass
 
+class JSONStructure:
+    """JSON structure of metabolic model file."""
+    def get() -> Dict:
+        """Top-level file framework."""
+        return {
+            'metabolites': [],
+            'reactions': [],
+            'genes': [],
+            'id': '',
+            'compartments': {
+                'c': 'cytosol',
+                'e': 'extracellular space'
+            },
+            'version': '1'
+        }
+
+    def get_metabolite_entry() -> Dict:
+        """"Format of each object in the 'metabolites' array."""
+        return {
+            'id': '',
+            'name': '',
+            'compartment': '',
+            'charge': 0, # placeholder: uncharged
+            'formula': '',
+            'notes': {},
+            'annotation': {}
+        }
+
+    def get_reaction_entry() -> Dict:
+        """Format of each object in the 'reactions' array."""
+        return {
+            'id': '',
+            'name': '',
+            'metabolites': {},
+            # By default, make the reaction perfectly reversible.
+            'lower_bound': -1000.0,
+            'upper_bound': 1000.0,
+            'gene_reaction_rule': '',
+            'subsystem': '',
+            'notes': {},
+            'annotation': {}
+        }
+
+    def get_gene_entry() -> Dict:
+        """Format of each object in the 'genes' array."""
+        return {
+            'id': '',
+            'name': '',
+            'notes': {},
+            'annotation': {}
+        }
+
+    def get_e_coli_core_objective() -> Dict:
+        """
+        Biomass objective from the 'reactions' array in the COBRApy example JSON file,
+        'e_coli_core.json', with KBase/ModelSEED compound IDs replacing BiGG metabolite IDs.
+        """
+        return {
+            'id': 'BIOMASS_Ecoli_core_w_GAM',
+            'name': 'Biomass Objective Function with GAM',
+            'metabolites': {
+                'cpd00169_c': -1.496,
+                'cpd00022_c': -3.7478,
+                'cpd00008_c': 59.81,
+                'cpd00024_c': 4.1182,
+                'cpd00002_c': -59.81,
+                'cpd00010_c': 3.7478,
+                'cpd00236_c': -0.361,
+                'cpd00072_c': -0.0709,
+                'cpd00102_c': -0.129,
+                'cpd00079_c': -0.205,
+                'cpd00053_c': -0.2557,
+                'cpd00023_c': -4.9414,
+                'cpd00001_c': -59.81,
+                'cpd00067_c': 59.81,
+                'cpd00003_c': -3.547,
+                'cpd00004_c': 3.547,
+                'cpd00006_c': 13.0279,
+                'cpd00005_c': -13.0279,
+                'cpd00032_c': -1.7867,
+                'cpd00061_c': -0.5191,
+                'cpd00009_c': 59.81,
+                'cpd00020_c': -2.8328,
+                'cpd00101_c': -0.8977
+            },
+            'lower_bound': 0.0,
+            'upper_bound': 1000.0,
+            'gene_reaction_rule': '',
+            'objective_coefficient': 1.0,
+            'subsystem': 'Biomass and maintenance functions',
+            'notes': {
+                'original_bigg_ids': [
+                    'Biomass_Ecoli_core_w_GAM'
+                ],
+                'original_metabolite_ids': {
+                    '3pg_c': -1.496,
+                    'accoa_c': -3.7478,
+                    'adp_c': 59.81,
+                    'akg_c': 4.1182,
+                    'atp_c': -59.81,
+                    'coa_c': 3.7478,
+                    'e4p_c': -0.361,
+                    'f6p_c': -0.0709,
+                    'g3p_c': -0.129,
+                    'g6p_c': -0.205,
+                    'gln__L_c': -0.2557,
+                    'glu__L_c': -4.9414,
+                    'h2o_c': -59.81,
+                    'h_c': 59.81,
+                    'nad_c': -3.547,
+                    'nadh_c': 3.547,
+                    'nadp_c': 13.0279,
+                    'nadph_c': -13.0279,
+                    'oaa_c': -1.7867,
+                    'pep_c': -0.5191,
+                    'pi_c': 59.81,
+                    'pyr_c': -2.8328,
+                    'r5p_c': -0.8977
+                }
+            },
+            'annotation': {
+                'bigg.reaction': [
+                    'BIOMASS_Ecoli_core_w_GAM'
+                ],
+                'metanetx.reaction': [
+                    'MNXR96280'
+                ],
+                'sbo': 'SBO:0000629'
+            }
+        }
+
 class KODatabase:
     """
     Representation of the KEGG KO database used in the construction of reaction networks.
