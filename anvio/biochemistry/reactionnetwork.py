@@ -1222,10 +1222,13 @@ class Constructor:
             compound.modelseed_name = modelseed_compound_name
             kegg_aliases: str = row.kegg_aliases
             compound.kegg_aliases = tuple(kegg_aliases.split(', '))
+            # Compounds without a formula, recorded here as an empty string, have a nominal charge
+            # of 10000000 in the ModelSEED compounds database. This is replaced by NaN in the table
+            # and here as None in the reaction network.
             formula: str = row.formula
             compound.formula = formula
             charge: int = row.charge
-            compound.charge = charge
+            compound.charge = charge if not np.isnan(charge) else None
 
         # Remove any trace of genes that do not contribute to the reaction network.
         unnetworked_gcids = []
