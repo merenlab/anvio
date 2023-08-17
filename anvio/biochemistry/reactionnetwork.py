@@ -156,6 +156,147 @@ class GenomicNetwork(ReactionNetwork):
         self.collection: BinCollection = None
         super().__init__()
 
+    def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
+        """
+        Parameters
+        ==========
+        metabolites_to_remove : list
+
+        Returns
+        =======
+        """
+        removed_metabolites = []
+        for modelseed_compound_id in metabolites_to_remove:
+            removed_metabolites.append(self.metabolites.pop(modelseed_compound_id))
+
+        reactions_to_remove = []
+        for modelseed_reaction_id, reaction in self.reactions.items():
+            for compound in reaction.compounds:
+                if compound.modelseed_id in metabolites_to_remove:
+                    reactions_to_remove.append(modelseed_reaction_id)
+                    break
+        removed = self.purge_reactions(reactions_to_remove)
+
+        removed.update({'metabolite': removed_metabolites})
+        return removed
+
+    def purge_reactions(self, reactions_to_remove: List[str]) -> Dict[str, List]:
+        """
+        Parameters
+        ==========
+        reactions_to_remove : list
+
+        Returns
+        =======
+        """
+        removed_reactions = []
+        for modelseed_reaction_id in reactions_to_remove:
+            removed_reactions.append(self.reactions.pop(modelseed_reaction_id))
+            self.modelseed_kegg_aliases.pop(modelseed_reaction_id)
+            self.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+
+        kegg_reactions_to_remove = []
+        for kegg_reaction_id, modelseed_reaction_ids in self.kegg_modelseed_aliases.items():
+            aliases_to_remove = []
+            for modelseed_reaction_id in modelseed_reaction_ids:
+                if modelseed_reaction_id in reactions_to_remove:
+                    aliases_to_remove.append(modelseed_reaction_id)
+            if len(aliases_to_remove) == len(modelseed_reaction_ids):
+                # All ModelSEED reactions aliased by the KEGG reaction were removed, so remove the KEGG reaction as well.
+                kegg_reactions_to_remove.append(kegg_reaction_id)
+                continue
+            for modelseed_reaction_id in aliases_to_remove:
+                # Only some of the ModelSEED reactions aliased by the KO KEGG reaction were removed.
+                modelseed_reaction_ids.pop(modelseed_reaction_id)
+        removed_kegg_reactions = []
+        for kegg_reaction_id in kegg_reactions_to_remove:
+            removed_kegg_reactions.append(self.kegg_modelseed_aliases.pop(kegg_reaction_id))
+
+        ec_numbers_to_remove = []
+        for ec_number, modelseed_reaction_ids in self.ec_number_modelseed_aliases.items():
+            aliases_to_remove = []
+            for modelseed_reaction_id in modelseed_reaction_ids:
+                if modelseed_reaction_id in reactions_to_remove:
+                    aliases_to_remove.append(modelseed_reaction_id)
+            if len(aliases_to_remove) == len(modelseed_reaction_ids):
+                # All ModelSEED reactions aliased by the EC number were removed, so remove the EC number as well.
+                ec_numbers_to_remove.append(ec_number)
+                continue
+            for modelseed_reaction_id in aliases_to_remove:
+                # Only some of the ModelSEED reactions aliased by the EC number were removed.
+                modelseed_reaction_ids.pop(modelseed_reaction_id)
+        removed_ec_numbers = []
+        for ec_number in ec_numbers_to_remove:
+            removed_ec_numbers.append(self.ec_number_modelseed_aliases.pop(ec_number))
+
+        kos_to_remove = []
+        for ko_id, ko in self.kos.items():
+            ko_reactions_to_remove = []
+            for modelseed_reaction_id in ko.reactions:
+                if modelseed_reaction_id in reactions_to_remove:
+                    ko_reactions_to_remove.append(modelseed_reaction_id)
+            if len(ko_reactions_to_remove) == len(ko.reactions):
+                # All reactions associated with the KO were removed, so remove the KO as well.
+                kos_to_remove.append(ko_id)
+                continue
+            for modelseed_reaction_id in ko_reactions_to_remove:
+                # Only some of the reactions associated with the KO are invalid.
+                ko.reactions.pop(modelseed_reaction_id)
+                ko.kegg_reaction_aliases.pop(modelseed_reaction_id)
+                ko.ec_number_aliases.pop(modelseed_reaction_id)
+        removed = self.purge_kos(kos_to_remove)
+
+        removed.update({'reaction': removed_reactions, 'kegg_reaction': removed_kegg_reactions, 'ec_number': removed_ec_numbers})
+        return removed
+
+    def purge_kos(self, kos_to_remove: List[str]) -> Dict[str, List]:
+        """
+        Parameters
+        ==========
+        kos_to_remove : list
+
+        Returns
+        =======
+        """
+        removed_kos = []
+        for ko_id in kos_to_remove:
+            removed_kos.append(self.kos.pop(ko_id))
+
+        genes_to_remove = []
+        for gcid, gene in self.genes.items():
+            to_remove = []
+            for ko in gene.kos:
+                if ko.id in kos_to_remove:
+                    to_remove.append(ko_idx)
+            if len(to_remove) == len(gene.kos):
+                # All KOs matching the gene were removed, so remove it.
+                genes_to_remove.append(gcid)
+                continue
+            for ko_idx in to_remove:
+                gene.kos.pop(ko_idx)
+                gene.e_values.pop(ko_idx)
+        removed = self.purge_genes(genes_to_remove)
+
+        removed.update({'ko': removed_kos})
+        return removed
+
+    def purge_genes(self, genes_to_remove: List[str]) -> Dict[str, List]:
+        """
+        Parameters
+        ==========
+        genes_to_remove : list
+
+        Returns
+        =======
+        """
+        removed_genes = []
+        for gcid in genes_to_remove:
+            removed_genes.append(self.genes.pop(gcid))
+        # TODO: remove genes from self.bins
+
+        removed = {'gene': removed_genes}
+        return removed
+
     def export_json(
         self,
         path: str,
