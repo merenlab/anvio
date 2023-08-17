@@ -121,6 +121,14 @@ rule fasterq_dump:
     run:
         shell("fasterq-dump {params.SRA_INPUT_DIR} -t FASTERQDUMP_TEMP --outdir {params.OUTPUT_DIR} --split-files --verbose --progress --threads {threads} >> {log} 2>&1")
 
+        # Check if fasterq-dump encountered a Disk quota exceeded error
+        error_message = "Disk quota exceeded"
+        log_path = str(log) 
+        with open(log_path, "r") as log_file:
+            log_contents = log_file.read()
+            if error_message in log_contents:
+                raise Exception("fasterq-dump encountered a Disk quota exceeded when processing {wildcards.accession}")
+
 
 rule pigz:
     """Compress FASTQ files using pigz in parallel!
