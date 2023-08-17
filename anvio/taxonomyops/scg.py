@@ -1157,9 +1157,9 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 if self.ctx.target_database_release == 'v214.1':
                     inner_path = os.path.join(self.ctx.msa_individual_genes_dir_path, 'individual')
                     for file in  glob.glob(inner_path + '/*.faa'):
-                     shutil.move(file, self.ctx.msa_individual_genes_dir_path)
+                        shutil.move(file, self.ctx.msa_individual_genes_dir_path)
                     os.rmdir(inner_path)
-                
+
                 os.remove(local_file_path)
                 self.progress.end()
 
