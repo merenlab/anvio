@@ -246,9 +246,11 @@ class GenomicNetwork(ReactionNetwork):
                 objective_metabolites: Dict = objective_dict['metabolites']
                 objective_original_metabolites: Dict = objective_dict['original_metabolite_ids']
                 missing_metabolite_ids = []
+                # The original objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND IDs.
                 missing_original_metabolite_ids = []
                 for metabolite_id, original_metabolite_id in zip(objective_metabolites, objective_original_metabolites):
                     if metabolite_id[:-2] not in self.metabolites:
+                        # The metabolite (removing localization substring) is not in the network.
                         missing_metabolite_ids.append(metabolite_id)
                         missing_original_metabolite_ids.append(original_metabolite_id)
                 for metabolite_id in missing_metabolite_ids:
@@ -267,6 +269,7 @@ class GenomicNetwork(ReactionNetwork):
             gcid_str = str(gcid)
             gene_entry['id'] = gcid_str
             notes = gene_entry['notes']
+            # Record KO IDs and annotation e-values in the notes section of the gene entry.
             notes['ko'] = notes_kos = {}
             for ko, e_value in zip(gene.kos, gene.e_values):
                 notes_kos[ko.id] = str(e_value)
@@ -296,9 +299,11 @@ class GenomicNetwork(ReactionNetwork):
                 except KeyError:
                     compound_compartments[modelseed_compound_id] = set(compartment)
             if not reaction.reversibility:
+                # By default, the reaction entry was set up to be reversible; here make it irreversible.
                 reaction_entry['lower_bound'] = 0.0
             reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_genes[modelseed_reaction_id]])
             notes = reaction_entry['notes']
+            # Record gene KO annotations which aliased the reaction via KEGG REACTION or EC number.
             notes['ko'] = ko_notes = {}
             ko_kegg_aliases = []
             ko_ec_number_aliases = []
@@ -316,6 +321,8 @@ class GenomicNetwork(ReactionNetwork):
                 ko_ec_number_aliases += ec_number_aliases
             ko_kegg_aliases = set(ko_kegg_aliases)
             ko_ec_number_aliases = set(ko_ec_number_aliases)
+            # Record other KEGG REACTION or EC number aliases of the reaction in the ModelSEED
+            # database that did not happen to be associated with KO annotations.
             notes['other_aliases'] = {
                 'kegg.reaction': list(set(reaction.kegg_aliases).difference(ko_kegg_aliases)),
                 'ec-code': list(set(reaction.ec_number_aliases).difference(ko_ec_number_aliases))
