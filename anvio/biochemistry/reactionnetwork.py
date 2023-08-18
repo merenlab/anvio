@@ -151,10 +151,10 @@ class GenomicNetwork(ReactionNetwork):
     """
     def __init__(self) -> None:
         # map gene caller ID to gene object
+        super().__init__()
         self.genes: Dict[int, Gene] = {}
         self.bins: Dict[str, GeneBin] = {}
         self.collection: BinCollection = None
-        super().__init__()
 
     def remove_metabolites_without_formula(self, path: str = None) -> None:
         """
