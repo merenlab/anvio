@@ -235,12 +235,43 @@ class GenomicNetwork(ReactionNetwork):
 
     def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
         """
+        Remove any trace of the given metabolites from the network.
+
+        Reactions involving the metabolite are also purged from the network. KOs that were only
+        associated with removed reactions are purged; genes that were only associated with removed
+        KOs are purged.
+
         Parameters
         ==========
         metabolites_to_remove : list
+            list of ModelSEED compound IDs identifying metabolites to remove
 
         Returns
         =======
+        dict
+            This dictionary contains data removed from the network.
+
+            If this method is NOT called from the method, 'purge_reactions', then the dictionary
+            will look like the following:
+            {
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'ko': [<removed KO objects>],
+                'gene': [<removed Gene objects>]
+            }
+
+            If this method is called from the method, 'purge_reactions', then the dictionary will
+            only contain one entry:
+            {
+                'metabolite': [<removed ModelSEEDCompound objects],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
         """
         removed_metabolites = []
         for modelseed_compound_id in metabolites_to_remove:
@@ -252,21 +283,69 @@ class GenomicNetwork(ReactionNetwork):
                 if compound.modelseed_id in metabolites_to_remove:
                     reactions_to_remove.append(modelseed_reaction_id)
                     break
-        removed = self.purge_reactions(reactions_to_remove)
+        if reactions_to_remove:
+            removed_cascading_up = self.purge_reactions(reactions_to_remove)
+        else:
+            # This method must have been called from the method, 'purge_reactions', because the
+            # reactions containing the metabolites were already removed from the network.
+            removed_cascading_up = {'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
 
-        removed.update({'metabolite': removed_metabolites})
+        removed = {'metabolite': removed_metabolites}
+        removed.update(removed_cascading_up)
         return removed
 
     def purge_reactions(self, reactions_to_remove: List[str]) -> Dict[str, List]:
         """
+        Remove any trace of the given reactions from the network.
+
+        Metabolites that were only associated with removed reactions are purged. KOs that were only
+        associated with removed reactions are purged; genes that were only associated with removed
+        KOs are purged.
+
         Parameters
         ==========
         reactions_to_remove : list
+            list of ModelSEED reaction IDs identifying reactions to remove
 
         Returns
         =======
+        dict
+            This dictionary contains data removed from the network.
+
+            If this method is NOT called from the method, 'purge_metabolites', or the method,
+            'purge_kos', then the dictionary will look like the following:
+            {
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'ko': [<removed KO objects>],
+                'gene': [<removed Gene objects>]
+            }
+
+            If this method is called from the method, 'purge_metabolites', then the dictionary will
+            look like the following:
+            {
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [],
+                'ko': [<removed KO objects>],
+                'gene': [<removed Gene objects>]
+            }
+
+            If this method is called from the method, 'purge_kos', then the dictionary will look
+            like the following:
+            {
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [<removed ModelSEEDCompound objects],
+                'ko': [],
+                'gene': []
+            }
         """
-        removed_reactions = []
+        removed_reactions: List[ModelSEEDReaction] = []
         for modelseed_reaction_id in reactions_to_remove:
             removed_reactions.append(self.reactions.pop(modelseed_reaction_id))
             self.modelseed_kegg_aliases.pop(modelseed_reaction_id)
@@ -306,6 +385,27 @@ class GenomicNetwork(ReactionNetwork):
         for ec_number in ec_numbers_to_remove:
             removed_ec_numbers.append(self.ec_number_modelseed_aliases.pop(ec_number))
 
+        metabolites_to_remove: List[str] = []
+        for reaction in removed_reactions:
+            for metabolite in reaction.compounds:
+                metabolites_to_remove.append(metabolite.modelseed_id)
+        metabolites_to_remove = list(set(metabolites_to_remove))
+        for reaction in self.reactions.values():
+            metabolites_to_spare: List[int] = []
+            for metabolite in reaction.compounds:
+                for idx, modelseed_compound_id in enumerate(metabolites_to_remove):
+                    if modelseed_compound_id == metabolite.modelseed_id:
+                        # The metabolite is in a retained reaction, so do not remove the metabolite.
+                        metabolites_to_spare.append(idx)
+            for idx in metabolites_to_spare:
+                metabolites_to_remove.pop(idx)
+        if metabolites_to_remove:
+            removed_cascading_down = self.purge_metabolites(metabolites_to_remove)
+        else:
+            # This method must have been called from the method, 'purge_metabolites', because the
+            # metabolites that are only in the removed reactions were already removed from the network.
+            removed_cascading_down = {'metabolite': []}
+
         kos_to_remove = []
         for ko_id, ko in self.kos.items():
             ko_reactions_to_remove = []
@@ -321,57 +421,189 @@ class GenomicNetwork(ReactionNetwork):
                 ko.reactions.pop(modelseed_reaction_id)
                 ko.kegg_reaction_aliases.pop(modelseed_reaction_id)
                 ko.ec_number_aliases.pop(modelseed_reaction_id)
-        removed = self.purge_kos(kos_to_remove)
+        # If this method was called from 'purge_kos' then the KOs that only contain reactions
+        # removed here were already removed from the network, and 'kos_to_remove' would be empty. In
+        # contrast, if this method was not called from 'purge_kos', but zero KOs only contain
+        # reactions removed here, then 'kos_to_remove' would likewise be empty.
+        if kos_to_remove:
+            removed_cascading_up = self.purge_kos(kos_to_remove)
+        else:
+            removed_cascading_up = {'ko': [], 'gene': []}
 
-        removed.update({'reaction': removed_reactions, 'kegg_reaction': removed_kegg_reactions, 'ec_number': removed_ec_numbers})
+        removed = {'reaction': removed_reactions, 'kegg_reaction': removed_kegg_reactions, 'ec_number': removed_ec_numbers}
+        removed.update(removed_cascading_down)
+        removed.update(removed_cascading_up)
         return removed
 
     def purge_kos(self, kos_to_remove: List[str]) -> Dict[str, List]:
         """
+        Remove any trace of the given KOs from the network.
+
+        Reactions and metabolites that were only associated with removed KOs are purged. Genes that
+        were only associated with removed KOs are purged.
+
         Parameters
         ==========
         kos_to_remove : list
+            list of KO IDs identifying KOs to remove
 
         Returns
         =======
+        dict
+            This dictionary contains data removed from the network.
+
+            If this method is NOT called from the method, 'purge_reactions', or the method,
+            'purge_genes', then the dictionary will look like the following:
+            {
+                'ko': [<removed KO objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [<removed ModelSEEDCompound objects>],
+                'gene': [<removed Gene objects>]
+            }
+
+            If this method is called from the method, 'purge_reactions', then the dictionary will
+            look like the following:
+            {
+                'ko': [<removed KO objects>],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'metabolite': [],
+                'gene': [<removed Gene objects>]
+            }
+
+            If this method is called from the method, 'purge_genes', then the dictionary will
+            look like the following:
+            {
+                'ko': [<removed KO objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [<removed ModelSEEDCompound objects],
+                'genes': []
+            }
         """
-        removed_kos = []
+        removed_kos: List[KO] = []
         for ko_id in kos_to_remove:
             removed_kos.append(self.kos.pop(ko_id))
 
-        genes_to_remove = []
+        reactions_to_remove: List[str] = []
+        for ko in removed_kos:
+            for modelseed_reaction_id in ko.reactions:
+                reactions_to_remove.append(modelseed_reaction_id)
+        reactions_to_remove = list(set(reactions_to_remove))
+        for ko in self.kos.values():
+            reactions_to_spare: List[int] = []
+            for modelseed_reaction_id in ko.reactions:
+                for idx, modelseed_reaction_id_to_remove in enumerate(reactions_to_remove):
+                    if modelseed_reaction_id == modelseed_reaction_id_to_remove:
+                        # The reaction is associated with a retained KO, so do not remove the reaction.
+                        reactions_to_spare.append(idx)
+            for idx in reactions_to_spare:
+                reactions_to_remove.pop(idx)
+        if reactions_to_remove:
+            removed_cascading_down = self.purge_reactions(reactions_to_remove)
+        else:
+            # This method must have been called from the method, 'purge_reactions', because the
+            # reactions that are only associated with the removed KOs were already removed from the network.
+            removed_cascading_down = {'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'metabolite': []}
+
+        genes_to_remove: List[str] = []
         for gcid, gene in self.genes.items():
-            to_remove = []
+            gene_kos_to_remove: List[int] = []
             for ko in gene.kos:
                 if ko.id in kos_to_remove:
-                    to_remove.append(ko_idx)
-            if len(to_remove) == len(gene.kos):
+                    gene_kos_to_remove.append(ko_idx)
+            if len(gene_kos_to_remove) == len(gene.kos):
                 # All KOs matching the gene were removed, so remove it.
                 genes_to_remove.append(gcid)
                 continue
-            for ko_idx in to_remove:
+            for ko_idx in gene_kos_to_remove:
                 gene.kos.pop(ko_idx)
                 gene.e_values.pop(ko_idx)
-        removed = self.purge_genes(genes_to_remove)
+        # If this method was called from 'purge_genes' then the genes that are only associated with
+        # KOs removed here were already removed from the network, and 'genes_to_remove' would be
+        # empty. In contrast, if this method was not called from 'purge_genes', but zero genes are
+        # only associated with KOs removed here, then 'genes_to_remove' would likewise be empty.
+        if genes_to_remove:
+            removed_cascading_up = self.purge_genes(genes_to_remove)
+        else:
+            removed_cascading_up = {'gene': []}
 
-        removed.update({'ko': removed_kos})
+        removed = {'ko': removed_kos}
+        removed.update(removed_cascading_down)
+        removed.update(removed_cascading_up)
         return removed
 
     def purge_genes(self, genes_to_remove: List[str]) -> Dict[str, List]:
         """
+        Remove any trace of the given genes from the network.
+
+        KOs, reactions, and metabolites that were only associated with removed genes are purged.
+
         Parameters
         ==========
         genes_to_remove : list
+            list of gene callers IDs identifying genes to remove
 
         Returns
         =======
+        dict
+            This dictionary contains data removed from the network.
+
+            If this method is NOT called from the method, 'purge_kos', then the dictionary will
+            look like the following:
+            {
+                'gene': [<removed Gene objects>],
+                'ko': [<removed KO objects>],
+                'reaction': [<removed ModelSEEDReaction objects>],
+                'kegg_reaction': [<removed KEGG REACTION IDs>],
+                'ec_number': [<removed EC numbers>],
+                'metabolite': [<removed ModelSEEDCompound objects>]
+            }
+
+            If this method is called from the method, 'purge_kos', then the dictionary will look
+            like the following:
+            {
+                'gene': [<removed Gene objects>],
+                'ko': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'metabolite': []
+            }
         """
-        removed_genes = []
+        removed_genes: List[Gene] = []
         for gcid in genes_to_remove:
             removed_genes.append(self.genes.pop(gcid))
+
+        kos_to_remove: List[str] = []
+        for gene in removed_genes:
+            for ko in gene.kos:
+                kos_to_remove.append(ko.id)
+        kos_to_remove = list(set(kos_to_remove))
+        for gene in self.genes.values():
+            kos_to_spare: List[int] = []
+            for ko in gene.kos:
+                for idx, ko_id in enumerate(kos_to_remove):
+                    if ko.id == ko_id:
+                        # The KO is associated with a retained gene, so do not remove the KO.
+                        kos_to_spare.append(idx)
+            for idx in kos_to_spare:
+                kos_to_remove.pop(idx)
+        if kos_to_remove:
+            removed_cascading_down = self.purge_kos(kos_to_remove)
+        else:
+            # This method must have been called from the method, 'purge_kos', because the
+            # KOs that are only associated with the removed genes were already removed from the network.
+            removed_cascading_down = {'ko': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'metabolite': []}
+
         # TODO: remove genes from self.bins
 
         removed = {'gene': removed_genes}
+        removed.update(removed_cascading_down)
         return removed
 
     def export_json(
