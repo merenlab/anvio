@@ -1854,7 +1854,7 @@ class Constructor:
         unnetworked_gcids = []
         for gcid, gene in network.genes.items():
             gene_in_network = False
-            unnetworked_ko_indices = []
+            unnetworked_ko_indices: List[int] = []
             idx = 0
             for ko, e_value in zip(gene.kos, gene.e_values):
                 if ko.reactions:
@@ -1863,7 +1863,7 @@ class Constructor:
                     unnetworked_ko_indices.append(idx)
                 idx += 1
             if gene_in_network:
-                for unnetworked_ko_index in unnetworked_ko_indices[::-1]:
+                for unnetworked_ko_index in reversed(unnetworked_ko_indices):
                     gene.kos.pop(unnetworked_ko_index)
                     gene.e_values.pop(unnetworked_ko_index)
             else:
