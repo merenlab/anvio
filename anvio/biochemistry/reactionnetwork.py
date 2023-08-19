@@ -158,13 +158,18 @@ class GenomicNetwork(ReactionNetwork):
 
     def remove_metabolites_without_formula(self, path: str = None) -> None:
         """
-        Remove from the network metabolites without a formula from the ModelSEED database, reactions
-        that involve the metabolite, and genes that are exclusively predicted to catalyze these reactions.
+        Remove metabolites without a formula in the ModelSEED database from the network.
+
+        Reactions that involve the metabolite are also removed from the network, as are KOs that are
+        predicted to only catalyze these reactions and genes that are only associated with these KOs.
+
+        Additional metabolites that are exclusive to removed reactions can also be removed from the
+        network. In the output table of removed metabolites, these additional metabolites have a formula.
 
         path : str, None
-            If not None, write 3 tab-delimited tables of metabolites, reactions, and genes removed
-            from the network to file locations based on the path. For example, if an argument of
-            'removed.tsv' is provided, then the following files will be written:
+            If not None, write 3 tab-delimited files of metabolites, reactions, and genes removed
+            from the network to file locations based on the path. For example, if the argument,
+            'removed.tsv', is provided, then the following files will be written:
             'removed-metabolites.tsv', 'removed-reactions.tsv', and 'removed-genes.tsv'.
         """
         if path:
@@ -191,7 +196,7 @@ class GenomicNetwork(ReactionNetwork):
         metabolite_table = []
         for metabolite in removed['metabolite']:
             metabolite: ModelSEEDCompound
-            metabolite_table.append((metabolite.modelseed_id, metabolite.modelseed_name))
+            metabolite_table.append((metabolite.modelseed_id, metabolite.modelseed_name, metabolite.formula))
 
         reaction_table = []
         for reaction in removed['reaction']:
@@ -199,7 +204,7 @@ class GenomicNetwork(ReactionNetwork):
             row = []
             row.append(reaction.modelseed_id)
             row.append(reaction.modelseed_name)
-            removed_metabolites = []
+            removed_metabolites: List[str] = []
             for metabolite in reaction.compounds:
                 if metabolite.modelseed_id in metabolites_to_remove:
                     removed_metabolites.append(metabolite.modelseed_id)
@@ -207,7 +212,7 @@ class GenomicNetwork(ReactionNetwork):
             reaction_table.append(row)
 
         gene_table = []
-        removed_reactions = set([row[0] for row in reaction_table])
+        removed_reactions: Set[str] = set([row[0] for row in reaction_table])
         for gene in removed['gene']:
             gene: Gene
             row = []
@@ -218,20 +223,22 @@ class GenomicNetwork(ReactionNetwork):
                     gene_reactions.append(modelseed_reaction_id)
             gene_reactions = set(gene_reactions)
             row.append(', '.join(gene_reactions.intersection(removed_reactions)))
+            row.append(', '.join(ko.id for ko in gene.kos))
+            row.append('!!!'.join(ko.name for ko in gene.kos))
             gene_table.append(row)
 
         pd.DataFrame(
             metabolite_table,
-            columns=['modelseed_id', 'modelseed_name']
+            columns=['modelseed_id', 'modelseed_name', 'formula']
         ).to_csv(metabolite_path, sep='\t', index=False)
         pd.DataFrame(
             reaction_table,
             columns=['modelseed_id', 'modelseed_name', 'removed_metabolite_modelseed_ids']
-        ).to_csv(reaction_path)
+        ).to_csv(reaction_path, sep='\t', index=False)
         pd.DataFrame(
             gene_table,
-            columns=['gene_callers_id', 'removed_metabolite_modelseed_ids']
-        ).to_csv(gene_path)
+            columns=['gene_callers_id', 'removed_reaction_modelseed_ids', 'ko_ids', 'ko_names']
+        ).to_csv(gene_path, sep='\t', index=False)
 
     def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
         """
