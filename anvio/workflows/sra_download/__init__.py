@@ -91,7 +91,6 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         target_files = []
 
         for accession in self.accessions_list:
-            target_files.extend([os.path.join(self.dirs_dict['FASTAS'], f"{accession}_1.fastq.gz"),
-                                 os.path.join(self.dirs_dict['FASTAS'], f"{accession}_2.fastq.gz")])
+            target_files.extend([os.path.join(self.dirs_dict['FASTAS'], f"{accession}-pigz.done")])
         
         return target_files
