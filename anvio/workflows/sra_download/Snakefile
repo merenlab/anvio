@@ -39,6 +39,8 @@ $ cat SRA_accession_list.txt
 ERR6450080
 ERR6450081
 SRR5965623
+ERR6450082
+
 """
 
 
@@ -61,7 +63,10 @@ rule prefetch:
         None
 
     Outputs:
-        SRA_TMP: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite
+        prefetch_DONE: the empty marker file {accession}.prefetch.done
+
+        SRA: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite. This file
+        is not used to control the execution of subsequent rules
 
     Params:
         SRA_OUTPUT_DIR: Output directory for the prefetched data
@@ -78,8 +83,6 @@ rule prefetch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
     output:
-        SRA_TMP = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")) if remove_tmp
-                  else os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra"),
         prefetch_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done"))
     params:
         SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),
@@ -88,6 +91,18 @@ rule prefetch:
     run:
         shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
+        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sralite")
+        if not os.path.exists(sra_file) and not os.path.exists(sralite_file):
+            raise ConfigError(f"Following the execution of `prefetch` for accession {accession}, we could not find either of "
+                              f"the expected output files {sra_file} or {sralite_file}.")
+
+def output_from_prefetch(wildcards):
+    """Returns either the path to a .sra file or the path to a .sralite file depending on which was created by prefetch."""
+    sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{wildcards.accession}", "{wildcards.accession}.sra")
+    if not os.path.exists(sra_file):
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{wildcards.accession}", "{wildcards.accession}.sralite")
+    return sra_file
 
 rule check_md5sum:
     """Curl the md5sum file from the SRA FTP site"""
@@ -98,7 +113,7 @@ rule check_md5sum:
         prefetch_DONE = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done")
     params:
         md5sum = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.json"),
-        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
+        sra_file = unpack(output_from_prefetch)
     output:
         md5sum_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.md5sum.done"))
     threads: M.T('check_md5sum')
@@ -144,14 +159,14 @@ rule fasterq_dump:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
     input: 
-        ancient(rules.check_md5sum.output.md5sum_DONE),
-        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
+        ancient(rules.check_md5sum.output.md5sum_DONE)
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
         FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
     params:
         SRA_INPUT_DIR = os.path.join(dirs_dict['SRA_prefetch'], "{accession}"),
-        OUTPUT_DIR = dirs_dict['FASTAS']
+        OUTPUT_DIR = dirs_dict['FASTAS'],
+        FASTERQDUMP_TEMP = temp(os.path.join(os.getcwd(), "FASTERQDUMP_TEMP"))
     threads: M.T('fasterq_dump')
     run:
         shell("fasterq-dump {params.SRA_INPUT_DIR} -t {output.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1")
