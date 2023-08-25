@@ -172,15 +172,17 @@ rule generate_samples_txt:
             else:
                 raise ConfigError(f"Looks like sample {sample} doesn't have the expected output(s) format.")
 
-        with open("samples.txt", 'w') as f:
-            f.write("sample\tr1\tr2\n")
-            for sample in paired_reads:
-                r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))
-                r2 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_2.fastq.gz"]))
-                f.write("%s\t%s\t%s\n" % (sample, r1, r2))
+        if paired_reads:
+            with open("samples.txt", 'w') as f:
+                f.write("sample\tr1\tr2\n")
+                for sample in paired_reads:
+                    r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))
+                    r2 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_2.fastq.gz"]))
+                    f.write("%s\t%s\t%s\n" % (sample, r1, r2))
 
-        with open("samples_single_reads.txt", 'w') as f:
-            f.write("sample\tr1\n")
-            for sample in single_reads:
-                r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))
-                f.write("%s\t%s\n" % (sample, r1))
+        if single_reads:
+            with open("samples_single_reads.txt", 'w') as f:
+                f.write("sample\tr1\n")
+                for sample in single_reads:
+                    r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))
+                    f.write("%s\t%s\n" % (sample, r1))
