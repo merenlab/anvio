@@ -79,7 +79,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
                 self.SRA_accession_list_df = pd.read_csv(self.SRA_accession_list, sep='\t', index_col=False, header=None, names=['accessions'])
                 self.accessions_list = self.SRA_accession_list_df['accessions'].tolist()
             except IndexError as e:
-                raise ConfigError(f"Looks like your samples_txt file, {self.SRA_accession_list}, is not properly formatted. "
+                raise ConfigError(f"Looks like your SRA accession list file, {self.SRA_accession_list}, is not properly formatted. "
                                   f"This is what we know: {e}")
 
         self.target_files = self.get_target_files()
@@ -88,9 +88,6 @@ class SRADownloadWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         """Get list of target files for snakemake target rule"""
 
-        target_files = []
+        target_files = [os.path.join(self.dirs_dict['FASTAS'], f"generate_samples_txt.done")]
 
-        for accession in self.accessions_list:
-            target_files.extend([os.path.join(self.dirs_dict['FASTAS'], f"{accession}-pigz.done")])
-        
         return target_files

@@ -148,3 +148,39 @@ rule pigz:
     threads: M.T('pigz')
     run:
         shell("pigz --processes {threads} --verbose {params.READS} >> {log} 2>&1")
+
+
+rule generate_samples_txt:
+    """Create samples-txt files for paired-end reads and single reads samples"""
+
+    version:1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "generate_samples_txt.log")
+    input: expand(dirs_dict['FASTAS'] + "/{accession}-pigz.done", accession=M.accessions_list)
+    output: touch(os.path.join(dirs_dict['FASTAS'], "generate_samples_txt.done"))
+    params:
+        ACCESSION = M.accessions_list,
+        OUTPUT_DIR = dirs_dict['FASTAS']
+    run:
+        paired_reads = []
+        single_reads = []
+
+        for sample in params.ACCESSION:
+            if os.path.exists(os.path.join(params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))):
+                paired_reads.append(sample)
+            elif os.path.exists(os.path.join(params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))):
+                single_reads.append(sample)
+            else:
+                raise ConfigError(f"Looks like sample {sample} doesn't have the expected output(s) format.")
+
+        with open("samples.txt", 'w') as f:
+            f.write("sample\tr1\tr2\n")
+            for sample in paired_reads:
+                r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))
+                r2 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_2.fastq.gz"]))
+                f.write("%s\t%s\t%s\n" % (sample, r1, r2))
+
+        with open("samples_single_reads.txt", 'w') as f:
+            f.write("sample\tr1\n")
+            for sample in single_reads:
+                r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))
+                f.write("%s\t%s\n" % (sample, r1))
