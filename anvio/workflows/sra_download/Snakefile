@@ -68,7 +68,8 @@ rule prefetch:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
-    output: touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}-prefetch.done"))
+    output:
+        SRA_TMP = temp(directory(os.path.join(dirs_dict['SRA_prefetch'], "{accession}")))
     params:
         SRA_output_dir = os.path.join(dirs_dict['SRA_prefetch']),
         max_size = M.get_param_value_from_config(['prefetch', '--max-size'])
@@ -98,15 +99,16 @@ rule fasterq_dump:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: os.path.join(dirs_dict['SRA_prefetch'], "{accession}-prefetch.done")
-    output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done"))
+    input: rules.prefetch.output.SRA_TMP
+    output:
+        FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
+        FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
     params:
         SRA_INPUT_DIR = os.path.join(dirs_dict['SRA_prefetch'], "{accession}"),
-        OUTPUT_DIR = dirs_dict['FASTAS'],
-        FASTERQDUMP_TEMP = temp(os.path.join(os.getcwd(), "FASTERQDUMP_TEMP"))
+        OUTPUT_DIR = dirs_dict['FASTAS']
     threads: M.T('fasterq_dump')
     run:
-        shell("fasterq-dump {params.SRA_INPUT_DIR} -t {params.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1")
+        shell("fasterq-dump {params.SRA_INPUT_DIR} -t {output.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1")
 
         # Check if fasterq-dump encountered a Disk quota exceeded error
         error_message = "Disk quota exceeded"
@@ -139,7 +141,7 @@ rule pigz:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
-    input: os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")
+    input: rules.fasterq_dump.output.FASTERQDUMP_DONE
     output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
     params:
         READS = os.path.join(dirs_dict['FASTAS'], "{accession}*.fastq")
