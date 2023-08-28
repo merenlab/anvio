@@ -491,9 +491,8 @@ class COGsSetup:
                                   'func': self.format_categories,
                                   'type': 'essential',
                                   'formatted_file_name': 'CATEGORIES.txt'},
-                              'checksum.md5.txt': {
+                              'checksum.md5.txt': {  # No func as it is called by the setup_raw_data function
                                    'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
-                                   'func': self.check_cog_hash,
                                    'type': 'essential',
                                    'formatted_file_name': 'CHECKSUMS.txt'},
                               'cog-20.fa.gz': {
@@ -818,33 +817,6 @@ class COGsSetup:
 
         os.remove(temp_fasta_path)
 
-    def check_cog_hash(self, input_file_path, output_file_path):
-        """Checks the cheksum of each downloaded file to ensure succesful download."""
-        progress.new('Checking checksums')
-
-        # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
-        checksums = {}
-        for line in open(input_file_path, 'rU').readlines():
-            checksum, file_name = line.strip('\n').split('  ')
-            checksums[file_name] = checksum
-
-        # For each file, check existence and check checksum
-        for file_name in self.files:
-            file_path = J(self.raw_NCBI_files_dir, file_name)
-
-            # Check file exists
-            if not os.path.exists(file_path):
-                raise ConfigError("Something is wrong :/ Raw files are not in place...")
-
-            # Check checksum
-            if not utils.md5(file_path) == checksums[file_name]:
-                raise ConfigError(f"Something is wrong :/ The checksum of {file_name} does not match the checksum in "
-                                  f"the checksums.txt file. This is most likely due to an interrupted download. NCBI "
-                                  f"server often interrupt downloads midway. Please try again with the --reset flag.")
-
-        progress.end()
-        os.remove(input_file_path)
-
     def get_raw_data(self):
         if not os.path.exists(self.raw_NCBI_files_dir):
             os.mkdir(self.raw_NCBI_files_dir)
@@ -861,7 +833,7 @@ class COGsSetup:
 
     def setup_raw_data(self):
         # Check hash of downloaded files before any setup
-        self.check_cog_hash(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
+        self.check_raw_data_hash(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
                             J(self.COG_data_dir, self.files["checksum.md5.txt"]['formatted_file_name']))
 
         for file_name in self.files:
@@ -870,9 +842,33 @@ class COGsSetup:
             if not 'func' in self.files[file_name]:
                 continue
 
+            self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
+
+    def check_raw_data_hash(self, input_file_path, output_file_path):
+        """Checks the cheksum of each downloaded file to ensure succesful download."""
+        progress.new('Checking checksums')
+
+        # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
+        checksums = {}
+        for line in open(input_file_path, 'rU').readlines():
+            stripped = line.strip('\n').split(' ')
+            file_name = stripped[-1]
+            checksums[file_name] = stripped[0]
+
+        # For each file, check existence and check checksum
+        for file_name in self.files:
+            file_path = J(self.raw_NCBI_files_dir, file_name)
+
+            # Check file exists
             if not os.path.exists(file_path):
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
-            if file_path == "checksum.md5.txt":
-                continue
-            self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
+            # Check checksum
+            if not utils.md5(file_path) == checksums[file_name]:
+                raise ConfigError(
+                    f"Something is wrong :/ The checksum of {file_name} does not match the checksum provided by NCBI. "
+                    f"This is most likely due to an interrupted download. NCBI server often interrupt downloads midway."
+                    f" Please try again with the --reset flag.")
+
+        progress.end()
+        os.remove(input_file_path)  # Checksum file no longer needed
