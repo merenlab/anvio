@@ -853,7 +853,7 @@ class COGsSetup:
         checksums = {}
         for line in open(input_file_path, 'rU').readlines():
             stripped = line.strip('\n').split(' ')
-            file_name = stripped[-1].strip('*')[-1]
+            file_name = stripped[-1].strip('*')
             checksums[file_name] = stripped[0]
 
         # Print warning if checksums are not provided by NCBI
@@ -868,6 +868,11 @@ class COGsSetup:
             # Check file exists
             if not os.path.exists(file_path):
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
+
+            # Check file present in checksum
+            if not file_name in checksums.keys():
+                self.run.warning(f"The file {file_name} is not present in the checksum file. You should be able to" 
+                                 f"continue despite this, but it is not expected.")
 
             # Check checksum
             if self.COG_version == 'COG20' and file_name != "checksum.md5.txt":
