@@ -870,7 +870,7 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             # Check file present in checksum
-            if not file_name in checksums.keys():
+            if not file_name in checksums.keys() and file_name != "checksum.md5.txt":
                 self.run.warning(f"The file {file_name} is not present in the checksum file. You should be able to" 
                                  f"continue despite this, but it is not expected.")
 
