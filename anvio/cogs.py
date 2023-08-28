@@ -491,18 +491,18 @@ class COGsSetup:
                                   'func': self.format_categories,
                                   'type': 'essential',
                                   'formatted_file_name': 'CATEGORIES.txt'},
+                              'checksum.md5.txt': {
+                                   'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
+                                   'func': None,
+                                   'type': 'essential',
+                                   'formatted_file_name': 'CHECKSUMS.txt'},
                               'cog-20.fa.gz': {
                                   'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz',
                                   'func': self.format_protein_db,
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
-                              'checksum.md5.txt': {
-                                  'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
-                                  'func': self.check_hash,
-                                  'type': 'essential',
-                                  'formatted_file_name': 'checksums.txt'}
                              },
-                            },
+                        }
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
@@ -759,6 +759,10 @@ class COGsSetup:
 
 
     def format_protein_db(self, input_file_path, output_file_path):
+        # Check hash of download DB
+        essential_file_paths = self.get_essential_file_paths()
+        self.check_cog_hash(essential_file_paths['CHECKSUMS.txt'], None)
+
         progress.new('Formatting raw files')
         progress.update('Decompressing protein sequences')
 
