@@ -834,7 +834,7 @@ class COGsSetup:
 
     def setup_raw_data(self):
         # Check hash of downloaded files before any setup
-        self.check_raw_data_hash(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
+        self.check_raw_data_hash_and_existence(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
                             J(self.COG_data_dir, self.files["checksum.md5.txt"]['formatted_file_name']))
 
         for file_name in self.files:
@@ -845,7 +845,7 @@ class COGsSetup:
 
             self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
-    def check_raw_data_hash(self, input_file_path, output_file_path):
+    def check_raw_data_hash_and_existence(self, input_file_path, output_file_path):
         """Checks the cheksum of each downloaded file to ensure succesful download."""
         progress.new('Checking checksums and file existence')
 
@@ -871,7 +871,7 @@ class COGsSetup:
 
             # Check checksum
             if self.COG_version == 'COG20':
-                if not hashlib.md5(file_path) == checksums[file_name]:
+                if not hashlib.md5(open(file_path, "rU").read()).hexdigest() == checksums[file_name]:
                     raise ConfigError(
                         f"Something is wrong :/ The checksum of {file_name} does not match the checksum provided by NCBI. "
                         f"This is most likely due to an interrupted download. NCBI server often interrupt downloads midway."
