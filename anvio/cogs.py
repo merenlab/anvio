@@ -493,7 +493,7 @@ class COGsSetup:
                                   'formatted_file_name': 'CATEGORIES.txt'},
                               'checksum.md5.txt': {
                                    'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
-                                   'func': None,
+                                   'func': self.check_cog_hash,
                                    'type': 'essential',
                                    'formatted_file_name': 'CHECKSUMS.txt'},
                               'cog-20.fa.gz': {
@@ -759,10 +759,6 @@ class COGsSetup:
 
 
     def format_protein_db(self, input_file_path, output_file_path):
-        # Check hash of download DB
-        essential_file_paths = self.get_essential_file_paths()
-        self.check_cog_hash(essential_file_paths['CHECKSUMS.txt'], None)
-
         progress.new('Formatting raw files')
         progress.update('Decompressing protein sequences')
 
@@ -864,6 +860,10 @@ class COGsSetup:
 
 
     def setup_raw_data(self):
+        # Check hash of downloaded files before any setup
+        self.check_cog_hash(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
+                            J(self.COG_data_dir, self.files["checksum.md5.txt"]['formatted_file_name']))
+
         for file_name in self.files:
             file_path = J(self.raw_NCBI_files_dir, file_name)
 
@@ -873,4 +873,6 @@ class COGsSetup:
             if not os.path.exists(file_path):
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
+            if file_path == "checksum.md5.txt":
+                continue
             self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
