@@ -448,7 +448,7 @@ class COGsData:
 
 class COGsSetup:
     """A class to download and setup the COG data from NCBI."""
-    def __init__(self, args=Args(), cog_data_dir = None, run=run, progress=progress):
+    def __init__(self, args=Args(), cog_data_dir=None, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -495,9 +495,14 @@ class COGsSetup:
                                   'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz',
                                   'func': self.format_protein_db,
                                   'type': 'database',
-                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
+                              'checksum.md5.txt': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
+                                  'func': self.check_hash,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'checksums.txt'}
                              },
-                         }
+                            },
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
@@ -813,6 +818,32 @@ class COGsSetup:
 
         os.remove(temp_fasta_path)
 
+    def check_cog_hash(self, input_file_path, output_file_path):
+        """Checks the cheksum of each downloaded file to ensure succesful download."""
+        progress.new('Checking checksums')
+
+        # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
+        checksums = {}
+        for line in open(input_file_path, 'rU').readlines():
+            checksum, file_name = line.strip('\n').split('  ')
+            checksums[file_name] = checksum
+
+        # For each file, check existence and check checksum
+        for file_name in self.files:
+            file_path = J(self.raw_NCBI_files_dir, file_name)
+
+            # Check file exists
+            if not os.path.exists(file_path):
+                raise ConfigError("Something is wrong :/ Raw files are not in place...")
+
+            # Check checksum
+            if not utils.md5(file_path) == checksums[file_name]:
+                raise ConfigError(f"Something is wrong :/ The checksum of {file_name} does not match the checksum in "
+                                  f"the checksums.txt file. This is most likely due to an interrupted download. NCBI "
+                                  f"server often interrupt downloads midway. Please try again with the --reset flag.")
+
+        progress.end()
+        os.remove(input_file_path)
 
     def get_raw_data(self):
         if not os.path.exists(self.raw_NCBI_files_dir):
