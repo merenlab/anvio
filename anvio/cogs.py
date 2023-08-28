@@ -8,6 +8,7 @@ import os
 import gzip
 import glob
 import shutil
+import hashlib
 
 import anvio
 import anvio.utils as utils
@@ -846,7 +847,7 @@ class COGsSetup:
 
     def check_raw_data_hash(self, input_file_path, output_file_path):
         """Checks the cheksum of each downloaded file to ensure succesful download."""
-        progress.new('Checking checksums')
+        progress.new('Checking checksums and file existence')
 
         # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
         checksums = {}
@@ -854,6 +855,11 @@ class COGsSetup:
             stripped = line.strip('\n').split(' ')
             file_name = stripped[-1]
             checksums[file_name] = stripped[0]
+
+        # Print warning if checksums are not provided by NCBI
+        if self.COG_version != 'COG20':
+            self.run.warning(f"The version of COG you requested {self.COG_version} is not distributed with checksums. "
+                             f"Thus anvio cannot check file integrity.")
 
         # For each file, check existence and check checksum
         for file_name in self.files:
@@ -864,11 +870,12 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             # Check checksum
-            if not utils.md5(file_path) == checksums[file_name]:
-                raise ConfigError(
-                    f"Something is wrong :/ The checksum of {file_name} does not match the checksum provided by NCBI. "
-                    f"This is most likely due to an interrupted download. NCBI server often interrupt downloads midway."
-                    f" Please try again with the --reset flag.")
+            if self.COG_version == 'COG20':
+                if not hashlib.md5(file_path) == checksums[file_name]:
+                    raise ConfigError(
+                        f"Something is wrong :/ The checksum of {file_name} does not match the checksum provided by NCBI. "
+                        f"This is most likely due to an interrupted download. NCBI server often interrupt downloads midway."
+                        f" Please try again with the --reset flag.")
 
         progress.end()
         os.remove(input_file_path)  # Checksum file no longer needed
