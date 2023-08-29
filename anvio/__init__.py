@@ -949,6 +949,14 @@ D = {
                      "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
                      "to use the default path if you do not specify anything."}
                 ),
+    'modelseed-data-dir': (
+            ['--modelseed-data-dir'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "The directory path for your ModelSEED Biochemistry setup. Anvi'o will try to use "
+                     "the default path if you do not specify anything."}
+                ),
     'user-modules': (
             ['-u', '--user-modules'],
             {'default': None,

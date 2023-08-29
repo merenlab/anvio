@@ -17,7 +17,7 @@ from fractions import Fraction
 from typing import Dict, List, Tuple
 from abc import ABC, abstractmethod, abstractproperty
 
-import anvio.proteinorthology.protein as protein
+import anvio.biochemistry.protein as protein
 
 from anvio.errors import ConfigError
 from anvio.utils import download_file
@@ -199,7 +199,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
 
         Returns
         =======
-        anvio.proteinorthology.protein.Reaction
+        anvio.biochemistry.protein.Reaction
         """
         self._check_reference_database_initialization()
         stoichiometry: str = reaction_data['stoichiometry']

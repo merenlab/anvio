@@ -5,8 +5,8 @@ DESCRIPTION = """This program writes a file of metabolic data for FBA models."""
 from sys import exit
 from argparse import Namespace
 
-import anvio.proteinorthology.refdbs as refdbs
-import anvio.proteinorthology.metabolicmodel as metabolicmodel
+import anvio.biochemistry.refdbs as refdbs
+import anvio.biochemistry.metabolicmodel as metabolicmodel
 
 from anvio import A, K
 from anvio.terminal import Run
