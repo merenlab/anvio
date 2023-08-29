@@ -494,7 +494,7 @@ class COGsSetup:
                                   'formatted_file_name': 'CATEGORIES.txt'},
                               'checksum.md5.txt': {  # No func as it is called by the setup_raw_data function
                                    'url': 'ftp://ftp.ncbi.nih.gov//pub/COG/COG2020/data/checksums.md5.txt',
-                                   'type': 'essential',
+                                   'type': 'non-essential',
                                    'formatted_file_name': 'CHECKSUMS.txt'},
                               'cog-20.fa.gz': {
                                   'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz',
