@@ -835,8 +835,7 @@ class COGsSetup:
 
     def setup_raw_data(self):
         # Check hash of downloaded files before any setup
-        self.check_raw_data_hash_and_existence(J(self.raw_NCBI_files_dir, "checksum.md5.txt"),
-                            J(self.COG_data_dir, self.files["checksum.md5.txt"]['formatted_file_name']))
+        self.check_raw_data_hash_and_existence(None, None)
 
         for file_name in self.files:
             file_path = J(self.raw_NCBI_files_dir, file_name)
@@ -851,6 +850,20 @@ class COGsSetup:
         """Checks the cheksum of each downloaded file to ensure succesful download."""
         progress.new('Checking checksums and file existence')
 
+        # Checksum file either provided by NCBI or us
+        if self.COG_version == 'COG20':
+            input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
+
+        elif self.COG_version == 'COG14':
+            # Get check_.md5.txt file from anvio/misc
+            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/COG14/checksum.md5.txt')
+
+        else:
+            self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
+                             f"Thus, anvi'o cannot check file integrity after download. This is not a big "
+                             f"danger since failed downloads often lead to catastrophic errors instead of "
+                             f"quiet omission of such problems :)")
+
         # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
         checksums = {}
         for line in open(input_file_path, 'rU').readlines():
@@ -858,12 +871,6 @@ class COGsSetup:
             file_name = stripped[-1].strip('*')
             checksums[file_name] = stripped[0]
 
-        # Print warning if checksums are not provided by NCBI
-        if self.COG_version != 'COG20':
-            self.run.warning(f"Please note that {self.COG_version} data are not distributed with checksums. "
-                             f"Thus, anvi'o cannot check file integrity after download. This is not a big "
-                             f"danger since failed downloads often lead to catastrophic errors instead of "
-                             f"quiet omission of such problems :)")
 
         # For each file, check existence and check checksum
         for file_name in self.files:
@@ -874,7 +881,7 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             # Check file present in checksum
-            if not file_name in checksums.keys() and file_name != "checksum.md5.txt":
+            if file_name not in checksums.keys() and file_name != "checksum.md5.txt":
                 self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
                                  f"continue despite this, but this is unexpected.")
 
