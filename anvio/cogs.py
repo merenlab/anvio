@@ -856,7 +856,7 @@ class COGsSetup:
 
         elif self.COG_version == 'COG14':
             # Get check_.md5.txt file from anvio/misc
-            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/COG14/checksum.md5.txt')
+            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/checksum.md5.txt')
 
         else:
             self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
