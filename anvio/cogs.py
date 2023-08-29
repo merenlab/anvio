@@ -818,6 +818,7 @@ class COGsSetup:
 
         os.remove(temp_fasta_path)
 
+
     def get_raw_data(self):
         if not os.path.exists(self.raw_NCBI_files_dir):
             os.mkdir(self.raw_NCBI_files_dir)
@@ -845,6 +846,7 @@ class COGsSetup:
 
             self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
+
     def check_raw_data_hash_and_existence(self, input_file_path, output_file_path):
         """Checks the cheksum of each downloaded file to ensure succesful download."""
         progress.new('Checking checksums and file existence')
@@ -858,8 +860,10 @@ class COGsSetup:
 
         # Print warning if checksums are not provided by NCBI
         if self.COG_version != 'COG20':
-            self.run.warning(f"The version of COG you requested {self.COG_version} is not distributed with checksums. "
-                             f"Thus anvio cannot check file integrity.")
+            self.run.warning(f"Please note that {self.COG_version} data are not distributed with checksums. "
+                             f"Thus, anvi'o cannot check file integrity after download. This is not a big "
+                             f"danger since failed downloads often lead to catastrophic errors instead of "
+                             f"quiet omission of such problems :)")
 
         # For each file, check existence and check checksum
         for file_name in self.files:
@@ -871,16 +875,16 @@ class COGsSetup:
 
             # Check file present in checksum
             if not file_name in checksums.keys() and file_name != "checksum.md5.txt":
-                self.run.warning(f"The file {file_name} is not present in the checksum file. You should be able to " 
-                                 f"continue despite this, but it is not expected.")
+                self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
+                                 f"continue despite this, but this is unexpected.")
 
             # Check checksum
             if self.COG_version == 'COG20' and file_name != "checksum.md5.txt":
                 if not hashlib.md5(open(file_path, "rb").read()).hexdigest() == checksums[file_name]:
-                    raise ConfigError(
-                        f"Error. The checksum of {file_name} does not match the checksum provided by NCBI. "
-                        f"This is most likely due to an interrupted download. NCBI server often interrupt downloads midway."
-                        f" Please try again with the --reset flag.")
+                    raise ConfigError(f"Something went wrong with your download :/ The checksum we calculated for `{file_name}` "
+                                      f"anvi'o just finished downloading does not match to the checksum provided by the NCBI. "
+                                      f"This is most likely due to an interrupted download, as the NCBI servers often prematurely "
+                                      f"end data transfers. Please try running the same command again with the `--reset` flag.")
 
         progress.end()
         os.remove(input_file_path)  # Checksum file no longer needed
