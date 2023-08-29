@@ -887,4 +887,3 @@ class COGsSetup:
                                       f"end data transfers. Please try running the same command again with the `--reset` flag.")
 
         progress.end()
-        os.remove(input_file_path)  # Checksum file no longer needed
