@@ -5,6 +5,7 @@ import sys
 
 import anvio
 import anvio.kegg as kegg
+import anvio.biochemistry.refdbs as refdbs
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
@@ -19,8 +20,14 @@ __description__ = "Download and setup KEGG KOfam HMM profiles plus KEGG MODULE a
 
 @time_program
 def main(args):
-    setup = kegg.KeggSetup(args)
-    setup.setup_data()
+
+    if args.mode == "modules":
+        setup = kegg.KeggSetup(args)
+        setup.setup_data()
+    if args.mode == "modeling":
+        args.db = 'KEGG'
+        db = refdbs.KEGGDatabase(args.dir, args.num_threads)
+        db.download(reset=args.reset)
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
@@ -34,6 +41,8 @@ if __name__ == '__main__':
                              "KOfam - only KOfam annotation models (HMMs)."
                              "modules - KOfam + pathways from the KEGG MODULES database."
                              "modeling - Orthologs and reactions for metabolic modeling.")
+    
+    # Below are all arguments for downloading KOfams/modules ('modules' mode)
     groupS = parser.add_argument_group('DEFAULT SETUP - KEGG SNAPSHOT', "This program will set up metabolism "
                                        "data from the KEGG resource of databases. By default, it will download "
                                        "the snapshot of KEGG that is associated with the latest release of anvi'o. "
@@ -58,9 +67,22 @@ if __name__ == '__main__':
                                         "setup from this archive instead of downloading one.")
     groupA.add_argument(*anvio.A('kegg-archive'), **anvio.K('kegg-archive'))
 
+    # below are args for downloading orthology/reations ('modeling' mode)
+    groupB = parser.add_argument_group('MODELING MODE', "Here are the parameters for downloading data relevant "
+                                                        "to metabolic modeling (ie, reaction network generation)")
+    groupB.add_argument(
+        '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
+        help=(
+            "Directory in which a new subdirectory with the name of the database (e.g., 'kegg', "
+            "'modelseed') is created containing database files."
+        )
+    )
+
+    # common args
     groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
     groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupE.add_argument(*anvio.A('skip-brite-hierarchies'), **anvio.K('skip-brite-hierarchies'))
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
