@@ -91,6 +91,8 @@ class ProteinReferenceDatabase(ABC):
             )
 
     def _set_up_db_dir(self, reset: bool) -> None:
+        if os.path.split(self.db_dir)[0] == self.default_superdir and not os.path.exists(self.default_superdir):
+            os.mkdir(self.default_superdir)
         if os.path.exists(self.db_dir):
             if reset:
                 rmtree(self.db_dir)
