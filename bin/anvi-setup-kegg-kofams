@@ -26,6 +26,14 @@ if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
     parser = ArgumentParser(description=__description__)
+
+    groupM = parser.add_argument_group('MODE', "Select which data you want to download.")
+    groupM.add_argument('--mode', choices=['KOfam','modules','modeling'], 
+                        help="Depending on your choice here, this program will download and set up "
+                             "certain subsets of the data available from KEGG. "
+                             "KOfam - only KOfam annotation models (HMMs)."
+                             "modules - KOfam + pathways from the KEGG MODULES database."
+                             "modeling - Orthologs and reactions for metabolic modeling.")
     groupS = parser.add_argument_group('DEFAULT SETUP - KEGG SNAPSHOT', "This program will set up metabolism "
                                        "data from the KEGG resource of databases. By default, it will download "
                                        "the snapshot of KEGG that is associated with the latest release of anvi'o. "
