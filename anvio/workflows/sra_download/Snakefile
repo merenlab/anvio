@@ -154,7 +154,7 @@ rule generate_samples_txt:
 
     version:1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "generate_samples_txt.log")
-    input: expand(dirs_dict['FASTAS'] + "/{accession}-pigz.done", accession=M.accessions_list)
+    input: expand(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"), accession=M.accessions_list)
     output: touch(os.path.join(dirs_dict['FASTAS'], "generate_samples_txt.done"))
     params:
         ACCESSION = M.accessions_list,
