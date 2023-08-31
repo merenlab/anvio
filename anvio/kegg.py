@@ -510,6 +510,7 @@ class KeggSetup(KeggContext):
         self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
+        self.skip_init = skip_init
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
