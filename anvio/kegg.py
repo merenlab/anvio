@@ -545,15 +545,9 @@ class KeggSetup(KeggContext):
 
         if not self.user_input_dir:
 
-            if not args.reset and not anvio.DEBUG and not skip_init:
-                self.is_database_exists(fail_if_exists=(not self.only_database))
-
+            # establish parent directory
             if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
             # get KEGG snapshot info for default setup
             self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
