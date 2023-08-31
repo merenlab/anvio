@@ -1196,8 +1196,9 @@ class ModulesDownload(KeggSetup):
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
         # since we also need to make sure KOfams are downloaded, we need to do their init checks too
-        # this call will also call the init of the superclass, which we also need
-        self.KOfam_setup_class = KOfamDownload.__init__(self, self.args)
+        # we also call the init of the superclass, which we also need
+        KeggSetup.__init__(self, self.args)
+        self.KOfam_setup_class = KOfamDownload(self.args)
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
