@@ -52,10 +52,11 @@ rule prefetch:
         None
 
     Outputs:
-        SRA: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite
+        SRA_TMP: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite
 
     Params:
-        SRA_output_dir: Output directory for the prefetched data
+        SRA_OUTPUT_DIR: Output directory for the prefetched data
+        MAX_SIZE: Maximum size of the SRA file to download
 
     Threads:
         The number of threads to use is specified by the prefetch variable
@@ -70,11 +71,11 @@ rule prefetch:
     output:
         SRA_TMP = temp(directory(os.path.join(dirs_dict['SRA_prefetch'], "{accession}")))
     params:
-        SRA_output_dir = os.path.join(dirs_dict['SRA_prefetch']),
-        max_size = M.get_param_value_from_config(['prefetch', '--max-size'])
+        SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),
+        MAX_SIZE = M.get_param_value_from_config(['prefetch', '--max-size'])
     threads: M.T('prefetch')
     run:
-        shell("prefetch {wildcards.accession} --output-directory {params.SRA_output_dir} --max-size {params.max_size} >> {log} 2>&1")
+        shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
 
 rule fasterq_dump:
@@ -137,7 +138,6 @@ rule pigz:
         pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
     """
 
-
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
     input: rules.fasterq_dump.output.FASTERQDUMP_DONE
@@ -150,7 +150,21 @@ rule pigz:
 
 
 rule generate_samples_txt:
-    """Create samples-txt files for paired-end reads and single reads samples"""
+    """Create samples-txt files for paired-end reads and single reads samples
+
+    Inputs:
+    - gziped FASTQ file(s) from the output of the pigz rule 
+
+    Outputs:
+    - samples.txt and samples_single_reads.txt in the FASTAS directory
+
+    Params:
+    - ACCESSION: list of accessions
+    - OUTPUT_DIR: directory to write the samples.txt file
+
+    Threads:
+    - Number of threads specified in the M object
+    """
 
     version:1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "generate_samples_txt.log")
@@ -160,6 +174,7 @@ rule generate_samples_txt:
         ACCESSION = M.accessions_list,
         OUTPUT_DIR = dirs_dict['FASTAS']
     run:
+
         paired_reads = []
         single_reads = []
 
