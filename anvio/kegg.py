@@ -1186,6 +1186,7 @@ class ModulesDownload(KeggSetup):
     """
 
     def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.args = args
         self.run = run
         self.progress = progress
@@ -1323,7 +1324,7 @@ class ModulesDownload(KeggSetup):
         return is_ok
 
      
-     def setup_from_archive(self):
+    def setup_from_archive(self):
         """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
 
         To do so, it unpacks the archive and checks its structure and that all required components are there.
