@@ -22,6 +22,7 @@ __description__ = "Download and setup various databases from KEGG"
 def main(args):
 
     if args.mode == "KOfam":
+        args.download_from_kegg = True
         setup = kegg.KeggSetup(args)
         setup.setup_kofams()
     if args.mode == "modules":
