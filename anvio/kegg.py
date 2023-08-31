@@ -542,7 +542,6 @@ class KeggSetup(KeggContext):
                              f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
                              f"followed our formatting guidelines, so keep an eye out for errors below.")
 
-        filesnpaths.is_program_exists('hmmpress')
 
         if not self.user_input_dir:
 
@@ -573,13 +572,6 @@ class KeggSetup(KeggContext):
             # default download path for KEGG snapshot
             self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
             self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
-
-            # download from KEGG option: ftp path for HMM profiles and KO list
-                # for ko list, add /ko_list.gz to end of url
-                # for profiles, add /profiles.tar.gz  to end of url
-            self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-            # dictionary mapping downloaded file name to final decompressed file name or folder location
-            self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
             # download from KEGG option: module/pathway map htext files and API link
             self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
@@ -696,23 +688,6 @@ class KeggSetup(KeggContext):
         if os.path.exists(self.user_modules_db_path):
             raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
                               f"please use the --reset flag or delete this file manually if you want to re-generate it.")
-
-
-    def download_profiles(self):
-        """This function downloads the Kofam profiles."""
-
-        self.run.info("Kofam Profile Database URL", self.database_url)
-
-        try:
-            for file_name in self.kofam_files.keys():
-                utils.download_file(self.database_url + '/' + file_name,
-                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
-                              "likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
 
     def process_module_file(self):
@@ -1251,136 +1226,6 @@ class KeggSetup(KeggContext):
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
 
 
-    def decompress_files(self):
-        """This function decompresses the Kofam profiles."""
-
-        self.progress.new('Decompressing files')
-        for file_name in self.kofam_files.keys():
-            self.progress.update('Decompressing file %s' % file_name)
-            full_path = os.path.join(self.kegg_data_dir, file_name)
-
-            if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
-            else:
-                utils.gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
-
-            self.progress.update("File decompressed. Yay.")
-        self.progress.end()
-
-
-    def confirm_downloaded_profiles(self):
-        """This function verifies that all Kofam profiles have been properly downloaded.
-
-        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
-        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
-
-        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
-        """
-
-        ko_nums = self.ko_dict.keys()
-        for k in ko_nums:
-            if k not in self.ko_skip_list:
-                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
-                if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
-                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
-                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
-                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
-                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
-
-
-    def move_orphan_files(self):
-        """This function moves the following to the orphan files directory:
-
-            - profiles that do not have ko_list entries
-            - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
-
-        And, the following profiles should not have been downloaded, but if they were then we move them, too:
-            - profiles whose ko_list entries have no data at all (in ko_skip_list)
-        """
-
-        if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
-
-        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
-        no_kofam_file_list = []
-        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
-        no_threshold_file_list = []
-        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
-        no_data_file_list = []
-
-        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
-        for hmm_file in hmm_list:
-            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
-            if ko not in self.ko_dict.keys():
-                if ko in self.ko_no_threshold_list:
-                    no_threshold_file_list.append(hmm_file)
-                elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
-                    no_data_file_list.append(hmm_file)
-                else:
-                    no_kofam_file_list.append(hmm_file)
-
-        # now we concatenate the orphan KO hmms into the orphan data directory
-        if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_kofam_file_list), self.orphan_data_dir))
-
-        if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_threshold_file_list), self.orphan_data_dir))
-
-        if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
-                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_data_file_list), self.orphan_data_dir))
-
-
-    def run_hmmpress(self):
-        """This function concatenates the Kofam profiles and runs hmmpress on them."""
-
-        self.progress.new('Preparing Kofam HMM Profiles')
-
-        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
-        self.confirm_downloaded_profiles()
-
-        self.progress.update('Handling orphan files')
-        self.move_orphan_files()
-
-        self.progress.update('Concatenating HMM profiles into one file...')
-        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
-        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
-
-        # there is no reason to keep the original HMM profiles around, unless we are debugging
-        if not anvio.DEBUG:
-            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
-
-        self.progress.update('Running hmmpress...')
-        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
-        ret_val = utils.run_command(cmd_line, log_file_path)
-
-        if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
-                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
-        else:
-            # getting rid of the log file because hmmpress was successful
-            os.remove(log_file_path)
-
-        self.progress.end()
-
-
     def create_user_modules_dict(self):
         """This function establishes the self.module_dict parameter for user modules.
 
@@ -1660,6 +1505,204 @@ class KeggSetup(KeggContext):
         else:
             # the default, set up from frozen KEGG release
             self.setup_kegg_snapshot()
+
+
+class KOfamDownload(KeggSetup):
+    """Class for setting up KOfam HMM profiles.
+    
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to command-line programs relying on this 
+        class, such as `anvi-setup-kegg-data`. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories 
+        when testing this class.
+    """
+
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        KeggSetup.__init__(self, self.args)
+
+        filesnpaths.is_program_exists('hmmpress')
+
+        # ftp path for HMM profiles and KO list
+            # for ko list, add /ko_list.gz to end of url
+            # for profiles, add /profiles.tar.gz  to end of url
+        self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+        # dictionary mapping downloaded file name to final decompressed file name or folder location
+        self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
+
+        expected_files_for_kofams = [self.kofam_hmm_file_path, self.ko_list_file_path]
+        if not args.reset and not anvio.DEBUG and not self.skip_init:
+            self.is_database_exists(expected_files_for_kofams, fail_if_exists=(not self.only_database))
+
+        if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not self.skip_init:
+            filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+
+    
+    def download_profiles(self):
+        """This function downloads the Kofam profiles."""
+
+        self.run.info("Kofam Profile Database URL", self.database_url)
+
+        try:
+            for file_name in self.kofam_files.keys():
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def decompress_profiles(self):
+        """This function decompresses the Kofam profiles."""
+
+        self.progress.new('Decompressing files')
+        for file_name in self.kofam_files.keys():
+            self.progress.update('Decompressing file %s' % file_name)
+            full_path = os.path.join(self.kegg_data_dir, file_name)
+
+            if full_path.endswith("tar.gz"):
+                utils.tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+            else:
+                utils.gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+
+            self.progress.update("File decompressed. Yay.")
+        self.progress.end()
+
+
+    def confirm_downloaded_profiles(self):
+        """This function verifies that all Kofam profiles have been properly downloaded.
+
+        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
+        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
+
+        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
+        """
+
+        ko_nums = self.ko_dict.keys()
+        for k in ko_nums:
+            if k not in self.ko_skip_list:
+                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
+                if not os.path.exists(hmm_path):
+                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
+                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
+                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
+
+
+    def move_orphan_files(self):
+        """This function moves the following to the orphan files directory:
+
+            - profiles that do not have ko_list entries
+            - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
+
+        And, the following profiles should not have been downloaded, but if they were then we move them, too:
+            - profiles whose ko_list entries have no data at all (in ko_skip_list)
+        """
+
+        if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
+            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
+                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+
+        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
+        no_kofam_file_list = []
+        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
+        no_threshold_file_list = []
+        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
+        no_data_file_list = []
+
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
+        for hmm_file in hmm_list:
+            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
+            if ko not in self.ko_dict.keys():
+                if ko in self.ko_no_threshold_list:
+                    no_threshold_file_list.append(hmm_file)
+                elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
+                    no_data_file_list.append(hmm_file)
+                else:
+                    no_kofam_file_list.append(hmm_file)
+
+        # now we concatenate the orphan KO hmms into the orphan data directory
+        if no_kofam_file_list:
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_kofam_file_list), self.orphan_data_dir))
+
+        if no_threshold_file_list:
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_threshold_file_list), self.orphan_data_dir))
+
+        if no_data_file_list:
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
+                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_data_file_list), self.orphan_data_dir))
+
+    
+    def run_hmmpress(self):
+        """This function concatenates the Kofam profiles and runs hmmpress on them."""
+
+        self.progress.new('Preparing Kofam HMM Profiles')
+
+        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
+        self.confirm_downloaded_profiles()
+
+        self.progress.update('Handling orphan files')
+        self.move_orphan_files()
+
+        self.progress.update('Concatenating HMM profiles into one file...')
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
+        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
+
+        # there is no reason to keep the original HMM profiles around, unless we are debugging
+        if not anvio.DEBUG:
+            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
+
+        self.progress.update('Running hmmpress...')
+        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
+        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
+
+        self.progress.end()
+
+
+    def setup_kofams(self):
+        """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
+
+        if not self.only_database:
+            self.download_profiles()
+
+        if not self.only_download:
+            self.decompress_profiles()
+            self.setup_ko_dict() # get ko dict attribute
+            self.run_hmmpress()
 
 
 class RunKOfams(KeggContext):
