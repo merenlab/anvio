@@ -1,4 +1,4 @@
-The `sra-download` workflow is a Snakemake workflow that downloads FASTQ files from SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) then gzips them using [pigz](https://zlib.net/pigz/). You will need to have these tools installed before you start.
+The `sra-download` workflow is a Snakemake workflow that downloads FASTQ files from SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump), gzips them using [pigz](https://zlib.net/pigz/), and provides a %(samples-txt)s. You will need to have these tools installed before you start.
 
 Let's get started.
 
