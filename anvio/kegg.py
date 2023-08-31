@@ -503,33 +503,17 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.kegg_archive_path = A('kegg_archive')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
         self.only_database = True if A('only_database') else False
-        self.kegg_snapshot = A('kegg_snapshot')
-        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
-        self.overwrite_modules_db = A('overwrite_output_destinations')
         self.skip_init = skip_init
 
-        if self.kegg_archive_path and self.download_from_kegg:
-            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
-                              "Please pick either just one or none of these. ")
-        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
-            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
-                              "KEGG archives. Please pick just one setup option and try again.")
         if (not self.download_from_kegg) and (self.only_download or self.only_database):
             raise ConfigError("Erm. The --only-download and --only-database options are only valid if you are also using the --download-from-kegg "
                               "option. Sorry.")
         if self.only_download and self.only_database:
             raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
-
-        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
-            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
-                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
-                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
-                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
 
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
@@ -549,31 +533,6 @@ class KeggSetup(KeggContext):
             # establish parent directory
             if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-
-            # get KEGG snapshot info for default setup
-            self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
-            self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-            self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
-
-            if self.target_snapshot not in self.snapshot_dict.keys():
-                self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
-                available_snapshots = sorted(list(self.snapshot_dict.keys()))
-                for snapshot_name in available_snapshots:
-                    self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
-
-                raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                                  "this time pick from the list shown above.")
-
-            # default download path for KEGG snapshot
-            self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
-            self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
-
-            # download from KEGG option: module/pathway map htext files and API link
-            self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
-            self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
-            self.kegg_rest_api_get = "http://rest.kegg.jp/get"
-            # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
-            self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
             filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
@@ -678,80 +637,6 @@ class KeggSetup(KeggContext):
         if os.path.exists(self.user_modules_db_path):
             raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
                               f"please use the --reset flag or delete this file manually if you want to re-generate it.")
-
-
-    def process_module_file(self):
-        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
-
-        The structure of this file is like this:
-
-        +D    Module
-        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
-        !
-        A<b>Pathway modules</b>
-        B
-        B  <b>Carbohydrate metabolism</b>
-        C    Central carbohydrate metabolism
-        D      M00001  Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate [PATH:map00010 map01200 map01100]
-        D      M00002  Glycolysis, core module involving three-carbon compounds [PATH:map00010 map01200 map01230 map01100]
-        D      M00003  Gluconeogenesis, oxaloacetate => fructose-6P [PATH:map00010 map00020 map01100]
-
-        In other words, a bunch of initial lines to be ignored, and thereafter the line's information can be determined by the one-letter code at the start.
-        A = Pathway modules (metabolic pathways) or signature modules (gene sets that indicate a phenotypic trait, ie toxins).
-        B = Category of module (a type of metabolism for pathway modules. For signature modules, either Gene Set or Module Set)
-        C = Sub-category of module
-        D = Module
-
-        """
-        self.module_dict = {}
-
-        filesnpaths.is_file_exists(self.kegg_module_file)
-        filesnpaths.is_file_plain_text(self.kegg_module_file)
-
-        f = open(self.kegg_module_file, 'rU')
-        self.progress.new("Parsing KEGG Module file")
-
-        current_module_type = None
-        current_category = None
-        current_subcategory = None
-
-        for line in f.readlines():
-            line = line.strip('\n')
-            first_char = line[0]
-
-            # garbage lines
-            if first_char in ["+", "#", "!"]:
-                continue
-            else:
-                # module type
-                if first_char == "A":
-                    fields = re.split('<[^>]*>', line) # we split by the html tag here
-                    current_module_type = fields[1]
-                # Category
-                elif first_char == "B":
-                    fields = re.split('<[^>]*>', line) # we split by the html tag here
-                    if len(fields) == 1: # sometimes this level has lines with only a B
-                        continue
-                    current_category = fields[1]
-                # Sub-category
-                elif first_char == "C":
-                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
-                    current_subcategory = fields[1]
-                # module
-                elif first_char == "D":
-                    fields = re.split('\s{2,}', line)
-                    mnum = fields[1]
-                    self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
-                # unknown code
-                else:
-                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
-                                      "made the file unparseable. It is likely that an update to KEGG has broken "
-                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
-                                      "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one). "
-                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
-                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
-        self.progress.end()
 
 
     def process_pathway_file(self):
@@ -978,138 +863,6 @@ class KeggSetup(KeggContext):
             self.download_generic_flat_file(acc, download_dir_name)
 
 
-    def process_brite_hierarchy_of_hierarchies(self):
-        """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
-
-        This method is called during setup to find all BRITE hierarchies to be downloaded.
-        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins.
-        Excluded hierarchies include those for modules, pathways, and other systems for reactions,
-        compounds, taxa, etc.
-
-        The dictionary that is filled out, `self.brite_dict`, is keyed by the 'ko' hierarchy name
-        exactly as given in the 'br08902' json file. The values are the categorizations of the
-        hierarchy in 'br08902', going from most general to most specific category.
-
-        Here is an example of an entry produced in self.brite_dict:
-            'ko01000  Enzymes':
-                ['Genes and Proteins', 'Protein families: metabolism']
-        """
-
-        filesnpaths.is_file_exists(self.kegg_brite_hierarchies_file)
-        filesnpaths.is_file_json_formatted(self.kegg_brite_hierarchies_file)
-
-        self.progress.new("Parsing KEGG BRITE Hierarchies file")
-
-        brite_hierarchies_dict = json.load(open(self.kegg_brite_hierarchies_file))
-        # store the names of all of the 'ko' hierarchies for genes/proteins
-        self.brite_dict = {}
-        hierarchies_appearing_multiple_times = []
-        hierarchies_with_unrecognized_accession = []
-        for hierarchy, categorizations in self.invert_brite_json_dict(brite_hierarchies_dict).items():
-            # we have observed the hierarchy label to have an accession followed by two spaces followed by the hierarchy name,
-            # but accommodate the possibility that the accession is separated from the name by a variable number of spaces
-            split_hierarchy = hierarchy.split(' ')
-            hierarchy_accession = split_hierarchy[0]
-            hierarchy_name = ' '.join(split_hierarchy[1: ]).lstrip()
-            if hierarchy_accession[: 2] == 'br':
-                # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
-                continue
-            elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
-                # this hierarchy is for modules, not genes/proteins
-                continue
-            elif hierarchy_accession == 'ko00003' and hierarchy_name == 'KEGG reaction modules':
-                # this hierarchy is also for modules
-                continue
-
-            if len(categorizations) > 1:
-                hierarchies_appearing_multiple_times.append((hierarchy, len(categorizations)))
-
-            if hierarchy_accession[: 2] != 'ko':
-                hierarchies_with_unrecognized_accession.append(hierarchy)
-                continue
-            try:
-                int(hierarchy_accession[2: 7])
-            except ValueError:
-                hierarchies_with_unrecognized_accession.append(hierarchy)
-                continue
-            self.brite_dict[hierarchy] = categorizations[0][1: ]
-
-        error_first_part = ""
-        if hierarchies_appearing_multiple_times:
-            error_first_part = ("Each BRITE hierarchy should only appear once in the hierarchy of hierarchies, "
-                                "but the following hierarchies appeared the given number of times: "
-                                f"{', '.join([f'{hier}: {num_times}' for hier, num_times in hierarchies_appearing_multiple_times])}.")
-        error_second_part = ""
-        if hierarchies_with_unrecognized_accession:
-            error_second_part = ("Each BRITE hierarchy accession is expected to have an accession formatted 'koXXXXX', where 'XXXXX' are five digits, "
-                                 f"but the following hierarchies did not have this format: {', '.join(hierarchies_with_unrecognized_accession)}.")
-        if hierarchies_appearing_multiple_times or hierarchies_with_unrecognized_accession:
-            raise ConfigError("Please contact the developers to look into the following error. "
-                              f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
-
-        self.progress.end()
-
-
-    def download_kegg_module_file(self):
-        """This function downloads the KEGG module file, which tells us which module files to download."""
-
-        # download the kegg module file, which lists all modules
-        try:
-            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
-                              "likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-
-    def download_modules(self):
-        """This function downloads the KEGG modules.
-
-        To verify that each file has been downloaded properly, we check that the last line is '///'.
-        """
-
-        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
-        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
-
-        # download all modules
-        for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.kegg_module_data_dir, mnum)
-            utils.download_file(self.kegg_rest_api_get + '/' + mnum,
-                file_path, progress=self.progress, run=self.run)
-            # verify entire file has been downloaded
-            f = open(file_path, 'rU')
-            f.seek(0, os.SEEK_END)
-            f.seek(f.tell() - 4, os.SEEK_SET)
-            last_line = f.readline().strip('\n')
-            if not last_line == '///':
-                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
-                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
-                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
-                                  % (file_path, last_line))
-
-
-    def confirm_downloaded_modules(self):
-        """This function verifies that all module files have been downloaded.
-
-        It checks that there is a module file for every module in the self.module_dict dictionary;
-        for that reason, it must be called after the function that creates that attribute,
-        process_module_file(), has already been called.
-        """
-
-        for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.kegg_module_data_dir, mnum)
-            if not os.path.exists(file_path):
-                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
-                                  f"This probably means that something is wrong with your downloaded data, since this "
-                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
-                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
-                                  f"data. We recommend the --reset flag.")
-        self.run.info("Number of module files found", len(self.module_dict))
-
-
     def download_pathways(self):
         """This function downloads the KEGG Pathways.
 
@@ -1150,70 +903,6 @@ class KeggSetup(KeggContext):
                                   "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
                                   "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
                                   % (file_path, last_line))
-
-
-    def download_brite_hierarchy_of_hierarchies(self):
-        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
-
-        This hierarchy contains the names of other hierarchies which are subsequently used for
-        downloading those hierarchy json files.
-        """
-
-        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
-        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
-
-        try:
-            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
-                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-
-    def download_brite_hierarchies(self):
-        """This function downloads a json file for every BRITE hierarchy of interest.
-
-        Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
-        """
-
-        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
-        unexpected_hierarchies = []
-        for hierarchy in self.brite_dict:
-            hierarchy_accession = hierarchy[: 7]
-            brite_system = hierarchy_accession[: 2]
-            if brite_system != 'ko':
-                unexpected_hierarchies.append(hierarchy)
-            if not unexpected_hierarchies:
-                file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
-                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
-                                    file_path, progress=self.progress, run=self.run)
-                # verify that the whole json file was downloaded
-                filesnpaths.is_file_json_formatted(file_path)
-        if unexpected_hierarchies:
-            raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
-                              f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
-
-
-    def confirm_downloaded_brite_hierarchies(self):
-        """This function verifies that all BRITE hierarchy files have been downloaded.
-
-        It checks that there is a hierarchy file for every hierarchy in the self.brite_dict dictionary;
-        for that reason, it must be called after the function that creates that attribute,
-        process_brite_hierarchy_of_hierarchies(), has already been called.
-        """
-
-        for hierarchy in self.brite_dict.keys():
-            hierarchy_accession = hierarchy[: 7]
-            file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
-            if not os.path.exists(file_path):
-                raise ConfigError(f"The BRITE hierarchy file for {hierarchy} does not exist at its expected location, {file_path}. "
-                                  f"This probably means that something is wrong with your downloaded data, since this "
-                                  f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
-                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
-                                  f"data. We recommend the --reset flag.")
-        self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
 
 
     def create_user_modules_dict(self):
@@ -1274,173 +963,6 @@ class KeggSetup(KeggContext):
                               "for assistance. :) ")
 
 
-    def kegg_archive_is_ok(self, unpacked_archive_path):
-        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
-
-        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
-        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
-        with the right names/paths into the archive file. But what would be the point of that?
-
-        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
-        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
-        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
-        to the implementation require the direct use of the files in these folders, then this function should be updated
-        to check for those.
-        """
-
-        is_ok = True
-
-        # check top-level files and folders
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        expected_directories_and_files = [self.orphan_data_dir,
-                                          self.kegg_module_data_dir,
-                                          self.kegg_hmm_data_dir,
-                                          self.ko_list_file_path,
-                                          self.kegg_module_file,
-                                          self.kegg_modules_db_path]
-        for f in expected_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
-                                     % (path_to_f_in_archive))
-
-        # check hmm files
-        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
-        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
-        expected_hmm_files = [kofam_hmm_basename]
-        for h in expected_hmm_files:
-            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
-            if not os.path.exists(path_to_h_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
-                                     % (path_to_h_in_archive))
-            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
-            for ext in expected_extensions:
-                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
-                if not os.path.exists(path_to_expected_hmmpress_file):
-                    is_ok = False
-                    if anvio.DEBUG:
-                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
-                                         % (path_to_expected_hmmpress_file))
-
-        return is_ok
-
-
-    def check_archive_for_brite(self, unpacked_archive_path):
-        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
-
-        It is ok for archives not to have these present, but let the user know.
-        """
-
-        is_brite_included = True
-
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        brite_directories_and_files = [self.brite_data_dir,
-                                       self.kegg_brite_hierarchies_file]
-        for f in brite_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
-                is_brite_included = False
-                if anvio.DEBUG:
-                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
-
-        return is_brite_included
-
-
-    def check_modules_db_version(self):
-        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
-
-        # get current version of db
-        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
-        current_db_version = int(db_conn.get_meta_value('version'))
-        db_conn.disconnect()
-
-        # if modules.db is out of date, give warning
-        target_version = int(anvio.tables.versions_for_db_types['modules'])
-        if current_db_version != target_version:
-            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
-                             f"Here is the path to the database: {self.kegg_modules_db_path}")
-
-
-    def setup_from_archive(self):
-        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
-
-        To do so, it unpacks the archive and checks its structure and that all required components are there.
-        """
-
-        self.run.info("KEGG archive", self.kegg_archive_path)
-        self.progress.new('Unzipping KEGG archive file...')
-        if not self.kegg_archive_path.endswith("tar.gz"):
-            self.progress.reset()
-            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
-                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
-        unpacked_archive_name = "KEGG_archive_unpacked"
-        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
-
-        self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
-        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
-        self.progress.end()
-        if archive_is_ok:
-            if os.path.exists(self.kegg_data_dir):
-                shutil.rmtree(self.kegg_data_dir)
-            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
-            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
-            shutil.rmtree(unpacked_archive_name)
-
-            if not archive_contains_brite and not self.skip_brite_hierarchies:
-                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
-                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
-                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
-
-            # if necessary, warn user about migrating the modules db
-            self.check_modules_db_version()
-
-        else:
-            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
-                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
-            if not anvio.DEBUG:
-                shutil.rmtree(unpacked_archive_name)
-                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
-                               "flag to keep it if you want to see its contents."
-            else:
-                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
-                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
-            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it. %s" % (self.kegg_archive_path, debug_output))
-
-
-    def setup_kegg_snapshot(self):
-        """This is the default setup strategy in which we unpack a specific KEGG archive.
-
-        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
-        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
-        when KEGG is updated.
-
-        It is essentially a special case of setting up from an archive.
-        """
-
-        if anvio.DEBUG:
-            self.run.info("Downloading from: ", self.default_kegg_data_url)
-            self.run.info("Downloading to: ", self.default_kegg_archive_file)
-        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
-
-        # a hack so we can use the archive setup function
-        self.kegg_archive_path = self.default_kegg_archive_file
-        self.setup_from_archive()
-
-        # if all went well, let's get rid of the archive we used and the log file
-        if not anvio.DEBUG:
-            os.remove(self.default_kegg_archive_file)
-        else:
-            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
-                             "has been kept. You may want to remove it later.")
-
-
     def setup_user_data(self):
         """This function sets up user metabolism data from the provided input directory.
 
@@ -1449,52 +971,6 @@ class KeggSetup(KeggContext):
 
         self.create_user_modules_dict()
         self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
-
-    def setup_kofams(self):
-        """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
-
-        self.download_profiles()
-        self.decompress_files()
-        self.setup_ko_dict() # get ko dict attribute
-        self.run_hmmpress()
-
-    def setup_data(self):
-        """This is a driver function which executes the KEGG setup process."""
-
-        if self.kegg_archive_path:
-            self.setup_from_archive()
-
-        elif self.download_from_kegg:
-            # mostly for developers and the adventurous
-            if not self.only_database:
-                # this downloads, decompresses, and hmmpresses the KOfam profiles
-                self.setup_kofams()
-                
-                # it also downloads and processes the KEGG Module files into the MODULES.db
-                self.download_kegg_module_file()
-                self.process_module_file() # get module dict attribute
-                self.download_modules()
-                if not self.skip_brite_hierarchies:
-                    self.download_brite_hierarchy_of_hierarchies()
-                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
-                    self.download_brite_hierarchies()
-            else:
-                # get required attributes for database setup and make sure all expected files were downloaded
-                self.process_module_file()
-                self.confirm_downloaded_modules()
-                if not self.skip_brite_hierarchies:
-                    self.process_brite_hierarchy_of_hierarchies()
-                    self.confirm_downloaded_brite_hierarchies()
-
-            if not self.only_download:
-                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
-
-        elif self.user_input_dir:
-            self.setup_user_data()
-
-        else:
-            # the default, set up from frozen KEGG release
-            self.setup_kegg_snapshot()
 
 
 class KOfamDownload(KeggSetup):
@@ -1693,6 +1169,566 @@ class KOfamDownload(KeggSetup):
             self.decompress_profiles()
             self.setup_ko_dict() # get ko dict attribute
             self.run_hmmpress()
+
+
+class ModulesDownload(KeggSetup):
+    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES.
+    
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to command-line programs relying on this 
+        class, such as `anvi-setup-kegg-data`. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories 
+        when testing this class.
+    """
+
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.kegg_archive_path = A('kegg_archive')
+        self.kegg_snapshot = A('kegg_snapshot')
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.overwrite_modules_db = A('overwrite_output_destinations')
+
+        # since we also need to make sure KOfams are downloaded, we need to do their init checks too
+        # this call will also call the init of the superclass, which we also need
+        self.KOfam_setup_class = KOfamDownload.__init__(self, self.args)
+
+        if self.kegg_archive_path and self.download_from_kegg:
+            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
+                              "Please pick either just one or none of these. ")
+        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
+            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
+                              "KEGG archives. Please pick just one setup option and try again.")
+        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
+            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
+                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
+                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
+                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
+
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+            available_snapshots = sorted(list(self.snapshot_dict.keys()))
+            for snapshot_name in available_snapshots:
+                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                                "this time pick from the list shown above.")
+
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+
+        # download from KEGG option: module/pathway map htext files and API link
+        self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+        self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+        # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
+        self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
+        
+        # check if the data is already downloaded
+        expected_files_for_modules = [self.kegg_module_file,
+                                      self.kegg_module_data_dir]
+        if not self.skip_brite_hierarchies:
+            expected_files_for_modules.append(self.kegg_brite_hierarchies_file)
+            expected_files_for_modules.append(self.brite_data_dir)
+
+        if not args.reset and not anvio.DEBUG and not self.skip_init:
+            self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_database))
+
+        # generate subfolders if necessary
+        if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not self.skip_init:
+            filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
+            if not self.skip_brite_hierarchies:
+                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
+
+    
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
+
+        # get current version of db
+        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
+        current_db_version = int(db_conn.get_meta_value('version'))
+        db_conn.disconnect()
+
+        # if modules.db is out of date, give warning
+        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        if current_db_version != target_version:
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+
+    def kegg_archive_is_ok(self, unpacked_archive_path):
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
+
+        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
+        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
+        with the right names/paths into the archive file. But what would be the point of that?
+
+        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
+        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
+        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
+        to the implementation require the direct use of the files in these folders, then this function should be updated
+        to check for those.
+        """
+
+        is_ok = True
+
+        # check top-level files and folders
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        expected_directories_and_files = [self.orphan_data_dir,
+                                          self.kegg_module_data_dir,
+                                          self.kegg_hmm_data_dir,
+                                          self.ko_list_file_path,
+                                          self.kegg_module_file,
+                                          self.kegg_modules_db_path]
+        for f in expected_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
+                                     % (path_to_f_in_archive))
+
+        # check hmm files
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
+        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
+        expected_hmm_files = [kofam_hmm_basename]
+        for h in expected_hmm_files:
+            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
+            if not os.path.exists(path_to_h_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
+                                     % (path_to_h_in_archive))
+            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
+            for ext in expected_extensions:
+                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
+                if not os.path.exists(path_to_expected_hmmpress_file):
+                    is_ok = False
+                    if anvio.DEBUG:
+                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
+                                         % (path_to_expected_hmmpress_file))
+
+        return is_ok
+
+     
+     def setup_from_archive(self):
+        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
+
+        To do so, it unpacks the archive and checks its structure and that all required components are there.
+        """
+
+        self.run.info("KEGG archive", self.kegg_archive_path)
+        self.progress.new('Unzipping KEGG archive file...')
+        if not self.kegg_archive_path.endswith("tar.gz"):
+            self.progress.reset()
+            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
+                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
+        unpacked_archive_name = "KEGG_archive_unpacked"
+        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+
+        self.progress.update('Checking KEGG archive structure and contents...')
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        self.progress.end()
+        if archive_is_ok:
+            if os.path.exists(self.kegg_data_dir):
+                shutil.rmtree(self.kegg_data_dir)
+            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
+            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
+            shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
+
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
+
+        else:
+            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
+                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
+            if not anvio.DEBUG:
+                shutil.rmtree(unpacked_archive_name)
+                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
+                               "flag to keep it if you want to see its contents."
+            else:
+                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
+                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
+            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
+                              "to use it. %s" % (self.kegg_archive_path, debug_output))
+
+
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used and the log file
+        if not anvio.DEBUG:
+            os.remove(self.default_kegg_archive_file)
+        else:
+            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
+                             "has been kept. You may want to remove it later.")
+
+    
+    def download_kegg_module_file(self):
+        """This function downloads the KEGG module file, which tells us which module files to download."""
+
+        # download the kegg module file, which lists all modules
+        try:
+            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def process_module_file(self):
+        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
+
+        The structure of this file is like this:
+
+        +D    Module
+        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
+        !
+        A<b>Pathway modules</b>
+        B
+        B  <b>Carbohydrate metabolism</b>
+        C    Central carbohydrate metabolism
+        D      M00001  Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate [PATH:map00010 map01200 map01100]
+        D      M00002  Glycolysis, core module involving three-carbon compounds [PATH:map00010 map01200 map01230 map01100]
+        D      M00003  Gluconeogenesis, oxaloacetate => fructose-6P [PATH:map00010 map00020 map01100]
+
+        In other words, a bunch of initial lines to be ignored, and thereafter the line's information can be determined by the one-letter code at the start.
+        A = Pathway modules (metabolic pathways) or signature modules (gene sets that indicate a phenotypic trait, ie toxins).
+        B = Category of module (a type of metabolism for pathway modules. For signature modules, either Gene Set or Module Set)
+        C = Sub-category of module
+        D = Module
+
+        """
+        self.module_dict = {}
+
+        filesnpaths.is_file_exists(self.kegg_module_file)
+        filesnpaths.is_file_plain_text(self.kegg_module_file)
+
+        f = open(self.kegg_module_file, 'rU')
+        self.progress.new("Parsing KEGG Module file")
+
+        current_module_type = None
+        current_category = None
+        current_subcategory = None
+
+        for line in f.readlines():
+            line = line.strip('\n')
+            first_char = line[0]
+
+            # garbage lines
+            if first_char in ["+", "#", "!"]:
+                continue
+            else:
+                # module type
+                if first_char == "A":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    current_module_type = fields[1]
+                # Category
+                elif first_char == "B":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    if len(fields) == 1: # sometimes this level has lines with only a B
+                        continue
+                    current_category = fields[1]
+                # Sub-category
+                elif first_char == "C":
+                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    current_subcategory = fields[1]
+                # module
+                elif first_char == "D":
+                    fields = re.split('\s{2,}', line)
+                    mnum = fields[1]
+                    self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
+                # unknown code
+                else:
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
+                                      "made the file unparseable. It is likely that an update to KEGG has broken "
+                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
+                                      "Please contact the developers to see if this is a fixable issue, and in the "
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
+        self.progress.end()
+
+
+    def download_modules(self):
+        """This function downloads the KEGG modules.
+
+        To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
+
+        # download all modules
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            utils.download_file(self.kegg_rest_api_get + '/' + mnum,
+                file_path, progress=self.progress, run=self.run)
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
+
+
+    def confirm_downloaded_modules(self):
+        """This function verifies that all module files have been downloaded.
+
+        It checks that there is a module file for every module in the self.module_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_module_file(), has already been called.
+        """
+
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+        self.run.info("Number of module files found", len(self.module_dict))
+
+
+    def setup_modules_data(self):
+        """This is a driver function which executes the setup process for pathway prediction data from KEGG."""
+
+        if self.kegg_archive_path:
+            self.setup_from_archive()
+
+        elif self.download_from_kegg:
+            # mostly for developers and the adventurous
+            if not self.only_database:
+                # this downloads, decompresses, and hmmpresses the KOfam profiles
+                self.KOfam_setup_class.setup_kofams()
+                
+                # it also downloads and processes the KEGG Module files into the MODULES.db
+                self.download_kegg_module_file()
+                self.process_module_file() # get module dict attribute
+                self.download_modules()
+                if not self.skip_brite_hierarchies:
+                    self.download_brite_hierarchy_of_hierarchies()
+                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
+                    self.download_brite_hierarchies()
+            else:
+                # get required attributes for database setup and make sure all expected files were downloaded
+                self.process_module_file()
+                self.confirm_downloaded_modules()
+                if not self.skip_brite_hierarchies:
+                    self.process_brite_hierarchy_of_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
+
+            if not self.only_download:
+                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
+
+        # FIXME: we will have to move user setup to a completely separate program at some point
+        # PS. user setup related functions belong to the superclass for now
+        elif self.user_input_dir:
+            self.setup_user_data()
+
+        else:
+            # the default, set up from frozen KEGG release
+            self.setup_kegg_snapshot()
+
+    
+    ###### BRITE-related functions below ######
+    def download_brite_hierarchy_of_hierarchies(self):
+        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
+
+        This hierarchy contains the names of other hierarchies which are subsequently used for
+        downloading those hierarchy json files.
+        """
+
+        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
+                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def process_brite_hierarchy_of_hierarchies(self):
+        """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
+
+        This method is called during setup to find all BRITE hierarchies to be downloaded.
+        Hierarchies of interest have accessions starting with 'ko' and classify genes/proteins.
+        Excluded hierarchies include those for modules, pathways, and other systems for reactions,
+        compounds, taxa, etc.
+
+        The dictionary that is filled out, `self.brite_dict`, is keyed by the 'ko' hierarchy name
+        exactly as given in the 'br08902' json file. The values are the categorizations of the
+        hierarchy in 'br08902', going from most general to most specific category.
+
+        Here is an example of an entry produced in self.brite_dict:
+            'ko01000  Enzymes':
+                ['Genes and Proteins', 'Protein families: metabolism']
+        """
+
+        filesnpaths.is_file_exists(self.kegg_brite_hierarchies_file)
+        filesnpaths.is_file_json_formatted(self.kegg_brite_hierarchies_file)
+
+        self.progress.new("Parsing KEGG BRITE Hierarchies file")
+
+        brite_hierarchies_dict = json.load(open(self.kegg_brite_hierarchies_file))
+        # store the names of all of the 'ko' hierarchies for genes/proteins
+        self.brite_dict = {}
+        hierarchies_appearing_multiple_times = []
+        hierarchies_with_unrecognized_accession = []
+        for hierarchy, categorizations in self.invert_brite_json_dict(brite_hierarchies_dict).items():
+            # we have observed the hierarchy label to have an accession followed by two spaces followed by the hierarchy name,
+            # but accommodate the possibility that the accession is separated from the name by a variable number of spaces
+            split_hierarchy = hierarchy.split(' ')
+            hierarchy_accession = split_hierarchy[0]
+            hierarchy_name = ' '.join(split_hierarchy[1: ]).lstrip()
+            if hierarchy_accession[: 2] == 'br':
+                # hierarchy accessions beginning with 'br' are for reactions, compounds, taxa, etc., not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00002' and hierarchy_name == 'KEGG modules':
+                # this hierarchy is for modules, not genes/proteins
+                continue
+            elif hierarchy_accession == 'ko00003' and hierarchy_name == 'KEGG reaction modules':
+                # this hierarchy is also for modules
+                continue
+
+            if len(categorizations) > 1:
+                hierarchies_appearing_multiple_times.append((hierarchy, len(categorizations)))
+
+            if hierarchy_accession[: 2] != 'ko':
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            try:
+                int(hierarchy_accession[2: 7])
+            except ValueError:
+                hierarchies_with_unrecognized_accession.append(hierarchy)
+                continue
+            self.brite_dict[hierarchy] = categorizations[0][1: ]
+
+        error_first_part = ""
+        if hierarchies_appearing_multiple_times:
+            error_first_part = ("Each BRITE hierarchy should only appear once in the hierarchy of hierarchies, "
+                                "but the following hierarchies appeared the given number of times: "
+                                f"{', '.join([f'{hier}: {num_times}' for hier, num_times in hierarchies_appearing_multiple_times])}.")
+        error_second_part = ""
+        if hierarchies_with_unrecognized_accession:
+            error_second_part = ("Each BRITE hierarchy accession is expected to have an accession formatted 'koXXXXX', where 'XXXXX' are five digits, "
+                                 f"but the following hierarchies did not have this format: {', '.join(hierarchies_with_unrecognized_accession)}.")
+        if hierarchies_appearing_multiple_times or hierarchies_with_unrecognized_accession:
+            raise ConfigError("Please contact the developers to look into the following error. "
+                              f"{error_first_part}{' ' if error_first_part and error_second_part else ''}{error_second_part}")
+
+        self.progress.end()
+
+
+    def download_brite_hierarchies(self):
+        """This function downloads a json file for every BRITE hierarchy of interest.
+
+        Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
+        """
+
+        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
+        unexpected_hierarchies = []
+        for hierarchy in self.brite_dict:
+            hierarchy_accession = hierarchy[: 7]
+            brite_system = hierarchy_accession[: 2]
+            if brite_system != 'ko':
+                unexpected_hierarchies.append(hierarchy)
+            if not unexpected_hierarchies:
+                file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
+                                    file_path, progress=self.progress, run=self.run)
+                # verify that the whole json file was downloaded
+                filesnpaths.is_file_json_formatted(file_path)
+        if unexpected_hierarchies:
+            raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
+                              f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
+
+
+    def confirm_downloaded_brite_hierarchies(self):
+        """This function verifies that all BRITE hierarchy files have been downloaded.
+
+        It checks that there is a hierarchy file for every hierarchy in the self.brite_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_brite_hierarchy_of_hierarchies(), has already been called.
+        """
+
+        for hierarchy in self.brite_dict.keys():
+            hierarchy_accession = hierarchy[: 7]
+            file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The BRITE hierarchy file for {hierarchy} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+        self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
+
+
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
 
 
 class RunKOfams(KeggContext):
