@@ -503,6 +503,7 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.kegg_archive_path = A('kegg_archive')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
         self.only_database = True if A('only_database') else False
@@ -1190,7 +1191,6 @@ class ModulesDownload(KeggSetup):
         self.args = args
         self.run = run
         self.progress = progress
-        self.kegg_archive_path = A('kegg_archive')
         self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
