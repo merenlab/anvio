@@ -23,11 +23,11 @@ def main(args):
 
     if args.mode == "KOfam":
         args.download_from_kegg = True
-        setup = kegg.KeggSetup(args)
+        setup = kegg.KOfamDownload(args)
         setup.setup_kofams()
     if args.mode == "modules":
-        setup = kegg.KeggSetup(args)
-        setup.setup_data()
+        setup = kegg.ModulesDownload(args)
+        setup.setup_modules_data()
     if args.mode == "modeling":
         args.db = 'KEGG'
         db = refdbs.KEGGDatabase(args.dir, args.num_threads)
