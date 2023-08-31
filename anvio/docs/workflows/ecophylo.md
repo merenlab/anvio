@@ -1,10 +1,12 @@
-The ecophylo workflow starts with a user-defined target gene ([HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms)) and a list of assembled genomes and/or metagenomes and results in an %(interactive)s interface that includes (1) a phylogenetic analysis of all genes found in genomes and metagenomes that match to the user-defined target gene, and (2) the distribution pattern of each of these genes across metagenomes if the user provided metagenomic short reads to survey.
+The ecophylo workflow starts with a user-defined target gene family defined by an [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) and a list of assembled genomes and/or metagenomes. The final output results in an %(interactive)s interface that includes (1) a phylogenetic analysis of all genes detected by the HMM in genomes and/or metagenomes, and (2) the distribution pattern of each of these genes across metagenomes if the user provided metagenomic short reads to survey.
 
-The user-defined target genes can be described by an %(hmm-list)s. Furthermore, the assemblies of genomes and/or metagenomes to search these genes can be passed to the workflow via the artifacts %(external-genomes)s and %(metagenomes)s, respectively. Finally, the user can also provide a set of metagenomic short reads via the artifact %(samples-txt)s to recover the distribution patterns of genes.
+The user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) is designated in %(hmm-list)s while input assemblies of genomes and/or metagenomes to query the [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) are be passed to the workflow via the artifacts %(external-genomes)s and %(metagenomes)s, respectively. Finally, the user can also provide a set of metagenomic short reads via the artifact %(samples-txt)s to explore the distribution patterns of genes across samples.
 
-In a standard run, ecophylo first identifies matching genes based on their [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms)s, then clusters them based on sequence similarity at a threshold defined by the user, and finally selects a representative sequence from each cluster that contains more than two genes. Next, ecophylo calculates a phylogenetic tree to infer evolutionary associations between these sequences to produce a NEWICK-formatted %(dendrogram)s. If the user provided a %(samples-txt)s for metagenomic [read recruitment](https://anvio.org/vocabulary/#read-recruitment), the workflow will also perform a [read recruitment](https://anvio.org/vocabulary/#read-recruitment) step to recover and store coverage statistics of the final set of genes for downstream analyses in the form of a %(profile-db)s. The completion of the workflow will yield all files necessary to explore the results through an anvi'o %(interactive)s interface and investigate associations between ecological and evolutionary relationships between target genes. The workflow can use any [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) that models amino acid sequences. Using [single-copy core genes](https://anvio.org/vocabulary/#single-copy-core-gene-scg) such as Ribosomal Proteins will yield taxonomic profiles of metagenomes *de facto*.
+Ecophylo first identifies homologous genes based on the input [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms)s, then clusters them based on sequence similarity at a threshold defined by the user, and finally selects a representative sequence from each cluster that contains more than two genes. The final set of representative genes are filtered for QC at multiple steps of the workflow which is discussed below: [Quality control and processing of hmm-hits](#Quality control and processing of hmm-hits)
 
-The ecophylo workflow has 2 modes which can be designated in the %(workflow-config)s by changing the input files that are provided: [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes) and [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments). In [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes), the sequences will be used to calculate a phylogenetic tree. In [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments), the sequences will be used to calculate a phylogenetic tree and be additionally profiled via [read recruitment](https://anvio.org/vocabulary/#read-recruitment) across user-provided metagenomes.
+The ecophylo workflow then has 2 modes which can be designated in the %(workflow-config)s by changing the input files that are provided: [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes) and [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments). In [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes), the user must provide a %(hmm-list)s and %(metagenomes)s and/or %(external-genomes)s. This mode will extract representative sequences and calculate a phylogenetic tree. In [profile-mode](#profile-mode-insights-into-the-ecological-and-evolutionary-patterns-of-target-genes-and-environments) the user must also provide a %(samples-txt)s. This mode is a continuation of [tree-mode](#tree-mode-insights-into-the-evolutionary-patterns-of-target-genes) where the representative sequences are additionally profiled via [read recruitment](https://anvio.org/vocabulary/#read-recruitment) across user-provided metagenomes to recover and store coverage statistics. The completion of the workflow will yield all files necessary to explore the results through an anvi'o %(interactive)s interface and investigate associations between ecological and evolutionary relationships between target genes. 
+
+The ecophylo workflow can leverage any [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms) that models amino acid sequences. If the user, picks a [single-copy core gene](https://anvio.org/vocabulary/#single-copy-core-gene-scg) [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), such as Ribosomal Proteins, the workflow will yield taxonomic profiles of metagenomes *de facto*.
 
 ## Required input
 
@@ -17,16 +19,12 @@ anvi-run-workflow -w ecophylo \
                   --get-default-config config.json
 {{ codestop }}
 
-
-{:.notice}
-Here is a tutorial walking through more details regarding the ecophylo %(workflow-config)s file: coming soon!
-
 - %(hmm-list)s: This file designates which HMM should be used to extract the target gene from your %(contigs-db)s.
 - %(metagenomes)s and/or %(external-genomes)s: These files hold the assemblies where you are looking for the target gene. Genomes in %(external-genomes)s can be reference genomes, [SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), and/or [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag).
 
 ## Quality control and processing of hmm-hits
 
-[Hidden Markov Models](https://anvio.org/vocabulary/#hidden-markov-models-hmms) are the crux of the EcoPhylo workflow and will determine the sensitivity and specificity of the protein family hmm-hits you seek to investigate. However, not all %(hmm-hits)s are created equal. Just how BLAST can detect spurious hits with [high-scoring segment pairs](https://www.ncbi.nlm.nih.gov/books/NBK62051/), HMMER can detect non-homologous hits as well. To address this, we have a series of parameters you can adjust to fine tune the input set of %(hmm-hits)s that EcoPhylo will process. 
+[Hidden Markov Models](https://anvio.org/vocabulary/#hidden-markov-models-hmms) are the crux of the EcoPhylo workflow and will determine the sensitivity and specificity of the gene family hmm-hits you seek to investigate. However, not all %(hmm-hits)s are created equal. Just how BLAST can detect spurious hits with [high-scoring segment pairs](https://www.ncbi.nlm.nih.gov/books/NBK62051/), HMMER can detect non-homologous hits as well. To address this, we have a series of parameters you can adjust in the %(workflow-config)s to fine tune the input set of %(hmm-hits)s that EcoPhylo will process. 
 
 ### HMM alignment coverage filtering
 
@@ -35,14 +33,14 @@ The first step to removing bad %(hmm-hits)s is to filter out hits with low quali
 {:.notice}
 Some full gene length HMM models align to a single hmm-hit independently at different coordinates when there should only be one annotation. To merge these independent alignment into one HMM alignment coverage stat, set `--merge-partial-hits-within-X-nts` to any distance between the hits for which you would like to merge and add it to the rule `filter_hmm_hits_by_model_coverage` under `additional_params`.
 
-### Conservative mode: only complete open-reading frames
+### Conservative mode: complete open-reading frames only
 
 Genes predicted from genomes and metagenomes can be partial or complete depending on whether a stop and stop codon is detected. Even if you filter out %(hmm-hits)s with bad alignment coverage as discussed above, HMMs can still detect low quality hits due to partial genes (i.e., genes that are not partial and that start with a start codon and end with a stop codon) with good alignment coverage and homology statistics. Unfortunately, partial genes can lead to spurious phylogenetic branches and/or inflate the number of observed populations or functions in a given set of genomes/metagenomes. 
 
-To remove partial genes from the EcoPhylo analysis, the user set `--filter-out-partial-gene-calls True` so that only complete open-reading frames are processed.
+To remove partial genes from the ecophylo analysis, the user set `--filter-out-partial-gene-calls True` so that only complete open-reading frames are processed.
 
 {:.notice}
-This is the default settings in the config file.
+This is the default settings in the ecophylo %(workflow-config)s file.
 
 ```bash
 {
@@ -57,10 +55,10 @@ This is the default settings in the config file.
 
 ### Discovery-mode: ALL open-reading frames
 
-However, maybe you're a risk taker, a maverick explorer of metagenomes. Complete or partial you accept all genes and their potential tree bending shortcomings! In this case, set `--filter-out-partial-gene-calls false` in the config file.
+However, maybe you're a risk taker, a maverick explorer of metagenomes. Complete or partial you accept all genes and their potential tree bending shortcomings! In this case, set `--filter-out-partial-gene-calls false` in the %(workflow-config)s.
 
 {:.notice}
-Exploring complete and partial ORFs will increase the distribution of sequence lengths and thus impact sequence clustering. We recommend adjusting `cluster_X_percent_sim_mmseqs` to `"--cov-mode": 1` to help insure ORFs of all length properly cluster together. Please refer to the [MMseqs2 user guide description of --cov-mode](https://mmseqs.com/latest/userguide.pdf) for more details.
+Simultaneously exploring complete and partial ORFs will increase the distribution of sequence lengths and thus impact sequence clustering. We recommend adjusting `cluster_X_percent_sim_mmseqs` to `"--cov-mode": 1` to help insure ORFs of all length properly cluster together. Please refer to the [MMseqs2 user guide description of --cov-mode](https://mmseqs.com/latest/userguide.pdf) for more details.
 
 ```bash
 {
@@ -145,9 +143,9 @@ To initialize [profile-mode](#profile-mode-insights-into-the-ecological-and-evol
 }
 ```
 
-## Config file options
+## Miscellaneous config file options
 
-Ecophylo will sanity check all input files that contain %(contigs-db)ss before the workflow starts. This can take a while especially if you are working with 1000's of genomes. If you want to skip sanity checks for %(contigs-db)ss in your %(external-genomes)s and/or %(metagenomes)s then adjust your config to the following:
+Ecophylo will sanity check all input files that contain %(contigs-db)ss before the workflow starts. This can take a while especially if you are working with 1000's of genomes. If you want to skip sanity checks for %(contigs-db)ss in your %(external-genomes)s and/or %(metagenomes)s then adjust your %(workflow-config)s to the following:
 
 ```bash
 {
