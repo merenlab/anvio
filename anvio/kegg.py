@@ -579,7 +579,7 @@ class KeggSetup(KeggContext):
                 # for profiles, add /profiles.tar.gz  to end of url
             self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
             # dictionary mapping downloaded file name to final decompressed file name or folder location
-            self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
+            self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
             # download from KEGG option: module/pathway map htext files and API link
             self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
@@ -704,7 +704,7 @@ class KeggSetup(KeggContext):
         self.run.info("Kofam Profile Database URL", self.database_url)
 
         try:
-            for file_name in self.files.keys():
+            for file_name in self.kofam_files.keys():
                 utils.download_file(self.database_url + '/' + file_name,
                     os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
         except Exception as e:
@@ -1255,14 +1255,14 @@ class KeggSetup(KeggContext):
         """This function decompresses the Kofam profiles."""
 
         self.progress.new('Decompressing files')
-        for file_name in self.files.keys():
+        for file_name in self.kofam_files.keys():
             self.progress.update('Decompressing file %s' % file_name)
             full_path = os.path.join(self.kegg_data_dir, file_name)
 
             if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path=self.files[file_name], keep_original=False)
+                utils.tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
             else:
-                utils.gzip_decompress_file(full_path, output_file_path=self.files[file_name], keep_original=False)
+                utils.gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
 
             self.progress.update("File decompressed. Yay.")
         self.progress.end()
@@ -1615,6 +1615,13 @@ class KeggSetup(KeggContext):
         self.create_user_modules_dict()
         self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
 
+    def setup_kofams(self):
+        """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
+
+        self.download_profiles()
+        self.decompress_files()
+        self.setup_ko_dict() # get ko dict attribute
+        self.run_hmmpress()
 
     def setup_data(self):
         """This is a driver function which executes the KEGG setup process."""
@@ -1626,10 +1633,8 @@ class KeggSetup(KeggContext):
             # mostly for developers and the adventurous
             if not self.only_database:
                 # this downloads, decompresses, and hmmpresses the KOfam profiles
-                self.download_profiles()
-                self.decompress_files()
-                self.setup_ko_dict() # get ko dict attribute
-                self.run_hmmpress()
+                self.setup_kofams()
+                
                 # it also downloads and processes the KEGG Module files into the MODULES.db
                 self.download_kegg_module_file()
                 self.process_module_file() # get module dict attribute
