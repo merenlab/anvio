@@ -598,7 +598,7 @@ class KeggSetup(KeggContext):
                         self.run.info("Successfully removed", path)
 
 
-    def is_database_exists(self, fail_if_exists=True):
+    def is_database_exists(self, files_to_check, fail_if_exists=True):
         """This function determines whether the user has already downloaded all required KEGG data.
 
         More specifically, it looks for the KEGG files that we use to learn what to download (as in
@@ -607,6 +607,9 @@ class KeggSetup(KeggContext):
 
         PARAMETERS
         ==========
+        files_to_check : list of file paths
+            this list should contain the paths to all required KEGG data or directories. what those
+            files are depends on the download mode.
         fail_if_exists : Boolean
             if this is True, this function will fail if the KEGG data already exists on the user's
             computer. If it is False, AND the user has already downloaded all required KEGG data,
@@ -615,14 +618,6 @@ class KeggSetup(KeggContext):
             older and newer KEGG data - so if this data is only partially downloaded, the function
             will raise an error even if this parameter is False.
         """
-
-        files_to_check = [self.kofam_hmm_file_path,
-                          self.kegg_module_file,
-                          self.kegg_module_data_dir,
-                          ]
-        if not self.skip_brite_hierarchies:
-            files_to_check.append(self.kegg_brite_hierarchies_file)
-            files_to_check.append(self.brite_data_dir)
 
         files_that_exist = []
         for f in files_to_check:
