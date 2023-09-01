@@ -72,7 +72,7 @@ def main(args, unknown_args):
     mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
     args = argparse.Namespace(**vars(args), **vars(mode_args))
     if len(mode_unknown):
-        raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
+        raise ConfigError("Unrecognized parameters %s" % ' '.join(mode_unknown))
 
     if mode == "KOfam":
         args.download_from_kegg = True
