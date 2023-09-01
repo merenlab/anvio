@@ -411,6 +411,8 @@
   linkedin: ge0rges
   orcid: 0000-0002-5721-1138
   bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
+  intellectual-contributions:
+    - contribution: "Resolved a <a href=https://github.com/merenlab/anvio/issues/1738>long-standing dilemma</a> with the program anvi-setup-ncbi-cogs."
   affiliations:
     - title: Graduate Student
       inst: University of Washington
