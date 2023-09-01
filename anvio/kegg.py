@@ -574,6 +574,11 @@ class KeggSetup(KeggContext):
             will raise an error even if this parameter is False.
         """
 
+        if anvio.DEBUG:
+            file_str = ", ".join(files_to_check)
+            self.run.warning(f"We are looking for the following files to see if the KEGG data already "
+                             f"exists on you computer: {file_str}")
+
         files_that_exist = []
         for f in files_to_check:
             if os.path.exists(f):
