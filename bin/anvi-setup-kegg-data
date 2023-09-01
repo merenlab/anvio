@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 
 import sys
+import argparse
 
 import anvio
 import anvio.kegg as kegg
@@ -9,6 +10,7 @@ import anvio.biochemistry.refdbs as refdbs
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.ttycolors import color_text as c
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
@@ -60,16 +62,23 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
 
 
 @time_program
-def main(args):
+def main(args, unknown_args):
 
-    if args.mode == "KOfam":
+    # Here we parse mode-specific parameters that aren't recognized by the parent parser
+    mode = args.mode
+    mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
+    args = argparse.Namespace(**vars(args), **vars(mode_args))
+    if len(mode_unknown):
+        raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
+
+    if mode == "KOfam":
         args.download_from_kegg = True
         setup = kegg.KOfamDownload(args)
         setup.setup_kofams()
-    if args.mode == "modules":
+    if mode == "modules":
         setup = kegg.ModulesDownload(args)
         setup.setup_modules_data()
-    if args.mode == "modeling":
+    if mode == "modeling":
         args.db = 'KEGG'
         db = refdbs.KEGGDatabase(args.dir, args.num_threads)
         db.download(reset=args.reset)
@@ -79,62 +88,49 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description=__description__)
 
+    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
+
     groupM = parser.add_argument_group('MODE', "Select which data you want to download.")
-    groupM.add_argument('--mode', choices=['KOfam','modules','modeling'], 
+    groupM.add_argument('--mode', choices=DOWNLOAD_MODES.keys(), 
                         help="Depending on your choice here, this program will download and set up "
                              "certain subsets of the data available from KEGG. "
                              "KOfam - only KOfam annotation models (HMMs)."
                              "modules - KOfam + pathways from the KEGG MODULES database."
                              "modeling - Orthologs and reactions for metabolic modeling.")
-    
-    # Below are all arguments for downloading KOfams/modules ('modules' mode)
-    groupS = parser.add_argument_group('DEFAULT SETUP - KEGG SNAPSHOT', "This program will set up metabolism "
-                                       "data from the KEGG resource of databases. By default, it will download "
-                                       "the snapshot of KEGG that is associated with the latest release of anvi'o. "
-                                       "But if you want a different snapshot, you can specify that. :) ")
-    groupS.add_argument(*anvio.A('kegg-snapshot'), **anvio.K('kegg-snapshot'))
 
-    groupD = parser.add_argument_group('DOWNLOAD FROM KEGG WEBSITE', "Choose this option for the most up-to-date "
-                                        "version of KEGG data, downloaded using the KEGG API. May fail if KEGG "
-                                        "updates its formatting (but if that happens, you can always try the default "
-                                        "option).")
-    groupD.add_argument(*anvio.A('download-from-kegg'), **anvio.K('download-from-kegg'))
-    groupD.add_argument(*anvio.A('only-download'), **anvio.K('only-download'))
-    groupD.add_argument(*anvio.A('only-database'), **anvio.K('only-database'))
-    groupD.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations',
-                                                                                {'help': "Overwrite any existing modules database "
-                                                                                         "in the KEGG data directory "
-                                                                                         "[USE WITH CAUTION]. Only relevant if you "
-                                                                                         "are using the --only-database flag"}))
-
-    groupA = parser.add_argument_group('SETUP FROM KEGG ARCHIVE', "Choose this option if you already have a "
-                                        ".tar.gz archive of anvi'o-formatted KEGG data on your computer. We'll "
-                                        "setup from this archive instead of downloading one.")
-    groupA.add_argument(*anvio.A('kegg-archive'), **anvio.K('kegg-archive'))
-
-    # below are args for downloading orthology/reations ('modeling' mode)
-    groupB = parser.add_argument_group('MODELING MODE', "Here are the parameters for downloading data relevant "
-                                                        "to metabolic modeling (ie, reaction network generation)")
-    groupB.add_argument(
-        '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
-        help=(
-            "Directory in which a new subdirectory with the name of the database (e.g., 'kegg', "
-            "'modelseed') is created containing database files."
-        )
-    )
-
-    # common args
-    groupE = parser.add_argument_group('EXTRAS', "Extras for the extra.")
+    # common arguments
+    groupE = parser.add_argument_group('COMMON PARAMETERS', "These parameters apply to any mode.")
     groupE.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
-    groupE.add_argument(*anvio.A('skip-brite-hierarchies'), **anvio.K('skip-brite-hierarchies'))
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    args = parser.get_args(parser)
+
+    if show_help:
+        parser.print_help()
+
+    
+    subparsers = {}
+    for mode, info_dict in DOWNLOAD_MODES.items():
+        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
+
+        subparser._optionals.title = " \n%s\n%s" % (c(mode.upper(), "green"), ':' * 79)
+        for arg_name, arg_dict in info_dict['arguments'].items():
+            subparser.add_argument(*arg_dict['flags'], **arg_dict['definition'])
+
+        if show_help:
+            subparser.print_help()
+    
+        subparsers[mode] = subparser
+
+
+    if show_help:
+        sys.exit()
+
+    args, unknown_args = parser.parse_known_args()
 
     try:
-        main(args)
+        main(args, unknown_args)
 
     except ConfigError as e:
         print(e)
