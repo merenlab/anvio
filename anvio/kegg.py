@@ -1004,7 +1004,12 @@ class KOfamDownload(KeggSetup):
         # dictionary mapping downloaded file name to final decompressed file name or folder location
         self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
-        expected_files_for_kofams = [self.kofam_hmm_file_path, self.ko_list_file_path]
+        expected_files_for_kofams = [self.ko_list_file_path]
+        if self.only_database:
+            expected_files_for_kofams.append(os.path.join(self.kegg_data_dir, 'profiles.tar.gz'))
+        else:
+            expected_files_for_kofams.append(self.kofam_hmm_file_path)
+
         if not args.reset and not anvio.DEBUG and not self.skip_init:
             self.is_database_exists(expected_files_for_kofams, fail_if_exists=(not self.only_database))
 
