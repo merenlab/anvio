@@ -1051,8 +1051,8 @@ D = {
                      "case, so that you can find the resulting data easily and avoid messing up any data "
                      "in the default KEGG directory. But you are of course free to do whatever you want.)"}
              ),
-    'only-database': (
-            ['--only-database'],
+    'only-processing': (
+            ['--only-processing'],
             {'default': False,
              'action': 'store_true',
              'help': "You already have all the KEGG data you need on your computer. Probably you even got it from "

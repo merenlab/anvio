@@ -24,8 +24,8 @@ __description__ = "Download and setup various databases from KEGG"
 DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                            'definition': anvio.K('only-download')},
-                                          'only-database': {'flags': anvio.A('only-database'),
-                                                           'definition': anvio.K('only-database')}
+                                          'only-processing': {'flags': anvio.A('only-processing'),
+                                                           'definition': anvio.K('only-processing')}
                                           }
                             },
                 'modules': {'description': 'KOfam + pathways from the KEGG MODULES database',
@@ -35,8 +35,8 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
                                                             'definition': anvio.K('download-from-kegg')},
                                           'only-download': {'flags': anvio.A('only-download'),
                                                             'definition': anvio.K('only-download')},
-                                          'only-database': {'flags': anvio.A('only-database'),
-                                                            'definition': anvio.K('only-database')},
+                                          'only-processing': {'flags': anvio.A('only-processing'),
+                                                            'definition': anvio.K('only-processing')},
                                           'skip-brite-hierarchies': {'flags': anvio.A('skip-brite-hierarchies'),
                                                             'definition': anvio.K('skip-brite-hierarchies')},
                                           'overwrite-output-destinations': {'flags': anvio.A('overwrite-output-destinations'),
@@ -44,7 +44,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
                                                                 {'help': "Overwrite any existing modules database "
                                                                             "in the KEGG data directory "
                                                                             "[USE WITH CAUTION]. Only relevant if you "
-                                                                            "are using the --only-database flag"})},
+                                                                            "are using the --only-processing flag"})},
                                           'kegg-archive': {'flags': anvio.A('kegg-archive'),
                                                             'definition': anvio.K('kegg-archive')}
                                         }

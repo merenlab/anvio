@@ -506,14 +506,14 @@ class KeggSetup(KeggContext):
         self.kegg_archive_path = A('kegg_archive')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
-        self.only_database = True if A('only_database') else False
+        self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
 
-        if (not self.download_from_kegg) and (self.only_download or self.only_database):
-            raise ConfigError("Erm. The --only-download and --only-database options are only valid if you are also using the --download-from-kegg "
+        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
+            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
                               "option. Sorry.")
-        if self.only_download and self.only_database:
-            raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
+        if self.only_download and self.only_processing:
+            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
         # initializing these to None here so that it doesn't break things downstream
@@ -532,7 +532,7 @@ class KeggSetup(KeggContext):
         if not self.user_input_dir:
 
             # establish parent directory
-            if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
+            if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
 
         else: # user input setup
@@ -568,7 +568,7 @@ class KeggSetup(KeggContext):
         fail_if_exists : Boolean
             if this is True, this function will fail if the KEGG data already exists on the user's
             computer. If it is False, AND the user has already downloaded all required KEGG data,
-            then this function will not fail. This is to enable the --only-database option.
+            then this function will not fail. This is to enable the --only-processing option.
             Note that in this case we require all KEGG data to be pre-downloaded to avoid mixing
             older and newer KEGG data - so if this data is only partially downloaded, the function
             will raise an error even if this parameter is False.
@@ -585,7 +585,7 @@ class KeggSetup(KeggContext):
                 if fail_if_exists:
                     raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
                                       "or delete the KEGG data directory manually if you want to re-download KEGG data. "
-                                      "See also the --only-database option, which you can use if you already "
+                                      "See also the --only-processing option, which you can use if you already "
                                       "have all required KEGG data in that folder. (API users: skip this sanity "
                                       "check by initializing this class with `skip_init=True`)")
                 else:
@@ -598,7 +598,7 @@ class KeggSetup(KeggContext):
                 raise ConfigError(f"We found some, but not all, required KEGG data on your computer in the KEGG "
                                   f"data directory. Since you don't have everything you need, we need you to re-download "
                                   f"everything from scratch. Please re-run this program using the --reset flag, and if "
-                                  f"you were using the --only-database option, remove that flag. :) HOWEVER, if you notice that "
+                                  f"you were using the --only-processing option, remove that flag. :) HOWEVER, if you notice that "
                                   "KEGG BRITE data does not appear to be in the upcoming list, but you don't actually want "
                                   "to download BRITE data, then you can just add the --skip-brite-hierarchies to your previous "
                                   f"command and be on your way (ie, no --reset needed). Here is the KEGG data we found:\n{exist_str}")
@@ -609,10 +609,10 @@ class KeggSetup(KeggContext):
                              f"need to check it to make sure we are not using something that is too old:\n"
                              f"{exist_str}")
 
-        if self.only_database and not files_that_exist:
+        if self.only_processing and not files_that_exist:
             raise ConfigError(f"We noticed that there is no KEGG data on your computer at {self.kegg_data_dir} even "
-                              f"though you used the --only-database option. If you don't actually have KEGG data already "
-                              f"downloaded, you should get rid of the --only-database flag and re-run this program. If you "
+                              f"though you used the --only-processing option. If you don't actually have KEGG data already "
+                              f"downloaded, you should get rid of the --only-processing flag and re-run this program. If you "
                               f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
 
 
@@ -1010,15 +1010,15 @@ class KOfamDownload(KeggSetup):
         self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
         expected_files_for_kofams = [self.ko_list_file_path]
-        if self.only_database:
+        if self.only_processing:
             expected_files_for_kofams.append(os.path.join(self.kegg_data_dir, 'profiles.tar.gz'))
         else:
             expected_files_for_kofams.append(self.kofam_hmm_file_path)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
-            self.is_database_exists(expected_files_for_kofams, fail_if_exists=(not self.only_database))
+            self.is_database_exists(expected_files_for_kofams, fail_if_exists=(not self.only_processing))
 
-        if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not self.skip_init:
+        if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not self.skip_init:
             filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
 
@@ -1173,7 +1173,7 @@ class KOfamDownload(KeggSetup):
     def setup_kofams(self):
         """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
 
-        if not self.only_database:
+        if not self.only_processing:
             self.download_profiles()
 
         if not self.only_download:
@@ -1255,10 +1255,10 @@ class ModulesDownload(KeggSetup):
             expected_files_for_modules.append(self.brite_data_dir)
 
         if not args.reset and not anvio.DEBUG and not self.skip_init:
-            self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_database))
+            self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
 
         # generate subfolders if necessary
-        if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not self.skip_init:
+        if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not self.skip_init:
             filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
             if not self.skip_brite_hierarchies:
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
@@ -1552,7 +1552,7 @@ class ModulesDownload(KeggSetup):
 
         elif self.download_from_kegg:
             # mostly for developers and the adventurous
-            if not self.only_database:
+            if not self.only_processing:
                 # this downloads, decompresses, and hmmpresses the KOfam profiles
                 self.KOfam_setup_class.setup_kofams()
                 
