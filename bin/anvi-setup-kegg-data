@@ -71,6 +71,9 @@ def main(args, unknown_args):
     mode = args.mode
     mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
     args = argparse.Namespace(**vars(args), **vars(mode_args))
+    # this flag is already handled by anvi'o and shouldn't be in the unknown list
+    if '--debug' in mode_unknown:
+        mode_unknown.remove('--debug')
     if len(mode_unknown):
         raise ConfigError("Unrecognized parameters %s" % ' '.join(mode_unknown))
 
