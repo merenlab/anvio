@@ -18,6 +18,47 @@ __authors__ = ['ivagljiva', 'semiller10']
 __provides__ = ["kegg-data", "modules-db"]
 __description__ = "Download and setup various databases from KEGG"
 
+## AVAILABLE DOWNLOAD MODES (and their parameters)
+DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)',
+                            'arguments': {'only-download': {'flags': anvio.A('only-download'),
+                                                           'definition': anvio.K('only-download')},
+                                          'only-database': {'flags': anvio.A('only-database'),
+                                                           'definition': anvio.K('only-database')}
+                                          }
+                            },
+                'modules': {'description': 'KOfam + pathways from the KEGG MODULES database',
+                            'arguments': {'kegg-snapshot': {'flags': anvio.A('kegg-snapshot'),
+                                                            'definition': anvio.K('kegg-snapshot')},
+                                          'download-from-kegg': {'flags': anvio.A('download-from-kegg'),
+                                                            'definition': anvio.K('download-from-kegg')},
+                                          'only-download': {'flags': anvio.A('only-download'),
+                                                            'definition': anvio.K('only-download')},
+                                          'only-database': {'flags': anvio.A('only-database'),
+                                                            'definition': anvio.K('only-database')},
+                                          'skip-brite-hierarchies': {'flags': anvio.A('skip-brite-hierarchies'),
+                                                            'definition': anvio.K('skip-brite-hierarchies')},
+                                          'overwrite-output-destinations': {'flags': anvio.A('overwrite-output-destinations'),
+                                                            'definition': anvio.K('overwrite-output-destinations',
+                                                                {'help': "Overwrite any existing modules database "
+                                                                            "in the KEGG data directory "
+                                                                            "[USE WITH CAUTION]. Only relevant if you "
+                                                                            "are using the --only-database flag"})},
+                                          'kegg-archive': {'flags': anvio.A('kegg-archive'),
+                                                            'definition': anvio.K('kegg-archive')}
+                                        }
+                            },
+                'modeling': {'description': 'Orthologs and reactions for metabolic modeling',
+                            'arguments': {'dir': {'flags': ['--dir'],
+                                            'definition': {'default': refdbs.ProteinReferenceDatabase.default_superdir, 
+                                                    'type': str,
+                                                    'help': "Directory in which a new subdirectory with the name "
+                                                            "of the database (e.g., 'kegg', 'modelseed') is created "
+                                                            "containing database files."}}
+                                        },
+                }
+}
+
+
 @time_program
 def main(args):
 
