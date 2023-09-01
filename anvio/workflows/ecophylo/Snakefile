@@ -184,6 +184,7 @@ rule filter_hmm_hits_by_model_coverage:
         hmm_hits_filtered = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "hmm_hits_filtered.txt")
     params:
         model_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', '--model-coverage']),
+        partial_ORFs = M.get_rule_param('filter_hmm_hits_by_model_coverage', '--filter-out-partial-gene-calls'),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_model_coverage')
     run:
@@ -212,6 +213,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             else:
 
@@ -220,6 +222,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --hmm-profile-dir {hmm_dir} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             
         else:
