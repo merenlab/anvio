@@ -64,13 +64,13 @@ class CAZymeSetup(object):
                               "directory and regenerate it with CAZyme data inside, then please remove the directory yourself using "
                               "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
                               "the safest way to handle things." % (self.cazyme_data_dir, self.cazyme_data_dir))
+        
+        self.resolve_db_url()
 
         if not self.cazyme_data_dir:
-            self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
+            self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme', self.db_version)
 
         filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.cazyme_data_dir)))
-
-        self.resolve_db_url()
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
@@ -93,7 +93,12 @@ class CAZymeSetup(object):
         if self.args.cazyme_version:
             self.db_version = self.args.cazyme_version.upper()
         else:
-            self.db_version = 'V11'
+            self.run.warning("You are not specifying a version of CAZyme database to download. By default, the most current version "
+                             "available (V12) will be downloaded. If you have specific tastes for a different version, you can provide "
+                             "it with the `--cazyme-version` flag. For example, `--cazyme-version V10`. Here are all possible versions: "
+                             "https://bcb.unl.edu/dbCAN2/download/Databases/")
+
+            self.db_version = 'V12'
 
         self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
 
@@ -186,6 +191,7 @@ class CAZyme(object):
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
         self.noise_cutoff_terms = A('noise_cutoff_terms', null)
         self.cazyme_data_dir = args.cazyme_data_dir
+        self.cazyme_version = args.cazyme_version
 
         # load_catalog will populate this
         self.function_catalog = {}
@@ -199,7 +205,19 @@ class CAZyme(object):
 
         if not self.cazyme_data_dir:
             self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
+        
+        if not self.cazyme_version:
+            self.cazyme_version = "V12"
 
+        data_available_for_cazyme_versions = [os.path.basename(d) for d in glob.glob(os.path.join(self.cazyme_data_dir, '*'))]
+        if not len(data_available_for_cazyme_versions):
+            raise ConfigError(f"You don't seem to have any CAZyme data setup in your CAZyme data directory: {self.cazyme_data_dir}"
+                              f"`anvi-setup-cazymes` to take care of that.")
+        elif self.cazyme_version not in data_available_for_cazyme_versions:
+            raise ConfigError("OK. The CAZyme HMMdb you are requesting is not in your CAZyme directory, not sure why! "
+                              "Please re-run `anvi-setup-cazymes` and use the flag `--cazyme-version` to specify the version you want!")
+
+        self.cazyme_data_dir = os.path.join(self.cazyme_data_dir, self.cazyme_version)
         self.hmm_file =  os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")
         self.version_txt = os.path.join(self.cazyme_data_dir, "version.txt")
         self.db_url_txt = os.path.join(self.cazyme_data_dir, "db_url.txt")

@@ -30,9 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--reset', default=False, action="store_true", help="This program by default attempts to use previously\
                         downloaded files in your Pfam data directory if there are any. If something is wrong for some reason you\
                         can use this to tell anvi'o to remove everything, and start over.")
-    parser.add_argument('--cazyme-version', default=None, help="By default, the most current version available (V11) will be downloaded.\
-                        If you have specific tastes for a different version, you can provide it here. For example, `V10`. Here are\
-                        all possible versions: https://bcb.unl.edu/dbCAN2/download/Databases/")
+    parser.add_argument(*anvio.A('cazyme-version'), **anvio.K('cazyme-version'))
 
     args = parser.get_args(parser)
 

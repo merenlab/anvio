@@ -35,6 +35,7 @@ if __name__ == '__main__':
                         If you are not sure what to pick run `hmmsearch -h` or `hmmscan -h` and check out your options.")
     parser.add_argument('--cazyme-data-dir', default=None, type=str, help="The directory path for your downloaded CAZyme database. Anvi'o will try to use the default path \
                         if you do not specify anything.")
+    parser.add_argument(*anvio.A('cazyme-version'), **anvio.K('cazyme-version'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 

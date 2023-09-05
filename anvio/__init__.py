@@ -893,6 +893,14 @@ D = {
                      "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
                      "contigs database you can run both. Cool and confusing. The anvi'o way."}
                 ),
+    'cazyme-version': (
+            ['--cazyme-version'],
+            {'default': None,
+             'type': str,
+             'help': "CAZyme HMMdb database version. The default is the latest version: V12. However, "
+                     "anvi'o can download older versions which can be found here: https://bcb.unl.edu/dbCAN2/download/Databases/" 
+                     "anvi'o also allows you to store multiple versions of the CAZyme HMMdb e.g. V10 and V11"}
+                ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
             {'default': None,
