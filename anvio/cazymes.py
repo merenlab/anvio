@@ -101,7 +101,7 @@ class CAZymeSetup(object):
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
         if os.path.exists(os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")):
-            raise ConfigError(f"It seems you already have CAZyme database installed in the following directory: {self.cazyme_data_dir}"
+            raise ConfigError(f"It seems you already have CAZyme database installed in the following directory: {self.cazyme_data_dir} :/ "
                               f"You can use the flag `--reset` to instruct anvi'o to set everything up from scratch at that location, "
                               f"or you can use the parameter `--cazyme-data-dir` to setup the CAZyme databases in a different directory.")
 
@@ -243,6 +243,8 @@ class CAZyme(object):
 
         self.run.info("CAZyme database version", f"{self.db_version} (originally from {self.db_url})" )
 
+        CAZyme_source = '_'.join(['CAZymes', self.db_version])
+
         # initialize contigs database
         class Args: pass
         args = Args()
@@ -263,7 +265,7 @@ class CAZyme(object):
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('CAZymes', 'AA', 'GENE', None, None, len(self.function_catalog), self.hmm_file, None, self.noise_cutoff_terms)
+        hmm_hits_file = hmmer.run_hmmer(CAZyme_source, 'AA', 'GENE', None, None, len(self.function_catalog), self.hmm_file, None, self.noise_cutoff_terms)
 
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
@@ -271,7 +273,7 @@ class CAZyme(object):
                             "and gracefully quit.", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'CAZyme'})
+            gene_function_calls_table.add_empty_sources_to_functional_sources({CAZyme_source})
             return
 
         # parse hmmer output
@@ -284,7 +286,7 @@ class CAZyme(object):
         for hmm_hit in search_results_dict.values():
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
-                'source': 'CAZyme',
+                'source': CAZyme_source,
                 'accession': hmm_hit['gene_hmm_id'],
                 'function': hmm_hit['gene_name'],
                 'e_value': hmm_hit['e_value']
@@ -297,7 +299,7 @@ class CAZyme(object):
         else:
             self.run.warning("CAZyme class has no hits to process. Returning empty handed, but still adding CAZyme as "
                              "a functional source.")
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'CAZyme'})
+            gene_function_calls_table.add_empty_sources_to_functional_sources({CAZyme_source})
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
