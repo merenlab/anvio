@@ -6,7 +6,7 @@ import argparse
 
 import anvio
 import anvio.kegg as kegg
-import anvio.biochemistry.refdbs as refdbs
+import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
@@ -51,14 +51,13 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
                             },
                 'modeling': {'description': 'Orthologs and reactions for metabolic modeling',
                             'arguments': {'dir': {'flags': ['--dir'],
-                                            'definition': {'default': refdbs.ProteinReferenceDatabase.default_superdir, 
+                                            'definition': {'default': None, 
                                                     'type': str,
                                                     'help': "Currently, modeling data is stored in a different location "
                                                             "on your computer than other KEGG stuff (ie, NOT --kegg-data-dir). "
                                                             "Use this argument to select a custom directory in which to store "
-                                                            "the modeling data. Within that directory, a new subdirectory with the name "
-                                                            "of the database ('kegg') will be created. "
-                                                            f"(default: {refdbs.ProteinReferenceDatabase.default_superdir})"}}
+                                                            "the modeling data."
+                                                            f"(default: {reactionnetwork.KODatabase.default_dir})"}}
                                         },
                 }
 }
@@ -85,9 +84,7 @@ def main(args, unknown_args):
         setup = kegg.ModulesDownload(args)
         setup.setup_modules_data()
     if mode == "modeling":
-        args.db = 'KEGG'
-        db = refdbs.KEGGDatabase(args.dir, args.num_threads)
-        db.download(reset=args.reset)
+        reactionnetwork.KODatabase.set_up(num_threads = args.num_threads, dir = args.dir, reset = args.reset)
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
