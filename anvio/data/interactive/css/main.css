@@ -388,7 +388,6 @@ html, body, #wrapper {
     padding: 5px;
     overflow: scroll;
     padding-bottom: 150px;
-    margin-top: 43px;
 }
 
 .ui-accordion .ui-accordion-content {
@@ -445,8 +444,6 @@ td > input[type='checkbox'] {
 }
 
 #btn_draw_tree {
-    width: 25%;
-    font-weight: bolder;
 }
 
 .tab-content {
@@ -815,4 +812,24 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .colorpicker-width {
     margin-right: 12px;
+}
+
+.inner-wrapper{
+    display: flex;
+    width: 100%;
+    align-items: stretch;   
+    text-align: center;
+    color: #1fb06d;
+}
+
+#inner-sidebar {
+    min-width: 55px !important;
+    max-width: 55px !important;
+    background: #fbfbfb;
+    color: #828282 !important;
+}
+
+.panel-btn{
+    padding-left: 0;
+    padding-right: 0;
 }

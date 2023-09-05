@@ -18,9 +18,10 @@
     <script type="text/javascript" src="lib/jquery/dist/jquery.min.js" onerror='alertDependencyError("jquery-core")'></script>
     <link href="lib/jquery-ui/themes/base/all.css" rel="stylesheet">
     <link rel="stylesheet" href="lib/bootstrap-4.6.2-dist/css/bootstrap.min.css" />
-    <script type="text/javascript" src="lib/bootstrap-4.6.2-dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
+    <script type="text/javascript" src="lib/bootstrap-4.6.2-dist/js/bootstrap.bundle.min.js" onerror='alertDependencyError("bootstrap-core")'></script>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/octicons/6.0.1/octicons.min.css">
+    <link rel="stylesheet" href="lib/mdb/css/mdb.min.css">
     <link rel="stylesheet" href="css/main.css" type="text/css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,6 +73,7 @@
     <!-- /Table sorter -->
 
     <script type="text/javascript" src="lib/marked/lib/marked.js" onerror='alertDependencyError("marked")'></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="lib/bootstrap-markdown/css/bootstrap-markdown.min.css" type="text/css" />
     <script type="text/javascript" src="lib/bootstrap-markdown/js/bootstrap-markdown.js" onerror='alertDependencyError("bootstrap-markdown", true)' onload='alertDependencyError(null, true)'></script>
     <link rel="stylesheet" href="css/markdown-local.css" type="text/css" />
@@ -116,41 +118,41 @@
             </svg>
         </div>
         <div id="panel-left">
-            <div id="fixed-navbar-div">
-                <div id="multiUser">
-                    <a href="/" target="_parent" class="btn btn-outline-secondary btn-sm home-button"><span class="fa fa-home" aria-hidden="true"></span> Home</a>
-                    <img src="#" />
-                    <span class="project-name"></span>
-                    <a href="/" class="btn btn-outline-secondary btn-sm download-button"><span class="fa fa-download" aria-hidden="true"></span> Download</a>
-                </div>
-                <div role="tabpanel" style="margin: 0px;">
-                    <ul class="nav nav-tabs" role="tablist">
-                      <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab"><span class="fa fa-home" aria-hidden="true" data-help="layers-tab"></span> Main</a></li>
-                      <li id="sample_settings_tab" role="presentation"><a href="#samples_settings" aria-controls="samples_settings" role="tab" data-toggle="tab"><span class="fa fa-briefcase" aria-hidden="true"></span> Layers</a></li>
-                      <li id="bin_settings_tab" role="presentation" class="disabled"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab"><span class="fa fa-inbox" aria-hidden="true" data-help="bins-tab"></span> Bins</a></li>
-                      <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab"><span class="fa fa-list-alt" aria-hidden="true"></span> Legends</a></li>
-                      <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="fa fa-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
-                      <li role="presentation" class="dropdown-submenu pull-right">
-                        <a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
-                          <span class="fa fa-bars" aria-hidden="true" style="color: #008A77;"></span>
-                        </a>
-                        <ul class="dropdown-menu multi-level" role="menu">
-                          <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
-                          <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
-                          <li><a href='#' onclick="showAllNews()">Anvi'o news</a></li>
-                          <li><a href="http://merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
-                          <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
-                          <li><a href="http://merenlab.org/people/">Contact us</a></li>
-                          <li role="separator" class="divider"></li>
-                          <li><a href="javascript:shutdownServer();"><span class="fa fa-off" aria-hidden="true"></span> Shutdown Server</a></li>
-                          <li><p>Show help tooltips for the interactive interface: <input type="checkbox" name="show-help-tooltips" id="show-help-tooltips"></p></li>
+            <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
+                <div class="inner-wrapper d-flex" role="tabpanel">
+                    <nav id="inner-sidebar">
+                        <div class="inner-sidebar-header">
+                            <h6>Anvio</h6>
+                        </div>
+                        <ul class="list-unstyled components align-item-center text-center" role="tablist">
+                            <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-house-door"></i> <span class="d-block">Main</span></a></li>
+                            <li id="sample_settings_tab" role="presentation"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-gear"></i> <span class="d-block">Option</span> </a></li>
+                            <li id="bin_settings_tab" role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-archive"></i> <span class="d-block">Bins</span> </a></li>
+                            <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-map"></i> <span class="d-block">Legends</span> </a></li>
+                            <li><a href="#" class="btn panel-btn d-block" ><i class="bi bi-cursor"></i> <span role="tab" class="d-block">Data</span> </a></li>
+                            <li><a href="#" class="btn panel-btn d-block" ><i class="bi bi-file-richtext"></i> <span role="tab" class="d-block">Notes</span> </a></li>
+                            <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-search"></i> <span class="d-block">Search</span> </a></li>
+                            <li id="detail_tab" role="presentation"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block" ><i class="bi bi-question-octagon"></i> <span class="d-block">Anvio</span> </a></li>
                         </ul>
-                      </li>
-                    </ul>
+                        <ul class="list-unstyled components align-item-center text-center">
+                            <li><a href="#" class="btn panel-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button"><i class="bi bi-pencil"></i> <span class="d-block"><u>D</u>raw</span></a></li>
+                            <hr style="color: gray;">
+                            <li class="active">
+                                <a href="#stateSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">State</a>
+                                <ul class="collapse list-unstyled" id="stateSubmenu">
+                                    <li>
+                                        <li><a href="#" class="btn panel-btn d-block" onclick="showLoadStateWindow();" data-help="load-state-button"><i class="bi bi-upload"></i> <span class="d-block">Load</span> </a></li>
+                                    </li>
+                                    <li>
+                                        <li><a href="#" class="btn panel-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="bi bi-download"></i> <span class="d-block">Save</span> </a></li>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li><a href="#" class="btn panel-btn d-block" onclick="exportSvg();" data-help="save-svg"><i class="bi bi-images"></i> <span class="d-block">Export</span> </a></li>
+                            <li><a href="#" class="btn panel-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural"><i class="bi bi-align-middle"></i> <span class="d-block">Align</span> </a></li>
+                        </ul>
+                    </nav>
                 </div>
-            </div>
-
-            <div id="sidebar" onload="{$('#support_value_params').hide()}">
                 <!-- this hide function needs to happen upon initial render, currently only called onchange -->
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
@@ -856,28 +858,21 @@
                             </table>
                         </div>
                     </div>
-
-                </div>
-            </div>
-
-
-            <div class="sidebar-footer">
-                <div class="sidebar-footer-draw">
-                    <button type="button" class="btn btn-outline-secondary btn-sm glowingbutton sidebar-state-buttons" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
-                        <span class="fa fa-pencil" aria-hidden="true"></span> <u>D</u>raw
-                    </button>
-                    <span id="draw_delta_time" style="padding-left: 10px;"></span>
-                </div>
-                <div class="btn-group sidebar-state-buttons sidebar-footer-draw" role="group" style="margin-bottom: 0px;">
-                    <button type="button" class="btn btn-outline-secondary btn-sm sidebar-state-buttons w500" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="fa fa-floppy-open" aria-hidden="true"></span> Load State</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm sidebar-state-buttons w500" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="fa fa-floppy-save" aria-hidden="true"></span> Save State</button>
-                </div>
-                <div class="btn-group btn-group-justified" id="sidebar-footer-controls" role="group">
-                    <a class="btn btn-outline-secondary btn-sm footer-btn" data-help="zoom-in"  onclick="zoom(1.10);"><span class="fa fa-search-plus" aria-hidden="true"></span></a>
-                    <a class="btn btn-outline-secondary btn-sm footer-btn" data-help="zoom-out" onclick="zoom(0.90);"><span class="fa fa-search-minus" aria-hidden="true"></span></a>
-                    <a class="btn btn-outline-secondary btn-sm footer-btn" data-help="return-to-natural" onclick="zoom_reset();"><span class="fa fa-arrows" aria-hidden="true"></span></a>
-                    <a class="btn btn-outline-secondary btn-sm upload-button footer-btn" onclick="showUploadProject();"><span class="fa fa-cloud-upload" aria-hidden="true"></span></a>
-                    <a class="btn btn-outline-secondary btn-sm footer-btn" data-help="save-svg" onclick="exportSvg();"><span class="fa fa-floppy-o" aria-hidden="true"></span></a>
+                    <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
+                        <div id="anvio_tab_content">
+                            <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p>Anvi'o Authors</p></a>
+                            <hr style="color: gray;">
+                            <a href="http://merenlab.org/projects/anvio/"><p>Anvi'o Project Page</p></a>
+                            <hr style="color: gray;">
+                            <a href='#' onclick="showAllNews()"><p>Anvi'o News</p></a>
+                            <hr style="color: gray;">
+                            <a href="http://merenlab.org/2019/10/07/getting-help/"><p>Getting Help</p></a>
+                            <hr style="color: gray;">
+                            <a href="https://github.com/meren/anvio/issues"><p>Browse/Report Issue</p></a>
+                            <hr style="color: gray;">
+                            <a href="http://merenlab.org/people/"><p>Contant Us</p></a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
