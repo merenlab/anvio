@@ -6,8 +6,8 @@ import argparse
 
 import anvio
 import anvio.kegg as kegg
-import anvio.biochemistry.reactionnetwork as reactionnetwork
 
+from anvio.biochemistry.reactionnetwork import KODatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 from anvio.ttycolors import color_text as c
@@ -57,7 +57,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
                                                             "on your computer than other KEGG stuff (ie, NOT --kegg-data-dir). "
                                                             "Use this argument to select a custom directory in which to store "
                                                             "the modeling data."
-                                                            f"(default: {reactionnetwork.KODatabase.default_dir})"}}
+                                                            f"(default: {KODatabase.default_dir})"}}
                                         },
                 }
 }
@@ -84,7 +84,7 @@ def main(args, unknown_args):
         setup = kegg.ModulesDownload(args)
         setup.setup_modules_data()
     if mode == "modeling":
-        reactionnetwork.KODatabase.set_up(num_threads = args.num_threads, dir = args.dir, reset = args.reset)
+        KODatabase.set_up(num_threads = args.num_threads, dir = args.dir, reset = args.reset)
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
