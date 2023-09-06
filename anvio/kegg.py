@@ -1552,7 +1552,8 @@ class ModulesDownload(KeggSetup):
 
         It checks that there is a module file for every module in the self.module_dict dictionary;
         for that reason, it must be called after the function that creates that attribute,
-        process_module_file(), has already been called.
+        process_module_file(), has already been called. To verify that each file has been downloaded 
+        properly, we check that the last line is '///'.
         """
 
         for mnum in self.module_dict.keys():
@@ -1563,6 +1564,17 @@ class ModulesDownload(KeggSetup):
                                   f"module is present in the KEGG MODULE file that lists all modules you *should* have "
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
         self.run.info("Number of module files found", len(self.module_dict))
 
 
@@ -1582,6 +1594,8 @@ class ModulesDownload(KeggSetup):
                 self.download_kegg_module_file()
                 self.process_module_file() # get module dict attribute
                 self.download_modules()
+                self.confirm_downloaded_modules()
+
                 if not self.skip_brite_hierarchies:
                     self.download_brite_hierarchy_of_hierarchies()
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
