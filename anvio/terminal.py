@@ -442,17 +442,25 @@ class Run:
                                          c(str(value), mc), '\n' * nl_after)
         if align_long_values:
             wrap_width = self.terminal_width - self.width - 3
-            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
-            if len(wrapped_value_lines) == 0:
-                aligned_value_str = value
-            else:
-                aligned_value_str = wrapped_value_lines[0]
-                for line in wrapped_value_lines[1:]:
-                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
 
-            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
-                                             '.' * (self.width - len(label)),
-                                             c(str(aligned_value_str), mc), '\n' * nl_after)
+            if warp_width < 40:
+                # the info is way too long and the terminal is way too tiny
+                # to wrap anything. so we will give up here, and continue
+                # with the existing `info_line` even if we are asked to
+                # `align_long_values`
+                pass
+            else:
+                wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
+                if len(wrapped_value_lines) == 0:
+                    aligned_value_str = value
+                else:
+                    aligned_value_str = wrapped_value_lines[0]
+                    for line in wrapped_value_lines[1:]:
+                        aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+                info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                                 '.' * (self.width - len(label)),
+                                                 c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.reset()
