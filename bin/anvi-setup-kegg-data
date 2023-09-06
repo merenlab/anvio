@@ -21,14 +21,16 @@ __provides__ = ["kegg-data", "modules-db"]
 __description__ = "Download and setup various databases from KEGG"
 
 ## AVAILABLE DOWNLOAD MODES (and their parameters)
-DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)',
+DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs). Use this mode if '
+                                           'you only want to run `anvi-run-kegg-kofams`.',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                            'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
                                                            'definition': anvio.K('only-processing')}
                                           }
                             },
-                'modules': {'description': 'KOfam + pathways from the KEGG MODULES database',
+                'modules': {'description': 'KOfam + pathways from the KEGG MODULES database. Use this '
+                                           'mode if you want to run pathway prediction with `anvi-estimate-metabolism`.',
                             'arguments': {'kegg-snapshot': {'flags': anvio.A('kegg-snapshot'),
                                                             'definition': anvio.K('kegg-snapshot')},
                                           'download-from-kegg': {'flags': anvio.A('download-from-kegg'),
@@ -49,7 +51,8 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
                                                             'definition': anvio.K('kegg-archive')}
                                         }
                             },
-                'modeling': {'description': 'Orthologs and reactions for metabolic modeling',
+                'modeling': {'description': 'KEGG orthologs and reactions. Use this mode if '
+                                            'you want to run metabolic modeling with `anvi-reaction-network`.',
                             'arguments': {'dir': {'flags': ['--dir'],
                                             'definition': {'default': None, 
                                                     'type': str,
