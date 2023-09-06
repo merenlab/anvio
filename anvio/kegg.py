@@ -1541,7 +1541,7 @@ class ModulesDownload(KeggSetup):
             worker.terminate()
         if undownloaded:
             raise ConfigError(
-                "Unfortunately, files for the following KOs failed to download despite multiple attempts, "
+                "Unfortunately, files for the following modules failed to download despite multiple attempts, "
                 f"and so the database needs to be set up again: {', '.join(undownloaded)}"
             )
         self.progress.end()
