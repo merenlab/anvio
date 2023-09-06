@@ -28,8 +28,7 @@ def main() -> None:
     args = get_args()
     if args.db == 'ModelSEED':
         db = refdbs.ModelSEEDDatabase(args.dir)
-    elif args.db == 'KEGG':
-        db = refdbs.KEGGDatabase(args.dir, args.num_threads)
+
     db.download(reset=args.reset)
 
 def get_args() -> Namespace:
@@ -37,13 +36,11 @@ def get_args() -> Namespace:
 
     parser.add_argument(
         '--db',
-        choices=('KEGG', 'ModelSEED'),
+        choices=('ModelSEED',),
         type=str,
         help=(
             "The protein reference database of interest. "
-            "1) KEGG: All items from the Ortholog and Reaction databases are downloaded and "
-            "processed. "
-            "2) ModelSEED: The ModelSEED Biochemistry database harmonizes multiple reference "
+            "1) ModelSEED: The ModelSEED Biochemistry database harmonizes multiple reference "
             "databases, including KEGG, MetaCyc, and BiGG. The reactions and compounds tables are "
             "downloaded and processed."
         )
@@ -51,7 +48,7 @@ def get_args() -> Namespace:
     parser.add_argument(
         '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
         help=(
-            "Directory in which a new subdirectory with the name of the database (e.g., 'kegg', "
+            "Directory in which a new subdirectory with the name of the database (e.g., "
             "'modelseed') is created containing database files."
         )
     )
