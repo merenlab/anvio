@@ -998,8 +998,9 @@ class KOfamDownload(KeggSetup):
         self.args = args
         self.run = run
         self.progress = progress
+        self.skip_init = skip_init
 
-        KeggSetup.__init__(self, self.args)
+        KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
         filesnpaths.is_program_exists('hmmpress')
 
@@ -1202,14 +1203,15 @@ class ModulesDownload(KeggSetup):
         self.args = args
         self.run = run
         self.progress = progress
+        self.skip_init = skip_init
         self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
         # since we also need to make sure KOfams are downloaded, we need to do their init checks too
         # we also call the init of the superclass, which we also need
-        KeggSetup.__init__(self, self.args)
-        self.KOfam_setup_class = KOfamDownload(self.args)
+        KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
+        self.KOfam_setup_class = KOfamDownload(self.args, skip_init=self.skip_init)
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
