@@ -13,19 +13,19 @@ jobs:
         python-version: [3.7]
       fail-fast: false
     steps:
+    - uses: actions/checkout@v2
     - uses: conda-incubator/setup-miniconda@v2
       with:
         miniconda-version: 'latest'
         auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
-        channels: conda-forge,bioconda
         activate-environment: anvio_env
-    - name: "Set up the conda environment"
+        environment-file: .conda/environment.yaml
+        python-version: ${{ matrix.python-version }}
+    - name: "Conda environment summary"
       shell: bash -l {0}
       run: |
-        conda info -a
-        conda install -y "mamba >=0.24.0"
-        mamba env create -f ../.conda/environment.yaml
+        conda info
+        conda list
     - uses: actions/checkout@v2
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
