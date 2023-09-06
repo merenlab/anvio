@@ -66,6 +66,14 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs)'
 @time_program
 def main(args, unknown_args):
 
+    if args.list_modes:
+        import anvio.terminal as terminal
+        run = terminal.Run()
+        run.warning(None, header="AVAILABLE DOWNLOAD MODES", lc="green")
+        for mode, info_dict in DOWNLOAD_MODES.items():
+            run.info(mode, info_dict['description'])
+        sys.exit(0)
+
     # Here we parse mode-specific parameters that aren't recognized by the parent parser
     mode = args.mode
     mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
@@ -94,12 +102,12 @@ if __name__ == '__main__':
     show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
 
     groupM = parser.add_argument_group('MODE', "Select which data you want to download.")
-    groupM.add_argument('--mode', choices=DOWNLOAD_MODES.keys(), 
-                        help="Depending on your choice here, this program will download and set up "
-                             "certain subsets of the data available from KEGG. "
-                             "KOfam - only KOfam annotation models (HMMs)."
-                             "modules - KOfam + pathways from the KEGG MODULES database."
-                             "modeling - Orthologs and reactions for metabolic modeling.")
+    mode_help = "Depending on your choice here, this program will download and set up " + \
+                "certain subsets of the data available from KEGG. Use --list-modes to see " + \
+                f"a description of the options. Available modes: {', '.join(DOWNLOAD_MODES.keys())}"
+    groupM.add_argument('--mode', choices=DOWNLOAD_MODES.keys(), help=mode_help)
+    groupM.add_argument('--list-modes', **{'default': False, 'action': 'store_true', 
+                                         'help': "List the available modes and their descriptions."})
 
     # common arguments
     groupE = parser.add_argument_group('COMMON PARAMETERS', "These parameters apply to any mode.")
