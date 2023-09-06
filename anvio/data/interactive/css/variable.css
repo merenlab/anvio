@@ -5,39 +5,139 @@
     --white-bg: #f3f3f3;
     --black: #333;
     --primary-text: #24292F;
-    --border: #D3D3D3;
     --text-black: #212529;
     --gray: #828282;
     --blue: #6495ed;
     --red: #c7254e;
+
+    --body-text: #4F4F4F;
+    --muted-text: #757575;
+    --border: #E5E7EB;
+    --divider: #F5F5F5;
+
+    --primary-900: #183058;
+    --primary-800: #204075;
+    --primary-700: #285192;
+    --primary-600: #3061AF;
+    --primary-500: #6590D5;
+    --primary-400: #8FAEE0;
+    --primary-300: #ABC2E8;
+    --primary-200: #C7D7F0;
+    --primary-100: #E3EBF7;
+    --primary-50: #F1F5FB;
+
+    --secondary-900: #404650;
+    --secondary-800: #565D6B;
+    --secondary-700: #6B7585;
+    --secondary-600: #848D9C;
+    --secondary-500: #B3B9C2;
+    --secondary-400: #C8CCD3;
+    --secondary-300: #D6D9DE;
+    --secondary-200: #E4E6E9;
+    --secondary-100: #F1F2F4;
+    --secondary-50: #F8F9F9;
+
+    --success-900: #094621;
+    --success-800: #0C5D2C;
+    --success-700: #0E7537; 
+    --success-600: #118C42 ;
+    --success-500: #1CE26B;
+    --success-400: #59EA93; 
+    --success-300: #83F0AE; 
+    --success-200: #ACF5C9;
+    --success-100: #D6FAE4;
+    --success-50: #EAFCF2;
+
+    --danger-900: #6A1523; 
+    --danger-800: #8D1C2F;
+    --danger-700: #B0233A; 
+    --danger-600: #D42A46;
+    --danger-500: #E37285;
+    --danger-400: #EB99A6; 
+    --danger-300: #F0B2BD; 
+    --danger-200: #F5CCD3;
+    --danger-100: #FAE5E9;
+    --danger-50: #FCF2F4; 
+
+    --warning-900: #62450B; 
+    --warning-800: #825C0F;
+    --warning-700: #A37313; 
+    --warning-600: #C48A17;
+    --warning-500: #EAB54C;
+    --warning-400: #F0C97D; 
+    --warning-300: #F4D79D; 
+    --warning-200: #F7E4BE;
+    --warning-100: #FBF2DE;
+    --warning-50: #FDF8EF;
+
+    --info-900: #1A5265; 
+    --info-800: #236D86;
+    --info-700: #2B89A8; 
+    --info-600: #34A4CA;
+    --info-500: #79C4DC;
+    --info-400: #9ED4E6; 
+    --info-300: #B6DFEC; 
+    --info-200: #CEE9F2;
+    --info-100: #E7F4F9;
+    --info-50: #F3FAFC;     
+    
 }
 
 /* Text Style */
+.paragraph{
+    color: var(--body-text);
+    font-family: Roboto;
+    flex: 1 0 0;
+    font-size: 1rem; 
+    font-weight: 400; 
+    line-height: 1.6; 
+    margin-bottom: 1rem;
+}
 
+.paragraph .small{
+    font-size: .875em;
+}
+
+.paragraph .lead{
+    font-size: 1.25rem; 
+    font-weight: 300;
+}
+
+.paragraph .text-muted{
+    color: var(--muted-text);
+}
+
+.paragraph .subheading{
+    color: var(--muted-text);
+    font-size: 0.875em; 
+    font-weight: 400; 
+    line-height: 1.6;
+    text-transform: uppercase;
+}
 
 /* Font Weight */
 .w100 {
-font-weight: 100;
+    font-weight: 100;
 }
 .w200 {
-font-weight: 200;
+    font-weight: 200;
 }
 .w300 {
-font-weight: 300;
+    font-weight: 300;
 }
 .w400 {
-font-weight: 400;
+    font-weight: 400;
 }
 .w500 {
-font-weight: 500;
+    font-weight: 500;
 }
 .w600 {
-font-weight: 600;
+    font-weight: 600;
 }
 .w700 {
-font-weight: 700;
+    font-weight: 700;
 }
 .w800 {
-font-weight: 800;
+    font-weight: 800;
 }
     
