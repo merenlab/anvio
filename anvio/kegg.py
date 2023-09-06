@@ -1722,7 +1722,16 @@ class ModulesDownload(KeggSetup):
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
-        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
+        # import the function for multithreaded download
+        import multiprocessing as mp
+        from anvio.biochemistry.reactionnetwork import _download_worker
+
+        total = len(self.brite_dict)
+        self.run.info("Number of BRITE hierarchies to download", total)
+        self.progress.new("Downloading BRITE files")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
         unexpected_hierarchies = []
         for hierarchy in self.brite_dict:
             hierarchy_accession = hierarchy[: 7]
@@ -1731,10 +1740,35 @@ class ModulesDownload(KeggSetup):
                 unexpected_hierarchies.append(hierarchy)
             if not unexpected_hierarchies:
                 file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
-                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
-                                    file_path, progress=self.progress, run=self.run)
-                # verify that the whole json file was downloaded
-                filesnpaths.is_file_json_formatted(file_path)
+                url = self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json'
+                input_queue.put((url, file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+        
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < total:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {total} files downloaded")
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+        
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            raise ConfigError(
+                "Unfortunately, files for the following BRITE hierarchies failed to download despite multiple attempts, "
+                f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+            )
+        self.progress.end()
+
         if unexpected_hierarchies:
             raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
                               f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
