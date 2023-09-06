@@ -1602,6 +1602,7 @@ class ModulesDownload(KeggSetup):
                     self.download_brite_hierarchy_of_hierarchies()
                     self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
                     self.download_brite_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
             else:
                 # get required attributes for database setup and make sure all expected files were downloaded
                 self.process_module_file()
@@ -1791,6 +1792,8 @@ class ModulesDownload(KeggSetup):
                                   f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
+            # verify that the whole json file was downloaded
+            filesnpaths.is_file_json_formatted(file_path)
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
 
 
