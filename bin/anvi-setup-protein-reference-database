@@ -20,7 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = VERSION
 __authors__ = ['semiller10']
 __requires__ = ['functions']
-__provides__ = []
+__provides__ = ["reaction-ref-data"]
 __description__ = DESCRIPTION
 
 
