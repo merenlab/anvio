@@ -169,7 +169,8 @@ anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
                                   --domain-hits-table $output_dir/hmm.domtable \
                                   --hmm-source Bacteria_71 \
                                   --model-coverage 0.9 \
-                                  --no-progress
+                                  --no-progress \
+                                  --filter-out-partial-gene-calls
 
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
