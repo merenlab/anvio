@@ -503,6 +503,7 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.num_threads = args.num_threads
         self.kegg_archive_path = A('kegg_archive')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
@@ -1499,30 +1500,51 @@ class ModulesDownload(KeggSetup):
 
 
     def download_modules(self):
-        """This function downloads the KEGG modules.
+        """This function downloads the KEGG modules."""
 
-        To verify that each file has been downloaded properly, we check that the last line is '///'.
-        """
-
+        # import the function for multithreaded download
+        import multiprocessing as mp
+        from anvio.biochemistry.reactionnetwork import _download_worker
+        
+        total = len(self.module_dict.keys())
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
-        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
+        self.run.info("Number of KEGG Modules to download", total)
+        self.run.info("Number of threads used for download", self.num_threads)
 
-        # download all modules
+        self.progress.new("Downloading KEGG Module files")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
         for mnum in self.module_dict.keys():
             file_path = os.path.join(self.kegg_module_data_dir, mnum)
-            utils.download_file(self.kegg_rest_api_get + '/' + mnum,
-                file_path, progress=self.progress, run=self.run)
-            # verify entire file has been downloaded
-            f = open(file_path, 'rU')
-            f.seek(0, os.SEEK_END)
-            f.seek(f.tell() - 4, os.SEEK_SET)
-            last_line = f.readline().strip('\n')
-            if not last_line == '///':
-                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
-                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
-                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
-                                  % (file_path, last_line))
+            url = self.kegg_rest_api_get + '/' + mnum
+            input_queue.put((url, file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+        
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < total:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {total} module files downloaded")
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+        
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            raise ConfigError(
+                "Unfortunately, files for the following KOs failed to download despite multiple attempts, "
+                f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+            )
+        self.progress.end()
 
 
     def confirm_downloaded_modules(self):
