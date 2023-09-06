@@ -492,7 +492,7 @@ class KeggSetup(KeggContext):
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-setup-kegg-kofams. If using this class through the API, please
+        All the arguments supplied by user to anvi-setup-kegg-data. If using this class through the API, please
         provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
         Developers can use this flag to skip the sanity checks and creation of directories when testing this class
@@ -1074,7 +1074,7 @@ class KOfamDownload(KeggSetup):
                 hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
                 if not os.path.exists(hmm_path):
                     raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
-                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
+                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
                                       "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
                                       "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
                                       "setup KEGG with the --kegg-archive flag." % (hmm_path))
@@ -1367,7 +1367,7 @@ class ModulesDownload(KeggSetup):
             if not archive_contains_brite and not self.skip_brite_hierarchies:
                 self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
                                  "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
-                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-data --mode modules -D`.")
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -1852,8 +1852,8 @@ class RunKOfams(KeggContext):
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError(f"Anvi'o is unable to find any KEGG files around :/ It is likely you need to first run the program "
-                              f"`anvi-setup-kegg-kofams` to set things up. If you already have run it, but instructed anvi'o to "
-                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-kofams` again, "
+                              f"`anvi-setup-kegg-data` to set things up. If you already have run it, but instructed anvi'o to "
+                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-data` again, "
                               f"you simply need to specify the location of the KEGG data using the flag `--kegg-data-dir`. Just for "
                               f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
@@ -1867,7 +1867,7 @@ class RunKOfams(KeggContext):
         if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
             self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
                              "which could very well be useful to you. BRITE is guaranteed to be set up "
-                             "when downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
+                             "when downloading the latest version of KEGG with `anvi-setup-kegg-data --mode modules -D`.")
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -2970,7 +2970,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
                                   f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
             if not self.estimate_from_json and not self.enzymes_txt:
@@ -5672,7 +5672,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
                                   f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
         else: # USER data only
@@ -6302,11 +6302,11 @@ class ModulesDatabase(KeggContext):
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
-                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-data` may fix this.")
 
             if not self.skip_brite_hierarchies and not self.brite_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
-                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-data` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
 

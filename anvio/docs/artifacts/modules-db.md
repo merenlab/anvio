@@ -1,6 +1,6 @@
 A type of database containing information from either A) the [KEGG MODULE database](https://www.genome.jp/kegg/module.html) and [KEGG BRITE database](https://www.genome.jp/kegg/brite.html), or B) user-defined metabolic modules, for use in metabolism estimation and/or functional annotation of KEGG Orthologs (KOs).
 
-These databases are part of the %(kegg-data)s and %(user-modules-data)s directories. You can get one on your computer by running %(anvi-setup-kegg-kofams)s or %(anvi-setup-user-modules)s. Programs that rely on this type of database include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
+These databases are part of the %(kegg-data)s and %(user-modules-data)s directories. You can get one on your computer by running %(anvi-setup-kegg-data)s (with `--mode modules`) or %(anvi-setup-user-modules)s. Programs that rely on this type of database include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
 
 Most users will never have to interact directly with this kind of database. However, for the brave few who want to try this (or who are figuring out how anvi'o works under the hood), there is some relevant information below.
 
@@ -19,7 +19,7 @@ In the current implementation, data about each metabolic pathway (from the KEGG 
 | M00001 | ORTHOLOGY | K12407	| hexokinase/glucokinase [EC:2.7.1.1 2.7.1.2] [RN:R01786] | 4 |
 | (...) | (...) | (...) | (...) | (...) |
 
-For the MODULES.db that comes out of %(anvi-setup-kegg-kofams)s, these data correspond to the information that can be found on the KEGG website for each metabolic module - for an example, you can see the page for [M00001](https://www.genome.jp/dbget-bin/www_bget?md:M00001) (or, alternatively, its [flat text file version](http://rest.kegg.jp/get/M00001) from the KEGG REST API).
+For the MODULES.db that comes out of %(anvi-setup-kegg-data)s, these data correspond to the information that can be found on the KEGG website for each metabolic module - for an example, you can see the page for [M00001](https://www.genome.jp/dbget-bin/www_bget?md:M00001) (or, alternatively, its [flat text file version](http://rest.kegg.jp/get/M00001) from the KEGG REST API).
 
 The USER_MODULES.db that comes out of %(anvi-setup-user-modules)s contains similar information, but defined by the user instead of downloaded from the KEGG website.
 
@@ -31,7 +31,7 @@ Finally, some rows of data originate from the same line in the original KEGG MOD
 
 ### The BRITE hierarchies table
 
-In database version 4 or later, there is the option to include KEGG BRITE data in the modules database when setting one up using %(anvi-setup-kegg-kofams)s. If this is done, the database will include a table called `brite_hierarchies` which stores the set of functional hierarchies that each KEGG Ortholog belongs to. It will look like this:
+In database version 4 or later, there is the option to include KEGG BRITE data in the modules database when setting one up using %(anvi-setup-kegg-data)s. If this is done, the database will include a table called `brite_hierarchies` which stores the set of functional hierarchies that each KEGG Ortholog belongs to. It will look like this:
 
 |**hierarchy_accession**|**hierarchy_name**|**ortholog_accession**|**ortholog_name**|**categorization**|
 |:--|:--|:--|:--|:--|
@@ -81,7 +81,7 @@ modules_db_hash ..............................: 45b7cc2e4fdc
 
 ### Other important values in the self table
 
-The `data_source` key will tell you if the current database was generated from KEGG data using %(anvi-setup-kegg-kofams)s or from user-defined metabolic modules using %(anvi-setup-user-modules)s.
+The `data_source` key will tell you if the current database was generated from KEGG data using %(anvi-setup-kegg-data)s or from user-defined metabolic modules using %(anvi-setup-user-modules)s.
 
 The `annotation_sources` key will list the functional annotation sources that are required to annotate all enzymes found in the module definitions.
 

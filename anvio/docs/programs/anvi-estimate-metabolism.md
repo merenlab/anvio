@@ -12,7 +12,7 @@ For a practical tutorial on how to use this program, visit [this link](https://m
 
 You have three options when it comes to estimating metabolism.
 
-1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-kofams)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
+1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-data)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
 2. KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
 3. USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
 
@@ -20,9 +20,9 @@ You have three options when it comes to estimating metabolism.
 
 Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program, unless you are using the `--only-user-modules` option to ONLY estimate on user-defined metabolic modules.
 
-Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-kofams)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-kofams)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
+Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-data)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-data)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
 
-1. Run %(anvi-setup-kegg-kofams)s to get data from KEGG onto your computer. This step only needs to be done once.
+1. Run %(anvi-setup-kegg-data)s with `--mode modules` to get data from KEGG onto your computer. This step only needs to be done once.
 2. [If not using `--only-user-modules`] Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
 If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
@@ -483,7 +483,7 @@ Config Error: The contigs DB that you are working with has been annotated with a
 This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen:
 
 1. You upgraded to a new anvi'o version and downloaded the default %(kegg-data)s associated with that release, but are working with a %(contigs-db)s that was annotated with a previous anvi'o version (and therefore a different instance of %(kegg-data)s).
-2. Without changing anvi'o versions, you annotated your %(contigs-db)s with default %(kegg-data)s, and subsequently replaced that data with a different instance by running %(anvi-setup-kegg-kofams)s again with the `--reset` flag (and likely also with the `--kegg-archive`, `--kegg-snapshot`, or `--download-from-kegg` options, all of which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new data.
+2. Without changing anvi'o versions, you annotated your %(contigs-db)s with default %(kegg-data)s, and subsequently replaced that data with a different instance by running %(anvi-setup-kegg-data)s again with the `--reset` flag (and likely also with the `--kegg-archive`, `--kegg-snapshot`, or `--download-from-kegg` options, all of which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new data.
 3. You have multiple instances of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. 
 4. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer.
 
@@ -505,10 +505,10 @@ export ANVIO_KEGG_SNAPSHOTS=`python -c "import anvio; import os; print(os.path.j
 cat $ANVIO_KEGG_SNAPSHOTS`. 
 {{ codestop }}
 
-Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-kofams)s.
+Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
 
 **I can't find KEGG data with a matching hash!**
-If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-kofams/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
+If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
 
 If none of these solutions help you to get rid of the version incompatibility error, please feel free to reach out to the anvi'o developers for help.
 
@@ -528,7 +528,7 @@ Regardless of which input type is provided to this program, the basic requiremen
 #### Module Definitions
 One set of metabolic pathway definitions that can be used by this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). You can also define your own set of metabolic modules, but the definition format and estimation strategy will be the same. So for brevity's sake, the following discussion will cover the KEGG data case.
 
-The program %(anvi-setup-kegg-kofams)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
+The program %(anvi-setup-kegg-data)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
 
 ![Module M00018 Definition](../../images/M00018.png){:.center-img .width-50}
 

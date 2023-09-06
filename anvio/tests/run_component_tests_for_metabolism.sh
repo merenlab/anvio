@@ -16,13 +16,14 @@ cd $output_dir/metabolism_test
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-quickly
 
-# generate a temporary directory to store anvi-setup-kegg-kofams output,
+# generate a temporary directory to store anvi-setup-kegg-data output,
 # and remove it immediately to make sure it doesn't exist:
 kegg_data_dir=`mktemp -d`
 rm -rf $kegg_data_dir
 
 INFO "Setting up KEGG data"
-anvi-setup-kegg-kofams --kegg-data-dir $kegg_data_dir \
+anvi-setup-kegg-data   --mode modules \
+                       --kegg-data-dir $kegg_data_dir \
                        --no-progress
 
 ## BASIC TESTS
