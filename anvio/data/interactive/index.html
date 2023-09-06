@@ -104,14 +104,6 @@
             <span id="toggle-panel-left-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
         </div>
 
-        <div id="toggle-panel-right" onclick="toggleRightPanel('#mouse_hover_panel');">
-                <span id="toggle-panel-right-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>M</u>OUSE</span>
-        </div>
-
-        <div id="toggle-panel-right-2" onclick="toggleRightPanel('#description-panel');">
-                <span id="toggle-panel-right-2-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);">DESCRIPTIO<u>N</u></span>
-        </div>
-
         <div id="panel-center">
             <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1">
                 <g id="viewport"></g>
@@ -121,16 +113,16 @@
             <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
                 <div class="inner-wrapper d-flex" role="tabpanel">
                     <nav id="inner-sidebar">
-                        <div class="inner-sidebar-header">
-                            <h6>Anvio</h6>
+                        <div class="inner-sidebar-header mb-3">
+                            <img src="images/logo.png" style="width: 70%;">
                         </div>
                         <ul class="list-unstyled components align-item-center text-center" role="tablist">
                             <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-house-door"></i> <span class="d-block">Main</span></a></li>
                             <li id="sample_settings_tab" role="presentation"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-gear"></i> <span class="d-block">Option</span> </a></li>
                             <li id="bin_settings_tab" role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-archive"></i> <span class="d-block">Bins</span> </a></li>
                             <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-map"></i> <span class="d-block">Legends</span> </a></li>
-                            <li><a href="#" class="btn panel-btn d-block" ><i class="bi bi-cursor"></i> <span role="tab" class="d-block">Data</span> </a></li>
-                            <li><a href="#" class="btn panel-btn d-block" ><i class="bi bi-file-richtext"></i> <span role="tab" class="d-block">Notes</span> </a></li>
+                            <li id="data_panel_tab" role="presentation"><a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="btn panel-btn d-block" ><i class="bi bi-cursor"></i> <span role="tab" class="d-block">Data</span> </a></li>
+                            <li id="description_panel_tab" role="presentation"><a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block" ><i class="bi bi-file-richtext"></i> <span role="tab" class="d-block">Notes</span> </a></li>
                             <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-search"></i> <span class="d-block">Search</span> </a></li>
                             <li id="detail_tab" role="presentation"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block" ><i class="bi bi-question-octagon"></i> <span class="d-block">Anvio</span> </a></li>
                         </ul>
@@ -858,6 +850,43 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- DATA TAB -->
+                    <div role="tabpanel" class="tab-pane fade show" id="data_tab">
+                        <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
+                        <div id="mouse_hover">
+                            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
+                                <thead>
+                                    <tr>
+                                        <td width="40%">Item Name</th>
+                                        <td width="60%" id="cell_item_name">#</th>
+                                    </tr>
+                                    <tr>
+                                        <td width="40%">Layer Name</th>
+                                        <td width="60%" id="cell_layer_name">#</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
+                                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
+                                    <table class="table table-striped" id="tooltips-table">
+                                        <col width="40%">
+                                        <col width="60%">
+                                        <tbody id="tooltip_content">
+                                            <!-- JS FILLS HERE -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTES TAB -->
+                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
+                        <textarea id="description-editor" rows="10"></textarea>
+                    </div>
+
+                    <!-- ANVIO TAB -->
                     <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
                         <div id="anvio_tab_content">
                             <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p>Anvi'o Authors</p></a>
@@ -877,40 +906,6 @@
             </div>
         </div>
     </div>
-
-    <div id="mouse_hover_panel">
-        <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
-        <div id="mouse_hover">
-            <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
-                <thead>
-                    <tr>
-                        <td width="40%">Item Name</th>
-                        <td width="60%" id="cell_item_name">#</th>
-                    </tr>
-                    <tr>
-                        <td width="40%">Layer Name</th>
-                        <td width="60%" id="cell_layer_name">#</th>
-                    </tr>
-                </thead>
-            </table>
-            <div id="mouse_hover_scroll_parent" style="height: 100%; overflow: hidden;">
-                <div id="mouse_hover_scroll" style="width: 100%; position: relative;">
-                    <table class="table table-striped" id="tooltips-table">
-                        <col width="40%">
-                        <col width="60%">
-                        <tbody id="tooltip_content">
-                            <!-- JS FILLS HERE -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="description-panel">
-        <textarea id="description-editor" rows="10"></textarea>
-    </div>
-    <!-- DIALOGS SECTION -->
 
     <!-- LOAD STATE -->
     <div class="modal fade" id="modLoadState">
@@ -1289,17 +1284,11 @@
         if (ev.keyCode === 83) { // S = 83
             $('#toggle-panel-left').trigger('click');
         }
-
-        if (ev.keyCode === 77) { // M = 77
-            $('#toggle-panel-right').trigger('click');
-        }
-
-        if (ev.keyCode === 78) { // N = 78
-            $('#toggle-panel-right-2').trigger('click');
-        }
-
-        if (ev.keyCode === 87) { // W = 87
-            $('#toggle-panel-right-3').trigger('click');
+        //Unfinished 
+        if ($('#panel-left').is(':visible')) {
+            if(ev.keycode === 50){
+                $('#data_panel_tab').trigger('click');
+            }
         }
 
         if (ev.keyCode === 68) { // D = 68
