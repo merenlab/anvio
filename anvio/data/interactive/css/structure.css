@@ -84,7 +84,6 @@ body {
 }
 
 .sidebar {
-    background: url(../images/fractal.jpg) center center scroll;
     height: 100%;
     border-right: 1px solid #D3D3D3;
     box-shadow: 0px 0px 10px 2px rgba(200,200,200,0.75);

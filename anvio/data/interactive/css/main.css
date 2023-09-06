@@ -136,7 +136,7 @@ html, body, #wrapper {
     right: 0px;
     position: absolute;
     height: 100%;
-    background: url('../images/fractal.jpg') center center scroll;
+    background: white;
     border-left: 1px solid var(--border);
     padding: 8px;
     opacity: 0.9;
@@ -149,7 +149,7 @@ html, body, #wrapper {
     right: 0px;
     position: absolute;
     height: 100%;
-    background: url('../images/fractal.jpg') center center scroll;
+    background: white;
     border-left: 1px solid var(--border);
     opacity: 0.9;
     width: 350px;
@@ -161,7 +161,7 @@ html, body, #wrapper {
     right: 0px;
     position: absolute;
     height: 100%;
-    background: url('../images/fractal.jpg') center center scroll;
+    background: white;
     border-left: 1px solid var(--border);
     opacity: 0.9;
     width: 350px;
@@ -381,7 +381,7 @@ html, body, #wrapper {
 
 #sidebar {
     position: fixed;
-    background: url('../images/fractal.jpg') center center scroll;
+    background: white;
     border-right: 1px solid var(--border);
     width: 400px;
     height: 100%;
