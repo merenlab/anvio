@@ -443,7 +443,7 @@ class Run:
         if align_long_values:
             wrap_width = self.terminal_width - self.width - 3
 
-            if warp_width < 40:
+            if wrap_width < 40:
                 # the info is way too long and the terminal is way too tiny
                 # to wrap anything. so we will give up here, and continue
                 # with the existing `info_line` even if we are asked to
