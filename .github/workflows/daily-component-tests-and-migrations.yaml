@@ -31,16 +31,19 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install .
-    - name: "Run component tests for general metagenomics tasks"
+    - name: "Run component tests"
       shell: bash -l {0}
       run: |
         anvi-self-test --suite metagenomics-full --no-interactive
-    - name: "Run component tests for metabolism framework"
-      shell: bash -l {0}
-      run: |
-        anvi-self-test --suite metabolism --no-interactive
-# the following causes our actions to fail due to space limitations :/
-# please do not uncomment this until we have a solution.
+        anvi-self-test --suite pangenomics --no-interactive
+        anvi-self-test --suite inversions --no-interactive
+# the following steps cause our actions to fail on GitHub runners
+# due to space limitations :/ please do not uncomment this until we
+# have a solution for this :/
+    #- name: "Run component tests for metabolism framework"
+    #  shell: bash -l {0}
+    #  run: |
+    #    anvi-self-test --suite metabolism --no-interactive
     #- name: "Migrate ancient anvi'o databases"
     #  shell: bash -l {0}
     #  run: |
