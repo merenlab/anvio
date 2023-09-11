@@ -385,13 +385,13 @@ html, body, #wrapper {
     border-right: 1px solid var(--border);
     width: 400px;
     height: 100%;
-    padding: 5px;
+    padding: 5px 5px 5px 0px;
     overflow: scroll;
     padding-bottom: 150px;
 }
 
 .ui-accordion .ui-accordion-content {
-    padding: 10px;
+    padding:  10px 10px 10px 0px;
 }
 
 .input-xs {
@@ -671,7 +671,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #sidebar {
         width: 490px;
-        padding: 10px;
     }
 
     .sidebar-footer {
@@ -819,17 +818,58 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     width: 100%;
     align-items: stretch;   
     text-align: center;
-    color: #1fb06d;
+    color: var(--bg-color) !important;
 }
 
 #inner-sidebar {
-    min-width: 55px !important;
-    max-width: 55px !important;
-    background: #fbfbfb;
-    color: #828282 !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    color: var(--bg-color) !important;
+    background: var(--bg-color);
 }
 
-.panel-btn{
-    padding-left: 0;
-    padding-right: 0;
+.dropdown-toggle{
+    color: var(--secondary-600) !important;
+}
+
+.dropdown-toggle:hover{
+    color: var(--secondary-900) !important;
+    font-weight: 600;
+}
+
+.navbar-btn{
+    display: flex;
+    padding: auto;
+    margin-bottom: 20px;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg-color);
+    color: var(--secondary-600) !important;
+}
+
+.navbar-btn:hover{
+    font-weight: 600;
+    color: var(--secondary-900);
+}
+
+.navbar-btn:hover .icon-unlock,
+.navbar-btn .icon-lock {
+    display: none;
+}
+
+.navbar-btn:hover .icon-lock {
+    display: inline;
+    color: var(--secondary-900);
+}
+
+#draw-btn{
+    margin-top: 260px;
+}
+
+#sidebar-bg{
+    background: var(--bg-color);
+}
+
+#sidebar-logo{
+    width: 70%;
 }

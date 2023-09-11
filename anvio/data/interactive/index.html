@@ -112,36 +112,36 @@
         <div id="panel-left">
             <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
                 <div class="inner-wrapper d-flex" role="tabpanel">
-                    <nav id="inner-sidebar">
-                        <div class="inner-sidebar-header mb-3">
-                            <img src="images/logo.png" style="width: 70%;">
+                    <nav id="inner-sidebar" onclick="toggleSelectedIcon();">
+                        <div class="inner-sidebar-header mb-3 mt-3">
+                            <img src="images/logo.png" id="sidebar-logo">
                         </div>
                         <ul class="list-unstyled components align-item-center text-center" role="tablist">
-                            <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-house-door"></i> <span class="d-block">Main</span></a></li>
-                            <li id="sample_settings_tab" role="presentation"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-gear"></i> <span class="d-block">Option</span> </a></li>
-                            <li id="bin_settings_tab" role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-archive"></i> <span class="d-block">Bins</span> </a></li>
-                            <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-map"></i> <span class="d-block">Legends</span> </a></li>
-                            <li id="data_panel_tab" role="presentation"><a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="btn panel-btn d-block" ><i class="bi bi-cursor"></i> <span role="tab" class="d-block">Data</span> </a></li>
-                            <li id="description_panel_tab" role="presentation"><a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block" ><i class="bi bi-file-richtext"></i> <span role="tab" class="d-block">Notes</span> </a></li>
-                            <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block"><i class="bi bi-search"></i> <span class="d-block">Search</span> </a></li>
-                            <li id="detail_tab" role="presentation"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="btn panel-btn d-block" ><i class="bi bi-question-octagon"></i> <span class="d-block">Anvio</span> </a></li>
+                            <li role="presentation" class="active"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="navbar-btn d-block" id="main-icon"><i class="icon-unlock bi bi-house-door fs-3"></i><i class="icon-lock bi bi-house-door-fill fs-3"></i> <span class="d-block">Main</span></a></li>
+                            <li id="sample_settings_tab" role="presentation"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-gear fs-3"></i><i class="icon-lock bi bi-gear-fill fs-3"></i><span class="d-block">Option</span> </a></li>
+                            <li id="bin_settings_tab" role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-archive fs-3"></i><i class="icon-lock bi bi-archive-fill fs-3"></i> <span class="d-block">Bins</span> </a></li>
+                            <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-map fs-3"></i><i class="icon-lock bi bi-map-fill fs-3"></i> <span class="d-block">Legend</span> </a></li>
+                            <li id="data_panel_tab" role="presentation"><a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="navbar-btn d-block" ><i class="icon-unlock bi bi-cursor fs-3"></i><i class="icon-lock bi bi-cursor-fill fs-3"></i> <span role="tab" class="d-block">Data</span> </a></li>
+                            <li id="description_panel_tab" role="presentation"><a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="navbar-btn d-block" ><i class="icon-unlock bi bi-file-richtext fs-3"></i><i class="icon-lock bi bi-file-richtext-fill fs-3"></i> <span role="tab" class="d-block">Notes</span> </a></li>
+                            <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-search fs-3"></i><i class="icon-lock bi bi-search fs-3"></i> <span class="d-block">Search</span> </a></li>
+                            <li id="detail_tab" role="presentation"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="navbar-btn d-block" ><i class="icon-unlock bi bi-question-octagon fs-3"></i><i class="icon-lock bi bi-question-octagon-fill fs-3"></i>  <span class="d-block">Anvio</span> </a></li>
                         </ul>
-                        <ul class="list-unstyled components align-item-center text-center">
-                            <li><a href="#" class="btn panel-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button"><i class="bi bi-pencil"></i> <span class="d-block"><u>D</u>raw</span></a></li>
+                        <ul class="list-unstyled components align-item-center text-center" id="sidebar-bg">
+                            <li><a href="#" id="draw-btn" class="navbar-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button"><i class="icon-unlock bi-pencil fs-3"></i><i class="icon-lock bi bi-pencil-fill fs-3"></i>  <span class="d-block"><u>D</u>raw</span></a></li>
                             <hr style="color: gray;">
-                            <li class="active">
+                            <li class="active mb-3">
                                 <a href="#stateSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">State</a>
                                 <ul class="collapse list-unstyled" id="stateSubmenu">
                                     <li>
-                                        <li><a href="#" class="btn panel-btn d-block" onclick="showLoadStateWindow();" data-help="load-state-button"><i class="bi bi-upload"></i> <span class="d-block">Load</span> </a></li>
+                                        <li><a href="#" class="navbar-btn d-block mt-3" onclick="showLoadStateWindow();" data-help="load-state-button"><i class="icon-unlock bi bi-upload fs-3"></i><i class="icon-lock bi bi-upload fs-3"></i> <span class="d-block">Load</span> </a></li>
                                     </li>
                                     <li>
-                                        <li><a href="#" class="btn panel-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="bi bi-download"></i> <span class="d-block">Save</span> </a></li>
+                                        <li><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fs-3"></i><i class="icon-lock bi bi-download fs-3"></i> <span class="d-block">Save</span> </a></li>
                                     </li>
                                 </ul>
                             </li>
-                            <li><a href="#" class="btn panel-btn d-block" onclick="exportSvg();" data-help="save-svg"><i class="bi bi-images"></i> <span class="d-block">Export</span> </a></li>
-                            <li><a href="#" class="btn panel-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural"><i class="bi bi-align-middle"></i> <span class="d-block">Align</span> </a></li>
+                            <li><a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg"><i class="icon-unlock bi bi-images fs-3"></i><i class="icon-lock bi bi-image-fill fs-3"></i> <span class="d-block">Export</span> </a></li>
+                            <li><a href="#" class="navbar-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural"><i class="icon-unlock bi bi-align-middle fs-3"></i><i class="icon-lock bi bi-align-middle fs-3"></i> <span class="d-block">Align</span> </a></li>
                         </ul>
                     </nav>
                 </div>
@@ -149,6 +149,8 @@
                 <div class="tab-content">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
+                            <button class="btn btn-xs" onclick="hideMenu();">Hide menu</button>
+                            <button class="btn btn-xs" onclick="showMenu();">Show menu</button>
                             <span class="settings-header">Display</span>
                             <div class="form-group form-margin">
                                     <label class="settings-label w600" for="tree_type" data-help="drawing-type">Drawing Type:</label>
