@@ -112,7 +112,7 @@ html, body, #wrapper {
     position: absolute;
     top: 0px;
     display: inline-block;
-    background-color: var(--title-bg-white);
+    background-color: var(--bg-color);
     min-width: 460px;
     left: calc(50% - 230px);
     height: 44px;
@@ -228,8 +228,8 @@ html, body, #wrapper {
     position: absolute;
     height: 15px;
     width: 90px;
-    background-color: #EEEEEE;
-    border: solid 1px var(--border);
+    background-color: var(--bg-color);
+    border: solid 1px var(--bg-color-hover);
     top: 0;
     left: calc(50% - 45px);
     border-radius: 0px 0px 10px 10px;
@@ -239,15 +239,15 @@ html, body, #wrapper {
 }
 
 #toggle-panel-top:hover {
-    background-color: #DDDDDD;
+    background-color: var(--bg-color-hover);
 }
 
 #toggle-panel-left {
     position: absolute;
     height: 90px;
     width: 15px;
-    background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    background-color: var(--bg-color);
+    border: solid 1px var(--bg-color-hover);
     top: calc(50% - 45px);
     border-radius: 0px 10px 10px 0px;
     cursor: pointer;
@@ -268,7 +268,7 @@ html, body, #wrapper {
     height: 90px;
     width: 15px;
     background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    border: solid 1px var(--bg-color-hover);
     top: calc(50% + 10px);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
@@ -282,7 +282,7 @@ html, body, #wrapper {
     height: 120px;
     width: 15px;
     background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    border: solid 1px var(--bg-color-hover);
     top: calc(50% - 120px);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
@@ -296,7 +296,7 @@ html, body, #wrapper {
     height: 80px;
     width: 15px;
     background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    border: solid 1px var(--bg-color-hover);
     top: calc(50% - 210px);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
