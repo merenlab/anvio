@@ -447,6 +447,7 @@ td > input[type='checkbox'] {
 }
 
 .tab-content {
+    padding-left: 5px;
 }
 
 .tab-pane {
@@ -587,7 +588,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #estimate-taxonomy-check {
-    margin: -8px 14px 5px 17px;
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
@@ -670,7 +670,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #sidebar {
-        width: 490px;
+        width: 530px !important;
     }
 
     .sidebar-footer {
@@ -691,7 +691,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     .toggle-panel-left-pos {
-        left: 490px;
+        left: 530px;
     }
 
     .toggle-panel-right-pos {
@@ -872,4 +872,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 #sidebar-logo{
     width: 70%;
+}
+
+.menu-toggle{
+    color: var(--secondary-600);
+}
+
+.menu-toggle:hover{
+    color: var(--secondary-900);
 }
