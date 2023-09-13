@@ -84,7 +84,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params', 'anvi_profile_min_percent_identity']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -293,6 +293,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.metagenomics_workflow_snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
 
         self.bowtie2_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow','bowtie2_additional_params'])
+        self.anvi_profile_min_percent_identity = self.get_param_value_from_config(['run_metagenomics_workflow','anvi_profile_min_percent_identity'])
 
         metagenomics_workflow_snakemake_additional_params_list = self.metagenomics_workflow_snakemake_additional_params.split(' ')
 
