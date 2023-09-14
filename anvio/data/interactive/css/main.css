@@ -385,7 +385,7 @@ html, body, #wrapper {
     border-right: 1px solid var(--border);
     width: 400px;
     height: 100%;
-    padding: 5px 5px 5px 0px;
+    padding: 0px 5px 5px 0px;
     overflow: scroll;
     padding-bottom: 150px;
 }
@@ -490,7 +490,7 @@ td > input[type='checkbox'] {
     display: inline-block;
     background-color: #FFF;
     border: 1px solid;
-    border-color: #000;
+    border-color: var(--black);
     width: 16px;
     height: 16px;
     margin: auto;
@@ -661,8 +661,59 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-top: 5px;
 }
 
+#draw-btn{
+    margin-top: 270px;
+}
 
-@media only screen and (min-width:1460px){
+@media screen and (min-width: 768px) {
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
+    }
+
+    #sidebar {
+        width: 530px !important;
+    }
+
+    #draw-btn{
+        margin-top: 250px;
+    }
+}
+
+@media screen and (min-width: 992px) {
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
+    }
+
+    #sidebar {
+        width: 530px !important;
+    }
+
+    #draw-btn{
+        margin-top: 260px;
+    }
+
+}    
+
+@media screen and (min-width:1280px){
+    /* styles for browsers larger than 1280px; */
+    *:not(text) {
+        font-size: 12px;
+        line-height: 1.428;
+    }
+
+    #sidebar {
+        width: 530px !important;
+    }
+
+    #draw-btn{
+        margin-top: 270px;
+    }
+
+}
+
+@media screen and (min-width:1460px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
@@ -673,8 +724,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         width: 530px !important;
     }
 
-    .sidebar-footer {
-        width: 490px;
+    #draw-btn{
+        margin-top: 350px;
+    }
+
+    #inner-sidebar{
+        overflow:visible;
     }
 
     .glyphicon {
@@ -686,20 +741,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         width: 490px;
     }
 
-    #mouse_hover_panel {
-        width: 460px;
-    }
-
     .toggle-panel-left-pos {
         left: 530px;
-    }
-
-    .toggle-panel-right-pos {
-        right: 460px !important;
-    }
-
-    #description-panel {
-        width: 460px !important;
     }
 
     #news-panel {
@@ -860,10 +903,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .navbar-btn:hover .icon-lock {
     display: inline;
     color: var(--secondary-900);
-}
-
-#draw-btn{
-    margin-top: 260px;
 }
 
 #sidebar-bg{
