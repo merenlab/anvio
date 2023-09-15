@@ -146,15 +146,15 @@
                     </nav>
                 </div>
                 <!-- this hide function needs to happen upon initial render, currently only called onchange -->
-                <div class="col-12 tab-content">
+                <div class="col-12 tab-content ml-1">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <div class="sidebar-toggle mb-3">
                                 <span class="menu-toggle mr-2">Hide</span>
                             </div>
-                            <span class="settings-header">Display</span>
+                            <span class="settings-header w600">Item</span>
                             <div class="form-group form-margin">
-                                    <label class="settings-label w600" for="tree_type" data-help="drawing-type">Drawing Type:</label>
+                                    <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type:</label>
                                     <div class="col-10">
                                         <select id="tree_type" class="form-control input-xs">
                                             <option value="phylogram">Phylogram</option>
@@ -163,7 +163,7 @@
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="settings-label w600" for="trees_container" data-help="order-by">Items Order:</label>
+                                    <label class="settings-label w600" for="trees_container" data-help="order-by">Order:</label>
                                     <div class="col-10">
                                         <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
                                         <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
@@ -175,7 +175,7 @@
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="settings-label w600" for="views_container" data-help="view">View Type:</label>
+                                    <label class="settings-label w600" for="views_container" data-help="view">Data:</label>
                                     <div class="col-10">
                                         <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
                                     </div>
@@ -429,66 +429,189 @@
                                         </div>
                                 </div>
                             </div>
+                            <div class="ml-2">
+                                <span class="settings-secondary-header">Display</span>
 
-                            <span class="settings-header">Layers</span>
+                                <div id="table_layers_container" style="margin-top: 15px;">
+                                    <table id="table_layers">
+                                        <thead>
+                                            <tr>
+                                                <td></td>
+                                                <td data-help="layer-name">Name</td>
+                                                <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                                <td data-help="layer-type">Type</td>
+                                                <td data-help="layer-norm">Norm.</td>
+                                                <td data-help="layer-height">Height</td>
+                                                <td data-help="layer-margin" class="column-margin">Margin</td>
+                                                <td data-help="layer-min">Min</td>
+                                                <td data-help="layer-max">Max</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tbody_layers"></tbody>
+                                        <tbody id="tbody_bottom">
+                                            <tr style="height: 30px">
+                                                <td colspan="9">
+                                                    <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td></td>
+                                                <td><input class="select_layer" placeholder="Layer Name" size="12"></td>
+                                                <td>
+                                                    <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                                    <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                                </td>
+                                                <td style="width: 50px;">
+                                                    <select class="type_multiple" style="width: 50px;" class="type">
+                                                        <option value="">Type</option>
+                                                        <option value="" disabled>-----Numerical Types-----</option>
+                                                        <option value="bar">Bar</option>
+                                                        <option value="intensity">Intensity</option>
+                                                        <option value="line">Line</option>
+                                                        <option value="" disabled>-----Categorical Types-----</option>
+                                                        <option value="color">Color</option>
+                                                        <option value="text">Text</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select class="normalization_multiple">
+                                                        <option value="">Norm.</option>
+                                                        <option value="none">none</option>
+                                                        <option value="sqrt">sqrt</option>
+                                                        <option value="log">log</option>
+                                                    </select>
+                                                </td>
+                                                <td><input class="input-height-multiple" size="3" placeholder="height"></input></td>
+                                                <td class="column-margin"><input class="input-margin-multiple" size="3" placeholder="margin"></input></td>
+                                                <td><input class="input-min-multiple" size="4" placeholder="min"></input></td>
+                                                <td><input class="input-max-multiple" size="4" placeholder="max"></input></td>
+                                                <td><input type="checkbox" class="select_all"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="ml-2 mt-5">
+                                <div id="sample-settings" class="form-horizontal">
+                                    <span class="settings-secondary-header">Layers</span>
+                                    <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Order by:</label>
+                                            <div class="col-md-8">
+                                                <select id="samples_order" class="form-control input-xs">
+                                                    <!-- JS FILLS HERE -->
+                                                </select>
+                                                <div id="samples_tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                    <br />
+                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
+                                                    <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="fa fa-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
+                                            </div>
+                                    </div>
+                                    
+                                    <div class="manual-mode">
+                                        <span class="settings-secondary-header">Tree/Dendrogram</span>
+                                        <div class="form-group form-margin d-flex">
+                                                <label class="col-3 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
+                                                <div class="col-3 d-flex align-item-center input-align">
+                                                    <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex">
+                                                <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex">
+                                                <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
+                                                </div>
+                                        </div>
+                                    </div>
 
-                            <div id="table_layers_container" style="margin-top: 15px;">
-                                <table id="table_layers">
-                                    <thead>
-                                        <tr>
-                                            <td></td>
-                                            <td data-help="layer-name">Name</td>
-                                            <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
-                                            <td data-help="layer-type">Type</td>
-                                            <td data-help="layer-norm">Norm.</td>
-                                            <td data-help="layer-height">Height</td>
-                                            <td data-help="layer-margin" class="column-margin">Margin</td>
-                                            <td data-help="layer-min">Min</td>
-                                            <td data-help="layer-max">Max</td>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_layers"></tbody>
-                                    <tbody id="tbody_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><input class="select_layer" placeholder="Layer Name" size="12"></td>
-                                            <td>
-                                                <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
-                                                <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
-                                            </td>
-                                            <td style="width: 50px;">
-                                                <select class="type_multiple" style="width: 50px;" class="type">
-                                                    <option value="">Type</option>
-                                                    <option value="" disabled>-----Numerical Types-----</option>
-                                                    <option value="bar">Bar</option>
-                                                    <option value="intensity">Intensity</option>
-                                                    <option value="line">Line</option>
-                                                    <option value="" disabled>-----Categorical Types-----</option>
-                                                    <option value="color">Color</option>
-                                                    <option value="text">Text</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <select class="normalization_multiple">
-                                                    <option value="">Norm.</option>
-                                                    <option value="none">none</option>
-                                                    <option value="sqrt">sqrt</option>
-                                                    <option value="log">log</option>
-                                                </select>
-                                            </td>
-                                            <td><input class="input-height-multiple" size="3" placeholder="height"></input></td>
-                                            <td class="column-margin"><input class="input-margin-multiple" size="3" placeholder="margin"></input></td>
-                                            <td><input class="input-min-multiple" size="4" placeholder="min"></input></td>
-                                            <td><input class="input-max-multiple" size="4" placeholder="max"></input></td>
-                                            <td><input type="checkbox" class="select_all"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                    <span class="settings-header">Layer Groups</span>
+                                    <div id="sample_groups_container" class="col-9">
+        
+                                    </div>
+                                    <div class="clearfix"></div>
+                                    <span class="settings-header">Layers</span>
+                                    <div id="table_samples_container" style="margin-top: 10px;">
+                                        <table id="table_samples">
+                                            <thead>
+                                                <tr>
+                                                    <td></td>
+                                                    <td data-help="layer-name">Name</td>
+                                                    <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                                    <td data-help="layer-type">Type</td>
+                                                    <td data-help="layer-norm">Norm.</td>
+                                                    <td data-help="layer-height">Height</td>
+                                                    <td data-help="layer-margin">Margin</td>
+                                                    <td data-help="layer-min">Min</td>
+                                                    <td data-help="layer-max">Max</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody_samples"></tbody>
+                                            <tbody id="tbody_samples_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><input class="select_layer" placeholder="Layer Name" size="12"></td>
+                                                    <td>
+                                                        <div id="picker_start_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
+                                                        <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
+                                                    </td>
+                                                    <td style="width: 50px;">
+                                                        <select class="type_multiple" style="width: 50px;" class="type">
+                                                            <option value="bar">Bar</option>
+                                                            <option value="intensity">Intensity</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="normalization_multiple">
+                                                            <option value="none">Norm.</option>
+                                                            <option value="sqrt">sqrt</option>
+                                                            <option value="log">log</option>
+                                                        </select>
+                                                    </td>
+                                                    <td><input class="input-height-multiple" size="3" placeholder="height"></input></td>
+                                                    <td><input class="input-margin-multiple" size="3" placeholder="margin"></input></td>
+                                                    <td><input class="input-min-multiple" size="4" placeholder="min"></input></td>
+                                                    <td><input class="input-max-multiple" size="4" placeholder="max"></input></td>
+                                                    <td><input type="checkbox" class="select_all"></td>
+                                                </tr>
+                                            </tbody>
+                                            <tbody id="tbody_samples_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;">Select all layers in a group</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td colspan="2"><select style="width: 100%;" id="group_list_for_select_all"></select></td>
+                                                    <td style="width: 50px;"><button id="group_select_all">Select</button></td>
+                                                    <td><button id="group_unselect_all">Unselect</button></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <br />
+                                    <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
+                                        <button id="btn_redraw_samples" type="button" class="btn btn-outline-secondary btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -563,123 +686,6 @@
                     <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
                         <div class="sidebar-toggle mb-3">
                             <span class="menu-toggle mr-2">Hide</span>
-                        </div>
-                        <div id="sample-settings" class="form-horizontal">
-                            <span class="settings-header">Organization</span>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="tree_type" data-help="samples_order">Order by:</label>
-                                    <div class="col-md-8">
-                                        <select id="samples_order" class="form-control input-xs">
-                                            <!-- JS FILLS HERE -->
-                                        </select>
-                                        <div id="samples_tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                            <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog('samples');">Save tree</button>
-                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree('samples');">Clear</button>
-                                        </div>
-                                         <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="fa fa-plus-sign" aria-hidden="true"></span>Generate new phylogenetic tree</button>
-                                    </div>
-                            </div>
-
-                            <span class="settings-header">Tree/Dendrogram</span>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
-                                    <div class="col-md-8">
-                                        <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
-                                    </div>
-                            </div>
-                            <span class="settings-header">Layer Groups</span>
-                            <div id="sample_groups_container">
-
-                            </div>
-                            <div class="clearfix"></div>
-                            <span class="settings-header">Layers</span>
-                            <div id="table_samples_container" style="margin-top: 10px;">
-                                <table id="table_samples">
-                                    <thead>
-                                        <tr>
-                                            <td></td>
-                                            <td data-help="layer-name">Name</td>
-                                            <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
-                                            <td data-help="layer-type">Type</td>
-                                            <td data-help="layer-norm">Norm.</td>
-                                            <td data-help="layer-height">Height</td>
-                                            <td data-help="layer-margin">Margin</td>
-                                            <td data-help="layer-min">Min</td>
-                                            <td data-help="layer-max">Max</td>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_samples"></tbody>
-                                    <tbody id="tbody_samples_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><input class="select_layer" placeholder="Layer Name" size="12"></td>
-                                            <td>
-                                                <div id="picker_start_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF"></div>
-                                                <div id="picker_multiple_samples" class="colorpicker-base" color="#FFFFFF" style="background-color: #FFFFFF" ></div>
-                                            </td>
-                                            <td style="width: 50px;">
-                                                <select class="type_multiple" style="width: 50px;" class="type">
-                                                    <option value="bar">Bar</option>
-                                                    <option value="intensity">Intensity</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <select class="normalization_multiple">
-                                                    <option value="none">Norm.</option>
-                                                    <option value="sqrt">sqrt</option>
-                                                    <option value="log">log</option>
-                                                </select>
-                                            </td>
-                                            <td><input class="input-height-multiple" size="3" placeholder="height"></input></td>
-                                            <td><input class="input-margin-multiple" size="3" placeholder="margin"></input></td>
-                                            <td><input class="input-min-multiple" size="4" placeholder="min"></input></td>
-                                            <td><input class="input-max-multiple" size="4" placeholder="max"></input></td>
-                                            <td><input type="checkbox" class="select_all"></td>
-                                        </tr>
-                                    </tbody>
-                                    <tbody id="tbody_samples_bottom">
-                                        <tr style="height: 30px">
-                                            <td colspan="9">
-                                                <h4 style="padding-top: 10px; border-top: 1px #AAA solid;">Select all layers in a group</h4>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td colspan="2"><select style="width: 100%;" id="group_list_for_select_all"></select></td>
-                                            <td style="width: 50px;"><button id="group_select_all">Select</button></td>
-                                            <td><button id="group_unselect_all">Unselect</button></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                            <td></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <br />
-                            <div class="sidebar-state-buttons btn-group col-md-12" role="group" style="margin-bottom: 13px; margin-top: 5px;">
-                                <button id="btn_redraw_samples" type="button" class="btn btn-outline-secondary btn-sm" onClick="drawSamples();" style="width:100%" disabled><span class="fa fa-globe" aria-hidden="true"></span> Redraw layer data</button>
-                            </div>
                         </div>
                     </div>
                     <!-- SEARCH Tab -->
