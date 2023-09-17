@@ -1,7 +1,7 @@
 ---
 name: Request a New Feature
-about: Suggest something you wish anvi'o could do.
-title: "[FEATURE REQUEST] Replace this text with a concise description of the feature you propose (keep the [FEATURE REQUEST] part). If you would like to ask for a feature request, don't open a blank issue."
+about: Suggest something you wish anvi'o could do. If you would like to ask for a feature request, don't open a blank issue.
+title: "[FEATURE REQUEST] Replace this text with a concise description of the feature you propose (keep the [FEATURE REQUEST] part)."
 labels: ''
 assignees: ''
 
