@@ -1,6 +1,6 @@
 ---
 name: Bug or Technical Issue
-about: Report a bug or a technical issue. If you are reoprting a technical issue, do not open a blank issue. **If you do not follow this template, your report may be closed without response**.
+about: Report a bug or a technical issue. If you are reoprting a technical issue, do not open a blank issue. If you do not follow this template, your report may be closed without response.
 title: "[BUG] Insert a short but descriptive title (leave the '[BUG]' part)"
 labels: ''
 assignees: ''
