@@ -133,14 +133,48 @@ def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
                     return f"{number} {word}"
 
 
+def get_terminal_width():
+    try:
+        terminal_width = max(get_terminal_size()[0], 60)
+    except:
+        # Getting the terminal size failed. It could be for many reasons: they may not have a
+        # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
+        # width so that if they can see it at all, it truncates only the longest update messages.
+        terminal_width = 120
+
+    return terminal_width
+
+
+def get_terminal_size():
+    """function was taken from http://stackoverflow.com/a/566752"""
+    def ioctl_GWINSZ(fd):
+        try:
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
+        except:
+            return None
+        return cr
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+    if not cr:
+        try:
+            cr = (os.environ['LINES'], os.environ['COLUMNS'])
+        except:
+            cr = (25, 80)
+    return int(cr[1]), int(cr[0])
+
+
 class Progress:
     def __init__(self, verbose=True):
         self.pid = None
         self.verbose = verbose
-        self.terminal_width = None
+        self.terminal_width = get_terminal_width()
         self.is_tty = sys.stdout.isatty()
-
-        self.get_terminal_width()
 
         self.msg = None
         self.current = None
@@ -157,16 +191,6 @@ class Progress:
             self.verbose = False
 
 
-    def get_terminal_width(self):
-        try:
-            self.terminal_width = max(get_terminal_size()[0], 60)
-        except:
-            # Getting the terminal size failed. It could be for many reasons: they may not have a
-            # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
-            # width so that if they can see it at all, it truncates only the longest update messages.
-            self.terminal_width = 120
-
-
     def new(self, pid, discard_previous_if_exists=False, progress_total_items=None):
         if self.pid:
             if discard_previous_if_exists:
@@ -178,7 +202,7 @@ class Progress:
             return
 
         self.pid = '%s %s' % (get_date(), pid)
-        self.get_terminal_width()
+        self.terminal_width = get_terminal_width()
         self.current = None
         self.step = None
         self.progress_total_items = progress_total_items
@@ -335,6 +359,9 @@ class Run:
         self.verbose = verbose
         self.width = width
 
+        # learn about the terminal
+        self.terminal_width = get_terminal_width()
+
         self.single_line_prefixes = {0: '',
                                      1: '* ',
                                      2: '    - ',
@@ -414,19 +441,26 @@ class Run:
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
         if align_long_values:
-            terminal_width = get_terminal_size()[0]
-            wrap_width = terminal_width - self.width - 3
-            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
-            if len(wrapped_value_lines) == 0:
-                aligned_value_str = value
-            else:
-                aligned_value_str = wrapped_value_lines[0]
-                for line in wrapped_value_lines[1:]:
-                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+            wrap_width = self.terminal_width - self.width - 3
 
-            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
-                                             '.' * (self.width - len(label)),
-                                             c(str(aligned_value_str), mc), '\n' * nl_after)
+            if wrap_width < 40:
+                # the info is way too long and the terminal is way too tiny
+                # to wrap anything. so we will give up here, and continue
+                # with the existing `info_line` even if we are asked to
+                # `align_long_values`
+                pass
+            else:
+                wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
+                if len(wrapped_value_lines) == 0:
+                    aligned_value_str = value
+                else:
+                    aligned_value_str = wrapped_value_lines[0]
+                    for line in wrapped_value_lines[1:]:
+                        aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+                info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                                 '.' * (self.width - len(label)),
+                                                 c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.reset()
@@ -1024,31 +1058,6 @@ def tabulate(*args, **kwargs):
 
 def get_date():
     return time.strftime("%d %b %y %H:%M:%S", time.localtime())
-
-
-def get_terminal_size():
-    """function was taken from http://stackoverflow.com/a/566752"""
-    def ioctl_GWINSZ(fd):
-        try:
-            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ,
-        '1234'))
-        except:
-            return None
-        return cr
-    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
-    if not cr:
-        try:
-            fd = os.open(os.ctermid(), os.O_RDONLY)
-            cr = ioctl_GWINSZ(fd)
-            os.close(fd)
-        except:
-            pass
-    if not cr:
-        try:
-            cr = (os.environ['LINES'], os.environ['COLUMNS'])
-        except:
-            cr = (25, 80)
-    return int(cr[1]), int(cr[0])
 
 
 class Logger:
