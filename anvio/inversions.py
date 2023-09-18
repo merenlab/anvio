@@ -977,10 +977,10 @@ class Inversions:
             meme_log = os.path.join(output, "run-MEME.log")
 
             with open(fasta_path, 'w') as file:
-                file.write('>{inverion_id}_first_IR\n' + first_IR + '\n'
-                           '>{inverion_id}_first_IR_rc\n' + first_IR_rc + '\n'
-                           '>{inverion_id}_second_IR\n' + second_IR + '\n'
-                           '>{inverion_id}_second_IR_rc\n' + second_IR_rc + '\n')
+                file.write(f'>{inversion_id}_first_IR\n' + first_IR + '\n'
+                           f'>{inversion_id}_first_IR_rc\n' + first_IR_rc + '\n'
+                           f'>{inversion_id}_second_IR\n' + second_IR + '\n'
+                           f'>{inversion_id}_second_IR_rc\n' + second_IR_rc + '\n')
 
             self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = "3")
 
