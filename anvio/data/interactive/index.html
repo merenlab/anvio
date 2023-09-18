@@ -120,10 +120,10 @@
                             <li onclick="toggleSelectedIcon(event, 'main');" role="presentation" class="navigation-tabs active" id="custom-li-1"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-house-door fs-3"></i><i class="icon-lock bi bi-house-door-fill fs-3"></i> <span class="d-block">Main</span></a></li>
                             <li id="sample_settings_tab" role="presentation"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-gear fs-3"></i><i class="icon-lock bi bi-gear-fill fs-3"></i><span class="d-block">Option</span> </a></li>
                             <li id="bin_settings_tab" role="presentation"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-archive fs-3"></i><i class="icon-lock bi bi-archive-fill fs-3"></i> <span class="d-block">Bins</span> </a></li>
-                            <li id="legend_settings_tab" role="presentation"><a href="#legend_settings" aria-controls="legend_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-map fs-3"></i><i class="icon-lock bi bi-map-fill fs-3"></i> <span class="d-block">Legend</span> </a></li>
                             <li id="data_panel_tab" role="presentation"><a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="navbar-btn d-block" ><i class="icon-unlock bi bi-cursor fs-3"></i><i class="icon-lock bi bi-cursor-fill fs-3"></i> <span role="tab" class="d-block">Data</span> </a></li>
                             <li id="description_panel_tab" role="presentation"><a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="navbar-btn d-block" ><i class="icon-unlock bi bi-file-richtext fs-3"></i><i class="icon-lock bi bi-file-richtext-fill fs-3"></i> <span role="tab" class="d-block">Notes</span> </a></li>
                             <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-search fs-3"></i><i class="icon-lock bi bi-search fs-3"></i> <span class="d-block">Search</span> </a></li>
+                            <li id="news_settings_tab" role="presentation" onclick="showAllNews()"><a href="#news_settings" aria-controls="new_settings" role="tab" data-toggle="tab" class="navbar-btn d-block"><i class="icon-unlock bi bi-newspaper fs-3"></i><i class="icon-lock bi bi-newspaper fs-3"></i> <span class="d-block">News</span> </a></li>
                             <li id="detail_tab" role="presentation"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="navbar-btn d-block" ><i class="icon-unlock bi bi-question-octagon fs-3"></i><i class="icon-lock bi bi-question-octagon-fill fs-3"></i>  <span class="d-block">Anvio</span> </a></li>
                         </ul>
                         <ul class="list-unstyled components align-item-center text-center" id="sidebar-bg">
@@ -613,11 +613,23 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <span class="settings-header mt-5">Legends</span>
+                            <div class="tab-pane fade show mt-3" id="legend_settings">
+                            </div>
                         </div>
                     </div>
-                    <!-- LEGEND Tab -->
-                    <div role="tabpanel" class="tab-pane fade show" id="legend_settings">
-                    </div>
+
+                    <!-- NEWS Tab 
+                    <div role="tabpanel" class="tab-pane fade show" id="news_settings">
+                        <div id="news-panel" style="display: block;">
+                            <h1 style="font-size: 22px; display: inline-block;">What's New</h1><a href="#" style="color: gray; margin-top: 36px; float: right;" onclick="newsMarkRead(); ">Mark everything as read</a>
+                            <div id="news-panel-inner">
+                                <div class="news-item"></div>
+                            </div>s3
+                        </div>
+                    </div> 
+                    -->
 
                     <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
@@ -918,18 +930,21 @@
                         <div class="sidebar-toggle mb-3">
                             <span class="menu-toggle mr-2">Hide</span>
                         </div>
-                        <div id="anvio_tab_content">
-                            <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p>Anvi'o Authors</p></a>
-                            <hr style="color: gray;">
-                            <a href="http://merenlab.org/projects/anvio/"><p>Anvi'o Project Page</p></a>
-                            <hr style="color: gray;">
-                            <a href='#' onclick="showAllNews()"><p>Anvi'o News</p></a>
-                            <hr style="color: gray;">
-                            <a href="http://merenlab.org/2019/10/07/getting-help/"><p>Getting Help</p></a>
-                            <hr style="color: gray;">
-                            <a href="https://github.com/meren/anvio/issues"><p>Browse/Report Issue</p></a>
-                            <hr style="color: gray;">
-                            <a href="http://merenlab.org/people/"><p>Contant Us</p></a>
+                        <div class="mt-2 paragraph" id="anvio_tab_content">
+                            <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p class="subheading">Anvi'o Authors</p></a>
+                            <hr class="mb-3 col-10 border-color">
+                            <a  href="http://merenlab.org/projects/anvio/"><p class="subheading">Anvi'o Project Page</p></a>
+                            <hr class="mb-3 col-10 border-color">
+                            <a href="https://discord.gg/C6He6mSNY4"><p class="subheading">Getting Help</p></a>
+                            <hr class="mb-3 col-10 border-color">
+                            <a href="https://github.com/meren/anvio/issues"><p class="subheading">Browse/Report Issue</p></a>
+                            <hr class="mb-3 col-10 border-color">
+                            <a href="http://merenlab.org/people/"><p class="subheading">Contant Us</p></a>
+                            <hr class="mb-3 col-10 border-color">
+                        </div>
+                        <div class="paragraph d-flex align-item-center justify-content-center col-10">
+                            <a href="https://discord.gg/C6He6mSNY4" class="mr-3 align-item-center justify-content-center"><i class="bi bi-discord fs-2"></i> <span class="lead">| Join</span></a>
+                            <a href="https://github.com/merenlab/anvio" class="align-item-center justify-content-center"><i class="bi bi-github fs-2"></i> <span class="lead">| Give us a Star</span></a>
                         </div>
                     </div>
                 </div>
