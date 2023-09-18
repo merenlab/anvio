@@ -201,6 +201,18 @@ $(document).ready(function() {
     }
 
     initData();
+        // Sidebar Hide/Show button 
+        $(".sidebar-toggle").click(function() {
+            $(this).text(function(i, text) {
+                if(text === "Hide"){
+                    $('#inner-sidebar').hide();
+    
+                }else{
+                    $('#inner-sidebar').show();
+                }
+                return text === "Hide" ? "Show" : "Hide";
+            });
+        });
 });
 
 function initData() {
