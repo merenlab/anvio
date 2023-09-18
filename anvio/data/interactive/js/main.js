@@ -275,9 +275,9 @@ function initData() {
 
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
-                    <div style="float: left; padding: 4px 4px;">
+                    <div class="mr-3" style="float:left;">
                         <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
-                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
+                        <label onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
             });
 
@@ -362,6 +362,7 @@ function switchUserInterfaceMode(project, title) {
 
     console.log("The running mode for the interface: " + mode);
 
+    // move MODE TEXT into title tab
     $('.' + mode + '-mode').show();
     $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
 
