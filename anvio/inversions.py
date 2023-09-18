@@ -124,6 +124,7 @@ class Inversions:
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
+        self.skip_search_for_motifs = A('skip_search_for_motifs')
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -927,6 +928,85 @@ class Inversions:
         self.run.info(f"[Consensus Inversions] Across {PL('sample', len(self.inversions))}", f"{len(self.consensus_inversions)}", nl_before=1, lc="yellow")
 
 
+    def use_motif_finder(self, fasta_path, output, log_file_path, num_motifs = "1"):
+        """Command line instruction for MEME"""
+
+        cmd_line = ['meme',
+                    fasta_path,
+                    '-dna',
+                    '-pal',
+                    '-nmotifs', num_motifs,
+                    '-o', output,
+                    '-p', self.num_threads]
+
+        utils.run_command(cmd_line, log_file_path)
+
+
+    def search_for_motifs(self):
+        """Use MEME to find palindromic motif in the inverted-repeats"""
+
+        # are we checking for motifs?
+        if self.skip_search_for_motifs:
+            return
+
+        # for each inversion, run MEME with num_motifs = 3
+        individual_fasta_paths = []
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+            contig_name = entry['contig_name']
+
+            # get start and stop of IRs + 20bp on each side
+            first_start = entry['first_start'] - 20
+            first_end = entry['first_end'] + 20
+            second_start = entry['second_end'] - 20
+            second_end = entry['second_end'] + 20
+
+            contig_sequence = self.contig_sequences[contig_name]['sequence']
+
+            # get sequence of each IR and their reverse complement
+            first_IR = contig_sequence[first_start:first_end]
+            first_IR_rc = utils.rev_comp(first_IR)
+            second_IR = contig_sequence[second_start:second_end]
+            second_IR_rc = utils.rev_comp(second_IR)
+
+            # create output dir and files
+            output = os.path.join(self.output_directory, "PER_INV", inversion_id)
+            filesnpaths.gen_output_directory(output)
+            fasta_path = os.path.join(output, "inverted_repeats.fasta")
+            meme_output = os.path.join(output, "MEME")
+            meme_log = os.path.join(output, "run-MEME.log")
+
+            with open(fasta_path, 'w') as file:
+                file.write('>{inverion_id}_first_IR\n' + first_IR + '\n'
+                           '>{inverion_id}_first_IR_rc\n' + first_IR_rc + '\n'
+                           '>{inverion_id}_second_IR\n' + second_IR + '\n'
+                           '>{inverion_id}_second_IR_rc\n' + second_IR_rc + '\n')
+
+            self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = "3")
+
+            # add fasta path to a list
+            individual_fasta_paths.append(fasta_path)
+
+        # for all inversions, look for shared motifs
+        output = os.path.join(self.output_directory, "PER_INV", "ALL_INVERSIONS")
+        filesnpaths.gen_output_directory(output)
+        fasta_path = os.path.join(output, "inverted_repeats.fasta")
+        meme_output = os.path.join(output, "MEME")
+        meme_log = os.path.join(output, "run-MEME.log")
+
+        # concatenate all individual fasta into one
+        with open(fasta_path, 'w') as file:
+            for path in individual_fasta_paths:
+                with open(path) as individual_fasta:
+                    for line in individual_fasta:
+                        file.write(line)
+
+        # search for as many motifs as inversions. Can be time consuming.
+        self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = len(self.consensus_inversions))
+
+        self.run.info('Reporting motifs in inverted repeats', output, nl_after=1)
+
+
     @staticmethod
     def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
         """Go back to the raw metagenomic reads to compute activity of inversions for a single sample.
@@ -1387,6 +1467,10 @@ class Inversions:
             raise ConfigError("Anvi'o kindly advices you to check yourself before you wreck yourself. BUT, it leaves "
                               "HOW you should check yourself completely up to you as a mystery for you to solve.")
 
+        if not self.skip_search_for_motifs:
+            if not utils.is_program_exists('meme'):
+                raise ConfigError(f"You asked anvi'o to search for conserved motifs. Great idea! "
+                                  f"But the software MEME is not installed in your environment :'(")
 
     def report(self):
         """Reporting per-sample as well as consensus inversions, along with other reporting files"""
@@ -1405,7 +1489,8 @@ class Inversions:
         ################################################################################################
         for entry_name in self.inversions:
             if len(self.inversions[entry_name]):
-                output_path = os.path.join(self.output_directory, f'INVERSIONS-IN-{entry_name}.txt')
+                filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_SAMPLE"))
+                output_path = os.path.join(self.output_directory, "PER_SAMPLE", f'INVERSIONS-IN-{entry_name}.txt')
                 with open(output_path, 'w') as output:
                     output.write('\t'.join(headers) + '\n')
                     for v in self.inversions[entry_name]:
@@ -1441,6 +1526,11 @@ class Inversions:
         # Genomic context
         ################################################################################################
         self.report_genomic_context_surrounding_inversions()
+
+        ################################################################################################
+        # Inverted repeats motifs
+        ################################################################################################
+        self.search_for_motifs()
 
 
     def report_genomic_context_surrounding_inversions(self):
