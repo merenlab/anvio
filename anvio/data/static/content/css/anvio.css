@@ -26,30 +26,6 @@ body {
     font-size: 150%;
 }
 
-.image-bg-fluid-height,
-.image-bg-fixed-height {
-    -webkit-background-size: cover;
-    -moz-background-size: cover;
-    background-size: cover;
-    -o-background-size: cover;
-}
-
-.image-bg-fluid-height {
-	background: url('../pics/fractal.jpg') center center scroll;
-    padding-top: 75px;
-    padding-bottom: 25px;
-    border-bottom: 1px #808080 solid;
-}
-
-.image-bg-fixed-height {
-	background: url('../pics/fractal.jpg') center center scroll;
-    height: 200px;
-}
-
-.img-center {
-	margin: 0 auto;
-}
-
 header {
     margin-bottom: 20px;
 }

@@ -36,11 +36,24 @@
 
 .settings-header {
     font-variant: small-caps;
-    font-size: 1.4em;
-    border-bottom: 1px var(--gray) solid;
+    font-size: 1.7em;
+    border-bottom: 1px var(--secondary-500) solid;
     display: block;
     margin-top: 12px;
-    color: var(--text-black);
+    color: var(--body-text);
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.settings-secondary-header {
+    font-variant: small-caps;
+    font-size: 1.4em;
+    border-bottom: 1px var(--secondary-500) solid;
+    display: block;
+    margin-top: 12px;
+    color: var(--body-text);
+    font-weight: 500;
+    line-height: 1.2;
 }
 
 .settings-label {
@@ -48,8 +61,10 @@
     padding-top: 12px;
     margin-bottom: 5px;
     text-align: left;
-    font-size: 1em;
-    color: var(--gray);
+    font-size: 1.2em;
+    color: var(--body-text);
+    font-weight: 400;
+    line-height: 1;
   }
   
   .label-big {
@@ -256,7 +271,7 @@ html, body, #wrapper {
 }
 
 .toggle-panel-left-pos {
-    left: 400px;
+    left: 540px;
 }
 
 #toggle-panel-left:hover {
@@ -414,6 +429,7 @@ html, body, #wrapper {
 
 .form-margin {
     margin-bottom: 0px;
+    align-items: center;
 }
 
 .sidebar-footer {
@@ -665,38 +681,38 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     margin-top: 270px;
 }
 
-@media screen and (min-width: 768px) {
+@media (min-width: 768px) {
     *:not(text) {
         font-size: 12px;
         line-height: 1.428;
     }
 
     #sidebar {
-        width: 530px !important;
+        width: 540px !important;
     }
 
     #draw-btn{
-        margin-top: 250px;
+        margin-top: 270px;
     }
 }
 
-@media screen and (min-width: 992px) {
+@media (min-width: 992px) {
     *:not(text) {
         font-size: 12px;
         line-height: 1.428;
     }
 
     #sidebar {
-        width: 530px !important;
+        width: 540px !important;
     }
 
     #draw-btn{
-        margin-top: 260px;
+        margin-top: 270px;
     }
 
 }    
 
-@media screen and (min-width:1280px){
+@media (min-width:1280px){
     /* styles for browsers larger than 1280px; */
     *:not(text) {
         font-size: 12px;
@@ -704,16 +720,16 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #sidebar {
-        width: 530px !important;
+        width: 540px !important;
     }
 
     #draw-btn{
-        margin-top: 270px;
+        margin-top: 280px;
     }
 
 }
 
-@media screen and (min-width:1460px){
+@media (min-width:1460px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
@@ -721,15 +737,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #sidebar {
-        width: 530px !important;
+        width: 540px !important;
     }
 
-    #draw-btn{
-        margin-top: 350px;
-    }
 
     #inner-sidebar{
-        overflow:visible;
+       
     }
 
     .glyphicon {
@@ -742,7 +755,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     .toggle-panel-left-pos {
-        left: 530px;
+        left: 540px;
     }
 
     #news-panel {
@@ -890,6 +903,16 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     color: var(--secondary-600) !important;
 }
 
+.selected-navbar-btn{
+    display: flex;
+    padding: auto;
+    margin-bottom: 20px;
+    flex-direction: column;
+    align-items: center;
+    background: var(--bg-color);
+    color: var(--success-600) !important;
+}
+
 .navbar-btn:hover{
     font-weight: 600;
     color: var(--secondary-900);
@@ -919,4 +942,8 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .menu-toggle:hover{
     color: var(--secondary-900);
+}
+
+.border-color{
+    color: var(--divider);
 }

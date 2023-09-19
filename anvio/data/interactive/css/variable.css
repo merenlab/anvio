@@ -12,8 +12,8 @@
 
     --body-text: #4F4F4F;
     --muted-text: #757575;
-    --border: #E5E7EB;
-    --divider: #F5F5F5;
+    --border: #E1E1E1;
+    --divider: #848D9C;
     --bg-color: #FAFAFA;
     --bg-color-hover: #DDDDDD;
 
@@ -111,7 +111,7 @@
 
 .paragraph .subheading{
     color: var(--muted-text);
-    font-size: 0.875em; 
+    font-size: 1.2rem; 
     font-weight: 400; 
     line-height: 1.6;
     text-transform: uppercase;
