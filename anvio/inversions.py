@@ -958,7 +958,7 @@ class Inversions:
             # get start and stop of IRs + 20bp on each side
             first_start = entry['first_start'] - 20
             first_end = entry['first_end'] + 20
-            second_start = entry['second_end'] - 20
+            second_start = entry['second_start'] - 20
             second_end = entry['second_end'] + 20
 
             contig_sequence = self.contig_sequences[contig_name]['sequence']
