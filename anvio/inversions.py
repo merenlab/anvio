@@ -971,7 +971,6 @@ class Inversions:
 
             # create output dir and files
             output = os.path.join(self.output_directory, "PER_INV", inversion_id)
-            filesnpaths.gen_output_directory(output)
             fasta_path = os.path.join(output, "inverted_repeats.fasta")
             meme_output = os.path.join(output, "MEME")
             meme_log = os.path.join(output, "run-MEME.log")
@@ -1543,20 +1542,22 @@ class Inversions:
             return
 
         # we are in business
-        genes_output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt')
-        functions_output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt')
-
         genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
         functions_output_headers = ["gene_callers_id", "source", 'accession', 'function']
 
-        with open(genes_output_path, 'w') as genes_output, open(functions_output_path, 'w') as functions_output:
-            genes_output.write("inversion_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
-            functions_output.write("inversion_id\t%s\n" % '\t'.join(functions_output_headers))
+        for v in self.consensus_inversions:
+            # this is the inversion id we are working with here:
+            inversion_id = v['inversion_id']
 
-            for v in self.consensus_inversions:
+            # create ouput directory
+            filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_INV", inversion_id))
 
-                # this is the inversion id we are working with here:
-                inversion_id = v['inversion_id']
+            genes_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-GENES.txt')
+            functions_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')
+
+            with open(genes_output_path, 'w') as genes_output, open(functions_output_path, 'w') as functions_output:
+                genes_output.write("inversion_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
+                functions_output.write("inversion_id\t%s\n" % '\t'.join(functions_output_headers))
 
                 # but we will first create fake gene call entries for inversions:
                 d = dict([(h, '') for h in genes_output_headers])
@@ -1586,5 +1587,5 @@ class Inversions:
                     else:
                         functions_output.write(f"{inversion_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
 
-        self.run.info('Reporting file on gene context', genes_output_path)
-        self.run.info('Reporting file on functional context', functions_output_path, nl_after=1)
+            self.run.info('Reporting file on gene context', genes_output_path)
+            self.run.info('Reporting file on functional context', functions_output_path, nl_after=1)

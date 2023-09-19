@@ -29,10 +29,11 @@ INFO "Running the base analysis (without reporting the activity or genomic conte
 anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_BASIC \
                        --skip-compute-inversion-activity \
-                       --skip-recovering-genomic-context
+                       --skip-recovering-genomic-context \
+                       --skip-search-for-motifs
 
 SHOW_FILE INVERSION_BASIC/INVERSIONS-CONSENSUS.txt
-SHOW_FILE INVERSION_BASIC/INVERSIONS-IN-S01.txt
+SHOW_FILE INVERSION_BASIC/PER_SAMPLE/INVERSIONS-IN-S01.txt
 SHOW_FILE INVERSION_BASIC/ALL-STRETCHES-CONSIDERED.txt
 
 INFO "Running the analysis with 1 mismatch allowed in palindromes"
@@ -40,7 +41,8 @@ anvi-report-inversions -P bams-and-profiles.txt \
                        -o INVERSION_MISMATCH \
                        -m 1 \
                        --skip-compute-inversion-activity \
-                       --skip-recovering-genomic-context
+                       --skip-recovering-genomic-context \
+                       --skip-search-for-motifs
 
 SHOW_FILE INVERSION_MISMATCH/INVERSIONS-CONSENSUS.txt
 
@@ -50,7 +52,8 @@ anvi-report-inversions -P bams-and-profiles.txt \
                        -m 1 \
                        --palindrome-search-algorithm BLAST \
                        --skip-compute-inversion-activity \
-                       --skip-recovering-genomic-context
+                       --skip-recovering-genomic-context \
+                       --skip-search-for-motifs
 
 INFO "Running the complete analysis (with --verbose)"
 anvi-report-inversions -P bams-and-profiles.txt \
@@ -59,8 +62,8 @@ anvi-report-inversions -P bams-and-profiles.txt \
                        --verbose
 
 SHOW_FILE INVERSION_COMPLETE/INVERSION-ACTIVITY.txt
-SHOW_FILE INVERSION_COMPLETE/INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt
-SHOW_FILE INVERSION_COMPLETE/INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt
+SHOW_FILE INVERSION_COMPLETE/PER_INV/INV_0001/SURROUNDING-FUNCTIONS.txt
+SHOW_FILE INVERSION_COMPLETE/PER_INV/INV_0001/SURROUNDING-GENES.txt
 
 INFO "Re-computing inversion activity using previous results (quietly)"
 anvi-report-inversions -P bams-and-profiles.txt \

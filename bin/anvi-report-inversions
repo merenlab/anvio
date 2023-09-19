@@ -136,7 +136,8 @@ if __name__ == '__main__':
                     "report whatever it can.", metavar="INT")
     groupG.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls "
                     "from."}))
-
+    groupG.add_argument('--skip-search-for-motifs', default=False, action="store_true", help="Skip the search for "
+                    "conserved motifs in inverted repeats.")
 
     groupH = parser.add_argument_group('TARGETED SEARCH & PROCESSING', "By default anvi'o process every region of every "
                     "contig it is given. Using the following three parameters, you can limit your search to a particular "
