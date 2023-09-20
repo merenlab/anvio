@@ -92,3 +92,10 @@ anvi-report-inversions -P bams-and-profiles.txt \
                        -m 1 \
                        --process-only-inverted-reads \
                        --quiet
+
+INFO "Running the analysis and searching for only one motif (quietly)"
+anvi-report-inversions -P bams-and-profiles.txt \
+                       -o INVERSION_ONE_MOTIF \
+                       -m 1 \
+                       --num-of-motifs 1 \
+                       --quiet

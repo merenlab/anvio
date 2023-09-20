@@ -124,7 +124,10 @@ class Inversions:
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
+
+        # paramters for motif search
         self.skip_search_for_motifs = A('skip_search_for_motifs')
+        self.num_of_motifs = A('num_of_motifs')
 
         # be talkative or not
         self.verbose = A('verbose')
@@ -949,6 +952,10 @@ class Inversions:
         if self.skip_search_for_motifs:
             return
 
+        # how many motifs should we look for?
+        if not self.num_of_motifs:
+            self.num_of_motifs = len(self.consensus_inversions)
+
         # for each inversion, run MEME with num_motifs = 3
         individual_fasta_paths = []
         for entry in self.consensus_inversions:
@@ -1001,7 +1008,7 @@ class Inversions:
                         file.write(line)
 
         # search for as many motifs as inversions. Can be time consuming.
-        self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = len(self.consensus_inversions))
+        self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = self.num_of_motifs)
 
         self.run.info('Reporting motifs in inverted repeats', output, nl_after=1)
 
