@@ -1,7 +1,8 @@
 @import url('normalize.css');
+@import url('variable.css');
 
 #display-container {
-    width: 1200px; //this is being overwritten though.
+    width: 1200px;
     margin: 0 auto 20px auto;
     background: rgba(255,255,255,0.5);
     box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
@@ -103,6 +104,7 @@
     overflow-y: scroll;
     z-index: 999;
     color: black;
+    background: var(--solid-white);
 }
 
 .settings-header {
