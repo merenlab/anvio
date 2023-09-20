@@ -395,8 +395,9 @@ html, body, #wrapper {
 }
 
 #sidebar {
+    min-width: 540px;
     position: fixed;
-    background: white;
+    background: var(--solid-white);
     border-right: 1px solid var(--border);
     width: 400px;
     height: 100%;
@@ -457,9 +458,6 @@ td, tr {
 
 td > input[type='checkbox'] {
     margin-left: 5px;
-}
-
-#btn_draw_tree {
 }
 
 .tab-content {
@@ -686,14 +684,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #sidebar {
-        width: 540px !important;
-    }
-
-    #draw-btn{
-        margin-top: 270px;
-    }
 }
 
 @media (min-width: 992px) {
@@ -701,15 +691,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #sidebar {
-        width: 540px !important;
-    }
-
-    #draw-btn{
-        margin-top: 270px;
-    }
-
 }    
 
 @media (min-width:1280px){
@@ -718,15 +699,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #sidebar {
-        width: 540px !important;
-    }
-
-    #draw-btn{
-        margin-top: 280px;
-    }
-
 }
 
 @media (min-width:1460px){
@@ -735,16 +707,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #sidebar {
-        width: 540px !important;
-    }
-
-
-    #inner-sidebar{
-       
-    }
-
     .glyphicon {
         top: 4px;
         font-size: 15px;
@@ -756,19 +718,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     .toggle-panel-left-pos {
         left: 540px;
-    }
-
-    #news-panel {
-        width: 460px !important;
-    }
-
-
-    .toggle-panel-right-pos-2 {
-        right: 460px !important;
-    }
-
-    .toggle-panel-right-pos-3 {
-        right: 460px !important;
     }
 
     #title-panel {
@@ -870,7 +819,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 .inner-wrapper{
-    display: flex;
+    display: flex; 
     width: 100%;
     align-items: stretch;   
     text-align: center;
@@ -879,9 +828,17 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 #inner-sidebar {
     min-width: 60px !important;
-    max-width: 60px !important;
     color: var(--bg-color) !important;
     background: var(--bg-color);
+}
+
+.tab-elements{
+    position: fixed;
+    margin-left: 10.5px;
+}
+
+#draw-btn{
+    margin-top: 155px;
 }
 
 .dropdown-toggle{
@@ -918,18 +875,9 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     color: var(--secondary-900);
 }
 
-.navbar-btn:hover .icon-unlock,
-.navbar-btn .icon-lock {
-    display: none;
-}
-
-.navbar-btn:hover .icon-lock {
-    display: inline;
+.navbar-btn::after{
+    font-weight: 600;
     color: var(--secondary-900);
-}
-
-#sidebar-bg{
-    background: var(--bg-color);
 }
 
 #sidebar-logo{
@@ -945,5 +893,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 .border-color{
+    color: var(--divider);
+}
+
+.side-menu-text {
+    font-size: 12px;
+    line-height: 1.428;
     color: var(--divider);
 }
