@@ -1862,13 +1862,21 @@ class RunKOfams(KeggContext):
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
-        # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
+        # load existing kegg modules db, if one exists
+        if os.path.exists(self.kegg_modules_db_path):
+            self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
 
-        if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
-            self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
+            if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
+                self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
                              "which could very well be useful to you. BRITE is guaranteed to be set up "
                              "when downloading the latest version of KEGG with `anvi-setup-kegg-data --mode modules -D`.")
+        else:
+            self.run.warning("No modules database was found in the KEGG data directory you specified. This is fine, but "
+                             "you will not get functional annotations related to KEGG MODULES or BRITE hierarchies in your "
+                             "contigs database. If you want to include these annotations later, you will have to rerun this "
+                             "program with a data directory including a modules database (which you can obtain by running "
+                             "`anvi-setup-kegg-data` again with the right mode(s).")
+            self.kegg_modules_db = None
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1899,8 +1907,12 @@ class RunKOfams(KeggContext):
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
 
+        hash_to_add = "only_KOfams_were_annotated"
+        if self.kegg_modules_db:
+            hash_to_add = self.kegg_modules_db.db.get_meta_value('hash')
+
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        contigs_db.db.set_meta_value('modules_db_hash', self.kegg_modules_db.db.get_meta_value('hash'))
+        contigs_db.db.set_meta_value('modules_db_hash', hash_to_add)
         contigs_db.disconnect()
 
 
@@ -2018,9 +2030,11 @@ class RunKOfams(KeggContext):
                     self.gcids_to_functions_dict[gcid].append(counter)
 
                 # add associated KEGG module information to database
-                mods = self.kegg_modules_db.get_modules_for_knum(knum)
-                names = self.kegg_modules_db.get_module_names_for_knum(knum)
-                classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+                mods = None
+                if self.kegg_modules_db:
+                    mods = self.kegg_modules_db.get_modules_for_knum(knum)
+                    names = self.kegg_modules_db.get_module_names_for_knum(knum)
+                    classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
 
                 if mods:
                     mod_annotation = "!!!".join(mods)
@@ -2048,7 +2062,7 @@ class RunKOfams(KeggContext):
                         'e_value': None,
                     }
 
-                if not self.skip_brite_hierarchies:
+                if self.kegg_modules_db and not self.skip_brite_hierarchies:
                     # get BRITE categorization information in the form to be added to the contigs database
                     ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
                     if ortholog_categorizations_dict:
@@ -2148,9 +2162,11 @@ class RunKOfams(KeggContext):
                         self.gcids_to_functions_dict[gcid] = [next_key]
 
                         # add associated KEGG module information to database
-                        mods = self.kegg_modules_db.get_modules_for_knum(best_knum)
-                        names = self.kegg_modules_db.get_module_names_for_knum(best_knum)
-                        classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(best_knum)
+                        mods = None
+                        if self.kegg_modules_db:
+                            mods = self.kegg_modules_db.get_modules_for_knum(best_knum)
+                            names = self.kegg_modules_db.get_module_names_for_knum(best_knum)
+                            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(best_knum)
 
                         if mods:
                             mod_annotation = "!!!".join(mods)
@@ -2178,11 +2194,11 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
-                            if not self.skip_brite_hierarchies:
-                                # get BRITE categorization information in the form to be added to the contigs database
-                                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
-                                if ortholog_categorizations_dict:
-                                    self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
+                        if self.kegg_modules_db and not self.skip_brite_hierarchies:
+                            # get BRITE categorization information in the form to be added to the contigs database
+                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                            if ortholog_categorizations_dict:
+                                self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
                         next_key += 1
                         num_annotations_added += 1
@@ -2986,7 +3002,25 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
                 kegg_modules_db.disconnect()
 
-                if contigs_db_mod_hash != mod_db_hash:
+                if contigs_db_mod_hash == "only_KOfams_were_annotated":
+                    if not self.just_do_it:
+                        raise ConfigError("The contigs DB that you are working with has only been annotated with KOfams, and not with a modules database. "
+                                        "Since the KEGG data directory used for that annotation did not contain the modules database, we have no way of "
+                                        "knowing if the set of KOfams used for annotation matches to the set of KOfams associated with your current "
+                                        "modules database. Theoretically, we can still estimate metabolism even if there is a mismatch, but you risk "
+                                        "getting erroneous results since 1) KOs used to define the pathways could be missing from your collection, "
+                                        "and 2) KO functions could have been changed such that your KOs don't correspond to the real enzymes required "
+                                        "for the pathways. If you are willing to take this risk, you can restart this program with the --just-do-it "
+                                        "flag and move on with your life. But if you really want to do things properly, you should re-annotate your "
+                                        "contigs database with `anvi-run-kegg-kofams`, using a KEGG data directory that includes a modules database.")
+                    else:
+                        self.run.warning("ALERT. ALERT. The contigs DB does not include a modules database hash, which means we can't "
+                                         "tell if it was annotated with set of KOfams that match to the current modules database. Since you "
+                                         "have used the --just-do-it flag, we will assume you know what you are doing. But please keep in "
+                                         "mind that the metabolism estimation results could be wrong due to mismatches between the modules "
+                                         "database and your set of KOfams.")
+
+                elif contigs_db_mod_hash != mod_db_hash:
                     raise ConfigError(f"The contigs DB that you are working with has been annotated with a different version of the MODULES.db "
                                       f"than you are working with now. Basically, this means that the annotations are not compatible with the "
                                       f"metabolism data to be used for estimation. There are several ways this can happen. Please visit the "
