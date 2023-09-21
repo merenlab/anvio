@@ -1039,7 +1039,7 @@ D = {
                      "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
                      "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
-                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                     "from KEGG's REST API and set it up into anvi'o-compatible files."}
                 ),
     'only-download': (
             ['--only-download'],
