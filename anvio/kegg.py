@@ -550,6 +550,8 @@ class KeggSetup(KeggContext):
         # default download path for KEGG snapshot
         self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
         self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+        self.expect_modeling_files_in_archive = True if 'no_modeling_data' in self.snapshot_dict[self.target_snapshot].keys() and \
+                                                    (not self.snapshot_dict[self.target_snapshot]['no_modeling_data']) else False
 
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
@@ -660,7 +662,7 @@ class KeggSetup(KeggContext):
         utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
 
         self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name, no_modeling_is_ok = (not self.expect_modeling_files_in_archive))
         archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
@@ -758,7 +760,7 @@ class KeggSetup(KeggContext):
                              "has been kept. You may want to remove it later.")
 
     
-    def kegg_archive_is_ok(self, unpacked_archive_path):
+    def kegg_archive_is_ok(self, unpacked_archive_path, no_modeling_is_ok = False):
         """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
 
         Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
@@ -770,6 +772,14 @@ class KeggSetup(KeggContext):
         waste our time checking that all the module files are there. We only check that the directory is there. If later changes
         to the implementation require the direct use of the files in these folders, then this function should be updated
         to check for those.
+
+        Parameters
+        ==========
+        unpacked_archive_path : str
+            Path to the unpacked archive directory
+        no_modeling_is_ok : boolean
+            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the 
+            previous versions of KEGG archives that do not include this data.
         """
 
         is_ok = True
@@ -787,8 +797,8 @@ class KeggSetup(KeggContext):
             if not os.path.exists(path_to_f_in_archive):
                 is_ok = False
                 if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
-                                     % (path_to_f_in_archive))
+                    self.run.warning(f"The KEGG archive does not contain the following expected file or directory: "
+                                     f"{path_to_f_in_archive}")
 
         # check hmm files
         path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
@@ -799,16 +809,39 @@ class KeggSetup(KeggContext):
             if not os.path.exists(path_to_h_in_archive):
                 is_ok = False
                 if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
-                                     % (path_to_h_in_archive))
+                    self.run.warning(f"The KEGG archive does not contain the following expected hmm file: "
+                                     f"{path_to_h_in_archive}")
             expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
             for ext in expected_extensions:
                 path_to_expected_hmmpress_file = path_to_h_in_archive + ext
                 if not os.path.exists(path_to_expected_hmmpress_file):
                     is_ok = False
                     if anvio.DEBUG:
-                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
-                                         % (path_to_expected_hmmpress_file))
+                        self.run.warning(f"The KEGG archive does not contain the following expected `hmmpress` output: "
+                                         f"{path_to_expected_hmmpress_file}")
+
+        # check modeling files
+        # this section needs to be kept up to date with any changes to requirements in reactionnetwork.py
+        # which is a bit silly, but since these two classes don't know about each other it is the workaround we need :(
+        path_to_modeling_files_in_archive = os.path.join(path_to_kegg_in_archive, "KO_REACTION_NETWORK")
+        expected_modeling_files = ['ko_info.txt', 'ko_data.tsv']
+        missing_modeling_files = []
+        for f in expected_modeling_files:
+            path_to_f_in_archive = os.path.join(path_to_modeling_files_in_archive, f)
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False or no_modeling_is_ok
+                missing_modeling_files.append(f)
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following expected modeling file: "
+                                     f"{path_to_f_in_archive}")
+
+        if no_modeling_is_ok and missing_modeling_files:
+            self.run.warning("Modeling files are missing from the KEGG archive you have set up. However, somebody "
+                             "upstream thinks this is okay. Likely you are setting up an early KEGG snapshot version "
+                             "that doesn't contain this data. That's fine. But please keep in mind that you won't be "
+                             "able to run metabolic modeling. If this is a problem, you should either pick a later "
+                             "KEGG snapshot, or download the modeling data independently using the command "
+                             "`anvi-setup-kegg-data --mode modeling`.")
 
         return is_ok
 
@@ -1417,13 +1450,6 @@ class ModulesDownload(KeggSetup):
 
         # we also need the init of the superclass
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
-
-        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
-            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
-                              "option. Sorry.")
-        if self.only_download and self.only_processing:
-            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
-                              "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
         if (not self.download_from_kegg) and self.skip_brite_hierarchies:
             self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
