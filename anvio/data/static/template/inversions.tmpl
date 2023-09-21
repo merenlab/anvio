@@ -1,85 +1,96 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-  <style>
-    
-    #my-canvas { border: 1px solid gray; }
-    
-  </style>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="Anvi'o">
+    <base target="_blank">
+
+    <title>Anvi'o: Inversions Summary</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href=".html/css/bootstrap.css" rel="stylesheet">
+    <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href=".html/css/anvio.css" rel="stylesheet">
 </head>
+
 <body>
-  <canvas id="my-canvas" width="400" height="200"></canvas>
 
-  <script>
+    <header class="image-bg-fluid-height" style="padding: 10px 0px;">
+        <div class="header-summary-div">
+            <div style="width: 200px;">
+                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+            </div>
+            <div class="header-text">
+                This is a summary page for the inversions found in XXX. Below you will find a total of {{ meta.num_inversions }}
+                inversions, their genomic context, and other stuff .. and we need much more information here about the number of samples
+                and other kind of things that we can report about what has been done, where to find some more information about the
+                program that generated this page, etc
+            </div>
+        </div>
+    </header>
 
-    function drawLine(context, x1, y1, x2, y2) {
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y2);
-        context.stroke();
-    }
-    
-    function drawHead(context, x1, y1, x2, y2, filled) {
-        var dx = x2 - x1;
-        var dy = y2 - y1;
-        context.beginPath();
-      	context.moveTo(x1 + 0.5 * dy, y1 - 0.5 * dx); // https://dirask.com/posts/jMqM0j
-        context.lineTo(x1 - 0.5 * dy, y1 + 0.5 * dx); // https://dirask.com/posts/1GoW61
-        context.lineTo(x2, y2);
-        context.closePath();
-        filled ? context.fill() : context.stroke();
-    }
-    
-    // Draws arrow on the canvas.
-    //
-    // context - drawing context
-    // x1, y1  - arrow staring point
-    // x2, y2  - arrow ending point
-    // arrow   - (optional) arrow head size (from 0 to 1 - relatively measured to arrow size)
-    // filled  - (optional) if true, the arrow head should be filled with some color
-    //
-    function drawArrow(context, x1, y1, x2, y2, arrow, filled) {
-      	if (arrow == null) {
-        	arrow = 0.1;
-        }
-		var t = 1.0 - arrow;
-      	var dx = x2 - x1;
-      	var dy = y2 - y1;
-      	var middleX = dx * t + x1;
-      	var middleY = dy * t + y1;
-        drawLine(context, x1, y1, middleX, middleY);
-        drawHead(context, middleX, middleY, x2, y2, filled);
-    }
-        
-    var canvas = document.querySelector('#my-canvas');
-    var context = canvas.getContext('2d');
+    {% for inversion in inversions %}
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="{{ inversion }}">
+                <div class="panel-heading">
+                    <h1 class="panel-title">{{ inversion|pretty }}</h1>
+                </div>
 
-    drawFilledArrow(context, 10, 50, 100, 50, 0.5, 'gold', 20);  // 20px line width, 50% shaft
-    drawFilledArrow(context, 110, 50, 200, 50, 0.5, 'gold', 20);  // 20px line width, 50% shaft
-    drawEmptyArrow(context, 300, 50, 220, 50, 0.5, 'blue', 0.2);    // 0.2px line width,  20% shaft
-    
-    // Helper methods:
-    
-    function drawEmptyArrow(context, x1, y1, x2, y2, arrow, color, width) {
-        context.lineWidth = width;
-        context.strokeStyle = color;
-        drawArrow(context, x1, y1, x2, y2, arrow, false);
-    }
-    
-    function drawFilledArrow(context, x1, y1, x2, y2, arrow, color, width) {
-        context.lineWidth = width;
-        context.fillStyle = color;
-        context.strokeStyle = color;
-        drawArrow(context, x1, y1, x2, y2, arrow, true);
-    }
+                <div id="collapse-bins" class="panel-collapse">
+                    <div class="panel-body">
+                        <h3>Basic information <small class="text-muted">:: What we know about this inversion</small></h3>
 
-  </script>
-  <h1> This is a summary page for {{ meta.summary_type }}</h1>
-  {% for inversion, genes in inversion_id.items %}
-    <br>Here are the genes in {{ inversion }}, and their "start" and "stop" positions
-    {% for gene, gene_content in genes.items %}
-      <li>{{ gene }}: {{ gene_content.start }}-{{ gene_content.stop }}</li>
+                        <div class="panel-body">
+                            <table class="table table-striped">
+                                <thead id="{{ inversion }}-table">
+                                    <tr>
+                                        <th>Key</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in inversions|lookup:inversion|lookup:"inversion_data" %}
+                                    <tr>
+                                        <td width="25%">{{ entry | humanize }}</td>
+                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:entry|pretty }}</td>
+                                    </tr>
+                                  {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it</small></h3>
+
+                        <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
+                        <svg width="1000" height="60">
+
+                        {% for gene in inversions|lookup:inversion|lookup:"genes" %}
+                            {% if gene|lookup:"direction" == "r" %}
+                            <g transform='translate({{ gene|lookup:"RX_RX_RW_30" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
+                            {% else %}
+                            <g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
+                            {% endif %}
+                            <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
+                            <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"RX_RW_30" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
+                            </g>
+                            <text x="{{ gene|lookup:"CX" }}" y="55" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                        {% endfor %}
+
+                        </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     {% endfor %}
-  {% endfor %}
+
 </body>
 </html>
