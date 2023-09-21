@@ -503,7 +503,7 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.num_threads = args.num_threads
+        self.num_threads = 1 if not A('num_threads') else A('num_threads')
         self.kegg_archive_path = A('kegg_archive')
         self.kegg_snapshot = A('kegg_snapshot')
         self.download_from_kegg = True if A('download_from_kegg') else False
