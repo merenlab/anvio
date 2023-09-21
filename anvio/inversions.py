@@ -29,6 +29,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import Palindromes, PrimerSearch
 
 
@@ -186,6 +187,12 @@ class Inversions:
                                   f"but there doesn't seem to be a contig in this database with that name :/")
             else:
                 self.contig_names = [self.target_contig]
+
+        # for the summary
+        self.summary = {'meta': {'summary_type': 'inversions',
+                                 'output_directory': self.output_directory},
+                        'inversion_id': {}
+                        }
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
@@ -808,6 +815,7 @@ class Inversions:
 
             # we are now ready
             c = []
+            self.summary['inversion_id'][inversion_id] = {}
             for gene_callers_id in gene_caller_ids_of_interest:
                 gene_call = gene_calls_in_contig[gene_callers_id]
                 gene_call['gene_callers_id'] = gene_callers_id
@@ -817,12 +825,12 @@ class Inversions:
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
                 c.append(gene_call)
+                self.summary['inversion_id'][inversion_id][gene_callers_id] = gene_call
 
             # done! `c` now goes to live its best life as a part of the main class
             self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
 
         contigs_db.disconnect()
-
         self.progress.end()
 
         self.run.info(f"[Genomic Context] Searched for {PL('inversion', len(self.consensus_inversions))}",
@@ -1537,6 +1545,13 @@ class Inversions:
         # Inverted repeats motifs
         ################################################################################################
         self.search_for_motifs()
+
+        ################################################################################################
+        # Summarize something plz
+        ################################################################################################
+        import json
+        print(json.dumps(self.summary, sort_keys=True, indent=4))
+        SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate()
 
 
     def report_genomic_context_surrounding_inversions(self):

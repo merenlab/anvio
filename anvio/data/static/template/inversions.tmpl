@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <style>
+    
+    #my-canvas { border: 1px solid gray; }
+    
+  </style>
+</head>
+<body>
+  <canvas id="my-canvas" width="400" height="200"></canvas>
+
+  <script>
+
+    function drawLine(context, x1, y1, x2, y2) {
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+    }
+    
+    function drawHead(context, x1, y1, x2, y2, filled) {
+        var dx = x2 - x1;
+        var dy = y2 - y1;
+        context.beginPath();
+      	context.moveTo(x1 + 0.5 * dy, y1 - 0.5 * dx); // https://dirask.com/posts/jMqM0j
+        context.lineTo(x1 - 0.5 * dy, y1 + 0.5 * dx); // https://dirask.com/posts/1GoW61
+        context.lineTo(x2, y2);
+        context.closePath();
+        filled ? context.fill() : context.stroke();
+    }
+    
+    // Draws arrow on the canvas.
+    //
+    // context - drawing context
+    // x1, y1  - arrow staring point
+    // x2, y2  - arrow ending point
+    // arrow   - (optional) arrow head size (from 0 to 1 - relatively measured to arrow size)
+    // filled  - (optional) if true, the arrow head should be filled with some color
+    //
+    function drawArrow(context, x1, y1, x2, y2, arrow, filled) {
+      	if (arrow == null) {
+        	arrow = 0.1;
+        }
+		var t = 1.0 - arrow;
+      	var dx = x2 - x1;
+      	var dy = y2 - y1;
+      	var middleX = dx * t + x1;
+      	var middleY = dy * t + y1;
+        drawLine(context, x1, y1, middleX, middleY);
+        drawHead(context, middleX, middleY, x2, y2, filled);
+    }
+        
+    var canvas = document.querySelector('#my-canvas');
+    var context = canvas.getContext('2d');
+
+    drawFilledArrow(context, 10, 50, 100, 50, 0.5, 'gold', 20);  // 20px line width, 50% shaft
+    drawFilledArrow(context, 110, 50, 200, 50, 0.5, 'gold', 20);  // 20px line width, 50% shaft
+    drawEmptyArrow(context, 300, 50, 220, 50, 0.5, 'blue', 0.2);    // 0.2px line width,  20% shaft
+    
+    // Helper methods:
+    
+    function drawEmptyArrow(context, x1, y1, x2, y2, arrow, color, width) {
+        context.lineWidth = width;
+        context.strokeStyle = color;
+        drawArrow(context, x1, y1, x2, y2, arrow, false);
+    }
+    
+    function drawFilledArrow(context, x1, y1, x2, y2, arrow, color, width) {
+        context.lineWidth = width;
+        context.fillStyle = color;
+        context.strokeStyle = color;
+        drawArrow(context, x1, y1, x2, y2, arrow, true);
+    }
+
+  </script>
+  <h1> This is a summary page for {{ meta.summary_type }}</h1>
+  {% for inversion, genes in inversion_id.items %}
+    <br>Here are the genes in {{ inversion }}, and their "start" and "stop" positions
+    {% for gene, gene_content in genes.items %}
+      <li>{{ gene }}: {{ gene_content.start }}-{{ gene_content.stop }}</li>
+    {% endfor %}
+  {% endfor %}
+</body>
+</html>
