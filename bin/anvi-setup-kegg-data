@@ -29,7 +29,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                            'definition': anvio.K('only-processing')}
                                           }
                             },
-                'modules': {'description': 'metabolic pathways from the KEGG MODULES database. Use this mode AND "KOfam" '
+                'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '
                                            'mode if you want to run pathway prediction with `anvi-estimate-metabolism`.',
                             'arguments': {'only-download': {'flags': anvio.A('only-download'),
                                                             'definition': anvio.K('only-download')},
