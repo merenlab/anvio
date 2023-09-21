@@ -1405,10 +1405,8 @@ class ModulesDownload(KeggSetup):
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
-        # since we also need to make sure KOfams are downloaded, we need to do their init checks too
-        # we also call the init of the superclass, which we also need
+        # we also need the init of the superclass
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
-        self.KOfam_setup_class = KOfamDownload(self.args, skip_init=self.skip_init)
 
         if (not self.download_from_kegg) and (self.only_download or self.only_processing):
             raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
@@ -1625,10 +1623,6 @@ class ModulesDownload(KeggSetup):
             # download the data first
             # unless user requested only processing (mostly for developers and the adventurous)
             if not self.only_processing:
-                # this downloads, decompresses, and hmmpresses the KOfam profiles
-                self.KOfam_setup_class.setup_kofams()
-                
-                # it also downloads and processes the KEGG Module files into the MODULES.db
                 self.download_kegg_module_file()
                 self.process_module_file() # get module dict attribute
                 self.download_modules()
