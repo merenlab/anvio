@@ -505,6 +505,7 @@ class KeggSetup(KeggContext):
         self.progress = progress
         self.num_threads = args.num_threads
         self.kegg_archive_path = A('kegg_archive')
+        self.kegg_snapshot = A('kegg_snapshot')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
         self.only_processing = True if A('only_processing') else False
@@ -1401,7 +1402,6 @@ class ModulesDownload(KeggSetup):
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
-        self.kegg_snapshot = A('kegg_snapshot')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.overwrite_modules_db = A('overwrite_output_destinations')
 
