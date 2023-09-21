@@ -262,6 +262,11 @@ D = {
                      "for more info. Also you shouldn't hesitate to try to find the right file format until you get "
                      "it working. There are stringent checks on this file, and you will not break anything while trying!."}
                 ),
+    'collection': (
+            ['--collection'],
+            {'metavar': 'COLLECTION-TXT',
+             'help': "A TAB-delimited file with two columns and no header to associate each item with a bin."}
+                ),
     'split-length': (
             ['-L', '--split-length'],
             {'metavar': 'INT',

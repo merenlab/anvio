@@ -509,6 +509,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-tmp"),
+        cov_mode = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--cov-mode'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
@@ -516,7 +517,8 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
                                    {params.output_prefix} \
                                    {params.mmseqs_tmp} \
                                    --threads {threads} \
-                                   --min-seq-id {min_seq_id} >> {log} 2>&1")
+                                   --min-seq-id {min_seq_id} \
+                                   --cov-mode {params.cov_mode} >> {log} 2>&1")
 
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
