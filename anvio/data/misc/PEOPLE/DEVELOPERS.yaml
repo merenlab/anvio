@@ -401,3 +401,20 @@
       inst: University of California Davis
       inst_link: http://www.ucdavis.edu/
       current: true
+
+- github: ge0rges
+  name: Georges Kanaan
+  twitter: scientificgio
+  web: https://gkanaan.com
+  avatar: ge0rges.jpg
+  email: georges@gkanaan.com
+  linkedin: ge0rges
+  orcid: 0000-0002-5721-1138
+  bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
+  intellectual-contributions:
+    - contribution: "Resolved a <a href=https://github.com/merenlab/anvio/issues/1738>long-standing dilemma</a> with the program anvi-setup-ncbi-cogs."
+  affiliations:
+    - title: Graduate Student
+      inst: University of Washington
+      inst_link: https://ocean.washington.edu
+      current: true

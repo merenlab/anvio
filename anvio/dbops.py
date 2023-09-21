@@ -4189,6 +4189,7 @@ class ContigsDatabase:
                          'database' % (len(gene_calls_in_db), len(gene_caller_ids_to_remove)))
 
         # tables from which the gene calls  to remove gene calls from:
+        # TODO: Add functionality to remove data from reaction/metabolite tables associated with GCIDs.
         tables_dict = {
                     t.gene_function_calls_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
                     t.gene_amino_acid_sequences_table_name: ('gene_callers_id', gene_caller_ids_to_remove),

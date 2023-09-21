@@ -3524,7 +3524,8 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
-                                        none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False):
+                                        none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
+                                        ignore_duplicated_keys=False):
     """Takes a file path, returns a dictionary.
 
        - If `return_failed_lines` is True, it the function will not throw an exception, but instead
@@ -3645,12 +3646,16 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         else:
             entry_name = line_fields[indexing_field]
 
-        if entry_name in d:
-            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you "
-                              "did not do it that purposefully, but if you need this file in this form, then feel free to "
-                              "contact us so we can try to find a solution for you. But if you have gotten this error while "
-                              "working with HMMs, do not contact us since helping you in that case is beyond us (see the issue "
-                              "#1206 for details))." % (entry_name, file_path))
+        if entry_name in d and not ignore_duplicated_keys:
+            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. There may be more "
+                              "instances of duplicated entries, but anvi'o stopped in the first instance. If this is expected "
+                              "and if you are a programmer, you can turn on the flag `ignore_duplicated_keys`, which will "
+                              "ensure that duplicated entries are ignored, and only the last one is represented in the "
+                              "resulting dictionary. If this is expected behavior of the input file and yet you are a user "
+                              "then feel free to contact us and we will happily take a look at your case and perhaps update "
+                              "the anvi'o program. But if you have gotten this error while working with HMMs, do not contact "
+                              "us since helping you in that case is beyond us (see https://github.com/merenlab/anvio/issues/1206 "
+                              "for details))." % (entry_name, file_path))
 
         d[entry_name] = {}
 

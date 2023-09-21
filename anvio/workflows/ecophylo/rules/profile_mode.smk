@@ -44,6 +44,9 @@ rule make_metagenomics_config_file:
         if M.bowtie2_additional_params:
             config_dict['bowtie']['additional_params'] = " ".join(["--no-unal", M.bowtie2_additional_params]) 
 
+        if M.anvi_profile_min_percent_identity:
+            config_dict['anvi_profile']['--min-percent-identity'] = M.anvi_profile_min_percent_identity
+
         with open(output.config, "w") as outfile:
             json.dump(config_dict, outfile, indent=4)
 

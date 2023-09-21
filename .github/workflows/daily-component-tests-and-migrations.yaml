@@ -13,34 +13,34 @@ jobs:
         python-version: [3.7]
       fail-fast: false
     steps:
+    - uses: actions/checkout@v2
     - uses: conda-incubator/setup-miniconda@v2
       with:
         miniconda-version: 'latest'
         auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
-        channels: conda-forge,bioconda
         activate-environment: anvio_env
-    - name: "Set up the conda environment"
+        environment-file: .conda/environment.yaml
+        python-version: ${{ matrix.python-version }}
+    - name: "Conda environment summary"
       shell: bash -l {0}
       run: |
-        conda info -a
-        conda install -y "mamba >=0.24.0"
-        mamba env create -f ../.conda/environment.yaml
+        conda info
+        conda list
     - uses: actions/checkout@v2
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
         pip install .
-    - name: "Run component tests for general metagenomics tasks"
+    - name: "Run component tests"
       shell: bash -l {0}
       run: |
         anvi-self-test --suite metagenomics-full --no-interactive
-    - name: "Run component tests for metabolism framework"
-      shell: bash -l {0}
-      run: |
+        anvi-self-test --suite pangenomics --no-interactive
+        anvi-self-test --suite inversions --no-interactive
         anvi-self-test --suite metabolism --no-interactive
-# the following causes our actions to fail due to space limitations :/
-# please do not uncomment this until we have a solution.
+# the following steps cause our actions to fail on GitHub runners
+# due to space limitations :/ please do not uncomment this until we
+# have a solution for this :/
     #- name: "Migrate ancient anvi'o databases"
     #  shell: bash -l {0}
     #  run: |

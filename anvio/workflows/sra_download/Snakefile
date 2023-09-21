@@ -16,25 +16,22 @@ __email__ = "mschechter@uchicago.edu"
 
 
 """
-This Snakemake workflow downloads and process paired end sequencing data from the Sequence Read Archive (SRA). 
+This Snakemake workflow downloads and compresses sequencing data from the NCBI Sequence Read Archive (SRA). 
 
 Software requirements: 
 - [The SRA toolkit](https://github.com/ncbi/sra-tools): prefetch, fasterq_dump
 - [pigz](https://zlib.net/pigz/)
 
 Briefly, the prefetch rule retrieves data from the SRA and stores it as {accession}.sra files. 
-Next, fasterq_dump rule extracts the R1 and R2 FASTQ files from the prefetched SRA file. Finally, 
-the pigz rule gzips the FASTQ files. 
+Next, fasterq_dump rule extracts the FASTQ files from the prefetched SRA file.
+Finally, the pigz rule gzips the FASTQ files.
 
-The input for this workflow is a file of SRA paired end accessions e.g.
+The input for this workflow is a file of SRA accessions e.g.
 
 $ cat SRA_accession_list.txt
 ERR6450080
 ERR6450081
-ERR6450082
-
-**NOTE**
-- This workflow will crash if the SRA accession is not paired-end
+SRR5965623
 """
 
 
@@ -55,10 +52,11 @@ rule prefetch:
         None
 
     Outputs:
-        SRA: File in the SRA_prefetch directory with the name {accession}.sra
+        SRA_TMP: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite
 
     Params:
-        SRA_output_dir: Output directory for the prefetched data
+        SRA_OUTPUT_DIR: Output directory for the prefetched data
+        MAX_SIZE: Maximum size of the SRA file to download
 
     Threads:
         The number of threads to use is specified by the prefetch variable
@@ -71,55 +69,46 @@ rule prefetch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
     output:
-        SRA = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra"))
+        SRA_TMP = temp(directory(os.path.join(dirs_dict['SRA_prefetch'], "{accession}")))
     params:
-        SRA_output_dir = os.path.join(dirs_dict['SRA_prefetch']),
-        max_size = M.get_param_value_from_config(['prefetch', '--max-size'])
+        SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),
+        MAX_SIZE = M.get_param_value_from_config(['prefetch', '--max-size'])
     threads: M.T('prefetch')
     run:
-        shell("prefetch {wildcards.accession} --output-directory {params.SRA_output_dir} --max-size {params.max_size} >> {log} 2>&1")
+        shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
 
 rule fasterq_dump:
-    """Use fasterq-dump to extract FASTQ files from an SRA prefetch *.sra
+    """Use fasterq-dump to extract FASTQ file(s) from an SRA prefetch *.sra
+    Using the flag --split-3. For more information about fasterq-dump:
+    https://github.com/ncbi/sra-tools/wiki/HowTo:-fasterq-dump
 
     Inputs:
     - SRA file from the output of the prefetch rule
 
     Outputs:
-    - R1 adn R2 FASTQ files
+    - Three possible FASTQ files: single reads, and/or R1 and R2.
 
     Params:
     - SRA_INPUT_DIR: directory containing the SRA file
-    - OUTPUT_DIR: directory to write the R1 and R2 FASTQ files
+    - OUTPUT_DIR: directory to write the FASTQ file(s)
 
     Threads:
     - Number of threads specified in the M object
-
-    NOTES:
-    - This workflow is expecting paired-end reads (notice the hard coded `--split-files`). If this SRA accession
-    does not contain paired-end reads the rule will fail. In the future, we can make the workflow modularly handle
-    different kinds of sequencing files from SRA with a file like this:
-
-    $ cat SRA_accession_list.txt
-    SRA_accession   file_type
-    ERR6450080  paired
-    ERR6450081  single
-    ERR6450082  paired
     """
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: rules.prefetch.output.SRA
+    input: rules.prefetch.output.SRA_TMP
     output:
-        R1 = os.path.join(dirs_dict['FASTAS'], "{accession}_1.fastq"),
-        R2 = os.path.join(dirs_dict['FASTAS'], "{accession}_2.fastq")
+        FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
+        FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
     params:
         SRA_INPUT_DIR = os.path.join(dirs_dict['SRA_prefetch'], "{accession}"),
         OUTPUT_DIR = dirs_dict['FASTAS']
     threads: M.T('fasterq_dump')
     run:
-        shell("fasterq-dump {params.SRA_INPUT_DIR} -t FASTERQDUMP_TEMP --outdir {params.OUTPUT_DIR} --split-files --verbose --progress --threads {threads} >> {log} 2>&1")
+        shell("fasterq-dump {params.SRA_INPUT_DIR} -t {output.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1")
 
         # Check if fasterq-dump encountered a Disk quota exceeded error
         error_message = "Disk quota exceeded"
@@ -131,34 +120,83 @@ rule fasterq_dump:
 
 
 rule pigz:
-    """Compress FASTQ files using pigz in parallel!
+    """Compress FASTQ file(s) using pigz in parallel!
 
     Inputs:
-    - R1 and R2 FASTQ files from the output of the fasterq_dump rule
+    - FASTQ file(s) from the output of the fasterq_dump rule
 
     Outputs:
-    - R1 and R2 gzipped FASTQ files in the FASTAS directory
+    - gzipped FASTQ file(s) in the FASTAS directory
 
     Params:
-    - FASTAS: prefix of the FASTQ files in the FASTAS directory
+    - READS: prefix of the FASTQ file(s) in the FASTAS directory
 
     Threads:
     - Number of threads specified in the M object
 
     example:
-        pigz --processes 8 --verbose 02_FASTA/ERR6450080_1.fastq 02_FASTA/ERR6450080_2.fastq >> 00_LOGS/ERR6450080_fasterq_dump.log 2>&1
+        pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
     """
-
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
-    input: 
-        expand(os.path.join(dirs_dict['FASTAS'], "{{accession}}_{RUN}.fastq"), RUN=["1", "2"])
-    output:
-        R1 = os.path.join(dirs_dict['FASTAS'], "{accession}_1.fastq.gz"),
-        R2 = os.path.join(dirs_dict['FASTAS'], "{accession}_2.fastq.gz")
+    input: rules.fasterq_dump.output.FASTERQDUMP_DONE
+    output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
     params:
-        FASTAS = os.path.join(dirs_dict['FASTAS'], "{accession}")
+        READS = os.path.join(dirs_dict['FASTAS'], "{accession}*.fastq")
     threads: M.T('pigz')
     run:
-        shell("pigz --processes {threads} --verbose {input} >> {log} 2>&1")
+        shell("pigz --processes {threads} --verbose {params.READS} >> {log} 2>&1")
+
+
+rule generate_samples_txt:
+    """Create samples-txt files for paired-end reads and single reads samples
+
+    Inputs:
+    - gziped FASTQ file(s) from the output of the pigz rule 
+
+    Outputs:
+    - samples.txt and samples_single_reads.txt in the FASTAS directory
+
+    Params:
+    - ACCESSION: list of accessions
+    - OUTPUT_DIR: directory to write the samples.txt file
+
+    Threads:
+    - Number of threads specified in the M object
+    """
+
+    version:1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "generate_samples_txt.log")
+    input: expand(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"), accession=M.accessions_list)
+    output: touch(os.path.join(dirs_dict['FASTAS'], "generate_samples_txt.done"))
+    params:
+        ACCESSION = M.accessions_list,
+        OUTPUT_DIR = dirs_dict['FASTAS']
+    run:
+
+        paired_reads = []
+        single_reads = []
+
+        for sample in params.ACCESSION:
+            if os.path.exists(os.path.join(params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))):
+                paired_reads.append(sample)
+            elif os.path.exists(os.path.join(params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))):
+                single_reads.append(sample)
+            else:
+                raise ConfigError(f"Looks like sample {sample} doesn't have the expected output(s) format.")
+
+        if paired_reads:
+            with open("samples.txt", 'w') as f:
+                f.write("sample\tr1\tr2\n")
+                for sample in paired_reads:
+                    r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_1.fastq.gz"]))
+                    r2 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, "_2.fastq.gz"]))
+                    f.write("%s\t%s\t%s\n" % (sample, r1, r2))
+
+        if single_reads:
+            with open("samples_single_reads.txt", 'w') as f:
+                f.write("sample\tr1\n")
+                for sample in single_reads:
+                    r1 = os.path.join(os.getcwd(), params.OUTPUT_DIR, "".join([sample, ".fastq.gz"]))
+                    f.write("%s\t%s\n" % (sample, r1))
