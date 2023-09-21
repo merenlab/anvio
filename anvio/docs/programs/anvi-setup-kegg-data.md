@@ -1,6 +1,7 @@
 %(anvi-setup-kegg-data)s downloads and organizes data from KEGG for use by other programs, namely %(anvi-run-kegg-kofams)s, %(anvi-estimate-metabolism)s and %(anvi-reaction-network)s. Depending on what download mode you choose, it can download and setup one or more of the following:
 
-- HMM profiles from the [KOfam](https://academic.oup.com/bioinformatics/article/36/7/2251/5631907) database - metabolic pathway information from [KEGG MODULES](https://www.genome.jp/kegg/module.html) 
+- HMM profiles from the [KOfam](https://academic.oup.com/bioinformatics/article/36/7/2251/5631907) database 
+- metabolic pathway information from [KEGG MODULES](https://www.genome.jp/kegg/module.html) 
 - functional classification information from [KEGG BRITE](https://www.genome.jp/kegg/brite.html)
 - protein family information of the [KEGG Orthology database](https://www.genome.jp/kegg/ko.html)
 - metabolic reaction information from [KEGG REACTION](https://www.genome.jp/kegg/reaction/)
@@ -24,7 +25,7 @@ anvi-setup-kegg-data --mode modules
 
 ## Default usage: downloading a KEGG snapshot
 
-If you do not provide any arguments to this program, the KOfam profiles and KEGG information will be set up in the default KEGG data directory.
+If you do not provide any arguments to this program, all KEGG data (ie, `--mode all`) will be set up in the default KEGG data directory.
 
 {{ codestart }}
 anvi-setup-kegg-data
@@ -43,7 +44,10 @@ Doing it this way ensures that almost everyone uses the same version of KEGG dat
 But the trade-off to this is that the default KEGG data version is tied to an anvi'o release, and it will not always include the most up-to-date information from KEGG. Luckily, **for those who want the most updated version of KEGG, you can still use this program to generate the KEGG data directory by downloading directly from KEGG** (see 'Getting the most up-to-date KEGG data' section below).
 
 {:.warning}
-BRITE hierarchy data is not included in the default KEGG snapshot for anvi'o `v7`. Starting from the `v7.1-dev` version of anvi'o, there is a new default KEGG snapshot including BRITE information. This data can also be set up by using the option to download directly from KEGG in `v7.1-dev` or later.
+BRITE hierarchy data is not included in the default KEGG snapshot for anvi'o `v7`. Starting from the `v7.1-dev` version of anvi'o, there is a new default KEGG snapshot including BRITE information. If you are missing this data, it can be acquired by either installing a later snapshot or by independently downloading it with this program using `--mode modules`.
+
+{:.warning}
+The data for metabolic modeling are not included in the KEGG snapshots created before anvi'o `v8`. If you are missing this data, it can be acquired by either installing a later snapshot or by independently downloading it with this program using `--mode modeling`.
 
 ### Set up KEGG data in a non-default location
 
@@ -80,6 +84,8 @@ This program is also capable of downloading data directly from KEGG and converti
 anvi-setup-kegg-data --download-from-kegg
 {{ codestop }}
 
+Please note that this will download all the KEGG data (ie, `--mode all` is the default). If you want to independently download individual KEGG datasets, you should pick one of the other modes (the `--download-from-kegg` flag is implicitly turned on in these modes).
+
 ### How does it work?
 
 KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/db/kofam/) and all other KEGG data is accessible as flat text files through their [API](https://www.kegg.jp/kegg/rest/keggapi.html). When you run this program it will first get all the files that it needs from these sources, and then it will process them by doing the following:
@@ -88,54 +94,57 @@ KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/d
 - concatenate all remaining KOfam profiles into one file and run `hmmpress` on them
 - parse the flat text file for each KEGG module and the JSON file for each BRITE hierarchy
 - store the MODULE and BRITE information in the %(modules-db)s
+- parse the flat text files from KEGG Orthology and KEGG REACTION and organize these into a table for metabolic modeling
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
 ### The --only-download option
 
-Suppose you only want to download data from KEGG, but you don't need a %(modules-db)s - at least not right away. You can instruct this program to stop after downloading by providing the `--only-download` flag:
+The `--only-download` flag works for `KOfam` mode and `modules` mode.
+
+Suppose you only want to download data from KEGG without processing it. For instance, perhaps you don't need a %(modules-db)s or you don't want `hmmpress` to be run on the KOfam profiles. You can instruct this program to stop after downloading by providing the `--only-download` flag:
 
 {{ codestart }}
-anvi-setup-kegg-data --download-from-kegg \
+anvi-setup-kegg-data --mode modules \
                        --only-download \
                        --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 It's probably a good idea in this case to specify where you want this data to go using `--kegg-data-dir`, to make sure you can find it later.
 
-Actually, in addition to downloading the data, the program will also do a bit of processing on the KOfam profiles: it will remove those without bitscore thresholds, concatenate the remaining profiles into one file, and run `hmmpress` on them. But no database will be created when this flag is used.
-
 {:.notice}
-This option is primarily useful for developers to test `anvi-setup-kegg-data` - for instance, so that you can download the data once and run the database setup option (`--only-database`) multiple times. However, if non-developers find another practical use-case for this flag, we'd be happy to add those ideas here. Send us a message, or feel free to edit this file and pull request your changes on the anvi'o Github repository. :)
+This option is primarily useful for developers to test `anvi-setup-kegg-data` - for instance, so that you can download the data once and run the database setup option (`--only-processing`) multiple times. However, if non-developers find another practical use-case for this flag, we'd be happy to add those ideas here. Send us a message, or feel free to edit this file and pull request your changes on the anvi'o Github repository. :)
 
-### The --only-database option
+### The --only-processing option
 
-Let's say you already have KEGG data on your computer that you got by running this program with the `--only-download` flag. Now you want to turn this data into a %(modules-db)s. To do that, run this program using the `--only-database` flag and provide the location of the pre-downloaded KEGG data:
+The `--only-processing` flag works for `KOfam` mode and `modules` mode.
+
+Let's say you already have KEGG data on your computer that you got by running this program with the `--only-download` flag. Now you want to process the HMM files, or turn the MODULES data into a %(modules-db)s. To do that, run this program using the `--only-processing` flag and provide the location of the pre-downloaded KEGG data:
 
 {{ codestart }}
-anvi-setup-kegg-data --download-from-kegg \
-                       --only-database \
+anvi-setup-kegg-data --mode modules \
+                       --only-processing \
                        --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 {:.notice}
 The KEGG data that you already have on your computer has to be in the format expected by this program, or you'll run into errors. Pretty much the only reasonable way to get the data into the proper format is to run this program with the `--only-download` option. Otherwise you would have to go through a lot of manual file-changing shenanigans - possible, but not advisable.
 
-One more note: since this flag is most often used for testing the database setup capabilities of this program, which entails running `anvi-setup-kegg-data -D --only-database` multiple times on the same KEGG data directory, there is an additional flag that may be useful in this context. To avoid having to manually delete the created modules database each time you run, you can use the `--overwrite-output-destinations` flag:
+One more note: since this flag is most often used for testing the database setup capabilities of this program, which entails running `anvi-setup-kegg-data --mode modules --only-processing` multiple times on the same KEGG data directory, there is an additional flag that may be useful in this context. To avoid having to manually delete the created modules database each time you run, you can use the `--overwrite-output-destinations` flag:
 
 {{ codestart }}
-anvi-setup-kegg-data --download-from-kegg \
-                       --only-database \
+anvi-setup-kegg-data --mode modules \
+                       --only-processing \
                        --kegg-data-dir /path/to/directory/KEGG \
                        --overwrite-output-destinations
 {{ codestop }}
 
 ### Avoiding BRITE setup
 
-As of anvi'o `v7.1-dev` or later, KEGG BRITE hierarchies are added to the %(modules-db)s when running this program with the `-D` (`--download-from-kegg`) option. If you don't want this cool new feature - because you are a rebel, or adverse to change, or something is not working on your computer, whatever - then fine. You can use the `--skip-brite-hierarchies` flag:
+As of anvi'o `v7.1-dev` or later, KEGG BRITE hierarchies are added to the %(modules-db)s when running this program with `--mode modules`. If you don't want this cool new feature - because you are a rebel, or adverse to change, or something is not working on your computer, whatever - then fine. You can use the `--skip-brite-hierarchies` flag:
 
 {{ codestart }}
-anvi-setup-kegg-data -D --skip-brite-hierarchies
+anvi-setup-kegg-data --mode modules --skip-brite-hierarchies
 {{ codestop }}
 
 Hopefully it makes sense to you that this flag does not work when setting up from a KEGG snapshot that already includes BRITE data in it.
@@ -204,7 +213,7 @@ setup.download_kegg_files_from_hierarchy('br08001', download_dir='KEGG_COMPOUND'
  If you just want to get a KEGG `htext` file (with extension `.keg`), use the following function:
 
  ```python
-etup.download_generic_htext('br08001', download_dir='KEGG_COMPOUND')
+setup.download_generic_htext('br08001', download_dir='KEGG_COMPOUND')
  ```
 
  ### Processing a hierarchical text file
@@ -215,12 +224,13 @@ etup.download_generic_htext('br08001', download_dir='KEGG_COMPOUND')
 accession_list = setup.get_accessions_from_htext_file("br08001.keg")
  ```
 
- If you want to process the KEGG module `htext` file to get a dictionary of all modules and their names/classes/etc, use the following function. You will need to set the `kegg_module_file` attribute (of the KeggSetup class) to point to the location of the `modules.keg` file, and the function will store the module dictionary in the `module_dict` attribute.
+ If you want to process the KEGG module `htext` file to get a dictionary of all modules and their names/classes/etc, use the following code. You will need to set the `kegg_module_file` attribute (of the ModulesDownload class) to point to the location of the `modules.keg` file, and the function will store the module dictionary in the `module_dict` attribute.
 
  ```python
-setup.kegg_module_file = "modules.keg"
-setup.process_module_file()
-setup.module_dict  # this attribute now stores the module dictionary
+modules_setup = kegg.ModulesDownload(args)
+modules_setup.kegg_module_file = "modules.keg"
+modules_setup.process_module_file()
+modules_setup.module_dict  # this attribute now stores the module dictionary
  ```
 
  ### Downloading a flat file using the KEGG API
