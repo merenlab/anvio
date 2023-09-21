@@ -510,19 +510,37 @@ class KeggSetup(KeggContext):
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
 
-        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
-            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
-                              "option. Sorry.")
-        if self.only_download and self.only_processing:
-            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
-                              "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
-
+        if self.kegg_archive_path and self.download_from_kegg:
+            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
+                              "Please pick either just one or none of these. ")
+        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
+            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
+                              "KEGG archives. Please pick just one setup option and try again.")
+        
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
         self.brite_dict = None
 
         # init the base class
         KeggContext.__init__(self, self.args)
+
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+            available_snapshots = sorted(list(self.snapshot_dict.keys()))
+            for snapshot_name in available_snapshots:
+                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                                "this time pick from the list shown above.")
+
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
 
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
@@ -615,6 +633,184 @@ class KeggSetup(KeggContext):
                               f"though you used the --only-processing option. If you don't actually have KEGG data already "
                               f"downloaded, you should get rid of the --only-processing flag and re-run this program. If you "
                               f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
+
+    
+    def setup_from_archive(self):
+        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
+
+        To do so, it unpacks the archive and checks its structure and that all required components are there.
+        """
+
+        self.run.info("KEGG archive", self.kegg_archive_path)
+        self.progress.new('Unzipping KEGG archive file...')
+        if not self.kegg_archive_path.endswith("tar.gz"):
+            self.progress.reset()
+            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
+                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
+        unpacked_archive_name = "KEGG_archive_unpacked"
+        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+
+        self.progress.update('Checking KEGG archive structure and contents...')
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        self.progress.end()
+        if archive_is_ok:
+            if os.path.exists(self.kegg_data_dir):
+                shutil.rmtree(self.kegg_data_dir)
+            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
+            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
+            shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-data --mode modules -D`.")
+
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
+
+        else:
+            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
+                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
+            if not anvio.DEBUG:
+                shutil.rmtree(unpacked_archive_name)
+                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
+                               "flag to keep it if you want to see its contents."
+            else:
+                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
+                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
+            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
+                              "to use it. %s" % (self.kegg_archive_path, debug_output))
+
+
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
+
+        # get current version of db
+        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
+        current_db_version = int(db_conn.get_meta_value('version'))
+        db_conn.disconnect()
+
+        # if modules.db is out of date, give warning
+        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        if current_db_version != target_version:
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+    
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used and the log file
+        if not anvio.DEBUG:
+            os.remove(self.default_kegg_archive_file)
+        else:
+            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
+                             "has been kept. You may want to remove it later.")
+
+    
+    def kegg_archive_is_ok(self, unpacked_archive_path):
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
+
+        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
+        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
+        with the right names/paths into the archive file. But what would be the point of that?
+
+        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
+        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
+        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
+        to the implementation require the direct use of the files in these folders, then this function should be updated
+        to check for those.
+        """
+
+        is_ok = True
+
+        # check top-level files and folders
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        expected_directories_and_files = [self.orphan_data_dir,
+                                          self.kegg_module_data_dir,
+                                          self.kegg_hmm_data_dir,
+                                          self.ko_list_file_path,
+                                          self.kegg_module_file,
+                                          self.kegg_modules_db_path]
+        for f in expected_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
+                                     % (path_to_f_in_archive))
+
+        # check hmm files
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
+        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
+        expected_hmm_files = [kofam_hmm_basename]
+        for h in expected_hmm_files:
+            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
+            if not os.path.exists(path_to_h_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
+                                     % (path_to_h_in_archive))
+            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
+            for ext in expected_extensions:
+                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
+                if not os.path.exists(path_to_expected_hmmpress_file):
+                    is_ok = False
+                    if anvio.DEBUG:
+                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
+                                         % (path_to_expected_hmmpress_file))
+
+        return is_ok
+
+    
+    def setup_all_data_from_archive_or_snapshot(self):
+        """This driver function controls whether we download one of our KEGG snapshots and set that up, or 
+        set up directly from an archive file already on the user's computer.
+        """
+
+        if self.kegg_archive_path:
+            self.setup_from_archive()
+        else:
+            self.setup_kegg_snapshot()
 
 
     def check_user_input_dir_format(self):
@@ -717,6 +913,7 @@ class KeggSetup(KeggContext):
                                       "If we cannot fix it, we may be able to provide you with a legacy KEGG "
                                       "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_pathway_file, first_char))
         self.progress.end()
+
 
     def get_accessions_from_htext_file(self, htext_file):
         """This function can read generic KEGG htext files to get a list of accessions.
@@ -1213,35 +1410,18 @@ class ModulesDownload(KeggSetup):
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
         self.KOfam_setup_class = KOfamDownload(self.args, skip_init=self.skip_init)
 
-        if self.kegg_archive_path and self.download_from_kegg:
-            raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
-                              "Please pick either just one or none of these. ")
-        if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
-            raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
-                              "KEGG archives. Please pick just one setup option and try again.")
+        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
+            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
+                              "option. Sorry.")
+        if self.only_download and self.only_processing:
+            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
+                              "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
+
         if (not self.download_from_kegg) and self.skip_brite_hierarchies:
             self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
                              "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
                              "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
                              "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
-
-        # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
-        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
-
-        if self.target_snapshot not in self.snapshot_dict.keys():
-            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
-            available_snapshots = sorted(list(self.snapshot_dict.keys()))
-            for snapshot_name in available_snapshots:
-                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
-
-            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                                "this time pick from the list shown above.")
-
-        # default download path for KEGG snapshot
-        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
-        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
 
         # download from KEGG option: module/pathway map htext files and API link
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
@@ -1265,152 +1445,6 @@ class ModulesDownload(KeggSetup):
             filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
             if not self.skip_brite_hierarchies:
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
-
-    
-    def check_modules_db_version(self):
-        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
-
-        # get current version of db
-        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
-        current_db_version = int(db_conn.get_meta_value('version'))
-        db_conn.disconnect()
-
-        # if modules.db is out of date, give warning
-        target_version = int(anvio.tables.versions_for_db_types['modules'])
-        if current_db_version != target_version:
-            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
-                             f"Here is the path to the database: {self.kegg_modules_db_path}")
-
-
-    def kegg_archive_is_ok(self, unpacked_archive_path):
-        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
-
-        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
-        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
-        with the right names/paths into the archive file. But what would be the point of that?
-
-        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
-        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
-        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
-        to the implementation require the direct use of the files in these folders, then this function should be updated
-        to check for those.
-        """
-
-        is_ok = True
-
-        # check top-level files and folders
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        expected_directories_and_files = [self.orphan_data_dir,
-                                          self.kegg_module_data_dir,
-                                          self.kegg_hmm_data_dir,
-                                          self.ko_list_file_path,
-                                          self.kegg_module_file,
-                                          self.kegg_modules_db_path]
-        for f in expected_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
-                                     % (path_to_f_in_archive))
-
-        # check hmm files
-        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
-        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
-        expected_hmm_files = [kofam_hmm_basename]
-        for h in expected_hmm_files:
-            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
-            if not os.path.exists(path_to_h_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
-                                     % (path_to_h_in_archive))
-            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
-            for ext in expected_extensions:
-                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
-                if not os.path.exists(path_to_expected_hmmpress_file):
-                    is_ok = False
-                    if anvio.DEBUG:
-                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
-                                         % (path_to_expected_hmmpress_file))
-
-        return is_ok
-
-     
-    def setup_from_archive(self):
-        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
-
-        To do so, it unpacks the archive and checks its structure and that all required components are there.
-        """
-
-        self.run.info("KEGG archive", self.kegg_archive_path)
-        self.progress.new('Unzipping KEGG archive file...')
-        if not self.kegg_archive_path.endswith("tar.gz"):
-            self.progress.reset()
-            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
-                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
-        unpacked_archive_name = "KEGG_archive_unpacked"
-        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
-
-        self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
-        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
-        self.progress.end()
-        if archive_is_ok:
-            if os.path.exists(self.kegg_data_dir):
-                shutil.rmtree(self.kegg_data_dir)
-            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
-            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
-            shutil.rmtree(unpacked_archive_name)
-
-            if not archive_contains_brite and not self.skip_brite_hierarchies:
-                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
-                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
-                                 "downloading the latest version of KEGG with `anvi-setup-kegg-data --mode modules -D`.")
-
-            # if necessary, warn user about migrating the modules db
-            self.check_modules_db_version()
-
-        else:
-            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
-                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
-            if not anvio.DEBUG:
-                shutil.rmtree(unpacked_archive_name)
-                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
-                               "flag to keep it if you want to see its contents."
-            else:
-                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
-                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
-            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it. %s" % (self.kegg_archive_path, debug_output))
-
-
-    def setup_kegg_snapshot(self):
-        """This is the default setup strategy in which we unpack a specific KEGG archive.
-
-        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
-        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
-        when KEGG is updated.
-
-        It is essentially a special case of setting up from an archive.
-        """
-
-        if anvio.DEBUG:
-            self.run.info("Downloading from: ", self.default_kegg_data_url)
-            self.run.info("Downloading to: ", self.default_kegg_archive_file)
-        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
-
-        # a hack so we can use the archive setup function
-        self.kegg_archive_path = self.default_kegg_archive_file
-        self.setup_from_archive()
-
-        # if all went well, let's get rid of the archive we used and the log file
-        if not anvio.DEBUG:
-            os.remove(self.default_kegg_archive_file)
-        else:
-            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
-                             "has been kept. You may want to remove it later.")
 
     
     def download_kegg_module_file(self):
@@ -1583,11 +1617,13 @@ class ModulesDownload(KeggSetup):
     def setup_modules_data(self):
         """This is a driver function which executes the setup process for pathway prediction data from KEGG."""
 
-        if self.kegg_archive_path:
-            self.setup_from_archive()
-
-        elif self.download_from_kegg:
-            # mostly for developers and the adventurous
+        # FIXME: we will have to move user setup to a completely separate program at some point
+        # PS. user setup related functions belong to the superclass for now
+        if self.user_input_dir:
+            self.setup_user_data()
+        else:
+            # download the data first
+            # unless user requested only processing (mostly for developers and the adventurous)
             if not self.only_processing:
                 # this downloads, decompresses, and hmmpresses the KOfam profiles
                 self.KOfam_setup_class.setup_kofams()
@@ -1611,17 +1647,9 @@ class ModulesDownload(KeggSetup):
                     self.process_brite_hierarchy_of_hierarchies()
                     self.confirm_downloaded_brite_hierarchies()
 
+            # process the modules file into a database
             if not self.only_download:
                 self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
-
-        # FIXME: we will have to move user setup to a completely separate program at some point
-        # PS. user setup related functions belong to the superclass for now
-        elif self.user_input_dir:
-            self.setup_user_data()
-
-        else:
-            # the default, set up from frozen KEGG release
-            self.setup_kegg_snapshot()
 
     
     ###### BRITE-related functions below ######
@@ -1795,27 +1823,6 @@ class ModulesDownload(KeggSetup):
             # verify that the whole json file was downloaded
             filesnpaths.is_file_json_formatted(file_path)
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
-
-
-    def check_archive_for_brite(self, unpacked_archive_path):
-        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
-
-        It is ok for archives not to have these present, but let the user know.
-        """
-
-        is_brite_included = True
-
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        brite_directories_and_files = [self.brite_data_dir,
-                                       self.kegg_brite_hierarchies_file]
-        for f in brite_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
-                is_brite_included = False
-                if anvio.DEBUG:
-                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
-
-        return is_brite_included
 
 
 class RunKOfams(KeggContext):
