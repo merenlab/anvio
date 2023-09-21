@@ -104,7 +104,13 @@ def main(args, unknown_args):
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
         if mode == "modeling" or mode == "all":
-            KODatabase.set_up(num_threads = args.num_threads, dir = args.dir, reset = args.reset)
+            # the --dir parameter overrides --kegg-data-dir
+            if args.dir:
+                setup_directory = args.dir
+            elif not args.dir and args.kegg_data_dir:
+                setup_directory = args.kegg_data_dir
+            
+            KODatabase.set_up(num_threads = args.num_threads, dir = setup_directory, reset = args.reset)
     
 
 if __name__ == '__main__':

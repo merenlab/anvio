@@ -1140,7 +1140,8 @@ class KODatabase:
             if os.path.isdir(dir):
                 ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')
             else:
-                raise ConfigError(f"There is no such directory, '{dir}'.")
+                raise ConfigError(f"There is no such directory, '{dir}'. You should create it "
+                                   "first if you want to use it.")
         else:
             ko_dir = KODatabase.default_dir
             parent_dir = os.path.dirname(ko_dir)
