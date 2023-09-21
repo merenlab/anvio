@@ -671,17 +671,19 @@ class KeggSetup(KeggContext):
             self.check_modules_db_version()
 
         else:
-            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
-                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
+            debug_output = f"We kept the unpacked archive for you to take a look at it. It is at " \
+                           f"{os.path.abspath(unpacked_archive_name)} and you may want " \
+                           f"to delete it after you are done checking its contents."
             if not anvio.DEBUG:
                 shutil.rmtree(unpacked_archive_name)
                 debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
                                "flag to keep it if you want to see its contents."
             else:
-                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
-                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
-            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it. %s" % (self.kegg_archive_path, debug_output))
+                self.run.warning(f"The unpacked archive file {os.path.abspath(unpacked_archive_name)} was kept for "
+                                 f"debugging purposes. You may want to clean it up after you are done looking through it.")
+
+            raise ConfigError(f"SETUP FAILED. The provided archive file is missing some critical files, "
+                              f"so anvi'o is unable to use it. {debug_output}")
 
 
     def check_modules_db_version(self):
