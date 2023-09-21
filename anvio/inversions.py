@@ -72,6 +72,9 @@ class Inversions:
         # consensus inversions for downstream fun
         self.genomic_context_surrounding_consensus_inversions = {}
 
+        # in which we will store all the static HTML output related stuff
+        self.summary = {}
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
         self.output_directory = A('output_dir') or 'INVERSIONS-OUTPUT'
@@ -187,12 +190,6 @@ class Inversions:
                                   f"but there doesn't seem to be a contig in this database with that name :/")
             else:
                 self.contig_names = [self.target_contig]
-
-        # for the summary
-        self.summary = {'meta': {'summary_type': 'inversions',
-                                 'output_directory': self.output_directory},
-                        'inversion_id': {}
-                        }
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
@@ -729,6 +726,50 @@ class Inversions:
         return true_inversions_in_stretch
 
 
+    def process_inversion_data_for_HTML_summary(self):
+        self.summary['meta'] = {'summary_type': 'inversions',
+                                'num_inversions': len(self.consensus_inversions),
+                                'output_directory': self.output_directory}
+
+        self.summary['inversions'] = {}
+
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+
+            self.summary['inversions'][inversion_id] = {'inversion_data': copy.deepcopy(entry)}
+
+            # we will get a deepcopy of the gene context associated with the inversion
+            genes = copy.deepcopy(self.genomic_context_surrounding_consensus_inversions[inversion_id])
+
+            # then we will learn about these so we can transform gene coordinates
+            genomic_context_start = genes[0]['start'] - 100
+            genomic_context_end = genes[-1]['stop'] + 100
+
+            # this is our magic number, which is matching to the actual width of the genomic context
+            # display in the static HTML output. we will have to transfrom start-stop coordinates
+            # of each gene to this value.
+            new_context_length = 1000
+
+            # here we will add transformed gene coordinates to the genes dict
+            for gene in genes:
+                gene['start_t'] = (gene['start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                gene['stop_t'] = (gene['stop'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+
+                # this is the dumbest code I've ever written in my life. but it is all
+                # for the 🌈 TEMPLATE 🦄 THAT CAN'T DO ADDITION WITHOUT GIVING YOU
+                # CANCER IN THE PROCESS. If you have seen this comment and the code
+                # below, I thank you very much in advance for never bringing it up
+                # in any conversation forever.
+                gene['RX'] = gene['start_t']
+                gene['RW'] = (gene['stop_t'] - gene['start_t']) - 30
+                gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
+                gene['RX_RW_30'] = gene['RX'] + gene['RW'] + 30
+                gene['RX_RX_RW_30'] = gene['RX'] + gene['RX'] + gene['RW'] + 30
+                gene['RX_RW'] = gene['RX'] + gene['RW']
+
+            # and finally we will store this hot mess in our dictionary
+            self.summary['inversions'][inversion_id]['genes'] = genes
+
 
     def recover_genomic_context_surrounding_inversions(self):
         """Learn about what surrounds the consensus inversion sites"""
@@ -761,7 +802,8 @@ class Inversions:
         self.progress.update('...')
 
         # now we will go through each consensus inversion to populate `self.genomic_context_surrounding_consensus_inversions`
-        # with gene calls and functions
+        # with gene calls and functions .. in the meantime, we will populate the `self.summary`,
+        # which will be used to render the static HTML output for the final results
         gene_calls_per_contig = {}
         inversions_with_no_gene_calls_around = set([])
         for entry in self.consensus_inversions:
@@ -815,7 +857,6 @@ class Inversions:
 
             # we are now ready
             c = []
-            self.summary['inversion_id'][inversion_id] = {}
             for gene_callers_id in gene_caller_ids_of_interest:
                 gene_call = gene_calls_in_contig[gene_callers_id]
                 gene_call['gene_callers_id'] = gene_callers_id
@@ -825,10 +866,11 @@ class Inversions:
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
                 c.append(gene_call)
-                self.summary['inversion_id'][inversion_id][gene_callers_id] = gene_call
 
             # done! `c` now goes to live its best life as a part of the main class
             self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
+
+
 
         contigs_db.disconnect()
         self.progress.end()
@@ -1395,14 +1437,18 @@ class Inversions:
         # surround inversions, so this data can be reported along with other files.
         self.recover_genomic_context_surrounding_inversions()
 
-        # we want to report now because the very last step can take a long time, and
-        # if the user kills the process, we don't want them to go home empty handed.
-        self.report()
-
         # here we have our consensus inversions in `self.consensus_inversions`. It is time
         # to go back to the raw reads and compute their activity IF r1/r2 files are provided
         # AND the user didn't ask this step to be skipped.
         self.compute_inversion_activity()
+
+        # here we will process and summarize all inversion data to populate `self.summary`
+        # so it is ready to be used to render a static HTML output
+        self.process_inversion_data_for_HTML_summary()
+
+        # Do all reporting
+        self.report()
+
 
 
     def sanity_check(self):
@@ -1547,10 +1593,8 @@ class Inversions:
         self.search_for_motifs()
 
         ################################################################################################
-        # Summarize something plz
+        # Generate HTML summary
         ################################################################################################
-        import json
-        print(json.dumps(self.summary, sort_keys=True, indent=4))
         SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate()
 
 
