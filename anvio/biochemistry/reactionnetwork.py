@@ -1076,7 +1076,7 @@ class KODatabase:
     Unless an alternative directory is provided, the database is downloaded and set up in a
     default anvi'o data directory, and loaded from this directory in network construction.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/REACTION_NETWORK/KO')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/KEGG/KO_REACTION_NETWORK')
 
     def __init__(self, ko_dir: str = None) -> None:
         """
@@ -1124,8 +1124,9 @@ class KODatabase:
             Number of threads to use in parallelizing the download of KO files.
 
         dir : str, None
-            Directory in which to create a new subdirectory called 'KO', in which files are
-            downloaded and set up. This argument overrides the default directory.
+            Directory in which to create a subdirectory called `KO_REACTION_NETWORK`, 
+            in which files are downloaded and set up. This argument overrides 
+            the default directory.
 
         reset : bool, False
             If True, remove any existing 'KO' database directory and the files therein. If False,
@@ -1137,7 +1138,7 @@ class KODatabase:
         """
         if dir:
             if os.path.isdir(dir):
-                ko_dir = os.path.join(dir, 'KO')
+                ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')
             else:
                 raise ConfigError(f"There is no such directory, '{dir}'.")
         else:

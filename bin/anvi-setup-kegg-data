@@ -56,7 +56,7 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                             'arguments': {'dir': {'flags': ['--dir'],
                                             'definition': {'default': None, 
                                                     'type': str,
-                                                    'help': "Currently, modeling data is stored in a different location "
+                                                    'help': "You have the option to store the modeling data in a different location "
                                                             "on your computer than other KEGG stuff (ie, NOT --kegg-data-dir). "
                                                             "Use this argument to select a custom directory in which to store "
                                                             "the modeling data."
