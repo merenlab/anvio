@@ -89,7 +89,7 @@ def main(args, unknown_args):
     if '--debug' in mode_unknown:
         mode_unknown.remove('--debug')
     if len(mode_unknown):
-        raise ConfigError("Unrecognized parameters %s" % ' '.join(mode_unknown))
+        raise ConfigError(f"Unrecognized parameters: {' '.join(mode_unknown)}. Did you perhaps fail to specify the right mode?")
 
     if mode == "all" and not args.download_from_kegg:
         setup = kegg.KeggSetup(args)
