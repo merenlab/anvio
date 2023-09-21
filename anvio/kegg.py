@@ -517,6 +517,14 @@ class KeggSetup(KeggContext):
         if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
             raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
                               "KEGG archives. Please pick just one setup option and try again.")
+
+        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
+            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
+                              "option. Sorry.")
+        if self.only_download and self.only_processing:
+            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
+                              "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
+
         
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
