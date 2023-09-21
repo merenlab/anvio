@@ -26,14 +26,14 @@ def main():
         '--ko-dir', type=str, metavar='PATH',
         help=(
             "Path to KEGG KO database directory. If this option is not used, the program expects a "
-            "database set up in the default location used by 'anvi-setup-protein-reference-database'."
+            "database set up in the default location used by 'anvi-setup-kegg-data'."
         )
     )
     parser.add_argument(
         '--modelseed-dir', type=str, metavar='PATH',
         help=(
             "Path to ModelSEED Biochemistry database directory. If this option is not used, the program "
-            "expects a database set up in the default location used by 'anvi-setup-protein-reference-database'."
+            "expects a database set up in the default location used by 'anvi-setup-modelseed-database'."
         )
     )
     parser.add_argument(
