@@ -37,10 +37,13 @@ jobs:
         anvi-self-test --suite metagenomics-full --no-interactive
         anvi-self-test --suite pangenomics --no-interactive
         anvi-self-test --suite inversions --no-interactive
-        anvi-self-test --suite metabolism --no-interactive
 # the following steps cause our actions to fail on GitHub runners
 # due to space limitations :/ please do not uncomment this until we
 # have a solution for this :/
+    #- name: "Run component tests for metabolism framework"
+    #  shell: bash -l {0}
+    #  run: |
+    #    anvi-self-test --suite metabolism --no-interactive
     #- name: "Migrate ancient anvi'o databases"
     #  shell: bash -l {0}
     #  run: |
