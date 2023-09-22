@@ -1244,7 +1244,7 @@ class KODatabase:
                     "from the KO database. Anvi'o will now attempt to redownload all of the files. "
                 )
         run.info(f"Total number of KOs/entry files", total)
-        run.info("KEGG database version", release_after)
+        run.info("KEGG KO database version", release_after)
         run.info("KEGG KO list", list_path)
         run.info("KEGG KO info", info_path)
 
