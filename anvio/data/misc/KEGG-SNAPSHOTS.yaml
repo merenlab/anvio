@@ -57,6 +57,12 @@ v2023-09-18:
     modules_db_version: 4
     no_modeling_data: True
 
+v2023-09-22:
+    url: https://figshare.com/ndownloader/files/42428115
+    archive_name: KEGG_build_2023-09-22_a2b5bde358bb.tar.gz
+    hash: a2b5bde358bb
+    modules_db_version: 4
+
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
 #    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5`
