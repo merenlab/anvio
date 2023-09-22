@@ -150,6 +150,10 @@ def lookup(d, index):
 def humanize(s):
     return s.replace('_', ' ')
 
+@register.filter(name='monospace')
+def monospace(s):
+    return f'<span style="font-family: monospace;">{s}</span>'
+
 @register.filter(name='sumvals')
 def sumvals(d):
     return sum(d.values())
