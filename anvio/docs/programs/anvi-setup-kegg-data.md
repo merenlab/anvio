@@ -4,9 +4,8 @@
 - metabolic pathway information from [KEGG MODULES](https://www.genome.jp/kegg/module.html) 
 - functional classification information from [KEGG BRITE](https://www.genome.jp/kegg/brite.html)
 - protein family information of the [KEGG Orthology database](https://www.genome.jp/kegg/ko.html)
-- metabolic reaction information from [KEGG REACTION](https://www.genome.jp/kegg/reaction/)
 
- Typically, some processing is done following the data download to make the data work with downstream anvi'o programs. The KOfam profiles are prepared for later use by the HMMER software, and the information from MODULES and BRITE is made accessible to other anvi'o programs as a %(modules-db)s. The Orthology and REACTION data is converted into a nice table that can be utilized by %(anvi-reaction-network)s. This program generates a directory with these files (%(kegg-data)s).
+ Typically, some processing is done following the data download to make the data work with downstream anvi'o programs. The KOfam profiles are prepared for later use by the HMMER software, and the information from MODULES and BRITE is made accessible to other anvi'o programs as a %(modules-db)s. The Orthology data is converted into a nice table that can be utilized by %(anvi-reaction-network)s. This program generates a directory with these files (%(kegg-data)s).
 
 ## Choosing a download mode
 
@@ -94,7 +93,7 @@ KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/d
 - concatenate all remaining KOfam profiles into one file and run `hmmpress` on them
 - parse the flat text file for each KEGG module and the JSON file for each BRITE hierarchy
 - store the MODULE and BRITE information in the %(modules-db)s
-- parse the flat text files from KEGG Orthology and KEGG REACTION and organize these into a table for metabolic modeling
+- parse the flat text files from KEGG Orthology and organize these into a table for metabolic modeling
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
