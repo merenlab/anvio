@@ -100,6 +100,10 @@ def main(args, unknown_args):
             setup = kegg.KOfamDownload(args)
             setup.setup_kofams()
         if mode == "modules" or mode == "all":
+            # do not reset the directory if it already happened
+            if mode == "all" and args.reset:
+                args.reset = False
+                args.skip_init = True
             args.download_from_kegg = True
             setup = kegg.ModulesDownload(args)
             setup.setup_modules_data()
