@@ -1,6 +1,6 @@
 A type of database containing information from either A) the [KEGG MODULE database](https://www.genome.jp/kegg/module.html) and [KEGG BRITE database](https://www.genome.jp/kegg/brite.html), or B) user-defined metabolic modules, for use in metabolism estimation and/or functional annotation of KEGG Orthologs (KOs).
 
-These databases are part of the %(kegg-data)s and %(user-modules-data)s directories. You can get one on your computer by running %(anvi-setup-kegg-data)s (with `--mode modules`) or %(anvi-setup-user-modules)s. Programs that rely on this type of database include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
+These databases are part of the %(kegg-data)s and %(user-modules-data)s directories. You can get one on your computer by running %(anvi-setup-kegg-data)s or %(anvi-setup-user-modules)s. Programs that rely on this type of database include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
 
 Most users will never have to interact directly with this kind of database. However, for the brave few who want to try this (or who are figuring out how anvi'o works under the hood), there is some relevant information below.
 

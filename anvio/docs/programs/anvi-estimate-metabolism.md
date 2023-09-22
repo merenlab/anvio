@@ -22,7 +22,7 @@ Metabolism estimation relies on gene annotations from the functional annotation 
 
 Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-data)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-data)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
 
-1. Run %(anvi-setup-kegg-data)s with `--mode modules` to get data from KEGG onto your computer. This step only needs to be done once.
+1. Run %(anvi-setup-kegg-data)s to get data from KEGG onto your computer. This step only needs to be done once.
 2. [If not using `--only-user-modules`] Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
 If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:

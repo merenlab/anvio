@@ -72,7 +72,7 @@ RUN rm anvio-7.1.tar.gz
 # Setup anvi'o databases
 ##############################################################
 RUN anvi-setup-interacdome
-RUN anvi-setup-kegg-data --mode modules --kegg-snapshot v2020-12-23
+RUN anvi-setup-kegg-data --kegg-snapshot v2020-12-23
 RUN anvi-setup-pfams --pfam-version 33.1
 RUN anvi-setup-ncbi-cogs --cog-version COG20
 

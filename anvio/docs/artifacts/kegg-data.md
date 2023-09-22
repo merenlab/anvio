@@ -10,8 +10,7 @@ The default location of this data is in the anvi'o folder, at `anvio/anvio/data/
 You can change this location when you run %(anvi-setup-kegg-data)s by providing a different path to the `--kegg-data-dir` parameter:
 
 {{ codestart }}
-anvi-setup-kegg-data --mode MODE \
-                     --kegg-data-dir /path/to/directory/KEGG
+anvi-setup-kegg-data --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 If you do this, you will need to provide this path to downstream programs that require this data as well.
