@@ -851,6 +851,10 @@ class KeggSetup(KeggContext):
         set up directly from an archive file already on the user's computer.
         """
 
+        if os.path.exists(self.kegg_data_dir) and not self.args.reset:
+            raise ConfigError(f"The directory {self.kegg_data_dir} already exists. Are you sure you want to "
+                              f"overwrite it? If yes, feel free to restart this program with the --reset flag.")
+
         if self.kegg_archive_path:
             self.setup_from_archive()
         else:
