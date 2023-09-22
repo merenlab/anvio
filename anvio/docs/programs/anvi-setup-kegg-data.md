@@ -173,7 +173,7 @@ Periodically (especially before releasing a new version of anvi'o), we want to a
 
 Available KEGG snapshots are stored in the anvi'o code repository in `anvio/data/misc/KEGG-SNAPSHOTS.yaml`. To add a new snapshot, you first need to create one by downloading and processing the data from KEGG, testing to make sure it works, and then updating this file. Here are the steps:
 
-1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot.
+1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot. You may want to reduce or increase the number of threads (`-T`) according to your available compute resources.
 2. Get the hash value and version info from the MODULES.db by running `anvi-db-info ./KEGG/MODULES.db`.
 3. Archive the KEGG data directory by running `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`. Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2. This convention makes it easier to distinguish between KEGG snapshots by simply looking at the file name.
 4. Test that setup works with this archive by running `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`.
