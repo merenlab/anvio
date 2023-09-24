@@ -31,5 +31,5 @@ dependencies:
 - r-stringi
 - r-magrittr
 - bioconductor-qvalue
-- fastani
 - meme
+- fastani
