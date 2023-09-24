@@ -4,7 +4,7 @@ channels:
 - bioconda
 - defaults
 dependencies:
-- python=3.7
+- python=3.10
 - sqlite
 - prodigal
 - idba
