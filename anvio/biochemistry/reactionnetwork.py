@@ -1265,7 +1265,7 @@ class KODatabase:
                     section = line.split()[0]
                 if section == 'NAME':
                     # The name value follows 'NAME' at the beginning of the line.
-                    ko_data['name'] = line[4:].lstrip().rstrip()
+                    ko_data['name'] = line[4:].strip()
                     # EC numbers associated with the KO are recorded at the end of the name value.
                     ec_string = re.search('\[EC:.*\]', line)
                     if ec_string:
