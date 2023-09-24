@@ -23,6 +23,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
+import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -824,7 +825,7 @@ class KeggSetup(KeggContext):
         # this section needs to be kept up to date with any changes to requirements in reactionnetwork.py
         # which is a bit silly, but since these two classes don't know about each other it is the workaround we need :(
         path_to_modeling_files_in_archive = os.path.join(path_to_kegg_in_archive, "KO_REACTION_NETWORK")
-        expected_modeling_files = ['ko_info.txt', 'ko_data.tsv']
+        expected_modeling_files = reactionnetwork.KODatabase.expected_files
         missing_modeling_files = []
         for f in expected_modeling_files:
             path_to_f_in_archive = os.path.join(path_to_modeling_files_in_archive, f)
