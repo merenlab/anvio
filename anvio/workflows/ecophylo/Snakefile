@@ -184,6 +184,7 @@ rule filter_hmm_hits_by_model_coverage:
         hmm_hits_filtered = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm}-dom-hmmsearch", "hmm_hits_filtered.txt")
     params:
         model_coverage = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', '--model-coverage']),
+        partial_ORFs = M.get_rule_param('filter_hmm_hits_by_model_coverage', '--filter-out-partial-gene-calls'),
         additional_params = M.get_param_value_from_config(['filter_hmm_hits_by_model_coverage', 'additional_params'])
     threads: M.T('filter_hmm_hits_by_model_coverage')
     run:
@@ -212,6 +213,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --domain-hits-table {domtblout} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             else:
 
@@ -220,6 +222,7 @@ rule filter_hmm_hits_by_model_coverage:
                                                         --hmm-profile-dir {hmm_dir} \
                                                         --hmm-source {hmm_source} \
                                                         --model-coverage {params.model_coverage} \
+                                                        {params.partial_ORFs} \
                                                         {params.additional_params} >> {log} 2>&1")
             
         else:
@@ -465,7 +468,8 @@ rule cluster_X_percent_sim_mmseqs:
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{hmm}-tmp"),
-        min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id'])
+        min_seq_id = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--min-seq-id']),
+        cov_mode = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--cov-mode'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         if M.AA_mode == True:
@@ -485,7 +489,8 @@ rule cluster_X_percent_sim_mmseqs:
                                     {params.output_prefix} \
                                     {params.mmseqs_tmp} \
                                     --threads {threads} \
-                                    --min-seq-id {params.min_seq_id} >> {log} 2>&1")
+                                    --min-seq-id {params.min_seq_id} \
+                                    --cov-mode {params.cov_mode} >> {log} 2>&1")
 
 
 rule cluster_X_percent_sim_mmseqs_OTUs:
@@ -504,6 +509,7 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     params:
         output_prefix = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-mmseqs_NR"),
         mmseqs_tmp = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{hmm}", "{clustering_threshold}", "{hmm}-{clustering_threshold}-tmp"),
+        cov_mode = M.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', '--cov-mode'])
     threads: M.T('cluster_X_percent_sim_mmseqs')
     run:
         min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
@@ -511,7 +517,8 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
                                    {params.output_prefix} \
                                    {params.mmseqs_tmp} \
                                    --threads {threads} \
-                                   --min-seq-id {min_seq_id} >> {log} 2>&1")
+                                   --min-seq-id {min_seq_id} \
+                                   --cov-mode {params.cov_mode} >> {log} 2>&1")
 
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":

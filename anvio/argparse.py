@@ -47,13 +47,19 @@ class ArgumentParser(argparse.ArgumentParser):
     def get_anvio_epilogue(self):
         """Function that formats the additional message that appears at the end of help."""
 
+        # Here we intend to collect the requires and provides statements from anvi'o programs.
+        # but the recovery of this 'epilogue' will yield an error for scripts that are not listed
+        # in the $PATH, which can happen during the earlier stages of program development. so,
+        # if we can't recover the epilogue, we go long hair don't care and return none.
+        try:
+            epilog = self.get_requires_and_provides_statements_for_program()
+        except:
+            return None
+
         version = anvio.anvio_version_for_help_docs
 
         general_help = f"https://merenlab.org/software/anvio/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
-
-        # starting with the requires / provides statements
-        epilog = self.get_requires_and_provides_statements_for_program()
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             if atty:
