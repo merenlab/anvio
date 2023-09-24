@@ -1128,8 +1128,8 @@ class KODatabase:
             the default directory.
 
         reset : bool, False
-            If True, remove any existing 'KO' database directory and the files therein. If False,
-            an exception is raised if there are files in this directory.
+            If True, remove any existing 'KO_REACTION_NETWORK' database directory and the files
+            therein. If False, an exception is raised if there are files in this directory.
 
         run : anvio.terminal.Run, None
 
