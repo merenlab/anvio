@@ -111,7 +111,8 @@ class ArgumentParser(argparse.ArgumentParser):
                 else:
                     pass
 
-                block.insert(0, '   ')
+                if len(block) > 1:
+                    block.insert(0, '   ')
 
                 blocks[i] = block
 
@@ -127,8 +128,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return '\n'.join(blocks)
 
 
-        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume: """))
-        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide: """))
+        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume:"""))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide:"""))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
