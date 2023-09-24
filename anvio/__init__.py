@@ -8,7 +8,7 @@ anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-a
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
 major_python_version_required = 3
-minor_python_version_required = 7
+minor_python_version_required = 10
 
 import sys
 import platform
@@ -3588,7 +3588,8 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
+    run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
