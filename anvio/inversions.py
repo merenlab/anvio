@@ -68,6 +68,9 @@ class Inversions:
         # the purpose of this is to report all the consensus inversions
         self.consensus_inversions = []
 
+        # inversion activity
+        self.inversion_activity = {}
+
         # in which we will store the genomic context that surrounds
         # consensus inversions for downstream fun
         self.genomic_context_surrounding_consensus_inversions = {}
@@ -1255,13 +1258,12 @@ class Inversions:
             self.progress.new('Inversion activity', progress_total_items=num_samples)
             self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
 
-        oligo_frequencies = []
         num_samples_processed = 0
         while num_samples_processed < num_samples:
             try:
-                oligo_frequencies_for_one_sample = output_queue.get()
-                if oligo_frequencies_for_one_sample:
-                    oligo_frequencies.extend(oligo_frequencies_for_one_sample)
+                inversions_activity_for_one_sample = output_queue.get()
+                if inversion_activity_for_one_sample:
+                    self.inversion_activity.extend(inversion_activity_for_one_sample)
 
                 num_samples_processed += 1
                 self.progress.increment(increment_to=num_samples_processed)
@@ -1291,7 +1293,7 @@ class Inversions:
         headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'reference', 'frequency_count', 'relative_abundance']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
-            for e in oligo_frequencies:
+            for e in self.inversion_activity:
                 inversion_id, oligo_primer = '-'.join(e[1].split('-')[:-1]), e[1].split('-')[-1]
                 output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]!s}\t{e[4]}\t{e[5]:.3f}\n")
 
