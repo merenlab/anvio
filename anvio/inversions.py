@@ -804,6 +804,78 @@ class Inversions:
                 # and finally we will store this hot mess in our dictionary
                 self.summary['inversions'][inversion_id]['genes'] = genes
 
+        # add inversion activity
+        if self.skip_compute_inversion_activity:
+            pass
+        else:
+            '''
+            'activity' : {sample1 :{'first_oligo_primer': {'CTGGA': {name: 'reference', color: '#something', relative_freq: 0.9, freq: 10}},
+                                    'second_oligo_primer': {}}
+            '''
+            sum_freq = {}
+            for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
+                inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
+
+                # BRACE YOURSELF, IT IS NOT BEAUTIFUL
+                # a better way would be to have created self.inversion_activity as a dict from the beginning
+                # the following code has been approved by IVA
+                if inversion_id not in self.summary['inversions']:
+                    self.summary['inversions'][inversion_id] = {}
+
+                if 'activity' not in self.summary['inversions'][inversion_id]:
+                    self.summary['inversions'][inversion_id]['activity'] = {}
+
+                if oligo_primer not in self.summary['inversions'][inversion_id]['activity']:
+                    self.summary['inversions'][inversion_id]['activity'][oligo_primer] = {}
+
+                if oligo not in self.summary['inversions'][inversion_id]['activity'][oligo_primer]:
+                    self.summary['inversions'][inversion_id]['activity'][oligo_primer][oligo] = {'reference': reference,
+                                                                                                 sample: {'relative_frequency': relative_frequency,
+                                                                                                          'frequency': frequency}}
+                else:
+                    self.summary['inversions'][inversion_id]['activity'][oligo_primer][oligo][sample]= {'reference': reference,
+                                                                                                        'relative_frequency': relative_frequency,
+                                                                                                        'frequency': frequency}
+
+                # We need to give each oligo a name and a color
+                # to do that we need to sum their frequency and sort them
+                if reference == False:
+                    if inversion_id not in sum_freq:
+                        sum_freq[inversion_id] = {}
+
+                    if oligo_primer not in sum_freq[inversion_id]:
+                        sum_freq[inversion_id][oligo_primer] = {}
+
+                    if oligo not in sum_freq[inversion_id][oligo_primer]:
+                        sum_freq[inversion_id][oligo_primer][oligo] = frequency
+                    else:
+                        sum_freq[inversion_id][oligo_primer][oligo] += frequency
+
+            # here we sort the oligo by decreasing abundance, then we give each oligo a name and a color :)
+            # we only allow for three "other inversion". These are rare case where more than two inverted repeats are involved,
+            # like a type of nested inversions. e.g: B. frag endonuclease!
+            color_dict = {'inversion': '#055052',
+                          'other_inversion_1': '#a6a6a6',
+                          'other_inversion_2': '#5a5a5a',
+                          'other_inversion_3': '#ff0000'}
+
+            for inversion_id, oligo_primer in sum_freq.items():
+                for primer, oligo_freq in oligo_primer.items():
+                    sorted_oligo_freq = dict(sorted(oligo_freq.items(), key=lambda x:x[1], reverse=True))
+                    for oligo in oligo_freq:
+                        if self.summary['inversions'][inversion_id]['activity'][primer][oligo]['reference'] == True:
+                            self.summary['inversions'][inversion_id]['activity'][primer][oligo]['name'] = 'Reference'
+                            self.summary['inversions'][inversion_id]['activity'][primer][oligo]['color'] = '#53B8BB'
+                        else:
+                            rank = list(sorted_oligo_freq).index(oligo)
+                            if rank > 3:
+                                self.summary['inversions'][inversion_id]['activity'][primer][oligo]['name'] = 'else'
+                                self.summary['inversions'][inversion_id]['activity'][primer][oligo]['color'] = '##FF0000'
+                            else:
+                                name = list(color_dict)[rank]
+                                self.summary['inversions'][inversion_id]['activity'][primer][oligo]['name'] = name
+                                self.summary['inversions'][inversion_id]['activity'][primer][oligo]['color'] = color_dict[name]
+
 
     def recover_genomic_context_surrounding_inversions(self):
         """Learn about what surrounds the consensus inversion sites"""
@@ -1109,7 +1181,6 @@ class Inversions:
             tuple in the list holds information for a single oligo and follows the order,
 
                 >>> (sample_name, inversion_id, oligo_primer, oligo, frequency, relative_abundance)
-
             where,
 
                 - sample_name: sample name as written in the first column of bams-and-profiles-txt
