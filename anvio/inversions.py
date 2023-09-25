@@ -758,8 +758,8 @@ class Inversions:
                 # of each gene to this value.
                 new_context_length = 1000
 
-                # how big the gene arros should be
-                gene_arrow_width = 15
+                # how big the gene arros should be (in an ideal world -- see below the real world, Neo)
+                default_gene_arrow_width = 20
 
                 # before we start working on the genes, we will figure out the location of the inverted site
                 # in the genomc context. here we quckly identify the transformed start and the end position
@@ -780,6 +780,19 @@ class Inversions:
                     # CANCER IN THE PROCESS. If you have seen this comment and the code
                     # below, I thank you very much in advance for never bringing it up
                     # in any conversation forever.
+                    if (gene['stop_t'] - gene['start_t']) < default_gene_arrow_width:
+                        # if we are here, it means the transformed length of the gene is already
+                        # shorter than the space we assign for the arrow to display gene calls.
+                        # this means we will only will be able to show an arrow, but even in that
+                        # case the `gene_arrow_width` may be too long to display (i.e., if the
+                        # transformed gene lenth is 10 and arrow is 15, we are already showing
+                        # too much). The solution is to make the gene nothing more but the arrow
+                        # but make the arrow width equal to the gene width
+                        gene_arrow_width = gene['stop_t'] - gene['start_t']
+                        gene['stop_t'] = gene['start_t']
+                    else:
+                        gene_arrow_width = default_gene_arrow_width
+
                     gene['RX'] = gene['start_t']
                     gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
