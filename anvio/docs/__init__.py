@@ -575,6 +575,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "reaction-network-json": {
+        "name": "REACTION NETWORK JSON",
+        "type": "JSON",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
