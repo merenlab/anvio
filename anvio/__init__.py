@@ -8,7 +8,7 @@ anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-a
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
 major_python_version_required = 3
-minor_python_version_required = 7
+minor_python_version_required = 10
 
 import sys
 import platform
@@ -28,14 +28,12 @@ try:
                          f"    Python version anvi'o wants ..........: {major_python_version_required}.{minor_python_version_required}.*\n\n")
 
         if anvio_version.endswith('dev'):
-            sys.stderr.write("Those who follow the active development branch of anvi'o (like \n"
-                             "yourself) are among our most important users as they help us \n"
-                             "find and address bugs before they can make their way into a stable \n"
-                             "release. Thus, we are extra sorry for this inconvenience :/ But \n"
-                             "the change in the required Python version (which must happened \n"
-                             "after you started tracking the active development branch) \n"
-                             "requires you to get rid of your current anvi'o enviroment, and \n"
-                             "setup a new one using the most up-to-date instructions here:\n\n"
+            sys.stderr.write("Those who follow the active development branch of anvi'o (like yourself) are among our most important \n"
+                             "users of the platform as they help us find and address bugs before they can make their way into a stable \n"
+                             "release. Thus, we are extra sorry for this inconvenience :/ But it seems there was a big change in the \n"
+                             "main branch, and the required version of Python is no longer compatible with your current conda \n"
+                             "environment :/ This means, you need to get rid of your current anvio-dev conda enviroment, and setup a \n"
+                             "new one following the most up-to-date installation instructions for anvio-dev here:\n\n"
                              "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
                              "Thank you for your patience and understanding.\n\n")
         else:
@@ -3596,7 +3594,8 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
+    run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)

@@ -4,12 +4,13 @@ channels:
 - bioconda
 - defaults
 dependencies:
-- python=3.7
+- python=3.10
 - sqlite
 - prodigal
 - idba
 - mcl
 - muscle=3.8.1551
+- famsa
 - hmmer
 - diamond
 - blast
@@ -30,5 +31,5 @@ dependencies:
 - r-stringi
 - r-magrittr
 - bioconductor-qvalue
-- fastani
 - meme
+- fastani

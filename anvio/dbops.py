@@ -1656,7 +1656,7 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
             except:
-                if gene_cluster_name not in gene_clusters_failed_to_align:
+                if gene_cluster_name not in str(gene_clusters_failed_to_align):
                     progress.reset()
                     run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
                                 f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
