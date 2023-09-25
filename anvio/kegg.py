@@ -1577,6 +1577,7 @@ class ModulesDownload(KeggSetup):
     def download_modules(self):
         """This function downloads the KEGG modules."""
 
+        from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
         from anvio.biochemistry.reactionnetwork import _download_worker
@@ -1786,6 +1787,7 @@ class ModulesDownload(KeggSetup):
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
+        from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
         from anvio.biochemistry.reactionnetwork import _download_worker
