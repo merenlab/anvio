@@ -1,16 +1,16 @@
 A **directory of data** downloaded from the [KEGG database resource](https://www.kegg.jp/) for use in function annotation and metabolism estimation.
 
-It is created by running the program %(anvi-setup-kegg-kofams)s. Not everything from KEGG is included in this directory, only the information relevant to downstream programs. The most critical components of this directory are KOfam HMM profiles and the %(modules-db)s which contains information on metabolic pathways as described in the [KEGG MODULES resource](https://www.genome.jp/kegg/module.html), as well as functional classification hierarchies from [KEGG BRITE](https://www.genome.jp/kegg/brite.html).
+It is created by running the program %(anvi-setup-kegg-data)s. Not everything from KEGG is included in this directory, only the information relevant to downstream programs. The most critical components of this directory are KOfam HMM profiles and the %(modules-db)s which contains information on metabolic pathways as described in the [KEGG MODULES resource](https://www.genome.jp/kegg/module.html), as well as functional classification hierarchies from [KEGG BRITE](https://www.genome.jp/kegg/brite.html).
 
 Programs that rely on this data directory include %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
 
 ## Directory Location
 The default location of this data is in the anvi'o folder, at `anvio/anvio/data/misc/KEGG/`.
 
-You can change this location when you run %(anvi-setup-kegg-kofams)s by providing a different path to the `--kegg-data-dir` parameter:
+You can change this location when you run %(anvi-setup-kegg-data)s by providing a different path to the `--kegg-data-dir` parameter:
 
 {{ codestart }}
-anvi-setup-kegg-kofams --kegg-data-dir /path/to/directory/KEGG
+anvi-setup-kegg-data --kegg-data-dir /path/to/directory/KEGG
 {{ codestop }}
 
 If you do this, you will need to provide this path to downstream programs that require this data as well.
