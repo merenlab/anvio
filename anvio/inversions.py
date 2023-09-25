@@ -69,7 +69,7 @@ class Inversions:
         self.consensus_inversions = []
 
         # inversion activity
-        self.inversion_activity = {}
+        self.inversion_activity = []
 
         # in which we will store the genomic context that surrounds
         # consensus inversions for downstream fun
