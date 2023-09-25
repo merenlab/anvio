@@ -748,7 +748,7 @@ class GenomicNetwork(ReactionNetwork):
             objective_dict = JSONStructure.get_e_coli_core_objective()
             if remove_missing_objective_metabolites:
                 objective_metabolites: Dict = objective_dict['metabolites']
-                objective_original_metabolites: Dict = objective_dict['original_metabolite_ids']
+                objective_original_metabolites: Dict = objective_dict['notes']['original_metabolite_ids']
                 missing_metabolite_ids = []
                 # The original objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND IDs.
                 missing_original_metabolite_ids = []
