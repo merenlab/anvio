@@ -1531,8 +1531,8 @@ class Inversions:
 
         if not self.skip_search_for_motifs:
             if not utils.is_program_exists('meme'):
-                raise ConfigError(f"You asked anvi'o to search for conserved motifs. Great idea! "
-                                  f"But the software MEME is not installed in your environment :'(")
+                raise ConfigError("You asked anvi'o to search for conserved motifs. Great idea! "
+                                  "But the software MEME is not installed in your environment :'(")
 
     def report(self):
         """Reporting per-sample as well as consensus inversions, along with other reporting files"""
