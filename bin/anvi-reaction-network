@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+from anvio import A as A, K as K, __version__ as VERSION
+
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.biochemistry.reactionnetwork import Constructor
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2023, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = VERSION
+__authors__ = ["semiller10"]
+__requires__ = ["contigs-db", "kegg-functions", "reaction-ref-data", "kegg-data"]
+__provides__ = ["reaction-network"]
+__description__ = "Generate a metabolic reaction network in an anvi'o contigs database"
+
+
+def main():
+    parser = ArgumentParser(description=__description__)
+    parser.add_argument(*A('contigs-db'), **K('contigs-db'))
+    parser.add_argument(
+        '--ko-dir', type=str, metavar='PATH',
+        help=(
+            "Path to KEGG KO database directory. If this option is not used, the program expects a "
+            "database set up in the default location used by 'anvi-setup-kegg-data'."
+        )
+    )
+    parser.add_argument(
+        '--modelseed-dir', type=str, metavar='PATH',
+        help=(
+            "Path to ModelSEED Biochemistry database directory. If this option is not used, the program "
+            "expects a database set up in the default location used by 'anvi-setup-modelseed-database'."
+        )
+    )
+    parser.add_argument(
+        '--overwrite-existing-network', default=False, action='store_true',
+        help="Overwrite an existing reaction network in the database with the newly computed network."
+    )
+    args = parser.get_args(parser)
+
+    constructor = Constructor(ko_dir=args.ko_dir, modelseed_dir=args.modelseed_dir)
+    constructor.make_network(contigs_db=args.contigs_db, overwrite_existing_network=args.overwrite_existing_network)
+
+if __name__ == '__main__':
+    try:
+        main()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

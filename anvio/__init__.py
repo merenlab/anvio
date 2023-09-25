@@ -954,6 +954,14 @@ D = {
                      "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
                      "to use the default path if you do not specify anything."}
                 ),
+    'modelseed-data-dir': (
+            ['--modelseed-data-dir'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "The directory path for your ModelSEED Biochemistry setup. Anvi'o will try to use "
+                     "the default path if you do not specify anything."}
+                ),
     'user-modules': (
             ['-u', '--user-modules'],
             {'default': None,
@@ -1036,27 +1044,26 @@ D = {
                      "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
                      "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
-                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                     "from KEGG's REST API and set it up into anvi'o-compatible files."}
                 ),
     'only-download': (
             ['--only-download'],
             {'default': False,
              'action': 'store_true',
              'help': "You want this program to only download data from KEGG, and then stop. It will not "
-                     "make a modules database. (It would be a *very* good idea for you to specify a "
-                     "data directory using --kegg-data-dir in this case, so that you can find the resulting "
-                     "data easily and avoid messing up any data in the default KEGG directory. But you are "
-                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
-                     "processed with `hmmpress` if you choose this option."}
+                     "process the data (ie, into organized HMMs or a modules database). (It would be a "
+                     "*very* good idea for you to specify a data directory using --kegg-data-dir in this "
+                     "case, so that you can find the resulting data easily and avoid messing up any data "
+                     "in the default KEGG directory. But you are of course free to do whatever you want.)"}
              ),
-    'only-database': (
-            ['--only-database'],
+    'only-processing': (
+            ['--only-processing'],
             {'default': False,
              'action': 'store_true',
-             'help': "You already have all the KEGG data you need on your computer. Perhaps you even got it from "
+             'help': "You already have all the KEGG data you need on your computer. Probably you even got it from "
                      "this program, using the --only-download option. We don't know. What matters is that you don't "
-                     "need anything downloaded, you just want this program to setup a modules database from that "
-                     "existing data. Good. We can do that if you provide this flag (and probably also the --kegg-data-dir "
+                     "need anything downloaded, you just want this program to process that "
+                     "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
              ),
     'kegg-snapshot': (
@@ -1064,9 +1071,10 @@ D = {
             {'default': None,
              'type': str,
              'metavar': 'RELEASE_NUM',
-             'help': "If you are particularly interested in an earlier snapshot of KEGG that anvi'o knows about, you can set it here. "
-                     "Otherwise anvi'o will always use the latest snapshot it knows about, which is likely to be the one associated with "
-                     "the current release of anvi'o."}
+             'help': "The default behavior of this program is to download a pre-processed snapshot of data "
+                     "from KEGG. If you are particularly interested in an earlier snapshot of KEGG that anvi'o "
+                     "knows about, you can set it here. Otherwise anvi'o will always use the latest snapshot "
+                     "it knows about, which is likely to be the one associated with the current release of anvi'o."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
