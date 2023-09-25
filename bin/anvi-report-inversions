@@ -136,7 +136,17 @@ if __name__ == '__main__':
                     "report whatever it can.", metavar="INT")
     groupG.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls "
                     "from."}))
-
+    
+    groupM = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 06: FINDING MOTIFS IN INVERTED REPEATS',
+                    "Site-specific inversions are carried out by site-specific recombinases which recognize "
+                    "imperfect palindromic sequences on each end of an inversion. They appear as a single pair "
+                    "of inverted repeats, the one anvi'o report in the consensus output. We can use DNA motif search "
+                    "to connect inversions that are potentially inverted by the same site-specific recombinase.")
+    groupM.add_argument('--skip-search-for-motifs', default=False, action="store_true", help="Skip the search for "
+                    "conserved motifs in inverted repeats.")
+    groupM.add_argument('--num-of-motifs', default=None, type=int, help="By default anvi'o will search for as many motifs as "
+                    "inversions. It can be time consuming if you have a lot of inversions. You can use that flag to "
+                    "search for less motifs.", metavar="INT")
 
     groupH = parser.add_argument_group('TARGETED SEARCH & PROCESSING', "By default anvi'o process every region of every "
                     "contig it is given. Using the following three parameters, you can limit your search to a particular "
