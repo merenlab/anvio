@@ -158,6 +158,10 @@ def monospace(s):
 def sumvals(d):
     return sum(d.values())
 
+@register.filter(name='even_odd')
+def even_odd(d):
+    return int(d) % 2
+
 @register.filter(name='humanize_f')
 def humanize_f(n):
     if isinstance(n, str):
