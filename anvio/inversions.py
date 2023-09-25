@@ -748,7 +748,8 @@ class Inversions:
                 # we will get a deepcopy of the gene context associated with the inversion
                 genes = copy.deepcopy(self.genomic_context_surrounding_consensus_inversions[inversion_id])
 
-                # then we will learn about these so we can transform gene coordinates
+                # then we will learn about these so we can transform the coordinates of anything we wish
+                # to display in the output
                 genomic_context_start = genes[0]['start'] - 100
                 genomic_context_end = genes[-1]['stop'] + 100
 
@@ -756,6 +757,15 @@ class Inversions:
                 # display in the static HTML output. we will have to transfrom start-stop coordinates
                 # of each gene to this value.
                 new_context_length = 1000
+
+                # before we start working on the genes, we will figure out the location of the inverted site
+                # in the genomc context. here we quckly identify the transformed start and the end position
+                # and store it in the inversion data dict
+                inv_start = (entry['first_end'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                inv_end  = (entry['second_start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                self.summary['inversions'][inversion_id]['inversion_data']['IX'] = inv_start
+                self.summary['inversions'][inversion_id]['inversion_data']['IW'] = inv_end - inv_start
+                self.summary['inversions'][inversion_id]['inversion_data']['IT'] = inv_start + (inv_end - inv_start) / 2
 
                 # here we will add transformed gene coordinates to the genes dict
                 for gene in genes:
