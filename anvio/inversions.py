@@ -733,7 +733,8 @@ class Inversions:
         self.summary['meta'] = {'summary_type': 'inversions',
                                 'num_inversions': len(self.consensus_inversions),
                                 'output_directory': self.output_directory,
-                                'genomic_context_recovered': not self.skip_recovering_genomic_context}
+                                'genomic_context_recovered': not self.skip_recovering_genomic_context,
+                                'inversion_activity_computed': not self.skip_compute_inversion_activity}
 
         self.summary['inversions'] = {}
 
@@ -833,8 +834,7 @@ class Inversions:
                                                                                                  sample: {'relative_frequency': relative_frequency,
                                                                                                           'frequency': frequency}}
                 else:
-                    self.summary['inversions'][inversion_id]['activity'][oligo_primer][oligo][sample]= {'reference': reference,
-                                                                                                        'relative_frequency': relative_frequency,
+                    self.summary['inversions'][inversion_id]['activity'][oligo_primer][oligo][sample]= {'relative_frequency': relative_frequency,
                                                                                                         'frequency': frequency}
 
                 # We need to give each oligo a name and a color
