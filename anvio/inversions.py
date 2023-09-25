@@ -1261,7 +1261,7 @@ class Inversions:
         num_samples_processed = 0
         while num_samples_processed < num_samples:
             try:
-                inversions_activity_for_one_sample = output_queue.get()
+                inversion_activity_for_one_sample = output_queue.get()
                 if inversion_activity_for_one_sample:
                     self.inversion_activity.extend(inversion_activity_for_one_sample)
 
