@@ -785,7 +785,7 @@ class Inversions:
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
                     gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
                     gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
-                    gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicel cover the rest of the gene
+                    gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
                 # and finally we will store this hot mess in our dictionary
                 self.summary['inversions'][inversion_id]['genes'] = genes
