@@ -83,7 +83,7 @@ def main(args):
             raise ConfigError("Anvi'o is unable to find the MODULES.db in the KEGG data directory you have specified :/")
         else:
             raise ConfigError("Anvi'o is unable to find the MODULES.db in the default KEGG data directory. You either "
-                              "need to run `anvi-setup-kegg-kofams` to install the KEGG data in your environment, or "
+                              "need to run `anvi-setup-kegg-data` to install the KEGG data in your environment, or "
                               "you need to use the `--kegg-data-dir` parameter to specify where should anvi'o find it.")
 
     run.info("KEGG data directory", kegg_ctx.kegg_data_dir)

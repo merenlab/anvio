@@ -1076,7 +1076,8 @@ class KODatabase:
     Unless an alternative directory is provided, the database is downloaded and set up in a
     default anvi'o data directory, and loaded from this directory in network construction.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/REACTION_NETWORK/KO')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/KEGG/KO_REACTION_NETWORK')
+    expected_files = ['ko_info.txt', 'ko_data.tsv']
 
     def __init__(self, ko_dir: str = None) -> None:
         """
@@ -1093,19 +1094,17 @@ class KODatabase:
                 raise ConfigError(f"There is no such directory, '{ko_dir}'.")
         else:
             ko_dir = self.default_dir
-        info_path = os.path.join(ko_dir, 'ko_info.txt')
-        if not os.path.isfile(info_path):
-            raise ConfigError(f"No required file named 'ko_info.txt' was found in the KO directory, '{ko_dir}'.")
-        table_path = os.path.join(ko_dir, 'ko_data.tsv')
-        if not os.path.isfile(table_path):
-            raise ConfigError(f"No required file named 'ko_data.tsv' was found in the KO directory, '{ko_dir}'.")
 
-        f = open(info_path)
+        for expected_file in self.expected_files:
+            if not os.path.isfile(os.path.join(ko_dir, expected_file)):
+                raise ConfigError(f"No required file named '{expected_file}' was found in the KO directory, '{ko_dir}'.")
+
+        f = open(os.path.join(ko_dir, 'ko_info.txt'))
         f.readline()
         self.release = ' '.join(f.readline().strip().split()[1:])
         f.close()
 
-        self.ko_table = pd.read_csv(table_path, sep='\t', header=0, index_col=0, low_memory=False)
+        self.ko_table = pd.read_csv(os.path.join(ko_dir, 'ko_data.tsv'), sep='\t', header=0, index_col=0, low_memory=False)
 
     def set_up(
         num_threads: int = 1,
@@ -1124,12 +1123,13 @@ class KODatabase:
             Number of threads to use in parallelizing the download of KO files.
 
         dir : str, None
-            Directory in which to create a new subdirectory called 'KO', in which files are
-            downloaded and set up. This argument overrides the default directory.
+            Directory in which to create a subdirectory called `KO_REACTION_NETWORK`,
+            in which files are downloaded and set up. This argument overrides
+            the default directory.
 
         reset : bool, False
-            If True, remove any existing 'KO' database directory and the files therein. If False,
-            an exception is raised if there are files in this directory.
+            If True, remove any existing 'KO_REACTION_NETWORK' database directory and the files
+            therein. If False, an exception is raised if there are files in this directory.
 
         run : anvio.terminal.Run, None
 
@@ -1137,9 +1137,10 @@ class KODatabase:
         """
         if dir:
             if os.path.isdir(dir):
-                ko_dir = os.path.join(dir, 'KO')
+                ko_dir = os.path.join(dir, 'KO_REACTION_NETWORK')
             else:
-                raise ConfigError(f"There is no such directory, '{dir}'.")
+                raise ConfigError(f"There is no such directory, '{dir}'. You should create it "
+                                   "first if you want to use it.")
         else:
             ko_dir = KODatabase.default_dir
             parent_dir = os.path.dirname(ko_dir)
@@ -1242,7 +1243,7 @@ class KODatabase:
                     "from the KO database. Anvi'o will now attempt to redownload all of the files. "
                 )
         run.info(f"Total number of KOs/entry files", total)
-        run.info("KEGG database version", release_after)
+        run.info("KEGG KO database version", release_after)
         run.info("KEGG KO list", list_path)
         run.info("KEGG KO info", info_path)
 
@@ -1264,7 +1265,7 @@ class KODatabase:
                     section = line.split()[0]
                 if section == 'NAME':
                     # The name value follows 'NAME' at the beginning of the line.
-                    ko_data['name'] = line[4:].lstrip().rstrip()
+                    ko_data['name'] = line[4:].strip()
                     # EC numbers associated with the KO are recorded at the end of the name value.
                     ec_string = re.search('\[EC:.*\]', line)
                     if ec_string:

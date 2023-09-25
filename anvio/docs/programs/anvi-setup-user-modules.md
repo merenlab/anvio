@@ -74,7 +74,7 @@ Why must we format the module files this way, you ask? Well, to be honest, KEGG 
 
 ### Specifying KEGG data to be used for sanity checking
 
-If you haven't yet run %(anvi-setup-kegg-kofams)s on your computer, you will get an error when you try to run this program. This is because KEGG data can be used in addition to user-defined modules, and we need to be aware of which KEGG modules exist so we can make sure none of the user-defined modules have the same identifiers as these.
+If you haven't yet run %(anvi-setup-kegg-data)s on your computer, you will get an error when you try to run this program. This is because KEGG data can be used in addition to user-defined modules, and we need to be aware of which KEGG modules exist so we can make sure none of the user-defined modules have the same identifiers as these.
 
 By default, this program looks for the KEGG data in the default location, so if you have set up KEGG data in a non-default directory, you should specify the path to that directory using the `--kegg-data-dir` parameter:
 
