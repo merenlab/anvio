@@ -8,7 +8,7 @@ anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-a
                         # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
 
 major_python_version_required = 3
-minor_python_version_required = 7
+minor_python_version_required = 10
 
 import sys
 import platform
@@ -28,14 +28,12 @@ try:
                          f"    Python version anvi'o wants ..........: {major_python_version_required}.{minor_python_version_required}.*\n\n")
 
         if anvio_version.endswith('dev'):
-            sys.stderr.write("Those who follow the active development branch of anvi'o (like \n"
-                             "yourself) are among our most important users as they help us \n"
-                             "find and address bugs before they can make their way into a stable \n"
-                             "release. Thus, we are extra sorry for this inconvenience :/ But \n"
-                             "the change in the required Python version (which must happened \n"
-                             "after you started tracking the active development branch) \n"
-                             "requires you to get rid of your current anvi'o enviroment, and \n"
-                             "setup a new one using the most up-to-date instructions here:\n\n"
+            sys.stderr.write("Those who follow the active development branch of anvi'o (like yourself) are among our most important \n"
+                             "users of the platform as they help us find and address bugs before they can make their way into a stable \n"
+                             "release. Thus, we are extra sorry for this inconvenience :/ But it seems there was a big change in the \n"
+                             "main branch, and the required version of Python is no longer compatible with your current conda \n"
+                             "environment :/ This means, you need to get rid of your current anvio-dev conda enviroment, and setup a \n"
+                             "new one following the most up-to-date installation instructions for anvio-dev here:\n\n"
                              "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
                              "Thank you for your patience and understanding.\n\n")
         else:
@@ -954,6 +952,14 @@ D = {
                      "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
                      "to use the default path if you do not specify anything."}
                 ),
+    'modelseed-data-dir': (
+            ['--modelseed-data-dir'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "The directory path for your ModelSEED Biochemistry setup. Anvi'o will try to use "
+                     "the default path if you do not specify anything."}
+                ),
     'user-modules': (
             ['-u', '--user-modules'],
             {'default': None,
@@ -1036,27 +1042,26 @@ D = {
                      "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
                      "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
-                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                     "from KEGG's REST API and set it up into anvi'o-compatible files."}
                 ),
     'only-download': (
             ['--only-download'],
             {'default': False,
              'action': 'store_true',
              'help': "You want this program to only download data from KEGG, and then stop. It will not "
-                     "make a modules database. (It would be a *very* good idea for you to specify a "
-                     "data directory using --kegg-data-dir in this case, so that you can find the resulting "
-                     "data easily and avoid messing up any data in the default KEGG directory. But you are "
-                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
-                     "processed with `hmmpress` if you choose this option."}
+                     "process the data (ie, into organized HMMs or a modules database). (It would be a "
+                     "*very* good idea for you to specify a data directory using --kegg-data-dir in this "
+                     "case, so that you can find the resulting data easily and avoid messing up any data "
+                     "in the default KEGG directory. But you are of course free to do whatever you want.)"}
              ),
-    'only-database': (
-            ['--only-database'],
+    'only-processing': (
+            ['--only-processing'],
             {'default': False,
              'action': 'store_true',
-             'help': "You already have all the KEGG data you need on your computer. Perhaps you even got it from "
+             'help': "You already have all the KEGG data you need on your computer. Probably you even got it from "
                      "this program, using the --only-download option. We don't know. What matters is that you don't "
-                     "need anything downloaded, you just want this program to setup a modules database from that "
-                     "existing data. Good. We can do that if you provide this flag (and probably also the --kegg-data-dir "
+                     "need anything downloaded, you just want this program to process that "
+                     "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
              ),
     'kegg-snapshot': (
@@ -1064,9 +1069,10 @@ D = {
             {'default': None,
              'type': str,
              'metavar': 'RELEASE_NUM',
-             'help': "If you are particularly interested in an earlier snapshot of KEGG that anvi'o knows about, you can set it here. "
-                     "Otherwise anvi'o will always use the latest snapshot it knows about, which is likely to be the one associated with "
-                     "the current release of anvi'o."}
+             'help': "The default behavior of this program is to download a pre-processed snapshot of data "
+                     "from KEGG. If you are particularly interested in an earlier snapshot of KEGG that anvi'o "
+                     "knows about, you can set it here. Otherwise anvi'o will always use the latest snapshot "
+                     "it knows about, which is likely to be the one associated with the current release of anvi'o."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
@@ -3588,7 +3594,8 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
+    run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)

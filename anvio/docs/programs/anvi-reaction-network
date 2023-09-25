@@ -1,0 +1,3 @@
+This program **stores a metabolic reaction network in a %(contigs-db)s.**
+
+Protein-coding genes in the %(contigs-db)s must first be annotated with KEGG Orthologs (KOs), which can be done using %(anvi-run-kegg-kofams)s. This program then uses KOs to infer reactions encoded by the genome using the KEGG and ModelSEED biochemistry databases. These databases must be set up with the anvi'o commands, %(anvi-setup-kegg-data)s and %(anvi-setup-modelseed-database)s. Reactions and metabolites are stored in new tables of the %(contigs-db)s. The program, anvi-get-metabolic-model-file, can export the network stored in the contigs database to a JSON-formatted file suitable for inspection and flux balance analysis.

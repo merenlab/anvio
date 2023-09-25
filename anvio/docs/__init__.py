@@ -299,6 +299,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "reaction-ref-data": {
+        "name": "REACTION REFERENCE DATA",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
         "type": "DB",
@@ -560,6 +566,18 @@ ANVIO_ARTIFACTS ={
     "hmm-hits-across-genomes-txt": {
         "name": "HMM HITS ACROSS GENOMES",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network": {
+        "name": "REACTION NETWORK",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network-json": {
+        "name": "REACTION NETWORK JSON",
+        "type": "JSON",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
