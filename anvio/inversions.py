@@ -758,6 +758,9 @@ class Inversions:
                 # of each gene to this value.
                 new_context_length = 1000
 
+                # how big the gene arros should be
+                gene_arrow_width = 15
+
                 # before we start working on the genes, we will figure out the location of the inverted site
                 # in the genomc context. here we quckly identify the transformed start and the end position
                 # and store it in the inversion data dict
@@ -778,11 +781,11 @@ class Inversions:
                     # below, I thank you very much in advance for never bringing it up
                     # in any conversation forever.
                     gene['RX'] = gene['start_t']
-                    gene['RW'] = (gene['stop_t'] - gene['start_t']) - 30
+                    gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
-                    gene['RX_RW_30'] = gene['RX'] + gene['RW'] + 30
-                    gene['RX_RX_RW_30'] = gene['RX'] + gene['RX'] + gene['RW'] + 30
-                    gene['RX_RW'] = gene['RX'] + gene['RW']
+                    gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
+                    gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
+                    gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicel cover the rest of the gene
 
                 # and finally we will store this hot mess in our dictionary
                 self.summary['inversions'][inversion_id]['genes'] = genes

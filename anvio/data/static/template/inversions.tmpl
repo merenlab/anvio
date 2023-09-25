@@ -186,15 +186,15 @@
                             <rect x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}" y="0" width="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}" height="65" style="fill:red; opacity:0.5"></rect>
                             <text x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
 
-                            <!-- Go through genes -->
+                            <!-- Mark the inversion site -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
                                 {% if gene|lookup:"direction" == "r" %}
-                                <g transform='translate({{ gene|lookup:"RX_RX_RW_30" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
+                                <g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
                                 {% else %}
                                 <g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
                                 {% endif %}
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
-                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"RX_RW_30" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
+                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
                                 </g>
                                 <text x="{{ gene|lookup:"CX" }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
                             {% endfor %}
