@@ -1266,12 +1266,11 @@ class Inversions:
         msg = (f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
                f"across {PL('sample', num_samples)}. Brace yourself and please note that this can "
                f"take a very long time since for each sample, anvi'o will go through each short read to search for two "
-               f"sequences per inversion. IF IT COMES TO A POINT WHERE you (or your job on your HPC) can't continue running "
-               f"it, this process can be killed without any loss of data from the previous steps, as your primary output "
-               f"files must have already been reported. You can always skip this step and search for individual primers "
+               f"sequences per inversion. You can always skip this step and search for individual primers "
                f"listed in the consensus output file using the program `anvi-search-primers` with the parameter "
                f"`--min-remainder-length 6` and the flag `--only-report-remainders` to explore inversion activity "
-               f"manually")
+               f"manually. Does this make no sense? See the documentation for `anvi-report-inversions` (and hope for "
+               f"the best).")
         self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
         if num_samples > self.num_threads:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Not all samples will be processed "
