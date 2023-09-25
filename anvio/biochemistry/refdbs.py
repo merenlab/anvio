@@ -39,7 +39,7 @@ class ProteinReferenceDatabase(ABC):
     """Protein reference database framework."""
     # By default, files for each database are stored in a subdirectory with the name of the database
     # (e.g., 'modelseed', 'kegg') of the following superdirectory.
-    default_superdir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/PROTEIN_DATA')
+    default_superdir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/')
     db_name: str
     pretty_db_name: str
     # These are the final files stored in the database subdirectory.
@@ -47,7 +47,7 @@ class ProteinReferenceDatabase(ABC):
 
     @property
     def default_db_dir(self) -> str:
-        return os.path.join(self.default_superdir, self.db_name)
+        return os.path.join(self.default_superdir, self.pretty_db_name)
 
     @abstractproperty
     def loaded(self) -> bool:
@@ -78,7 +78,7 @@ class ProteinReferenceDatabase(ABC):
         if len(missing) == len(self.files):
             raise ConfigError(
                 f"No {self.pretty_db_name} reference database files were found in the database "
-                f"directory, '{self.db_dir}'. Download the reference database to a default "
+                f"directory, '{self.pretty_db_name}'. Download the reference database to a default "
                 "directory with the command, 'anvi-get-metabolic-model-file --download-references "
                 f"{self.pretty_db_name}."
             )
@@ -126,7 +126,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
     def __init__(self, db_superdir: str = None, run: Run = Run(), progress: Progress = Progress()) -> None:
         if db_superdir:
             check_output_directory(db_superdir, ok_if_exists=True)
-            self.db_dir = os.path.join(db_superdir, self.db_name)
+            self.db_dir = os.path.join(db_superdir, self.pretty_db_name)
         else:
             self.db_dir = self.default_db_dir
         self.run = run
@@ -308,7 +308,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
         )
         path = os.path.join(self.db_dir, 'reactions.tsv')
         reactions.to_csv(path, sep='\t', index=None)
-        self.run.info("Set up reactions table", path)
+        self.run.info("Set-up reactions table", path)
 
     def _set_up_compounds_table(self) -> None:
         """Change the stored compound table from the one downloaded."""
@@ -324,7 +324,7 @@ class ModelSEEDDatabase(ProteinReferenceDatabase):
             self._select_bigg_ids(compounds)
         )
         compounds.to_csv(path, sep='\t', index=None)
-        self.run.info("Set up compounds table", path)
+        self.run.info("Set-up compounds table", path)
 
     def _load_reactions(self) -> pd.DataFrame:
         """Load the reaction table as a DataFrame."""
@@ -441,7 +441,7 @@ class KEGGDatabase(ProteinReferenceDatabase):
     ) -> None:
         if db_superdir:
             check_output_directory(db_superdir, ok_if_exists=True)
-            self.db_dir = os.path.join(db_superdir, self.db_name)
+            self.db_dir = os.path.join(db_superdir, self.pretty_db_name)
         else:
             self.db_dir = self.default_db_dir
         self.num_threads = num_threads

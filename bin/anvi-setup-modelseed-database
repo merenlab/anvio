@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-DESCRIPTION = """This program downloads and sets up files of reference protein properties."""
+DESCRIPTION = """This program downloads and sets up the ModelSEED Biochemistry database."""
 
 from sys import exit
 from argparse import Namespace
@@ -26,33 +26,17 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    if args.db == 'ModelSEED':
-        db = refdbs.ModelSEEDDatabase(args.dir)
-    elif args.db == 'KEGG':
-        db = refdbs.KEGGDatabase(args.dir, args.num_threads)
+    db = refdbs.ModelSEEDDatabase(args.dir)
     db.download(reset=args.reset)
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
     parser.add_argument(
-        '--db',
-        choices=('KEGG', 'ModelSEED'),
-        type=str,
-        help=(
-            "The protein reference database of interest. "
-            "1) KEGG: All items from the Ortholog and Reaction databases are downloaded and "
-            "processed. "
-            "2) ModelSEED: The ModelSEED Biochemistry database harmonizes multiple reference "
-            "databases, including KEGG, MetaCyc, and BiGG. The reactions and compounds tables are "
-            "downloaded and processed."
-        )
-    )
-    parser.add_argument(
         '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
         help=(
-            "Directory in which a new subdirectory with the name of the database (e.g., 'kegg', "
-            "'modelseed') is created containing database files."
+            "Directory in which a new subdirectory with the name, 'ModelSEED', "
+            "is created containing database files."
         )
     )
     parser.add_argument(*A('num-threads'), **K('num-threads'))

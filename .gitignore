@@ -17,7 +17,7 @@ anvio/data/misc/PDB.db
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
 anvio/data/misc/CAZyme/
-anvio/data/misc/REACTION_NETWORK/
+anvio/data/misc/ModelSEED/
 anvio/data/interactive/lib/ngl/
 smtp_config.ini
 .snakemake
