@@ -31,3 +31,4 @@ dependencies:
 - r-magrittr
 - bioconductor-qvalue
 - fastani
+- meme
