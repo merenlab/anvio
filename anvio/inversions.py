@@ -790,11 +790,12 @@ class Inversions:
                         # but make the arrow width equal to the gene width
                         gene_arrow_width = gene['stop_t'] - gene['start_t']
                         gene['stop_t'] = gene['start_t']
+                        gene['RW'] = 0
                     else:
                         gene_arrow_width = default_gene_arrow_width
+                        gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
                     gene['RX'] = gene['start_t']
-                    gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
                     gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
                     gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
