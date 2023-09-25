@@ -22,8 +22,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = VERSION
 __authors__ = ['semiller10']
-__requires__ = ['functions']
-__provides__ = []
+__requires__ = ['contigs-db', 'reaction-network']
+__provides__ = ['reaction-network-json']
 __description__ = DESCRIPTION
 
 
