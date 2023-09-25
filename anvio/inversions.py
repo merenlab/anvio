@@ -1035,6 +1035,7 @@ class Inversions:
 
             # create output dir and files
             output = os.path.join(self.output_directory, "PER_INV", inversion_id)
+            filesnpaths.gen_output_directory(os.path.join(output), delete_if_exists=False)
             fasta_path = os.path.join(output, "inverted_repeats.fasta")
             meme_output = os.path.join(output, "MEME")
             meme_log = os.path.join(output, "run-MEME.log")
@@ -1622,7 +1623,7 @@ class Inversions:
             inversion_id = v['inversion_id']
 
             # create ouput directory
-            filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_INV", inversion_id))
+            filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_INV", inversion_id), delete_if_exists=False)
 
             genes_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-GENES.txt')
             functions_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')
