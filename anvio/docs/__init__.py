@@ -63,9 +63,9 @@ ANVIO_WORKFLOWS = {
             ('Search for homologous sequences', ['HMMER'])
             ],
         "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
-        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between individual genes and environments. "
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between gene families and environments. "
             "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
-            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply [assembled metagenomes](https://anvio.org/vocabulary/#de-novo-assembly)) "
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
@@ -298,6 +298,12 @@ ANVIO_ARTIFACTS ={
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": True
+    },
+    "reaction-ref-data": {
+        "name": "REACTION REFERENCE DATA",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
@@ -560,6 +566,18 @@ ANVIO_ARTIFACTS ={
     "hmm-hits-across-genomes-txt": {
         "name": "HMM HITS ACROSS GENOMES",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network": {
+        "name": "REACTION NETWORK",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network-json": {
+        "name": "REACTION NETWORK JSON",
+        "type": "JSON",
         "provided_by_anvio": True,
         "provided_by_user": False
     },

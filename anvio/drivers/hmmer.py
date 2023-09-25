@@ -87,7 +87,7 @@ class HMMer:
                 if not os.path.exists(base_path + ext):
                     raise ConfigError("It appears that hmmpress was not properly run on the hmm profiles at %s. The "
                                       "file %s does not exist. It is likely that you will have to set up your profiles "
-                                      "again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-kofams`. "
+                                      "again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-data`. "
                                       "We are very sorry about this." % (hmm_path, base_path + ext))
 
 

@@ -1656,7 +1656,7 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
             except:
-                if gene_cluster_name not in gene_clusters_failed_to_align:
+                if gene_cluster_name not in str(gene_clusters_failed_to_align):
                     progress.reset()
                     run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
                                 f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
@@ -4150,6 +4150,8 @@ class ContigsDatabase:
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
+        self.db.create_table(t.gene_function_reactions_table_name, t.gene_function_reactions_table_structure, t.gene_function_reactions_table_types)
+        self.db.create_table(t.gene_function_metabolites_table_name, t.gene_function_metabolites_table_structure, t.gene_function_metabolites_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
@@ -4187,6 +4189,7 @@ class ContigsDatabase:
                          'database' % (len(gene_calls_in_db), len(gene_caller_ids_to_remove)))
 
         # tables from which the gene calls  to remove gene calls from:
+        # TODO: Add functionality to remove data from reaction/metabolite tables associated with GCIDs.
         tables_dict = {
                     t.gene_function_calls_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
                     t.gene_amino_acid_sequences_table_name: ('gene_callers_id', gene_caller_ids_to_remove),

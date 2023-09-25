@@ -289,7 +289,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.prune_view_and_additional_data_dicts()
 
         self.process_external_item_order()
-        self.gen_alphabetical_orders_of_items()
+        self.gen_item_auto_order_length()
+        self.gen_item_auto_order_alphabetical()
 
         if not self.p_meta['default_item_order'] and len(self.p_meta['available_item_orders']):
             self.p_meta['default_item_order'] = self.p_meta['available_item_orders'][0]
@@ -478,14 +479,52 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
 
 
-    def gen_alphabetical_orders_of_items(self):
+    def gen_item_auto_order_length(self):
+        """Generate an items order based on item length when a contigs-db is present.
+
+        Since anvi'o soft-splits long contigs, each split that belongs to the same parent
+        contig will have a different length. Ordering solely based on item lengths will
+        break that linkage, thus, this function respets the 'parent' information and
+        first orders contigs based on length, and then orders splits with respect to the
+        length of contigs to which they belong.
+        """
+
+        if self.skip_auto_ordering or not self.contigs_db_path:
+            return
+
+        self.progress.new('Making items order: Length')
+        self.progress.update('...')
+
+        # get a dictionary to translate between contig names and split names
+        contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
+
+        # get a list of contig names based on their lengths
+        contig_names_sorted_by_length = [tpl[0] \
+                for tpl in sorted([(k, self.contigs_basic_info[k]['length']) \
+                for k in self.contigs_basic_info], key = lambda x: x[1], reverse=True)]
+
+        split_names = set(self.displayed_item_names_ordered)
+
+        split_names_ordered_by_size = []
+        for contig_name in contig_names_sorted_by_length:
+            for split_name in sorted(contig_name_to_splits_dict[contig_name]):
+                if split_name in split_names:
+                    split_names_ordered_by_size.append(split_name)
+
+        self.p_meta['item_orders']['<> Length:none:none'] = {'type': 'basic', 'data': split_names_ordered_by_size[::-1]}
+        self.p_meta['available_item_orders'].append('<> Length:none:none')
+
+        self.progress.end()
+
+
+    def gen_item_auto_order_alphabetical(self):
         """This function populates self.p_meta with additional organizations of data, such as alphabetical ordering\
            of data items, etc. In the interface these additional orders appear in the 'items order' combo box"""
 
         if self.skip_auto_ordering:
             return
 
-        self.progress.new('Additional organizations')
+        self.progress.new('Making items order: Alphabetical')
         self.progress.update('...')
 
         # add an alphabetical order:

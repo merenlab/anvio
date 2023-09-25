@@ -141,15 +141,28 @@ class ProfileSplitter:
 
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
+        self.list_collections = A('list_collections')
         self.bin_name = A('bin_id')
         self.output_directory = A('output_dir')
         self.skip_variability_tables = A('skip_variability_tables')
 
         self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.profile_db_path)
+
         self.summary = None
 
 
     def sanity_check(self):
+        if self.list_collections:
+            self.collections.list_collections()
+            sys.exit(0)
+
+        if not self.collection_name:
+            raise ConfigError("You must provide a collection name for this to work. If you want to know about "
+                              "all the collections in your pan database you can use the program "
+                              "`anvi-show-collections-and-bins` or run the same command with the flag "
+                              "`--list-collections`.")
+
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
         if not self.contigs_db_path:
@@ -171,13 +184,15 @@ class ProfileSplitter:
         # anvi-split runs to work on bins in the same collection in parallel:
         self.args.delete_output_directory_if_exists = False
 
-        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
-        self.summary.init()
+        if self.collection_name not in self.collections.collections_dict:
+            raise ConfigError(f"Your profile database does not know about a collection called "
+                              f"'{self.collection_name}' :/")
 
-        self.bin_names_of_interest = sorted(self.summary.bin_ids)
+        self.bin_names_of_interest = sorted([b.strip() for b in self.collections.collections_dict[self.collection_name]['bin_names'].split(',')])
         if self.bin_name:
             if self.bin_name not in self.bin_names_of_interest:
-                raise ConfigError("The bin name you wish to split from this profile database is not in the collection. Busted!")
+                raise ConfigError(f"The bin name you wish to split from this profile database, '{self.bin_name}', "
+                                  f"is not in the collection. Busted!")
             else:
                 self.bin_names_of_interest = [self.bin_name]
 
@@ -186,12 +201,13 @@ class ProfileSplitter:
         """This is the function that goes through each bin loaded in the class and proecesses them."""
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory)
-
         self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. As of "
                          "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
                          "still quite a tricky operation and you must double-check things once your split data is ready.",
                          header="ANVI'O TRICKY OPERATIONS DEPARTMENT", lc="green")
+
+        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
+        self.summary.init()
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
@@ -780,7 +796,7 @@ class LocusSplitter:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
                 self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
-        
+
         utils.check_sample_id(self.output_file_prefix)
 
         self.run.warning(None, header="Input / Output", lc="cyan")
@@ -989,7 +1005,6 @@ class LocusSplitter:
             gene_caller_ids = list(gene_caller_ids_flank_pair)
             gene_callers_id = gene_caller_ids[0] # just for getting contig name from contigDB
 
-
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
 
@@ -1011,7 +1026,7 @@ class LocusSplitter:
                 raise ConfigError(f"Soooooo it turns out that the flanking genes you picked "
                                   f"are found on two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
                                   f"a smaller piece of DNA for you :/")
-            
+
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
 
         # Sort by gene start position
@@ -1042,7 +1057,7 @@ class LocusSplitter:
                     anchor_gene_index_flank_pair.append(counter)
                 counter = counter + 1
             first_gene_of_the_block, last_gene_of_the_block = sorted(anchor_gene_index_flank_pair)
-            
+
         # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
@@ -1169,7 +1184,6 @@ class LocusSplitter:
                 new_gene_calls[g] = gene_call
             gene_calls = new_gene_calls
 
-
         # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
         with open(locus_sequence_fasta, 'w') as f:
@@ -1201,7 +1215,7 @@ class LocusSplitter:
 
         # while we are at it, let's add a default collection to the resulting blank profile
         TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=terminal.Run(verbose=False), progress=self.progress).add_default_collection_to_db(contigs_db_path=locus_output_db_path)
- 
+
 
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the

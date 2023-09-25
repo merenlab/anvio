@@ -77,14 +77,14 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict = {}
 
         rule_acceptable_params_dict['anvi_run_hmms_hmmsearch'] = ['threads_genomes', 'threads_metagenomes', 'additional_params']
-        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', 'additional_params']
-        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', 'clustering_threshold_for_OTUs', 'AA_mode']
+        rule_acceptable_params_dict['filter_hmm_hits_by_model_coverage'] = ['--model-coverage', '--filter-out-partial-gene-calls', 'additional_params']
+        rule_acceptable_params_dict['cluster_X_percent_sim_mmseqs'] = ['--min-seq-id', '--cov-mode', 'clustering_threshold_for_OTUs', 'AA_mode']
         rule_acceptable_params_dict['align_sequences'] = ['additional_params']
         rule_acceptable_params_dict['trim_alignment'] = ['-gt', "-gappyout", 'additional_params']
         rule_acceptable_params_dict['remove_sequences_with_X_percent_gaps'] = ['--max-percentage-gaps']
         rule_acceptable_params_dict['fasttree'] = ['run']
         rule_acceptable_params_dict['iqtree'] = ['run', '-m', 'additional_params']
-        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params']
+        rule_acceptable_params_dict['run_metagenomics_workflow'] = ['clusterize', 'clusterize_submission_params', 'HPC_string', 'snakemake_additional_params', 'bowtie2_additional_params', 'anvi_profile_min_percent_identity']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -96,12 +96,12 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             'samples_txt': 'samples.txt',
             'cluster_representative_method': {'method': 'mmseqs'},
             'anvi_run_hmms_hmmsearch': {'threads_genomes': 1, 'threads_metagenomes': 5},
-            'filter_hmm_hits_by_model_coverage': {'threads': 5, '--model-coverage': 0.8},
+            'filter_hmm_hits_by_model_coverage': {'threads': 5, '--model-coverage': 0.8, '--filter-out-partial-gene-calls': True},
             'process_hmm_hits': {'threads': 2},
             'combine_sequence_data': {'threads': 2},
             'anvi_get_external_gene_calls_file': {'threads': 2},
             'cat_external_gene_calls_file': {'threads': 2},
-            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97], 'AA_mode': False},
+            'cluster_X_percent_sim_mmseqs': {'threads': 5, '--min-seq-id': 0.94, '--cov-mode': 0, 'clustering_threshold_for_OTUs': [0.99, 0.98, 0.97], 'AA_mode': False},
             'subset_AA_seqs_with_mmseqs_reps': {'threads': 2},
             'align_sequences': {'threads': 5, 'additional_params': '-maxiters 1 -diags -sv -distance1 kbit20_3'},
             'trim_alignment': {'threads': 5, '-gappyout': True},
@@ -293,6 +293,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.metagenomics_workflow_snakemake_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow', 'snakemake_additional_params'])
 
         self.bowtie2_additional_params = self.get_param_value_from_config(['run_metagenomics_workflow','bowtie2_additional_params'])
+        self.anvi_profile_min_percent_identity = self.get_param_value_from_config(['run_metagenomics_workflow','anvi_profile_min_percent_identity'])
 
         metagenomics_workflow_snakemake_additional_params_list = self.metagenomics_workflow_snakemake_additional_params.split(' ')
 

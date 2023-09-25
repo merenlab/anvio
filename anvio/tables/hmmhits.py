@@ -288,7 +288,7 @@ class TablesForHMMHits(Table):
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
-                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
+                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's OK)." % source, nl_before=1)
 
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig

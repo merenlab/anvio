@@ -23,6 +23,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
+import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -492,7 +493,7 @@ class KeggSetup(KeggContext):
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-setup-kegg-kofams. If using this class through the API, please
+        All the arguments supplied by user to anvi-setup-kegg-data. If using this class through the API, please
         provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
         Developers can use this flag to skip the sanity checks and creation of directories when testing this class
@@ -503,13 +504,13 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.num_threads = 1 if not A('num_threads') else A('num_threads')
         self.kegg_archive_path = A('kegg_archive')
+        self.kegg_snapshot = A('kegg_snapshot')
         self.download_from_kegg = True if A('download_from_kegg') else False
         self.only_download = True if A('only_download') else False
-        self.only_database = True if A('only_database') else False
-        self.kegg_snapshot = A('kegg_snapshot')
-        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
-        self.overwrite_modules_db = A('overwrite_output_destinations')
+        self.only_processing = True if A('only_processing') else False
+        self.skip_init = skip_init
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -517,19 +518,15 @@ class KeggSetup(KeggContext):
         if self.kegg_snapshot and self.download_from_kegg or self.kegg_snapshot and self.kegg_archive_path:
             raise ConfigError("You cannot request setup from an anvi'o KEGG snapshot at the same time as from KEGG directly or from one of your "
                               "KEGG archives. Please pick just one setup option and try again.")
-        if (not self.download_from_kegg) and (self.only_download or self.only_database):
-            raise ConfigError("Erm. The --only-download and --only-database options are only valid if you are also using the --download-from-kegg "
+
+        if (not self.download_from_kegg) and (self.only_download or self.only_processing):
+            raise ConfigError("Erm. The --only-download and --only-processing options are only valid if you are also using the --download-from-kegg "
                               "option. Sorry.")
-        if self.only_download and self.only_database:
-            raise ConfigError("The --only-download and --only-database options are incompatible. Please choose only one. Or, if you want both "
+        if self.only_download and self.only_processing:
+            raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
-        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
-            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
-                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
-                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
-                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
-
+        
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
         self.brite_dict = None
@@ -537,56 +534,37 @@ class KeggSetup(KeggContext):
         # init the base class
         KeggContext.__init__(self, self.args)
 
+        # get KEGG snapshot info for default setup
+        self.target_snapshot = self.kegg_snapshot or 'v2023-09-22'
+        self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
+        self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
+
+        if self.target_snapshot not in self.snapshot_dict.keys():
+            self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
+            available_snapshots = sorted(list(self.snapshot_dict.keys()))
+            for snapshot_name in available_snapshots:
+                self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
+
+            raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
+                                "this time pick from the list shown above.")
+
+        # default download path for KEGG snapshot
+        self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
+        self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
+        self.expect_modeling_files_in_archive = True if 'no_modeling_data' in self.snapshot_dict[self.target_snapshot].keys() and \
+                                                    (not self.snapshot_dict[self.target_snapshot]['no_modeling_data']) else False
+
         if self.user_input_dir:
             self.run.warning(f"Just so you know, we will be setting up the metabolism data provided at the following "
                              f"location: '{self.user_input_dir}'. The success of this will be determined by how well you "
                              f"followed our formatting guidelines, so keep an eye out for errors below.")
 
-        filesnpaths.is_program_exists('hmmpress')
 
         if not self.user_input_dir:
 
-            if not args.reset and not anvio.DEBUG and not skip_init:
-                self.is_database_exists(fail_if_exists=(not self.only_database))
-
-            if self.download_from_kegg and not self.only_database and not self.kegg_archive_path and not skip_init:
+            # establish parent directory
+            if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not skip_init:
                 filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
-                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
-
-            # get KEGG snapshot info for default setup
-            self.target_snapshot = self.kegg_snapshot or 'v2023-01-10'
-            self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
-            self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
-
-            if self.target_snapshot not in self.snapshot_dict.keys():
-                self.run.warning(None, header="AVAILABLE KEGG SNAPSHOTS", lc="yellow")
-                available_snapshots = sorted(list(self.snapshot_dict.keys()))
-                for snapshot_name in available_snapshots:
-                    self.run.info_single(snapshot_name + (' (latest)' if snapshot_name == available_snapshots[-1] else ''))
-
-                raise ConfigError("Whoops. The KEGG snapshot you requested is not one that is known to anvi'o. Please try again, and "
-                                  "this time pick from the list shown above.")
-
-            # default download path for KEGG snapshot
-            self.default_kegg_data_url = self.snapshot_dict[self.target_snapshot]['url']
-            self.default_kegg_archive_file = self.snapshot_dict[self.target_snapshot]['archive_name']
-
-            # download from KEGG option: ftp path for HMM profiles and KO list
-                # for ko list, add /ko_list.gz to end of url
-                # for profiles, add /profiles.tar.gz  to end of url
-            self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-            # dictionary mapping downloaded file name to final decompressed file name or folder location
-            self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
-
-            # download from KEGG option: module/pathway map htext files and API link
-            self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
-            self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
-            self.kegg_rest_api_get = "http://rest.kegg.jp/get"
-            # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
-            self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
 
         else: # user input setup
             filesnpaths.is_output_dir_writable(os.path.dirname(self.user_input_dir))
@@ -606,7 +584,7 @@ class KeggSetup(KeggContext):
                         self.run.info("Successfully removed", path)
 
 
-    def is_database_exists(self, fail_if_exists=True):
+    def is_database_exists(self, files_to_check, fail_if_exists=True):
         """This function determines whether the user has already downloaded all required KEGG data.
 
         More specifically, it looks for the KEGG files that we use to learn what to download (as in
@@ -615,22 +593,22 @@ class KeggSetup(KeggContext):
 
         PARAMETERS
         ==========
+        files_to_check : list of file paths
+            this list should contain the paths to all required KEGG data or directories. what those
+            files are depends on the download mode.
         fail_if_exists : Boolean
             if this is True, this function will fail if the KEGG data already exists on the user's
             computer. If it is False, AND the user has already downloaded all required KEGG data,
-            then this function will not fail. This is to enable the --only-database option.
+            then this function will not fail. This is to enable the --only-processing option.
             Note that in this case we require all KEGG data to be pre-downloaded to avoid mixing
             older and newer KEGG data - so if this data is only partially downloaded, the function
             will raise an error even if this parameter is False.
         """
 
-        files_to_check = [self.kofam_hmm_file_path,
-                          self.kegg_module_file,
-                          self.kegg_module_data_dir,
-                          ]
-        if not self.skip_brite_hierarchies:
-            files_to_check.append(self.kegg_brite_hierarchies_file)
-            files_to_check.append(self.brite_data_dir)
+        if anvio.DEBUG:
+            file_str = ", ".join(files_to_check)
+            self.run.warning(f"We are looking for the following files to see if the KEGG data already "
+                             f"exists on you computer: {file_str}")
 
         files_that_exist = []
         for f in files_to_check:
@@ -638,7 +616,7 @@ class KeggSetup(KeggContext):
                 if fail_if_exists:
                     raise ConfigError(f"It seems you already have data at {f}, please use the `--reset` flag "
                                       "or delete the KEGG data directory manually if you want to re-download KEGG data. "
-                                      "See also the --only-database option, which you can use if you already "
+                                      "See also the --only-processing option, which you can use if you already "
                                       "have all required KEGG data in that folder. (API users: skip this sanity "
                                       "check by initializing this class with `skip_init=True`)")
                 else:
@@ -651,7 +629,7 @@ class KeggSetup(KeggContext):
                 raise ConfigError(f"We found some, but not all, required KEGG data on your computer in the KEGG "
                                   f"data directory. Since you don't have everything you need, we need you to re-download "
                                   f"everything from scratch. Please re-run this program using the --reset flag, and if "
-                                  f"you were using the --only-database option, remove that flag. :) HOWEVER, if you notice that "
+                                  f"you were using the --only-processing option, remove that flag. :) HOWEVER, if you notice that "
                                   "KEGG BRITE data does not appear to be in the upcoming list, but you don't actually want "
                                   "to download BRITE data, then you can just add the --skip-brite-hierarchies to your previous "
                                   f"command and be on your way (ie, no --reset needed). Here is the KEGG data we found:\n{exist_str}")
@@ -662,11 +640,226 @@ class KeggSetup(KeggContext):
                              f"need to check it to make sure we are not using something that is too old:\n"
                              f"{exist_str}")
 
-        if self.only_database and not files_that_exist:
+        if self.only_processing and not files_that_exist:
             raise ConfigError(f"We noticed that there is no KEGG data on your computer at {self.kegg_data_dir} even "
-                              f"though you used the --only-database option. If you don't actually have KEGG data already "
-                              f"downloaded, you should get rid of the --only-database flag and re-run this program. If you "
+                              f"though you used the --only-processing option. If you don't actually have KEGG data already "
+                              f"downloaded, you should get rid of the --only-processing flag and re-run this program. If you "
                               f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
+
+    
+    def setup_from_archive(self):
+        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
+
+        To do so, it unpacks the archive and checks its structure and that all required components are there.
+        """
+
+        self.run.info("KEGG archive", self.kegg_archive_path)
+        self.progress.new('Unzipping KEGG archive file...')
+        if not self.kegg_archive_path.endswith("tar.gz"):
+            self.progress.reset()
+            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
+                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
+        unpacked_archive_name = "KEGG_archive_unpacked"
+        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+
+        self.progress.update('Checking KEGG archive structure and contents...')
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name, no_modeling_is_ok = (not self.expect_modeling_files_in_archive))
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        self.progress.end()
+        if archive_is_ok:
+            if os.path.exists(self.kegg_data_dir):
+                shutil.rmtree(self.kegg_data_dir)
+            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
+            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
+            shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+
+            # if necessary, warn user about migrating the modules db
+            self.check_modules_db_version()
+
+        else:
+            debug_output = f"We kept the unpacked archive for you to take a look at it. It is at " \
+                           f"{os.path.abspath(unpacked_archive_name)} and you may want " \
+                           f"to delete it after you are done checking its contents."
+            if not anvio.DEBUG:
+                shutil.rmtree(unpacked_archive_name)
+                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
+                               "flag to keep it if you want to see its contents."
+            else:
+                self.run.warning(f"The unpacked archive file {os.path.abspath(unpacked_archive_name)} was kept for "
+                                 f"debugging purposes. You may want to clean it up after you are done looking through it.")
+
+            raise ConfigError(f"SETUP FAILED. The provided archive file is missing some critical files, "
+                              f"so anvi'o is unable to use it. {debug_output}")
+
+
+    def check_modules_db_version(self):
+        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
+
+        # get current version of db
+        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
+        current_db_version = int(db_conn.get_meta_value('version'))
+        db_conn.disconnect()
+
+        # if modules.db is out of date, give warning
+        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        if current_db_version != target_version:
+            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
+                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
+                             f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+    
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
+    def setup_kegg_snapshot(self):
+        """This is the default setup strategy in which we unpack a specific KEGG archive.
+
+        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
+        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
+        when KEGG is updated.
+
+        It is essentially a special case of setting up from an archive.
+        """
+
+        if anvio.DEBUG:
+            self.run.info("Downloading from: ", self.default_kegg_data_url)
+            self.run.info("Downloading to: ", self.default_kegg_archive_file)
+        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
+
+        # a hack so we can use the archive setup function
+        self.kegg_archive_path = self.default_kegg_archive_file
+        self.setup_from_archive()
+
+        # if all went well, let's get rid of the archive we used and the log file
+        if not anvio.DEBUG:
+            os.remove(self.default_kegg_archive_file)
+        else:
+            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
+                             "has been kept. You may want to remove it later.")
+
+    
+    def kegg_archive_is_ok(self, unpacked_archive_path, no_modeling_is_ok = False):
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
+
+        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
+        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
+        with the right names/paths into the archive file. But what would be the point of that?
+
+        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
+        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
+        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
+        to the implementation require the direct use of the files in these folders, then this function should be updated
+        to check for those.
+
+        Parameters
+        ==========
+        unpacked_archive_path : str
+            Path to the unpacked archive directory
+        no_modeling_is_ok : boolean
+            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the 
+            previous versions of KEGG archives that do not include this data.
+        """
+
+        is_ok = True
+
+        # check top-level files and folders
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        expected_directories_and_files = [self.orphan_data_dir,
+                                          self.kegg_module_data_dir,
+                                          self.kegg_hmm_data_dir,
+                                          self.ko_list_file_path,
+                                          self.kegg_module_file,
+                                          self.kegg_modules_db_path]
+        for f in expected_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following expected file or directory: "
+                                     f"{path_to_f_in_archive}")
+
+        # check hmm files
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
+        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
+        expected_hmm_files = [kofam_hmm_basename]
+        for h in expected_hmm_files:
+            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
+            if not os.path.exists(path_to_h_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following expected hmm file: "
+                                     f"{path_to_h_in_archive}")
+            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
+            for ext in expected_extensions:
+                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
+                if not os.path.exists(path_to_expected_hmmpress_file):
+                    is_ok = False
+                    if anvio.DEBUG:
+                        self.run.warning(f"The KEGG archive does not contain the following expected `hmmpress` output: "
+                                         f"{path_to_expected_hmmpress_file}")
+
+        # check modeling files
+        # this section needs to be kept up to date with any changes to requirements in reactionnetwork.py
+        # which is a bit silly, but since these two classes don't know about each other it is the workaround we need :(
+        path_to_modeling_files_in_archive = os.path.join(path_to_kegg_in_archive, "KO_REACTION_NETWORK")
+        expected_modeling_files = reactionnetwork.KODatabase.expected_files
+        missing_modeling_files = []
+        for f in expected_modeling_files:
+            path_to_f_in_archive = os.path.join(path_to_modeling_files_in_archive, f)
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False or no_modeling_is_ok
+                missing_modeling_files.append(f)
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following expected modeling file: "
+                                     f"{path_to_f_in_archive}")
+
+        if no_modeling_is_ok and missing_modeling_files:
+            self.run.warning("Modeling files are missing from the KEGG archive you have set up. However, somebody "
+                             "upstream thinks this is okay. Likely you are setting up an early KEGG snapshot version "
+                             "that doesn't contain this data. That's fine. But please keep in mind that you won't be "
+                             "able to run metabolic modeling. If this is a problem, you should either pick a later "
+                             "KEGG snapshot, or download the modeling data independently using the command "
+                             "`anvi-setup-kegg-data --mode modeling`.")
+
+        return is_ok
+
+    
+    def setup_all_data_from_archive_or_snapshot(self):
+        """This driver function controls whether we download one of our KEGG snapshots and set that up, or 
+        set up directly from an archive file already on the user's computer.
+        """
+
+        if os.path.exists(self.kegg_data_dir) and not self.args.reset:
+            raise ConfigError(f"The directory {self.kegg_data_dir} already exists. Are you sure you want to "
+                              f"overwrite it? If yes, feel free to restart this program with the --reset flag.")
+
+        if self.kegg_archive_path:
+            self.setup_from_archive()
+        else:
+            self.setup_kegg_snapshot()
 
 
     def check_user_input_dir_format(self):
@@ -696,97 +889,6 @@ class KeggSetup(KeggContext):
         if os.path.exists(self.user_modules_db_path):
             raise ConfigError(f"It seems you already have a user modules database installed at '{self.user_modules_db_path}', "
                               f"please use the --reset flag or delete this file manually if you want to re-generate it.")
-
-
-    def download_profiles(self):
-        """This function downloads the Kofam profiles."""
-
-        self.run.info("Kofam Profile Database URL", self.database_url)
-
-        try:
-            for file_name in self.files.keys():
-                utils.download_file(self.database_url + '/' + file_name,
-                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
-                              "likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-
-    def process_module_file(self):
-        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
-
-        The structure of this file is like this:
-
-        +D    Module
-        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
-        !
-        A<b>Pathway modules</b>
-        B
-        B  <b>Carbohydrate metabolism</b>
-        C    Central carbohydrate metabolism
-        D      M00001  Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate [PATH:map00010 map01200 map01100]
-        D      M00002  Glycolysis, core module involving three-carbon compounds [PATH:map00010 map01200 map01230 map01100]
-        D      M00003  Gluconeogenesis, oxaloacetate => fructose-6P [PATH:map00010 map00020 map01100]
-
-        In other words, a bunch of initial lines to be ignored, and thereafter the line's information can be determined by the one-letter code at the start.
-        A = Pathway modules (metabolic pathways) or signature modules (gene sets that indicate a phenotypic trait, ie toxins).
-        B = Category of module (a type of metabolism for pathway modules. For signature modules, either Gene Set or Module Set)
-        C = Sub-category of module
-        D = Module
-
-        """
-        self.module_dict = {}
-
-        filesnpaths.is_file_exists(self.kegg_module_file)
-        filesnpaths.is_file_plain_text(self.kegg_module_file)
-
-        f = open(self.kegg_module_file, 'rU')
-        self.progress.new("Parsing KEGG Module file")
-
-        current_module_type = None
-        current_category = None
-        current_subcategory = None
-
-        for line in f.readlines():
-            line = line.strip('\n')
-            first_char = line[0]
-
-            # garbage lines
-            if first_char in ["+", "#", "!"]:
-                continue
-            else:
-                # module type
-                if first_char == "A":
-                    fields = re.split('<[^>]*>', line) # we split by the html tag here
-                    current_module_type = fields[1]
-                # Category
-                elif first_char == "B":
-                    fields = re.split('<[^>]*>', line) # we split by the html tag here
-                    if len(fields) == 1: # sometimes this level has lines with only a B
-                        continue
-                    current_category = fields[1]
-                # Sub-category
-                elif first_char == "C":
-                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
-                    current_subcategory = fields[1]
-                # module
-                elif first_char == "D":
-                    fields = re.split('\s{2,}', line)
-                    mnum = fields[1]
-                    self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
-                # unknown code
-                else:
-                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
-                                      "made the file unparseable. It is likely that an update to KEGG has broken "
-                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
-                                      "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one). "
-                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
-                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
-        self.progress.end()
 
 
     def process_pathway_file(self):
@@ -860,6 +962,7 @@ class KeggSetup(KeggContext):
                                       "If we cannot fix it, we may be able to provide you with a legacy KEGG "
                                       "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_pathway_file, first_char))
         self.progress.end()
+
 
     def get_accessions_from_htext_file(self, htext_file):
         """This function can read generic KEGG htext files to get a list of accessions.
@@ -1013,6 +1116,598 @@ class KeggSetup(KeggContext):
             self.download_generic_flat_file(acc, download_dir_name)
 
 
+    def download_pathways(self):
+        """This function downloads the KEGG Pathways.
+
+        To do so, it first processes a KEGG file containing pathway and map identifiers into a dictionary via the process_pathway_file()
+        function. To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+
+        # note that this is the same as the REST API for modules - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG Pathway Database URL", self.kegg_rest_api_get)
+
+        # download the kegg pathway file, which lists all modules
+        try:
+            utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Pathway htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+        # get pathway dict
+        self.process_pathway_file()
+        self.run.info("Number of KEGG Pathways", len(self.pathway_dict.keys()))
+
+        # download all pathways
+        for konum in self.pathway_dict.keys():
+            file_path = os.path.join(self.pathway_data_dir, konum)
+            utils.download_file(self.kegg_rest_api_get + '/' + konum,
+                file_path, progress=self.progress, run=self.run)
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
+
+
+    def create_user_modules_dict(self):
+        """This function establishes the self.module_dict parameter for user modules.
+
+        It is essentially a replacement for the process_module_file() function.
+        Since users will not have a modules file to process, we simply create the dictionary from the
+        file names they provide for their module definitions. We don't add any dictionary values,
+        but we won't need them (we hope).
+        """
+
+        user_module_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
+        self.module_dict = {key: {} for key in user_module_list}
+
+        # sanity check that they also have KEGG data since we need to compare module names
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
+                              f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
+                              f"Well, we need to make sure none of your module names overlap with those "
+                              f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
+                              f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
+                              f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "
+                              f"to find it.")
+
+        # sanity check that user module names are distinct
+        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
+        kegg_mods = set(kegg_modules_db.get_all_modules_as_list())
+        user_mods = set(user_module_list)
+        bad_user_mods = kegg_mods.intersection(user_mods)
+        if bad_user_mods:
+            bad_mods_str = ", ".join(bad_user_mods)
+            n = len(bad_user_mods)
+            raise ConfigError(f"Hol'up a minute. You see, there {P('is a module', n, alt='are some modules')} "
+                              f"in your user-defined modules data (at {self.user_module_data_dir}) which {P('has', n, alt='have')} "
+                              f"the same name as an existing KEGG module. This is not allowed, for reasons. Please name {P('that module', n, alt='those modules')} "
+                              f"differently. Append an underscore and your best friend's name to {P('it', n, alt='them')} or something. Just make sure it's "
+                              f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
+
+
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
+        """This function creates a Modules DB at the specified path."""
+
+        if filesnpaths.is_file_exists(db_path, dont_raise=True):
+            if self.overwrite_modules_db:
+                os.remove(db_path)
+            else:
+                raise ConfigError(f"Woah there. There is already a modules database at {db_path}. If you really want to make a new modules database "
+                                  f"in this folder, you should either delete the existing database yourself, or re-run this program with the "
+                                  f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
+                                  f"sure you are aware of that, so that you have no regrets.")
+        try:
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
+            mod_db.create()
+        except Exception as e:
+            print(e)
+            raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
+                              "If you look at that error and it seems like something you cannot handle, please contact the developers "
+                              "for assistance. :) ")
+
+
+    def setup_user_data(self):
+        """This function sets up user metabolism data from the provided input directory.
+
+        It processes the user's module files into the USER_MODULES.db.
+        """
+
+        self.create_user_modules_dict()
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
+
+
+class KOfamDownload(KeggSetup):
+    """Class for setting up KOfam HMM profiles.
+    
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to command-line programs relying on this 
+        class, such as `anvi-setup-kegg-data`. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories 
+        when testing this class.
+    """
+
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.skip_init = skip_init
+
+        KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
+
+        filesnpaths.is_program_exists('hmmpress')
+
+        # ftp path for HMM profiles and KO list
+            # for ko list, add /ko_list.gz to end of url
+            # for profiles, add /profiles.tar.gz  to end of url
+        self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+        # dictionary mapping downloaded file name to final decompressed file name or folder location
+        self.kofam_files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
+
+        expected_files_for_kofams = [self.ko_list_file_path]
+        if self.only_processing:
+            expected_files_for_kofams.append(os.path.join(self.kegg_data_dir, 'profiles.tar.gz'))
+        else:
+            expected_files_for_kofams.append(self.kofam_hmm_file_path)
+
+        if not args.reset and not anvio.DEBUG and not self.skip_init:
+            self.is_database_exists(expected_files_for_kofams, fail_if_exists=(not self.only_processing))
+
+        if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not self.skip_init:
+            filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+
+    
+    def download_profiles(self):
+        """This function downloads the Kofam profiles."""
+
+        self.run.info("Kofam Profile Database URL", self.database_url)
+
+        try:
+            for file_name in self.kofam_files.keys():
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def decompress_profiles(self):
+        """This function decompresses the Kofam profiles."""
+
+        self.progress.new('Decompressing files')
+        for file_name in self.kofam_files.keys():
+            self.progress.update('Decompressing file %s' % file_name)
+            full_path = os.path.join(self.kegg_data_dir, file_name)
+
+            if full_path.endswith("tar.gz"):
+                utils.tar_extract_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+            else:
+                utils.gzip_decompress_file(full_path, output_file_path=self.kofam_files[file_name], keep_original=False)
+
+            self.progress.update("File decompressed. Yay.")
+        self.progress.end()
+
+
+    def confirm_downloaded_profiles(self):
+        """This function verifies that all Kofam profiles have been properly downloaded.
+
+        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
+        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
+
+        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
+        """
+
+        ko_nums = self.ko_dict.keys()
+        for k in ko_nums:
+            if k not in self.ko_skip_list:
+                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
+                if not os.path.exists(hmm_path):
+                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
+                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-data` with the --reset "
+                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
+
+
+    def move_orphan_files(self):
+        """This function moves the following to the orphan files directory:
+
+            - profiles that do not have ko_list entries
+            - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
+
+        And, the following profiles should not have been downloaded, but if they were then we move them, too:
+            - profiles whose ko_list entries have no data at all (in ko_skip_list)
+        """
+
+        if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
+            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
+                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+
+        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
+        no_kofam_file_list = []
+        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
+        no_threshold_file_list = []
+        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
+        no_data_file_list = []
+
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
+        for hmm_file in hmm_list:
+            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
+            if ko not in self.ko_dict.keys():
+                if ko in self.ko_no_threshold_list:
+                    no_threshold_file_list.append(hmm_file)
+                elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
+                    no_data_file_list.append(hmm_file)
+                else:
+                    no_kofam_file_list.append(hmm_file)
+
+        # now we concatenate the orphan KO hmms into the orphan data directory
+        if no_kofam_file_list:
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_kofam_file_list), self.orphan_data_dir))
+
+        if no_threshold_file_list:
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_threshold_file_list), self.orphan_data_dir))
+
+        if no_data_file_list:
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
+            self.progress.reset()
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
+                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_data_file_list), self.orphan_data_dir))
+
+    
+    def run_hmmpress(self):
+        """This function concatenates the Kofam profiles and runs hmmpress on them."""
+
+        self.progress.new('Preparing Kofam HMM Profiles')
+
+        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
+        self.confirm_downloaded_profiles()
+
+        self.progress.update('Handling orphan files')
+        self.move_orphan_files()
+
+        self.progress.update('Concatenating HMM profiles into one file...')
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
+        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
+
+        # there is no reason to keep the original HMM profiles around, unless we are debugging
+        if not anvio.DEBUG:
+            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
+
+        self.progress.update('Running hmmpress...')
+        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
+        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
+
+        self.progress.end()
+
+
+    def setup_kofams(self):
+        """This function downloads, decompresses, and runs `hmmpress` on KOfam profiles."""
+
+        if not self.only_processing:
+            self.download_profiles()
+
+        if not self.only_download:
+            self.decompress_profiles()
+            self.setup_ko_dict() # get ko dict attribute
+            self.run_hmmpress()
+
+
+class ModulesDownload(KeggSetup):
+    """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES.
+    
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to command-line programs relying on this 
+        class, such as `anvi-setup-kegg-data`. If using this class through the API, please
+        provide a Namespace object with the Boolean 'reset' parameter.
+    skip_init: Boolean
+        Developers can use this flag to skip the sanity checks and creation of directories 
+        when testing this class.
+    """
+
+    def __init__(self, args, run=run, progress=progress, skip_init=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.skip_init = skip_init
+        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
+        self.overwrite_modules_db = A('overwrite_output_destinations')
+
+        # we also need the init of the superclass
+        KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
+
+        if (not self.download_from_kegg) and self.skip_brite_hierarchies:
+            self.run.warning("Just so you know, the --skip-brite-hierarchies flag does not do anything (besides suppress some warning output) when used "
+                             "without the -D option. You are setting up from an archived KEGG snapshot which may already include BRITE data, and if it "
+                             "does, this data will not be removed. You can always check if the resulting modules database contains BRITE data by "
+                             "running `anvi-db-info` on it and looking at the `is_brite_setup` value (which will be 1 if the database contains BRITE data).")
+
+        # download from KEGG option: module/pathway map htext files and API link
+        self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+        self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
+        # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
+        self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
+        
+        # check if the data is already downloaded
+        expected_files_for_modules = [self.kegg_module_file,
+                                      self.kegg_module_data_dir]
+        if not self.skip_brite_hierarchies:
+            expected_files_for_modules.append(self.kegg_brite_hierarchies_file)
+            expected_files_for_modules.append(self.brite_data_dir)
+
+        if not args.reset and not anvio.DEBUG and not self.skip_init:
+            self.is_database_exists(expected_files_for_modules, fail_if_exists=(not self.only_processing))
+
+        # generate subfolders if necessary
+        if self.download_from_kegg and not self.only_processing and not self.kegg_archive_path and not self.skip_init:
+            filesnpaths.gen_output_directory(self.kegg_module_data_dir, delete_if_exists=args.reset)
+            if not self.skip_brite_hierarchies:
+                filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
+
+    
+    def download_kegg_module_file(self):
+        """This function downloads the KEGG module file, which tells us which module files to download."""
+
+        # download the kegg module file, which lists all modules
+        try:
+            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
+    def process_module_file(self):
+        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
+
+        The structure of this file is like this:
+
+        +D    Module
+        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
+        !
+        A<b>Pathway modules</b>
+        B
+        B  <b>Carbohydrate metabolism</b>
+        C    Central carbohydrate metabolism
+        D      M00001  Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate [PATH:map00010 map01200 map01100]
+        D      M00002  Glycolysis, core module involving three-carbon compounds [PATH:map00010 map01200 map01230 map01100]
+        D      M00003  Gluconeogenesis, oxaloacetate => fructose-6P [PATH:map00010 map00020 map01100]
+
+        In other words, a bunch of initial lines to be ignored, and thereafter the line's information can be determined by the one-letter code at the start.
+        A = Pathway modules (metabolic pathways) or signature modules (gene sets that indicate a phenotypic trait, ie toxins).
+        B = Category of module (a type of metabolism for pathway modules. For signature modules, either Gene Set or Module Set)
+        C = Sub-category of module
+        D = Module
+
+        """
+        self.module_dict = {}
+
+        filesnpaths.is_file_exists(self.kegg_module_file)
+        filesnpaths.is_file_plain_text(self.kegg_module_file)
+
+        f = open(self.kegg_module_file, 'rU')
+        self.progress.new("Parsing KEGG Module file")
+
+        current_module_type = None
+        current_category = None
+        current_subcategory = None
+
+        for line in f.readlines():
+            line = line.strip('\n')
+            first_char = line[0]
+
+            # garbage lines
+            if first_char in ["+", "#", "!"]:
+                continue
+            else:
+                # module type
+                if first_char == "A":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    current_module_type = fields[1]
+                # Category
+                elif first_char == "B":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    if len(fields) == 1: # sometimes this level has lines with only a B
+                        continue
+                    current_category = fields[1]
+                # Sub-category
+                elif first_char == "C":
+                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    current_subcategory = fields[1]
+                # module
+                elif first_char == "D":
+                    fields = re.split('\s{2,}', line)
+                    mnum = fields[1]
+                    self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
+                # unknown code
+                else:
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
+                                      "made the file unparseable. It is likely that an update to KEGG has broken "
+                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
+                                      "Please contact the developers to see if this is a fixable issue, and in the "
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
+        self.progress.end()
+
+
+    def download_modules(self):
+        """This function downloads the KEGG modules."""
+
+        # import the function for multithreaded download
+        import multiprocessing as mp
+        from anvio.biochemistry.reactionnetwork import _download_worker
+        
+        total = len(self.module_dict.keys())
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+        self.run.info("Number of KEGG Modules to download", total)
+        self.run.info("Number of threads used for download", self.num_threads)
+
+        self.progress.new("Downloading KEGG Module files")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            url = self.kegg_rest_api_get + '/' + mnum
+            input_queue.put((url, file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+        
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < total:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {total} module files downloaded")
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+        
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            raise ConfigError(
+                "Unfortunately, files for the following modules failed to download despite multiple attempts, "
+                f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+            )
+        self.progress.end()
+
+
+    def confirm_downloaded_modules(self):
+        """This function verifies that all module files have been downloaded.
+
+        It checks that there is a module file for every module in the self.module_dict dictionary;
+        for that reason, it must be called after the function that creates that attribute,
+        process_module_file(), has already been called. To verify that each file has been downloaded 
+        properly, we check that the last line is '///'.
+        """
+
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.kegg_module_data_dir, mnum)
+            if not os.path.exists(file_path):
+                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
+                                  f"This probably means that something is wrong with your downloaded data, since this "
+                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
+                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
+                                  f"data. We recommend the --reset flag.")
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
+        self.run.info("Number of module files found", len(self.module_dict))
+
+
+    def setup_modules_data(self):
+        """This is a driver function which executes the setup process for pathway prediction data from KEGG."""
+
+        # FIXME: we will have to move user setup to a completely separate program at some point
+        # PS. user setup related functions belong to the superclass for now
+        if self.user_input_dir:
+            self.setup_user_data()
+        else:
+            # download the data first
+            # unless user requested only processing (mostly for developers and the adventurous)
+            if not self.only_processing:
+                self.download_kegg_module_file()
+                self.process_module_file() # get module dict attribute
+                self.download_modules()
+                self.confirm_downloaded_modules()
+
+                if not self.skip_brite_hierarchies:
+                    self.download_brite_hierarchy_of_hierarchies()
+                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
+                    self.download_brite_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
+            else:
+                # get required attributes for database setup and make sure all expected files were downloaded
+                self.process_module_file()
+                self.confirm_downloaded_modules()
+                if not self.skip_brite_hierarchies:
+                    self.process_brite_hierarchy_of_hierarchies()
+                    self.confirm_downloaded_brite_hierarchies()
+
+            # process the modules file into a database
+            if not self.only_download:
+                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
+
+    
+    ###### BRITE-related functions below ######
+    def download_brite_hierarchy_of_hierarchies(self):
+        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
+
+        This hierarchy contains the names of other hierarchies which are subsequently used for
+        downloading those hierarchy json files.
+        """
+
+        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
+
+        try:
+            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
+                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
+
+
     def process_brite_hierarchy_of_hierarchies(self):
         """Read the KEGG BRITE 'br08902' 'hierarchy of hierarchies' json file into a dictionary.
 
@@ -1085,135 +1780,22 @@ class KeggSetup(KeggContext):
         self.progress.end()
 
 
-    def download_kegg_module_file(self):
-        """This function downloads the KEGG module file, which tells us which module files to download."""
-
-        # download the kegg module file, which lists all modules
-        try:
-            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
-                              "likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-
-    def download_modules(self):
-        """This function downloads the KEGG modules.
-
-        To verify that each file has been downloaded properly, we check that the last line is '///'.
-        """
-
-        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
-        self.run.info("Number of KEGG Modules to download", len(self.module_dict.keys()))
-
-        # download all modules
-        for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.kegg_module_data_dir, mnum)
-            utils.download_file(self.kegg_rest_api_get + '/' + mnum,
-                file_path, progress=self.progress, run=self.run)
-            # verify entire file has been downloaded
-            f = open(file_path, 'rU')
-            f.seek(0, os.SEEK_END)
-            f.seek(f.tell() - 4, os.SEEK_SET)
-            last_line = f.readline().strip('\n')
-            if not last_line == '///':
-                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
-                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
-                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
-                                  % (file_path, last_line))
-
-
-    def confirm_downloaded_modules(self):
-        """This function verifies that all module files have been downloaded.
-
-        It checks that there is a module file for every module in the self.module_dict dictionary;
-        for that reason, it must be called after the function that creates that attribute,
-        process_module_file(), has already been called.
-        """
-
-        for mnum in self.module_dict.keys():
-            file_path = os.path.join(self.kegg_module_data_dir, mnum)
-            if not os.path.exists(file_path):
-                raise ConfigError(f"The module file for {mnum} does not exist at its expected location, {file_path}. "
-                                  f"This probably means that something is wrong with your downloaded data, since this "
-                                  f"module is present in the KEGG MODULE file that lists all modules you *should* have "
-                                  f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
-                                  f"data. We recommend the --reset flag.")
-        self.run.info("Number of module files found", len(self.module_dict))
-
-
-    def download_pathways(self):
-        """This function downloads the KEGG Pathways.
-
-        To do so, it first processes a KEGG file containing pathway and map identifiers into a dictionary via the process_pathway_file()
-        function. To verify that each file has been downloaded properly, we check that the last line is '///'.
-        """
-
-        # note that this is the same as the REST API for modules - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
-        self.run.info("KEGG Pathway Database URL", self.kegg_rest_api_get)
-
-        # download the kegg pathway file, which lists all modules
-        try:
-            utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download the KEGG Pathway htext file from the KEGG website. Something "
-                              "likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-        # get pathway dict
-        self.process_pathway_file()
-        self.run.info("Number of KEGG Pathways", len(self.pathway_dict.keys()))
-
-        # download all pathways
-        for konum in self.pathway_dict.keys():
-            file_path = os.path.join(self.pathway_data_dir, konum)
-            utils.download_file(self.kegg_rest_api_get + '/' + konum,
-                file_path, progress=self.progress, run=self.run)
-            # verify entire file has been downloaded
-            f = open(file_path, 'rU')
-            f.seek(0, os.SEEK_END)
-            f.seek(f.tell() - 4, os.SEEK_SET)
-            last_line = f.readline().strip('\n')
-            if not last_line == '///':
-                raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
-                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
-                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
-                                  % (file_path, last_line))
-
-
-    def download_brite_hierarchy_of_hierarchies(self):
-        """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
-
-        This hierarchy contains the names of other hierarchies which are subsequently used for
-        downloading those hierarchy json files.
-        """
-
-        # note that this is the same as the REST API for modules and pathways - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
-        self.run.info("KEGG BRITE Database URL", self.kegg_rest_api_get)
-
-        try:
-            utils.download_file(self.kegg_brite_hierarchies_download_path, self.kegg_brite_hierarchies_file, progress=self.progress, run=self.run)
-        except Exception as e:
-            print(e)
-            raise ConfigError("Anvi'o failed to download the KEGG BRITE hierarchies json file from the KEGG website. "
-                              "Something likely changed on the KEGG end. Please contact the developers to see if this is "
-                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
-                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
-
-
     def download_brite_hierarchies(self):
         """This function downloads a json file for every BRITE hierarchy of interest.
 
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
-        self.run.info("Number of BRITE hierarchies to download", len(self.brite_dict))
+        # import the function for multithreaded download
+        import multiprocessing as mp
+        from anvio.biochemistry.reactionnetwork import _download_worker
+
+        total = len(self.brite_dict)
+        self.run.info("Number of BRITE hierarchies to download", total)
+        self.progress.new("Downloading BRITE files")
+        manager = mp.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
         unexpected_hierarchies = []
         for hierarchy in self.brite_dict:
             hierarchy_accession = hierarchy[: 7]
@@ -1222,10 +1804,35 @@ class KeggSetup(KeggContext):
                 unexpected_hierarchies.append(hierarchy)
             if not unexpected_hierarchies:
                 file_path = os.path.join(self.brite_data_dir, hierarchy_accession)
-                utils.download_file(self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json',
-                                    file_path, progress=self.progress, run=self.run)
-                # verify that the whole json file was downloaded
-                filesnpaths.is_file_json_formatted(file_path)
+                url = self.kegg_rest_api_get + '/br:' + hierarchy_accession + '/json'
+                input_queue.put((url, file_path))
+        workers: List[mp.Process] = []
+        for _ in range(self.num_threads):
+            worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
+            workers.append(worker)
+            worker.start()
+        
+        downloaded_count = 0
+        undownloaded_count = 0
+        undownloaded = []
+        while downloaded_count + undownloaded_count < total:
+            output = output_queue.get()
+            if output is True:
+                downloaded_count += 1
+                self.progress.update(f"{downloaded_count} / {total} files downloaded")
+            else:
+                undownloaded_count += 1
+                undownloaded.append(os.path.splitext(os.path.basename(output))[0])
+        
+        for worker in workers:
+            worker.terminate()
+        if undownloaded:
+            raise ConfigError(
+                "Unfortunately, files for the following BRITE hierarchies failed to download despite multiple attempts, "
+                f"and so the database needs to be set up again: {', '.join(undownloaded)}"
+            )
+        self.progress.end()
+
         if unexpected_hierarchies:
             raise ConfigError("Accessions for BRITE hierarchies of genes/proteins should begin with 'ko'. "
                               f"Hierarchies were found that defy our assumptions; please contact a developer to investigate this: '{', '.join(unexpected_hierarchies)}'.")
@@ -1248,413 +1855,9 @@ class KeggSetup(KeggContext):
                                   f"hierarchy is present in the file that lists all BRITE hierarchies you *should* have "
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
+            # verify that the whole json file was downloaded
+            filesnpaths.is_file_json_formatted(file_path)
         self.run.info("Number of BRITE hierarchy files found", len(self.brite_dict))
-
-
-    def decompress_files(self):
-        """This function decompresses the Kofam profiles."""
-
-        self.progress.new('Decompressing files')
-        for file_name in self.files.keys():
-            self.progress.update('Decompressing file %s' % file_name)
-            full_path = os.path.join(self.kegg_data_dir, file_name)
-
-            if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path=self.files[file_name], keep_original=False)
-            else:
-                utils.gzip_decompress_file(full_path, output_file_path=self.files[file_name], keep_original=False)
-
-            self.progress.update("File decompressed. Yay.")
-        self.progress.end()
-
-
-    def confirm_downloaded_profiles(self):
-        """This function verifies that all Kofam profiles have been properly downloaded.
-
-        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files (ie, K00001.hmm);
-        all KO numbers from the ko_list file (except those in ko_skip_list) should be included.
-
-        This function must be called after setup_ko_dict() so that the self.ko_dict attribute is established.
-        """
-
-        ko_nums = self.ko_dict.keys()
-        for k in ko_nums:
-            if k not in self.ko_skip_list:
-                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
-                if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
-                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
-                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
-                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
-                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
-
-
-    def move_orphan_files(self):
-        """This function moves the following to the orphan files directory:
-
-            - profiles that do not have ko_list entries
-            - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
-
-        And, the following profiles should not have been downloaded, but if they were then we move them, too:
-            - profiles whose ko_list entries have no data at all (in ko_skip_list)
-        """
-
-        if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
-                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
-
-        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
-        no_kofam_file_list = []
-        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
-        no_threshold_file_list = []
-        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
-        no_data_file_list = []
-
-        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
-        for hmm_file in hmm_list:
-            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
-            if ko not in self.ko_dict.keys():
-                if ko in self.ko_no_threshold_list:
-                    no_threshold_file_list.append(hmm_file)
-                elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
-                    no_data_file_list.append(hmm_file)
-                else:
-                    no_kofam_file_list.append(hmm_file)
-
-        # now we concatenate the orphan KO hmms into the orphan data directory
-        if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_kofam_file_list), self.orphan_data_dir))
-
-        if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
-                             "profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_threshold_file_list), self.orphan_data_dir))
-
-        if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=True)
-            self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
-                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
-                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
-                             % (len(no_data_file_list), self.orphan_data_dir))
-
-
-    def run_hmmpress(self):
-        """This function concatenates the Kofam profiles and runs hmmpress on them."""
-
-        self.progress.new('Preparing Kofam HMM Profiles')
-
-        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
-        self.confirm_downloaded_profiles()
-
-        self.progress.update('Handling orphan files')
-        self.move_orphan_files()
-
-        self.progress.update('Concatenating HMM profiles into one file...')
-        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
-        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
-
-        # there is no reason to keep the original HMM profiles around, unless we are debugging
-        if not anvio.DEBUG:
-            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
-
-        self.progress.update('Running hmmpress...')
-        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_hmm_data_dir, '00_hmmpress_log.txt')
-        ret_val = utils.run_command(cmd_line, log_file_path)
-
-        if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
-                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
-        else:
-            # getting rid of the log file because hmmpress was successful
-            os.remove(log_file_path)
-
-        self.progress.end()
-
-
-    def create_user_modules_dict(self):
-        """This function establishes the self.module_dict parameter for user modules.
-
-        It is essentially a replacement for the process_module_file() function.
-        Since users will not have a modules file to process, we simply create the dictionary from the
-        file names they provide for their module definitions. We don't add any dictionary values,
-        but we won't need them (we hope).
-        """
-
-        user_module_list = [os.path.basename(k) for k in glob.glob(os.path.join(self.user_module_data_dir, '*'))]
-        self.module_dict = {key: {} for key in user_module_list}
-
-        # sanity check that they also have KEGG data since we need to compare module names
-        if not os.path.exists(self.kegg_modules_db_path):
-            raise ConfigError(f"Wait a second. We understand that you are setting up user-defined metabolism data, but "
-                              f"unfortunately you need to FIRST have KEGG data set up on your computer. Why, you ask? "
-                              f"Well, we need to make sure none of your module names overlap with those "
-                              f"in the KEGG MODULES database. Long story short, we looked for KEGG data at "
-                              f"{self.kegg_modules_db_path} but we couldn't find it. If this is the wrong place for us to be "
-                              f"looking, please run this program again and use the --kegg-data-dir parameter to tell us where "
-                              f"to find it.")
-
-        # sanity check that user module names are distinct
-        kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
-        kegg_mods = set(kegg_modules_db.get_all_modules_as_list())
-        user_mods = set(user_module_list)
-        bad_user_mods = kegg_mods.intersection(user_mods)
-        if bad_user_mods:
-            bad_mods_str = ", ".join(bad_user_mods)
-            n = len(bad_user_mods)
-            raise ConfigError(f"Hol'up a minute. You see, there {P('is a module', n, alt='are some modules')} "
-                              f"in your user-defined modules data (at {self.user_module_data_dir}) which {P('has', n, alt='have')} "
-                              f"the same name as an existing KEGG module. This is not allowed, for reasons. Please name {P('that module', n, alt='those modules')} "
-                              f"differently. Append an underscore and your best friend's name to {P('it', n, alt='them')} or something. Just make sure it's "
-                              f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
-
-
-    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
-        """This function creates a Modules DB at the specified path."""
-
-        if filesnpaths.is_file_exists(db_path, dont_raise=True):
-            if self.overwrite_modules_db:
-                os.remove(db_path)
-            else:
-                raise ConfigError(f"Woah there. There is already a modules database at {db_path}. If you really want to make a new modules database "
-                                  f"in this folder, you should either delete the existing database yourself, or re-run this program with the "
-                                  f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
-                                  f"sure you are aware of that, so that you have no regrets.")
-        try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
-            mod_db.create()
-        except Exception as e:
-            print(e)
-            raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
-                              "If you look at that error and it seems like something you cannot handle, please contact the developers "
-                              "for assistance. :) ")
-
-
-    def kegg_archive_is_ok(self, unpacked_archive_path):
-        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
-
-        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
-        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
-        with the right names/paths into the archive file. But what would be the point of that?
-
-        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
-        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
-        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
-        to the implementation require the direct use of the files in these folders, then this function should be updated
-        to check for those.
-        """
-
-        is_ok = True
-
-        # check top-level files and folders
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        expected_directories_and_files = [self.orphan_data_dir,
-                                          self.kegg_module_data_dir,
-                                          self.kegg_hmm_data_dir,
-                                          self.ko_list_file_path,
-                                          self.kegg_module_file,
-                                          self.kegg_modules_db_path]
-        for f in expected_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the following expected file or directory: %s"
-                                     % (path_to_f_in_archive))
-
-        # check hmm files
-        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_hmm_data_dir))
-        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
-        expected_hmm_files = [kofam_hmm_basename]
-        for h in expected_hmm_files:
-            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
-            if not os.path.exists(path_to_h_in_archive):
-                is_ok = False
-                if anvio.DEBUG:
-                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
-                                     % (path_to_h_in_archive))
-            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
-            for ext in expected_extensions:
-                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
-                if not os.path.exists(path_to_expected_hmmpress_file):
-                    is_ok = False
-                    if anvio.DEBUG:
-                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
-                                         % (path_to_expected_hmmpress_file))
-
-        return is_ok
-
-
-    def check_archive_for_brite(self, unpacked_archive_path):
-        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
-
-        It is ok for archives not to have these present, but let the user know.
-        """
-
-        is_brite_included = True
-
-        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
-        brite_directories_and_files = [self.brite_data_dir,
-                                       self.kegg_brite_hierarchies_file]
-        for f in brite_directories_and_files:
-            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
-            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
-                is_brite_included = False
-                if anvio.DEBUG:
-                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
-
-        return is_brite_included
-
-
-    def check_modules_db_version(self):
-        """This function checks if the MODULES.db is out of date and if so warns the user to migrate it"""
-
-        # get current version of db
-        db_conn = db.DB(self.kegg_modules_db_path, None, ignore_version=True)
-        current_db_version = int(db_conn.get_meta_value('version'))
-        db_conn.disconnect()
-
-        # if modules.db is out of date, give warning
-        target_version = int(anvio.tables.versions_for_db_types['modules'])
-        if current_db_version != target_version:
-            self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
-                             f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
-                             f"Here is the path to the database: {self.kegg_modules_db_path}")
-
-
-    def setup_from_archive(self):
-        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
-
-        To do so, it unpacks the archive and checks its structure and that all required components are there.
-        """
-
-        self.run.info("KEGG archive", self.kegg_archive_path)
-        self.progress.new('Unzipping KEGG archive file...')
-        if not self.kegg_archive_path.endswith("tar.gz"):
-            self.progress.reset()
-            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
-                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
-        unpacked_archive_name = "KEGG_archive_unpacked"
-        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
-
-        self.progress.update('Checking KEGG archive structure and contents...')
-        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
-        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
-        self.progress.end()
-        if archive_is_ok:
-            if os.path.exists(self.kegg_data_dir):
-                shutil.rmtree(self.kegg_data_dir)
-            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
-            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
-            shutil.rmtree(unpacked_archive_name)
-
-            if not archive_contains_brite and not self.skip_brite_hierarchies:
-                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
-                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
-                                 "downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
-
-            # if necessary, warn user about migrating the modules db
-            self.check_modules_db_version()
-
-        else:
-            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
-                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
-            if not anvio.DEBUG:
-                shutil.rmtree(unpacked_archive_name)
-                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
-                               "flag to keep it if you want to see its contents."
-            else:
-                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
-                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
-            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it. %s" % (self.kegg_archive_path, debug_output))
-
-
-    def setup_kegg_snapshot(self):
-        """This is the default setup strategy in which we unpack a specific KEGG archive.
-
-        We do this so that everyone who uses the same release of anvi'o will also have the same default KEGG
-        data, which facilitates sharing and also means they do not have to continuously re-annotate their datasets
-        when KEGG is updated.
-
-        It is essentially a special case of setting up from an archive.
-        """
-
-        if anvio.DEBUG:
-            self.run.info("Downloading from: ", self.default_kegg_data_url)
-            self.run.info("Downloading to: ", self.default_kegg_archive_file)
-        utils.download_file(self.default_kegg_data_url, self.default_kegg_archive_file, progress=self.progress, run=self.run)
-
-        # a hack so we can use the archive setup function
-        self.kegg_archive_path = self.default_kegg_archive_file
-        self.setup_from_archive()
-
-        # if all went well, let's get rid of the archive we used and the log file
-        if not anvio.DEBUG:
-            os.remove(self.default_kegg_archive_file)
-        else:
-            self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
-                             "has been kept. You may want to remove it later.")
-
-
-    def setup_user_data(self):
-        """This function sets up user metabolism data from the provided input directory.
-
-        It processes the user's module files into the USER_MODULES.db.
-        """
-
-        self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
-
-
-    def setup_data(self):
-        """This is a driver function which executes the KEGG setup process."""
-
-        if self.kegg_archive_path:
-            self.setup_from_archive()
-
-        elif self.download_from_kegg:
-            # mostly for developers and the adventurous
-            if not self.only_database:
-                # this downloads, decompresses, and hmmpresses the KOfam profiles
-                self.download_profiles()
-                self.decompress_files()
-                self.setup_ko_dict() # get ko dict attribute
-                self.run_hmmpress()
-                # it also downloads and processes the KEGG Module files into the MODULES.db
-                self.download_kegg_module_file()
-                self.process_module_file() # get module dict attribute
-                self.download_modules()
-                if not self.skip_brite_hierarchies:
-                    self.download_brite_hierarchy_of_hierarchies()
-                    self.process_brite_hierarchy_of_hierarchies() # get brite dict attribute
-                    self.download_brite_hierarchies()
-            else:
-                # get required attributes for database setup and make sure all expected files were downloaded
-                self.process_module_file()
-                self.confirm_downloaded_modules()
-                if not self.skip_brite_hierarchies:
-                    self.process_brite_hierarchy_of_hierarchies()
-                    self.confirm_downloaded_brite_hierarchies()
-
-            if not self.only_download:
-                self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
-
-        elif self.user_input_dir:
-            self.setup_user_data()
-
-        else:
-            # the default, set up from frozen KEGG release
-            self.setup_kegg_snapshot()
 
 
 class RunKOfams(KeggContext):
@@ -1691,8 +1894,8 @@ class RunKOfams(KeggContext):
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError(f"Anvi'o is unable to find any KEGG files around :/ It is likely you need to first run the program "
-                              f"`anvi-setup-kegg-kofams` to set things up. If you already have run it, but instructed anvi'o to "
-                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-kofams` again, "
+                              f"`anvi-setup-kegg-data` to set things up. If you already have run it, but instructed anvi'o to "
+                              f"store the output to a specific directory, then instead of running `anvi-setup-kegg-data` again, "
                               f"you simply need to specify the location of the KEGG data using the flag `--kegg-data-dir`. Just for "
                               f"your information, anvi'o was looking for the KEGG data here: {self.kegg_data_dir}")
 
@@ -1700,13 +1903,21 @@ class RunKOfams(KeggContext):
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
-        # load existing kegg modules db
-        self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
+        # load existing kegg modules db, if one exists
+        if os.path.exists(self.kegg_modules_db_path):
+            self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies, args=self.args)
 
-        if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
-            self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
+            if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
+                self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
                              "which could very well be useful to you. BRITE is guaranteed to be set up "
-                             "when downloading the latest version of KEGG with `anvi-setup-kegg-kofams -D`.")
+                             "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+        else:
+            self.run.warning("No modules database was found in the KEGG data directory you specified. This is fine, but "
+                             "you will not get functional annotations related to KEGG MODULES or BRITE hierarchies in your "
+                             "contigs database. If you want to include these annotations later, you will have to rerun this "
+                             "program with a data directory including a modules database (which you can obtain by running "
+                             "`anvi-setup-kegg-data` again with the right mode(s).")
+            self.kegg_modules_db = None
 
         # reminder to be a good citizen
         self.run.warning("Anvi'o will annotate your database with the KEGG KOfam database, as described in "
@@ -1737,8 +1948,12 @@ class RunKOfams(KeggContext):
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
 
+        hash_to_add = "only_KOfams_were_annotated"
+        if self.kegg_modules_db:
+            hash_to_add = self.kegg_modules_db.db.get_meta_value('hash')
+
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        contigs_db.db.set_meta_value('modules_db_hash', self.kegg_modules_db.db.get_meta_value('hash'))
+        contigs_db.db.set_meta_value('modules_db_hash', hash_to_add)
         contigs_db.disconnect()
 
 
@@ -1856,9 +2071,11 @@ class RunKOfams(KeggContext):
                     self.gcids_to_functions_dict[gcid].append(counter)
 
                 # add associated KEGG module information to database
-                mods = self.kegg_modules_db.get_modules_for_knum(knum)
-                names = self.kegg_modules_db.get_module_names_for_knum(knum)
-                classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+                mods = None
+                if self.kegg_modules_db:
+                    mods = self.kegg_modules_db.get_modules_for_knum(knum)
+                    names = self.kegg_modules_db.get_module_names_for_knum(knum)
+                    classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
 
                 if mods:
                     mod_annotation = "!!!".join(mods)
@@ -1886,7 +2103,7 @@ class RunKOfams(KeggContext):
                         'e_value': None,
                     }
 
-                if not self.skip_brite_hierarchies:
+                if self.kegg_modules_db and not self.skip_brite_hierarchies:
                     # get BRITE categorization information in the form to be added to the contigs database
                     ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
                     if ortholog_categorizations_dict:
@@ -1986,9 +2203,11 @@ class RunKOfams(KeggContext):
                         self.gcids_to_functions_dict[gcid] = [next_key]
 
                         # add associated KEGG module information to database
-                        mods = self.kegg_modules_db.get_modules_for_knum(best_knum)
-                        names = self.kegg_modules_db.get_module_names_for_knum(best_knum)
-                        classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(best_knum)
+                        mods = None
+                        if self.kegg_modules_db:
+                            mods = self.kegg_modules_db.get_modules_for_knum(best_knum)
+                            names = self.kegg_modules_db.get_module_names_for_knum(best_knum)
+                            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(best_knum)
 
                         if mods:
                             mod_annotation = "!!!".join(mods)
@@ -2016,11 +2235,11 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
-                            if not self.skip_brite_hierarchies:
-                                # get BRITE categorization information in the form to be added to the contigs database
-                                ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
-                                if ortholog_categorizations_dict:
-                                    self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
+                        if self.kegg_modules_db and not self.skip_brite_hierarchies:
+                            # get BRITE categorization information in the form to be added to the contigs database
+                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
+                            if ortholog_categorizations_dict:
+                                self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
 
                         next_key += 1
                         num_annotations_added += 1
@@ -2809,7 +3028,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
                                   f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
             if not self.estimate_from_json and not self.enzymes_txt:
@@ -2824,7 +3043,25 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
                 kegg_modules_db.disconnect()
 
-                if contigs_db_mod_hash != mod_db_hash:
+                if contigs_db_mod_hash == "only_KOfams_were_annotated":
+                    if not self.just_do_it:
+                        raise ConfigError("The contigs DB that you are working with has only been annotated with KOfams, and not with a modules database. "
+                                        "Since the KEGG data directory used for that annotation did not contain the modules database, we have no way of "
+                                        "knowing if the set of KOfams used for annotation matches to the set of KOfams associated with your current "
+                                        "modules database. Theoretically, we can still estimate metabolism even if there is a mismatch, but you risk "
+                                        "getting erroneous results since 1) KOs used to define the pathways could be missing from your collection, "
+                                        "and 2) KO functions could have been changed such that your KOs don't correspond to the real enzymes required "
+                                        "for the pathways. If you are willing to take this risk, you can restart this program with the --just-do-it "
+                                        "flag and move on with your life. But if you really want to do things properly, you should re-annotate your "
+                                        "contigs database with `anvi-run-kegg-kofams`, using a KEGG data directory that includes a modules database.")
+                    else:
+                        self.run.warning("ALERT. ALERT. The contigs DB does not include a modules database hash, which means we can't "
+                                         "tell if it was annotated with set of KOfams that match to the current modules database. Since you "
+                                         "have used the --just-do-it flag, we will assume you know what you are doing. But please keep in "
+                                         "mind that the metabolism estimation results could be wrong due to mismatches between the modules "
+                                         "database and your set of KOfams.")
+
+                elif contigs_db_mod_hash != mod_db_hash:
                     raise ConfigError(f"The contigs DB that you are working with has been annotated with a different version of the MODULES.db "
                                       f"than you are working with now. Basically, this means that the annotations are not compatible with the "
                                       f"metabolism data to be used for estimation. There are several ways this can happen. Please visit the "
@@ -5511,7 +5748,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             if not os.path.exists(self.kegg_modules_db_path):
                 raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
                                   f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case."
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
         else: # USER data only
@@ -6141,11 +6378,11 @@ class ModulesDatabase(KeggContext):
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a modules dictionary. This "
-                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-data` may fix this.")
 
             if not self.skip_brite_hierarchies and not self.brite_dict:
                 raise ConfigError("ERROR - a new ModulesDatabase() cannot be initialized without providing a BRITE dictionary. This "
-                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-data` may fix this.")
 
 ######### DB GENERATION FUNCTIONS #########
 

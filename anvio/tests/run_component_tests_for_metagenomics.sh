@@ -169,7 +169,8 @@ anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
                                   --domain-hits-table $output_dir/hmm.domtable \
                                   --hmm-source Bacteria_71 \
                                   --model-coverage 0.9 \
-                                  --no-progress
+                                  --no-progress \
+                                  --filter-out-partial-gene-calls
 
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
@@ -181,18 +182,20 @@ anvi-delete-hmms -c $output_dir/CONTIGS.db \
                  --hmm-source Rinke_et_al \
                  --no-progress
 
-INFO "Export genomic locus using HMM"
+INFO "Export genomic locus using HMM - anchor"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_hmm \
+                  -o $output_dir \
+                  -O exported_locus_from_hmm_anchor \
                   -n 22,22 \
                   -s RNA_pol_Rpb6 \
                   --use-hmm \
                   --hmm-sources Bacteria_71 \
                   --no-progress
 
-INFO "Export genomic locus using HMM (multiple, only 1 expected hit)"
+INFO "Export genomic locus using HMM - flank (multiple, only 1 expected hit)"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_hmm_multi \
+                  -o $output_dir \
+                  -O exported_locus_from_hmm_flank \
                   -n 22,22 \
                   -s RNA_pol_Rpb6,fake_gene \
                   --use-hmm \
@@ -237,7 +240,8 @@ SHOW_FILE $output_dir/exported_functions_from_all_sources.txt
 
 INFO "Export genomic locus using functional annotation search"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_functions \
+                  -O exported_locus_from_functions \
+                  -o $output_dir \
                   -n 22,22 \
                   -s NusB \
                   --force-overwrite \
@@ -245,7 +249,8 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
 
 INFO "Export genomic locus using functional annotation search (multiple; 2 expected)"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_functions \
+                  -O exported_locus_from_functions \
+                  -o $output_dir \
                   -n 22,22 \
                   -s NusB,'Glutamine amidotransferase class-I' \
                   --force-overwrite \
@@ -253,7 +258,8 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
 
 INFO "Export genomic locus using functional annotation search in flank-mode"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_functions \
+                  -O exported_locus_from_functions \
+                  -o $output_dir \
                   --flank-mode  \
                   -s NusB,rpoz \
                   --force-overwrite \
