@@ -186,13 +186,9 @@
                             <rect x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}" y="0" width="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}" height="65" style="fill:red; opacity:0.5"></rect>
                             <text x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
 
-                            <!-- Mark the inversion site -->
+                            <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}
-                                <g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
-                                {% else %}
-                                <g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">
-                                {% endif %}
+                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
                                 <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
                                 </g>
@@ -208,6 +204,18 @@
                         {% endif %}
 
                         </svg>
+
+                        {% if meta.genomic_context_recovered %}
+                        <!-- If the metagenomic context is recovered, we also want to populate some `divs` that hold information
+                             for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
+                        {% for gene in inversions|lookup:inversion|lookup:"genes" %}
+                        <div class="hidden" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover">
+                        <p>Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}.
+                        </div>
+
+                        {% endfor %}
+                        {% endif %}
+
                         </div>
                     </div>
                 </div>
