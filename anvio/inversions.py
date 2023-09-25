@@ -732,7 +732,8 @@ class Inversions:
     def process_inversion_data_for_HTML_summary(self):
         self.summary['meta'] = {'summary_type': 'inversions',
                                 'num_inversions': len(self.consensus_inversions),
-                                'output_directory': self.output_directory}
+                                'output_directory': self.output_directory,
+                                'genomic_context_recovered': not self.skip_recovering_genomic_context}
 
         self.summary['inversions'] = {}
 
@@ -741,37 +742,40 @@ class Inversions:
 
             self.summary['inversions'][inversion_id] = {'inversion_data': copy.deepcopy(entry)}
 
-            # we will get a deepcopy of the gene context associated with the inversion
-            genes = copy.deepcopy(self.genomic_context_surrounding_consensus_inversions[inversion_id])
+            if self.skip_recovering_genomic_context:
+                pass
+            else:
+                # we will get a deepcopy of the gene context associated with the inversion
+                genes = copy.deepcopy(self.genomic_context_surrounding_consensus_inversions[inversion_id])
 
-            # then we will learn about these so we can transform gene coordinates
-            genomic_context_start = genes[0]['start'] - 100
-            genomic_context_end = genes[-1]['stop'] + 100
+                # then we will learn about these so we can transform gene coordinates
+                genomic_context_start = genes[0]['start'] - 100
+                genomic_context_end = genes[-1]['stop'] + 100
 
-            # this is our magic number, which is matching to the actual width of the genomic context
-            # display in the static HTML output. we will have to transfrom start-stop coordinates
-            # of each gene to this value.
-            new_context_length = 1000
+                # this is our magic number, which is matching to the actual width of the genomic context
+                # display in the static HTML output. we will have to transfrom start-stop coordinates
+                # of each gene to this value.
+                new_context_length = 1000
 
-            # here we will add transformed gene coordinates to the genes dict
-            for gene in genes:
-                gene['start_t'] = (gene['start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
-                gene['stop_t'] = (gene['stop'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                # here we will add transformed gene coordinates to the genes dict
+                for gene in genes:
+                    gene['start_t'] = (gene['start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                    gene['stop_t'] = (gene['stop'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
 
-                # this is the dumbest code I've ever written in my life. but it is all
-                # for the 🌈 TEMPLATE 🦄 THAT CAN'T DO ADDITION WITHOUT GIVING YOU
-                # CANCER IN THE PROCESS. If you have seen this comment and the code
-                # below, I thank you very much in advance for never bringing it up
-                # in any conversation forever.
-                gene['RX'] = gene['start_t']
-                gene['RW'] = (gene['stop_t'] - gene['start_t']) - 30
-                gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
-                gene['RX_RW_30'] = gene['RX'] + gene['RW'] + 30
-                gene['RX_RX_RW_30'] = gene['RX'] + gene['RX'] + gene['RW'] + 30
-                gene['RX_RW'] = gene['RX'] + gene['RW']
+                    # this is the dumbest code I've ever written in my life. but it is all
+                    # for the 🌈 TEMPLATE 🦄 THAT CAN'T DO ADDITION WITHOUT GIVING YOU
+                    # CANCER IN THE PROCESS. If you have seen this comment and the code
+                    # below, I thank you very much in advance for never bringing it up
+                    # in any conversation forever.
+                    gene['RX'] = gene['start_t']
+                    gene['RW'] = (gene['stop_t'] - gene['start_t']) - 30
+                    gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
+                    gene['RX_RW_30'] = gene['RX'] + gene['RW'] + 30
+                    gene['RX_RX_RW_30'] = gene['RX'] + gene['RX'] + gene['RW'] + 30
+                    gene['RX_RW'] = gene['RX'] + gene['RW']
 
-            # and finally we will store this hot mess in our dictionary
-            self.summary['inversions'][inversion_id]['genes'] = genes
+                # and finally we will store this hot mess in our dictionary
+                self.summary['inversions'][inversion_id]['genes'] = genes
 
 
     def recover_genomic_context_surrounding_inversions(self):
