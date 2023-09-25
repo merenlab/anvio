@@ -196,7 +196,12 @@
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
                                 <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
                                 </g>
+
+                                {% if forloop.counter0|even_odd == 0 %}
                                 <text x="{{ gene|lookup:"CX" }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                {% else %}
+                                <text x="{{ gene|lookup:"CX" }}" y="12" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                {% endif %}
                             {% endfor %}
                         {% else %}
                             <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the genomic context since you have used the flag `--skip-recovering-genomic-context` (#SAD)</text>
