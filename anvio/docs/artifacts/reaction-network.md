@@ -1,5 +1,5 @@
 This artifact represents **the metabolic reaction network stored in a %(contigs-db)s by %(anvi-reaction-network)s.**
 
-Sufficient data is stored regarding the properties of the reactions and metabolites and their association with %(kegg-functions)s to export a metabolic model using %(anvi-get-metabolic-model-file)s.
+The program, %(anvi-reaction-network)s, generates a reaction network from genes encoding enzymes in the %(contigs-db)s. The reaction network represents biochemical reactions and the constituent metabolites predicted from the genome. The program relies upon [KEGG Orthology (KO)](https://www.genome.jp/kegg/ko.html) annotations of protein-coding genes and reference data in the [ModelSEED Biochemistry database](https://github.com/ModelSEED/ModelSEEDDatabase), and is therefore subject to all the limitations thereof, including incomplete annotation of genes with protein orthologs and imprecise knowledge of the reactions catalyzed by enzymes.
 
-The network is stored in two tables of the %(contigs-db)s: `gene_function_reactions` and `gene_function_metabolites`.
+The representation of the reaction network in two tables of the %(contigs-db)s, `gene_function_reactions` and `gene_function_metabolites`, is generalizable to other sources of metabolic data, linking genes to predicted functional orthologs and the associated reactions and metabolites. This data can be exported to a JSON-formatted file by %(anvi-get-metabolic-model-file)s for inspection and metabolic model analyses.
