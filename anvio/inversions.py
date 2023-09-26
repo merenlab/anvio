@@ -859,8 +859,7 @@ class Inversions:
             for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
                 inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
 
-                activity = {'oligo': oligo,
-                            'reference': reference,
+                activity = {'reference': reference,
                             'frequency': frequency,
                             'relative_frequency': relative_frequency}
 
@@ -889,8 +888,6 @@ class Inversions:
 
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
-            import json
-            print(json.dumps(self.summary['inversions']['INV_0001']['activity']))
 
 
     def recover_genomic_context_surrounding_inversions(self):
