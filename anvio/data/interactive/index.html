@@ -110,7 +110,7 @@
         <div id="panel-left">
             <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
                 <div class="inner-wrapper d-flex" role="tabpanel">
-                    <nav id="inner-sidebar">
+                    <nav id="inner-sidebar" onclick="switchNavigationTabs();">
                         <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
                             <li id="main_tab" role="presentation" class="nav-item navigation-tabs active mt-3"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-house-icon fa-2x bi bi-house-door"></i> <span class="d-block">Main</span></a></li>
                             <li id="sample_settings_tab" role="presentation" class="nav-item"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-gear-icon fa-2x bi bi-gear"></i><span class="d-block">Option</span> </a></li>
@@ -273,7 +273,7 @@
                                     </div>
 
                                     <span class="settings-secondary-header">Layer Groups</span>
-                                    <div id="sample_groups_container" class="col-9 mt-3">
+                                    <div id="sample_groups_container" class="row mt-3">
         
                                     </div>
                                     <div class="clearfix"></div>
@@ -371,7 +371,7 @@
                     </div> 
                     -->
 
-                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
+                    <div role="tabpanel" class="tab-pane fade show col-11" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
                             <div class="d-flex">
                                 <div id="toggle-panel-test" class="mr-1" style="display: none;">
@@ -689,7 +689,7 @@
                         </div>
                     </div>
                     <!-- SEARCH Tab -->
-                    <div role="tabpanel" class="tab-pane fade show" id="search_tab">
+                    <div role="tabpanel" class="tab-pane fade show col-11" id="search_tab">
                         <div class="sidebar-toggle mb-3">
                             <span class="menu-toggle mr-2">Hide</span>
                         </div>
@@ -699,12 +699,12 @@
                                 <table style="width: 100%;">
                                     <tr>
                                         <td style="width: 25%;">Field</td>
-                                        <td><select id="searchLayerList" data-help="search-layer" style="width: 100%;"></select></td>
+                                        <td><select class="form-control form-control-sm col-12 select-sm" id="searchLayerList" data-help="search-layer" style="width: 100%;"></select></td>
                                     </tr>
                                     <tr>
                                         <td>Operator</td>
                                         <td>
-                                            <select id="searchOperator" data-help="search-operator" style="width: 100%;">
+                                            <select class="form-control form-control-sm col-12 select-sm" id="searchOperator" data-help="search-operator" style="width: 100%;">
                                                 <option value="6">Contains</option>
                                                 <option value="0">==</option>
                                                 <option value="1">!=</option>
@@ -717,7 +717,7 @@
                                     </tr>
                                     <tr>
                                         <td>Term</td>
-                                        <td><input id="searchValue" value="" data-help="search-value" style="width: 100%;"></td>
+                                        <td><input class="form-control form-control-sm col-12 select-sm" id="searchValue" value="" data-help="search-value" style="width: 100%;"></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -744,11 +744,11 @@
                                     </tr>
                                     <tr>
                                         <td></td>
-                                        <td><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
+                                        <td><button class="btn btn-outline-secondary btn-md mr-2" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button class="btn btn-outline-secondary btn-md" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td style="padding-top: 10px;"><button type="button" class="btn btn-outline-secondary btn-sm" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="fa fa-search" aria-hidden="true"></span> Search functions</button></td>
+                                        <td class="mt-2"><button type="button" class="btn btn-outline-secondary btn-lg" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="fa fa-search" aria-hidden="true"></span> Search functions</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -845,16 +845,16 @@
                         </div>
                         <div class="form-horizontal" style="margin-top: 20px;">
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="fa fa-list" aria-hidden="true"></span> Show search results down below</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="fa fa-list" aria-hidden="true"></span> Show search results down below</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="fa fa-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="fa fa-grain" aria-hidden="true"></span> Highlight splits on the tree</button>
                                 <div id="picker_highlight" class="colorpicker" style="display: block; float: left; margin-right: 5px; background-color: #FF0000;" color="#FF0000" data-help="search-color"></div>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="fa fa-erase" aria-hidden="true"></span> Clear highlight</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" onclick="bins.ClearHighlightedItems();" data-help="search-clear"><span class="fa fa-erase" aria-hidden="true"></span> Clear highlight</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="fa fa-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="fa fa-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="appendResult();" data-help="search-append"><span class="fa fa-plus-sign" aria-hidden="true"></span> Append splits to selected bin</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="removeResult();" data-help="search-remove"><span class="fa fa-minus-sign" aria-hidden="true"></span> Remove splits from selected bin</button>
                             </div>
 
                             <span id="search-results-table-header" class="col-md-12"></span>
@@ -906,7 +906,7 @@
                     </div>
 
                     <!-- NOTES TAB -->
-                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
+                    <div role="tabpanel" class="tab-pane fade show col-11" id="description_tab">
                         <p class="sidebar-toggle mb-3">
                             <span class="menu-toggle mr-2">Hide</span>
                         </p>
@@ -914,21 +914,21 @@
                     </div>
 
                     <!-- ANVIO TAB -->
-                    <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
+                    <div role="tabpanel" class="tab-pane fade show col-11" id="anvio_detail_tab">
                         <div class="sidebar-toggle mb-3">
                             <span class="menu-toggle mr-2">Hide</span>
                         </div>
                         <div class="mt-2 paragraph" id="anvio_tab_content">
                             <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p class="subheading">Anvi'o Authors</p></a>
-                            <hr class="mb-3 col-10 border-color">
+                            <hr class="mb-3 col-11 border-color">
                             <a  href="http://merenlab.org/projects/anvio/"><p class="subheading">Anvi'o Project Page</p></a>
-                            <hr class="mb-3 col-10 border-color">
+                            <hr class="mb-3 col-11 border-color">
                             <a href="https://discord.gg/C6He6mSNY4"><p class="subheading">Getting Help</p></a>
-                            <hr class="mb-3 col-10 border-color">
+                            <hr class="mb-3 col-11 border-color">
                             <a href="https://github.com/meren/anvio/issues"><p class="subheading">Browse/Report Issue</p></a>
-                            <hr class="mb-3 col-10 border-color">
+                            <hr class="mb-3 col-11 border-color">
                             <a href="http://merenlab.org/people/"><p class="subheading">Contant Us</p></a>
-                            <hr class="mb-3 col-10 border-color">
+                            <hr class="mb-3 col-11 border-color">
                         </div>
                         <div class="paragraph d-flex align-item-center justify-content-center col-10">
                             <a href="https://discord.gg/C6He6mSNY4" class="mr-3 align-item-center justify-content-center"><i class="bi bi-discord fs-2"></i> <span class="lead">| Join</span></a>

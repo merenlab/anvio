@@ -287,7 +287,7 @@ function initData() {
 
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
-                    <div class="mr-3" style="float:left;">
+                    <div class="mr-5 col-3" style="">
                         <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
                         <label onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
