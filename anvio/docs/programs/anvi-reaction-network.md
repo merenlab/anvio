@@ -2,7 +2,7 @@ This program **stores a metabolic %(reaction-network)s in a %(contigs-db)s.**
 
 The network consists of data on biochemical reactions predicted to be encoded by the genome, referencing the [KEGG Orthology (KO)](https://www.genome.jp/kegg/ko.html) and [ModelSEED Biochemistry](https://github.com/ModelSEED/ModelSEEDDatabase) databases.
 
-Information on the predicted reactions and the involved metabolites are stored in two tables of the %(contigs-db)s. The program, %(anvi-get-metabolic-model-file)s, can be used to export the %(reaction-network)s from the database to a JSON-formatted file suitable for inspection and flux balance analysis.
+Information on the predicted reactions and the involved metabolites are stored in two tables of the %(contigs-db)s. The program, %(anvi-get-metabolic-model-file)s, can be used to export the %(reaction-network)s from the database to a %(reaction-network-json)s file suitable for inspection and flux balance analysis.
 
 ## Usage
 
