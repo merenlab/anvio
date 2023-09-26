@@ -11,6 +11,12 @@
 
     <title>Anvi'o: Inversions Summary</title>
 
+    <!-- JQUERY -->
+    <script src=".html/js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src=".html/js/bootstrap.min.js"></script>
+
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
     <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
@@ -188,7 +194,7 @@
 
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
+                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-toggle="popover" data-content='Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}' transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-toggle="popover" data-content='Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
                                 <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
                                 </g>
@@ -223,6 +229,18 @@
         </div>
     </section>
     {% endfor %}
-
+<script type="text/javascript">
+    $(function () {
+  $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+})
+//Closing popover if click somewhere else on the page.
+$('body').on('click', function (e) {
+    $('[data-toggle="popover"]').each(function () {
+        if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.popover').has(e.target).length === 0) {
+            $(this).popover('hide');
+        }
+    });
+});
+</script>
 </body>
 </html>
