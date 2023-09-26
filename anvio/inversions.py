@@ -556,6 +556,7 @@ class Inversions:
         for inversion_candidate in inversion_candidates:
             current_inversion += 1
             num_reads_considered = 0
+            num_bad_reads = 0
             match = False
             evidence = ''
 
@@ -568,6 +569,10 @@ class Inversions:
                 # Here we take advantage of construct symmetry. If the inversion candidate has no
                 # mismatches, we only needs to test for the v1 constructs.
                 for read in reads:
+                    # we will skip empty reads
+                    if read is None:
+                        num_bad_reads += 1
+                        continue
                     num_reads_considered += 1
                     if not evidence_left:
                         if inversion_candidate.v1_left in read:
@@ -593,6 +598,9 @@ class Inversions:
                 # Unfortunately, the inversion candidate has some mismatches, which requires testing
                 # for v1 _and_ v2 constructs.
                 for read in reads:
+                    if read is None:
+                        num_bad_reads += 1
+                        continue
                     num_reads_considered += 1
                     if not evidence_left:
                         if inversion_candidate.v1_left in read:
@@ -650,10 +658,13 @@ class Inversions:
                     # one confirmed inversion
                     return true_inversions
             else:
-                if anvio.DEBUG or self.verbose:
-                    self.progress.reset()
+                if num_bad_reads:
                     self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                         f"after processing {num_reads_considered} reads.", mc="red", level=2)
+                                        f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
+                                        f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
+                else:
+                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                        f"after processing {num_reads_considered} reads.", mc="red", level=2)
 
         return true_inversions
 

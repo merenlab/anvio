@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 INFO "Initializing raw BAM files"
@@ -17,7 +17,7 @@ INFO "Generating an EMPTY contigs database"
 anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --project-name "Contigs DB for anvi'o mini self-test"
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles"
-anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
+anvi-run-hmms -c $output_dir/CONTIGS.db $thread_controller
 
 INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan

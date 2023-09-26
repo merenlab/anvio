@@ -526,7 +526,7 @@ class KeggSetup(KeggContext):
             raise ConfigError("The --only-download and --only-processing options are incompatible. Please choose only one. Or, if you want both "
                               "download AND database setup to happen, then use only the -D flag without providing either of these two options.")
 
-        
+
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
         self.brite_dict = None
@@ -646,7 +646,7 @@ class KeggSetup(KeggContext):
                               f"downloaded, you should get rid of the --only-processing flag and re-run this program. If you "
                               f"know that you DO have KEGG data, perhaps you gave us the wrong data directory?")
 
-    
+
     def setup_from_archive(self):
         """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
 
@@ -712,7 +712,7 @@ class KeggSetup(KeggContext):
                              f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
                              f"Here is the path to the database: {self.kegg_modules_db_path}")
 
-    
+
     def check_archive_for_brite(self, unpacked_archive_path):
         """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
 
@@ -760,7 +760,7 @@ class KeggSetup(KeggContext):
             self.run.warning(f"Because you used the --debug flag, the KEGG archive file at {self.default_kegg_archive_file} "
                              "has been kept. You may want to remove it later.")
 
-    
+
     def kegg_archive_is_ok(self, unpacked_archive_path, no_modeling_is_ok = False):
         """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
 
@@ -779,7 +779,7 @@ class KeggSetup(KeggContext):
         unpacked_archive_path : str
             Path to the unpacked archive directory
         no_modeling_is_ok : boolean
-            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the 
+            Whether or not we care if modeling data is not found in the archive. This is added for backwards compatibility to the
             previous versions of KEGG archives that do not include this data.
         """
 
@@ -846,9 +846,9 @@ class KeggSetup(KeggContext):
 
         return is_ok
 
-    
+
     def setup_all_data_from_archive_or_snapshot(self):
-        """This driver function controls whether we download one of our KEGG snapshots and set that up, or 
+        """This driver function controls whether we download one of our KEGG snapshots and set that up, or
         set up directly from an archive file already on the user's computer.
         """
 
@@ -986,7 +986,7 @@ class KeggSetup(KeggContext):
         ==========
         htext_file : str
             The filename of the hierachical text file downloaded from KEGG
-        
+
         RETURNS
         =======
         accession_list : list of str
@@ -1020,10 +1020,10 @@ class KeggSetup(KeggContext):
         self.run.info("Number of accessions found in htext file", num_acc)
         return accession_list
 
-    
+
     def download_generic_htext(self, h_accession, download_dir="./"):
         """Downloads the KEGG htext file for the provided accession.
-        
+
         PARAMETERS
         ==========
         h_accession : str
@@ -1054,10 +1054,10 @@ class KeggSetup(KeggContext):
 
         return path_to_download_to
 
-    
+
     def download_generic_flat_file(self, accession, download_dir="./"):
         """Downloads the flat file for the given accession from the KEGG API.
-        
+
         PARAMETERS
         ==========
         accession : str
@@ -1086,10 +1086,10 @@ class KeggSetup(KeggContext):
                               f"to be '///', but instead it was {last_line}. Formatting of these files may have changed on the KEGG website. "
                               f"Please contact the developers to see if this is a fixable issue.")
 
-    
+
     def download_kegg_files_from_hierarchy(self, h_accession, download_dir="./"):
         """Given the accession of a KEGG hierarchy, this function downloads all of its flat files.
-        
+
         PARAMETERS
         ==========
         h_accession : str
@@ -1103,7 +1103,7 @@ class KeggSetup(KeggContext):
 
         htext_filename = self.download_generic_htext(h_accession, download_dir)
         acc_list = self.get_accessions_from_htext_file(htext_filename)
-        
+
         download_dir_name = os.path.join(download_dir,h_accession)
         filesnpaths.gen_output_directory(download_dir_name, delete_if_exists=self.args.reset)
 
@@ -1228,15 +1228,15 @@ class KeggSetup(KeggContext):
 
 class KOfamDownload(KeggSetup):
     """Class for setting up KOfam HMM profiles.
-    
+
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to command-line programs relying on this 
+        All the arguments supplied by user to command-line programs relying on this
         class, such as `anvi-setup-kegg-data`. If using this class through the API, please
         provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
-        Developers can use this flag to skip the sanity checks and creation of directories 
+        Developers can use this flag to skip the sanity checks and creation of directories
         when testing this class.
     """
 
@@ -1270,7 +1270,7 @@ class KOfamDownload(KeggSetup):
             filesnpaths.gen_output_directory(self.kegg_hmm_data_dir, delete_if_exists=args.reset)
             filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
 
-    
+
     def download_profiles(self):
         """This function downloads the Kofam profiles."""
 
@@ -1383,7 +1383,7 @@ class KOfamDownload(KeggSetup):
                              "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
                              % (len(no_data_file_list), self.orphan_data_dir))
 
-    
+
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
 
@@ -1432,15 +1432,15 @@ class KOfamDownload(KeggSetup):
 
 class ModulesDownload(KeggSetup):
     """Class for setting up all KEGG data related to pathway prediction, namely KOfam profiles and KEGG MODULES.
-    
+
     Parameters
     ==========
     args: Namespace object
-        All the arguments supplied by user to command-line programs relying on this 
+        All the arguments supplied by user to command-line programs relying on this
         class, such as `anvi-setup-kegg-data`. If using this class through the API, please
         provide a Namespace object with the Boolean 'reset' parameter.
     skip_init: Boolean
-        Developers can use this flag to skip the sanity checks and creation of directories 
+        Developers can use this flag to skip the sanity checks and creation of directories
         when testing this class.
     """
 
@@ -1468,7 +1468,7 @@ class ModulesDownload(KeggSetup):
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
         # download a json file containing all BRITE hierarchies, which can then be downloaded themselves
         self.kegg_brite_hierarchies_download_path = os.path.join(self.kegg_rest_api_get, "br:br08902/json")
-        
+
         # check if the data is already downloaded
         expected_files_for_modules = [self.kegg_module_file,
                                       self.kegg_module_data_dir]
@@ -1485,7 +1485,7 @@ class ModulesDownload(KeggSetup):
             if not self.skip_brite_hierarchies:
                 filesnpaths.gen_output_directory(self.brite_data_dir, delete_if_exists=args.reset)
 
-    
+
     def download_kegg_module_file(self):
         """This function downloads the KEGG module file, which tells us which module files to download."""
 
@@ -1577,10 +1577,11 @@ class ModulesDownload(KeggSetup):
     def download_modules(self):
         """This function downloads the KEGG modules."""
 
+        from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
         from anvio.biochemistry.reactionnetwork import _download_worker
-        
+
         total = len(self.module_dict.keys())
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
         self.run.info("Number of KEGG Modules to download", total)
@@ -1599,7 +1600,7 @@ class ModulesDownload(KeggSetup):
             worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
             workers.append(worker)
             worker.start()
-        
+
         downloaded_count = 0
         undownloaded_count = 0
         undownloaded = []
@@ -1611,7 +1612,7 @@ class ModulesDownload(KeggSetup):
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
-        
+
         for worker in workers:
             worker.terminate()
         if undownloaded:
@@ -1627,7 +1628,7 @@ class ModulesDownload(KeggSetup):
 
         It checks that there is a module file for every module in the self.module_dict dictionary;
         for that reason, it must be called after the function that creates that attribute,
-        process_module_file(), has already been called. To verify that each file has been downloaded 
+        process_module_file(), has already been called. To verify that each file has been downloaded
         properly, we check that the last line is '///'.
         """
 
@@ -1686,7 +1687,7 @@ class ModulesDownload(KeggSetup):
             if not self.only_download:
                 self.setup_modules_db(db_path=self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir, brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies)
 
-    
+
     ###### BRITE-related functions below ######
     def download_brite_hierarchy_of_hierarchies(self):
         """Download a json file of 'br08902', a "hierarchy of BRITE hierarchies."
@@ -1786,6 +1787,7 @@ class ModulesDownload(KeggSetup):
         Hierarchies of interest classify genes/proteins and have accessions starting with 'ko'.
         """
 
+        from typing import List
         # import the function for multithreaded download
         import multiprocessing as mp
         from anvio.biochemistry.reactionnetwork import _download_worker
@@ -1811,7 +1813,7 @@ class ModulesDownload(KeggSetup):
             worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
             workers.append(worker)
             worker.start()
-        
+
         downloaded_count = 0
         undownloaded_count = 0
         undownloaded = []
@@ -1823,7 +1825,7 @@ class ModulesDownload(KeggSetup):
             else:
                 undownloaded_count += 1
                 undownloaded.append(os.path.splitext(os.path.basename(output))[0])
-        
+
         for worker in workers:
             worker.terminate()
         if undownloaded:

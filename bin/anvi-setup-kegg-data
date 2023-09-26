@@ -85,9 +85,14 @@ def main(args, unknown_args):
     mode = args.mode
     mode_args, mode_unknown = subparsers[mode].parse_known_args(unknown_args)
     args = argparse.Namespace(**vars(args), **vars(mode_args))
-    # this flag is already handled by anvi'o and shouldn't be in the unknown list
-    if '--debug' in mode_unknown:
-        mode_unknown.remove('--debug')
+    # global flags are already handled by anvi'o and shouldn't be in the unknown list
+    # these are coming from __init__.py and not all are relevant to this code but we catch them anyway
+    global_flags_to_catch = ['--debug', '--no-progress', '--force', '--quiet', '--as-markdown', 
+                             '--force-overwrite', '--fix-sad-tables', '--display-db-calls', '--I-know-this-is-not-a-good-idea',
+                             '--force-use-my-tree', '--debug-auto-fill-anvio-dbs']
+    for gf in global_flags_to_catch:
+        if gf in mode_unknown:
+            mode_unknown.remove(gf)
     if len(mode_unknown):
         raise ConfigError(f"Unrecognized parameters: {' '.join(mode_unknown)}. Did you perhaps fail to specify the right mode?")
 
