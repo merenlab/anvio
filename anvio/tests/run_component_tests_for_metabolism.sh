@@ -22,7 +22,7 @@ kegg_data_dir=`mktemp -d`
 rm -rf $kegg_data_dir
 
 INFO "Setting up KEGG data"
-anvi-setup-kegg-data   --mode all
+anvi-setup-kegg-data   --mode all \
                        --kegg-data-dir $kegg_data_dir \
                        --no-progress
 
