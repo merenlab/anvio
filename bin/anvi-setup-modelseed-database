@@ -2,10 +2,12 @@
 # -*- coding: utf-8
 DESCRIPTION = """This program downloads and sets up the ModelSEED Biochemistry database."""
 
+import os
+
 from sys import exit
 from argparse import Namespace
 
-import anvio.biochemistry.refdbs as refdbs
+import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio import A, K
 from anvio.errors import ConfigError
@@ -26,21 +28,15 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
-    db = refdbs.ModelSEEDDatabase(args.dir)
-    db.download(reset=args.reset)
+    reactionnetwork.ModelSEEDDatabase.set_up(dir=args.dir, reset=args.reset)
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
-
     parser.add_argument(
-        '--dir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
-        help=(
-            "Directory in which a new subdirectory with the name, 'ModelSEED', "
-            "is created containing database files."
-        )
+        '--dir', default=os.path.dirname(reactionnetwork.ModelSEEDDatabase.default_dir), type=str,
+        help="Directory in which a new subdirectory with the name, 'ModelSEED', is created containing database files."
     )
     parser.add_argument(*A('reset'), **K('reset'))
-
     args = parser.get_args(parser)
     return args
 
