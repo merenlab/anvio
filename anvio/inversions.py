@@ -830,18 +830,20 @@ class Inversions:
                         sum_freq[inversion_id] = {}
 
                     if oligo_primer not in sum_freq[inversion_id]:
-                        sum_freq[inversion_id][oligo_primer] = {}
+                        sum_freq[inversion_id][oligo_primer] = {'non_reference': {}}
 
                     if oligo not in sum_freq[inversion_id][oligo_primer]:
-                        sum_freq[inversion_id][oligo_primer][oligo] = frequency
+                        sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] = frequency
                     else:
-                        sum_freq[inversion_id][oligo_primer][oligo] += frequency
+                        sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] += frequency
+                else:
+                    sum_freq[inversion_id][oligo_primer]['reference'] = oligo
 
             # sort the abundance
-            for inversion_id, oligo_primer in sum_freq.items():
-                for primer, oligo_freq in oligo_primer.items():
-                    sorted_oligo_freq = dict(sorted(oligo_freq.items(), key=lambda x:x[1], reverse=True))
-                    oligo_primer[primer] = sorted_oligo_freq
+            for inversion_id, activity in sum_freq.items():
+                for oligo_primer, all_oligo in activity.items():
+                    sorted_oligo_freq = sorted(all_oligo['non_reference'].items(), key=lambda x:x[1], reverse=True)
+                    activity[oligo_primer]['non_reference'] = sorted_oligo_freq
 
             # add inversion info and name + color for each oligo
             for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
@@ -870,7 +872,7 @@ class Inversions:
                     activity['stop'] = relative_frequency*1000
 
                 else:
-                    rank = list(sum_freq[inversion_id][oligo_primer]).index(oligo)
+                    rank = list(dict(sum_freq[inversion_id][oligo_primer]['non_reference'])).index(oligo)
                     if rank == 0:
                         activity['name'] = 'Inversion'
                         activity['color'] = '#055052'
@@ -886,6 +888,22 @@ class Inversions:
 
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
+
+            
+            for inversion_id in self.summary['inversions']:
+                for sample in self.summary['inversions'][inversion_id]['activity']:
+                    for inversion_id, activity in sum_freq.items():
+                        for oligo_primer, all_oligo in activity.items():
+                            ref_id = all_oligo['reference']
+                            previous_stop = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['stop']
+                            for i, x in all_oligo['non_reference']:
+                                i_start = previous_stop
+                                if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
+                                    continue
+                                i_stop = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
+                                previous_stop = i_stop
+                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
+                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['stop'] = i_stop
 
 
     def recover_genomic_context_surrounding_inversions(self):
