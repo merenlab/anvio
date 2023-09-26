@@ -39,7 +39,6 @@ def get_args() -> Namespace:
             "is created containing database files."
         )
     )
-    parser.add_argument(*A('num-threads'), **K('num-threads'))
     parser.add_argument(*A('reset'), **K('reset'))
 
     args = parser.get_args(parser)
