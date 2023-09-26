@@ -398,7 +398,6 @@ anvi-reaction-network -c B_thetaiotamicron_VPI-5482.db \
 INFO "Exporting the reaction network to file"
 anvi-get-metabolic-model-file -c B_thetaiotamicron_VPI-5482.db \
                               -o reaction_network.json
-SHOW_FILE reaction_network.json
 
 
 # clean up
