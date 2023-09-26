@@ -24,26 +24,25 @@ rm -rf $kegg_data_dir
 INFO "Setting up KEGG data"
 anvi-setup-kegg-data   --mode all \
                        --kegg-data-dir $kegg_data_dir \
-                       --no-progress \
                        $thread_controller
 
 INFO "Annotating all databases with KOfams"
-anvi-run-kegg-kofams  -c B_thetaiotamicron_VPI-5482.db\
+anvi-run-kegg-kofams  -c B_thetaiotamicron_VPI-5482.db \
                       --kegg-data-dir $kegg_data_dir \
                       $thread_controller \
                       --just-do-it
 
-anvi-run-kegg-kofams  -c P_marinus_CCMP1375.db\
+anvi-run-kegg-kofams  -c P_marinus_CCMP1375.db \
                       --kegg-data-dir $kegg_data_dir \
                       $thread_controller \
                       --just-do-it
 
-anvi-run-kegg-kofams  -c S_islandicus_LS215.db\
+anvi-run-kegg-kofams  -c S_islandicus_LS215.db \
                       --kegg-data-dir $kegg_data_dir \
                       $thread_controller \
                       --just-do-it
 
-anvi-run-kegg-kofams  -c CONTIGS.db\
+anvi-run-kegg-kofams  -c CONTIGS.db \
                       --kegg-data-dir $kegg_data_dir \
                       $thread_controller \
                       --just-do-it
@@ -384,6 +383,22 @@ anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
                                   -o enrichment_ungrouped.txt \
                                   --no-progress
 SHOW_FILE enrichment_ungrouped.txt
+
+# generate a temporary directory to store anvi-setup-modelseed-database output
+modelseed_data_dir=`mktemp -d`
+INFO "Setting up the ModelSEED Biochemistry database"
+anvi-setup-modelseed-database --dir $modelseed_data_dir
+rm -rf $modelseed_data_dir
+
+INFO "Storing a metabolic reaction network"
+anvi-reaction-network -c P_marinus_CCMP1375.db \
+                      --no-progress
+
+INFO "Exporting the reaction network to file"
+anvi-get-metabolic-model-file -c P_marinus_CCMP1375.db \
+                              -o reaction_network.json
+SHOW_FILE reaction_network.json
+
 
 # clean up
 rm -rf $kegg_data_dir
