@@ -2533,7 +2533,7 @@ class Constructor:
             An object representation of the ModelSEED reaction.
 
         List[str]
-            ModelSEED compound IDs of reaction reactants and products.
+            ModelSEED compound IDs of reactants and products.
         """
         stoichiometry: str = modelseed_reaction_data['stoichiometry']
         if pd.isna(stoichiometry):
