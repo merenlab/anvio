@@ -9,17 +9,22 @@ The %(reaction-network-json)s file output contains sections on the metabolites, 
 %(anvi-get-metabolic-model-file)s requires a %(contigs-db)s as input and the path to an output %(reaction-network-json)s file.
 
 {{ codestart }}
-anvi-get-metabolic-model-file -c /path/to/contigs-db -o /path/to/ouput-json-file
+anvi-get-metabolic-model-file -c %(contigs-db)s \
+                              -o /path/to/ouput.json
 {{ codestop }}
 
 An existing file at the target output location must be explicitly overwritten with the `-W` flag.
 
 {{ codestart }}
-anvi-get-metabolic-model-file -c /path/to/contigs-db -o /path/to/existing-file -W
+anvi-get-metabolic-model-file -c %(contigs-db)s \
+                              -o /path/to/output.json \
+                              -W
 {{ codestop }}
 
 The flag, `--remove-missing-objective-metabolites` must be used to remove metabolites in the *E. coli* core biomass objective function from the output file if the metabolites are not produced or consumed by the predicted %(reaction-network)s. [COBRApy](https://opencobra.github.io/cobrapy/), for instance, cannot load the JSON file if metabolites in the objective function are missing from the genomic model.
 
 {{ codestart }}
-anvi-get-metabolic-model-file -c /path/to/contigs-db -o /path/to/output-json-file --remove-missing-objective-metabolites
+anvi-get-metabolic-model-file -c %(contigs-db)s \
+                              -o /path/to/output.json \
+                              --remove-missing-objective-metabolites
 {{ codestop }}
