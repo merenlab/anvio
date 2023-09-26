@@ -24,7 +24,6 @@ rm -rf $kegg_data_dir
 INFO "Setting up KEGG data"
 anvi-setup-kegg-data   --mode all \
                        --kegg-data-dir $kegg_data_dir \
-                       --no-progress \
                        $thread_controller
 
 INFO "Annotating all databases with KOfams"
