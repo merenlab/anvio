@@ -843,6 +843,7 @@ class Inversions:
                     sorted_oligo_freq = dict(sorted(oligo_freq.items(), key=lambda x:x[1], reverse=True))
                     oligo_primer[primer] = sorted_oligo_freq
 
+            reference_to_inversions = {}
             # add inversion info and name + color for each oligo
             for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
                 inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
@@ -863,14 +864,26 @@ class Inversions:
                 if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
                     self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer] = {}
 
+                # in this data structure we will match references to their associated inversions
+                # unfortunately necessary for later generation of the coordinates
+                if sample not in reference_to_inversions:
+                    reference_to_inversions[sample] = {oligo_primer : {'reference': None,
+                                                                       'inv_to_rank' : {}}
+                                                            }
+                if oligo_primer not in reference_to_inversions[sample]:
+                    reference_to_inversions[sample][oligo_primer] = {'reference': None,
+                                                                     'inv_to_rank' : {}}
+
                 if reference == True:
                     activity['name'] = 'Reference'
                     activity['color'] = '#53B8BB'
                     activity['start'] = '0'
                     activity['stop'] = relative_frequency*1000
+                    reference_to_inversions[sample][oligo_primer]['reference'] = oligo
 
                 else:
                     rank = list(sum_freq[inversion_id][oligo_primer]).index(oligo)
+                    reference_to_inversions[sample][oligo_primer]['inv_to_rank'][oligo] = rank
                     if rank == 0:
                         activity['name'] = 'Inversion'
                         activity['color'] = '#055052'
@@ -886,6 +899,15 @@ class Inversions:
 
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
+
+            # now lets order each oligo by rank for a given sample and inversion ID
+            for sample, inv_dict in reference_to_inversions.items():
+                for oligo_primer, oligo_dict in inv_dict.items():
+                    num_oligos = len(oligo_dict['inv_to_rank'.keys()])
+                    oligo_ordered = [None] * num_oligos
+                    for oligo, rank in oligo_dict.items():
+                        oligo_ordered[rank] = oligo
+                    reference_to_inversions[sample][oligo_primer]['ordered_oligo_list'] = oligo_ordered
 
 
     def recover_genomic_context_surrounding_inversions(self):
