@@ -820,10 +820,6 @@ class Inversions:
         if self.skip_compute_inversion_activity:
             pass
         else:
-            '''
-            'activity': {'first_oligo_primer': {'CTGGA': {name: 'reference', color: '#something', relative_freq: 0.9, freq: 10}},
-                                    'second_oligo_primer': {}}
-            '''
             # sum each oligo freq and rank them to give them appropriate colors
             sum_freq = {}
             for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
@@ -840,14 +836,6 @@ class Inversions:
                         sum_freq[inversion_id][oligo_primer][oligo] = frequency
                     else:
                         sum_freq[inversion_id][oligo_primer][oligo] += frequency
-
-            # here we sort the oligo by decreasing abundance, then we give each oligo a name and a color :)
-            # we only allow for three "other inversion". These are rare case where more than two inverted repeats are involved,
-            # like a type of nested inversions. e.g: B. frag endonuclease!
-            color_dict = {'inversion': '#055052',
-                          'other_inversion_1': '#a6a6a6',
-                          'other_inversion_2': '#5a5a5a',
-                          'other_inversions': '#ff0000'}
 
             # sort the abundance
             for inversion_id, oligo_primer in sum_freq.items():
@@ -878,13 +866,23 @@ class Inversions:
                 if reference == True:
                     activity['name'] = 'Reference'
                     activity['color'] = '#53B8BB'
+                    activity['start'] = '0'
+                    activity['stop'] = relative_frequency*1000
+
                 else:
                     rank = list(sum_freq[inversion_id][oligo_primer]).index(oligo)
-                    if rank > 3:
-                        rank = 3
-                    name = list(color_dict)[rank]
-                    activity['name'] = name
-                    activity['color'] = color_dict[name]
+                    if rank == 0:
+                        activity['name'] = 'Inversion'
+                        activity['color'] = '#055052'
+                    elif rank == 1:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#a6a6a6'
+                    elif rank == 2:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#5a5a5a'
+                    else:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#ff0000'
 
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
