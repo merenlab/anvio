@@ -24,7 +24,29 @@ rm -rf $kegg_data_dir
 INFO "Setting up KEGG data"
 anvi-setup-kegg-data   --mode all \
                        --kegg-data-dir $kegg_data_dir \
-                       --no-progress
+                       --no-progress \
+                       $thread_controller
+
+INFO "Annotating all databases with KOfams"
+anvi-run-kegg-kofams  -c B_thetaiotamicron_VPI-5482.db\
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
+
+anvi-run-kegg-kofams  -c P_marinus_CCMP1375.db\
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
+
+anvi-run-kegg-kofams  -c S_islandicus_LS215.db\
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
+
+anvi-run-kegg-kofams  -c CONTIGS.db\
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
 
 ## BASIC TESTS
 INFO "Estimating metabolism on a single contigs database"
