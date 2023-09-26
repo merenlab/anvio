@@ -77,7 +77,7 @@ def main(args):
 
     try:
         for test in tests[args.suite]:
-            command = f'./{test} {output_dir} {"no_interactive" if args.no_interactive else ""}'
+            command = f'./{test} {output_dir} {"no_interactive" if args.no_interactive else "interactive"} {args.num_threads if args.num_threads > 1 else ""}'
             exitcode = subprocess.call(command, shell=True)
             if exitcode != 0:
                 raise ConfigError(f"According to the exit code ('{exitcode}'), anvi'o suspects that something may have gone wrong while "
@@ -110,6 +110,7 @@ if __name__ == '__main__':
                             "stored in there, instead of being stored in a temporary directory to be deleted once the tests are done. "
                             "This is particularly useful if you wish to play with general anvi'o output files"}))
     parser.add_argument(*anvio.A('no-interactive'), **anvio.K('no-interactive'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = parser.get_args(parser)
 
