@@ -402,8 +402,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{pretty-name}" class="titles">{short-name}</td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
                 '<td>' +
                 '    <select class="normalization type type_multiple form-control form-control-sm col-12 select-sm">' +
                 '        <option value="none"{option-none}>none</option>' +
@@ -413,8 +413,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '</td>' +
                 '<td><input class="input-height form-control form-control-sm" type="text" size="3" value="{height}"></input></td>' +
                 '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="{margin}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></input></td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -446,13 +446,13 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td style=""><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td><input class="input-height form-control form-control-sm" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="{margin}"></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></td>' +
-                '<td><input class="input-margin form-control form-control-sm" type="text" size="3" value="none" readonly></input></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td style=""><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-height form-control form-control-xs" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></td>' +
+                '<td><input class="input-margin form-control form-control-xs" type="text" size="3" value="none" readonly></input></input></td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
