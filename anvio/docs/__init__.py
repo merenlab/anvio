@@ -869,44 +869,8 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "contigs-workflow": {
-        "name": "CONTIGS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "metagenomics-workflow": {
-        "name": "METAGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "pangenomics-workflow": {
-        "name": "PANGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "phylogenomics-workflow": {
-        "name": "PHYLOGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trnaseq-workflow": {
-        "name": "TRNASEQ WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "ecophylo-workflow": {
-        "name": "ECOPHYLO WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "sra-download-workflow": {
-        "name": "SRA-DOWNLOAD WORKFLOW",
+    "workflow": {
+        "name": "ANVIO SNAKEMAKE WORKFLOW",
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
