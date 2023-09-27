@@ -812,9 +812,9 @@ anvi-search-functions -c $output_dir/CONTIGS.db \
                       --verbose \
                       --no-progress
 
-INFO "Get all short reads that map to the gene ID 38 (which is a Zinc transpoprter)"
+INFO "Get all short reads that map to the gene ID 37 (which is a random gene in the contigs-db)"
 anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db \
-                                       --gene-caller-id 38 \
+                                       --gene-caller-id 37 \
                                        --leeway 100 \
                                        -i $output_dir/*bam \
                                        -O $output_dir/reads-mapping-to \
