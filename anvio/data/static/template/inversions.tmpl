@@ -62,7 +62,86 @@
                 </div>
                 <div id="collapse-bins" class="panel-collapse">
                     <div class="panel-body">
-                        <h3>Basic information <small class="text-muted">:: What we know about this inversion</small></h3>
+
+                        <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it.</small></h3>
+
+                        <p>The figure below shows the location of the inversion and the genes that surround it in the genome. You can find a table with more information about <a href="{{ files|lookup:inversion|lookup:"genes" }}">the genes</a> and <a href="{{ files|lookup:inversion|lookup:"functions" }}">their functions</a>.
+
+                        <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
+                        <svg width="1000" height="80">
+
+                        {% if meta.genomic_context_recovered %}
+                            <!-- Mark the inversion site -->
+                            <rect x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}" y="0" width="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}" height="65" style="fill:red; opacity:0.5"></rect>
+                            <text x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
+
+                            <!-- Go through genes to be shown in the genomic context -->
+                            {% for gene in inversions|lookup:inversion|lookup:"genes" %}
+                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
+                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
+                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
+                                </g>
+
+                                {% if forloop.counter0|even_odd == 0 %}
+                                <text x="{{ gene|lookup:"CX" }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                {% else %}
+                                <text x="{{ gene|lookup:"CX" }}" y="12" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the genomic context since you have used the flag `--skip-recovering-genomic-context` (#SAD)</text>
+                        {% endif %}
+
+                        </svg>
+
+                        {% if meta.genomic_context_recovered %}
+                        <!-- If the metagenomic context is recovered, we also want to populate some `divs` that hold information
+                             for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
+                        {% for gene in inversions|lookup:inversion|lookup:"genes" %}
+                        <div class="hidden" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover">
+                        <p>Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}.
+                        </div>
+
+                        {% endfor %}
+                        {% endif %}
+
+                        </div>
+
+                        <h3 style="margin-bottom: 25px">Activity <small class="text-muted">:: How does it behave across samples</small></h3>
+
+                        <p>The figures below show the relative proportion of the orientation of this inversion in each sample. For each sample, anvi'o produces two plots to quantify the
+                        proportion of each end of the inversion based on short read recruitment results. For more information, see <a href="https://anvio.org/m/anvi-report-inversions">the help page</a>
+
+                        {% if meta.inversion_activity_computed %}
+                            {% for sample in inversions|lookup:inversion|lookup:"activity" %}
+                                <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 30px; margin-bottom: 10px">
+                                <svg width="1000" height="66">
+                                <text x="5" y="15" fill="black" style="font-weight:bold;">{{ sample }}</text>
+                                {% for oligo_primer in inversions|lookup:inversion|lookup:"activity"|lookup:sample %}
+                                    {% for oligo in inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer %}
+                                    <rect x="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"start" }}" y="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"y_coord" }}" width="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"width" }}" height="20" style="fill:{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"color" }}"></rect>
+                                    {% endfor %}
+                                {% endfor %}
+                                </svg>
+                                </div>
+                            {% endfor %}
+                            <div style="width:300px; display:flex; justify-content: center; margin:auto; margin-top: 10px; margin-bottom: 10px">
+                                <svg width="300" height="50">
+                                <rect x="10" y="10" width="25" height="25" style="fill:#53B8BB"></rect>
+                                <text x="40" y="27" width="25" height="25" fill="black">Reference</text>
+                                <rect x="150" y="10" width="25" height="25" style="fill:#055052"></rect>
+                                <text x="180" y="27" width="25" height="25" fill="black">Inversion</text>
+                                </svg>
+                            </div>
+                        {% else %}
+                            <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 10px; margin-bottom: 10px">
+                            <svg width="1000" height="66">
+                            <text x="50%" y="30" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the activity since you have used the flag `--skip-compute-inversion-activity` (#SAD)</text>
+                            </svg>
+                        </div>
+                        {% endif %}
+
+                        <h3>Details <small class="text-muted">:: What we know about this inversion</small></h3>
 
                         <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
                             <div class="panel-heading">
@@ -97,7 +176,7 @@
                             </div>
                         </div>
 
-                        <!-- Summary of the inverted repeats -->
+                        <!-- SUMMARY OF THE INVERTED REPEATS -->
                         <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
                             <div class="panel-heading">
                                 Inverted Repeats
@@ -202,78 +281,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it. Here you can find a table with more information about <a href="{{ files|lookup:inversion|lookup:"genes" }}">the genes</a>, and <a href="{{ files|lookup:inversion|lookup:"functions" }}">their functions</a>.</small></h3>
-
-                        <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
-                        <svg width="1000" height="80">
-
-                        {% if meta.genomic_context_recovered %}
-                            <!-- Mark the inversion site -->
-                            <rect x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}" y="0" width="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}" height="65" style="fill:red; opacity:0.5"></rect>
-                            <text x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
-
-                            <!-- Go through genes to be shown in the genomic context -->
-                            {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
-                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
-                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
-                                </g>
-
-                                {% if forloop.counter0|even_odd == 0 %}
-                                <text x="{{ gene|lookup:"CX" }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
-                                {% else %}
-                                <text x="{{ gene|lookup:"CX" }}" y="12" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
-                                {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            <text x="50%" y="35" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the genomic context since you have used the flag `--skip-recovering-genomic-context` (#SAD)</text>
-                        {% endif %}
-
-                        </svg>
-
-                        {% if meta.genomic_context_recovered %}
-                        <!-- If the metagenomic context is recovered, we also want to populate some `divs` that hold information
-                             for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
-                        {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                        <div class="hidden" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover">
-                        <p>Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}.
-                        </div>
-
-                        {% endfor %}
-                        {% endif %}
-
-                        </div>
-
-                        <h3 style="margin-bottom: 25px">Activity <small class="text-muted">:: The relative proportion of this inversion's orientation in each sample. Two barplot are reported per samples as anvi'o compute the proportions for each end of an inversion. For more information, see <a href="https://anvio.org/help/main/programs/anvi-report-inversions/">the help page</a>.</small></h3>
-
-                        {% if meta.inversion_activity_computed %}
-                            {% for sample in inversions|lookup:inversion|lookup:"activity" %}
-                                <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 10px; margin-bottom: 10px">
-                                <svg width="1000" height="66">
-                                <text x="5" y="15" fill="black" style="font-weight:bold;">{{ sample }}</text>
-                                {% for oligo_primer in inversions|lookup:inversion|lookup:"activity"|lookup:sample %}
-                                    {% for oligo in inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer %}
-                                    <rect x="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"start" }}" y="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"y_coord" }}" width="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"width" }}" height="20" style="fill:{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"color" }}"></rect>
-                                    {% endfor %}
-                                {% endfor %}
-                                </svg>
-                                </div>
-                            {% endfor %}
-                            <div style="width:300px; display:flex; justify-content: center; margin:auto; margin-top: 10px; margin-bottom: 10px">
-                                <svg width="300" height="50">
-                                <rect x="10" y="10" width="25" height="25" style="fill:#53B8BB"></rect>
-                                <text x="40" y="27" width="25" height="25" fill="black">Reference</text>
-                                <rect x="150" y="10" width="25" height="25" style="fill:#055052"></rect>
-                                <text x="180" y="27" width="25" height="25" fill="black">Inversion</text>
-                                </svg>
-                            </div>
-                        {% else %}
-                            <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 10px; margin-bottom: 10px">
-                            <svg width="1000" height="66">
-                            <text x="50%" y="30" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the activity since you have used the flag `--skip-compute-inversion-activity` (#SAD)</text>
-                            </svg>
-                        {% endif %}
                     </div>
                 </div>
             </div>
