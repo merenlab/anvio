@@ -69,6 +69,23 @@ ANVIO_WORKFLOWS = {
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "trnaseq": {
+        "authors": ['semiller10'],
+        "artifacts_accepted": ['samples-txt'],
+        "artifacts_produced": ['trnaseq-db', 'trnaseq-contigs-db', 'trnaseq-profile-db', 'trnaseq-seed-txt', 'modifications-txt'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('QC and merging of tRNA transcripts', ['illumina-utils']),
+            ('Mapping transcripts to tRNA seeds', ['Bowtie2'])
+            ],
+        "one_sentence_summary": "Process transfer RNA transcripts from tRNA-seq datasets",
+        "one_paragraph_summary": ("The trnaseq workflow takes in raw paired-end sequencing data generated from trna-seq libraries (i.e., the direct sequencing of "
+            "transfer RNA transcripts from cultures or environmental samples), and processes these data to identify tRNA sequences and their structural features, "
+            "predict chemical modification sites and modification fractions across samples, assign taxonomy to tRNA transcript seeds, and generate tables and summary "
+            "data for downstream analyses. The tRNA-seq resources in anvi'o are operational, however, they are experimental. If you have datasets that are suitable "
+            "for analysis, pelase consider getting in touch with us first.")
+    },
+
     "sra-download": {
         "authors": ['mschecht'],
         "artifacts_accepted": [],
