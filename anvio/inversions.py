@@ -658,13 +658,16 @@ class Inversions:
                     # one confirmed inversion
                     return true_inversions
             else:
-                if num_bad_reads:
-                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                        f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
-                                        f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
-                else:
-                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                        f"after processing {num_reads_considered} reads.", mc="red", level=2)
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+
+                    if num_bad_reads:
+                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
+                                             f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
+                    else:
+                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after processing {num_reads_considered} reads.", mc="red", level=2)
 
         return true_inversions
 
@@ -743,10 +746,12 @@ class Inversions:
     def process_inversion_data_for_HTML_summary(self):
         self.summary['meta'] = {'summary_type': 'inversions',
                                 'num_inversions': len(self.consensus_inversions),
+                                'num_samples': len(self.profile_db_paths),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity}
 
+        self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
         self.summary['inversions'] = {}
 
         for entry in self.consensus_inversions:
@@ -816,6 +821,10 @@ class Inversions:
                 # and finally we will store this hot mess in our dictionary
                 self.summary['inversions'][inversion_id]['genes'] = genes
 
+                # also we need the path to the output files
+                self.summary['files'][inversion_id] = {'genes': os.path.join('PER_INV', inversion_id, 'SURROUNDING-GENES.txt'),
+                                                       'functions': os.path.join('PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')}
+
         # add inversion activity
         if self.skip_compute_inversion_activity:
             pass
@@ -825,13 +834,14 @@ class Inversions:
             for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
                 inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
 
+                if inversion_id not in sum_freq:
+                    sum_freq[inversion_id] = {}
+
+                if oligo_primer not in sum_freq[inversion_id]:
+                    sum_freq[inversion_id][oligo_primer] = {'reference': None,
+                                                            'non_reference': {}}
+
                 if reference == False:
-                    if inversion_id not in sum_freq:
-                        sum_freq[inversion_id] = {}
-
-                    if oligo_primer not in sum_freq[inversion_id]:
-                        sum_freq[inversion_id][oligo_primer] = {'non_reference': {}}
-
                     if oligo not in sum_freq[inversion_id][oligo_primer]:
                         sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] = frequency
                     else:
@@ -865,12 +875,11 @@ class Inversions:
                 if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
                     self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer] = {}
 
-                if reference == True:
+                if reference:
                     activity['name'] = 'Reference'
                     activity['color'] = '#53B8BB'
                     activity['start'] = '0'
-                    activity['stop'] = relative_frequency*1000
-
+                    activity['width'] = relative_frequency*1000
                 else:
                     rank = list(dict(sum_freq[inversion_id][oligo_primer]['non_reference'])).index(oligo)
                     if rank == 0:
@@ -886,6 +895,12 @@ class Inversions:
                         activity['name'] = '_'.join(['Other_Inversion', str(rank)])
                         activity['color'] = '#ff0000'
 
+                # we need y coordinate for first and second oligo_primer.
+                if oligo_primer == 'first_oligo_primer':
+                    activity['y_coord'] = '22'
+                else:
+                    activity['y_coord'] = '44'
+
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
 
@@ -895,15 +910,15 @@ class Inversions:
                     for inversion_id, activity in sum_freq.items():
                         for oligo_primer, all_oligo in activity.items():
                             ref_id = all_oligo['reference']
-                            previous_stop = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['stop']
+                            previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width']
                             for i, x in all_oligo['non_reference']:
-                                i_start = previous_stop
+                                i_start = previous_width
                                 if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
                                     continue
-                                i_stop = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
-                                previous_stop = i_stop
+                                i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
+                                previous_width = i_width
                                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
-                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['stop'] = i_stop
+                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
 
 
     def recover_genomic_context_surrounding_inversions(self):
@@ -1259,7 +1274,7 @@ class Inversions:
                 # then add reference oligo with a frequency of 0
                 oligo_reference = primers_dict[primer_name]['oligo_reference']
                 if oligo_reference not in oligos_frequency_dict and reads_found:
-                    sample_counts.append((sample_name, primer_name, oligo_reference, 'True', 0, 0))
+                    sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
             output_queue.put(sample_counts)
 
