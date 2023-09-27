@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 INFO "Setting up the pan analysis directory"
@@ -27,7 +27,8 @@ anvi-pan-genome -g TEST-GENOMES.db \
                 -n TEST \
                 --use-ncbi-blast \
                 --description example_description.md \
-                --no-progress
+                --no-progress \
+                $thread_controller
 
 INFO "Running ANI on genomes and storing results in the PAN database"
 anvi-compute-genome-similarity -e external-genomes.txt \
@@ -35,7 +36,8 @@ anvi-compute-genome-similarity -e external-genomes.txt \
                                -o ANI_TEST \
                                --log-file ANI_LOG.txt \
                                -p TEST/TEST-PAN.db \
-                               --no-progress
+                               --no-progress \
+                               $thread_controller
 
 INFO "Running the pangenome analysis again utilizing previous search results"
 anvi-pan-genome -g TEST-GENOMES.db \
@@ -44,7 +46,8 @@ anvi-pan-genome -g TEST-GENOMES.db \
                 --use-ncbi-blast \
                 --min-occurrence 2 \
                 --description example_description.md \
-                --no-progress
+                --no-progress \
+                $thread_controller
 
 INFO "Importing collections of gene clusters"
 anvi-import-collection -p TEST/TEST-PAN.db \
@@ -160,7 +163,8 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-id GC_00000001 \
                                       -o gene_cluster_homogeneity_results.txt \
-                                      --no-progress
+                                      --no-progress \
+                                      $thread_controller
 SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for a list of gene clusters"
@@ -169,7 +173,8 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-ids gene_clusters_for_homogeneity.txt \
                                       -o gene_cluster_homogeneity_results.txt \
-                                      --no-progress
+                                      --no-progress \
+                                      $thread_controller
 SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for gene clusters in a bin"
@@ -178,8 +183,8 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -C test_collection \
                                       -b GENE_CLUSTER_BIN_2 \
                                       -o gene_cluster_homogeneity_results.txt \
-                                      --num-threads 2 \
-                                      --no-progress
+                                      --no-progress \
+                                      $thread_controller
 SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Importing the default state for pretty outputs"
