@@ -8,12 +8,10 @@ import os
 import sys
 
 import numpy as np
-import pandas as pd
 
 import anvio
 
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -30,7 +28,8 @@ __version__ = anvio.__version__
 __authors__ = ['ekiefl']
 __provides__ = ['pn-ps-data']
 __requires__ = ['contigs-db', 'variability-profile-txt']
-__description__ = ("FIXME")
+__description__ = ("Calculate the rates of non-synonymous and synonymous polymorphism for genes across environmetns "
+                   "using the output of anvi-gen-variability-profile.")
 
 
 progress = terminal.Progress()
