@@ -1392,6 +1392,16 @@ class ReadsMappingToARange:
         for input_bam_path in input_bam_paths:
             bam_file_object = BAMFileObject(input_bam_path)
 
+            if contig_name not in bam_file_object.references:
+                progress.reset()
+                raise ConfigError(f"Contig name '{contig_name}' is not represented in the BAM file at '{input_bam_path}'. "
+                                  f"Anvi'o is unable to make a intelligent guess regarding how did you end up here, but "
+                                  f"the only way for this to happen is that either (1) you have a contigs database that "
+                                  f"contains more contig names than the FASTA file you have used for the read recruitment "
+                                  f"that gave you this BAM file, or (2) the settings you have used with the read recruitment "
+                                  f"tool in fact did not report results for some contigs :/ Either way. There is no where "
+                                  f"to go from here :(")
+
             sample_id = filesnpaths.get_name_from_file_path(input_bam_path)
 
             self.run.warning('', header="Working on '%s'" % sample_id, lc='cyan')
