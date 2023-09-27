@@ -76,7 +76,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index']:
+        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index', 'inversions']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -125,6 +125,8 @@ class SummaryHTMLOutput:
             rendered = render_to_string('workflow.tmpl', self.summary_dict)
         elif self.summary_type == 'programs_and_artifacts_index':
             rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
+        elif self.summary_type == 'inversions':
+            rendered = render_to_string('inversions.tmpl', self.summary_dict)
         else:
             raise ConfigError("You cray...")
 
@@ -148,9 +150,17 @@ def lookup(d, index):
 def humanize(s):
     return s.replace('_', ' ')
 
+@register.filter(name='monospace')
+def monospace(s):
+    return f'<span style="font-family: monospace;">{s}</span>'
+
 @register.filter(name='sumvals')
 def sumvals(d):
     return sum(d.values())
+
+@register.filter(name='even_odd')
+def even_odd(d):
+    return int(d) % 2
 
 @register.filter(name='humanize_f')
 def humanize_f(n):
