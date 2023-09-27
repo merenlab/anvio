@@ -3,7 +3,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 INFO "Setting up the anvi-export-locus test directory"
@@ -16,6 +16,9 @@ cp $files/data/input_files/*.txt                        $output_dir/export_locus
 cd $output_dir/export_locus_test
 
 mkdir test
+
+INFO "Migrating all databases"
+anvi-migrate *db --migrate-quickly
 
 INFO "Running anvi-export-locus in default-mode"
 anvi-export-locus -c CONTIGS.db --gene-caller-id 68 -n 7,7 -o test/ -O metagenome_68

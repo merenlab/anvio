@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 INFO "Reformat the contigs FASTA"
@@ -23,7 +23,8 @@ anvi-gen-contigs-database -f $files/contigs.fa \
                           -L 1000 \
                           --external-gene-calls $files/example_external_gene_calls.txt \
                           --project-name 'Contigs DB with external gene calls' \
-                          --no-progress
+                          --no-progress \
+                          $thread_controller
 rm -rf $output_dir/CONTIGS.db
 
 INFO "Generating a new contigs database with the default gene caller"
@@ -31,7 +32,8 @@ anvi-gen-contigs-database -f $files/contigs.fa \
                           -o $output_dir/CONTIGS.db \
                           -L 1000 \
                           --project-name "Contigs DB for anvi'o self-tests" \
-                          --no-progress
+                          --no-progress \
+                          $thread_controller
 
 INFO "Displaying the info for the contigs databse"
 anvi-db-info $output_dir/CONTIGS.db
@@ -40,7 +42,8 @@ INFO "Searching for palindromes in a DNA sequence"
 anvi-search-palindromes --dna-sequence TGTGAGTAGCTGCGGCGTCCGCGACCGGCGGGCGGCATGCATTGACGACACGCTCCGGGCCGCTCAGGCCAAGTCTTTACGGTCTTACAACGCATGCCGCCCACCGGTCGCTCGTAGGTGCGGAAAAGTTATTTGAGATAA \
                         --min-distance 0 \
                         --max-num-mismatches 2 \
-                        --no-progress
+                        --no-progress \
+                        $thread_controller
 
 INFO "Searching for palindromes in a FASTA file"
 anvi-search-palindromes -f $output_dir/contigs.fa \
@@ -48,7 +51,8 @@ anvi-search-palindromes -f $output_dir/contigs.fa \
                         --min-palindrome-length 20 \
                         --blast-word-size 10 \
                         --output-file $output_dir/PALINDROMES-IN-FASTA.txt \
-                        --no-progress
+                        --no-progress \
+                        $thread_controller
 SHOW_FILE $output_dir/PALINDROMES-IN-FASTA.txt
 
 INFO "Searching for palindromes in a contigs database"
@@ -57,7 +61,8 @@ anvi-search-palindromes -c $output_dir/CONTIGS.db \
                         --min-palindrome-length 20 \
                         --blast-word-size 10 \
                         --output-file $output_dir/PALINDROMES-IN-CONTIGS-DB.txt \
-                        --no-progress
+                        --no-progress \
+                        $thread_controller
 SHOW_FILE $output_dir/PALINDROMES-IN-CONTIGS-DB.txt
 
 
@@ -131,13 +136,14 @@ anvi-delete-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Populating HMM hits tables in the latest contigs database using default HMM profiles"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
-              --num-threads 2 \
+              $thread_controller \
               --no-progress
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $files/external_hmm_profile \
-              --no-progress
+              --no-progress \
+              $thread_controller
 
 INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
 anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
@@ -147,13 +153,15 @@ anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF0
 INFO "Running the HMMs in the ad hoc user directory"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -H $output_dir/ADHOC_HMMs \
-              --no-progress
+              --no-progress \
+              $thread_controller
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
               -I Ribosomal_RNA_16S \
               --just-do-it \
-              --no-progress
+              --no-progress \
+              $thread_controller
 
 INFO "Rerunning HMMs with hmmsearch"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
@@ -162,7 +170,8 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
               --hmmer-output-dir $output_dir \
               --domain-hits-table \
               --just-do-it \
-              --no-progress
+              --no-progress \
+              $thread_controller
 
 INFO "Filtering hmm_hits using target coverage"
 anvi-script-filter-hmm-hits-table -c $output_dir/CONTIGS.db \
@@ -279,7 +288,8 @@ anvi-profile -c $output_dir/CONTIGS.db \
              -o $output_dir/BLANK-PROFILE \
              -S BLANK \
              --blank-profile \
-             --no-progress
+             --no-progress \
+             $thread_controller
 
 INFO "Adding a default collection to the blank profile"
 anvi-script-add-default-collection -c $output_dir/CONTIGS.db \
@@ -308,7 +318,8 @@ do
                  -o $output_dir/SAMPLE-$f \
                  -c $output_dir/CONTIGS.db \
                  --profile-SCVs \
-                 --no-progress
+                 --no-progress \
+                 $thread_controller
 
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
@@ -342,7 +353,8 @@ anvi-profile -i $output_dir/SAMPLE-01.bam \
              --cluster \
              --profile-SCVs \
              --force-multi \
-             --no-progress
+             --no-progress \
+             $thread_controller
 rm -rf $output_dir/MULTI-THREAD-SAMPLE-01
 
 INFO "Merging profiles"
@@ -780,7 +792,8 @@ anvi-oligotype-linkmers -i $output_dir/adjacent_linkmers.txt \
 
 INFO "Running anvi'o script to correct homopolymer INDELs in --test-run mode"
 anvi-script-fix-homopolymer-indels --test-run \
-                                   --no-progress
+                                   --no-progress \
+                                   $thread_controller
 
 INFO "Running anvi'o script to correct homopolymer INDELs with real files"
 cp $files/single_contig_with_INDEL_errors.fa $output_dir/
@@ -789,7 +802,8 @@ anvi-script-fix-homopolymer-indels --input $output_dir/single_contig_with_INDEL_
                                    --reference $output_dir/single_contig.fa \
                                    --output $output_dir/single_contig_INDEL_errors_FIXED.fa \
                                    --verbose \
-                                   --no-progress
+                                   --no-progress \
+                                   $thread_controller
 
 INFO "Search for functions to get split names with matching genes"
 anvi-search-functions -c $output_dir/CONTIGS.db \
@@ -915,7 +929,8 @@ anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
                          -e $output_dir/external-genomes.txt \
                          --similarity 0.99 \
                          --program pyANI \
-                         --no-progress
+                         --no-progress \
+                         $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
 
 INFO "Computing genome similarity"
@@ -924,7 +939,8 @@ anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
                                --fragment-length 250 \
                                --min-num-fragments 1 \
                                --program pyANI \
-                               --no-progress
+                               --no-progress \
+                               $thread_controller
 SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/ANIb_percentage_identity.txt
 
 INFO "Dereplicating genomes using an existing genome similarity analysis directory"
@@ -932,7 +948,8 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          -o $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS \
                          --similarity 0.99 \
                          --program pyANI \
-                         --no-progress
+                         --no-progress \
+                         $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 
 INFO "Generating an anvi'o genomes storage"
@@ -944,7 +961,8 @@ anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
                 -n TEST \
                 --use-ncbi-blast \
                 --description $output_dir/example_description.md \
-                --no-progress
+                --no-progress \
+                $thread_controller
 
 INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
