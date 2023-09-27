@@ -3,7 +3,7 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-anvio_version = '8'
+anvio_version = '8-dev'
 anvio_codename = 'marie' # after Marie Tharp -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v8
 
 major_python_version_required = 3
