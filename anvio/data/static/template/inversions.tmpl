@@ -33,13 +33,27 @@
                 <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
-                This is a summary page for the inversions found in XXX. Below you will find a total of {{ meta.num_inversions }}
-                inversions, their genomic context, and other stuff .. and we need much more information here about the number of samples
-                and other kind of things that we can report about what has been done, where to find some more information about the
-                program that generated this page, etc
+                This is a summary page for the inversions found in {{ meta.num_samples }} samples. Below you will find a total of {{ meta.num_inversions }}
+                inversions, their genomic context, and their activity accross samples.
+                Check our <a href="https://anvio.org/help/main/programs/anvi-report-inversions/">help page</a> to find more information about the program that generated this page
             </div>
         </div>
     </header>
+
+    <section>
+        <div class="container">
+            <div class="panel panel-info" id="Summary">
+                <div class="panel-heading">
+                    <h1 class="panel-title">Summary</h1>
+                </div>
+                <div id="collapse-bins" class="panel-collapse">
+                    <div class="panel-body">
+                        <h3>Summary of all inversions <small class="text-muted">:: You can find a tab-delimited version of the summary <a href="{{ files|lookup:"consensus_inversions" }}">here</a>.</small></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     {% for inversion in inversions %}
     <section>
@@ -48,26 +62,9 @@
                 <div class="panel-heading">
                     <h1 class="panel-title">{{ inversion|pretty }}</h1>
                 </div>
-
                 <div id="collapse-bins" class="panel-collapse">
                     <div class="panel-body">
                         <h3>Basic information <small class="text-muted">:: What we know about this inversion</small></h3>
-
-                        <div class="panel-body">
-                            <table class="table table-hover">
-                                <thead id="{{ inversion }}-table">
-                                <tbody>
-                                    <tr class="table-active">
-                                        <td width="25%" style="border: none; text-align:right;">First Sequence<br/>&nbsp;<br/>Second Sequence</td>
-                                        <td style="border: none;">
-                                            {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_seq"|monospace|safe }}<br />
-                                            {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"midline"|monospace|safe }}<br />
-                                            {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_seq"|monospace|safe }}</td>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
 
                         <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
                             <div class="panel-heading">
@@ -82,27 +79,11 @@
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"inversion_id" }}</td>
                                         </tr>
                                         <tr>
-                                            <td width="25%">Unique entry identifier</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"entry_id" }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td width="25%">Sample in which it was found</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"sample_name" }}</td>
-                                        </tr>
-                                        <tr>
                                             <td width="25%">Contig in which it was found</td>
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"contig_name" }}</td>
                                         </tr>
                                         <tr>
-                                            <td width="25%">Number of gaps</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_gaps" }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td width="25%">Length</td>
-                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"length"|pretty }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td width="25%">Distance in genome</td>
+                                            <td width="25%">Length of the inversion</td>
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"distance"|pretty }}</td>
                                         </tr>
                                         <tr>
@@ -110,7 +91,7 @@
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_samples" }}</td>
                                         </tr>
                                         <tr>
-                                            <td width="25%">Sample names</td>
+                                            <td width="25%">Sample in which it was observed</td>
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"sample_names" }}</td>
                                         </tr>
                                     </tbody>
@@ -118,71 +99,113 @@
                             </div>
                         </div>
 
-                        <!-- Side by side tables -->
-                        <div class="row">
-                            <div class="table-responsive col-md-6">
-                                <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
-                                    <div class="panel-heading">
-                                        First Oligo
-                                    </div>
-                                    <div class="panel-body">
-                                        <table class="table table-striped">
-                                            <tbody>
-                                                <tr>
-                                                    <td width="25%">Start</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_start"|pretty }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">End</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_end"|pretty }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">Primer</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_oligo_primer"|monospace|safe }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">Reference</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_oligo_reference"|monospace|safe }}</td>
-                                                </tr>
-                                            </tbody>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                        <!-- Summary of the inverted repeats -->
+                        <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
+                            <div class="panel-heading">
+                                Inverted Repeats
+                            </div>
+                            <div class="panel-body">
+                                <table class="table table-hover">
+                                    <thead id="{{ inversion }}-table">
+                                    <tbody>
+                                        <tr class="table-active">
+                                            <td width="25%" style="border: none; text-align:right;">First Inverted Repeat<br/>&nbsp;<br/>Second Inverted Repeat</td>
+                                            <td style="border: none;">
+                                                {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_seq"|monospace|safe }}<br />
+                                                {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"midline"|monospace|safe }}<br />
+                                                {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_seq"|monospace|safe }}</td>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
-                            <div class="table-responsive col-md-6">
-                                <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
-                                    <div class="panel-heading">
-                                        Second Oligo
+                            <div class="panel-body">
+                                <table class="table table-striped">
+                                    <thead id="{{ inversion }}-table">
+                                    <tbody>
+                                        <tr>
+                                            <td width="25%">Length of the inverted repeats</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"length"|pretty }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td width="25%">Number of mismatches</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_mismatches" }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td width="25%">Number of gaps</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_gaps" }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Side by side tables -->
+                            <div class="row">
+                                <div class="table-responsive col-md-6">
+                                    <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
+                                        <div class="panel-heading">
+                                            First Inverted Repeat
+                                        </div>
+                                        <div class="panel-body">
+                                            <table class="table table-striped">
+                                                <tbody>
+                                                    <tr>
+                                                        <td width="25%">Start</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_start"|pretty }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">End</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_end"|pretty }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">Primer</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_oligo_primer"|monospace|safe }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">Reference</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_oligo_reference"|monospace|safe }}</td>
+                                                    </tr>
+                                                </tbody>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                    <div class="panel-body">
-                                        <table class="table table-striped">
-                                            <tbody>
-                                                <tr>
-                                                    <td width="25%">Start</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_start"|pretty }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">End</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_end"|pretty }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">Primer</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_oligo_primer"|monospace|safe }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td width="25%">Reference</td>
-                                                    <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_oligo_reference"|monospace|safe }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                </div>
+
+                                <div class="table-responsive col-md-6">
+                                    <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
+                                        <div class="panel-heading">
+                                            Second Inverted Repeat
+                                        </div>
+                                        <div class="panel-body">
+                                            <table class="table table-striped">
+                                                <tbody>
+                                                    <tr>
+                                                        <td width="25%">Start</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_start"|pretty }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">End</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_end"|pretty }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">Primer</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_oligo_primer"|monospace|safe }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td width="25%">Reference</td>
+                                                        <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_oligo_reference"|monospace|safe }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it</small></h3>
+                        <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it. Here you can find a table with more information about <a href="{{ files|lookup:inversion|lookup:"genes" }}">the genes</a>, and <a href="{{ files|lookup:inversion|lookup:"functions" }}">their functions</a>.</small></h3>
 
                         <div style="width:1000px; margin:auto; background:#F1F1F1; border-radius:10px 20px; border:1px solid #c8c8c8; margin-top: 25px; margin-bottom: 25px;">
                         <svg width="1000" height="80">
@@ -223,6 +246,36 @@
                         {% endif %}
 
                         </div>
+
+                        <h3 style="margin-bottom: 25px">Activity <small class="text-muted">:: The relative proportion of this inversion's orientation in each sample. Two barplot are reported per samples as anvi'o compute the proportions for each end of an inversion. For more information, see <a href="https://anvio.org/help/main/programs/anvi-report-inversions/">the help page</a>.</small></h3>
+
+                        {% if meta.inversion_activity_computed %}
+                            {% for sample in inversions|lookup:inversion|lookup:"activity" %}
+                                <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 10px; margin-bottom: 10px">
+                                <svg width="1000" height="66">
+                                <text x="5" y="15" fill="black" style="font-weight:bold;">{{ sample }}</text>
+                                {% for oligo_primer in inversions|lookup:inversion|lookup:"activity"|lookup:sample %}
+                                    {% for oligo in inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer %}
+                                    <rect x="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"start" }}" y="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"y_coord" }}" width="{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"width" }}" height="20" style="fill:{{ inversions|lookup:inversion|lookup:"activity"|lookup:sample|lookup:oligo_primer|lookup:oligo|lookup:"color" }}"></rect>
+                                    {% endfor %}
+                                {% endfor %}
+                                </svg>
+                                </div>
+                            {% endfor %}
+                            <div style="width:300px; display:flex; justify-content: center; margin:auto; margin-top: 10px; margin-bottom: 10px">
+                                <svg width="300" height="50">
+                                <rect x="10" y="10" width="25" height="25" style="fill:#53B8BB"></rect>
+                                <text x="40" y="27" width="25" height="25" fill="black">Reference</text>
+                                <rect x="150" y="10" width="25" height="25" style="fill:#055052"></rect>
+                                <text x="180" y="27" width="25" height="25" fill="black">Inversion</text>
+                                </svg>
+                            </div>
+                        {% else %}
+                            <div style="width:1008px; display:flex; justify-content: center; margin:auto; background:#F1F1F1; border:1px solid #c8c8c8; margin-top: 10px; margin-bottom: 10px">
+                            <svg width="1000" height="66">
+                            <text x="50%" y="30" dominant-baseline="middle" text-anchor="middle" fill="gray" style="font-style:italic;">We don't know anything about the activity since you have used the flag `--skip-compute-inversion-activity` (#SAD)</text>
+                            </svg>
+                        {% endif %}
                     </div>
                 </div>
             </div>
