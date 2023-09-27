@@ -1,6 +1,7 @@
-The tRNA-seq workflow **is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflow run by the anvi'o script, %(anvi-run-workflow)s**.
+The tRNA-seq workflow is a [Snakemake](https://snakemake.readthedocs.io/en/stable/) workflow run by %(anvi-run-workflow)s.
 
-The workflow can run the following programs in order.
+The workflow can run the following programs in order:
+
 - [Illumina-utils](https://github.com/merenlab/illumina-utils), for merging paired-end reads and quality control
 - %(anvi-script-reformat-fasta)s, for making FASTA deflines anvio-compliant
 - %(anvi-trnaseq)s, for predicting tRNA sequences, structures, and modification sites in each sample
@@ -10,10 +11,11 @@ The workflow can run the following programs in order.
 
 ## Input
 
-The tRNA-seq workflow requires two files to run: a json-formatted config file and %(samples-txt)s. Generate the default config file, here called `config.json`, with the following command.
+The tRNA-seq workflow requires two files to run: a %(workflow-config)s config file and a %(samples-txt)s. You can obtain a 'default' config file for this workflow to further edit using the following command.
 
 {{ codestart }}
-anvi-run-workflow -w trnaseq --get-default-config config.json
+anvi-run-workflow -w trnaseq \
+                  --get-default-config config.json
 {{ codestop }}
 
 Different "rules," or steps, of the workflow can be turned on and off as needed in the config file. The workflow can be restarted at intermediate rules without rerunning prior rules that have already completed.
