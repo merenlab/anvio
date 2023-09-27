@@ -583,11 +583,11 @@
                                     <div class="col-12 d-flex input-align">
                                         <input class="mr-4" type="checkbox" id="autorotate_bin_labels" name="checkbox"
                                         value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" checked>
-                                        <div class="col-8 d-flex" id="bin_labels_angle" onchange="emit('bin-settings-changed');">
-                                            <div id="span_bin_labels_angle" style="display: none;">
+                                        <div class="d-flex" id="bin_labels_angle" onchange="emit('bin-settings-changed');">
+                                            <div class="col-8" id="span_bin_labels_angle" style="display: none;">
                                                 <div class="d-flex input-align">
-                                                    <span class="input-align d-flex mr-4">Angle: </span>
-                                                    <input class="form-control input-xs col-4 d-flex" size="5" value="0"/>
+                                                    <span class="input-align d-flex mr-4">Angle:</span>
+                                                    <input class="form-control input-xs col-9 d-flex" size="5" value="0"/>
                                                 </div>
                                             </div>
                                         </div>
@@ -595,13 +595,13 @@
                             </div>
                             <div class="form-group form-margin d-flex">
                                     <label class="col-3 settings-label d-flex" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
-                                    <div class="col-12 input-align d-flex">
-                                        <input class="mr-2" type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
+                                    <div class="col-7 input-align d-flex">
+                                        <input class="" type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                         <div id="grid_color" style="display: none !important;" class="colorpicker colorpicker-width"></div>
-                                        <div class="col-8 d-flex" id="grid_width" onchange="emit('bin-settings-changed');">
+                                        <div class="col-10 d-flex" id="grid_width" onchange="emit('bin-settings-changed');">
                                             <div class="d-flex">
-                                                <span class="grid_details display-settings" id="grid_width" onchange="emit('bin-settings-changed');" style="display: none;">Width:
-                                                    <input class="form-control input-xs d-flex ml-4"  size="2" value="1" />
+                                                <span class="grid_details display-settings" id="grid_width" onchange="emit('bin-settings-changed');" style="display: none; margin-left: -14px;">Width:
+                                                    <input class="form-control input-xs d-flex ml-4 col-7"  size="2" value="1" />
                                                 </span>
                                             </div>
                                         </div>
@@ -613,19 +613,22 @@
                                         <input class="mr-4" type="checkbox" id="show_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.shade_details').show();} else { $('.shade_details').hide(); }" checked>
                                         <div class="col-8" id="shade_fill_opacity" onchange="emit('bin-settings-changed')">
                                             <span class="shade_details input-align" style="display: flex;">Opacity:        
-                                                <input class="form-control input-xs col-2" type="number" min="0.0" max="1.0" step='0.1' value="0.1"  name="checkbox">
+                                                <input class="form-control input-xs col-2 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1"  name="checkbox">
                                             </span>
                                         </div>
                                     </div>
                             </div>
                             <div class="form-group form-margin d-flex" id="invert_shade_div">
-                                <Label class="col-3 settings-label" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </Label>
-                                <div class="col-6 d-flex">
-                                    <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color').show(); } else { $('.inverse_details, #inverse_color').hide(); }" style="float: left;" unchecked>
-                                    <div id="inverse_color"onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #000" color="#000"></div>
-                                    <span class="inverse_details" style="display: float; margin-left:5px;">Opacity:        
-                                        <input class="form-control form-control-sm" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                    </span> 
+                                <label class="col-3 settings-label d-flex" for="invert_shade_for_bins" data-help="invert-shade">Invert shade: </label>
+                                <div class="col-4 input-align d-flex">
+                                    <input type="checkbox" id="invert_shade_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.inverse_details, #inverse_color, #inverse_color_input').show(); } else { $('.inverse_details, #inverse_color, #inverse_color_input').hide(); }" style="float: left;" unchecked>
+                                    <div id="inverse_color" onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker mr-2" style="background-color: #000" color="#000"></div>
+                                    <div style="display: none !important;" id="inverse_color_input">
+                                        <span class="inverse_details ml-2 d-flex">
+                                            Opacity:        
+                                            <input class="form-control input-xs col-6 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
+                                        </span> 
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group form-margin d-flex">
@@ -660,10 +663,10 @@
                                     </div>
                             </div>
                             <span class="settings-header">Layer Labels</span>
-                            <div class="form-group form-margin d-flex pt-1">
-                                    <label class="col-2 settings-label d-flex" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
-                                    <div class="col-6 d-flex align-item-center input-align">
-                                        <input class="form-control input-xs col-3" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs">
+                            <div class="form-group form-margin d-flex pt-1 ">
+                                    <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
+                                    <div class="col-2 input-align d-flex mt-2">
+                                        <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
                                     </div>
                             </div>
 
@@ -677,7 +680,7 @@
                             <div class="form-group form-margin d-flex">
                                     <label class="col-3 settings-label d-flex" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
                                     <div class="col-8 input-dropdown-xs">
-                                            <select class="form-control col-3" id="draw_guide_lines">
+                                            <select class="form-control form-control-sm col-3" id="draw_guide_lines">
                                                 <option value="no" selected>No</option>
                                                 <option value="odd_even">Draw for every other leaf</option>
                                                 <option value="yes">Draw for every leaf</option>
