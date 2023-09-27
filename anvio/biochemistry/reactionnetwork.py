@@ -1368,11 +1368,11 @@ class ModelSEEDDatabase:
                 raise ConfigError(f"There is no such directory, '{modelseed_dir}'.")
         else:
             modelseed_dir = self.default_dir
-        # sha_path = os.path.join(modelseed_dir, 'sha.txt')
-        # if not os.path.isfile(sha_path):
-        #     raise ConfigError(
-        #         f"No required file named 'sha.txt' was found in the ModelSEED directory, '{modelseed_dir}'."
-        #     )
+        sha_path = os.path.join(modelseed_dir, 'sha.txt')
+        if not os.path.isfile(sha_path):
+            raise ConfigError(
+                f"No required file named 'sha.txt' was found in the ModelSEED directory, '{modelseed_dir}'."
+            )
         reactions_path = os.path.join(modelseed_dir, 'reactions.tsv')
         if not os.path.isfile(reactions_path):
             raise ConfigError(
@@ -1384,8 +1384,8 @@ class ModelSEEDDatabase:
                 f"No required file named 'compounds.tsv' was found in the ModelSEED directory, '{modelseed_dir}'."
             )
 
-        # with open(sha_path) as f:
-        #     self.sha = f.read().strip()
+        with open(sha_path) as f:
+            self.sha = f.read().strip()
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
         self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
 
@@ -2087,8 +2087,13 @@ class Constructor:
                     network.kegg_modelseed_aliases[kegg_reaction_id] = []
                     continue
                 for modelseed_reaction_id in modelseed_reaction_ids:
-                    # Retrieve the existing ModelSEEDReaction object.
-                    reaction = network.reactions[modelseed_reaction_id]
+                    try:
+                        # Retrieve the existing ModelSEEDReaction object.
+                        reaction = network.reactions[modelseed_reaction_id]
+                    except KeyError:
+                        # The ModelSEED reaction associated with the EC number did not have valid
+                        # data: for example, when the 'stoichiometry' field is empty.
+                        continue
                     # Associate the ModelSEED reaction with the newly encountered KO.
                     ko.reactions[modelseed_reaction_id] = reaction
                     # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
@@ -2117,8 +2122,13 @@ class Constructor:
                     network.ec_number_modelseed_aliases[ec_number] = []
                     continue
                 for modelseed_reaction_id in modelseed_reaction_ids:
-                    # Retrieve the existing ModelSEEDReaction object.
-                    reaction = network.reactions[modelseed_reaction_id]
+                    try:
+                        # Retrieve the existing ModelSEEDReaction object.
+                        reaction = network.reactions[modelseed_reaction_id]
+                    except KeyError:
+                        # The ModelSEED reaction associated with the EC number did not have valid
+                        # data: for example, when the 'stoichiometry' field is empty.
+                        continue
                     if modelseed_reaction_id in reaction.ec_number_aliases:
                         # A KEGG reaction associated with the newly encountered KO was also
                         # associated with the ModelSEED reaction. KO EC number aliases were
@@ -2523,7 +2533,7 @@ class Constructor:
             An object representation of the ModelSEED reaction.
 
         List[str]
-            ModelSEED compound IDs of reaction reactants and products.
+            ModelSEED compound IDs of reactants and products.
         """
         stoichiometry: str = modelseed_reaction_data['stoichiometry']
         if pd.isna(stoichiometry):

@@ -3,6 +3,8 @@
 
 import sys
 
+from argparse import Namespace
+
 from anvio import A as A, K as K, __version__ as VERSION
 
 from anvio.argparse import ArgumentParser
@@ -19,7 +21,12 @@ __provides__ = ["reaction-network"]
 __description__ = "Generate a metabolic reaction network in an anvi'o contigs database"
 
 
-def main():
+def main() -> None:
+    args = get_args()
+    constructor = Constructor(ko_dir=args.ko_dir, modelseed_dir=args.modelseed_dir)
+    constructor.make_network(contigs_db=args.contigs_db, overwrite_existing_network=args.overwrite_existing_network)
+
+def get_args() -> Namespace:
     parser = ArgumentParser(description=__description__)
     parser.add_argument(*A('contigs-db'), **K('contigs-db'))
     parser.add_argument(
@@ -41,9 +48,8 @@ def main():
         help="Overwrite an existing reaction network in the database with the newly computed network."
     )
     args = parser.get_args(parser)
+    return args
 
-    constructor = Constructor(ko_dir=args.ko_dir, modelseed_dir=args.modelseed_dir)
-    constructor.make_network(contigs_db=args.contigs_db, overwrite_existing_network=args.overwrite_existing_network)
 
 if __name__ == '__main__':
     try:
