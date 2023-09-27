@@ -14,7 +14,7 @@ do
 done
 
 INFO "Generating an EMPTY contigs database"
-anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --project-name "Contigs DB for anvi'o mini self-test"
+anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --project-name "Contigs DB for anvi'o mini self-test" $thread_controller
 
 INFO "Populating search tables in the latest contigs database using default HMM profiles"
 anvi-run-hmms -c $output_dir/CONTIGS.db $thread_controller
@@ -23,7 +23,7 @@ INFO "Importing gene function calls using 'interproscan' parser"
 anvi-import-functions -c $output_dir/CONTIGS.db -i $files/example_interpro_output.tsv -p interproscan
 
 INFO "Populating HMM hits tables in the latest contigs database using a mock HMM collection from an external directory"
-anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile
+anvi-run-hmms -c $output_dir/CONTIGS.db -H $files/external_hmm_profile $thread_controller
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 $output_dir/CONTIGS.db '.tables'
@@ -38,7 +38,8 @@ do
                  -c $output_dir/CONTIGS.db \
                  --cluster \
                  --profile-SCVs \
-                 --display-db-calls
+                 --display-db-calls \
+                 $thread_controller
 
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
