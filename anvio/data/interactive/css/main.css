@@ -429,7 +429,15 @@ html, body, #wrapper {
     margin-bottom: 5px;
 }
 
-.form-margin {
+.form-control-xs{
+    height: calc(1.5em + 0.5rem + 2px);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.800rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.margin {
     margin-bottom: 0px;
     align-items: center;
 }
@@ -866,7 +874,17 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .nav-item:active{
     color: var(--secondary-900);
     font-weight: 600;
-    background: blueviolet;
+    background: var(--bg-color-hover);
+}
+
+.new-bin-icon{
+    color: var(--success-600);
+    cursor: pointer; 
+}
+
+.del-bin-icon{
+    color: var(--danger-600);
+    cursor: pointer; 
 }
 
 
