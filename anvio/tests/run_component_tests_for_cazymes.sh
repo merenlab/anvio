@@ -8,6 +8,9 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 INFO "Setting up the anvi-export-locus test directory"
 cp $files/data/genomes/bacteria/*.db $output_dir
 
+INFO "Migrating all databases"
+anvi-migrate $output_dir/*db --migrate-quickly
+
 INFO "Running anvi-run-cazymes help menu"
 anvi-run-cazymes -h
 

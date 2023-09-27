@@ -16,6 +16,9 @@ cp $files/example_description.md                              $output_dir/
 cp $files/mock_data_for_pangenomics/group-information.txt     $output_dir/
 cd $output_dir/
 
+INFO "Migrating all databases"
+anvi-migrate *db --migrate-quickly
+
 INFO "Generating an anvi'o genomes storage"
 anvi-gen-genomes-storage -e external-genomes.txt \
                          -o TEST-GENOMES.db \
