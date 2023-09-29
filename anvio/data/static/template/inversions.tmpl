@@ -11,6 +11,12 @@
 
     <title>Anvi'o: Inversions Summary</title>
 
+    <!-- JQUERY -->
+    <script src=".html/js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src=".html/js/bootstrap.min.js"></script>
+
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
     <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
@@ -77,7 +83,7 @@
 
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
+                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
                                 <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
                                 </g>
@@ -98,8 +104,64 @@
                         <!-- If the metagenomic context is recovered, we also want to populate some `divs` that hold information
                              for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
                         {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                        <div class="hidden" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover">
-                        <p>Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}.
+                        <!-- Popover Template -->
+                        <div class="hidden popover fade in top col-12" role="tooltip" id="{{inversion}}-gene-{{ gene|lookup:'gene_callers_id' }}-popover">
+                            <div class="popover-body table-responsive">
+                                <div class="panel panel-default" style="margin-right:10px; margin-left:10px; width: fit-content;">
+                                    <div class="panel-heading mt-2" style="width: 100%;">
+                                        <h4>Gene Call</h4>
+                                    </div>
+                                    <div class="panel-body">
+                                        <table class="table table-striped" style="width: 100%; text-align: center;">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Source</th>
+                                                    <th>Length</th>
+                                                    <th>Direction</th>
+                                                    <th>Start</th>
+                                                    <th>Stop</th>
+                                                    <th>Call type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"source"|pretty }}</td>
+                                                    <td>2850</td>    
+                                                    <td>{{ gene|lookup:"direction"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"start"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"stop"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"call_type"|pretty }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="panel-heading mt-2" style="width: 100%;">
+                                        <h4>Annotations</h4>
+                                    </div>
+                                    <div class="panel-body">
+                                        <table class="table table-striped" style="width: 100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Source</th>
+                                                    <th>Accession</th>
+                                                    <th>Annotation</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for function in gene|lookup:"functions" %}
+                                                <tr>
+                                                    <td>{{ function|lookup:"source"|pretty }}</td>
+                                                    <td>{{ function|lookup:"accession"|pretty }}</td>
+                                                    <td>{{ function|lookup:"annotation"|pretty }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {% endfor %}
@@ -287,6 +349,37 @@
         </div>
     </section>
     {% endfor %}
-
+<style>
+    .popover {
+        width: 570px;
+        max-width:70%
+    }
+    .popover-table th, td {
+        padding: 0px 15px;
+        white-space:nowrap;
+    }
+    </style>
+<script type="text/javascript">
+    // Binding template to the Popover Content
+    $(document).ready(function () {
+        debugger;
+        $('[data-toggle="popover"]').popover({
+        sanitize: false,
+        html : true,
+        content: function() {
+            var content = $(this).attr("data-popover-content");
+            return $(content).children(".popover-body").html();
+        }
+    });
+})
+//Closing popover if click somewhere else on the page.
+$('body').on('click', function (e) {
+    $('[data-toggle="popover"]').each(function () {
+        if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.popover').has(e.target).length === 0) {
+            $(this).popover('hide');
+        }
+    });
+});
+</script>
 </body>
 </html>
