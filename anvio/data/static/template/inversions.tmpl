@@ -141,6 +141,7 @@
                                         <h4>Function Annotations</h4>
                                     </div>
                                     <div class="panel-body">
+                                        {% if gene|lookup:"has_functions" %}
                                         <table class="table table-striped" style="width: 100%;">
                                             <thead>
                                                 <tr>
@@ -159,6 +160,9 @@
                                                 {% endfor %}
                                             </tbody>
                                         </table>
+                                        {% else %}
+                                        <p>No known function in {{ meta|lookup:"gene_function_sources"|pretty_join:"or" }} :/
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

@@ -744,12 +744,22 @@ class Inversions:
 
 
     def process_inversion_data_for_HTML_summary(self):
+        """Take everything that is known, turn them into data that can be used from Django templates.
+
+        A lot of ugly things happening here to prepare coordinates for SVG objects to be displayed
+        or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
+        IT DON'T LOOK AT IT.
+        """
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'inversions',
                                 'num_inversions': len(self.consensus_inversions),
                                 'num_samples': len(self.profile_db_paths),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
-                                'inversion_activity_computed': not self.skip_compute_inversion_activity}
+                                'inversion_activity_computed': not self.skip_compute_inversion_activity,
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+        contigs_db.disconnect()
 
         self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
         self.summary['inversions'] = {}
@@ -813,8 +823,10 @@ class Inversions:
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
                     if gene['functions']:
+                        gene['has_functions'] = True
                         gene['COLOR'] = '#008000'
                     else:
+                        gene['has_functions'] = False
                         gene['COLOR'] = '#c3c3c3'
 
                     gene['RX'] = gene['start_t']
@@ -909,7 +921,6 @@ class Inversions:
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
 
-            
             for inversion_id in self.summary['inversions']:
                 for sample in self.summary['inversions'][inversion_id]['activity']:
                     for inversion_id, activity in sum_freq.items():
