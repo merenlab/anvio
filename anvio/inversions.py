@@ -812,6 +812,11 @@ class Inversions:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
 
+                    if gene['functions']:
+                        gene['COLOR'] = '#008000'
+                    else:
+                        gene['COLOR'] = '#c3c3c3'
+
                     gene['RX'] = gene['start_t']
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
                     gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width

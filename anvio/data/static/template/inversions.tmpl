@@ -84,8 +84,8 @@
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
                                 {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
-                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
-                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
+                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:{{ gene|lookup:"COLOR" }}"></rect>
+                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:{{ gene|lookup:"COLOR" }}"></polygon>
                                 </g>
 
                                 {% if forloop.counter0|even_odd == 0 %}
