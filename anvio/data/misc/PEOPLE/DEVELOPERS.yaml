@@ -332,6 +332,10 @@
   avatar: efogarty11.jpg
   bio: "Microbiologist developing computational and wet lab strategies to study horizontal gene transfer in the human gut microbiome."
   affiliations:
+    - title: Clinical Affairs Associate
+      inst: Theralink Technologies, Inc.
+      inst_link: https://theralink.com/
+      current: true
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
