@@ -968,8 +968,7 @@ class Inversions:
         self.progress.update('...')
 
         # now we will go through each consensus inversion to populate `self.genomic_context_surrounding_consensus_inversions`
-        # with gene calls and functions .. in the meantime, we will populate the `self.summary`,
-        # which will be used to render the static HTML output for the final results
+        # with gene calls and functions
         gene_calls_per_contig = {}
         inversions_with_no_gene_calls_around = set([])
         for entry in self.consensus_inversions:
@@ -1027,6 +1026,14 @@ class Inversions:
                 gene_call = gene_calls_in_contig[gene_callers_id]
                 gene_call['gene_callers_id'] = gene_callers_id
 
+                # add DNA sequence
+                gene_call['DNA_sequence'] = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+
+                # add AA sequence
+                where_clause = f'''gene_callers_id == {gene_callers_id}'''
+                aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
                 # if there are any functions at all, add that to the dict
                 if hits:
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
@@ -1035,8 +1042,6 @@ class Inversions:
 
             # done! `c` now goes to live its best life as a part of the main class
             self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
-
-
 
         contigs_db.disconnect()
         self.progress.end()
