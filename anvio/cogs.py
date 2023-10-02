@@ -42,6 +42,21 @@ P = terminal.pluralize
 
 J = lambda x, y: os.path.join(x, y)
 
+# if you add a new database version, please do not forget to add its reference here
+COG_REFERENCES = {'COG20': {
+                            'ref_text': 'Galperin et al. 2021',
+                            'doi_link': 'https://doi.org/10.1093/nar/gkaa1018',
+                           },
+                  'COG14': {
+                            'ref_text': 'Galperin et al. 2015',
+                            'doi_link': 'https://doi.org/10.1093/nar/gku1223',
+                           },
+                  'arCOG14': {
+                            'ref_text': 'Makarova, Wolf, and Koonin 2015',
+                            'doi_link': 'https://doi.org/10.3390%2Flife5010818',
+                             },
+}
+
 
 class Args():
     pass
@@ -116,6 +131,13 @@ class COGs:
                                   f"run the following command to setup the data files for the version you wish to use: "
                                   f"`anvi-setup-ncbi-cogs --cog-version {self.COG_version}`, and re-run the same command that brought "
                                   f"you here.")
+
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will annotate your database with the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
 
 
     def move_old_COG_data_to_its_new_location(self):
@@ -565,6 +587,13 @@ class COGsSetup:
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
+
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
 
 
     def get_formatted_db_paths(self):
