@@ -107,7 +107,7 @@
                         <!-- Popover Template -->
                         <div class="hidden popover fade in top col-12" role="tooltip" id="{{inversion}}-gene-{{ gene|lookup:'gene_callers_id' }}-popover">
                             <div class="popover-body table-responsive">
-                                <div class="panel panel-default" style="margin-right:10px; margin-left:10px; width: fit-content;">
+                                <div class="panel panel-default" id="popover-panel">
                                     <div class="panel-heading mt-2" style="width: 100%;">
                                         <h4>Gene Call</h4>
                                     </div>
@@ -162,9 +162,9 @@
                                             <tbody>
                                                 {% for function in gene|lookup:"functions" %}
                                                 <tr>
-                                                    <td>{{ function|lookup:"source"|pretty }}</td>
-                                                    <td>{{ function|lookup:"accession"|pretty }}</td>
-                                                    <td class="long" >{{ function|lookup:"function"|pretty }}</td>
+                                                    <td class="long">{{ function|lookup:"source"|pretty }}</td>
+                                                    <td class="short">{{ function|lookup:"accession"|pretty }}</td>
+                                                    <td class="long">{{ function|lookup:"function"|pretty }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
@@ -364,8 +364,11 @@
     {% endfor %}
 <style>
     .popover {
-        width: 580px;
-        max-width:70%
+        min-width: 600px;
+        max-width: 750px;
+    }
+    .popover-content{
+        padding: 0px;
     }
     .popover-table th, td {
         padding: 0px 15px;
@@ -379,9 +382,17 @@
         margin-left: 0px;
         margin-bottom: 10px;
     }
+    .short{
+        white-space:normal;
+        max-width: 100px;
+    }
     .long{
         white-space:normal;
         max-width: 300px;
+    }
+    #popover-panel{
+        border: none;
+        margin-bottom: 0px;
     }
 </style>
 <script type="text/javascript">
