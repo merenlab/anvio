@@ -96,7 +96,7 @@ class COGs:
             self.move_old_COG_data_to_its_new_location()
 
         # Check whether there is data for the version requested
-        data_available_for_cog_versions = [os.path.basename(d) for d in glob.glob(os.path.join(self.COG_base_dir, 'COG*'))]
+        data_available_for_cog_versions = [os.path.basename(d) for d in glob.glob(os.path.join(self.COG_base_dir, '*COG*'))]
         if not len(data_available_for_cog_versions):
             raise ConfigError("You don't seem to have any COG data setup in your COG data directory. Please first run "
                               "`anvi-setup-ncbi-cogs` to take care of that.")
