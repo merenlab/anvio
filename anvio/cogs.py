@@ -670,6 +670,7 @@ class COGsSetup:
         progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
 
         p_id_to_cog_id = {}
+        p_id_without_cog_id = set([])
 
         line_counter = 0
         for line in open(input_file_path, 'rU').readlines():
@@ -680,6 +681,23 @@ class COGsSetup:
                 progress.update(f"{line_counter * 100 / num_lines_in_file:.2f}%")
 
             fields = line.strip('\n').split(',')
+
+            # the arCOG14 release comes with a broken file. Starting on line 388147, all following lines
+            # include only the first 6 fields. What we need is in the 7th field (the COG ID), so we are
+            # basically forced to ignore all COGs after that. Sucks.
+            if self.COG_version == 'arCOG14' and line_counter >= 388147:
+                if line_counter == 388147: # once we hit this line, print the warning
+                    num_lines_to_end = num_lines_in_file - line_counter + 1
+                    self.run.warning(f"There is a problem with the {input_file_path} file downloaded from NBCI. "
+                                    f"Basically, starting from line {line_counter}, the arCOG ID number is not provided, which "
+                                    f"means that we cannot match those protein sequences to their COG IDs. The only solution we "
+                                    f"have at the moment is to skip the {num_lines_to_end} protein IDs that are affected by this "
+                                    f"issue. Sorry.")
+
+                # let's save the protein IDs that don't have an associated arCOG ID
+                p_id_without_cog_id.add(fields[2].replace('.', '_'))
+
+                continue
 
             # `p_id` should look just like the FASTA ids, and its location has changed between
             # 2014 release and 2020 release.
@@ -711,6 +729,11 @@ class COGsSetup:
         dictio.write_serialized_object(p_id_to_cog_id, output_file_path)
 
         progress.end()
+
+        if p_id_without_cog_id:
+                self.run.warning(f"There were {len(p_id_without_cog_id)} protein IDs without an associated COG ID. "
+                                 f"This may cause issues later, so please keep this warning in mind. Here are a few examples "
+                                 f"of the affected protein IDs: {', '.join(list(p_id_without_cog_id)[:5])}")
 
 
     def format_cog_names(self, input_file_path, output_file_path):
