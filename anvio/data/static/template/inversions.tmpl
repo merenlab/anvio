@@ -163,7 +163,7 @@
                                                 {% for function in gene|lookup:"functions" %}
                                                 <tr>
                                                     <td class="long">{{ function|lookup:"source"|pretty }}</td>
-                                                    <td class="short">{{ function|lookup:"accession"|pretty }}</td>
+                                                    <td>{{ function|lookup:"accession"|pretty }}</td>
                                                     <td class="long">{{ function|lookup:"function"|pretty }}</td>
                                                 </tr>
                                                 {% endfor %}
@@ -384,10 +384,6 @@
     .seq-buttons{
         margin-left: 0px;
         margin-bottom: 10px;
-    }
-    .short{
-        white-space:normal;
-        max-width: 100px;
     }
     .long{
         white-space:normal;
