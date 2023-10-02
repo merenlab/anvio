@@ -476,6 +476,28 @@ class COGsSetup:
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
                              },
+                        'arCOG14':
+                             {'ar14.arCOG.csv': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.arCOG.csv',
+                                  'func': self.format_p_id_to_cog_id_cPickle,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'PID-TO-CID.cPickle'},
+                              'ar14.arCOGdef.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.arCOGdef.tab',
+                                  'func': self.format_cog_names,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'COG.txt'},
+                              'funclass.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/funclass.tab',
+                                  'func': self.format_categories,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'CATEGORIES.txt'},
+                              'ar14.fa.gz': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.fa.gz',
+                                  'func': self.format_protein_db,
+                                  'type': 'database',
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
+                             },
                         'COG20':
                              {'cog-20.cog.csv': {
                                   'url': 'ftp://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.cog.csv',
