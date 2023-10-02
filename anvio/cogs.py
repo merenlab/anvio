@@ -204,7 +204,7 @@ class COGs:
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
-        if self.COG_version == 'COG14':
+        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
         elif self.COG_version == 'COG20':
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
@@ -287,7 +287,7 @@ class COGs:
                 # append annotation
                 annotations.append(cogs_data.cogs[COG_id]['annotation'])
 
-                if self.COG_version == 'COG14':
+                if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                     pass
                 elif self.COG_version == 'COG20':
                     if cogs_data.cogs[COG_id]['pathway']:
@@ -300,7 +300,7 @@ class COGs:
             # them later is possible. Am I embarrassed? Yes. Is there a better way of doing this efficiently? Absolutely. What time is it?
             # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
             # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
-            if self.COG_version == 'COG14':
+            if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
             elif self.COG_version == 'COG20':
@@ -412,7 +412,7 @@ class COGsData:
         self.progress.new('Initializing COGs Data')
         self.progress.update('Reading COG functions ...')
 
-        if self.COG_version == 'COG14':
+        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
         elif self.COG_version == 'COG20':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
