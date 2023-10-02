@@ -20,9 +20,10 @@ If you want to annotate your genes with a non-default version of %(cogs-data)s, 
 anvi-setup-ncbi-cogs --cog-version COG14
 {{ codestop }}
 
+### Choosing a different search program
+By default, this program uses `diamond` to search for hits to the database. You can also use `blastp`` to search, by running:
+
 {{ codestart }}
 anvi-run-ncbi-cogs -c %(contigs-db)s \
             --search-with blastp
 {{ codestop }}
-
-
