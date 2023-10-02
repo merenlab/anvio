@@ -33,11 +33,18 @@ SETUP_WITH_OUTPUT_DIR() {
         output_dir="$1"
     fi
 
-    if [ -z "$2"  ]
+    if [ "$2" == "interactive" ]
     then
         dry_run_controller=""
     else
         dry_run_controller="--dry-run"
+    fi
+
+    if [ -z "$3" ]
+    then
+        thread_controller=""
+    else
+        thread_controller="--num-threads $3"
     fi
 
     mkdir -p $output_dir
@@ -49,12 +56,22 @@ SETUP_WITH_OUTPUT_DIR() {
     echo
 
     INFO "Can has interactive displays?"
-    if [ -z "$2"  ]
+    if [ "$2" == "interactive"  ]
     then
         echo "Yes, anvi'o will try to show you interactive displays that will require you to come back to the terminal and press CTRL+C to continue"
         echo
     else
         echo "No interactive displays"
+        echo
+    fi
+
+    INFO "Do we use threadz yo?"
+    if [ -z "$3" ]
+    then
+        echo "NO THREADS FOR YOU! (well, ok. just one.)"
+        echo
+    else
+        echo "According to our sources, we will multi-thread all available commands with $thread_controller"
         echo
     fi
 

@@ -7,7 +7,7 @@ set -e
 pip install h5py==3.9.0
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 cd $output_dir
@@ -29,11 +29,11 @@ anvi-import-state -p PROFILE.db -n default -s P-214-state.json
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --split-hmm-layers --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
-anvi-setup-scg-taxonomy --redo-databases --num-threads 4
+anvi-setup-scg-taxonomy --redo-databases $thread_controller
 INFO "[$TEST] Running HMMs for Bacterial SCGs"
-anvi-run-hmms -c CONTIGS.db -I Bacteria_71 --num-threads 4
+anvi-run-hmms -c CONTIGS.db -I Bacteria_71 $thread_controller
 INFO "[$TEST] Running SCG taxonomy"
-anvi-run-scg-taxonomy -c CONTIGS.db --num-threads 4
+anvi-run-scg-taxonomy -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating SCG taxonomy"
 anvi-estimate-scg-taxonomy -p PROFILE.db -c CONTIGS.db -C FINAL
 INFO "[$TEST] Done!"
@@ -53,13 +53,13 @@ anvi-migrate PROFILE.db CONTIGS.db --migrate-quickly
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
-anvi-setup-scg-taxonomy --redo-databases --num-threads 4
+anvi-setup-scg-taxonomy --redo-databases $thread_controller
 INFO "[$TEST] Running HMMs"
-anvi-run-hmms -c CONTIGS.db -T 4
+anvi-run-hmms -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating genome completeness"
 anvi-estimate-genome-completeness -c CONTIGS.db
 INFO "[$TEST] Running SCG taxonomy"
-anvi-run-scg-taxonomy -c CONTIGS.db --num-threads 4
+anvi-run-scg-taxonomy -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating SCG taxonomy"
 anvi-estimate-scg-taxonomy -c CONTIGS.db
 INFO "[$TEST] Done!"

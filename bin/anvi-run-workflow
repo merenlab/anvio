@@ -19,8 +19,8 @@ __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-wo
 __tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics"]
 __description__ = ("Execute, manage, parallelize, and troubleshoot entire 'omics workflows and "
                    "chain together anvi'o and third party programs")
-__requires__ = ["samples-txt", "fasta-txt", "workflow-config", "hmm-list"]
-__provides__ = ["contigs-workflow", "metagenomics-workflow", "pangenomics-workflow", "phylogenomics-workflow", "trnaseq-workflow", "ecophylo-workflow", "sra-download-workflow"]
+__requires__ = ["workflow-config"]
+__provides__ = ["workflow"]
 
 run = terminal.Run()
 progress = terminal.Progress()
