@@ -83,7 +83,7 @@
 
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="top" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
+                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
                                 <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:{{ gene|lookup:"COLOR" }}"></rect>
                                 <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:{{ gene|lookup:"COLOR" }}"></polygon>
                                 </g>
@@ -128,7 +128,7 @@
                                                 <tr>
                                                     <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
                                                     <td>{{ gene|lookup:"source"|pretty }}</td>
-                                                    <td>2850</td>
+                                                    <td>{{ gene|lookup:"length"|pretty }}</td>
                                                     <td>{{ gene|lookup:"direction"|pretty }}</td>
                                                     <td>{{ gene|lookup:"start"|pretty }}</td>
                                                     <td>{{ gene|lookup:"stop"|pretty }}</td>
@@ -136,6 +136,15 @@
                                                 </tr>
                                             </tbody>
                                         </table>
+                                    </div>
+                                    <!-- DNA/AA buttons -->
+                                    <div class="row seq-buttons">
+                                        <div class="col-xs-1 gene-section">
+                                            <button type="button" class="btn btn-default btn-sm" onClick="show_sequence('{{ gene|lookup:'header'|pretty }}', '{{ gene|lookup:'DNA_sequence'|pretty }}')">DNA</button>
+                                        </div>
+                                        <div class="col-xs-1 gene-section">
+                                            <button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence('{{ gene|lookup:'header'|pretty }}', '{{ gene|lookup:'AA_sequence'|pretty }}')">AA</button>
+                                        </div>
                                     </div>
                                     <div class="panel-heading mt-2" style="width: 100%;">
                                         <h4>Function Annotations</h4>
@@ -155,7 +164,7 @@
                                                 <tr>
                                                     <td>{{ function|lookup:"source"|pretty }}</td>
                                                     <td>{{ function|lookup:"accession"|pretty }}</td>
-                                                    <td>{{ function|lookup:"function"|pretty }}</td>
+                                                    <td class="long" >{{ function|lookup:"function"|pretty }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
@@ -362,11 +371,22 @@
         padding: 0px 15px;
         white-space:nowrap;
     }
-    </style>
+    .gene-section{
+        max-width: 70px;
+        margin-right: 15px;
+    }
+    .seq-buttons{
+        margin-left: 0px;
+        margin-bottom: 10px;
+    }
+    .long{
+        white-space:normal;
+        max-width: 300px;
+    }
+</style>
 <script type="text/javascript">
     // Binding template to the Popover Content
     $(document).ready(function () {
-        debugger;
         $('[data-toggle="popover"]').popover({
         sanitize: false,
         html : true,
@@ -376,6 +396,7 @@
         }
     });
 })
+
 //Closing popover if click somewhere else on the page.
 $('body').on('click', function (e) {
     $('[data-toggle="popover"]').each(function () {
@@ -384,6 +405,40 @@ $('body').on('click', function (e) {
         }
     });
 });
+
+function show_sequence_modal(title, content) {
+  // remove previous modal window
+  $('.modal-sequence').modal('hide');
+  $('.modal-sequence').remove();
+
+  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
+      <div class="modal-dialog"> \
+          <div class="modal-content"> \
+              <div class="modal-header"> \
+                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
+                  <h4 class="modal-title">' + title + '</h4> \
+              </div> \
+              <div class="modal-body"> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+              </div> \
+              <div class="modal-footer"> \
+                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+              </div> \
+          </div> \
+      </div> \
+  </div>');
+  $('.modal-sequence').modal('show');
+  $('.modal-sequence textarea').trigger('click');
+}
+
+function show_sequence(header, sequence) {
+    show_sequence_modal('Gene DNA Sequence', header + '\n' + sequence);
+}
+
+function show_aa_sequence(header, aa_sequence) {
+    show_sequence_modal('Gene Amino Acid Sequence', header + '\n' + aa_sequence);
+}
+
 </script>
 </body>
 </html>
