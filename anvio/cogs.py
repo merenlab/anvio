@@ -941,7 +941,7 @@ class COGsSetup:
 
         elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             # Get check_.md5.txt file from anvio/misc
-            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/checksum.md5.txt')
+            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
 
         else:
             self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
@@ -966,7 +966,7 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             # Check file present in checksum
-            if file_name not in checksums.keys() and file_name != "checksum.md5.txt":
+            if file_name not in checksums.keys() and file_name != "checksum.md5.txt" and file_name != 'CHECKSUMS-FOR-COG-DATA.txt':
                 self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
                                  f"continue despite this, but this is unexpected.")
 
