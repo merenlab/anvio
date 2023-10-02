@@ -1050,13 +1050,15 @@ class Inversions:
                 gene_call['length'] = gene_call['stop'] - gene_call['start']
 
                 # add fasta header
-                gene_call['header'] = '|'.join([str(gene_callers_id),
-                                                f"contig:{contig_name}",
-                                                f"start:{gene_call['start']}",
-                                                f"stop:{gene_call['stop']}",
-                                                f"direction:{gene_call['direction']}",
-                                                f"rev_compd:{rev_compd}",
-                                                f"length:{gene_call['length']}"])
+                header = '|'.join([f"contig:{contig_name}",
+                                   f"start:{gene_call['start']}",
+                                   f"stop:{gene_call['stop']}",
+                                   f"direction:{gene_call['direction']}",
+                                   f"rev_compd:{rev_compd}",
+                                   f"length:{gene_call['length']}"])
+                gene_call['header'] = ' '.join([str(gene_callers_id), header]) 
+                print(gene_call['header'])
+
 
                 c.append(gene_call)
 
