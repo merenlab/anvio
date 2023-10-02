@@ -5,3 +5,7 @@ e7de08419101ee106d8a33df5636215a  cognames2003-2014.tab
 1a7affeeff04fe1347323c6777d4fe53  prot2003-2014.fa.gz
 9e6c49057b8af8c0a95975ab01244057  prot2003-2014.gi2gbk.tab
 9c2d2ff6667909f4e382abe16e447698  prot2003-2014.tab
+e26a6e63eeeb7987a2d008b43de0948a  ar14.arCOG.csv
+b0a881644179ff09bf823af46e6aebd0  ar14.arCOGdef.tab
+6d77a50b1440bcfb1eb07dabc74adb3c  ar14.fa.gz
+f6ce299dcc4ac32ffcbc2eff21e8413d  funclass.tab
