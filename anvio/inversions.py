@@ -1026,17 +1026,37 @@ class Inversions:
                 gene_call = gene_calls_in_contig[gene_callers_id]
                 gene_call['gene_callers_id'] = gene_callers_id
 
-                # add DNA sequence
-                gene_call['DNA_sequence'] = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                # if there are any functions at all, add that to the dict
+                if hits:
+                    gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+
+                # While we are here, let's add more info about each gene
+                # DNA sequence:
+                dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                rev_compd = None
+                if gene_call['direction'] == 'f':
+                    gene_call['DNA_sequence'] = dna_sequence
+                    rev_compd = False
+                else:
+                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                    rev_compd = True
 
                 # add AA sequence
                 where_clause = f'''gene_callers_id == {gene_callers_id}'''
                 aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
                 gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
 
-                # if there are any functions at all, add that to the dict
-                if hits:
-                    gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+                # gene length
+                gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                # add fasta header
+                gene_call['header'] = '|'.join([str(gene_callers_id),
+                                                f"contig:{contig_name}",
+                                                f"start:{gene_call['start']}",
+                                                f"stop:{gene_call['stop']}",
+                                                f"direction:{gene_call['direction']}",
+                                                f"rev_compd:{rev_compd}",
+                                                f"length:{gene_call['length']}"])
 
                 c.append(gene_call)
 
