@@ -12,3 +12,10 @@ If you already have a %(cogs-data)s artifact and are trying to redownload this d
 {{ codestart }}
 anvi-setup-ncbi-cogs --reset
 {{ codestop }}
+
+### Choosing a different database version
+{{ codestart }}
+anvi-setup-ncbi-cogs --cog-version COG14
+{{ codestop }}
+
+Not sure which versions of %(cogs-data)s are available? You can type something random after the `--cog-version` parameter to see the options.
