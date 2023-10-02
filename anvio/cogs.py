@@ -689,7 +689,7 @@ class COGsSetup:
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
-            elif self.COG_version == 'COG20':
+            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
                 try:
                     p_id = fields[2].replace('.', '_')
                     COG = fields[6]
@@ -734,6 +734,17 @@ class COGsSetup:
                 COG, function, name = line.strip('\n').split('\t')
                 name = ''.join([i if ord(i) < 128 else '' for i in name])
                 output.write('\t'.join([COG, ', '.join(list(function)), name]) + '\n')
+            elif self.COG_version == 'arCOG14':
+                # example line from arCOG 2014:
+                #
+                # arCOG00024	C	GlpK	Glycerol kinase	COG00554	pfam00370,pfam02782	cd07786	TIGR01311
+                COG, category, gene, function, superclust, pfam_profiles, cdd_profiles, tigrfam_profiles = line.strip('\n').split('\t')
+
+                function = ''.join([i if ord(i) < 128 else '' for i in function])
+                function = function if not gene else f"{function} ({gene})"
+
+                output.write('\t'.join([COG, ', '.join(list(category)), function]) + '\n')
+
             elif self.COG_version == 'COG20':
                 # example line from 2020:
                 #
@@ -766,7 +777,7 @@ class COGsSetup:
 
             if self.COG_version == 'COG14':
                 category, description = line.strip('\n').split('\t')
-            elif self.COG_version == 'COG20':
+            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
                 category, _, description = line.strip('\n').split('\t')
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
@@ -876,7 +887,7 @@ class COGsSetup:
         if self.COG_version == 'COG20':
             input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
-        elif self.COG_version == 'COG14':
+        elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             # Get check_.md5.txt file from anvio/misc
             input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/checksum.md5.txt')
 
