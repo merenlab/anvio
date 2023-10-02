@@ -1056,9 +1056,7 @@ class Inversions:
                                    f"direction:{gene_call['direction']}",
                                    f"rev_compd:{rev_compd}",
                                    f"length:{gene_call['length']}"])
-                gene_call['header'] = ' '.join([str(gene_callers_id), header]) 
-                print(gene_call['header'])
-
+                gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
                 c.append(gene_call)
 
