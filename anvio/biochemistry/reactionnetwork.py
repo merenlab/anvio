@@ -1145,7 +1145,7 @@ class KODatabase:
             ko_dir = KODatabase.default_dir
             parent_dir = os.path.dirname(ko_dir)
             if not os.path.exists(parent_dir):
-                os.mkdir(parent_dir)
+                os.makedirs(parent_dir)
         if os.path.exists(ko_dir):
             if reset:
                 shutil.rmtree(ko_dir)
@@ -1154,7 +1154,7 @@ class KODatabase:
                     f"The KO database directory, '{ko_dir}', already exists. 'reset' can be used "
                     "to remove the database at this location and set it up again."
                 )
-        os.mkdir(ko_dir)
+        os.makedirs(ko_dir)
 
         if num_threads == 1:
             run.warning(
