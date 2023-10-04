@@ -6,6 +6,7 @@ import os
 import copy
 import argparse
 import numpy as np
+import xml.etree.ElementTree as ET
 from collections import OrderedDict, Counter
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -75,6 +76,9 @@ class Inversions:
         # consensus inversions for downstream fun
         self.genomic_context_surrounding_consensus_inversions = {}
 
+        # in which we will store the motif info
+        self.motifs = {}
+
         # in which we will store all the static HTML output related stuff
         self.summary = {}
 
@@ -132,7 +136,7 @@ class Inversions:
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
 
-        # paramters for motif search
+        # parameters for motif search
         self.skip_search_for_motifs = A('skip_search_for_motifs')
         self.num_of_motifs = A('num_of_motifs')
 
@@ -148,7 +152,7 @@ class Inversions:
         self.target_region_end = A('target_region_end')
 
         # these are the keys we are interested in finding in input files offered to reconstruct
-        # inverson profiles via the --pre-computed-inversions flag. NOTE that these keys are not ALL
+        # inversion profiles via the --pre-computed-inversions flag. NOTE that these keys are not ALL
         # keys that are used to build inversion profiles in the code, but the minimum set that
         # co-occur both sample-specific and consensus inversion reports. this way, the user can
         # attempt to characterize the activity of inversions found in a single sample if they wish:
@@ -936,6 +940,13 @@ class Inversions:
                                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
                                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
 
+        # add motif info
+        if self.skip_search_for_motifs:
+            pass
+        else:
+            for inversion_id in self.summary['inversions']:
+                self.summary['inversions'][inversion_id]['motifs'] =  copy.deepcopy(self.motifs[inversion_id]['motifs'])
+
 
     def recover_genomic_context_surrounding_inversions(self):
         """Learn about what surrounds the consensus inversion sites"""
@@ -1252,7 +1263,88 @@ class Inversions:
         # search for as many motifs as inversions. Can be time consuming.
         self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = self.num_of_motifs)
 
+        # parse the output xml
+        self.parse_motif_output(meme_output, meme_log)
+
         self.run.info('Reporting motifs in inverted repeats', output, nl_after=1)
+
+
+    def parse_motif_output(self, meme_output_path, meme_log):
+        """ After searching for conserved motifs in the inverted repeats, we want to report 
+        the motif's group for each inversions. Then we can see in the report (txt summary and 
+        html output) which inversions are linked together by site-specific invertase
+        """
+
+        # parse the xml output
+        tree = ET.parse(os.path.join(meme_output_path, "meme.xml"))
+        root = tree.getroot()
+
+        # for each inversion, we created 4 sequences. And MEME gave them a different id. 
+        # it looks like this
+        # INV_0001_first_IR: sequence_0
+        # INV_0001_first_IR_rc: sequence_1
+        # INV_0001_second_IR: sequence_2
+        # INV_0001_second_IR_rc: sequence_3
+        # ...
+        # we need to associate MEME id with each inversion id
+        for seq in root.findall('training_set/sequence'):
+            inversion_id = seq.get('name').split("_")[0] + "_" + seq.get('name').split("_")[1]
+            if inversion_id not in self.motifs:
+                self.motifs[inversion_id] = {'seq_list': [seq.get('id')]}
+            else:
+                self.motifs[inversion_id]['seq_list'].append(seq.get('id'))
+
+        # collect the motif regex and path to output figure
+        motif_dict = {}
+        is_path_to_logo = False
+        for motif in root.findall('motifs/motif'):
+            motif_id = motif.get('id')
+
+            # get the regex
+            regex = motif.find('regular_expression')
+            motif_dict[motif_id] = {'regex': regex.text.replace('\n', '', 2),
+                                    'logo_path': None}
+
+            # add the path to the logo image
+            logo_name_png = ''.join(['logo', motif.get('id').split('motif_')[1], '.png'])
+            path_to_logo = os.path.join('PER_INV', 'ALL_INVERSIONS', 'MEME', logo_name_png)
+            if os.path.isfile(os.path.join(self.output_directory, path_to_logo)):
+                motif_dict[motif_id]['logo_path'] = path_to_logo
+                is_path_to_logo = True
+
+        # no png logo? look at MEME log file
+        # may need to add ghostscript to list of mamba package
+        if not is_path_to_logo:
+            self.run.warning(None, header="SEARCHING DNA MOTIFS WITH MEME", lc="yellow")
+            self.run.info_single(f"MEME was not able to generate the motif's logo in png format, which means that you are missing "
+                                 f"some cool logo pictures in the final html summary. The logos are still available in .eps format here: "
+                                 f"{meme_output_path}. If you want to fix this issue, you should look at the log output of MEME: {meme_log}",
+                                 level=0, nl_after=1)
+
+        # anvi'o provides 4 sequences per inversions site. we want to keep only 
+        # motifs that occur on all 4 sequences.
+        for sites in root.findall('scanned_sites_summary/scanned_sites'):
+            for inversion_id, inversion_dict in self.motifs.items():
+                if 'motifs' not in self.motifs[inversion_id]:
+                    self.motifs[inversion_id]['motifs'] = {}
+                if sites.get('sequence_id') in inversion_dict['seq_list']:
+                    motif_per_seq = {}
+                    for site in sites:
+                        motif_id = site.get('motif_id')
+                        motif_per_seq[motif_id] = {'motif_id': motif_id, **motif_dict[motif_id]}
+
+                    if not self.motifs[inversion_id]['motifs']:
+                        self.motifs[inversion_id]['motifs'] = motif_per_seq
+                    else:
+                        intersection_dict = {key: motif_per_seq[key] for key in self.motifs[inversion_id]['motifs'].keys() & motif_per_seq.keys()}
+                        self.motifs[inversion_id]['motifs'] = intersection_dict
+
+        # add motif info to consensus table
+        #for inversion_id, motif in self.motifs.items():
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+            motif_list = list(self.motifs[inversion_id]['motifs'])
+            entry['motif_group'] = ','.join(motif_list)
 
 
     @staticmethod
@@ -1633,7 +1725,7 @@ class Inversions:
 
         # here we will process and summarize all inversion data to populate `self.summary`
         # so it is ready to be used to render a static HTML output
-        self.process_inversion_data_for_HTML_summary()
+        # self.process_inversion_data_for_HTML_summary()
 
         # Do all reporting
         self.report()
@@ -1748,21 +1840,6 @@ class Inversions:
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
-        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start',
-                   'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length',
-                   'distance', 'num_samples', 'sample_names', 'first_oligo_primer',  'first_oligo_reference',
-                   'second_oligo_primer', 'second_oligo_reference']
-
-        ################################################################################################
-        # Consensus inversions
-        ################################################################################################
-        output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
-        with open(output_path, 'w') as output:
-            output.write('\t'.join(headers) + '\n')
-            for v in self.consensus_inversions:
-                output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
-        self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
-
         ################################################################################################
         # All stretches considered
         ################################################################################################
@@ -1782,8 +1859,24 @@ class Inversions:
         self.search_for_motifs()
 
         ################################################################################################
+        # Consensus inversions
+        ################################################################################################
+        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start',
+                   'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length',
+                   'distance', 'num_samples', 'sample_names', 'motif_group', 'first_oligo_primer',
+                   'first_oligo_reference', 'second_oligo_primer', 'second_oligo_reference']
+
+        output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
+        with open(output_path, 'w') as output:
+            output.write('\t'.join(headers) + '\n')
+            for v in self.consensus_inversions:
+                output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
+        self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
+
+        ################################################################################################
         # Generate HTML summary
         ################################################################################################
+        self.process_inversion_data_for_HTML_summary()
         SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate()
 
 

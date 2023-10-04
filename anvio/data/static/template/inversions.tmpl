@@ -117,6 +117,7 @@
                                                 <tr>
                                                     <th>ID</th>
                                                     <th>Source</th>
+                                                    <th>Contig</th>
                                                     <th>Length</th>
                                                     <th>Direction</th>
                                                     <th>Start</th>
@@ -128,6 +129,7 @@
                                                 <tr>
                                                     <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
                                                     <td>{{ gene|lookup:"source"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"contig"|pretty }}</td>
                                                     <td>{{ gene|lookup:"length"|pretty }}</td>
                                                     <td>{{ gene|lookup:"direction"|pretty }}</td>
                                                     <td>{{ gene|lookup:"start"|pretty }}</td>
@@ -239,6 +241,14 @@
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"distance"|pretty }}</td>
                                         </tr>
                                         <tr>
+                                            <td width="25%">Start position</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_end"|pretty }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td width="25%">Stop position</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_start"|pretty }}</td>
+                                        </tr>
+                                        <tr>
                                             <td width="25%">Number of samples observed</td>
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_samples" }}</td>
                                         </tr>
@@ -256,6 +266,7 @@
                             <div class="panel-heading">
                                 Inverted Repeats
                             </div>
+
                             <div class="panel-body">
                                 <table class="table table-hover">
                                     <thead id="{{ inversion }}-table">
@@ -355,6 +366,34 @@
                                     </div>
                                 </div>
                             </div>
+                                
+                            <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
+                                <div class="panel-heading">
+                                    Motifs
+                                </div>
+                                <div class="panel-body image-panel">
+                                    <table class="table">
+                                        <tbody>
+                                                <tr>
+                                                    <td width="25%"><h5>Motif group</h5></td>
+                                                    <td><h5>Motif logo</h5></td>
+                                                </tr>
+                                                {% for motif in inversions|lookup:inversion|lookup:"motifs" %}
+                                                        <tr>
+                                                            <td width="15%" style="vertical-align:middle;">{{ motif }}</td>
+                                                            <td class="extra-long>">
+                                                            {% if inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' == None %}
+                                                                MEME was not able to generate the motif's logo in png format, which means that you are missing cool logo pictures in this summary. The logos are still available in .eps format in the ouput directory.
+                                                            {% else %}
+                                                                <img src="{{ inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' }}" alt="Motif logo" style="height:120px;">
+                                                            </td>
+                                                            {% endif %}
+                                                        </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -389,9 +428,18 @@
         white-space:normal;
         max-width: 300px;
     }
+    .extra-long{
+        white-space:normal;
+        max-width: 900px;
+    }
     #popover-panel{
         border: none;
         margin-bottom: 0px;
+    }
+    .image-panel{
+        width: fit-content;
+        display: flex;
+        justify-content: left;
     }
 </style>
 <script type="text/javascript">
