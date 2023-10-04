@@ -117,6 +117,7 @@
                                                 <tr>
                                                     <th>ID</th>
                                                     <th>Source</th>
+                                                    <th>Contig</th>
                                                     <th>Length</th>
                                                     <th>Direction</th>
                                                     <th>Start</th>
@@ -128,6 +129,7 @@
                                                 <tr>
                                                     <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
                                                     <td>{{ gene|lookup:"source"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"contig"|pretty }}</td>
                                                     <td>{{ gene|lookup:"length"|pretty }}</td>
                                                     <td>{{ gene|lookup:"direction"|pretty }}</td>
                                                     <td>{{ gene|lookup:"start"|pretty }}</td>
