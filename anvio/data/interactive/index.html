@@ -141,7 +141,7 @@
                             <div class="sidebar-toggle mb-3">
                                 <span class="menu-toggle mr-2">Hide</span>
                             </div>
-                            <span class="settings-header col-11">Items</span>
+                            <span class="settings-header">Items</span>
                             <div class="form-group form-margin">
                                     <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
                                     <div class="col-10">
@@ -170,7 +170,7 @@
                                     </div>
                             </div>
                             <div class="ml-2">
-                                <span class="settings-secondary-header col-11">Display</span>
+                                <span class="settings-secondary-header">Display</span>
 
                                 <div id="table_layers_container" class="mt-3">
                                     <table id="table_layers">
@@ -231,7 +231,7 @@
                                     </table>
                                 </div>
                             </div>
-                            <span class="settings-header col-11 mt-5">Layers</span>
+                            <span class="settings-header mt-5">Layers</span>
                             <div class="ml-2">
                                 <div id="sample-settings" class="form-horizontal">
                                     <div class="form-group form-margin">
@@ -250,12 +250,12 @@
                                             </div>
                                     </div>
                                     
-                                    <span class="settings-secondary-header col-11">Layer Groups</span>
+                                    <span class="settings-secondary-header">Layer Groups</span>
                                     <div id="sample_groups_container" class="row mt-3 ml-1">
         
                                     </div>
                                     <div class="clearfix"></div>
-                                    <span class="settings-secondary-header col-11">Display</span>
+                                    <span class="settings-secondary-header">Display</span>
                                     <div id="table_samples_container" class="mt-3">
                                         <table id="table_samples">
                                             <thead>
@@ -332,7 +332,7 @@
                                 </div>
                             </div>
 
-                            <span class="settings-header col-11 mt-5">Legends</span>
+                            <span class="settings-header mt-5">Legends</span>
                             <div class="tab-pane fade show mt-3 col-11" id="legend_settings">
                             </div>
                         </div>
@@ -416,7 +416,7 @@
                         </div>
                         <div id="additional_settings">
                             <span class="settings-header mt-3">Items</span>
-                            <div class="form-group form-margin d-flex pt-1">
+                            <div class="form-group form-margin d-flex pt-1 mt-3">
                                     <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
                                     <div class="col-6 d-flex align-item-center input-align">
                                         <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs col-3">
@@ -500,139 +500,141 @@
                                     </div>
                             </div>
 
-
-                            <span class="settings-secondary-header">Dendrogram</span>
-                            <div class="form-group form-margin circlephylogram_settings d-flex mt-3 pt-1">
-                                    <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
-                                    <div class="col-6 form-inline input-align">
-                                        <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
-                                        <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin circlephylogram_settings d-flex">
-                                    <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
-                                    <div class="col-6 d-flex input-align">
-                                        <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                    <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
-                                    <div class="col-6 d-flex input-align">
-                                        <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                    <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
-                                    <div class="col-6 d-flex input-align">
-                                        <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin d-flex">
-                                    <label class="col-3 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
-                                    <div class="col-2 d-flex">
-                                        <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
-                                    </div>
-                            </div>
-
-                        <div class="manual-mode">    
-                        <span class="settings-header" >Branch Support</span>
-                            <div class="form-group form-margin d-flex" >
-                                <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
-                                <div class="col-3 d-flex">
-                                    <input type="checkbox"
-                                            onclick="checkMaxSupportValueSeen();"
-                                            onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
-                                            id="support_value_checkbox"
-                                            value="true"
-                                            >
-                                    </input>
+                            <div class="ml-3">
+                                <span class="settings-secondary-header">Dendrogram</span>
+                                <div class="form-group form-margin circlephylogram_settings d-flex mt-3 pt-1">
+                                        <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
+                                        <div class="col-6 form-inline input-align">
+                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
+                                            <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
+                                        </div>
                                 </div>
-                            </div>
-                            <div id="max_branch_support_value_seen_is_zero_warning" class="pt-1 alert alert-info" style="display: none;" >
-                                <span class="fa fa-info-circle mr-1" aria-hidden="true"></span> You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
-                                tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
-                            </div>
-                            <div id="support_value_params">
-                                <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
-                                    <div class="col-md-8">
-                                        <input type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'> to
-                                        <input type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
-                                    </div>
+                                <div class="form-group form-margin circlephylogram_settings d-flex">
+                                        <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
+                                        </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
-                                    <div class="col-md-8">
+                                <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
+                                        <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
+                                        <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
+                                        <div class="col-6 d-flex input-align">
+                                            <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
+                                        <div class="col-2 d-flex">
+                                            <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
+                                        </div>
+                                </div>
+
+                            <div class="manual-mode">    
+                            <span class="settings-header" >Branch Support</span>
+                                <div class="form-group form-margin d-flex" >
+                                    <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
+                                    <div class="col-3 d-flex">
                                         <input type="checkbox"
-                                               id="support_display_symbol"
-                                               style="float: left;"
-                                               name="show-symbol"
-                                               onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
-                                               >
+                                                onclick="checkMaxSupportValueSeen();"
+                                                onchange="if (this.checked) { $('#support_value_params').show();} else { $('#support_value_params').hide(); } "
+                                                id="support_value_checkbox"
+                                                value="true"
+                                                >
+                                        </input>
                                     </div>
                                 </div>
-                                <div class='form-group form-margin' id='show_symbol_options'>
-                                    <div class="form-group form-margin" id="support_symbol">
-                                        <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                <div id="max_branch_support_value_seen_is_zero_warning" class="pt-1 alert alert-info" style="display: none;" >
+                                    <span class="fa fa-info-circle mr-1" aria-hidden="true"></span> You don't seem to have any support values to display :/ If you are seeing a proper phylogenetic or phylogenomic
+                                    tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
+                                </div>
+                                <div id="support_value_params">
+                                    <div class="form-group form-margin">
+                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
                                         <div class="col-md-8">
-                                            <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
+                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'> to
+                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
                                         <div class="col-md-8">
-                                            <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            <input type="checkbox"
+                                                id="support_display_symbol"
+                                                style="float: left;"
+                                                name="show-symbol"
+                                                onchange="if (this.checked) { $('#show_symbol_options').show();} else { $('#show_symbol_options').hide(); } "
+                                                >
+                                        </div>
+                                    </div>
+                                    <div class='form-group form-margin' id='show_symbol_options'>
+                                        <div class="form-group form-margin" id="support_symbol">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                            <div class="col-md-8">
+                                                <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                            <div class="col-md-8">
+                                                <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-margin">
+                                            <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
+                                            <div class="col-md-8">
+                                                <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_symbol_size" data-help="support-value-input">Max Symbol Size:</label>
+                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
                                         <div class="col-md-8">
-                                            <input type="number" id="support_symbol_size" style="width: 60px;" value='12' max='20' min='1'>
+                                            <input type="checkbox"
+                                                id="support_display_number"
+                                                style="float: left;"
+                                                name="show-number"
+                                                onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
+                                                >
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id='show_font_size'>
+                                        <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin" id='show_text_rotation'>
+                                        <label class="col-md-4 settings-label" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                        <div class="col-md-8">
+                                            <input type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
-                                    <div class="col-md-8">
-                                        <input type="checkbox"
-                                               id="support_display_number"
-                                               style="float: left;"
-                                               name="show-number"
-                                               onchange="if (this.checked) { $('#show_font_size').show();} else { $('#show_font_size').hide(); } "
-                                               >
-                                    </div>
+                            </div>
+                                <span class="settings-secondary-header">Performance</span>
+                                <div class="form-group form-margin d-flex pt-1">
+                                        <label class="col-3 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>
+                                        <div class="col-6 d-flex">
+                                            <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
+                                        </div>
                                 </div>
-                                <div class="form-group form-margin" id='show_font_size'>
-                                    <label class="col-md-4 settings-label" for="support_font_size" data-help="support-value-input">Font Size:</label>
-                                    <div class="col-md-8">
-                                        <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
-                                    </div>
-                                </div>
-                                <div class="form-group form-margin" id='show_text_rotation'>
-                                    <label class="col-md-4 settings-label" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
-                                    <div class="col-md-8">
-                                        <input type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
-                                    </div>
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
+                                        <div class="col-8 input-dropdown-xs">
+                                                <select class="form-control form-control-sm col-3" id="draw_guide_lines">
+                                                    <option value="no" selected>No</option>
+                                                    <option value="odd_even">Draw for every other leaf</option>
+                                                    <option value="yes">Draw for every leaf</option>
+                                                </select>
+                                        </div>
                                 </div>
                             </div>
-                        </div>
-                            <span class="settings-secondary-header">Performance</span>
-                            <div class="form-group form-margin d-flex pt-1">
-                                    <label class="col-3 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>
-                                    <div class="col-6 d-flex">
-                                        <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin d-flex">
-                                    <label class="col-3 settings-label d-flex" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
-                                    <div class="col-8 input-dropdown-xs">
-                                            <select class="form-control form-control-sm col-3" id="draw_guide_lines">
-                                                <option value="no" selected>No</option>
-                                                <option value="odd_even">Draw for every other leaf</option>
-                                                <option value="yes">Draw for every leaf</option>
-                                            </select>
-                                    </div>
-                            </div>
+
                             <span class="settings-header">Layers</span>
                             <div class="form-group form-margin d-flex pt-1">
                                 <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
@@ -658,33 +660,35 @@
                                         <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
                                     </div>
                             </div>
-                            <div>
-                                <span class="settings-secondary-header">Tree/Dendrogram</span>
-                                <div class="form-group form-margin d-flex">
-                                        <label class="col-3 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
-                                        <div class="col-3 d-flex align-item-center input-align">
-                                            <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin d-flex">
-                                        <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
-                                        <div class="col-6 d-flex">
-                                            <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin d-flex">
-                                        <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
-                                        <div class="col-6 d-flex">
-                                            <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
-                                        </div>
-                                </div>
-                            </div>
-                            <span class="settings-secondary-header">Labels</span>
-                            <div class="form-group form-margin d-flex pt-1 ">
-                                    <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
-                                    <div class="col-2 input-align d-flex mt-2">
-                                        <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
+                            <div class="ml-3">
+                                <div>
+                                    <span class="settings-secondary-header">Tree/Dendrogram</span>
+                                    <div class="form-group form-margin d-flex mt-3">
+                                            <label class="col-3 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
+                                            <div class="col-3 d-flex align-item-center input-align">
+                                                <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
+                                            </div>
                                     </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
+                                            <div class="col-6 d-flex">
+                                                <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin d-flex">
+                                            <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
+                                            <div class="col-6 d-flex">
+                                                <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
+                                            </div>
+                                    </div>
+                                </div>
+                                <span class="settings-secondary-header">Labels</span>
+                                <div class="form-group form-margin d-flex pt-1 ">
+                                        <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
+                                        <div class="col-2 input-align d-flex mt-2">
+                                            <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
+                                        </div>
+                                </div>
                             </div>
                         </div>
                     </div>
