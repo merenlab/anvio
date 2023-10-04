@@ -287,7 +287,7 @@ function initData() {
 
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
-                    <div class="mr-5 col-3" style="">
+                    <div class="mr-5 col-5">
                         <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
                         <label onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
@@ -374,9 +374,8 @@ function switchUserInterfaceMode(project, title) {
 
     console.log("The running mode for the interface: " + mode);
 
-    // move MODE TEXT into title tab
     $('.' + mode + '-mode').show();
-    $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
+    $('<b>' + mode + '-mode' + '<b/>').appendTo('#title-panel');
 
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
