@@ -744,12 +744,22 @@ class Inversions:
 
 
     def process_inversion_data_for_HTML_summary(self):
+        """Take everything that is known, turn them into data that can be used from Django templates.
+
+        A lot of ugly things happening here to prepare coordinates for SVG objects to be displayed
+        or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
+        IT DON'T LOOK AT IT.
+        """
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'inversions',
                                 'num_inversions': len(self.consensus_inversions),
                                 'num_samples': len(self.profile_db_paths),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
-                                'inversion_activity_computed': not self.skip_compute_inversion_activity}
+                                'inversion_activity_computed': not self.skip_compute_inversion_activity,
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+        contigs_db.disconnect()
 
         self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
         self.summary['inversions'] = {}
@@ -811,6 +821,13 @@ class Inversions:
                     else:
                         gene_arrow_width = default_gene_arrow_width
                         gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
+
+                    if gene['functions']:
+                        gene['has_functions'] = True
+                        gene['COLOR'] = '#008000'
+                    else:
+                        gene['has_functions'] = False
+                        gene['COLOR'] = '#c3c3c3'
 
                     gene['RX'] = gene['start_t']
                     gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
@@ -904,7 +921,6 @@ class Inversions:
                 # now we append the activity to the summary
                 self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
 
-            
             for inversion_id in self.summary['inversions']:
                 for sample in self.summary['inversions'][inversion_id]['activity']:
                     for inversion_id, activity in sum_freq.items():
@@ -952,8 +968,7 @@ class Inversions:
         self.progress.update('...')
 
         # now we will go through each consensus inversion to populate `self.genomic_context_surrounding_consensus_inversions`
-        # with gene calls and functions .. in the meantime, we will populate the `self.summary`,
-        # which will be used to render the static HTML output for the final results
+        # with gene calls and functions
         gene_calls_per_contig = {}
         inversions_with_no_gene_calls_around = set([])
         for entry in self.consensus_inversions:
@@ -1015,12 +1030,38 @@ class Inversions:
                 if hits:
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
+                # While we are here, let's add more info about each gene
+                # DNA sequence:
+                dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                rev_compd = None
+                if gene_call['direction'] == 'f':
+                    gene_call['DNA_sequence'] = dna_sequence
+                    rev_compd = False
+                else:
+                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                    rev_compd = True
+
+                # add AA sequence
+                where_clause = f'''gene_callers_id == {gene_callers_id}'''
+                aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
+                # gene length
+                gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                # add fasta header
+                header = '|'.join([f"contig:{contig_name}",
+                                   f"start:{gene_call['start']}",
+                                   f"stop:{gene_call['stop']}",
+                                   f"direction:{gene_call['direction']}",
+                                   f"rev_compd:{rev_compd}",
+                                   f"length:{gene_call['length']}"])
+                gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
                 c.append(gene_call)
 
             # done! `c` now goes to live its best life as a part of the main class
             self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
-
-
 
         contigs_db.disconnect()
         self.progress.end()

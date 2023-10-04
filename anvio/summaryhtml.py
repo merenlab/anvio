@@ -201,3 +201,13 @@ def base64_encode(data):
 def zlib_encode(data):
     return zlib.compress(data.encode("utf-8"))
 
+@register.filter(name='pretty_join')
+def pretty_join(data, and_or="and"):
+    d = [str(item) for item in data]
+
+    if len(d) == 1:
+        return d[0]
+    else:
+        all_but_last = ", ".join(d[:-1])
+        return f"{all_but_last}, {and_or} {d[-1]}"
+
