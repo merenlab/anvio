@@ -1307,8 +1307,8 @@ class Inversions:
 
             # add the path to the logo image
             logo_name_png = ''.join(['logo', motif.get('id').split('motif_')[1], '.png'])
-            path_to_logo = os.path.join(meme_output_path, logo_name_png)
-            if os.path.isfile(path_to_logo):
+            path_to_logo = os.path.join('PER_INV', 'ALL_INVERSIONS', 'MEME', logo_name_png)
+            if os.path.isfile(os.path.join(self.output_directory, path_to_logo)):
                 motif_dict[motif_id]['logo_path'] = path_to_logo
                 is_path_to_logo = True
 
