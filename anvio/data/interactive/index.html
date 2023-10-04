@@ -273,7 +273,7 @@
                                     </div>
 
                                     <span class="settings-secondary-header col-11">Layer Groups</span>
-                                    <div id="sample_groups_container" class="row mt-3">
+                                    <div id="sample_groups_container" class="row mt-3 ml-1">
         
                                     </div>
                                     <div class="clearfix"></div>
@@ -1304,10 +1304,11 @@
             return false;
         }
 
-        if (ev.keyCode >= 49 && ev.keyCode < 54)
+        if (ev.keyCode >= 49 && ev.keyCode < 57)
         {
+            // 1 = Main , 2 = Option , 3 = Bins, 4 = Data, 5 = Notes, 6 = Search, 8 = Anvio
             var targetTabNumber = ev.keyCode - 49;
-            var targetTab = $('.nav-tabs a').eq(targetTabNumber);
+            var targetTab = $('#inner-sidebar a').eq(targetTabNumber);
 
             if (!$(targetTab).parent().hasClass('disabled'))
             {
@@ -1317,12 +1318,6 @@
 
         if (ev.keyCode === 83) { // S = 83
             $('#toggle-panel-left').trigger('click');
-        }
-        //Unfinished 
-        if ($('#panel-left').is(':visible')) {
-            if(ev.keycode === 50){
-                $('#data_panel_tab').trigger('click');
-            }
         }
 
         if (ev.keyCode === 68) { // D = 68
