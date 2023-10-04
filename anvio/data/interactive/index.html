@@ -89,13 +89,13 @@
         </div>
     </div>
     <div id="wrapper">
-        <div id="toggle-panel-top" onclick="$('#title-panel').show();">
+        <div class="invisible" id="toggle-panel-top" onclick="$('#toggle-panel-top').toggleClass('visible invisible'); $('#title-panel').show();">
             &#9660; TITLE
         </div>
         <div id="title-panel">
             <span id="title-panel-first-line"></span><br>
             <span id="title-panel-second-line"></span>
-            <div id="title-panel-close-button"><a href="#" class="close-thick" onclick="$('#title-panel').hide();"></a>
+            <div id="title-panel-close-button"><a href="#" class="close-thick" onclick="$('#title-panel').hide(); $('#toggle-panel-top').toggleClass('invisible visible');"></a>
             </div>
         </div>
         <div id="toggle-panel-left" class="toggle-panel-left-pos" onclick="toggleLeftPanel();">
