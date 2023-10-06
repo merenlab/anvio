@@ -1202,6 +1202,10 @@ class Inversions:
 
         # are we checking for motifs?
         if self.skip_search_for_motifs:
+            # add motif info to consensus table
+            for entry in self.consensus_inversions:
+                inversion_id = entry['inversion_id']
+                entry['motif_group'] = 'NA'
             return
 
         # how many motifs should we look for?
@@ -1340,7 +1344,6 @@ class Inversions:
                         self.motifs[inversion_id]['motifs'] = intersection_dict
 
         # add motif info to consensus table
-        #for inversion_id, motif in self.motifs.items():
         for entry in self.consensus_inversions:
             inversion_id = entry['inversion_id']
             motif_list = list(self.motifs[inversion_id]['motifs'])
