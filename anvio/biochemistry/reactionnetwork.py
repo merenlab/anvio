@@ -2132,42 +2132,7 @@ class Constructor:
                     # 'kegg_modelseed_aliases', 'ec_number_modelseed_aliases',
                     # 'modelseed_kegg_aliases', and 'modelseed_ec_number_aliases'.
                     continue
-                ko.reactions[modelseed_reaction_id] = reaction
-                # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
-                ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
-                    set(new_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
-                )
-                ko.ec_number_aliases[modelseed_reaction_id] = list(
-                    set(new_ec_numbers).intersection(set(reaction.ec_number_aliases))
-                )
-                network.reactions[modelseed_reaction_id] = reaction
-
-                # If the ModelSEED compound ID has been encountered in previously processed
-                # reactions, then there is already a ModelSEEDCompound object for it.
-                new_modelseed_compound_ids = []
-                reaction_compounds = []
-                for modelseed_compound_id in modelseed_compound_ids:
-                    if modelseed_compound_id in network.metabolites:
-                        reaction_compounds.append(network.metabolites[modelseed_compound_id])
-                    else:
-                        new_modelseed_compound_ids.append(modelseed_compound_id)
-
-                # Generate new metabolite objects in the network
-                for modelseed_compound_id in new_modelseed_compound_ids:
-                    try:
-                        modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[modelseed_compound_id]
-                    except KeyError:
-                        raise ConfigError(
-                            f"A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected "
-                            "but not found in the ModelSEED compounds table. This ID was found in the equation "
-                            f"for the ModelSEED reaction, '{modelseed_reaction_id}'."
-                        )
-                    modelseed_compound_data = modelseed_compound_series.to_dict()
-                    modelseed_compound_data['id'] = modelseed_compound_id
-                    compound = self._get_modelseed_compound(modelseed_compound_data)
-                    reaction_compounds.append(compound)
-                    network.metabolites[modelseed_compound_id] = compound
-                reaction.compounds = tuple(reaction_compounds)
+                self._add_modelseed_reaction(network, ko, reaction, new_kegg_reaction_ids, new_ec_numbers, modelseed_compound_ids, modelseed_compounds_table)
 
         # List genes that do not contribute to the reaction network. Remove any trace of these genes
         # from the network.
