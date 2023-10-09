@@ -6,6 +6,7 @@ import os
 import copy
 import argparse
 import numpy as np
+import xml.etree.ElementTree as ET
 from collections import OrderedDict, Counter
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -29,6 +30,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import Palindromes, PrimerSearch
 
 
@@ -67,9 +69,18 @@ class Inversions:
         # the purpose of this is to report all the consensus inversions
         self.consensus_inversions = []
 
+        # inversion activity
+        self.inversion_activity = []
+
         # in which we will store the genomic context that surrounds
         # consensus inversions for downstream fun
         self.genomic_context_surrounding_consensus_inversions = {}
+
+        # in which we will store the motif info
+        self.motifs = {}
+
+        # in which we will store all the static HTML output related stuff
+        self.summary = {}
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.bams_and_profiles_file_path = A('bams_and_profiles')
@@ -120,12 +131,15 @@ class Inversions:
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
 
+        # this variable is used to filter out oligo supported by less than x reads
+        self.min_frequency = A('min_frequency_to_report') or 1
+
         # skip learning about the genomic context that surrounds inversions?
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
 
-        # paramters for motif search
+        # parameters for motif search
         self.skip_search_for_motifs = A('skip_search_for_motifs')
         self.num_of_motifs = A('num_of_motifs')
 
@@ -141,7 +155,7 @@ class Inversions:
         self.target_region_end = A('target_region_end')
 
         # these are the keys we are interested in finding in input files offered to reconstruct
-        # inverson profiles via the --pre-computed-inversions flag. NOTE that these keys are not ALL
+        # inversion profiles via the --pre-computed-inversions flag. NOTE that these keys are not ALL
         # keys that are used to build inversion profiles in the code, but the minimum set that
         # co-occur both sample-specific and consensus inversion reports. this way, the user can
         # attempt to characterize the activity of inversions found in a single sample if they wish:
@@ -651,13 +665,16 @@ class Inversions:
                     # one confirmed inversion
                     return true_inversions
             else:
-                if num_bad_reads:
-                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                        f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
-                                        f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
-                else:
-                    self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                        f"after processing {num_reads_considered} reads.", mc="red", level=2)
+                if anvio.DEBUG or self.verbose:
+                    self.progress.reset()
+
+                    if num_bad_reads:
+                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
+                                             f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
+                    else:
+                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
+                                             f"after processing {num_reads_considered} reads.", mc="red", level=2)
 
         return true_inversions
 
@@ -732,6 +749,206 @@ class Inversions:
 
         return true_inversions_in_stretch
 
+
+    def process_inversion_data_for_HTML_summary(self):
+        """Take everything that is known, turn them into data that can be used from Django templates.
+
+        A lot of ugly things happening here to prepare coordinates for SVG objects to be displayed
+        or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
+        IT DON'T LOOK AT IT.
+        """
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        self.summary['meta'] = {'summary_type': 'inversions',
+                                'num_inversions': len(self.consensus_inversions),
+                                'num_samples': len(self.profile_db_paths),
+                                'output_directory': self.output_directory,
+                                'genomic_context_recovered': not self.skip_recovering_genomic_context,
+                                'inversion_activity_computed': not self.skip_compute_inversion_activity,
+                                'gene_function_sources': contigs_db.meta['gene_function_sources'] or []}
+        contigs_db.disconnect()
+
+        self.summary['files'] = {'consensus_inversions': 'INVERSIONS-CONSENSUS.txt'}
+        self.summary['inversions'] = {}
+
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+
+            self.summary['inversions'][inversion_id] = {'inversion_data': copy.deepcopy(entry)}
+
+            if self.skip_recovering_genomic_context:
+                pass
+            else:
+                # we will get a deepcopy of the gene context associated with the inversion
+                genes = copy.deepcopy(self.genomic_context_surrounding_consensus_inversions[inversion_id])
+
+                # then we will learn about these so we can transform the coordinates of anything we wish
+                # to display in the output
+                genomic_context_start = genes[0]['start'] - 100
+                genomic_context_end = genes[-1]['stop'] + 100
+
+                # this is our magic number, which is matching to the actual width of the genomic context
+                # display in the static HTML output. we will have to transfrom start-stop coordinates
+                # of each gene to this value.
+                new_context_length = 1000
+
+                # how big the gene arros should be (in an ideal world -- see below the real world, Neo)
+                default_gene_arrow_width = 20
+
+                # before we start working on the genes, we will figure out the location of the inverted site
+                # in the genomc context. here we quckly identify the transformed start and the end position
+                # and store it in the inversion data dict
+                inv_start = (entry['first_end'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                inv_end  = (entry['second_start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                self.summary['inversions'][inversion_id]['inversion_data']['IX'] = inv_start
+                self.summary['inversions'][inversion_id]['inversion_data']['IW'] = inv_end - inv_start
+                self.summary['inversions'][inversion_id]['inversion_data']['IT'] = inv_start + (inv_end - inv_start) / 2
+
+                # here we will add transformed gene coordinates to the genes dict
+                for gene in genes:
+                    gene['start_t'] = (gene['start'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+                    gene['stop_t'] = (gene['stop'] - genomic_context_start) / (genomic_context_end - genomic_context_start) * new_context_length
+
+                    # this is the dumbest code I've ever written in my life. but it is all
+                    # for the 🌈 TEMPLATE 🦄 THAT CAN'T DO ADDITION WITHOUT GIVING YOU
+                    # CANCER IN THE PROCESS. If you have seen this comment and the code
+                    # below, I thank you very much in advance for never bringing it up
+                    # in any conversation forever.
+                    if (gene['stop_t'] - gene['start_t']) < default_gene_arrow_width:
+                        # if we are here, it means the transformed length of the gene is already
+                        # shorter than the space we assign for the arrow to display gene calls.
+                        # this means we will only will be able to show an arrow, but even in that
+                        # case the `gene_arrow_width` may be too long to display (i.e., if the
+                        # transformed gene lenth is 10 and arrow is 15, we are already showing
+                        # too much). The solution is to make the gene nothing more but the arrow
+                        # but make the arrow width equal to the gene width
+                        gene_arrow_width = gene['stop_t'] - gene['start_t']
+                        gene['stop_t'] = gene['start_t']
+                        gene['RW'] = 0
+                    else:
+                        gene_arrow_width = default_gene_arrow_width
+                        gene['RW'] = (gene['stop_t'] - gene['start_t']) - gene_arrow_width
+
+                    if gene['functions']:
+                        gene['has_functions'] = True
+                        gene['COLOR'] = '#008000'
+                    else:
+                        gene['has_functions'] = False
+                        gene['COLOR'] = '#c3c3c3'
+
+                    gene['RX'] = gene['start_t']
+                    gene['CX'] = (gene['start_t'] + (gene['stop_t'] - gene['start_t']) / 2)
+                    gene['GY'] = gene['RX'] + gene['RW'] + gene_arrow_width
+                    gene['GTRANS'] = gene['RX'] + gene['RX'] + gene['RW'] + gene_arrow_width
+                    gene['RX_RW'] = gene['RX'] + gene['RW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
+
+                # and finally we will store this hot mess in our dictionary
+                self.summary['inversions'][inversion_id]['genes'] = genes
+
+                # also we need the path to the output files
+                self.summary['files'][inversion_id] = {'genes': os.path.join('PER_INV', inversion_id, 'SURROUNDING-GENES.txt'),
+                                                       'functions': os.path.join('PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')}
+
+        # add inversion activity
+        if self.skip_compute_inversion_activity:
+            pass
+        else:
+            # sum each oligo freq and rank them to give them appropriate colors
+            sum_freq = {}
+            for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
+                inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
+
+                if inversion_id not in sum_freq:
+                    sum_freq[inversion_id] = {}
+
+                if oligo_primer not in sum_freq[inversion_id]:
+                    sum_freq[inversion_id][oligo_primer] = {'reference': None,
+                                                            'non_reference': {}}
+
+                if reference == False:
+                    if oligo not in sum_freq[inversion_id][oligo_primer]:
+                        sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] = frequency
+                    else:
+                        sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] += frequency
+                else:
+                    sum_freq[inversion_id][oligo_primer]['reference'] = oligo
+
+            # sort the abundance
+            for inversion_id, activity in sum_freq.items():
+                for oligo_primer, all_oligo in activity.items():
+                    sorted_oligo_freq = sorted(all_oligo['non_reference'].items(), key=lambda x:x[1], reverse=True)
+                    activity[oligo_primer]['non_reference'] = sorted_oligo_freq
+
+            # add inversion info and name + color for each oligo
+            for sample, inversion_oligo_id, oligo, reference, frequency, relative_frequency in self.inversion_activity:
+                inversion_id, oligo_primer = inversion_oligo_id.split('-')[0], inversion_oligo_id.split('-')[1]
+
+                activity = {'reference': reference,
+                            'frequency': frequency,
+                            'relative_frequency': relative_frequency}
+
+                if inversion_id not in self.summary['inversions']:
+                    self.summary['inversions'][inversion_id] = {}
+
+                if 'activity' not in self.summary['inversions'][inversion_id]:
+                    self.summary['inversions'][inversion_id]['activity'] = {}
+
+                if sample not in self.summary['inversions'][inversion_id]['activity']:
+                    self.summary['inversions'][inversion_id]['activity'][sample] = {}
+
+                if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
+                    self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer] = {}
+
+                if reference:
+                    activity['name'] = 'Reference'
+                    activity['color'] = '#53B8BB'
+                    activity['start'] = '0'
+                    activity['width'] = relative_frequency*1000
+                else:
+                    rank = list(dict(sum_freq[inversion_id][oligo_primer]['non_reference'])).index(oligo)
+                    if rank == 0:
+                        activity['name'] = 'Inversion'
+                        activity['color'] = '#055052'
+                    elif rank == 1:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#a6a6a6'
+                    elif rank == 2:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#5a5a5a'
+                    else:
+                        activity['name'] = '_'.join(['Other_Inversion', str(rank)])
+                        activity['color'] = '#ff0000'
+
+                # we need y coordinate for first and second oligo_primer.
+                if oligo_primer == 'first_oligo_primer':
+                    activity['y_coord'] = '22'
+                else:
+                    activity['y_coord'] = '44'
+
+                # now we append the activity to the summary
+                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][oligo] = activity
+
+            for inversion_id in self.summary['inversions']:
+                for sample in self.summary['inversions'][inversion_id]['activity']:
+                    for inversion_id, activity in sum_freq.items():
+                        for oligo_primer, all_oligo in activity.items():
+                            ref_id = all_oligo['reference']
+                            previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width']
+                            for i, x in all_oligo['non_reference']:
+                                i_start = previous_width
+                                if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:
+                                    continue
+                                i_width = i_start + self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['relative_frequency']*1000
+                                previous_width = i_width
+                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['start'] = i_start
+                                self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][i]['width'] = i_width
+
+        # add motif info
+        if self.skip_search_for_motifs:
+            pass
+        else:
+            for inversion_id in self.summary['inversions']:
+                self.summary['inversions'][inversion_id]['motifs'] =  copy.deepcopy(self.motifs[inversion_id]['motifs'])
 
 
     def recover_genomic_context_surrounding_inversions(self):
@@ -827,13 +1044,40 @@ class Inversions:
                 if hits:
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
+                # While we are here, let's add more info about each gene
+                # DNA sequence:
+                dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                rev_compd = None
+                if gene_call['direction'] == 'f':
+                    gene_call['DNA_sequence'] = dna_sequence
+                    rev_compd = False
+                else:
+                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                    rev_compd = True
+
+                # add AA sequence
+                where_clause = f'''gene_callers_id == {gene_callers_id}'''
+                aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+
+                # gene length
+                gene_call['length'] = gene_call['stop'] - gene_call['start']
+
+                # add fasta header
+                header = '|'.join([f"contig:{contig_name}",
+                                   f"start:{gene_call['start']}",
+                                   f"stop:{gene_call['stop']}",
+                                   f"direction:{gene_call['direction']}",
+                                   f"rev_compd:{rev_compd}",
+                                   f"length:{gene_call['length']}"])
+                gene_call['header'] = ' '.join([str(gene_callers_id), header])
+
                 c.append(gene_call)
 
             # done! `c` now goes to live its best life as a part of the main class
             self.genomic_context_surrounding_consensus_inversions[inversion_id] = copy.deepcopy(c)
 
         contigs_db.disconnect()
-
         self.progress.end()
 
         self.run.info(f"[Genomic Context] Searched for {PL('inversion', len(self.consensus_inversions))}",
@@ -961,6 +1205,10 @@ class Inversions:
 
         # are we checking for motifs?
         if self.skip_search_for_motifs:
+            # add motif info to consensus table
+            for entry in self.consensus_inversions:
+                inversion_id = entry['inversion_id']
+                entry['motif_group'] = 'NA'
             return
 
         # how many motifs should we look for?
@@ -989,6 +1237,7 @@ class Inversions:
 
             # create output dir and files
             output = os.path.join(self.output_directory, "PER_INV", inversion_id)
+            filesnpaths.gen_output_directory(os.path.join(output), delete_if_exists=False)
             fasta_path = os.path.join(output, "inverted_repeats.fasta")
             meme_output = os.path.join(output, "MEME")
             meme_log = os.path.join(output, "run-MEME.log")
@@ -1021,11 +1270,91 @@ class Inversions:
         # search for as many motifs as inversions. Can be time consuming.
         self.use_motif_finder(fasta_path, meme_output, meme_log, num_motifs = self.num_of_motifs)
 
+        # parse the output xml
+        self.parse_motif_output(meme_output, meme_log)
+
         self.run.info('Reporting motifs in inverted repeats', output, nl_after=1)
 
 
+    def parse_motif_output(self, meme_output_path, meme_log):
+        """ After searching for conserved motifs in the inverted repeats, we want to report 
+        the motif's group for each inversions. Then we can see in the report (txt summary and 
+        html output) which inversions are linked together by site-specific invertase
+        """
+
+        # parse the xml output
+        tree = ET.parse(os.path.join(meme_output_path, "meme.xml"))
+        root = tree.getroot()
+
+        # for each inversion, we created 4 sequences. And MEME gave them a different id. 
+        # it looks like this
+        # INV_0001_first_IR: sequence_0
+        # INV_0001_first_IR_rc: sequence_1
+        # INV_0001_second_IR: sequence_2
+        # INV_0001_second_IR_rc: sequence_3
+        # ...
+        # we need to associate MEME id with each inversion id
+        for seq in root.findall('training_set/sequence'):
+            inversion_id = seq.get('name').split("_")[0] + "_" + seq.get('name').split("_")[1]
+            if inversion_id not in self.motifs:
+                self.motifs[inversion_id] = {'seq_list': [seq.get('id')]}
+            else:
+                self.motifs[inversion_id]['seq_list'].append(seq.get('id'))
+
+        # collect the motif regex and path to output figure
+        motif_dict = {}
+        is_path_to_logo = False
+        for motif in root.findall('motifs/motif'):
+            motif_id = motif.get('id')
+
+            # get the regex
+            regex = motif.find('regular_expression')
+            motif_dict[motif_id] = {'regex': regex.text.replace('\n', '', 2),
+                                    'logo_path': None}
+
+            # add the path to the logo image
+            logo_name_png = ''.join(['logo', motif.get('id').split('motif_')[1], '.png'])
+            path_to_logo = os.path.join('PER_INV', 'ALL_INVERSIONS', 'MEME', logo_name_png)
+            if os.path.isfile(os.path.join(self.output_directory, path_to_logo)):
+                motif_dict[motif_id]['logo_path'] = path_to_logo
+                is_path_to_logo = True
+
+        # no png logo? look at MEME log file
+        # may need to add ghostscript to list of mamba package
+        if not is_path_to_logo:
+            self.run.warning(None, header="SEARCHING DNA MOTIFS WITH MEME", lc="yellow")
+            self.run.info_single(f"MEME was not able to generate the motif's logo in png format, which means that you are missing "
+                                 f"some cool logo pictures in the final html summary. The logos are still available in .eps format here: "
+                                 f"{meme_output_path}. If you want to fix this issue, you should look at the log output of MEME: {meme_log}",
+                                 level=0, nl_after=1)
+
+        # anvi'o provides 4 sequences per inversions site. we want to keep only 
+        # motifs that occur on all 4 sequences.
+        for sites in root.findall('scanned_sites_summary/scanned_sites'):
+            for inversion_id, inversion_dict in self.motifs.items():
+                if 'motifs' not in self.motifs[inversion_id]:
+                    self.motifs[inversion_id]['motifs'] = {}
+                if sites.get('sequence_id') in inversion_dict['seq_list']:
+                    motif_per_seq = {}
+                    for site in sites:
+                        motif_id = site.get('motif_id')
+                        motif_per_seq[motif_id] = {'motif_id': motif_id, **motif_dict[motif_id]}
+
+                    if not self.motifs[inversion_id]['motifs']:
+                        self.motifs[inversion_id]['motifs'] = motif_per_seq
+                    else:
+                        intersection_dict = {key: motif_per_seq[key] for key in self.motifs[inversion_id]['motifs'].keys() & motif_per_seq.keys()}
+                        self.motifs[inversion_id]['motifs'] = intersection_dict
+
+        # add motif info to consensus table
+        for entry in self.consensus_inversions:
+            inversion_id = entry['inversion_id']
+            motif_list = list(self.motifs[inversion_id]['motifs'])
+            entry['motif_group'] = ','.join(motif_list)
+
+
     @staticmethod
-    def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
+    def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, min_frequency, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
         """Go back to the raw metagenomic reads to compute activity of inversions for a single sample.
 
         Returns
@@ -1035,7 +1364,6 @@ class Inversions:
             tuple in the list holds information for a single oligo and follows the order,
 
                 >>> (sample_name, inversion_id, oligo_primer, oligo, frequency, relative_abundance)
-
             where,
 
                 - sample_name: sample name as written in the first column of bams-and-profiles-txt
@@ -1059,6 +1387,7 @@ class Inversions:
             args = argparse.Namespace(samples_dict=samples_dict_for_sample,
                                       primers_dict=primers_dict,
                                       min_remainder_length=oligo_length,
+                                      min_frequency=min_frequency,
                                       only_keep_remainder=True)
 
             # if the user is testing:
@@ -1077,15 +1406,15 @@ class Inversions:
                 reads_found = False
 
                 for oligo, frequency in oligos_frequency_dict.items():
-                    sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
-                    if frequency:
+                    if frequency > min_frequency:
+                        sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
                         reads_found = True
 
                 # if the reference oligo has no frequency but reads were found for other oligo
                 # then add reference oligo with a frequency of 0
                 oligo_reference = primers_dict[primer_name]['oligo_reference']
                 if oligo_reference not in oligos_frequency_dict and reads_found:
-                    sample_counts.append((sample_name, primer_name, oligo_reference, 'True', 0, 0))
+                    sample_counts.append((sample_name, primer_name, oligo_reference, True, 0, 0))
 
             output_queue.put(sample_counts)
 
@@ -1121,12 +1450,11 @@ class Inversions:
         msg = (f"Now anvi'o will compute in-sample activity of consensus {PL('inversion', len(self.consensus_inversions))} "
                f"across {PL('sample', num_samples)}. Brace yourself and please note that this can "
                f"take a very long time since for each sample, anvi'o will go through each short read to search for two "
-               f"sequences per inversion. IF IT COMES TO A POINT WHERE you (or your job on your HPC) can't continue running "
-               f"it, this process can be killed without any loss of data from the previous steps, as your primary output "
-               f"files must have already been reported. You can always skip this step and search for individual primers "
+               f"sequences per inversion. You can always skip this step and search for individual primers "
                f"listed in the consensus output file using the program `anvi-search-primers` with the parameter "
                f"`--min-remainder-length 6` and the flag `--only-report-remainders` to explore inversion activity "
-               f"manually")
+               f"manually. Does this make no sense? See the documentation for `anvi-report-inversions` (and hope for "
+               f"the best).")
         self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
         if num_samples > self.num_threads:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Not all samples will be processed "
@@ -1195,8 +1523,10 @@ class Inversions:
                                                    output_queue,
                                                    self.profile_db_bam_file_pairs,
                                                    primers_dict,
+                                                   self.min_frequency,
                                                    self.oligo_length,
                                                    self.end_primer_search_after_x_hits),
+
                                              kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
             worker.start()
@@ -1216,13 +1546,12 @@ class Inversions:
             self.progress.new('Inversion activity', progress_total_items=num_samples)
             self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
 
-        oligo_frequencies = []
         num_samples_processed = 0
         while num_samples_processed < num_samples:
             try:
-                oligo_frequencies_for_one_sample = output_queue.get()
-                if oligo_frequencies_for_one_sample:
-                    oligo_frequencies.extend(oligo_frequencies_for_one_sample)
+                inversion_activity_for_one_sample = output_queue.get()
+                if inversion_activity_for_one_sample:
+                    self.inversion_activity.extend(inversion_activity_for_one_sample)
 
                 num_samples_processed += 1
                 self.progress.increment(increment_to=num_samples_processed)
@@ -1252,7 +1581,7 @@ class Inversions:
         headers = ['sample', 'inversion_id', 'oligo_primer', 'oligo', 'reference', 'frequency_count', 'relative_abundance']
         with open(output_path, 'w') as output:
             output.write('\t'.join(headers) + '\n')
-            for e in oligo_frequencies:
+            for e in self.inversion_activity:
                 inversion_id, oligo_primer = '-'.join(e[1].split('-')[:-1]), e[1].split('-')[-1]
                 output.write(f"{e[0]}\t{inversion_id}\t{oligo_primer}\t{e[2]}\t{e[3]!s}\t{e[4]}\t{e[5]:.3f}\n")
 
@@ -1341,6 +1670,15 @@ class Inversions:
         else:
             self.run.info("[Genomic context] Recover and report genomic context?",  "False", mc="red", nl_after=1)
 
+        if not self.skip_search_for_motifs:
+            if self.num_of_motifs:
+                self.run.info("[Search for motifs] Search for DNA motifs?", "True", mc="green")
+                self.run.info("[Search for motifs] Number of motifs to search", self.num_of_motifs, nl_after=1)
+            else:
+                self.run.info("[Search for motifs] Search for DNA motifs?", "True", mc="green", nl_after=1)
+        else:
+            self.run.info("[Search for motifs] Search for DNA motifs?", "False", mc="red", nl_after=1)
+
         # are we to compute inversion activity by going through raw reads?
         inversion_activity_will_be_computed = self.raw_r1_r2_reads_are_present and not self.skip_compute_inversion_activity
         self.run.info("[Inversion activity] Compute inversion activity?",  "True" if inversion_activity_will_be_computed else "False", mc=("green" if inversion_activity_will_be_computed else "red"))
@@ -1355,8 +1693,10 @@ class Inversions:
             self.run.info("[Inversion activity] Number of threads", self.num_threads, mc=("green" if self.num_threads > 1 else "red"))
             if self.end_primer_search_after_x_hits:
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length)
+                self.run.info("[Inversion activity] Minimum frequency reported", self.min_frequency)
                 self.run.info("[Inversion activity Debug] Num hits to end primer search",  self.end_primer_search_after_x_hits, mc="red", nl_after=1)
             else:
+                self.run.info("[Inversion activity] Minimum frequency reported", self.min_frequency)
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
         if self.target_contig:
@@ -1398,14 +1738,18 @@ class Inversions:
         # surround inversions, so this data can be reported along with other files.
         self.recover_genomic_context_surrounding_inversions()
 
-        # we want to report now because the very last step can take a long time, and
-        # if the user kills the process, we don't want them to go home empty handed.
-        self.report()
-
         # here we have our consensus inversions in `self.consensus_inversions`. It is time
         # to go back to the raw reads and compute their activity IF r1/r2 files are provided
         # AND the user didn't ask this step to be skipped.
         self.compute_inversion_activity()
+
+        # here we will process and summarize all inversion data to populate `self.summary`
+        # so it is ready to be used to render a static HTML output
+        # self.process_inversion_data_for_HTML_summary()
+
+        # Do all reporting
+        self.report()
+
 
 
     def sanity_check(self):
@@ -1486,8 +1830,8 @@ class Inversions:
 
         if not self.skip_search_for_motifs:
             if not utils.is_program_exists('meme'):
-                raise ConfigError(f"You asked anvi'o to search for conserved motifs. Great idea! "
-                                  f"But the software MEME is not installed in your environment :'(")
+                raise ConfigError("You asked anvi'o to search for conserved motifs. Great idea! "
+                                  "But the software MEME is not installed in your environment :'(")
 
     def report(self):
         """Reporting per-sample as well as consensus inversions, along with other reporting files"""
@@ -1516,21 +1860,6 @@ class Inversions:
             else:
                 self.run.info(f'Inversions in {entry_name}', 'No true inversions in this one :/', mc='red')
 
-        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start',
-                   'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length',
-                   'distance', 'num_samples', 'sample_names', 'first_oligo_primer',  'first_oligo_reference',
-                   'second_oligo_primer', 'second_oligo_reference']
-
-        ################################################################################################
-        # Consensus inversions
-        ################################################################################################
-        output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
-        with open(output_path, 'w') as output:
-            output.write('\t'.join(headers) + '\n')
-            for v in self.consensus_inversions:
-                output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
-        self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
-
         ################################################################################################
         # All stretches considered
         ################################################################################################
@@ -1548,6 +1877,27 @@ class Inversions:
         # Inverted repeats motifs
         ################################################################################################
         self.search_for_motifs()
+
+        ################################################################################################
+        # Consensus inversions
+        ################################################################################################
+        headers = ['inversion_id', 'contig_name', 'first_seq', 'midline', 'second_seq', 'first_start',
+                   'first_end', 'second_start', 'second_end', 'num_mismatches', 'num_gaps', 'length',
+                   'distance', 'num_samples', 'sample_names', 'motif_group', 'first_oligo_primer',
+                   'first_oligo_reference', 'second_oligo_primer', 'second_oligo_reference']
+
+        output_path = os.path.join(self.output_directory, 'INVERSIONS-CONSENSUS.txt')
+        with open(output_path, 'w') as output:
+            output.write('\t'.join(headers) + '\n')
+            for v in self.consensus_inversions:
+                output.write('\t'.join([f"{v[k]}" for k in headers]) + '\n')
+        self.run.info('Reporting file for consensus inversions', output_path, mc='green', nl_before=1)
+
+        ################################################################################################
+        # Generate HTML summary
+        ################################################################################################
+        self.process_inversion_data_for_HTML_summary()
+        SummaryHTMLOutput(self.summary, r=self.run, p=self.progress).generate()
 
 
     def report_genomic_context_surrounding_inversions(self):
@@ -1568,7 +1918,7 @@ class Inversions:
             inversion_id = v['inversion_id']
 
             # create ouput directory
-            filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_INV", inversion_id))
+            filesnpaths.gen_output_directory(os.path.join(self.output_directory, "PER_INV", inversion_id), delete_if_exists=False)
 
             genes_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-GENES.txt')
             functions_output_path = os.path.join(self.output_directory, 'PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')

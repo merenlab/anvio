@@ -1080,7 +1080,7 @@ class KODatabase:
     Unless an alternative directory is provided, the database is downloaded and set up in a
     default anvi'o data directory, and loaded from this directory in network construction.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/KEGG/KO_REACTION_NETWORK')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/KEGG/KO_REACTION_NETWORK')
     expected_files = ['ko_info.txt', 'ko_data.tsv']
 
     def __init__(self, ko_dir: str = None) -> None:
@@ -1149,7 +1149,7 @@ class KODatabase:
             ko_dir = KODatabase.default_dir
             parent_dir = os.path.dirname(ko_dir)
             if not os.path.exists(parent_dir):
-                os.mkdir(parent_dir)
+                os.makedirs(parent_dir)
         if os.path.exists(ko_dir):
             if reset:
                 shutil.rmtree(ko_dir)
@@ -1158,7 +1158,7 @@ class KODatabase:
                     f"The KO database directory, '{ko_dir}', already exists. 'reset' can be used "
                     "to remove the database at this location and set it up again."
                 )
-        os.mkdir(ko_dir)
+        os.makedirs(ko_dir)
 
         if num_threads == 1:
             run.warning(

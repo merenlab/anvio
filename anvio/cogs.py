@@ -42,6 +42,21 @@ P = terminal.pluralize
 
 J = lambda x, y: os.path.join(x, y)
 
+# if you add a new database version, please do not forget to add its reference here
+COG_REFERENCES = {'COG20': {
+                            'ref_text': 'Galperin et al. 2021',
+                            'doi_link': 'https://doi.org/10.1093/nar/gkaa1018',
+                           },
+                  'COG14': {
+                            'ref_text': 'Galperin et al. 2015',
+                            'doi_link': 'https://doi.org/10.1093/nar/gku1223',
+                           },
+                  'arCOG14': {
+                            'ref_text': 'Makarova, Wolf, and Koonin 2015',
+                            'doi_link': 'https://doi.org/10.3390%2Flife5010818',
+                             },
+}
+
 
 class Args():
     pass
@@ -96,7 +111,7 @@ class COGs:
             self.move_old_COG_data_to_its_new_location()
 
         # Check whether there is data for the version requested
-        data_available_for_cog_versions = [os.path.basename(d) for d in glob.glob(os.path.join(self.COG_base_dir, 'COG*'))]
+        data_available_for_cog_versions = [os.path.basename(d) for d in glob.glob(os.path.join(self.COG_base_dir, '*COG*'))]
         if not len(data_available_for_cog_versions):
             raise ConfigError("You don't seem to have any COG data setup in your COG data directory. Please first run "
                               "`anvi-setup-ncbi-cogs` to take care of that.")
@@ -116,6 +131,13 @@ class COGs:
                                   f"run the following command to setup the data files for the version you wish to use: "
                                   f"`anvi-setup-ncbi-cogs --cog-version {self.COG_version}`, and re-run the same command that brought "
                                   f"you here.")
+
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will annotate your database with the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
 
 
     def move_old_COG_data_to_its_new_location(self):
@@ -204,7 +226,7 @@ class COGs:
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
-        if self.COG_version == 'COG14':
+        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
         elif self.COG_version == 'COG20':
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
@@ -287,7 +309,7 @@ class COGs:
                 # append annotation
                 annotations.append(cogs_data.cogs[COG_id]['annotation'])
 
-                if self.COG_version == 'COG14':
+                if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                     pass
                 elif self.COG_version == 'COG20':
                     if cogs_data.cogs[COG_id]['pathway']:
@@ -300,7 +322,7 @@ class COGs:
             # them later is possible. Am I embarrassed? Yes. Is there a better way of doing this efficiently? Absolutely. What time is it?
             # 9pm. Where am I? In the lab. Is it OK for me to let this slip away if it means for me to go home sooner? Yes, probably. Am I
             # gonna remember this crap in the code for the next two months at random times in the shower and feel bad about myself? Fuck yes.
-            if self.COG_version == 'COG14':
+            if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
             elif self.COG_version == 'COG20':
@@ -412,7 +434,7 @@ class COGsData:
         self.progress.new('Initializing COGs Data')
         self.progress.update('Reading COG functions ...')
 
-        if self.COG_version == 'COG14':
+        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
         elif self.COG_version == 'COG20':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
@@ -475,6 +497,28 @@ class COGsSetup:
                                   'func': self.format_protein_db,
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'}
+                             },
+                        'arCOG14':
+                             {'ar14.arCOG.csv': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.arCOG.csv',
+                                  'func': self.format_p_id_to_cog_id_cPickle,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'PID-TO-CID.cPickle'},
+                              'ar14.arCOGdef.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.arCOGdef.tab',
+                                  'func': self.format_cog_names,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'COG.txt'},
+                              'funclass.tab': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/funclass.tab',
+                                  'func': self.format_categories,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'CATEGORIES.txt'},
+                              'ar14.fa.gz': {
+                                  'url': 'ftp://ftp.ncbi.nih.gov/pub/wolf/COGs/arCOG/ar14.fa.gz',
+                                  'func': self.format_protein_db,
+                                  'type': 'database',
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
                              },
                         'COG20':
                              {'cog-20.cog.csv': {
@@ -543,6 +587,13 @@ class COGsSetup:
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
+
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
 
 
     def get_formatted_db_paths(self):
@@ -648,6 +699,7 @@ class COGsSetup:
         progress.new('Formatting protein ids to COG ids file', progress_total_items=num_lines_in_file)
 
         p_id_to_cog_id = {}
+        p_id_without_cog_id = set([])
 
         line_counter = 0
         for line in open(input_file_path, 'rU').readlines():
@@ -659,6 +711,23 @@ class COGsSetup:
 
             fields = line.strip('\n').split(',')
 
+            # the arCOG14 release comes with a broken file. Starting on line 388147, all following lines
+            # include only the first 6 fields. What we need is in the 7th field (the COG ID), so we are
+            # basically forced to ignore all COGs after that. Sucks.
+            if self.COG_version == 'arCOG14' and line_counter >= 388147:
+                if line_counter == 388147: # once we hit this line, print the warning
+                    num_lines_to_end = num_lines_in_file - line_counter + 1
+                    self.run.warning(f"There is a problem with the {input_file_path} file downloaded from NBCI. "
+                                    f"Basically, starting from line {line_counter}, the arCOG ID number is not provided, which "
+                                    f"means that we cannot match those protein sequences to their COG IDs. The only solution we "
+                                    f"have at the moment is to skip the {num_lines_to_end} protein IDs that are affected by this "
+                                    f"issue. Sorry.")
+
+                # let's save the protein IDs that don't have an associated arCOG ID
+                p_id_without_cog_id.add(fields[2].replace('.', '_'))
+
+                continue
+
             # `p_id` should look just like the FASTA ids, and its location has changed between
             # 2014 release and 2020 release.
             if self.COG_version == 'COG14':
@@ -667,7 +736,7 @@ class COGsSetup:
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
-            elif self.COG_version == 'COG20':
+            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
                 try:
                     p_id = fields[2].replace('.', '_')
                     COG = fields[6]
@@ -689,6 +758,11 @@ class COGsSetup:
         dictio.write_serialized_object(p_id_to_cog_id, output_file_path)
 
         progress.end()
+
+        if p_id_without_cog_id:
+                self.run.warning(f"There were {len(p_id_without_cog_id)} protein IDs without an associated COG ID. "
+                                 f"This may cause issues later, so please keep this warning in mind. Here are a few examples "
+                                 f"of the affected protein IDs: {', '.join(list(p_id_without_cog_id)[:5])}")
 
 
     def format_cog_names(self, input_file_path, output_file_path):
@@ -712,6 +786,17 @@ class COGsSetup:
                 COG, function, name = line.strip('\n').split('\t')
                 name = ''.join([i if ord(i) < 128 else '' for i in name])
                 output.write('\t'.join([COG, ', '.join(list(function)), name]) + '\n')
+            elif self.COG_version == 'arCOG14':
+                # example line from arCOG 2014:
+                #
+                # arCOG00024	C	GlpK	Glycerol kinase	COG00554	pfam00370,pfam02782	cd07786	TIGR01311
+                COG, category, gene, function, superclust, pfam_profiles, cdd_profiles, tigrfam_profiles = line.strip('\n').split('\t')
+
+                function = ''.join([i if ord(i) < 128 else '' for i in function])
+                function = function if not gene else f"{function} ({gene})"
+
+                output.write('\t'.join([COG, ', '.join(list(category)), function]) + '\n')
+
             elif self.COG_version == 'COG20':
                 # example line from 2020:
                 #
@@ -744,7 +829,7 @@ class COGsSetup:
 
             if self.COG_version == 'COG14':
                 category, description = line.strip('\n').split('\t')
-            elif self.COG_version == 'COG20':
+            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
                 category, _, description = line.strip('\n').split('\t')
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
@@ -854,9 +939,9 @@ class COGsSetup:
         if self.COG_version == 'COG20':
             input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
-        elif self.COG_version == 'COG14':
+        elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             # Get check_.md5.txt file from anvio/misc
-            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/checksum.md5.txt')
+            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
 
         else:
             self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
@@ -881,7 +966,7 @@ class COGsSetup:
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
             # Check file present in checksum
-            if file_name not in checksums.keys() and file_name != "checksum.md5.txt":
+            if file_name not in checksums.keys() and file_name != "checksum.md5.txt" and file_name != 'CHECKSUMS-FOR-COG-DATA.txt':
                 self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
                                  f"continue despite this, but this is unexpected.")
 

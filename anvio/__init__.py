@@ -3,9 +3,8 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-anvio_version = '7.1-dev'
-anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
-                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
+anvio_version = '8-dev'
+anvio_codename = 'marie' # after Marie Tharp -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v8
 
 major_python_version_required = 3
 minor_python_version_required = 10
