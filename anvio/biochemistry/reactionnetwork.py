@@ -1650,7 +1650,7 @@ class Constructor:
         # Check that the network stored in the contigs database was made from the same set of KEGG
         # KO gene annotations as currently in the database.
         stored_hash = contigs_super.a_meta['reaction_network_ko_annotations_hash']
-        current_hash = self.hash_ko_annotations(contigs_super.gene_function_calls_dict)
+        current_hash = self.hash_contigs_db_ko_annotations(contigs_super.gene_function_calls_dict)
         if check_gene_annotations:
             if stored_hash != current_hash:
                 ConfigError(
@@ -2801,28 +2801,20 @@ class Constructor:
 
         metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
         metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
-
-        cdb = ContigsDatabase(contigs_db)
-        cdb.db._exec_many(
-            f'''INSERT INTO {tables.gene_function_metabolites_table_name} VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
-            metabolites_table.values
-        )
-        cdb.disconnect()
-
-    def hash_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
+    def hash_contigs_db_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
         """
-        Hash gene KO annotations in a contigs database to concisely represent the data used to
-        construct a reaction network.
+        To concisely represent the data underlying a reaction network, hash all gene KO annotations
+        in the contigs database.
 
         Parameters
         ==========
         gene_function_calls_dict : str
-            Dictionary containing gene KO annotations loaded by a contigs superclass.
+            This dictionary is loaded by a contigs superclass and contains gene KO annotations.
 
         Returns
         =======
         str
-            Hash representation of all gene KO annotations.
+            Hash representation of all gene KO annotations
         """
         ko_annotations = []
         for gcid, gene_dict in gene_function_calls_dict.items():
@@ -2831,7 +2823,6 @@ class Constructor:
             ko_name = ko_data[1]
             e_value = ko_data[2]
             ko_annotations.append((str(gcid), ko_id, ko_name, str(e_value)))
-        # Sort KO annotation data in ascending order of gene caller ID and KO accession.
         ko_annotations = sorted(ko_annotations, key=lambda x: (x[0], x[1]))
 
         ko_annotations_string = ''
