@@ -1391,7 +1391,7 @@ class ModelSEEDDatabase:
         with open(sha_path) as f:
             self.sha = f.read().strip()
         reactions_table = pd.read_csv(reactions_path, sep='\t', header=0, low_memory=False)
-        self.compounds_table = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
+        self.compounds_table: pd.DataFrame = pd.read_csv(compounds_path, sep='\t', header=0, index_col='id', low_memory=False)
 
         # Facilitate lookup of reaction data by KEGG REACTION ID via a reorganized reactions table.
         # Remove reactions without KEGG aliases.
