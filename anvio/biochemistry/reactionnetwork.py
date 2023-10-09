@@ -3329,18 +3329,25 @@ class Constructor:
 
         return compound
 
-    def _store_contigs_database_reactions(self, network: GenomicNetwork, contigs_db: str) -> None:
+    def _get_database_reactions_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
-        Store reaction data in the relevant contigs database table.
+        Make a reactions table that can be stored in either a contigs or pan database, as the tables
+        have the same structure. A `ReactionNetwork` can be reconstructed with the same data from
+        the reactions and metabolites tables of the database.
 
         Parameters
         ==========
-        network : GenomicNetwork
-            The reaction network generated from gene KO annotations in the contigs database.
+        network : ReactionNetwork
+            The reaction network generated from gene or gene cluster KO annotations
 
-        contigs_db : str
-            The path to the contigs database from which the reaction network was generated.
+        Returns
+        =======
+        pd.DataFrame
+            The table of reactions data to be stored in the contigs or pan database
         """
+        assert tables.gene_function_reactions_table_structure == tables.pan_gene_cluster_function_reactions_table_structure
+        assert tables.gene_function_reactions_table_types == tables.pan_gene_cluster_function_reactions_table_types
+
         # Transfer data from reaction objects to dictionaries mapping to table entries.
         reactions_data: Dict[str, Dict] = {}
         for modelseed_reaction_id, reaction in network.reactions.items():
@@ -3419,30 +3426,27 @@ class Constructor:
 
         reactions_table = pd.DataFrame.from_dict(reactions_data, orient='index').reset_index(drop=True).sort_values('modelseed_reaction_id')
         reactions_table = reactions_table[tables.gene_function_reactions_table_structure]
+        return reactions_table
 
-        cdb = ContigsDatabase(contigs_db)
-        cdb.db._exec_many(
-            f'''INSERT INTO {tables.gene_function_reactions_table_name} VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
-            reactions_table.values
-        )
-        cdb.disconnect()
-
-    def _store_contigs_database_metabolites(self, network: GenomicNetwork, contigs_db: str) -> None:
+    def _get_database_metabolites_table(self, network: ReactionNetwork) -> pd.DataFrame:
         """
-        Store metabolite data in the relevant contigs database table.
+        Make a metabolites table that can be stored in either a contigs or pan database, as the tables
+        have the same structure. A `ReactionNetwork` can be reconstructed with the same data from
+        the reactions and metabolites tables of the database.
 
         Parameters
         ==========
-        network : GenomicNetwork
-            The reaction network generated from gene KO annotations in the contigs database.
-
-        contigs_db : str
-            The path to the contigs database from which the reaction network was generated.
+        network : ReactionNetwork
+            The reaction network generated from gene or gene cluster KO annotations
 
         Returns
         =======
-        None
+        pd.DataFrame
+            The table of metabolites data to be stored in the contigs or pan database
         """
+        assert tables.gene_function_metabolites_table_structure == tables.pan_gene_cluster_function_metabolites_table_structure
+        assert tables.gene_function_metabolites_table_types == tables.pan_gene_cluster_function_metabolites_table_types
+
         # Transfer data from metabolite objects to dictionaries mapping to table entries.
         metabolites_data = {}
         for modelseed_compound_id, compound in network.metabolites.items():
@@ -3456,6 +3460,8 @@ class Constructor:
 
         metabolites_table = pd.DataFrame.from_dict(metabolites_data, orient='index').reset_index(drop=True).sort_values('modelseed_compound_id')
         metabolites_table = metabolites_table[tables.gene_function_metabolites_table_structure]
+        return metabolites_table
+
     def hash_contigs_db_ko_annotations(self, gene_function_calls_dict: Dict) -> str:
         """
         To concisely represent the data underlying a reaction network, hash all gene KO annotations
