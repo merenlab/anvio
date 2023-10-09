@@ -3493,30 +3493,58 @@ class Constructor:
         hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
         return hashed_ko_annotations
 
-    # def make_pangenomic_network(
-    #     self,
-    #     genomes_storage_db: str,
-    #     pan_db: str,
-    #     store: bool = True,
-    #     overwrite_existing_network: bool = False
-    # ) -> PangenomicNetwork:
-    #     """
-    #     Make a pangenomic metabolic reaction network from KEGG Orthologs stored a genomes storage
-    #     database and gene clusters stored in a pan database.
+    def hash_pan_db_ko_annotations(
+        self,
+        genomes_storage_db: str,
+        gene_clusters_functions_summary_dict: Dict,
+        consensus_threshold: float,
+        discard_ties: bool
+    ) -> str:
+        """
+        To concisely represent the data underlying a reaction network, hash all gene KO annotations
+        in the constituent genomes, all consensus KO annotations of the gene clusters, and
+        parameters used to select consensus KOs.
 
-    #     Parameters
-    #     ==========
-    #     genomes_storage_db : str
-    #         Path to a genomes storage database. The pangenomic network is derived from gene KO
-    #         annotations stored in the database.
+        Parameters
+        ==========
+        genomes_storage_db : str
+            This is the path to a genomes storage database with the underlying gene KO annotations.
 
-    #     pan_db : str
-    #         Path to a pan database. The pangenomic network is determined for gene clusters stored in
-    #         the database.
+        gene_clusters_functions_summary_dict : dict
+            This dictionary is loaded by a pan superclass and contains gene cluster KO annotations.
 
-    #     Returns
-    #     =======
-    #     PangenomicNetwork
-    #         The network derived from the pangenomic databases.
-    #     """
-    #     return
+        consensus_threshold : float, None
+            This parameter was used in setting consensus KO annotations of gene clusters.
+
+        discard_ties : bool, False
+            This parameter was used in setting consensus KO annotations of gene clusters.
+
+        Returns
+        =======
+        str
+            Hash representation of all gene cluster consensus KO annotations and the parameters used
+            to select consensus KOs
+        """
+        gsdb = dbinfo.GenomeStorageDBInfo(genomes_storage_db).load_db()
+        functions_table = gsdb.get_table_as_dataframe('gene_function_calls', where_clause='source = "KOfam"')
+        gsdb.disconnect()
+        ko_annotations = []
+        for row in functions_table.itertuples(index=False):
+            ko_annotations.append((row.genome_name, str(row.gene_callers_id), row.accession, row.function, str(row.e_value)))
+        ko_annotations = sorted(ko_annotations, key=lambda x: (x[0], x[1], x[2]))
+
+        ko_annotations = []
+        for gene_cluster_id, gene_cluster_dict in gene_clusters_functions_summary_dict.items():
+            ko_data = gene_cluster_dict['KOfam']
+            ko_id = ko_data['accession']
+            ko_name = ko_data['function']
+            # When the KO ID and name are None, convert them into 'None'.
+            ko_annotations.append((str(gene_cluster_id), str(ko_id), str(ko_name)))
+        ko_annotations = sorted(ko_annotations, key=lambda x: x[0])
+
+        ko_annotations_string = f'{consensus_threshold}_{int(discard_ties)}_'
+        for ko_annotation in ko_annotations:
+            ko_annotations_string += ''.join(ko_annotation)
+
+        hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
+        return hashed_ko_annotations
