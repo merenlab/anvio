@@ -2103,80 +2103,8 @@ class Constructor:
                 # be associated with ModelSEED reactions.
                 continue
 
-            # If a KEGG reaction has already been encountered, then aliased ModelSEED reactions have
-            # been processed and added as ModelSEEDReaction objects to the network. Therefore, KEGG
-            # reactions that have already been encountered are treated differently than KEGG
-            # reactions encountered for the first time.
-            new_kegg_reaction_ids = []
-            for kegg_reaction_id in ko_kegg_reaction_ids:
-                try:
-                    # The KEGG reaction has already been encountered. Retrieve ModelSEED reactions
-                    # aliased by the KEGG reaction.
-                    modelseed_reaction_ids = network.kegg_modelseed_aliases[kegg_reaction_id]
-                except KeyError:
-                    new_kegg_reaction_ids.append(kegg_reaction_id)
-                    # The following list of ModelSEED reaction IDs associated with the KEGG reaction
-                    # is filled in later. If no ModelSEED reactions are associated with the KEGG
-                    # reaction, the entry in the dictionary will be removed.
-                    network.kegg_modelseed_aliases[kegg_reaction_id] = []
-                    continue
-                for modelseed_reaction_id in modelseed_reaction_ids:
-                    try:
-                        # Retrieve the existing ModelSEEDReaction object.
-                        reaction = network.reactions[modelseed_reaction_id]
-                    except KeyError:
-                        # The ModelSEED reaction associated with the EC number did not have valid
-                        # data: for example, when the 'stoichiometry' field is empty.
-                        continue
-                    # Associate the ModelSEED reaction with the newly encountered KO.
-                    ko.reactions[modelseed_reaction_id] = reaction
-                    # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
-                    ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
-                        set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
-                    )
-                    ko.ec_number_aliases[modelseed_reaction_id] = list(
-                        set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases))
-                    )
-
-            # As above with KEGG reactions, if an EC number has already been encountered, then
-            # aliased ModelSEED reactions have been processed and added as ModelSEEDReaction objects
-            # to the network. Therefore, EC numbers that have already been encountered are treated
-            # differently than EC numbers encountered for the first time.
-            new_ec_numbers = []
-            for ec_number in ko_ec_numbers:
-                try:
-                    # The EC number has already been encountered. Retrieve ModelSEED reactions
-                    # aliased by the EC number.
-                    modelseed_reaction_ids = network.ec_number_modelseed_aliases[ec_number]
-                except KeyError:
-                    new_ec_numbers.append(ec_number)
-                    # The following list of ModelSEED reaction IDs associated with the EC number is
-                    # filled in later. If no ModelSEED reactions are associated with the EC number,
-                    # the entry in the dictionary will be removed.
-                    network.ec_number_modelseed_aliases[ec_number] = []
-                    continue
-                for modelseed_reaction_id in modelseed_reaction_ids:
-                    try:
-                        # Retrieve the existing ModelSEEDReaction object.
-                        reaction = network.reactions[modelseed_reaction_id]
-                    except KeyError:
-                        # The ModelSEED reaction associated with the EC number did not have valid
-                        # data: for example, when the 'stoichiometry' field is empty.
-                        continue
-                    if modelseed_reaction_id in reaction.ec_number_aliases:
-                        # A KEGG reaction associated with the newly encountered KO was also
-                        # associated with the ModelSEED reaction. KO EC number aliases were
-                        # previously recorded along with KO KEGG reaction aliases. Redundant work
-                        # can be avoided here linking the ModelSEED reaction to the KO in the network.
-                        continue
-                    ko.reactions[modelseed_reaction_id] = reaction
-                    ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
-                        set(ko_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
-                    )
-                    ko.ec_number_aliases[modelseed_reaction_id] = list(
-                        set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases))
-                    )
-
+            new_kegg_reaction_ids = self._parse_ko_kegg_reaction_ids(network, ko, ko_kegg_reaction_ids, ko_ec_numbers)
+            new_ec_numbers = self._parse_ko_ec_numbers(network, ko, ko_ec_numbers, ko_kegg_reaction_ids)
             if not (new_kegg_reaction_ids or new_ec_numbers):
                 # All of the KEGG reactions and EC numbers associated with the KO have already been
                 # encountered in previously processed KOs and added to the network, so proceed to
