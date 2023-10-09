@@ -2213,9 +2213,21 @@ class Constructor:
 
             self.progress.new("Saving reaction network to contigs database")
             self.progress.update("Reactions table")
-            self._store_contigs_database_reactions(network, contigs_db)
+            reactions_table = self._get_database_reactions_table(network)
+            cdb = ContigsDatabase(contigs_db)
+            cdb.db._exec_many(
+                f'''INSERT INTO {tables.gene_function_reactions_table_name} VALUES ({','.join('?' * len(tables.gene_function_reactions_table_structure))})''',
+                reactions_table.values
+            )
+            cdb.disconnect()
             self.progress.update("Metabolites table")
-            self._store_contigs_database_metabolites(network, contigs_db)
+            metabolites_table = self._get_database_metabolites_table(network)
+            cdb = ContigsDatabase(contigs_db)
+            cdb.db._exec_many(
+                f'''INSERT INTO {tables.gene_function_metabolites_table_name} VALUES ({','.join('?' * len(tables.gene_function_metabolites_table_structure))})''',
+                metabolites_table.values
+            )
+            cdb.disconnect()
 
             self.progress.update("Metadata")
             ko_annotations_hash = self.hash_ko_annotations(gene_function_calls_dict)
