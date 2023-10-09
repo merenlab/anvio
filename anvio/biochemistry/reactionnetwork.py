@@ -2230,7 +2230,7 @@ class Constructor:
             cdb.disconnect()
 
             self.progress.update("Metadata")
-            ko_annotations_hash = self.hash_ko_annotations(gene_function_calls_dict)
+            ko_annotations_hash = self.hash_contigs_db_ko_annotations(gene_function_calls_dict)
             cdb = ContigsDatabase(contigs_db)
             cdb.db.set_meta_value('reaction_network_ko_annotations_hash', ko_annotations_hash)
             cdb.db.set_meta_value('reaction_network_kegg_database_release', ko_db.release)
