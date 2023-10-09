@@ -697,7 +697,7 @@ class GenomicNetwork(ReactionNetwork):
         overwrite: bool = False,
         objective: str = None,
         remove_missing_objective_metabolites: bool = False,
-        record_bins: tuple = ('gene', ),
+        # record_bins: tuple = ('gene', ),
         indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
