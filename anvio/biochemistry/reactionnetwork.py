@@ -2620,6 +2620,87 @@ class Constructor:
                     set(ko_ec_numbers).intersection(set(reaction.ec_number_aliases))
                 )
         return new_ec_numbers
+
+    def _get_modelseed_reactions_data(
+        self,
+        network: ReactionNetwork,
+        new_kegg_reaction_ids: List[str],
+        new_ec_numbers: List[str],
+        modelseed_kegg_reactions_table: pd.DataFrame,
+        modelseed_ec_reactions_table: pd.DataFrame
+    ) -> Dict:
+        """
+        Get data on ModelSEED reactions aliased by newly encountered KEGG REACTION IDs and EC numbers.
+
+        Parameters
+        ==========
+        network : ReactionNetwork
+            The reaction network object being built
+
+        new_kegg_reaction_ids : list
+            Newly encountered KEGG REACTION IDs not associated with previously processed KOs
+
+        new_ec_numbers : list
+            Newly encountered EC numbers not associated with previously processed KOs
+
+        modelseed_kegg_reactions_table : pd.DataFrame
+            Loaded ModelSEED Biochemistry reactions database structured by KEGG REACTION ID
+
+        modelseed_ec_reactions_table : pd.DataFrame
+            Loaded ModelSEED Biochemistry reactions database structured by EC number
+
+        Returns
+        =======
+        dict
+            Data on the reaction sourced from the ModelSEED Biochemistry database
+        """
+        modelseed_reactions_data = {}
+        if new_kegg_reaction_ids:
+            # Each row of the table represents a unique KEGG reaction -> ModelSEED reaction mapping.
+            modelseed_kegg_reactions_dict: Dict[str, Dict] = modelseed_kegg_reactions_table[
+                modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(new_kegg_reaction_ids)
+            ].to_dict(orient='index')
+            for modelseed_reaction_data in modelseed_kegg_reactions_dict.values():
+                kegg_reaction_id = modelseed_reaction_data['KEGG_REACTION_ID']
+                modelseed_reaction_id = modelseed_reaction_data['id']
+                # Record the association between the KEGG reaction and ModelSEED reaction in the
+                # network, and vice versa.
+                network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
+                try:
+                    network.modelseed_kegg_aliases[modelseed_reaction_id].append(kegg_reaction_id)
+                except KeyError:
+                    # This is the first time the ModelSEED reaction has been encountered.
+                    network.modelseed_kegg_aliases[modelseed_reaction_id] = [kegg_reaction_id]
+                    network.modelseed_ec_number_aliases[modelseed_reaction_id] = []
+                if modelseed_reaction_id in modelseed_reactions_data:
+                    # One of the other newly encountered KEGG reactions also mapped to this
+                    # ModelSEED reaction, so do not record redundant ModelSEED reaction data.
+                    continue
+                modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
+        if new_ec_numbers:
+            # Each row of the table represents a unique EC number -> ModelSEED reaction mapping.
+            modelseed_ec_reactions_dict: Dict[str, Dict] = modelseed_ec_reactions_table[
+                modelseed_ec_reactions_table['EC_number'].isin(new_ec_numbers)
+            ].to_dict(orient='index')
+            for modelseed_reaction_data in modelseed_ec_reactions_dict.values():
+                ec_number = modelseed_reaction_data['EC_number']
+                modelseed_reaction_id = modelseed_reaction_data['id']
+                # Record the association between the EC number and ModelSEED reaction in the
+                # network, and vice versa.
+                network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
+                try:
+                    network.modelseed_ec_number_aliases[modelseed_reaction_id].append(ec_number)
+                except KeyError:
+                    # This is the first time the ModelSEED reaction has been encountered.
+                    network.modelseed_ec_number_aliases[modelseed_reaction_id] = [ec_number]
+                    network.modelseed_kegg_aliases[modelseed_reaction_id] = []
+                if modelseed_reaction_id in modelseed_reactions_data:
+                    # One of the other newly encountered KEGG reactions or EC numbers also
+                    # mapped to this ModelSEED reaction, so do not record redundant ModelSEED reaction data.
+                    continue
+                modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
+        return modelseed_reactions_data
+
     def _get_modelseed_reaction(self, modelseed_reaction_data: Dict) -> Tuple[ModelSEEDReaction, List[str]]:
         """
         Generate a ModelSEED reaction object and list of associated ModelSEED compound IDs from the
