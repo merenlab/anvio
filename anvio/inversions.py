@@ -131,6 +131,9 @@ class Inversions:
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
 
+        # this variable is used to filter out oligo supported by less than x reads
+        self.min_frequency = A('min_frequency_to_report') or 1
+
         # skip learning about the genomic context that surrounds inversions?
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
@@ -1351,7 +1354,7 @@ class Inversions:
 
 
     @staticmethod
-    def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
+    def compute_inversion_activity_for_sample(input_queue, output_queue, samples_dict, primers_dict, min_frequency, oligo_length=6, end_primer_search_after_x_hits=None, run=run_quiet, progress=progress_quiet):
         """Go back to the raw metagenomic reads to compute activity of inversions for a single sample.
 
         Returns
@@ -1384,6 +1387,7 @@ class Inversions:
             args = argparse.Namespace(samples_dict=samples_dict_for_sample,
                                       primers_dict=primers_dict,
                                       min_remainder_length=oligo_length,
+                                      min_frequency=min_frequency,
                                       only_keep_remainder=True)
 
             # if the user is testing:
@@ -1402,8 +1406,8 @@ class Inversions:
                 reads_found = False
 
                 for oligo, frequency in oligos_frequency_dict.items():
-                    sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
-                    if frequency:
+                    if frequency > min_frequency:
+                        sample_counts.append((sample_name, primer_name, oligo, oligo == primers_dict[primer_name]['oligo_reference'], frequency, frequency / num_oligos))
                         reads_found = True
 
                 # if the reference oligo has no frequency but reads were found for other oligo
@@ -1519,8 +1523,10 @@ class Inversions:
                                                    output_queue,
                                                    self.profile_db_bam_file_pairs,
                                                    primers_dict,
+                                                   self.min_frequency,
                                                    self.oligo_length,
                                                    self.end_primer_search_after_x_hits),
+
                                              kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
             workers.append(worker)
             worker.start()
@@ -1664,6 +1670,15 @@ class Inversions:
         else:
             self.run.info("[Genomic context] Recover and report genomic context?",  "False", mc="red", nl_after=1)
 
+        if not self.skip_search_for_motifs:
+            if self.num_of_motifs:
+                self.run.info("[Search for motifs] Search for DNA motifs?", "True", mc="green")
+                self.run.info("[Search for motifs] Number of motifs to search", self.num_of_motifs, nl_after=1)
+            else:
+                self.run.info("[Search for motifs] Search for DNA motifs?", "True", mc="green", nl_after=1)
+        else:
+            self.run.info("[Search for motifs] Search for DNA motifs?", "False", mc="red", nl_after=1)
+
         # are we to compute inversion activity by going through raw reads?
         inversion_activity_will_be_computed = self.raw_r1_r2_reads_are_present and not self.skip_compute_inversion_activity
         self.run.info("[Inversion activity] Compute inversion activity?",  "True" if inversion_activity_will_be_computed else "False", mc=("green" if inversion_activity_will_be_computed else "red"))
@@ -1678,8 +1693,10 @@ class Inversions:
             self.run.info("[Inversion activity] Number of threads", self.num_threads, mc=("green" if self.num_threads > 1 else "red"))
             if self.end_primer_search_after_x_hits:
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length)
+                self.run.info("[Inversion activity] Minimum frequency reported", self.min_frequency)
                 self.run.info("[Inversion activity Debug] Num hits to end primer search",  self.end_primer_search_after_x_hits, mc="red", nl_after=1)
             else:
+                self.run.info("[Inversion activity] Minimum frequency reported", self.min_frequency)
                 self.run.info("[Inversion activity] Oligo primer base length", self.oligo_primer_base_length, nl_after=1)
 
         if self.target_contig:
