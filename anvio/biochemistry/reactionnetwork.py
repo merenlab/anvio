@@ -1905,10 +1905,12 @@ class Constructor:
     def make_network(
         self,
         contigs_db: str = None,
-        genomes_storage_db: str = None,
         pan_db: str = None,
+        genomes_storage_db: str = None,
         store: bool = True,
-        overwrite_existing_network: bool = False
+        overwrite_existing_network: bool = False,
+        consensus_threshold: float = None,
+        discard_ties: bool = False
     ) -> ReactionNetwork:
         """
         Make a metabolic reaction network from KEGG Orthologs stored in an anvi'o database,
