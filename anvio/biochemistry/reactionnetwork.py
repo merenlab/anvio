@@ -2071,14 +2071,13 @@ class Constructor:
                 # with the KO were added to the network as well.
                 gene.kos.append(network.kos[ko_id])
                 continue
-            else:
-                ko = KO()
-                ko.id = ko_id
-                ko.name = ko_data[1]
-                gene.kos.append(ko)
-                # Add the KO to the network, regardless of whether it yields reactions. KOs not
-                # contributing to the network are removed later.
-                network.kos[ko_id] = ko
+            ko = KO()
+            ko.id = ko_id
+            ko.name = ko_data[1]
+            gene.kos.append(ko)
+            # Add the KO to the network, regardless of whether it yields reactions. KOs not
+            # contributing to the network are removed later.
+            network.kos[ko_id] = ko
 
             # Find KEGG reactions and EC numbers associated with the newly encountered KO.
             try:
