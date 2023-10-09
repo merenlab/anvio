@@ -47,6 +47,14 @@ pan_gene_clusters_table_name           = 'gene_clusters'
 pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
 pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
+pan_gene_cluster_function_reactions_table_name        = 'gene_cluster_function_reactions'
+pan_gene_cluster_function_reactions_table_structure   = ['modelseed_reaction_id', 'modelseed_reaction_name', 'ko_kegg_reaction_source', 'ko_ec_number_source', 'other_kegg_reaction_ids', 'other_ec_numbers', 'metabolite_modelseed_ids', 'stoichiometry', 'compartments', 'reversibility']
+pan_gene_cluster_function_reactions_table_types       = [         'text'        ,            'text'        ,          'text'          ,         'text'       ,         'text'           ,       'text'      ,           'text'          ,      'text'    ,     'text'    ,      'bool'    ]
+
+pan_gene_cluster_function_metabolites_table_name      = 'gene_cluster_function_metabolites'
+pan_gene_cluster_function_metabolites_table_structure = ['modelseed_compound_id', 'modelseed_compound_name', 'kegg_aliases', 'formula', 'charge']
+pan_gene_cluster_function_metabolites_table_types     = [         'text'        ,           'text'         ,     'text'    ,   'text' , 'numeric']
+
 
 ####################################################################################################
 #
@@ -386,6 +394,8 @@ table_requires_unique_entry_id = {'self': False,
                                   'max_normalized_ratio_splits': False,
                                   'relative_abundance_splits': False,
                                   pan_gene_clusters_table_name: True,
+                                  pan_gene_cluster_function_reactions_table_name: False,
+                                  pan_gene_cluster_function_metabolites_table_name: False,
                                   genes_in_splits_table_name: True,
                                   gene_function_calls_table_name: True,
                                   gene_function_reactions_table_name: False,
