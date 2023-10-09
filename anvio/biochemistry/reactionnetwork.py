@@ -2655,6 +2655,85 @@ class Constructor:
                 modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
         return modelseed_reactions_data
 
+    def _add_modelseed_reaction(
+        self,
+        network: ReactionNetwork,
+        ko: KO,
+        reaction: ModelSEEDReaction,
+        new_kegg_reaction_ids: List[str],
+        new_ec_numbers: List[str],
+        modelseed_compound_ids: List[str],
+        modelseed_compounds_table: pd.DataFrame
+    ) -> None:
+        """
+        Add an object representing the ModelSEED reaction and objects representing associated
+        ModelSEED compounds to the reaction network.
+
+        Parameters
+        ==========
+        network : ReactionNetwork
+            The reaction network object being built
+
+        ko : KO
+            The representation of the KO being processed
+
+        reaction : ModelSEEDReaction
+            The representation of the reaction with data sourced from ModelSEED Biochemistry
+
+        new_kegg_reaction_ids : list
+            Newly encountered KEGG REACTION IDs not associated with previously processed KOs
+
+        new_ec_numbers : list
+            Newly encountered EC numbers not associated with previously processed KOs
+
+        modelseed_compound_ids : list
+            ModelSEED compound IDs of the reactants and products in the reaction
+
+        modelseed_compounds_table : pd.DataFrame
+            Loaded ModelSEED Biochemistry compounds database
+
+        Returns
+        =======
+        None
+        """
+        modelseed_reaction_id = reaction.modelseed_id
+        ko.reactions[modelseed_reaction_id] = reaction
+        # Record which KEGG REACTION IDs and EC numbers from the KO yield the ModelSEED reaction.
+        ko.kegg_reaction_aliases[modelseed_reaction_id] = list(
+            set(new_kegg_reaction_ids).intersection(set(reaction.kegg_aliases))
+        )
+        ko.ec_number_aliases[modelseed_reaction_id] = list(
+            set(new_ec_numbers).intersection(set(reaction.ec_number_aliases))
+        )
+        network.reactions[modelseed_reaction_id] = reaction
+
+        # If the ModelSEED compound ID has been encountered in previously processed
+        # reactions, then there is already a ModelSEEDCompound object for it.
+        new_modelseed_compound_ids = []
+        reaction_compounds = []
+        for modelseed_compound_id in modelseed_compound_ids:
+            if modelseed_compound_id in network.metabolites:
+                reaction_compounds.append(network.metabolites[modelseed_compound_id])
+            else:
+                new_modelseed_compound_ids.append(modelseed_compound_id)
+
+        # Generate new metabolite objects in the network
+        for modelseed_compound_id in new_modelseed_compound_ids:
+            try:
+                modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[modelseed_compound_id]
+            except KeyError:
+                raise ConfigError(
+                    f"A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected "
+                    "but not found in the ModelSEED compounds table. This ID was found in the equation "
+                    f"for the ModelSEED reaction, '{modelseed_reaction_id}'."
+                )
+            modelseed_compound_data = modelseed_compound_series.to_dict()
+            modelseed_compound_data['id'] = modelseed_compound_id
+            compound = self._get_modelseed_compound(modelseed_compound_data)
+            reaction_compounds.append(compound)
+            network.metabolites[modelseed_compound_id] = compound
+        reaction.compounds = tuple(reaction_compounds)
+
     def _get_modelseed_reaction(self, modelseed_reaction_data: Dict) -> Tuple[ModelSEEDReaction, List[str]]:
         """
         Generate a ModelSEED reaction object and list of associated ModelSEED compound IDs from the
