@@ -2262,6 +2262,7 @@ class Constructor:
 
         self.progress.new("Counting reactions and KO sources")
         self.progress.update("...")
+        # This group of network statistics is found the same way for both contigs and pan databases.
 
         stats['Reactions in network'] = reaction_count = len(network.reactions)
         reaction_counts = []
@@ -2280,6 +2281,7 @@ class Constructor:
 
         self.progress.new("Counting reactions from each alias source")
         self.progress.update("...")
+        # This group of network statistics is found the same way for both contigs and pan databases.
 
         kegg_reaction_source_count = 0
         ec_number_source_count = 0
