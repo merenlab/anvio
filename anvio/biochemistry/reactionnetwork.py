@@ -20,17 +20,18 @@ import numpy as np
 import pandas as pd
 import multiprocessing as mp
 
+from argparse import Namespace
 from typing import Dict, List, Set, Tuple
 
 import anvio.utils as utils
+import anvio.dbinfo as dbinfo
 import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsDatabase
-from anvio.dbops import ContigsSuperclass
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
+from anvio.dbops import ContigsDatabase, PanDatabase, ContigsSuperclass, PanSuperclass
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
