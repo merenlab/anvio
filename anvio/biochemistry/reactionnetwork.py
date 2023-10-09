@@ -2110,53 +2110,7 @@ class Constructor:
                 # encountered in previously processed KOs and added to the network, so proceed to
                 # the next gene KO annotation.
                 continue
-
-            # Get data on ModelSEED reactions aliased by newly encountered KEGG REACTION IDs and EC numbers.
-            modelseed_reactions_data = {}
-            if new_kegg_reaction_ids:
-                # Each row of the table represents a unique KEGG reaction -> ModelSEED reaction mapping.
-                modelseed_kegg_reactions_dict: Dict[str, Dict] = modelseed_kegg_reactions_table[
-                    modelseed_kegg_reactions_table['KEGG_REACTION_ID'].isin(new_kegg_reaction_ids)
-                ].to_dict(orient='index')
-                for modelseed_reaction_data in modelseed_kegg_reactions_dict.values():
-                    kegg_reaction_id = modelseed_reaction_data['KEGG_REACTION_ID']
-                    modelseed_reaction_id = modelseed_reaction_data['id']
-                    # Record the association between the KEGG reaction and ModelSEED reaction in the
-                    # network, and vice versa.
-                    network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
-                    try:
-                        network.modelseed_kegg_aliases[modelseed_reaction_id].append(kegg_reaction_id)
-                    except KeyError:
-                        # This is the first time the ModelSEED reaction has been encountered.
-                        network.modelseed_kegg_aliases[modelseed_reaction_id] = [kegg_reaction_id]
-                        network.modelseed_ec_number_aliases[modelseed_reaction_id] = []
-                    if modelseed_reaction_id in modelseed_reactions_data:
-                        # One of the other newly encountered KEGG reactions also mapped to this
-                        # ModelSEED reaction, so do not record redundant ModelSEED reaction data.
-                        continue
-                    modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
-            if new_ec_numbers:
-                # Each row of the table represents a unique EC number -> ModelSEED reaction mapping.
-                modelseed_ec_reactions_dict: Dict[str, Dict] = modelseed_ec_reactions_table[
-                    modelseed_ec_reactions_table['EC_number'].isin(new_ec_numbers)
-                ].to_dict(orient='index')
-                for modelseed_reaction_data in modelseed_ec_reactions_dict.values():
-                    ec_number = modelseed_reaction_data['EC_number']
-                    modelseed_reaction_id = modelseed_reaction_data['id']
-                    # Record the association between the EC number and ModelSEED reaction in the
-                    # network, and vice versa.
-                    network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
-                    try:
-                        network.modelseed_ec_number_aliases[modelseed_reaction_id].append(ec_number)
-                    except KeyError:
-                        # This is the first time the ModelSEED reaction has been encountered.
-                        network.modelseed_ec_number_aliases[modelseed_reaction_id] = [ec_number]
-                        network.modelseed_kegg_aliases[modelseed_reaction_id] = []
-                    if modelseed_reaction_id in modelseed_reactions_data:
-                        # One of the other newly encountered KEGG reactions or EC numbers also
-                        # mapped to this ModelSEED reaction, so do not record redundant ModelSEED reaction data.
-                        continue
-                    modelseed_reactions_data[modelseed_reaction_id] = modelseed_reaction_data
+            modelseed_reactions_data = self._get_modelseed_reactions_data(network, new_kegg_reaction_ids, new_ec_numbers, modelseed_kegg_reactions_table, modelseed_ec_reactions_table)
             if not modelseed_reactions_data:
                 # The newly encountered KEGG REACTION IDs and EC numbers do not map to ModelSEED
                 # reactions (are not in the table).
