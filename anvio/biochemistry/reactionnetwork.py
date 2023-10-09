@@ -2199,6 +2199,9 @@ class Constructor:
                 f"Here are the unrecognized KO IDs from the contigs database: {', '.join(undefined_ko_ids)}"
             )
 
+        self.run.info("Reference KEGG KO database directory", self.ko_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", self.modelseed_dir)
+
         if store:
             if contigs_super.a_meta['reaction_network_ko_annotations_hash']:
                 self.run.warning("Deleting existing reaction network from contigs database")
