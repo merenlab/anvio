@@ -1924,14 +1924,14 @@ class Constructor:
             gene KO annotations stored in the database. If 'store' is True, the network is saved in
             the database.
 
-        genomes_storage_db : str, None
-            Path to a genomes storage database. The pangenomic network is derived from gene KO
-            annotations stored in the database. 'pan_db' is also required.
-
         pan_db : str, None
             Path to a pan database. The pangenomic network is determined for gene clusters stored in
             the database. If 'store' is True, the network is saved in the database.
             'genomes_storage_db' is also required.
+
+        genomes_storage_db : str, None
+            Path to a genomes storage database. The pangenomic network is derived from gene KO
+            annotations stored in the database. 'pan_db' is also required.
 
         store : bool, True
             Save the network. A network constructed from a contigs database is stored in that
@@ -1941,6 +1941,18 @@ class Constructor:
         overwrite_existing_network : bool, False
             Overwrite an existing network stored in the contigs or pan database. 'store' is also
             required.
+
+        consensus_threshold : float, None
+            This parameter applies to pangenomes. With the default of None, the protein annotation
+            most frequent among genes in a cluster is assigned to the cluster itself. If a
+            non-default argument is provided (a value on [0, 1]), at least this proportion of genes
+            in the cluster must have the most frequent annotation for the cluster to be annotated.
+
+        discard_ties : bool, False
+            This parameter applies to pangenomes. If multiple protein annotations are most frequent
+            among genes in a cluster, then do not assign an annotation to the cluster itself when
+            this argument is True. By default, this argument is False, so one of the most frequent
+            annotations would be arbitrarily chosen.
         """
         if contigs_db:
             self.run.info_single(
