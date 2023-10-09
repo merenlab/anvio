@@ -1954,21 +1954,38 @@ class Constructor:
             this argument is True. By default, this argument is False, so one of the most frequent
             annotations would be arbitrarily chosen.
         """
-        if contigs_db:
+        if contigs_db and (pan_db or genomes_storage_db):
+            raise ConfigError(
+                "Either a contigs database OR both a pan database and genomes storage database are required "
+                "to make either a (meta)genomic reaction network or a pangenomic reaction network, respectively."
+            )
+        elif contigs_db:
             self.run.info_single(
                 "A reaction network will be made from protein orthology annotations in the contigs database."
             )
-            network = self.make_contigs_database_network(contigs_db, store=store, overwrite_existing_network=overwrite_existing_network)
+            network = self.make_contigs_database_network(
+                contigs_db,
+                store=store,
+                overwrite_existing_network=overwrite_existing_network
+            )
         elif genomes_storage_db or pan_db:
             self.run.info_single(
                 "A pangenomic reaction network will be made from protein orthology annotations "
                 "in the genomes storage database and gene clusters in the pan database."
             )
-            network = self.make_pangenomic_network(genomes_storage_db, pan_db, store=store, overwrite_existing_network=overwrite_existing_network)
+            network = self.make_pangenomic_network(
+                pan_db,
+                genomes_storage_db,
+                store=store,
+                overwrite_existing_network=overwrite_existing_network,
+                consensus_threshold=consensus_threshold,
+                discard_ties=discard_ties
+            )
         else:
             raise ConfigError(
-                "A reaction network cannot be made without a database source. "
-                "Either a contigs database or a genomes storage database and pan database are required."
+                "A reaction network cannot be made without a database source. Either a contigs database OR "
+                "a pan database and genomes storage database are required to make either a (meta)genomic "
+                "reaction network or a pangenomic reaction network, respectively."
             )
         return network
 
