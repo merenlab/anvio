@@ -860,87 +860,87 @@ class GenomicNetwork(ReactionNetwork):
             json.dump(json_dict, f, indent=indent)
         progress.end()
 
-# class PangenomicNetwork(ReactionNetwork):
-#     """A reaction network predicted from KEGG KO and ModelSEED annotations of pangenomic gene clusters."""
-#     def __init__(self) -> None:
-#         # map gene cluster ID to gene cluster object
-#         self.gene_clusters: Dict[str, GeneCluster] = {}
-#         self.bins: Dict[str, GeneClusterBin] = {}
-#         self.collection: BinCollection = None
-#         super().__init__()
+class PangenomicNetwork(ReactionNetwork):
+    """A reaction network predicted from KEGG KO and ModelSEED annotations of pangenomic gene clusters."""
+    def __init__(self) -> None:
+        # map gene cluster ID to gene cluster object
+        self.gene_clusters: Dict[str, GeneCluster] = {}
+        self.bins: Dict[str, GeneClusterBin] = {}
+        self.collection: BinCollection = None
+        super().__init__()
 
-#     def export_json(
-#         self,
-#         path: str,
-#         annotate_genes: tuple = ('genome', 'bin', ),
-#         annotate_reactions: tuple = ('genome', 'bin', 'kegg_reaction', 'ec_number'),
-#         annotate_metabolites: tuple = ('genome', 'bin', 'kegg_compound'),
-#         run: terminal.Run = terminal.Run(),
-#         progress: terminal.Progress = terminal.Progress()
-#     ) -> None:
-#         """
-#         Export the network to a metabolic model file in JSON format. *Gene entries in this file
-#         represent gene clusters.* Optionally, gene, reaction, and metabolite entries in this file
-#         are annotated with the names of genomes and names of gene cluster bins in which they occur.
+    def export_json(
+        self,
+        path: str,
+        annotate_genes: tuple = ('genome', 'bin', ),
+        annotate_reactions: tuple = ('genome', 'bin', 'kegg_reaction', 'ec_number'),
+        annotate_metabolites: tuple = ('genome', 'bin', 'kegg_compound'),
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress()
+    ) -> None:
+        """
+        Export the network to a metabolic model file in JSON format. *Gene entries in this file
+        represent gene clusters.* Optionally, gene, reaction, and metabolite entries in this file
+        are annotated with the names of genomes and names of gene cluster bins in which they occur.
 
-#         Parameters
-#         ==========
-#         path : str
-#             output JSON file path
+        Parameters
+        ==========
+        path : str
+            output JSON file path
 
-#         annotate_genes : tuple, ('genome', 'bin', )
-#             Annotate gene (cluster) entries in the JSON file with additional data, selecting
-#             from the following:
+        annotate_genes : tuple, ('genome', 'bin', )
+            Annotate gene (cluster) entries in the JSON file with additional data, selecting
+            from the following:
 
-#             'genome' : genomes in which the genes of the cluster occur
+            'genome' : genomes in which the genes of the cluster occur
 
-#             'bin' : bins in which the gene cluster occurs
+            'bin' : bins in which the gene cluster occurs
 
-#             'all_ko' : all KOs associated with genes in the cluster, sorted in descending order of
-#                 the number of genes in the cluster that were associated with each KO and then mean
-#                 e-value of gene-KO assignments
+            'all_ko' : all KOs associated with genes in the cluster, sorted in descending order of
+                the number of genes in the cluster that were associated with each KO and then mean
+                e-value of gene-KO assignments
 
-#             'ko' : KOs associated with the gene cluster that yielded reactions in the network,
-#                 sorted in descending order of the number of genes in the cluster that were
-#                 associated with each KO and then mean e-value of gene-KO assignments
+            'ko' : KOs associated with the gene cluster that yielded reactions in the network,
+                sorted in descending order of the number of genes in the cluster that were
+                associated with each KO and then mean e-value of gene-KO assignments
 
-#             'ko_count' : number of genes in the cluster that were associated with each KO; if
-#                 'all_ko' is provided, then each value corresponds to a KO in 'all_ko', whereas if
-#                 only 'ko' is provided, then each value corresponds to a KO in 'ko'
+            'ko_count' : number of genes in the cluster that were associated with each KO; if
+                'all_ko' is provided, then each value corresponds to a KO in 'all_ko', whereas if
+                only 'ko' is provided, then each value corresponds to a KO in 'ko'
 
-#             'e_value' : mean scores of KO associations with genes in the cluster; if 'all_ko' is
-#                 provided, then each value corresponds to a KO in 'all_ko', whereas if only 'ko' is
-#                 provided, then each value corresponds to a KO in 'ko'
+            'e_value' : mean scores of KO associations with genes in the cluster; if 'all_ko' is
+                provided, then each value corresponds to a KO in 'all_ko', whereas if only 'ko' is
+                provided, then each value corresponds to a KO in 'ko'
 
-#         annotate_reactions : tuple, ('genome', 'bin', 'kegg_reaction', 'ec_number')
-#             Annotate reaction entries in the JSON file with additional data, selecting from the following:
+        annotate_reactions : tuple, ('genome', 'bin', 'kegg_reaction', 'ec_number')
+            Annotate reaction entries in the JSON file with additional data, selecting from the following:
 
-#             'genome' : genomes in which the reaction occurs
+            'genome' : genomes in which the reaction occurs
 
-#             'bin' : bins in which the reaction occurs
+            'bin' : bins in which the reaction occurs
 
-#             'kegg_reaction' : KO-associated KEGG reaction IDs yielding the ModelSEED reaction
+            'kegg_reaction' : KO-associated KEGG reaction IDs yielding the ModelSEED reaction
 
-#             'ec_number' : KO-associated EC numbers yielding the ModelSEED reaction
+            'ec_number' : KO-associated EC numbers yielding the ModelSEED reaction
 
-#             'ko' : KOs yielding the ModelSEED reaction
+            'ko' : KOs yielding the ModelSEED reaction
 
-#         annotate_metabolites : tuple, ('genome', 'bin', 'kegg_compound')
-#             Annotate metabolite entries in the JSON file with additional data, selecting from the following:
+        annotate_metabolites : tuple, ('genome', 'bin', 'kegg_compound')
+            Annotate metabolite entries in the JSON file with additional data, selecting from the following:
 
-#             'genome' : genomes in which the metabolite occurs
+            'genome' : genomes in which the metabolite occurs
 
-#             'bin' : bins in which the metabolite occurs
+            'bin' : bins in which the metabolite occurs
 
-#             'kegg_compound' : KEGG compound aliases of the ModelSEED compound
+            'kegg_compound' : KEGG compound aliases of the ModelSEED compound
 
-#             'ko' : KOs yielding the ModelSEED compound
+            'ko' : KOs yielding the ModelSEED compound
 
-#         run : terminal.Run, terminal.Run()
+        run : terminal.Run, terminal.Run()
 
-#         progress : terminal.Progress, terminal.Progress()
-#         """
-#         pass
+        progress : terminal.Progress, terminal.Progress()
+        """
+        pass
 
 class JSONStructure:
     """JSON structure of metabolic model file."""
