@@ -19,7 +19,7 @@ NCBI COG (2020) | %(anvi-run-ncbi-cogs)s with `--cog-version COG20`| COG20_FUNCT
 NCBI COG (2014) | %(anvi-run-ncbi-cogs)s with `--cog-version COG14`| COG14_FUNCTION
 archaeal COGs (2014) | %(anvi-run-ncbi-cogs)s with `--cog-version arCOG14`| arCOG14_FUNCTION
 PFAM | %(anvi-run-pfams)s | Pfam
-CAZy | %(anvi-run-cazymes)s | CAZyme
+CAZy dbCAN | %(anvi-run-cazymes)s | CAZyme
 custom HMMs | %(anvi-run-hmms)s with `--hmm-source` and `--add-to-functions-table` parameters | name of directory given to `--hmm-source`
 other annotation strategy | %(anvi-import-functions)s | source defined in input file
 
