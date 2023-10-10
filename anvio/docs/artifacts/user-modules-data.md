@@ -15,9 +15,11 @@ Also, think about how you will annotate each enzyme, because for each one you wi
 Enzyme comes from... | annotation program | ANNOTATION_SOURCE
 |:---|:---|:---|
 KEGG KOfam | %(anvi-run-kegg-kofams)s | Kofam
-NCBI COG (2020) | %(anvi-run-ncbi-cogs)s | COG20_FUNCTION
-NCBI COG (2014) | %(anvi-run-ncbi-cogs)s | COG14_FUNCTION
+NCBI COG (2020) | %(anvi-run-ncbi-cogs)s with `--cog-version COG20`| COG20_FUNCTION
+NCBI COG (2014) | %(anvi-run-ncbi-cogs)s with `--cog-version COG14`| COG14_FUNCTION
+archaeal COGs (2014) | %(anvi-run-ncbi-cogs)s with `--cog-version arCOG14`| arCOG14_FUNCTION
 PFAM | %(anvi-run-pfams)s | Pfam
+CAZy | %(anvi-run-cazymes)s | CAZyme
 custom HMMs | %(anvi-run-hmms)s with `--hmm-source` and `--add-to-functions-table` parameters | name of directory given to `--hmm-source`
 other annotation strategy | %(anvi-import-functions)s | source defined in input file
 
