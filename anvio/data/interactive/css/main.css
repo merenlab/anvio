@@ -57,7 +57,7 @@
 }
 
 .settings-label {
-    margin-left: 15px;
+    margin-left: 0px;
     padding-top: 12px;
     margin-bottom: 5px;
     text-align: left;
@@ -251,6 +251,10 @@ html, body, #wrapper {
     cursor: pointer;
     font-size: 11px;
     text-align: center;
+}
+
+#toggle-panel-top::after {
+    top: 70;
 }
 
 #toggle-panel-top:hover {
@@ -536,7 +540,6 @@ td > input[type='checkbox'] {
     border-color: var(--black);
     width: 16px;
     height: 16px;
-    margin: auto;
 }
 
 .colorpicker-align{
@@ -855,6 +858,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 .select-sm{
     padding: 0.15rem 0.1rem !important;
     font-size: 0.925rem !important;
+    margin: 1px 0px 1px 0px;
 }
 
 .select-xs{
@@ -868,13 +872,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-left: 2px !important;
 }
 
-.active{
-}
-
-.nav-item:active{
+.nav-item .active{
     color: var(--secondary-900);
     font-weight: 600;
-    background: var(--bg-color-hover);
+    border-right: 3px solid var(--info-300);
 }
 
 .new-bin-icon{
@@ -887,6 +888,19 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     cursor: pointer; 
 }
 
+#title-panel {
+    min-width: 720px;
+    left: calc(50% - 360px);
+    height: 70px;
+}
+
+#title-panel-first-line {
+    font-size: 26px;
+}
+
+.titles{
+    width: 90px;
+}
 
 @media (min-width: 768px) {
     *:not(text) {
@@ -942,15 +956,5 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
     #fixed-navbar-div {
         width: 490px;
-    }
-
-    #title-panel {
-        min-width: 720px;
-        left: calc(50% - 360px);
-        height: 60px;
-    }
-
-    #title-panel-first-line {
-        font-size: 26px;
     }
 }
