@@ -2199,8 +2199,10 @@ class Constructor:
                 f"Here are the unrecognized KO IDs from the contigs database: {', '.join(undefined_ko_ids)}"
             )
 
-        self.run.info("Reference KEGG KO database directory", self.ko_dir, nl_before=1)
-        self.run.info("Reference ModelSEED database directory", self.modelseed_dir)
+        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        modelseed_dir = ModelSEEDDatabase.default_dir if self.modelseed_dir is None else self.modelseed_dir
+        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir)
 
         if store:
             if contigs_super.a_meta['reaction_network_ko_annotations_hash']:
@@ -2654,8 +2656,10 @@ class Constructor:
                 f"from the pan database: {', '.join(undefined_ko_ids)}"
             )
 
-        self.run.info("Reference KEGG KO database directory", self.ko_dir, nl_before=1)
-        self.run.info("Reference ModelSEED database directory", self.modelseed_dir)
+        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        modelseed_dir = ModelSEEDDatabase.default_dir if self.modelseed_dir is None else self.modelseed_dir
+        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir)
 
         if store:
             if pan_super.p_meta['reaction_network_ko_annotations_hash']:
