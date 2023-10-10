@@ -1353,7 +1353,7 @@ class ModelSEEDDatabase:
     By default, the database is loaded from a default directory of ModelSEED files unless an
     alternative directory is provided.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/ModelSEED')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/MODELSEED')
 
     # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
     compartment_ids = {0: 'c', 1: 'e'}
