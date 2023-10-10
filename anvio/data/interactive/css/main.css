@@ -540,6 +540,7 @@ td > input[type='checkbox'] {
     border-color: var(--black);
     width: 16px;
     height: 16px;
+    margin: auto;
 }
 
 .colorpicker-align{
@@ -885,6 +886,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .del-bin-icon{
     color: var(--danger-600);
+    cursor: pointer; 
+}
+
+.default-bin-icon{
+    color: var(--secondary-600);
     cursor: pointer; 
 }
 

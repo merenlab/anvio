@@ -91,7 +91,7 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
-                       <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                       <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
                     <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
                             <td style="border-top: 0px;">&nbsp;</td>
