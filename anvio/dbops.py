@@ -4083,9 +4083,7 @@ class ContigsDatabase:
         try:
             for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
                         'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
-                        'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs',
-                        'skip_predict_frame', 'reaction_network_ko_annotations_hash',
-                        'reaction_network_kegg_database_release', 'reaction_network_modelseed_database_sha']:
+                        'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
                 self.meta[key] = int(self.meta[key])
         except KeyError:
             raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
