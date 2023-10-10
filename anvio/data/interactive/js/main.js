@@ -704,6 +704,36 @@ function buildLegendTables() {
         $('#legend_settings').empty();
     }
 
+    $('#legend_settings').accordion({
+        collapsible:true,
+    
+        beforeActivate: function(event, ui) {
+             // The accordion believes a panel is being opened
+            if (ui.newHeader[0]) {
+                var currHeader  = ui.newHeader;
+                var currContent = currHeader.next('.ui-accordion-content');
+             // The accordion believes a panel is being closed
+            } else {
+                var currHeader  = ui.oldHeader;
+                var currContent = currHeader.next('.ui-accordion-content');
+            }
+             // Since we've changed the default behavior, this detects the actual status
+            var isPanelSelected = currHeader.attr('aria-selected') == 'true';
+    
+             // Toggle the panel's header
+            currHeader.toggleClass('ui-corner-all',isPanelSelected).toggleClass('accordion-header-active ui-state-active ui-corner-top',!isPanelSelected).attr('aria-selected',((!isPanelSelected).toString()));
+    
+            // Toggle the panel's icon
+            currHeader.children('.ui-icon').toggleClass('ui-icon-triangle-1-e',isPanelSelected).toggleClass('ui-icon-triangle-1-s',!isPanelSelected);
+    
+             // Toggle the panel's content
+            currContent.toggleClass('accordion-content-active',!isPanelSelected)    
+            if (isPanelSelected) { currContent.slideUp(); }  else { currContent.slideDown(); }
+    
+            return false; // Cancels the default action
+        }
+    });
+
     legends = [];
     let toastr_warn_flag = false
     for (let pindex in categorical_data_colors)
@@ -785,9 +815,9 @@ function buildLegendTables() {
         var template = '<span>';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
-            template += '<span class="label label-default">Samples</span> '
+            template += '<span class="label label-default">Layer</span> '
         } else {
-            template += '<span class="label label-default">Main</span> '
+            template += '<span class="label label-default">Item</span> '
         }
         template += legend['name'] + '</span><div>';
 
@@ -824,21 +854,21 @@ function buildLegendTables() {
             `
         } else {
             template += `Sort: <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
                         </div>
                         <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
                             <table class="col-md-12 table-spacing">
                                 <tr>
                                     <td class="col-md-2">Rule: </td>
                                     <td class="col-md-10">
-                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
                                         <input type="radio" name="batch_rule_`+i+`" value="count"> Count
-                                            <select id="count_rule_`+i+`">
+                                            <select style="margin-left: 48px;" id="count_rule_`+i+`">
                                                 <option selected>==</option>
                                                 <option>&lt;</option>
                                                 <option>&gt;</option>
@@ -852,21 +882,20 @@ function buildLegendTables() {
                                     <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
                                 </tr>
                                 <tr>
-                                    <td class="col-md-2"></td>
-                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                    <td class="col-md-2">Random Color:</td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /></td>
                                 </tr>
                                 <tr>
                                     <td class="col-md-2"></td>
-                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-outline-info btn-sm" onclick="batchColor(`+i+`);">Apply</button></td>
                                 </tr>
                             </table>
                         </div>
-                        <div style="clear: both; display:block;"></div>
-                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+                        <div style="clear: both; display:block;"></div>`;
         }
 
         template += '<div id="legend_content_' + i + '"></div>';
-        template = template + '<div style="clear: both; display:block;"></div>';
+        template = template + '<div style="clear: both; display:block;"><hr style="margin-top: 4px; margin-bottom: 4px; "/></div>';
         $('#legend_settings').append(template + '</div>');
 
         createLegendColorPanel(i); // this fills legend_content_X
