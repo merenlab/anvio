@@ -138,9 +138,6 @@
                 <div class="col-12 tab-content ml-1">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
-                            <div class="sidebar-toggle mb-3">
-                                <span class="menu-toggle mr-2">Hide</span>
-                            </div>
                             <span class="settings-header">Items</span>
                             <div class="form-group form-margin">
                                     <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
@@ -333,38 +330,19 @@
                             </div>
 
                             <span class="settings-header mt-5">Legends</span>
-                            <div class="tab-pane fade show mt-3 col-11" id="legend_settings">
+                            <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
                             </div>
                         </div>
                     </div>
 
-                    <!-- NEWS Tab 
-                    <div role="tabpanel" class="tab-pane fade show" id="news_settings">
-                        <div id="news-panel" style="display: block;">
-                            <h1 style="font-size: 22px; display: inline-block;">What's New</h1><a href="#" style="color: gray; margin-top: 36px; float: right;" onclick="newsMarkRead(); ">Mark everything as read</a>
-                            <div id="news-panel-inner">
-                                <div class="news-item"></div>
-                            </div>s3
-                        </div>
-                    </div> 
-                    -->
-
                     <div role="tabpanel" class="tab-pane fade show col-11" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
-                            <div class="d-flex">
-                                <div id="toggle-panel-test" class="mr-1" style="display: none;">
-                                    <i id="abc" class="bi bi-arrow-left"></i>
-                                </div>
-                                <div class="sidebar-toggle mb-3"  style="cursor: pointer;">
-                                    <span class="menu-toggle">Hide</span>
-                                </div>
-                            </div>
                             <div class="panel-body">
 
-                                <div class="form-group form-margin full-mode refine-mode">
-                                    <p id="estimate-taxonomy-check">
+                                <div class="form-group form-margin full-mode refine-mode mt-3">
+                                    <p id="estimate-taxonomy-check" class="d-flex">
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
-                                        <label for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</label>
+                                        <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
                                     </p>
                                 </div>
 
@@ -411,9 +389,6 @@
 
                     <!-- OPTION Tab -->
                     <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
-                        <div class="sidebar-toggle mb-3">
-                            <span class="menu-toggle mr-2">Hide</span>
-                        </div>
                         <div id="additional_settings">
                             <span class="settings-header mt-3">Items</span>
                             <div class="form-group form-margin d-flex pt-1 mt-3">
@@ -694,9 +669,6 @@
                     </div>
                     <!-- SEARCH Tab -->
                     <div role="tabpanel" class="tab-pane fade show col-11" id="search_tab">
-                        <div class="sidebar-toggle mb-3">
-                            <span class="menu-toggle mr-2">Hide</span>
-                        </div>
                         <div id="search_tab_content">
                             <span data-help='search-expression'>Search with expression</span>
                             <div class="form-horizontal">
@@ -878,9 +850,6 @@
 
                     <!-- DATA TAB -->
                     <div role="tabpanel" class="tab-pane fade show col-11" id="data_tab">
-                        <div class="sidebar-toggle">
-                            <span class="menu-toggle mr-2">Hide</span>
-                        </div>
                         <p style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
                         <div id="mouse_hover">
                             <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
@@ -911,17 +880,11 @@
 
                     <!-- NOTES TAB -->
                     <div role="tabpanel" class="tab-pane fade show col-11" id="description_tab">
-                        <p class="sidebar-toggle mb-3">
-                            <span class="menu-toggle mr-2">Hide</span>
-                        </p>
                         <textarea id="description-editor" rows="10"></textarea>
                     </div>
 
                     <!-- ANVIO TAB -->
                     <div role="tabpanel" class="tab-pane fade show col-11" id="anvio_detail_tab">
-                        <div class="sidebar-toggle mb-3">
-                            <span class="menu-toggle mr-2">Hide</span>
-                        </div>
                         <div class="mt-2 paragraph" id="anvio_tab_content">
                             <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p class="subheading">Anvi'o Authors</p></a>
                             <hr class="mb-3 col-11 border-color">
