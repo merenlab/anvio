@@ -383,7 +383,8 @@
                                                             <td width="15%" style="vertical-align:middle;">{{ motif }}</td>
                                                             <td class="extra-long>">
                                                             {% if inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' == None %}
-                                                                MEME was not able to generate the motif's logo in png format, which means that you are missing cool logo pictures in this summary. The logos are still available in .eps format in the ouput directory.
+                                                                MEME was not able to generate the motif's logo in png format, which means that you are missing cool logo pictures in this summary.<br>
+                                                                The logos are still available in .eps format in the ouput directory.
                                                             {% else %}
                                                                 <img src="{{ inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' }}" alt="Motif logo" style="height:120px;">
                                                             </td>
