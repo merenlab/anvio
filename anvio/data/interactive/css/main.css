@@ -470,7 +470,8 @@ td, tr {
 }
 
 td > input[type='checkbox'] {
-    margin-left: 5px;
+    margin-left: 2px;
+    display: flex;
 }
 
 .tab-content {
