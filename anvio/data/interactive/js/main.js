@@ -854,11 +854,11 @@ function buildLegendTables() {
             `
         } else {
             template += `Sort: <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="bi bi-sort-alpha-down"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="bi bi-sort-numeric-down-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary btn-md" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="bi bi-droplet"></span> Batch coloring</button>
                         </div>
                         <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
                             <table class="col-md-12 table-spacing">
