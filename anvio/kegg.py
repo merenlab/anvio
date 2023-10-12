@@ -5327,11 +5327,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         if "annotated_enzymes_in_path" in headers_to_include:
                             annotated = []
                             for accession in p:
-                                if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
-                                   (accession in c_dict['kofam_hits'].keys()):
-                                    annotated.append(accession)
+                                # handle enzyme components
+                                if '+' in accession or '-' in accession:
+                                    components = re.split(r'\+|\-', accession)
+                                    for c in components:
+                                        if c in c_dict['kofam_hits'].keys():
+                                            annotated.append(c)
+                                        else:
+                                            annotated.append(f"[MISSING {c}]")
                                 else:
-                                    annotated.append(f"[MISSING {accession}]")
+                                    if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
+                                    (accession in c_dict['kofam_hits'].keys()):
+                                        annotated.append(accession)
+                                    else:
+                                        annotated.append(f"[MISSING {accession}]")
                             d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
                         # add path-level redundancy if requested
