@@ -808,11 +808,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .navbar-btn{
     display: flex;
-    padding: auto;
-    margin-bottom: 5px;
     flex-direction: column;
     align-items: center;
     color: var(--secondary-600) !important;
+}
+
+.navbar-btn:hover{
+    background-color: var(--secondary-100) !important;
 }
 
 .selected-navbar-btn{
@@ -823,16 +825,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     align-items: center;
     background: var(--bg-color);
     color: var(--success-600) !important;
-}
-
-.navbar-btn:hover{
-    font-weight: 600;
-    color: var(--secondary-900);
-}
-
-.navbar-btn::after{
-    font-weight: 600;
-    color: var(--secondary-900);
 }
 
 #sidebar-logo{
@@ -874,10 +866,34 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-left: 2px !important;
 }
 
-.nav-item .active{
+.nav-item{
+    color: var(--secondary-600);
+}
+
+.nav-item:active{
+    background-color: var(--secondary-200) !important;
+}
+
+.nav-item:hover{
+    background-color: var(--secondary-50);
+}
+
+.nav-item .active {
     color: var(--secondary-900);
+    background-color: var(--secondary-100);
     font-weight: 600;
-    border-right: 3px solid var(--info-300);
+}
+
+.nav-item .active .nav-icon{
+    display: none;
+}
+
+.nav-item .nav-icon-fill{
+    display: none;
+}
+
+.nav-item .active .nav-icon-fill{
+    display: block;
 }
 
 .new-bin-icon{
@@ -916,7 +932,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #draw-btn{
-        margin-top: 50px !important;
+        margin-top: 160px !important;
     }
 
 }
@@ -928,7 +944,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #draw-btn{
-        margin-top: 50px !important;
+        margin-top: 160px !important;
     }
 
 }    
@@ -941,7 +957,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 
     #draw-btn{
-        margin-top: 80px !important;
+        margin-top: 160px !important;
     }
 }
 
@@ -953,15 +969,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
     
     #draw-btn{
-        margin-top: 80px !important;
+        margin-top: 160px !important;
     }
 
     .glyphicon {
         top: 4px;
         font-size: 15px;
-    }
-
-    #fixed-navbar-div {
-        width: 490px;
     }
 }
