@@ -2401,7 +2401,7 @@ class KeggEstimatorArgs():
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
-        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
+        self.output_file_prefix = A('output_file_prefix') or "metabolism"
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
