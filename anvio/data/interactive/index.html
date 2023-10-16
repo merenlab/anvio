@@ -112,15 +112,51 @@
                 <div class="inner-wrapper d-flex" role="tabpanel">
                     <nav id="inner-sidebar" onclick="switchNavigationTabs();">
                         <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
-                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs active mt-3"><a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-house-icon fa-2x bi bi-house-door"></i> <span class="d-block">Main</span></a></li>
-                            <li id="sample_settings_tab" role="presentation" class="nav-item"><a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-gear-icon fa-2x bi bi-gear"></i><span class="d-block">Option</span> </a></li>
-                            <li id="bin_settings_tab" role="presentation" class="nav-item"><a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-icon bi bi-archive fa-2x"></i><span class="d-block">Bins</span> </a></li>
-                            <li id="data_panel_tab" role="presentation" class="nav-item"><a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="nav-link navbar-btn d-block" ><i class="nav-icon bi bi-cursor fa-2x"></i><span role="tab" class="d-block">Data</span> </a></li>
-                            <li id="description_panel_tab" role="presentation" class="nav-item"><a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" ><i class="nav-icon bi bi-file-richtext fa-2x"></i><span role="tab" class="d-block">Notes</span> </a></li>
-                            <li id="search_panel_tab" role="presentation" class="nav-item"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-icon bi bi-search fa-2x"></i><span class="d-block">Search</span> </a></li>
-                            <li id="news_settings_tab" role="presentation" class="nav-item" onclick="showAllNews()"><a href="#news_settings" aria-controls="new_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block"><i class="nav-icon bi bi-newspaper fa-2x"></i><span class="d-block">News</span> </a></li>
-                            <li id="detail_tab" role="presentation" class="nav-item mb-5 pb-5"><a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" ><i class="nav-icon bi bi-question-octagon fa-2x"></i><span class="d-block">Anvio</span> </a></li>
-                            <li><a href="#" id="draw-btn" class="navbar-btn d-block mt-5 pt-5" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button"><i class="icon-unlock bi-pencil fa-2x"></i><span class="d-block"><u>D</u>raw</span></a></li>
+                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-3">
+                                <a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block active">
+                                    <i class="nav-icon fa-2x bi bi-house-door"></i> <span class="d-block">Main</span>
+                                </a>
+                            </li>
+                            <li id="sample_settings_tab" role="presentation" class="nav-item">
+                                <a href="#samples_settings"  aria-controls="samples_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fa-2x bi bi-gear"></i><span class="d-block">Option</span>
+                                </a>
+                            </li>
+                            <li id="bin_settings_tab" role="presentation" class="nav-item">
+                                <a href="#bin_settings" aria-controls="bin_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fa-2x bi bi-archive "></i><span class="d-block">Bins</span>
+                                </a>
+                            </li>
+                            <li id="data_panel_tab" role="presentation" class="nav-item">
+                                <a href="#data_tab"  aria-controls="data_tab" role="tab" data-toggle="tab"  class="nav-link navbar-btn d-block" >
+                                    <i class="nav-icon fa-2x bi bi-cursor"></i><span role="tab" class="d-block">Data</span>
+                                </a>
+                            </li>
+                            <li id="description_panel_tab" role="presentation" class="nav-item">
+                                <a href="#description_tab" aria-controls="description_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block" >
+                                    <i class="nav-icon fa-2x bi bi-file-richtext"></i><span role="tab" class="d-block">Notes</span>
+                                </a>
+                            </li>
+                            <li id="search_panel_tab" role="presentation" class="nav-item">
+                                <a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fa-2x bi bi-search"></i><span class="d-block">Search</span>
+                                </a>
+                            </li>
+                            <li id="news_settings_tab" role="presentation" class="nav-item" onclick="showAllNews()">
+                                <a href="#news_settings" aria-controls="new_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fa-2x bi bi-newspaper"></i><span class="d-block">News</span>
+                                </a>
+                            </li>
+                            <li id="detail_tab" role="presentation" class="nav-item">
+                                <a href="#anvio_detail_tab" aria-controls="anvio_detail_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
+                                    <i class="nav-icon fa-2x bi bi-question-octagon"></i><span class="d-block">Anvio</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="#" id="draw-btn" class="navbar-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
+                                    <i class="icon-unlock bi-pencil fa-2x"></i><span class="d-block"><u>D</u>raw</span>
+                                </a>
+                            </li>
                             <hr style="color: gray;">
                             <li>
                                 <p class="side-menu-text">State</p> 
@@ -639,9 +675,9 @@
                                 <div>
                                     <span class="settings-secondary-header">Tree/Dendrogram</span>
                                     <div class="form-group form-margin d-flex mt-3">
-                                            <label class="col-3 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
-                                            <div class="col-3 d-flex align-item-center input-align">
-                                                <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
+                                            <label class="col-2 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
+                                            <div class="col-6 d-flex align-item-center input-align">
+                                                <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs col-3">
                                             </div>
                                     </div>
                                     <div class="form-group form-margin d-flex">
