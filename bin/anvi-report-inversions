@@ -44,7 +44,7 @@ if __name__ == '__main__':
                     "parameters there.")
     groupB.add_argument(*anvio.A('pre-computed-inversions'), **anvio.K('pre-computed-inversions'))
 
-    groupC = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 01: IDENTIFYING REGIONS OF INTERSET', "How should anvi'o identify regions of interest "
+    groupC = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 01: IDENTIFYING REGIONS OF INTEREST', "How should anvi'o identify regions of interest "
                     "based on REV/REV and FWD/FWD paired-end reads? Defaults will be good for most cases.")
     groupC.add_argument('--min-coverage-to-define-stretches', default=10, type=int, help="Value to break up contigs into 'stretches' of "
                     "high-coverage regions of FWD/FWD and REV/REV reads. The lower the value, the more noise. This acts as a low-pass "
@@ -93,17 +93,17 @@ if __name__ == '__main__':
                     "in almost all instances (since anvi'o at this stage is only focusing on very specific "
                     "regions of genomes). But this parameter is here in case you insist on only using inverted "
                     "paired-end reads and assert your authority. You do you and turn on the flag, you rebellious "
-                    "scientist who will likely miss a lot of additoinal inversions like a boss.")
+                    "scientist who will likely miss a lot of additional inversions like a boss.")
 
     groupF = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 04: COMPUTING INVERSION ACTIVITY', "What is the "
                     "proportion of invertible repeat orientation across samples? A two million dollars question "
                     "that anvi'o WILL answer for you IF you have `r1` and `r2` columns in your `bams-and-profiles-txt` "
                     "file that points to raw FASTQ reads you have used to generate your BAM files for each sample. "
-                    "Truly cray stuff.")
+                    "Truly crazy stuff.")
     groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupF.add_argument('--oligo-primer-base-length', default=12, type=int, help="Calculating inversion ratios "
-                    "require anvi'o to 'design' an in silico primer based on palindromes associated with inersions "
-                    "and the upstream/downstream genomic context to search for short reads in raw sequenicng data"
+                    "require anvi'o to 'design' an in silico primer based on palindromes associated with inversions "
+                    "and the upstream/downstream genomic context to search for short reads in raw sequencing data"
                     "to find the ratio of inversion activity per sample. This variable is to control how much of "
                     "the palindrome for a given inversion should be used to build a primer to search for short "
                     "reads. The longer it is, the more specific the primers will be to survey short reads. But if "
@@ -119,8 +119,12 @@ if __name__ == '__main__':
                     "datasets, primer search can take a very long time. By setting a small integer here, you can ask "
                     "anvi'o to stop searching primers after a few hits. Once the total number of primer hits reach to "
                     "number for a given sample, anvi'o will stop searching further and continue with the next sample. "
-                    "This flag is only good for testing, since it will prematurely end the search without testting "
+                    "This flag is only good for testing, since it will prematurely end the search without testing "
                     "all primers")
+    groupF.add_argument('--min-frequency-to-report', default=1, type=int, help="By default, anvi'o will only report "
+                    "primers supported by more than one read from the `r1` and `r2` entry in your `bams-and-profiles-txt`. "
+                    "The reason for this filtering is sequencing errors, which  can create very low frequency "
+                    "entries in the activity report. Use this flag to change that minimum threshold.")
 
     groupG = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 05: REPORTING GENOMIC CONTEXT AROUND INVERSIONS',
                     "Once the consensus inversions are computed, anvi'o can go back to contigs on which they are "

@@ -11,6 +11,12 @@
 
     <title>Anvi'o: Inversions Summary</title>
 
+    <!-- JQUERY -->
+    <script src=".html/js/jquery.min.js"></script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src=".html/js/bootstrap.min.js"></script>
+
     <!-- Bootstrap Core CSS -->
     <link href=".html/css/bootstrap.css" rel="stylesheet">
     <link href=".html/bootstrap-sortable/Contents/bootstrap-sortable.css" rel="stylesheet">
@@ -77,9 +83,9 @@
 
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
-                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:green"></rect>
-                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:green"></polygon>
+                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
+                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:{{ gene|lookup:"COLOR" }}"></rect>
+                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:{{ gene|lookup:"COLOR" }}"></polygon>
                                 </g>
 
                                 {% if forloop.counter0|even_odd == 0 %}
@@ -98,8 +104,79 @@
                         <!-- If the metagenomic context is recovered, we also want to populate some `divs` that hold information
                              for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
                         {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                        <div class="hidden" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover">
-                        <p>Hai. I am a gene call, and my ID is {{ gene|lookup:"gene_callers_id" }}.
+                        <!-- Popover Template -->
+                        <div class="hidden popover fade in top col-12" role="tooltip" id="{{inversion}}-gene-{{ gene|lookup:'gene_callers_id' }}-popover">
+                            <div class="popover-body table-responsive">
+                                <div class="panel panel-default" id="popover-panel">
+                                    <div class="panel-heading mt-2" style="width: 100%;">
+                                        <h4>Gene Call</h4>
+                                    </div>
+                                    <div class="panel-body">
+                                        <table class="table table-striped gene-call-table" style="width: 100%; text-align: center;">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Source</th>
+                                                    <th>Contig</th>
+                                                    <th>Length</th>
+                                                    <th>Direction</th>
+                                                    <th>Start</th>
+                                                    <th>Stop</th>
+                                                    <th>Call type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{ gene|lookup:"gene_callers_id"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"source"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"contig"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"length"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"direction"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"start"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"stop"|pretty }}</td>
+                                                    <td>{{ gene|lookup:"call_type"|pretty }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <!-- DNA/AA buttons -->
+                                    <div class="row seq-buttons">
+                                        <div class="col-xs-1 gene-section">
+                                            <button type="button" class="btn btn-default btn-sm" onClick="show_sequence('{{ gene|lookup:'header'|pretty }}', '{{ gene|lookup:'DNA_sequence'|pretty }}')">DNA</button>
+                                        </div>
+                                        <div class="col-xs-1 gene-section">
+                                            <button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence('{{ gene|lookup:'header'|pretty }}', '{{ gene|lookup:'AA_sequence'|pretty }}')">AA</button>
+                                        </div>
+                                    </div>
+                                    <div class="panel-heading mt-2" style="width: 100%;">
+                                        <h4>Function Annotations</h4>
+                                    </div>
+                                    <div class="panel-body">
+                                        {% if gene|lookup:"has_functions" %}
+                                        <table class="table table-striped" style="width: 100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Source</th>
+                                                    <th>Accession</th>
+                                                    <th>Function</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for function in gene|lookup:"functions" %}
+                                                <tr>
+                                                    <td class="long">{{ function|lookup:"source"|pretty }}</td>
+                                                    <td>{{ function|lookup:"accession"|pretty }}</td>
+                                                    <td class="long">{{ function|lookup:"function"|pretty }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                        {% else %}
+                                        <p>No known function in {{ meta|lookup:"gene_function_sources"|pretty_join:"or" }} :/
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {% endfor %}
@@ -164,6 +241,14 @@
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"distance"|pretty }}</td>
                                         </tr>
                                         <tr>
+                                            <td width="25%">Start position</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_end"|pretty }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td width="25%">Stop position</td>
+                                            <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"second_start"|pretty }}</td>
+                                        </tr>
+                                        <tr>
                                             <td width="25%">Number of samples observed</td>
                                             <td>{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"num_samples" }}</td>
                                         </tr>
@@ -181,6 +266,7 @@
                             <div class="panel-heading">
                                 Inverted Repeats
                             </div>
+
                             <div class="panel-body">
                                 <table class="table table-hover">
                                     <thead id="{{ inversion }}-table">
@@ -280,6 +366,35 @@
                                     </div>
                                 </div>
                             </div>
+                                
+                            <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
+                                <div class="panel-heading">
+                                    Motifs
+                                </div>
+                                <div class="panel-body image-panel">
+                                    <table class="table">
+                                        <tbody>
+                                                <tr>
+                                                    <td width="25%"><h5>Motif group</h5></td>
+                                                    <td><h5>Motif logo</h5></td>
+                                                </tr>
+                                                {% for motif in inversions|lookup:inversion|lookup:"motifs" %}
+                                                        <tr>
+                                                            <td width="15%" style="vertical-align:middle;">{{ motif }}</td>
+                                                            <td class="extra-long>">
+                                                            {% if inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' == None %}
+                                                                MEME was not able to generate the motif's logo in png format, which means that you are missing cool logo pictures in this summary.<br>
+                                                                The logos are still available in .eps format in the ouput directory.
+                                                            {% else %}
+                                                                <img src="{{ inversions|lookup:inversion|lookup:"motifs"|lookup:motif|lookup:'logo_path' }}" alt="Motif logo" style="height:120px;">
+                                                            </td>
+                                                            {% endif %}
+                                                        </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -287,6 +402,102 @@
         </div>
     </section>
     {% endfor %}
+<style>
+    .popover {
+        min-width: 600px;
+        max-width: 750px;
+    }
+    .popover-content{
+        padding: 0px;
+    }
+    .popover-table th, td {
+        padding: 0px 15px;
+        white-space:nowrap;
+    }
+    .gene-call-table{
+        margin-bottom: 0px;
+    }
+    .gene-section{
+        max-width: 70px;
+        margin-right: 5px;
+    }
+    .seq-buttons{
+        margin-left: 0px;
+        margin-bottom: 10px;
+    }
+    .long{
+        white-space:normal;
+        max-width: 300px;
+    }
+    .extra-long{
+        white-space:normal;
+        max-width: 900px;
+    }
+    #popover-panel{
+        border: none;
+        margin-bottom: 0px;
+    }
+    .image-panel{
+        width: fit-content;
+        display: flex;
+        justify-content: left;
+    }
+</style>
+<script type="text/javascript">
+    // Binding template to the Popover Content
+    $(document).ready(function () {
+        $('[data-toggle="popover"]').popover({
+        sanitize: false,
+        html : true,
+        content: function() {
+            var content = $(this).attr("data-popover-content");
+            return $(content).children(".popover-body").html();
+        }
+    });
+})
 
+//Closing popover if click somewhere else on the page.
+$('body').on('click', function (e) {
+    $('[data-toggle="popover"]').each(function () {
+        if (!$(this).is(e.target) && $(this).has(e.target).length === 0 && $('.popover').has(e.target).length === 0) {
+            $(this).popover('hide');
+        }
+    });
+});
+
+function show_sequence_modal(title, content) {
+  // remove previous modal window
+  $('.modal-sequence').modal('hide');
+  $('.modal-sequence').remove();
+
+  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
+      <div class="modal-dialog"> \
+          <div class="modal-content"> \
+              <div class="modal-header"> \
+                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
+                  <h4 class="modal-title">' + title + '</h4> \
+              </div> \
+              <div class="modal-body"> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+              </div> \
+              <div class="modal-footer"> \
+                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+              </div> \
+          </div> \
+      </div> \
+  </div>');
+  $('.modal-sequence').modal('show');
+  $('.modal-sequence textarea').trigger('click');
+}
+
+function show_sequence(header, sequence) {
+    show_sequence_modal('Gene DNA Sequence', header + '\n' + sequence);
+}
+
+function show_aa_sequence(header, aa_sequence) {
+    show_sequence_modal('Gene Amino Acid Sequence', header + '\n' + aa_sequence);
+}
+
+</script>
 </body>
 </html>

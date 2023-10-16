@@ -2401,7 +2401,7 @@ class KeggEstimatorArgs():
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.module_completion_threshold = A('module_completion_threshold') or 0.75
-        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
+        self.output_file_prefix = A('output_file_prefix') or "metabolism"
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
@@ -5327,11 +5327,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         if "annotated_enzymes_in_path" in headers_to_include:
                             annotated = []
                             for accession in p:
-                                if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
-                                   (accession in c_dict['kofam_hits'].keys()):
-                                    annotated.append(accession)
+                                # handle enzyme components
+                                if '+' in accession or '-' in accession:
+                                    components = re.split(r'\+|\-', accession)
+                                    for c in components:
+                                        if c in c_dict['kofam_hits'].keys():
+                                            annotated.append(c)
+                                        else:
+                                            annotated.append(f"[MISSING {c}]")
                                 else:
-                                    annotated.append(f"[MISSING {accession}]")
+                                    if (accession in self.all_modules_in_db and mod_dict[accession]["pathwise_is_complete"]) or \
+                                    (accession in c_dict['kofam_hits'].keys()):
+                                        annotated.append(accession)
+                                    else:
+                                        annotated.append(f"[MISSING {accession}]")
                             d[self.modules_unique_id]["annotated_enzymes_in_path"] = ",".join(annotated)
 
                         # add path-level redundancy if requested
