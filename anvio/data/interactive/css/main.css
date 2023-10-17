@@ -925,16 +925,26 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     width: 90px;
 }
 
+#nav-bottom{
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+}
+
+.nav-bottom-alignment{
+    position: relative;
+    left: -50%;
+}
+
+.tab-elements{
+    min-height: 1005px;
+}
+
 @media (min-width: 768px) {
     *:not(text) {
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #draw-btn{
-        margin-top: 160px !important;
-    }
-
 }
 
 @media (min-width: 992px) {
@@ -942,11 +952,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-
-    #draw-btn{
-        margin-top: 160px !important;
-    }
-
 }    
 
 @media (min-width:1280px){
@@ -954,10 +959,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     *:not(text) {
         font-size: 12px;
         line-height: 1.428;
-    }
-
-    #draw-btn{
-        margin-top: 160px !important;
     }
 }
 
@@ -967,11 +968,6 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
         font-size: 12px;
         line-height: 1.428;
     }
-    
-    #draw-btn{
-        margin-top: 160px !important;
-    }
-
     .glyphicon {
         top: 4px;
         font-size: 15px;

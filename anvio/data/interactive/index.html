@@ -107,6 +107,7 @@
                 <g id="viewport"></g>
             </svg>
         </div>
+        <!-- LEFT MENU -->
         <div id="panel-left">
             <div class="d-flex" id="sidebar" onload="{$('#support_value_params').hide()}">
                 <div class="inner-wrapper d-flex" role="tabpanel">
@@ -152,21 +153,35 @@
                                     <i class="nav-icon fa-2x bi bi-question-octagon"></i><i class="nav-icon-fill fa-2x bi bi-question-octagon-fill"></i><span class="d-block">Anvio</span>
                                 </a>
                             </li>
-                            <li>
-                                <a href="#" id="draw-btn" class="navbar-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
-                                    <i class="icon-unlock bi-pencil fa-2x"></i><span class="d-block"><u>D</u>raw</span>
-                                </a>
-                            </li>
-                            <hr style="color: gray;">
-                            <li>
-                                <p class="side-menu-text">State</p> 
-                                <li><a href="#" class="navbar-btn d-block mt-3" onclick="showLoadStateWindow();" data-help="load-state-button"><i class="icon-unlock bi bi-upload fa-2x"></i><span class="d-block">Load</span> </a></li>
-                                <li><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fa-2x"></i><span class="d-block">Save</span> </a></li>
-                            </li>
-                            <hr style="color: gray;">
-                            <p class="side-menu-text">Display</p> 
-                            <li><a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg"><i class="icon-unlock bi bi-images fa-2x"></i><span class="d-block">Export</span> </a></li>
-                            <li><a href="#" class="navbar-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural"><i class="icon-unlock bi bi-align-middle fa-2x"></i><span class="d-block">Align</span> </a></li>
+                            <div id="nav-bottom">
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" id="draw-btn" class="navbar-btn d-block" id="btn_draw_tree" onclick="drawTree();" data-help="draw-button">
+                                        <i class="icon-unlock bi-pencil fa-2x"></i><span class="d-block"><u>D</u>raw</span>
+                                    </a>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <li class="nav-bottom-alignment">
+                                    <p class="side-menu-text">State</p> 
+                                    <li class="nav-bottom-alignment">
+                                        <a href="#" class="navbar-btn d-block mt-3" onclick="showLoadStateWindow();" data-help="load-state-button">
+                                            <i class="icon-unlock bi bi-upload fa-2x"></i><span class="d-block">Load</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-bottom-alignment"><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fa-2x"></i><span class="d-block">Save</span> </a></li>
+                                </li>
+                                <hr class="nav-bottom-alignment border-color">
+                                <p class="side-menu-text nav-bottom-alignment">Display</p> 
+                                <li class="nav-bottom-alignment">
+                                    <a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg">
+                                        <i class="icon-unlock bi bi-images fa-2x"></i><span class="d-block">Export</span>
+                                    </a>
+                                </li>
+                                <li class="nav-bottom-alignment pb-2">
+                                    <a href="#" class="navbar-btn d-block justify-content-center" onclick="zoom_reset();" data-help="return-to-natural">
+                                        <i class="icon-unlock bi bi-align-middle fa-2x"></i><span class="d-block">Align</span>
+                                    </a>
+                                </li>
+                            </div>
                         </ul>
                     </nav>
                 </div>
