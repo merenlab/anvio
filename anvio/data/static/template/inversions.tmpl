@@ -65,7 +65,7 @@
                 <div class="card-header">
                     <h1 class="card-title">{{ inversion|pretty }}</h1>
                 </div>
-                <div id="collapse-bins" class="panel-collapse">
+                <div id="collapse-bins">
                     <div class="card-body">
 
                         <h3>Genomic context <small class="text-muted">:: What we know about the genes that surrounds it.</small></h3>
@@ -77,20 +77,24 @@
 
                         {% if meta.genomic_context_recovered %}
                             <!-- Mark the inversion site -->
-                            <rect x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}" y="0" width="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}" height="65" style="fill:red; opacity:0.5"></rect>
-                            <text x="{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}" y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
+                            <rect x='{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IX" }}' y="0" width='{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IW" }}' height="65" style="fill:red; opacity:0.5"></rect>
+                            <text x='{{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"IT" }}' y="75" dominant-baseline="middle" text-anchor="middle" fill="red" style="font-weight:bold;">{{ inversion|humanize}}</text>
 
                             <!-- Go through genes to be shown in the genomic context -->
                             {% for gene in inversions|lookup:inversion|lookup:"genes" %}
-                                {% if gene|lookup:"direction" == "r" %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% else %}<g type="button" class="btn btn-primary" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" id="{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}">{% endif %}
-                                <rect x="{{ gene|lookup:"RX" }}" y="23" width="{{ gene|lookup:"RW" }}" height="15" style="fill:{{ gene|lookup:"COLOR" }}"></rect>
-                                <polygon points="{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48" style="fill:{{ gene|lookup:"COLOR" }}"></polygon>
+                                {% if gene|lookup:"direction" == "r" %}
+                                <g type="button" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" transform='translate({{ gene|lookup:"GTRANS" }}, 0) scale(-1, 1)' id='{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}'>
+                                {% else %}
+                                <g type="button" data-container="body" data-toggle="popover" data-popover-content='#{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover' data-placement="bottom" id='{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}'>
+                                {% endif %}
+                                <rect x='{{ gene|lookup:"RX" }}' y="23" width='{{ gene|lookup:"RW" }}' height="15" style='fill:{{ gene|lookup:"COLOR" }}'></rect>
+                                <polygon points='{{ gene|lookup:"RX_RW" }} 12, {{ gene|lookup:"GY" }} 30, {{ gene|lookup:"RX_RW" }} 48' style='fill:{{ gene|lookup:"COLOR" }}'></polygon>
                                 </g>
 
                                 {% if forloop.counter0|even_odd == 0 %}
-                                <text x="{{ gene|lookup:"CX" }}" y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                <text x='{{ gene|lookup:"CX" }}' y="55" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
                                 {% else %}
-                                <text x="{{ gene|lookup:"CX" }}" y="12" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
+                                <text x='{{ gene|lookup:"CX" }}' y="12" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-weight:bold;">{{ gene|lookup:"gene_callers_id" }}</text>
                                 {% endif %}
                             {% endfor %}
                         {% else %}
@@ -104,7 +108,7 @@
                              for the gene calls. Below we have a set of hidden divs to be shown for each gene -->
                         {% for gene in inversions|lookup:inversion|lookup:"genes" %}
                         <!-- Popover Template -->
-                        <div class="hidden popover fade in top col-12" role="tooltip" id="{{inversion}}-gene-{{ gene|lookup:'gene_callers_id' }}-popover">
+                        <div class="d-none hidden popover fade in top col-12" role="tooltip" id='{{inversion}}-gene-{{ gene|lookup:"gene_callers_id" }}-popover'>
                             <div class="popover-body table-responsive">
                                 <div class="card" id="popover-panel">
                                     <div class="card-header mt-2" style="width: 100%;">
@@ -139,7 +143,7 @@
                                         </table>
                                     </div>
                                     <!-- DNA/AA buttons -->
-                                    <div class="row seq-buttons ml-3">
+                                    <div class="d-flex seq-buttons ml-3">
                                         <div class="col-xs-1 mr-2">
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence('{{ gene|lookup:'header'|pretty }}', '{{ gene|lookup:'DNA_sequence'|pretty }}')">DNA</button>
                                         </div>
@@ -267,10 +271,10 @@
                             </div>
 
                             <div class="card-body">
-                                <table class="table table-hover">
+                                <table class="col-6">
                                     <thead id="{{ inversion }}-table">
                                     <tbody>
-                                        <tr class="table-active">
+                                        <tr>
                                             <td width="25%" style="border: none; text-align:right;">First Inverted Repeat<br/>&nbsp;<br/>Second Inverted Repeat</td>
                                             <td style="border: none;">
                                                 {{ inversions|lookup:inversion|lookup:"inversion_data"|lookup:"first_seq"|monospace|safe }}<br />
@@ -469,18 +473,17 @@ function show_sequence_modal(title, content) {
   $('.modal-sequence').modal('hide');
   $('.modal-sequence').remove();
 
-  $('body').append('<div class="modal modal-sequence" style="z-index: 10000;"> \
+  $('body').append('<div class="modal modal-sequence"> \
       <div class="modal-dialog"> \
           <div class="modal-content"> \
               <div class="modal-header"> \
-                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
-                  <h4 class="modal-title">' + title + '</h4> \
+                  <h4 class="modal-title justify-content-center">' + title + '</h4> \
               </div> \
               <div class="modal-body"> \
                       <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
-                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                  <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button> \
               </div> \
           </div> \
       </div> \
