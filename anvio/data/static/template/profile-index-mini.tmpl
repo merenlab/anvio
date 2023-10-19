@@ -52,7 +52,7 @@
     <header class="image-bg-fluid-height">
         <div class="header-summary-div">
             <div style="width: 200px;">
-                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+                <img class="img-fluid img-left"src=".html/pics/logo.png" alt="">
             </div>
             <div class="header-text">
                 <b>A very quick overlook</b> at bins stored in the "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection. <br /><br /><small><i>For the final summary of your project, do not forget to run anvi-summarize without the '--quick' flag</i></small>.
@@ -64,17 +64,17 @@
     <!-- BINS PANEL -->
     <section>
         <div class="container">
-            <div class="panel panel-info" id="bins_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
+            <div class="card border-info" id="bins_panel">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins" class="panel-collapse">
-                    <div class="panel-body">
+                    <div class="card-body">
                         <p style="color: #AAAAAA; padding: 20px;">Summary of each bin (note: this is a "quick" overlook, and results in this table will be incomplete).</p>
 
-                        <div class="panel panel-default">
-                            <div class="panel-body">
+                        <div class="card">
+                            <div class="card-body">
                                 <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>

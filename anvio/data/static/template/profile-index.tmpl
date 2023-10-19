@@ -50,11 +50,11 @@
 
 
     <header class="image-bg-fluid-height">
-        <div class="header-summary-div">
-            <div style="width: 200px;">
-                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+        <div class="header-summary-div col-8 m-auto">
+            <div class="col-12">
+                <img class="img-fluid img-left col-12"src=".html/pics/logo.png" alt="">
             </div>
-            <div class="header-text">
+            <div class="header-text col-9">
                 Bins that were identified in the <b>{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
                 merged {% else %} single {% endif %}{% endif %}</b> profile database '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
                 database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accounting for
@@ -68,9 +68,9 @@
 
     <section>
         <div class="container">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
                 </div>
 
                 <div id="collapse-basics" class="panel-collapse in">
@@ -86,11 +86,11 @@
                 <div class="row">
                     {% if not meta|lookup:"profile"|lookup:"blank" %}
                     <div class="col-lg-12 col-md-12 col-sm-12">
-                        <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
-                            <div class="panel-heading">
+                        <div class="card" style="margin-right:10px; margin-left:10px;">
+                            <div class="card-header">
                                 Profile DB (<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b> w/ {{ meta|lookup:"profile"|lookup:"samples"|length|pretty }} samples).
                             </div>
-                            <div class="panel-body">
+                            <div class="card-body">
                                 <table class="table table-striped">
                                     <thead id="tblHead_basics_profile">
                                         <tr>
@@ -113,11 +113,11 @@
                     {% endif %}
 
                     <div class="col-lg-12 col-md-12 col-sm-12">
-                        <div class="panel panel-default" style="margin-right:10px; margin-left:10px;">
-                            <div class="panel-heading">
+                        <div class="card" style="margin-right:10px; margin-left:10px;">
+                            <div class="card-header">
                                 Contigs DB (<b>{{ meta|lookup:"contigs"|lookup:"project_name"|humanize }}</b>)
                             </div>
-                            <div class="panel-body">
+                            <div class="card-body">
                                 <table class="table table-striped">
                                     <thead id="tblHead_basics_contigs">
                                         <tr>
@@ -146,9 +146,9 @@
 
     <section>
         <div class="container">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#description_panel" href="#collapse-description">Profile DB description</a></h1>
                 </div>
 
                 <div id="collapse-description" class="panel-collapse">
@@ -164,17 +164,17 @@
     <!-- SUMMARY of BINS PANEL -->
     <section>
         <div class="container">
-            <div class="panel panel-info" id="bins_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
+            <div class="card border-info" id="bins_panel">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_panel" href="#collapse-bins">Summary of Bins ({{ meta|lookup:"num_bins"|pretty }})</a></h1>
                 </div>
 
                 <div id="collapse-bins" class="panel-collapse">
-                    <div class="panel-body">
+                    <div class="card-body">
                         <p style="color: #AAAAAA; padding: 20px;">Summary of of each bin. You can download the information below also as a <a href="{{ files|lookup:'bins_summary' }}">TAB-delimited file</a>. Here is another TAB-delimited file that reports <a href="{{ files|lookup:'misc_data_layers' }}">data for each single profile (such as number of reads mapped, etc)</a>.</p>
 
-                        <div class="panel panel-default">
-                            <div class="panel-body">
+                        <div class="card ">
+                            <div class="card-body">
                                 <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
@@ -363,9 +363,9 @@
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
     <div class="container">
-        <div class="panel panel-info" id="bins_across_samples_panel">
-            <div class="panel-heading">
-                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
+        <div class="card border-info" id="bins_across_samples_panel">
+            <div class="card-header">
+                <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_across_samples_panel" href="#collapse-bins-across-samples">Across Samples ({{ meta|lookup:"profile"|lookup:"samples"|length|pretty }})</a></h1> 
             </div>
 
             <div id="collapse-bins-across-samples" class="panel-collapse">
@@ -385,8 +385,8 @@
 
                             <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for {{ item }}: <a href="{{ files|lookup:item }}">{{ files|lookup:item }}</a></p>
 
-                            <div class="panel panel-default">
-                                <div class="panel-body">
+                            <div class="card ">
+                                <div class="card-body">
                                     <table class="table table-striped sortable" style="margin: 10px;">
                                         <thead id="tblHead_bin">
                                            <tr>
@@ -440,19 +440,19 @@
     {% if not meta|lookup:"profile"|lookup:"blank" %}
     <section>
         <div class="container">
-            <div class="panel panel-info" id="bins_percent_recruitment_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
+            <div class="card border-info" id="bins_percent_recruitment_panel">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#bins_percent_recruitment_panel" href="#collapse-bins-percent-recruitment">Percent Recruitment</a></h1>
                 </div>
 
                 <div id="collapse-bins-percent-recruitment" class="panel-collapse">
-                    <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 0px 20px;">This panel shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
+                    <div class="card-body">
+                        <p style="color: #AAAAAA; padding: 0px 20px;">This card shows how much of the mapped data is recruited by each bin (and how much of the mapped data was not binned under 'splits_not_binned' column). The way these percents calculated is quite simple: summarize the mean coverage of each split in each bin, and normalize every bin with respect to each other. It is critical to remember that these values do not take the unasssambled data into account. This is how you should read this table: <i>"X percent of all mapped reads in Sample Y mapped to splits that were binned into bin Z"</i>.</p>
                         <p style="color: #AAAAAA; padding: 20px;">TAB-delimited matrix file for percent recruitment: <a href="{{ files|lookup:'bins_percent_recruitment' }}">{{ files|lookup:'bins_percent_recruitment' }}</a></p>
 
 
-                        <div class="panel panel-default">
-                            <div class="panel-body">
+                        <div class="card ">
+                            <div class="card-body">
                                 <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                         <tr>
@@ -500,18 +500,18 @@
     <!-- GENES PANEL -->
     <section>
     <div class="container">
-        <div class="panel panel-info" id="genes_panel">
-            <div class="panel-heading">
-                <h1 class="panel-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
+        <div class="card border-info" id="genes_panel">
+            <div class="card-header">
+                <h1 class="card-title"><a data-toggle="collapse" data-parent="#genes_panel" href="#collapse-functions">Gene calls (their functions, coverage and detection across samples, etc)</a></h1>
             </div>
 
             <div id="collapse-functions" class="panel-collapse">
-                <div class="panel-body">
+                <div class="card-body">
 
                     <p style="color: #AAAAAA; padding: 20px;">An overview of genes and functions based on the information found in the contigs database. If you haven't assigned any functions, these tables will only contain coverages of ORFs across samples.</a></p>
 
-                    <div class="panel panel-default">
-                        <div class="panel-body">
+                    <div class="card ">
+                        <div class="card-body">
                             <table class="table table-striped sortable" id="tblGrid_bin">
                                 <thead id="tblHead_bin">
                                     <tr>
@@ -554,8 +554,8 @@
     {% else %}
     <section>
         <div class="container">
-            <div class="panel panel-warning">
-                <div class="panel-heading"><h3 class="panel-title">No gene calls are found</h3></div>
+            <div class="card border-warning">
+                <div class="card-header"><h3 class="card-title">No gene calls are found</h3></div>
             </div>
         </div>
     </section>
@@ -566,20 +566,20 @@
     <!-- NON-SINLGE-COPY HMMs PANEL -->
     <section>
         <div class="container">
-            <div class="panel panel-info" id="hmms_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
+            <div class="card border-info" id="hmms_panel">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#hmms_panel" href="#collapse-hmms">Hits for non-single-copy gene HMM profiles</a></h1>
                 </div>
 
                 <div id="collapse-hmms" class="panel-collapse">
 
-                    <div class="panel-body">
-                        <p style="color: #AAAAAA; padding: 20px;">This panel shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
+                    <div class="card-body">
+                        <p style="color: #AAAAAA; padding: 20px;">This card shows you the result of non-single copy gene hits in your bins and contigs for each HMM profile. Here is a table that shows the total number of HMM hits in each bin for each HMM search type (<a href="{{ files|lookup:'hmm_hit_totals' }}">from {{ files|lookup:'hmm_hit_totals' }}</a>):</p>
 
 
                         <!-- SINGLE TABLE FOR TOTAL NUMBER OF HMM HITS PER HMM PROFILE: -->
-                        <div class="panel panel-default">
-                            <div class="panel-body">
+                        <div class="card ">
+                            <div class="card-body">
                                 <table class="table table-striped sortable" id="tblGrid_bin">
                                     <thead id="tblHead_bin">
                                        <tr>
@@ -626,8 +626,8 @@
                                     <p style="color: #AAAAAA; padding: 20px;">HMM hits in bins for {{ hmm_profile }} (<a href="{{ files|lookup:'hmms'|lookup:hmm_profile }}">from {{ files|lookup:'hmms'|lookup:hmm_profile }}</a>):</p>
 
                                     <!-- INDIVIDUAL TABLES PER HMM ITEM and HMM PROFILE -->
-                                    <div class="panel panel-default">
-                                        <div class="panel-body">
+                                    <div class="card ">
+                                        <div class="card-body">
                                         <table class="table table-striped sortable" style="margin: 10px;">
                                             <thead id="tblHead_bin">
                                                <tr>
@@ -677,8 +677,8 @@
     {% else %}
     <section>
         <div class="container">
-            <div class="panel panel-warning">
-                <div class="panel-heading"><h3 class="panel-title">Hidden Markov Model Hits <small>(none found)</small></h3></div>
+            <div class="card border-warning">
+                <div class="card-header"><h3 class="card-title">Hidden Markov Model Hits <small>(none found)</small></h3></div>
             </div>
         </div>
     </section>
@@ -688,12 +688,12 @@
     <!-- MISC DATA PANEL -->
     <section>
         <div class="container">
-            <div class="panel panel-info" id="misc_data_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title">Misc Data</h1>
+            <div class="card border-info" id="misc_data_panel">
+                <div class="card-header">
+                    <h1 class="card-title">Misc Data</h1>
                 </div>
 
-                <div class="panel-body">
+                <div class="card-body">
                     <p style="color: #222222; padding-left: 10px; padding-top: 10px; font-size: larger;"><b>For layers</b></p>
                     {% if misc_data|lookup:"layers" %}
                     <p style="color: #222222; padding-left: 20px;">The directory <a href="misc_data_layers/">misc data layers</a> contains TAB-delimited files for additional data stored under the following data group names for each <b>sample/layer</b> found in the merged database: {% for layer_data_group in misc_data|lookup:"layers" %}{{ layer_data_group }}{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}</p>

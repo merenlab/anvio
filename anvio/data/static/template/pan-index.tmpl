@@ -49,12 +49,12 @@
     </nav>
 
 
-    <header class="image-bg-fluid-height">
-        <div class="header-summary-div">
-            <div style="width: 200px;">
-                <img class="img-responsive img-left"src=".html/pics/logo.png" alt="">
+    <header class="bg-light">
+        <div class="header-summary-div col-8 m-auto">
+            <div class="col-12">
+                <img class="img-fluid img-left col-12"src=".html/pics/logo.png" alt="">
             </div>
-            <div class="header-text">
+            <div class="header-text col-9">
                 The <b>{{ meta|lookup:"num_bins"|pretty }}</b> gene cluster 'bins' that were sotred in the anvi'o pan database for '<b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b>'
                 under the collection name "<b>{{ meta|lookup:"collection_name"|humanize }}</b>", describe <b>{{ meta|lookup:"pan"|lookup:"num_gene_clusters"|pretty }}</b>
                 gene clusters with <b>{{ meta|lookup:"pan"|lookup:"num_genes_in_gene_clusters"|pretty }}</b> genes that were identified in <b>{{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }}</b> genomes.
@@ -65,9 +65,9 @@
 
     <section>
         <div class="container">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h1 class="panel-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title"><a data-toggle="collapse" data-parent="#basics_panel" href="#collapse-basics">Basics</a></h1>
                 </div>
 
                 <div id="collapse-basics" class="panel-collapse collapse in">
@@ -78,11 +78,11 @@
                 <div class="row">
                     {% if not meta|lookup:"pan"|lookup:"blank" %}
                     <div class="col-lg-6 col-md-6 col-sm-6">
-                      <div class="panel panel-default" style="margin-left:10px;">
-                            <div class="panel-heading">
+                      <div class="card" style="margin-left:10px;">
+                            <div class="card-header">
                                 Pan DB for <b>{{ meta|lookup:"pan"|lookup:"project_name"|humanize }}</b> w/ {{ meta|lookup:"pan"|lookup:"genome_names"|length|pretty }} samples.
                             </div>
-                            <div class="panel-body">
+                            <div class="card-body">
                                 <table class="table table-striped">
                                     <thead id="tblHead_basics_profile">
                                         <tr>
@@ -105,11 +105,11 @@
                     {% endif %}
 
                     <div class="col-lg-6 col-md-6 col-sm-6">
-                        <div class="panel panel-default" style="margin-right:10px;">
-                            <div class="panel-heading">
+                        <div class="card" style="margin-right:10px;">
+                            <div class="card-header">
                                 Genomes storage
                             </div>
-                            <div class="panel-body">
+                            <div class="card-body">
                                 <table class="table table-striped">
                                     <thead id="tblHead_basics_contigs">
                                         <tr>
@@ -140,13 +140,13 @@
 
     <section>
         <div class="container">
-            <div class="panel panel-info" id="bins_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title">Summary files for gene clusters</h1>
+            <div class="card border-info" id="bins_panel">
+                <div class="card-header">
+                    <h1 class="card-title">Summary files for gene clusters</h1>
                 </div>
 
                 <div id="collapse-bins" class="panel">
-                    <div class="panel-body">
+                    <div class="card-body">
                         {% if meta|lookup:"quick" %}
                         <p style="color: #AAAAAA; padding-top: 20px; padding-left:20px;">This was a quick summary, hence the gene clusters summary file in this output is somewhat succint.</p>
                         {% else %}
@@ -165,12 +165,12 @@
     <!-- MISC DATA PANEL -->
     <section>
         <div class="container">
-            <div class="panel panel-info" id="misc_data_panel">
-                <div class="panel-heading">
-                    <h1 class="panel-title">Misc Data</h1>
+            <div class="card border-info" id="misc_data_panel">
+                <div class="card-header">
+                    <h1 class="card-title">Misc Data</h1>
                 </div>
 
-                <div class="panel-body">
+                <div class="card-body">
                     <p style="color: #222222; padding-left: 10px; padding-top: 10px; font-size: larger;"><b>For layers</b></p>
                     {% if misc_data|lookup:"layers" %}
                     <p style="color: #222222; padding-left: 20px;">The directory <a href="misc_data_layers/">misc data layers</a> contains TAB-delimited files for additional data stored under the following data group names for each <b>sample/layer</b> found in the merged database: {% for layer_data_group in misc_data|lookup:"layers" %}{{ layer_data_group }}{% if forloop.last %}.{% else %}, {% endif %}{% endfor %}</p>
