@@ -1080,7 +1080,7 @@ class KODatabase:
     Unless an alternative directory is provided, the database is downloaded and set up in a
     default anvi'o data directory, and loaded from this directory in network construction.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/KEGG/KO_REACTION_NETWORK')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/KEGG/KO_REACTION_NETWORK')
     expected_files = ['ko_info.txt', 'ko_data.tsv']
 
     def __init__(self, ko_dir: str = None) -> None:
@@ -1353,7 +1353,7 @@ class ModelSEEDDatabase:
     By default, the database is loaded from a default directory of ModelSEED files unless an
     alternative directory is provided.
     """
-    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/MISC/ModelSEED')
+    default_dir = os.path.join(os.path.dirname(ANVIO_PATH), 'data/misc/MODELSEED')
 
     # Compounds are identified as cytosolic or extracellular in ModelSEED reactions.
     compartment_ids = {0: 'c', 1: 'e'}
@@ -2199,8 +2199,10 @@ class Constructor:
                 f"Here are the unrecognized KO IDs from the contigs database: {', '.join(undefined_ko_ids)}"
             )
 
-        self.run.info("Reference KEGG KO database directory", self.ko_dir, nl_before=1)
-        self.run.info("Reference ModelSEED database directory", self.modelseed_dir)
+        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        modelseed_dir = ModelSEEDDatabase.default_dir if self.modelseed_dir is None else self.modelseed_dir
+        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir)
 
         if store:
             if contigs_super.a_meta['reaction_network_ko_annotations_hash']:
@@ -2654,8 +2656,10 @@ class Constructor:
                 f"from the pan database: {', '.join(undefined_ko_ids)}"
             )
 
-        self.run.info("Reference KEGG KO database directory", self.ko_dir, nl_before=1)
-        self.run.info("Reference ModelSEED database directory", self.modelseed_dir)
+        ko_dir = KODatabase.default_dir if self.ko_dir is None else self.ko_dir
+        modelseed_dir = ModelSEEDDatabase.default_dir if self.modelseed_dir is None else self.modelseed_dir
+        self.run.info("Reference KEGG KO database directory", ko_dir, nl_before=1)
+        self.run.info("Reference ModelSEED database directory", modelseed_dir)
 
         if store:
             if pan_super.p_meta['reaction_network_ko_annotations_hash']:
