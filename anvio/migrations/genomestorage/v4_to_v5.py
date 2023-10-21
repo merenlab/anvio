@@ -92,11 +92,11 @@ def migrate(db_path):
             attr = I(genome_name, column_name)
 
             if attr.dtype == 'int64':
-                values += (int(attr.value), )
+                values += (int(attr[()]), )
             elif attr.dtype == 'float64':
-                values += (float(attr.value), )
+                values += (float(attr[()]), )
             else:
-                values += ((attr.value), )
+                values += ((attr[()]), )
 
         genome_info_entries.append(values)
     genomes_db.insert_many(genome_info_table_name, entries=genome_info_entries)
@@ -106,7 +106,7 @@ def migrate(db_path):
     gene_entries = []
     for genome_name in genome_names:
         for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
-            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)].value
+            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)][()]
             gene_entries.append((genome_name, gene_callers_id, G('aa_sequence'), G('dna_sequence'), int(G('partial')), int(G('length')), ))
     genomes_db.insert_many(gene_info_table_name, entries=gene_entries)
     del gene_entries
@@ -119,7 +119,7 @@ def migrate(db_path):
             functions_path = '/data/genomes/%s/%s/functions' % (genome_name, gene_callers_id)
             if functions_path in fp:
                 for source in fp[functions_path]:
-                    annotation_list = str(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)].value).split('|||')
+                    annotation_list = str(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)][()]).split('|||')
 
                     functions_entries.append((genome_name, entry_id_counter, gene_callers_id, source, annotation_list[0], annotation_list[1], 0, ))
                     entry_id_counter += 1
