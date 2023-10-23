@@ -5,12 +5,9 @@ DESCRIPTION = """This program exports a metabolic reaction network to a file sui
 from sys import exit
 from argparse import Namespace
 
-# import anvio.biochemistry.refdbs as refdbs
-# import anvio.biochemistry.metabolicmodel as metabolicmodel
 import anvio.biochemistry.reactionnetwork as reactionnetwork
 
 from anvio import A, K
-# from anvio.terminal import Run
 from anvio.errors import ConfigError
 from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
