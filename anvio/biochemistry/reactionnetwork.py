@@ -2081,11 +2081,12 @@ class Constructor:
         pan_db : str, None
             Path to a pan database. The pangenomic network is determined for gene clusters stored in
             the database. If 'store' is True, the network is saved in the database.
-            'genomes_storage_db' is also required.
+            An argument for the paired 'genomes_storage_db' is also required.
 
         genomes_storage_db : str, None
             Path to a genomes storage database. The pangenomic network is derived from gene KO
-            annotations stored in the database. 'pan_db' is also required.
+            annotations stored in the database. An argument for the paired 'pan_db' is also
+            required.
 
         store : bool, True
             Save the network. A network constructed from a contigs database is stored in that
