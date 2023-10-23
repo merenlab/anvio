@@ -2678,6 +2678,7 @@ class Constructor:
 
             gene_cluster = GeneCluster()
             gene_cluster.gene_cluster_id = gene_cluster_id
+            gene_cluster.genomes = list(pan_super.gene_clusters[gene_cluster_id])
             # Add the gene cluster to the network, regardless of whether it yields reactions. Gene
             # clusters not contributing to the reaction network are removed later.
             network.gene_clusters[gene_cluster_id] = gene_cluster
