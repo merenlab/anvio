@@ -783,20 +783,7 @@ class GenomicNetwork(ReactionNetwork):
         if objective == 'e_coli_core':
             objective_dict = JSONStructure.get_e_coli_core_objective()
             if remove_missing_objective_metabolites:
-                objective_metabolites: Dict = objective_dict['metabolites']
-                objective_original_metabolites: Dict = objective_dict['notes']['original_metabolite_ids']
-                missing_metabolite_ids = []
-                # The original objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND IDs.
-                missing_original_metabolite_ids = []
-                for metabolite_id, original_metabolite_id in zip(objective_metabolites, objective_original_metabolites):
-                    if metabolite_id[:-2] not in self.metabolites:
-                        # The metabolite (removing localization substring) is not in the network.
-                        missing_metabolite_ids.append(metabolite_id)
-                        missing_original_metabolite_ids.append(original_metabolite_id)
-                for metabolite_id in missing_metabolite_ids:
-                    objective_metabolites.pop(metabolite_id)
-                for original_metabolite_id in missing_original_metabolite_ids:
-                    objective_original_metabolites.pop(original_metabolite_id)
+                self.remove_missing_objective_metabolites(objective_dict)
             json_reactions.append(objective_dict)
         elif objective != None:
             raise ConfigError(f"Anvi'o does not recognize an objective with the name, '{objective}'.")
