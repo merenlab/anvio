@@ -793,6 +793,7 @@ class GenomicNetwork(ReactionNetwork):
         reaction_kos: Dict[str, List[KO]] = {}
         for gcid, gene in self.genes.items():
             gene_entry = JSONStructure.get_gene_entry()
+            json_genes.append(gene_entry)
             gcid_str = str(gcid)
             gene_entry['id'] = gcid_str
             notes = gene_entry['notes']
@@ -809,7 +810,6 @@ class GenomicNetwork(ReactionNetwork):
                         reaction_kos[modelseed_reaction_id].append(ko)
                     except KeyError:
                         reaction_kos[modelseed_reaction_id] = [ko]
-            json_genes.append(gene_entry)
 
         progress.update("Reactions")
         compound_compartments: Dict[str, Set[str]] = {}
