@@ -1805,7 +1805,7 @@ class Constructor:
         current_hash = self.hash_contigs_db_ko_annotations(contigs_super.gene_function_calls_dict)
         if check_gene_annotations:
             if stored_hash != current_hash:
-                ConfigError(
+                raise ConfigError(
                     "The reaction network stored in the contigs database was made from a different set "
                     "of KEGG KO gene annotations than is currently in the database. There are two "
                     "solutions to this problem. First, 'anvi-reaction-network' can be run again to "
@@ -1814,11 +1814,13 @@ class Constructor:
                     "than True, allowing the stored network to have been made from a different set of KO "
                     "gene annotations than is currently stored in the database. This can result in "
                     "different genes being associated with KOs in the returned GenomicNetwork than in "
-                    "the original network that was stored. The available version of the KO database is "
-                    "used to fill in data for KOs in the network that are not current gene annotations."
+                    "the original network that was stored. The available version of the KO database that "
+                    "has been set up by anvi'o is used to fill in data for KOs in the network that are not "
+                    "current gene annotations."
                 )
-                # The KO database is needed if KOs in the stored network are among the current gene annotations.
-                ko_db = KODatabase(ko_dir=self.ko_dir)
+            # The KO database is needed if KOs in the stored network aren't among the current gene
+            # annotations.
+            ko_db = KODatabase(ko_dir=self.ko_dir)
         else:
             if stored_hash != current_hash:
                 self.run.warning(
