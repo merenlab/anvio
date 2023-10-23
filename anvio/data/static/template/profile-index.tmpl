@@ -50,11 +50,11 @@
 
 
     <header class="image-bg-fluid-height">
-        <div class="header-summary-div col-8 m-auto">
-            <div class="col-12">
-                <img class="img-fluid img-left col-12"src=".html/pics/logo.png" alt="">
+        <div class="header-summary-div">
+            <div style="width: 200px;">
+                <img class="img-fluid img-left"src=".html/pics/logo.png" alt="">
             </div>
-            <div class="header-text col-9">
+            <div class="header-text">
                 Bins that were identified in the <b>{% if meta|lookup:"profile"|lookup:"blank" %} blank {% else %}{% if meta|lookup:"profile"|lookup:"merged" == 1 %}
                 merged {% else %} single {% endif %}{% endif %}</b> profile database '<b>{{ meta|lookup:"profile"|lookup:"sample_id"|humanize }}</b>' and stored in the
                 database as "<b>{{ meta|lookup:"collection_name"|humanize }}</b>" collection, describe <b>{{ meta|lookup:"num_bins"|pretty }}</b> bins accounting for
