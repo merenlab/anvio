@@ -212,9 +212,9 @@ function loadAll() {
 
                 $('#range-box').append(`<div style="display: inline-block; margin-bottom:10px;" class="form-inline"> \
                                         Selection range from
-                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
+                                            <input class="form-control input-xs col-4" id="brush_start" type="text" value="0" size="3">
                                         to
-                                            <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
+                                            <input class="form-control input-xs col-4" id="brush_end" type="text" value="${sequence.length}" size="3">\
                                     </div>`);
 
                 info("Checking for gene functional annotations");
