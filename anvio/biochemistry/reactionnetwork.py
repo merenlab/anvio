@@ -1758,7 +1758,7 @@ class Constructor:
         if contigs_db:
             network = self.load_contigs_database_network(contigs_db)
         elif genomes_storage_db or pan_db:
-            network = self.load_pangenomic_network(genomes_storage_db=genomes_storage_db, pan_db=pan_db)
+            network = self.load_pan_database_network(genomes_storage_db=genomes_storage_db, pan_db=pan_db)
         else:
             raise ConfigError(
                 "A reaction network must be loaded from a database source. "
