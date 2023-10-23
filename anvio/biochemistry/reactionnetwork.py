@@ -96,6 +96,7 @@ class GeneCluster:
     """Representation of a gene cluster in the metabolic network."""
     def __init__(self) -> None:
         self.gene_cluster_id: int = None
+        self.genomes: List[str] = []
         # Consensus KO among the genes in the cluster. The KO annotations of genes in genomes that
         # underlie each consensus annotation are not tracked. This would require storing more data
         # on the consensus annotations in `dbops.PanSuperclass.get_gene_cluster_function_summary`.
