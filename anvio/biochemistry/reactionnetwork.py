@@ -2056,6 +2056,120 @@ class Constructor:
 
         return network
 
+    def load_pan_database_network(
+        self,
+        pan_db: str,
+        genomes_storage_db: str,
+        check_gene_annotations: bool = True
+    ) -> PangenomicNetwork:
+        """
+        Load reaction network data stored in a pan database as a reaction network object.
+
+        Parameters
+        ==========
+        pan_db : str
+            Path to a pan database in which a reaction network is stored.
+
+        genomes_storage_db : str, None
+            Path to a genomes storage database, required if the 'check_annotations' argument is
+            True. This database must have been used to make the paired 'pan_db'.
+
+        check_annotations : bool, True
+            If True, check that the reaction network stored in the pan database was made from the
+            same set of KO gene annotations as currently in the paired genomes storage database --
+            so an argument is also needed for 'genomes_storage_db' -- and throw an error if this is
+            not the case. If False, allow the stored reaction network to have been made from a
+            different set of KO gene annotations than is currently stored in the genomes storage
+            database. This can result in different KO assignments to gene clusters in the returned
+            PangenomicNetwork than in the original network that was stored.
+        """
+        # Load the pan database.
+        pan_db_info = dbinfo.PanDBInfo(pan_db)
+        self_table = pan_db_info.get_self_table()
+        # No consensus threshold may have been used, in which case it is None.
+        consensus_threshold = self_table['reaction_network_consensus_threshold']
+        if consensus_threshold is not None:
+            consensus_threshold = float(consensus_threshold)
+        discard_ties = bool(int(self_table['reaction_network_discard_ties']))
+        args = argparse.Namespace()
+        args.pan_db = pan_db
+        args.genomes_storage = genomes_storage_db
+        args.consensus_threshold = consensus_threshold
+        args.discard_ties = discard_ties
+        pan_super = PanSuperclass(args, r=run_quiet)
+        pan_super.init_gene_clusters()
+        pan_super.init_gene_clusters_functions()
+        pan_super.init_gene_clusters_functions_summary_dict()
+        gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
+
+        # Check that the network stored in the pan database was made from the same set of KO gene
+        # annotations as currently in the paired genomes storage database.
+        stored_hash = self_table['reaction_network_ko_annotations_hash']
+        current_hash = self.hash_pan_db_ko_annotations(
+            genomes_storage_db,
+            gene_clusters_functions_summary_dict,
+            consensus_threshold,
+            discard_ties
+        )
+        if check_gene_annotations:
+            if stored_hash != current_hash:
+                # Note that another unstated possible cause of the error could be due to manual
+                # meddling with the metavariables in the database, 'consensus_threshold' and
+                # 'discard_ties'. Assume that the user has not been messing around like this.
+                raise ConfigError(
+                    "The reaction network stored in the pan database was made from a different set "
+                    "of KO gene annotations than is currently in the paired genomes storage "
+                    "database. There are two solutions to this problem. First, "
+                    "'anvi-reaction-network' can be run again to overwrite the existing network "
+                    "stored in the pan database with a new network from the new KO gene "
+                    "annotations. Second, 'check_gene_annotations' can be made False rather than "
+                    "True, allowing the stored network to have been made from a different set of "
+                    "KO gene annotations than is currently stored in the genomes storage database. "
+                    "This can result in different KO assignments to gene clusters in the returned "
+                    "PangenomicNetwork than in the original network that was stored. The available "
+                    "version of the KO database that has been set up by anvi'o is used to fill in "
+                    "data for KOs in the network that are not current gene annotations."
+                )
+            # The KO database is needed if KOs in the stored network aren't among the current gene
+            # annotations.
+            ko_db = KODatabase(ko_dir=self.ko_dir)
+        else:
+            if stored_hash != current_hash:
+                self.run.warning(
+                    "The reaction network stored in the pan database was made from a different set "
+                    "of KO gene annotations than is currently in the genomes storage database. "
+                    "This will be ignored since 'check_gene_annotations' is False. This can result "
+                    "in different KO assignments to gene clusters in the returned "
+                    "PangenomicNetwork than in the original network that was stored."
+                )
+
+        network = PangenomicNetwork()
+
+        pdb: PanDatabase = pan_db_info.load_db()
+        reactions_table = pdb.db.get_table_as_dataframe('gene_cluster_function_reactions')
+        metabolites_table = pdb.db.get_table_as_dataframe('gene_cluster_function_metabolites')
+        pdb.disconnect()
+
+        # Make gene cluster objects for all gene clusters with consensus KO annotations.
+        for gene_cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
+            # Retrieve the consensus KO across genes in the cluster. Parameterization of the method
+            # used to select consensus KOs occurred in pan super initialization. Parameter values
+            # were loaded from pan database metavariables.
+            gene_cluster_ko_data = gene_cluster_functions_data['KOfam']
+            if gene_cluster_ko_data == {'function': None, 'accession': None}:
+                # No KO was assigned to the cluster.
+                continue
+            ko_id = gene_cluster_ko_data['accession']
+
+            gene_cluster = GeneCluster()
+            gene_cluster.gene_cluster_id = gene_cluster_id
+            gene_cluster.genomes = list(pan_super.gene_clusters[gene_cluster_id])
+            # Add the gene cluster to the network, regardless of whether it yields reactions. Gene
+            # clusters not contributing to the reaction network are removed later.
+            network.gene_clusters[gene_cluster_id] = gene_cluster
+
+
+
     def make_network(
         self,
         contigs_db: str = None,
