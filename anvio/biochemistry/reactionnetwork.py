@@ -728,7 +728,7 @@ class GenomicNetwork(ReactionNetwork):
         overwrite: bool = False,
         objective: str = None,
         remove_missing_objective_metabolites: bool = False,
-        # record_bins: tuple = ('gene', ),
+        # record_bins: Tuple[str] = ('gene', ),
         indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
@@ -750,7 +750,8 @@ class GenomicNetwork(ReactionNetwork):
             An objective to use in the model, stored as the first entry in the JSON 'reactions'
             array. Currently, the only valid options are None and 'e_coli_core'.
 
-            None does not add an objective to the JSON, meaning that FBA cannot be performed on the model.
+            None means that no objective is added to the JSON, meaning that FBA cannot be performed
+            on the model.
 
             'e_coli_core' is the biomass objective from the COBRApy example JSON file of E. coli
             "core" metabolism, 'e_coli_core.json'.
@@ -764,8 +765,8 @@ class GenomicNetwork(ReactionNetwork):
             reaction network. By default, bin membership is only recorded for genes with the
             argument, ('gene', ). 'reaction' and 'metabolite' can also be provided in a tuple
             argument (e.g., ('reaction', ) or ('metabolite', 'reaction', 'gene')) to likewise record
-            in which bins the reaction and metabolite entries occur. Pass an argument of None to not
-            record bin membership in the JSON at all.
+            in which bins the reaction and metabolite entries occur. To not record bins at all, pass
+            either an empty tuple or None.
 
         indent : int, 2
             spaces of indentation per nesting level in JSON file
