@@ -815,6 +815,7 @@ class GenomicNetwork(ReactionNetwork):
         compound_compartments: Dict[str, Set[str]] = {}
         for modelseed_reaction_id, reaction in self.reactions.items():
             reaction_entry = JSONStructure.get_reaction_entry()
+            json_reactions.append(reaction_entry)
             reaction_entry['id'] = modelseed_reaction_id
             reaction_entry['name'] = reaction.modelseed_name
             metabolites = reaction_entry['metabolites']
@@ -854,7 +855,6 @@ class GenomicNetwork(ReactionNetwork):
                 'kegg.reaction': list(set(reaction.kegg_aliases).difference(ko_kegg_aliases)),
                 'ec-code': list(set(reaction.ec_number_aliases).difference(ko_ec_number_aliases))
             }
-            json_reactions.append(reaction_entry)
 
         progress.update("Metabolites")
         for modelseed_compound_id, metabolite in self.metabolites.items():
@@ -864,6 +864,7 @@ class GenomicNetwork(ReactionNetwork):
             kegg_compound_aliases = list(metabolite.kegg_aliases)
             for compartment in compound_compartments[modelseed_compound_id]:
                 metabolite_entry = JSONStructure.get_metabolite_entry()
+                json_metabolites.append(metabolite_entry)
                 metabolite_entry['id'] = f"{modelseed_compound_id}_{compartment}"
                 metabolite_entry['name'] = modelseed_compound_name
                 metabolite_entry['compartment'] = compartment
@@ -872,7 +873,6 @@ class GenomicNetwork(ReactionNetwork):
                 metabolite_entry['charge'] = charge if charge is not None else 0
                 metabolite_entry['formula'] = formula if formula is not None else ""
                 metabolite_entry['annotation']['kegg.compound'] = kegg_compound_aliases
-                json_metabolites.append(metabolite_entry)
 
         progress.update("Saving")
         with open(path, 'w') as f:
