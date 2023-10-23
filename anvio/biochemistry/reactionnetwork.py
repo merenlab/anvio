@@ -891,75 +891,208 @@ class PangenomicNetwork(ReactionNetwork):
     def export_json(
         self,
         path: str,
-        annotate_genes: tuple = ('genome', 'bin', ),
-        annotate_reactions: tuple = ('genome', 'bin', 'kegg_reaction', 'ec_number'),
-        annotate_metabolites: tuple = ('genome', 'bin', 'kegg_compound'),
-        run: terminal.Run = terminal.Run(),
+        overwrite: bool = False,
+        objective: str = None,
+        remove_missing_objective_metabolites: bool = False,
+        record_genomes: Tuple[str] = ('gene', 'reaction'),
+        # record_bins: Tuple[str] = ('gene', 'reaction'),
+        indent: int = 2,
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
         """
-        Export the network to a metabolic model file in JSON format. *Gene entries in this file
-        represent gene clusters.* Optionally, gene, reaction, and metabolite entries in this file
-        are annotated with the names of genomes and names of gene cluster bins in which they occur.
+        Export the network to a metabolic model file in JSON format. Entries in the "gene" section
+        of this file represent gene clusters.
+
+        All information from the network is included in the JSON so that the file can by imported by
+        anvi'o as a PangenomicNetwork object containing the same information.
 
         Parameters
         ==========
         path : str
             output JSON file path
 
-        annotate_genes : tuple, ('genome', 'bin', )
-            Annotate gene (cluster) entries in the JSON file with additional data, selecting
-            from the following:
+        overwrite : bool, False
+            Overwrite the JSON file if it already exists.
 
-            'genome' : genomes in which the genes of the cluster occur
+        objective : str, None
+            An objective to use in the model, stored as the first entry in the JSON 'reactions'
+            array. Currently, the only valid options are None and 'e_coli_core'.
 
-            'bin' : bins in which the gene cluster occurs
+            None means that no objective is added to the JSON, meaning that FBA cannot be performed
+            on the model.
 
-            'all_ko' : all KOs associated with genes in the cluster, sorted in descending order of
-                the number of genes in the cluster that were associated with each KO and then mean
-                e-value of gene-KO assignments
+            'e_coli_core' is the biomass objective from the COBRApy example JSON file of E. coli
+            "core" metabolism, 'e_coli_core.json'.
 
-            'ko' : KOs associated with the gene cluster that yielded reactions in the network,
-                sorted in descending order of the number of genes in the cluster that were
-                associated with each KO and then mean e-value of gene-KO assignments
+        remove_missing_objective_metabolites : bool, False
+            If True, remove metabolites from the JSON objective that are not produced or consumed in
+            the reaction network. FBA fails with metabolites outside the network.
 
-            'ko_count' : number of genes in the cluster that were associated with each KO; if
-                'all_ko' is provided, then each value corresponds to a KO in 'all_ko', whereas if
-                only 'ko' is provided, then each value corresponds to a KO in 'ko'
+        record_genomes : tuple, ('gene cluster', 'reaction')
+            Record the genome membership of gene clusters in JSON entries. By default, genome names
+            are recorded for gene clusters and reactions with the argument, ('gene cluster',
+            'reaction'). To not record genomes at all, pass either an empty tuple or None. The
+            following valid strings can be provided in a tuple in any combination: 'gene cluster',
+            'reaction', and 'metabolite'. 'reaction' and 'metabolite' record the genomes predicted
+            to encode enzymes associated with reactions and metabolites, respectively.
 
-            'e_value' : mean scores of KO associations with genes in the cluster; if 'all_ko' is
-                provided, then each value corresponds to a KO in 'all_ko', whereas if only 'ko' is
-                provided, then each value corresponds to a KO in 'ko'
-
-        annotate_reactions : tuple, ('genome', 'bin', 'kegg_reaction', 'ec_number')
-            Annotate reaction entries in the JSON file with additional data, selecting from the following:
-
-            'genome' : genomes in which the reaction occurs
-
-            'bin' : bins in which the reaction occurs
-
-            'kegg_reaction' : KO-associated KEGG reaction IDs yielding the ModelSEED reaction
-
-            'ec_number' : KO-associated EC numbers yielding the ModelSEED reaction
-
-            'ko' : KOs yielding the ModelSEED reaction
-
-        annotate_metabolites : tuple, ('genome', 'bin', 'kegg_compound')
-            Annotate metabolite entries in the JSON file with additional data, selecting from the following:
-
-            'genome' : genomes in which the metabolite occurs
-
-            'bin' : bins in which the metabolite occurs
-
-            'kegg_compound' : KEGG compound aliases of the ModelSEED compound
-
-            'ko' : KOs yielding the ModelSEED compound
-
-        run : terminal.Run, terminal.Run()
+        indent : int, 2
+            spaces of indentation per nesting level in JSON file
 
         progress : terminal.Progress, terminal.Progress()
         """
-        pass
+        if record_genomes is None:
+            record_genomes = ()
+        valid_items = ('gene cluster', 'reaction', 'metabolite')
+        invalid_items = []
+        for item in record_genomes:
+            if item not in valid_items:
+                invalid_items.append(item)
+        if invalid_items:
+            raise ConfigError(
+                f"The following items in the 'record_genomes' argument are invalid: {', '.join(invalid_items)}"
+            )
+
+        progress.new("Constructing JSON")
+        progress.update("Setting up")
+        filesnpaths.is_output_file_writable(path, ok_if_exists=overwrite)
+        json_dict = JSONStructure.get()
+        json_gene_clusters: List[Dict] = json_dict['genes']
+        json_reactions: List[Dict] = json_dict['reactions']
+        json_metabolites: List[Dict] = json_dict['metabolites']
+        if objective == 'e_coli_core':
+            objective_dict = JSONStructure.get_e_coli_core_objective()
+            if remove_missing_objective_metabolites:
+                self.remove_missing_objective_metabolites(objective_dict)
+            json_reactions.append(objective_dict)
+        elif objective != None:
+            raise ConfigError(f"Anvi'o does not recognize an objective with the name, '{objective}'.")
+
+        progress.update("Gene clusters")
+        reaction_gene_clusters: Dict[str, List[str]] = {}
+        reaction_kos: Dict[str, List[KO]] = {}
+        # The following two dictionaries are only needed for recording the occurrence of reactions
+        # and metabolites in genomes.
+        reaction_genomes: Dict[str, List[str]] = {}
+        metabolite_genomes: Dict[str, List[str]] = {}
+        for gene_cluster_id, gene_cluster in self.gene_clusters.items():
+            gene_cluster_entry = JSONStructure.get_gene_entry()
+            json_gene_clusters.append(gene_cluster_entry)
+            gene_cluster_id_str = str(gene_cluster_id)
+            gene_cluster_entry['id'] = gene_cluster_id_str
+            # Record KO IDs in the annotation section of the gene cluster entry. In a JSON file produced
+            # from a 'GenomicNetwork', KO IDs are paired with their gene annotation e-values, which
+            # can't be done with consensus KOs for gene clusters. Therefore, where the e-value would
+            # be, put an empty string.
+            annotation = gene_cluster_entry['annotation']
+            annotation['ko'] = annotation_kos = {}
+            ko = gene_cluster.ko
+            annotation_kos[ko.id] = ""
+            for modelseed_reaction_id in ko.reactions:
+                try:
+                    reaction_gene_clusters[modelseed_reaction_id].append(gene_cluster_id_str)
+                except KeyError:
+                    reaction_gene_clusters[modelseed_reaction_id] = [gene_cluster_id_str]
+                try:
+                    reaction_kos[modelseed_reaction_id].append(ko)
+                except KeyError:
+                    reaction_kos[modelseed_reaction_id] = [ko]
+            if not record_genomes:
+                continue
+            genome_names = gene_cluster.genomes
+            if 'gene cluster' in record_genomes:
+                # Record the names of the genomes contributing to the gene cluster in the notes section
+                # of the gene cluster entry.
+                gene_cluster_entry['notes']['genomes'] = genome_names
+            if 'reaction' in record_genomes:
+                for modelseed_reaction_id in ko.reactions:
+                    try:
+                        reaction_genomes[modelseed_reaction_id] += genome_names
+                    except KeyError:
+                        reaction_genomes[modelseed_reaction_id] = genome_names
+            if 'metabolite' in record_genomes:
+                for reaction in ko.reactions.values():
+                    for compartment, metabolite in zip(reaction.compartments, reaction.compounds):
+                        entry_id = f"{metabolite.modelseed_id}_{compartment}"
+                        try:
+                            metabolite_genomes[entry_id] += genome_names
+                        except KeyError:
+                            metabolite_genomes[entry_id] = genome_names
+
+        progress.update("Reactions")
+        compound_compartments: Dict[str, Set[str]] = {}
+        for modelseed_reaction_id, reaction in self.reactions.items():
+            reaction_entry = JSONStructure.get_reaction_entry()
+            json_reactions.append(reaction_entry)
+            reaction_entry['id'] = modelseed_reaction_id
+            reaction_entry['name'] = reaction.modelseed_name
+            metabolites = reaction_entry['metabolites']
+            for compound, compartment, coefficient in zip(reaction.compounds, reaction.compartments, reaction.coefficients):
+                modelseed_compound_id = compound.modelseed_id
+                metabolites[f"{modelseed_compound_id}_{compartment}"] = coefficient
+                try:
+                    compound_compartments[modelseed_compound_id].add(compartment)
+                except KeyError:
+                    compound_compartments[modelseed_compound_id] = set(compartment)
+            if not reaction.reversibility:
+                # By default, the reaction entry was set up to be reversible; here make it irreversible.
+                reaction_entry['lower_bound'] = 0.0
+            reaction_entry['gene_reaction_rule'] = " or ".join([gcid for gcid in reaction_gene_clusters[modelseed_reaction_id]])
+            notes = reaction_entry['notes']
+            # Record gene KO annotations which aliased the reaction via KEGG REACTION or EC number.
+            notes['ko'] = ko_notes = {}
+            ko_kegg_aliases = []
+            ko_ec_number_aliases = []
+            for ko in reaction_kos[modelseed_reaction_id]:
+                try:
+                    kegg_aliases = ko.kegg_reaction_aliases[modelseed_reaction_id]
+                except KeyError:
+                    kegg_aliases = []
+                try:
+                    ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                except KeyError:
+                    ec_number_aliases = []
+                ko_notes[ko.id] = {'kegg.reaction': kegg_aliases, 'ec-code': ec_number_aliases}
+                ko_kegg_aliases += kegg_aliases
+                ko_ec_number_aliases += ec_number_aliases
+            ko_kegg_aliases = set(ko_kegg_aliases)
+            ko_ec_number_aliases = set(ko_ec_number_aliases)
+            # Record other KEGG REACTION or EC number aliases of the reaction in the ModelSEED
+            # database that did not happen to be associated with KO annotations.
+            notes['other_aliases'] = {
+                'kegg.reaction': list(set(reaction.kegg_aliases).difference(ko_kegg_aliases)),
+                'ec-code': list(set(reaction.ec_number_aliases).difference(ko_ec_number_aliases))
+            }
+            if 'reaction' not in record_genomes:
+                continue
+            notes['genomes'] = sorted(set(reaction_genomes[modelseed_reaction_id]))
+
+        progress.update("Metabolites")
+        for modelseed_compound_id, metabolite in self.metabolites.items():
+            modelseed_compound_name = metabolite.modelseed_name
+            charge = metabolite.charge
+            formula = metabolite.formula
+            kegg_compound_aliases = list(metabolite.kegg_aliases)
+            for compartment in compound_compartments[modelseed_compound_id]:
+                metabolite_entry = JSONStructure.get_metabolite_entry()
+                json_metabolites.append(metabolite_entry)
+                entry_id = f"{modelseed_compound_id}_{compartment}"
+                metabolite_entry['id'] = entry_id
+                metabolite_entry['name'] = modelseed_compound_name
+                metabolite_entry['compartment'] = compartment
+                # Compounds without a formula have a nominal charge of 10000000 in the ModelSEED
+                # compounds database, which is replaced by None in the reaction network and 0 in the JSON.
+                metabolite_entry['charge'] = charge if charge is not None else 0
+                metabolite_entry['formula'] = formula if formula is not None else ""
+                metabolite_entry['annotation']['kegg.compound'] = kegg_compound_aliases
+                if 'metabolite' not in record_genomes:
+                    continue
+                notes['genomes'] = sorted(set(metabolite_genomes[entry_id]))
+
+        progress.update("Saving")
+        with open(path, 'w') as f:
+            json.dump(json_dict, f, indent=indent)
+        progress.end()
 
 class JSONStructure:
     """JSON structure of metabolic model file."""
