@@ -796,11 +796,11 @@ class GenomicNetwork(ReactionNetwork):
             json_genes.append(gene_entry)
             gcid_str = str(gcid)
             gene_entry['id'] = gcid_str
-            notes = gene_entry['notes']
-            # Record KO IDs and annotation e-values in the notes section of the gene entry.
-            notes['ko'] = notes_kos = {}
+            # Record KO IDs and annotation e-values in the annotation section of the gene entry.
+            annotation = gene_entry['annotation']
+            annotation['ko'] = annotation_kos = {}
             for ko, e_value in zip(gene.kos, gene.e_values):
-                notes_kos[ko.id] = str(e_value)
+                annotation_kos[ko.id] = str(e_value)
                 for modelseed_reaction_id in ko.reactions:
                     try:
                         reaction_genes[modelseed_reaction_id].append(gcid_str)
