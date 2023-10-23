@@ -1781,11 +1781,11 @@ class Constructor:
 
         check_gene_annotations : bool, True
             If True, check that the reaction network stored in the contigs database was made from
-            the same set of KEGG KO gene annotations as currently in the database, and throw an
-            error if this is not the case. If False, allow the stored reaction network to have been
-            made from a different set of KO gene annotations than is currently stored in the
-            database. This can result in different genes being associated with KOs in the returned
-            GenomicNetwork than in the original network that was stored.
+            the same set of KO gene annotations as currently in the database, and throw an error if
+            this is not the case. If False, allow the stored reaction network to have been made from
+            a different set of KO gene annotations than is currently stored in the database. This
+            can result in different KO assignments to genes in the returned GenomicNetwork than in
+            the original network that was stored.
 
         Returns
         =======
@@ -1799,8 +1799,8 @@ class Constructor:
         contigs_super = ContigsSuperclass(args, r=run_quiet)
         contigs_super.init_functions(requested_sources=['KOfam'])
 
-        # Check that the network stored in the contigs database was made from the same set of KEGG
-        # KO gene annotations as currently in the database.
+        # Check that the network stored in the contigs database was made from the same set of KO
+        # gene annotations as currently in the database.
         stored_hash = contigs_super.a_meta['reaction_network_ko_annotations_hash']
         current_hash = self.hash_contigs_db_ko_annotations(contigs_super.gene_function_calls_dict)
         if check_gene_annotations:
