@@ -137,6 +137,36 @@ class ReactionNetwork:
         self.modelseed_kegg_aliases: Dict[str, List[str]] = {}
         self.modelseed_ec_number_aliases: Dict[str, List[str]] = {}
 
+    def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
+        """
+        Remove metabolites from the biomass objective dictionary that are not produced or consumed
+        in the reaction network.
+
+        Parameters
+        ==========
+        objective_dict : dict
+            Biomass objective in COBRApy JSON format, like that returned by the method,
+            'JSONStructure.get_e_coli_core_objective'.
+
+        Returns
+        =======
+        None
+        """
+        objective_metabolites: Dict = objective_dict['metabolites']
+        objective_original_metabolites: Dict = objective_dict['notes']['original_metabolite_ids']
+        missing_metabolite_ids = []
+        # The original objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND IDs.
+        missing_original_metabolite_ids = []
+        for metabolite_id, original_metabolite_id in zip(objective_metabolites, objective_original_metabolites):
+            if metabolite_id[:-2] not in self.metabolites:
+                # The metabolite (removing localization substring) is not in the network.
+                missing_metabolite_ids.append(metabolite_id)
+                missing_original_metabolite_ids.append(original_metabolite_id)
+        for metabolite_id in missing_metabolite_ids:
+            objective_metabolites.pop(metabolite_id)
+        for original_metabolite_id in missing_original_metabolite_ids:
+            objective_original_metabolites.pop(original_metabolite_id)
+
 class GenomicNetwork(ReactionNetwork):
     """
     A reaction network predicted from KEGG KO and ModelSEED annotations of genes.
