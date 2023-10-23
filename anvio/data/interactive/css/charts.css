@@ -350,3 +350,17 @@ a{
 .sidebar-footer > .btn {
     width: 50%;
 }
+
+.input-xs {
+    height: 22px;
+    padding: 0px 5px;
+    margin-left: 3px;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: 3px;
+}
+
+#gc_overlay_color{
+    background-color: #008000; 
+    margin-left: 3px;
+}
