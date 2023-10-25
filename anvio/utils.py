@@ -1081,7 +1081,7 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False, run=run):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
