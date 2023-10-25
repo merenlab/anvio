@@ -92,7 +92,7 @@ class MetagenomeCentricGeneClassifier:
         if self.exclude_samples:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.exclude_samples)
-            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'rU').readlines()])
+            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'r').readlines()])
 
             if not self.samples_to_exclude:
                 raise ConfigError("You asked to exclude samples, but provided an empty list.")
@@ -102,7 +102,7 @@ class MetagenomeCentricGeneClassifier:
         if self.include_samples:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.include_samples)
-            self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'rU').readlines()])
+            self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'r').readlines()])
 
             if not self.samples_to_include:
                 raise ConfigError("You provided an empty list of samples to include.")

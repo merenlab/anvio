@@ -924,7 +924,7 @@ class KeggSetup(KeggContext):
         filesnpaths.is_file_exists(self.kegg_pathway_file)
         filesnpaths.is_file_plain_text(self.kegg_pathway_file)
 
-        f = open(self.kegg_pathway_file, 'rU')
+        f = open(self.kegg_pathway_file, 'r')
         self.progress.new("Parsing KEGG Pathway file")
 
         current_category = None
@@ -998,7 +998,7 @@ class KeggSetup(KeggContext):
         filesnpaths.is_file_exists(htext_file)
         filesnpaths.is_file_plain_text(htext_file)
 
-        f = open(htext_file, 'rU')
+        f = open(htext_file, 'r')
         self.progress.new(f"Parsing KEGG htext file: {htext_file}")
 
         target_level = None
@@ -1077,7 +1077,7 @@ class KeggSetup(KeggContext):
         utils.download_file(self.kegg_rest_api_get + '/' + accession,
             file_path, progress=self.progress, run=self.run)
         # verify entire file has been downloaded
-        f = open(file_path, 'rU')
+        f = open(file_path, 'r')
         f.seek(0, os.SEEK_END)
         f.seek(f.tell() - 4, os.SEEK_SET)
         last_line = f.readline().strip('\n')
@@ -1146,7 +1146,7 @@ class KeggSetup(KeggContext):
             utils.download_file(self.kegg_rest_api_get + '/' + konum,
                 file_path, progress=self.progress, run=self.run)
             # verify entire file has been downloaded
-            f = open(file_path, 'rU')
+            f = open(file_path, 'r')
             f.seek(0, os.SEEK_END)
             f.seek(f.tell() - 4, os.SEEK_SET)
             last_line = f.readline().strip('\n')
@@ -1528,7 +1528,7 @@ class ModulesDownload(KeggSetup):
         filesnpaths.is_file_exists(self.kegg_module_file)
         filesnpaths.is_file_plain_text(self.kegg_module_file)
 
-        f = open(self.kegg_module_file, 'rU')
+        f = open(self.kegg_module_file, 'r')
         self.progress.new("Parsing KEGG Module file")
 
         current_module_type = None
@@ -1641,7 +1641,7 @@ class ModulesDownload(KeggSetup):
                                   f"on your computer. Very sorry to tell you this, but you need to re-download the KEGG "
                                   f"data. We recommend the --reset flag.")
             # verify entire file has been downloaded
-            f = open(file_path, 'rU')
+            f = open(file_path, 'r')
             f.seek(0, os.SEEK_END)
             f.seek(f.tell() - 4, os.SEEK_SET)
             last_line = f.readline().strip('\n')
@@ -6677,7 +6677,7 @@ class ModulesDatabase(KeggContext):
         for mnum in self.module_dict.keys():
             self.progress.update("Parsing Module %s" % mnum)
             mod_file_path = os.path.join(self.module_data_directory, mnum)
-            f = open(mod_file_path, 'rU')
+            f = open(mod_file_path, 'r')
 
             prev_data_name_field = None
             module_has_annotation_source = False

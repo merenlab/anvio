@@ -702,7 +702,7 @@ class COGsSetup:
         p_id_without_cog_id = set([])
 
         line_counter = 0
-        for line in open(input_file_path, 'rU').readlines():
+        for line in open(input_file_path, 'r').readlines():
             line_counter += 1
 
             if line_counter % 500 == 0:
@@ -823,7 +823,7 @@ class COGsSetup:
         progress.update('...')
 
         output = open(output_file_path, 'w')
-        for line in open(input_file_path, 'rU').readlines():
+        for line in open(input_file_path, 'r').readlines():
             if line.startswith('#'):
                 continue
 
@@ -951,7 +951,7 @@ class COGsSetup:
 
         # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
         checksums = {}
-        for line in open(input_file_path, 'rU').readlines():
+        for line in open(input_file_path, 'r').readlines():
             stripped = line.strip('\n').split(' ')
             file_name = stripped[-1].strip('*')
             checksums[file_name] = stripped[0]

@@ -450,7 +450,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
         if self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.overwrite_output_destinations)

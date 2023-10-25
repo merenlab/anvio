@@ -357,7 +357,7 @@ class EggNOGMapper:
 
         num_entries_processed = 0
         self.progress.new('Parsing the annotations file')
-        for line in open(annotations_file_path, 'rU').readlines():
+        for line in open(annotations_file_path, 'r').readlines():
             if line.startswith('#') or line == '\n':
                 continue
 
