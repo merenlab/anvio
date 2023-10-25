@@ -1114,8 +1114,10 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
+
         if rows_to_return and row_name not in rows_to_return:
-                continue
+            continue
+
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip('\n').split('\t')[1:]
 
@@ -1127,6 +1129,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
             if fields_of_interest:
                 vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
+                # the code will literally never enter here:
                 vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
