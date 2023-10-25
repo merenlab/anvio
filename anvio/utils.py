@@ -850,7 +850,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
-    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'rU').readlines()]
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'r').readlines()]
 
     output_file = open(output_file_path, 'w')
     for entry in zip(*file_content):
@@ -1048,7 +1048,7 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
     for index in column_indices:
         d[index] = []
 
-    with open(input_file_path, "rU") as input_file:
+    with open(input_file_path, "r") as input_file:
         for line in input_file.readlines():
             fields = line.strip('\n').split(separator)
 
@@ -1066,9 +1066,9 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     filesnpaths.is_file_exists(file_path)
 
     if include_first_column:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')
+        return open(file_path, 'r').readline().strip('\n').split('\t')
     else:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
+        return open(file_path, 'r').readline().strip('\n').split('\t')[1:]
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
@@ -1095,7 +1095,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_to_sample_dict = {}
     sample_to_id_dict = {}
 
-    input_matrix = open(file_path, 'rU')
+    input_matrix = open(file_path, 'r')
     columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
@@ -1489,7 +1489,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
-            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'r').readlines()])
         else:
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
@@ -1764,7 +1764,7 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
-        for line in open(chunk_path, 'rU'):
+        for line in open(chunk_path, 'r'):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
@@ -3547,7 +3547,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     failed_lines = []
     column_mapping_for_line_failed = None
 
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     # learn the number of fields and reset the file:
     num_fields = len(f.readline().strip('\n').split(separator))
