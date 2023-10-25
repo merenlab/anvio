@@ -1085,6 +1085,20 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
 
+    run.warning("Anvi'o is recovering your data from your TAB-delimited file, and it is"
+                "instructed to pad your input vectors with 0 values probably because you "
+                "used the flag `--pad-input-with-zeros` somewhere. Just so you know.")
+
+    if cols_to_return and pad_with_zeros:
+        raise ConfigError("Dear developer, you can't use `cols_to_return` and `pad_with_zeros` at the same "
+                          "time with this function. The `pad_with_zeros` header variable in this function "
+                          "is a mystery at this point. But the only way to be able to use it requires one "
+                          "to not use `cols_to_return`. More mystery .. but essentially this is a necessity "
+                          "because we have to update fields_of_interest value if pad_with_zeros is true, so "
+                          "anvi'o clustering step DOES NOT IGNORE THE LAST SAMPLE IN THE MATRIX BECUASE PAD "
+                          "WITH ZEROS SHIFT EVERYTHING, and we can't do it blindly if the programmer requests "
+                          "only specific columnts to be returned with `cols_to_return` :/")
+
     if transpose:
         transposed_file_path = filesnpaths.get_temp_file_path()
         transpose_tab_delimited_file(file_path, transposed_file_path)
@@ -1121,9 +1135,10 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip('\n').split('\t')[1:]
 
-        # long story.
+        # because stupid stuff. see warning above.
         if pad_with_zeros:
             fields = [0] + fields + [0]
+            fields_of_interest = list(range(0, len(fields)))
 
         try:
             if fields_of_interest:
