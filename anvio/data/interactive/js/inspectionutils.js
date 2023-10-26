@@ -81,26 +81,24 @@ function get_gene_functions_table_html(gene){
                           + '</td></tr></tbody></table>';
 
     functions_table_html += '<div class="row">'
-    functions_table_html += '<div class="col-xs-1 gene-section">'
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '<div class="col-xs-1">'
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm ml-3 mr-1" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
     functions_table_html += '</div>'
-    functions_table_html += '<div class="col-xs-1 gene-section">'
+    functions_table_html += '<div class="col-xs-1">'
 
     if(gene.call_type == 1)
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm " onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
     else
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>AA</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" disabled>AA</button> ';
     functions_table_html += '</div>'
 
     //Blast search button created here
-    functions_table_html += `<div class="col-xs-1 dp-button gene-section"> \
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"> \
-    <link rel="stylesheet" type="text/css" href="css/inspection.css" \
+    functions_table_html += `<div class="col-xs-1 dp-button"> \
     <div class="dropdown"> \
-      <a id="dLabel" role="button" data-toggle="dropdown" class="btn btn-default btn-sm" data-target="#" href="#"> \
+      <button id="dLabel" role="button" data-toggle="dropdown" class="btn btn-outline-secondary btn-sm" data-target="#" href="#"> \
                 BLAST SEARCH <span class="caret"></span> \
-            </a> \
-      <ul class="dropdown-menu multi-level fa-ul" role="menu" aria-labelledby="dropdownMenu"> \
+            </button> \
+      <ul class="dropdown-menu multi-level fa-ul blast-dropdown-btn" role="menu" aria-labelledby="dropdownMenu"> \
         <li class="dropdown-submenu"> \
           <a tabindex="-1" href="#">Nucleotide <span></span> Nucleotide</a> \
           <ul class="dropdown-menu">`;
@@ -212,12 +210,12 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
                           + '</td></tr></tbody></table>';
     functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
     functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
 
     if(!gene.functions)
         return functions_table_html;
@@ -266,7 +264,7 @@ function show_sequence_modal(title, content) {
                       <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
-                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                  <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button> \
               </div> \
           </div> \
       </div> \
@@ -413,24 +411,15 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         toggleGeneIDColor(gene.gene_callers_id);
       });
     });
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
+    $('[data-toggle="popover"]').popover({html: true, sanitize: false, "trigger": "click", "container": "body", "viewport": "body", "placement": "top" });
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
-
-      if ($(popover).css('top').charAt(0) === '-') {
-        $(popover).css('top', '0px');
-      }
-
-      if ($(popover).css('left').charAt(0) === '-') {
-        $(popover).css('left', '0px');
-      }
+      var popover = $(e.target).data("bs.popover").tip;      
+      $(popover).addClass('d-block');
+      // workaround for known popover bug
+      // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+      // Hard coded event used for known popover bug.
+      window.scrollTo(0, 1);
     });
 }
 
