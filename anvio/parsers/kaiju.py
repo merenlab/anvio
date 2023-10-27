@@ -62,7 +62,7 @@ class Kaiju(Parser):
 
         corrected_temp_file_path = filesnpaths.get_temp_file_path()
         corrected_temp_file = open(corrected_temp_file_path, 'w')
-        input_file = open(input_file_path, 'rU')
+        input_file = open(input_file_path, 'r')
 
         num_correct_lines = 0
         for line in input_file.readlines():

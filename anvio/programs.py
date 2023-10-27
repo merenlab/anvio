@@ -55,7 +55,7 @@ def get_until_blank(output):
 
 
 def get_meta_information_from_file(file_path, meta_tag):
-    all_lines = [l.strip() for l in open(file_path, 'rU').readlines()]
+    all_lines = [l.strip() for l in open(file_path, 'r').readlines()]
 
     meta_tag_content = ''
 

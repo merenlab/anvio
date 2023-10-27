@@ -546,7 +546,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         filesnpaths.is_file_exists(self.item_order_path)
 
-        item_order = [l.strip() for l in open(self.item_order_path, 'rU').readlines()]
+        item_order = [l.strip() for l in open(self.item_order_path, 'r').readlines()]
         self.run.info('Items order', 'An items order with %d items is found at %s.' % (len(item_order), self.item_order_path), mc='cyan')
 
         self.progress.new('External items order')

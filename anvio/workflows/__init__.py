@@ -333,7 +333,7 @@ class WorkflowSuperClass:
         # we are (it still may be better to do it elsewhere more appropriate .. so
         # we can look more decent or whatever):
         if self.save_workflow_graph:
-            lines = open(log_file_path, 'rU').readlines()
+            lines = open(log_file_path, 'r').readlines()
 
             try:
                 line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]

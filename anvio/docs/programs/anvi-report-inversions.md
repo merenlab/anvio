@@ -1,8 +1,8 @@
 This program allows you to find genomic inversions using metagenomic read recruitment results, and their activity patterns across samples.
 
-An inversion is typically carried out by an invertase. This enzyme recognizes a pair of inverted repeats (IR), which are a special case of palindromic sequence where the repeats are facing inward on different DNA strands. The IRs are distant from each other and the invertase will invert the DNA fragment between the IRs.
+Specifically, this program search for site-specific inversions which are carried out by site-specific recombinases. This enzyme recognizes a pair of inverted repeats (IRs). The IRs are distant from each other and the site-specific recombinase invert the DNA fragment between the IRs.
 
-In brief, anvi'o leverages paired-read orientation (through the `--fetch-filter` mechanism in %(anvi-profile)s explained below) to locate regions of interest in a set of contigs. It screens for IRs within regions that are enriched in read pairs that are enriched in forward/forward or reverse/reverse orientations, and uses short-reads to confirm which IRs corrrespond to real inversions. Anvi'o can also compute the 'inversion activity', i.e., the relative proportion of each orientation of an inversion in each sample.
+In brief, anvi'o leverages paired-read orientation (through the `--fetch-filter` mechanism in %(anvi-profile)s explained below) to locate regions of interest in a set of contigs. It screens for IRs within regions that are enriched in read pairs that are enriched in forward/forward or reverse/reverse orientations, and uses short-reads to confirm which IRs correspond to real inversions. Anvi'o can also compute the 'inversion activity', i.e., the relative proportion of each orientation of an inversion in each sample.
 
 ### Anvi'o philosophy to find inversions
 
@@ -71,7 +71,7 @@ You can set the minimum distance between two palindromic sequences with `--min-d
 
 When searching for palindromes with mismatches, the algorithm will extend the palindrome length as much as possible, often including mismatches which are outside of the true palindrome sequences. The flag `--min-mismatch-distance-to-first-base` allows you to trim the palindrome when one or more mismatches are n nucleotides away from a palindrome's start or stop. The default value is 1, meaning that a palindrome `MMMMMM(X)M`, where M denotes matching nucleotides and X a mismatch, will be trimmed to the first 6 matches `MMMMMM`.
 
-There are currently two algorithms to find palindromes in anvi'o: numba and BLAST. Numba is very fast when looking for palindromes in short sequences, and BLAST is more efficient for longer stretches. Anvi'o dynamically set the algorithm accoding to each stretch length: numba for stretches under 5,000 bp and BLAST for longer stretches. You can use the flag `--palindrome-search-algorithm` to ask anvi'o to use either of these methods explicitly. Note that results between the two methods may differ.
+There are currently two algorithms to find palindromes in anvi'o: numba and BLAST. Numba is very fast when looking for palindromes in short sequences, and BLAST is more efficient for longer stretches. Anvi'o dynamically set the algorithm according to each stretch length: numba for stretches under 5,000 bp and BLAST for longer stretches. You can use the flag `--palindrome-search-algorithm` to ask anvi'o to use either of these methods explicitly. Note that results between the two methods may differ.
 
 {{ codestart }}
 anvi-report-inversions -P %(bams-and-profiles-txt)s \
@@ -97,7 +97,7 @@ If you provide the short-reads R1 and R2 in the %(bams-and-profiles-txt)s, anvi'
 
 This is a very time consuming step, and if you have multiple sample, you can use the parameter `--num-threads` to set the maximum of threads for multithreading when possible.
 
-To compute the inversion's ratios, anvi'o designs in silco primers based on the palidrome sequence and the upstream/downstream genomic context to search short-reads in the raw fastq files. The variable `--oligo-primer-base-length` is used to control how much of the palindrome should be used to design the primers. The longer, the more specific, but if it is too long, fewer reads will match to the primer.
+To compute the inversion's ratios, anvi'o designs in silico primers based on the palindrome sequence and the upstream/downstream genomic context to search short-reads in the raw fastq files. The variable `--oligo-primer-base-length` is used to control how much of the palindrome should be used to design the primers. The longer, the more specific, but if it is too long, fewer reads will match to the primer.
 
 This step is very computationally intense, but you can test it with the parameter `--end-primer-search-after-x-hits`. Once the total number of reads reach this parameter, anvi'o will stop searching further and will continue with the next sample. This flag is only good for testing.
 
@@ -122,7 +122,7 @@ anvi-report-inversions -P %(bams-and-profiles-txt)s \
                        -o activity_calculations
 {{ codestop }}
 
-In this mode, %(anvi-report-inversions)s will not recalulate inversions, and only report the activity of inversions found in the input file across samples listed in the %(bams-and-profiles-txt)s file.
+In this mode, %(anvi-report-inversions)s will not recalculate inversions, and only report the activity of inversions found in the input file across samples listed in the %(bams-and-profiles-txt)s file.
 
 ### Reporting genomic context around inversions
 
@@ -134,6 +134,21 @@ To select a specific gene caller, you can use `--gene-caller`. The default is pr
 
 If you want to skip this step, you can use the flag `--skip-recovering-genomic-context`.
 
+### Searching for conserved motifs in inverted-repeats
+
+The inversions are carried out by site-specific recombinase which recognize a DNA motifs on each end of the invertible DNA fragment. This DNA motif is a relatively conserved palindrome separated by a short sequence called a spacer. 
+
+A fascinating aspect of site-specific recombinases is that they can invert multiple site, providing the DNA recognition motif is present. Some genomes can have **one** site-specific recombinase responsible **many** inversions! Some genomes have a few site-specific recombinase regulating different set of inversions. 
+
+When you use this command, anvi'o will leverage the program [MEME](https://meme-suite.org/meme/tools/meme) to identify palindrome motifs in the inverted-repeats.
+It is done in two steps: 
+- Per inversion. Anvi'o searches and report three motifs. You can find the output of MEME in each inversion's directory (e.g. `PER_INV/INV_0001/MEME`).
+- For all inversions. Anvi'o searches for shared and conserved motifs across all inversions. By default it will search for as many motifs as there are inversions. This can be time consuming if you have a lot of inversions, and you can use the flag `--num-of-motifs` to specify the number of motifs to be reported. The output of MEME can be found here: `PER_INV/ALL_INVERSIONS/MEME`.
+
+In the final outputs, we report the 'motif group' for each inversions. Which means that you can link together groups of inversion putatively associated with the same site-specific recombinase. 
+
+If you want to skip this step, you can use the flag `--skip-search-for-motifs`.
+
 ### Targeted search
 
 If you are interested in a given contig region you can use the following flags to limit the search:
@@ -142,36 +157,86 @@ If you are interested in a given contig region you can use the following flags t
 * `--target-region-start`: the start position of the region of interest,
 * `--target-region-end`: the end position of the region of interest.
 
-### Output
-%(anvi-report-inversions)s searches for inversions in every single sample at a time and thus generates a TAB-delimited table for every sample: `INVERSIONS-IN-SAMPLE_01.txt`, `INVERSIONS-IN-SAMPLE_02`, ...
+### HTML output
+The first output of interest is `index.html` which is a static html page with all the information about each inversions.
 
-These tables contains the following information:
+On the top of this page, you will find general informations such as number of inversions found and link to some tab-delimited files that summarize all inversions:
 
-* entry ID,
-* contig name,
-* first palindrome sequence,
-* aligment midline,
-* second palindrome sequence,
-* start and stop position of the first and second palindrome sequence,
-* number of mismatches,
-* number of gaps,
-* length of the palindrome sequence,
-* distance between the first and second palindrome seqeuences, i.e. the size of the inversion,
-* the number of samples in which it was detected and confirmed,
-* the in silico primers used to compute the inversion's activity, for the first and second palindrome,
-* the oligo corresponding to the reference sequence.
+![html header](../../images/anvi-report-inversions-01.png)
 
-Anvi'o eventually creates a consensus table with all the unique inversions found accross all your samples in a file called `INVERSIONS-CONSENSUS.txt`. This table has the same format as the individual sample outputs, with the 'entry ID' replaced by a unique inversion ID.
+#### Genomic context
 
-Another default output table is named `ALL-STRETCHES-CONSIDERED.txt` and it reports every stretch that passed the ['Identifying regions of interest'](#identifying-regions-of-interest) parameters. It reports the maximum coverage of FWD/FWD and REV/REV in that stretch, per sample. It also reports the number of palindromes found and if a true inversion was confirmed.
+![genomic_context](../../images/anvi-report-inversions-02.gif)
 
-If the user enables the reporting of the genomic context, two addition TAB-delimited tables are generated: `INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt` and `INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt`.
-The first table reports the gene calls surrounding every inversion when possible (inversions_id, gene_caller_id, start and stop position, orientation, gene_caller and contig).
-The second table reports the function associated with every gene call reported in the first file (inversions_id, gene_caller_id, source, accession, function).
+For each inversions you can see the genomic context. This part is interactive and allow you to inspect genes information such as their functions, DNA and amino acid sequences:
 
-Finally, if the user provides R1 and R2 fastq files and enables the reporting of inversion's activity, %(anvi-report-inversions)s will generate a long-format file named `INVERSION-ACTIVITY.txt`. This file reports, for every inversion and sample, the relative proportion and read abundance of unique oligos, which either correspond to the reference contig (no inversion), or to an inversion sequence. The inversion's activity is computed and reported for both sides of each inversion.
+#### Activity
 
+![activity](../../images/anvi-report-inversions-03.png)
 
+If you provided short-reads to the analysis, you can see barplots representing the inversion's activity. As explained in [the activity section](#computing-inversion-activity), anvi'o compute the activity on each end of an inversion, which explains the two barplots per sample. "Reference" correspond to the relative proportion of short-read matching to an inversion's orientation similar to your reference sequence. And "Inversion" correspond to the relative proportion of short-reads matching the reverse orientation. 
 
+The two barplots per sample should be relatively similar. It is not the case when (1) the coverage is low (fewer reads = less accurate relative proportions) or (2) there is more than one pair of inverted-repeat in this genomic site. [Here](https://doi.org/10.1093/nar/gkaa824) is a nice example of multiple nested IRs. If you ever see this, you should consider re-running the command for that specific region with [targeted search](#targeted-search), and searching for all possible palindrome with `--check-all-palindromes`. Yes, anvi'o can report nested, multiple IRs inversions when you use these flags :rainbow:.
 
+It is possible to see more colors than the two "Reference" and "Inversion". For instance, if you have a nested multiple IRs inversions (lucky you), you should see another color (a variation of grey) indicating that more than one sequence can end up on this side of an inversions. Another reason is sequencing error. Anvi'o relies on exact matches to report "Reference" and "Inversion", and a single read mismatch can create a third category (and therefore a third color in the barplot). If you see some **red** color, it means more than 4 different DNA sequence can be found at the edge of an inversions, which means that something is probably wrong and requires some manual inspection (or you should collect your Nobel prize).
 
+#### General information
+
+![general_information](../../images/anvi-report-inversions-04.png)
+
+General information about each inversions like contig, position, length and the sample in which it was found.  
+
+#### Inverted repeats and motifs
+
+![ir_and_motifs](../../images/anvi-report-inversions-05.png)
+
+Here you can see the two inverted-repeats, their alignment, length and position. 
+You can also see the "primer" sequence used to search short-read to report the activity, or relative proportion of an inversion's orientation per sample. 
+
+And finally you can see the palindromic motif likely recognized by a site-specific recombinase which carries out such inversion. 
+The same motif can occur in multiple inversions, which suggest that a unique site-specific recombinase is responsible for a set of inversions. 
+Typically there is only one motif per inversion, but we don't control biology so it is possible that more than one motif are reported.
+
+### Other outputs
+
+%(anvi-report-inversions)s create an output directory with the following structure (if you have not use the `--skip-[..]` flags):
+
+```
+INVERSIONS-OUTPUT/
+├── ALL-STRETCHES-CONSIDERED.txt
+├── INVERSION-ACTIVITY.txt
+├── INVERSIONS-CONSENSUS.txt
+├── PER_INV
+│   ├── ALL_INVERSIONS
+│   │   ├── MEME
+│   │   │   ├── logo1.eps
+│   │   │   ├── [...] 
+│   │   │   └── meme.xml
+│   │   ├── inverted_repeats.fasta
+│   │   └── run-MEME.log
+│   ├── INV_0001
+│   │   ├── MEME
+│   │   │   ├── logo1.eps
+│   │   │   ├── [...]
+│   │   │   └── meme.xml
+│   │   ├── SURROUNDING-FUNCTIONS.txt
+│   │   ├── SURROUNDING-GENES.txt
+│   │   ├── inverted_repeats.fasta
+│   │   └── run-MEME.log
+│   └── INV_0002
+│       ├── MEME
+│       │   ├── logo1.eps
+│       │   ├── [...]
+│       │   └── meme.xml
+│       ├── SURROUNDING-FUNCTIONS.txt
+│       ├── SURROUNDING-GENES.txt
+│       ├── inverted_repeats.fasta
+│       └── run-MEME.log
+├── PER_SAMPLE
+│   ├── INVERSIONS-IN-S01.txt
+│   ├── INVERSIONS-IN-S02.txt
+│   └── INVERSIONS-IN-S03.txt
+└── index.html
+```
+
+For more information about each of these txt files, go check %(inversions-txt)s.

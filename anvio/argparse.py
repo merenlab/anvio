@@ -59,7 +59,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         version = anvio.anvio_version_for_help_docs
 
-        general_help = f"https://merenlab.org/software/anvio/help/{version}"
+        general_help = f"https://anvio.org/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
