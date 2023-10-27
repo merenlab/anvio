@@ -11,6 +11,7 @@ import shutil
 import hashlib
 
 import anvio
+import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.dictio as dictio
@@ -198,6 +199,16 @@ class COGs:
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
 
+        if aa_sequences_file_path:
+            filesnpaths.is_file_exists(aa_sequences_file_path)
+
+            fasta = u.SequenceSource(aa_sequences_file_path); next(fasta) 
+
+            sequence = fasta.seq
+            utils.is_gene_sequence_clean(sequence, amino_acid=True, must_start_with_met=False)
+
+            self.aa_sequence_file_input = aa_sequences_file_path
+
         if not self.temp_dir_path:
             self.temp_dir_path = filesnpaths.get_temp_directory_path()
             self.remove_temp_dir_path = True
@@ -234,15 +245,18 @@ class COGs:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                               "parsing of a new generation of COG files.")
 
-        # store hits into the contigs database
-        self.store_hits_into_contigs_db()
+        # store hits into the contigs database or output file
+        self.store_hits()
 
         if self.remove_temp_dir_path:
             shutil.rmtree(self.temp_dir_path)
 
+    def store_hits(self):
+        """
+        Filters through COG hits and write them either to the CONTIGS.db or to a file.
+        """
 
-    def store_hits_into_contigs_db(self):
-        if not self.hits:
+        if not self.hits and self.contigs_db_path:
             self.run.warning("COGs class has no hits to process. Returning empty handed, but still adding COGs as "
                              "functional sources.")
             gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -255,6 +269,10 @@ class COGs:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
             return
+        
+        elif not self.hits and self.aa_sequence_file_input:
+            self.run.warning("COGs class has no hits to process. Returning empty handed.")
+            return
 
         cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
@@ -264,7 +282,8 @@ class COGs:
 
 
         def add_entry(gene_callers_id, source, accession, function, e_value):
-            functions_dict[self.__entry_id] = {'gene_callers_id': int(gene_callers_id),
+            gene_caller_id = int(gene_callers_id) if self.contigs_db_path else str(gene_callers_id)
+            functions_dict[self.__entry_id] = {'gene_callers_id': gene_caller_id,
                                                'source': source,
                                                'accession': accession,
                                                'function': function,
@@ -334,9 +353,15 @@ class COGs:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
 
-        # store hits in contigs db.
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-        gene_function_calls_table.create(functions_dict)
+        # store hits in contigs db or write to output
+        if self.contigs_db_path:
+            gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+            gene_function_calls_table.create(functions_dict)
+
+        elif self.aa_sequence_file_input:
+            # This is highly suboptimal and should be improved before being released by Anvi'o.
+            with open('aa_sequence_output', 'w') as f:
+                print(functions_dict, file=f)
 
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
