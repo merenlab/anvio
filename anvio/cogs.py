@@ -359,9 +359,7 @@ class COGs:
             gene_function_calls_table.create(functions_dict)
 
         elif self.aa_sequence_file_input:
-            # This is highly suboptimal and should be improved before being released by Anvi'o.
-            with open('aa_sequence_output', 'w') as f:
-                print(functions_dict, file=f)
+            utils.store_dict_as_TAB_delimited_file(d=functions_dict, output_path="cog_functions.tsv", do_not_write_key_column=True)
 
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
