@@ -26,40 +26,82 @@ __description__ = DESCRIPTION
 
 def main() -> None:
     args = get_args()
+
+    record_genomes = []
+    for arg in args.record_genomes:
+        if arg == 'cluster':
+            record_genomes.append('gene cluster')
+        else:
+            record_genomes.append(arg)
+    record_genomes = tuple(record_genomes)
+
     constructor = reactionnetwork.Constructor()
-    network = constructor.load_contigs_database_network(args.contigs_db)
-    network.export_json(
-        args.output_file,
-        overwrite=args.overwrite_output_destinations,
-        objective='e_coli_core',
-        remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
-    )
-    # if args.contigs_db:
-    #     external_genome = metabolicmodel.ExternalGenome(
-    #         args.contigs_db,
-    #         db_superdir=args.db_superdir,
-    #         remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
-    #     )
-    #     external_genome.write_cobrapy_json(args.output_file)
-    # elif args.genomes_storage and args.pan_db:
-    #     pangenome = metabolicmodel.Pangenome(
-    #         args.genomes_storage,
-    #         args.pan_db,
-    #         collection_name=args.collection_name,
-    #         bin_id=args.bin_id,
-    #         db_superdir=args.db_superdir,
-    #         discard_ties=args.discard_ties,
-    #         consensus_threshold=args.consensus_threshold,
-    #         remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
-    #     )
-    #     pangenome.write_cobrapy_json(args.output_file)
+    if args.contigs_db:
+        network: reactionnetwork.GenomicNetwork = constructor.load_network(
+            contigs_db=args.contigs_db,
+            check_gene_annotations=not args.ignore_changed_gene_annotations
+        )
+        network.export_json(
+            args.output_file,
+            overwrite=args.overwrite_output_destinations,
+            objective='e_coli_core',
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites
+        )
+    elif args.pan_db or args.genomes_storage_db:
+        network: reactionnetwork.PangenomicNetwork = constructor.load_network(
+            pan_db=args.pan_db,
+            genomes_storage_db=args.genomes_storage,
+            check_gene_annotations=not args.ignore_changed_gene_annotations
+        )
+        network.export_json(
+            args.output_file,
+            overwrite=args.overwrite_output_destinations,
+            objective='e_coli_core',
+            remove_missing_objective_metabolites=args.remove_missing_objective_metabolites,
+            record_genomes=record_genomes
+        )
+    else:
+        raise ConfigError(
+            "Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes "
+            "storage database (`--genomes-storage`) must be provided. These contain the reaction "
+            "network to be loaded and exported."
+        )
 
 def get_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
-    parser.add_argument(*A('contigs-db'), **K('contigs-db'))
-    parser.add_argument(*A('output-file'), **K('output-file'))
-    parser.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
-    parser.add_argument(
+
+    groupA = parser.add_argument_group(
+        "SINGLE GENOME OR METAGENOME",
+        "Export a reaction network stored in a contigs database."
+    )
+    groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
+
+    groupB = parser.add_argument_group(
+        "PANGENOME",
+        "Export a reaction network stored in a pan database, with the associated genomes storage "
+        "database also required."
+    )
+    groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
+    groupB.add_argument(*A('genomes-storage'), **K('genomes-storage', {'required': False}))
+    groupB.add_argument(
+        '--record-genomes', nargs='*', default=['cluster', 'reaction'],
+        help=(
+            "This option records the genome membership of gene clusters in JSON entries. By "
+            "default, genome names are recorded for gene clusters and reactions: this is "
+            "equivalent to the argument 'cluster reaction'. To not record genome membership at "
+            "all, use this as a flag without any arguments, i.e., '--record-genomes'. The "
+            "following arguments can be provided in any combination: 'cluster', 'reaction', and "
+            "'metabolite'. 'reaction' and 'metabolite' record the genomes predicted to encode "
+            "enzymes associated with reactions and metabolites, respectively."
+        )
+    )
+
+    groupC = parser.add_argument_group("OUTPUT")
+    groupC.add_argument(*A('output-file'), **K('output-file'))
+    groupC.add_argument(*A('overwrite-output-destinations'), **K('overwrite-output-destinations'))
+
+    groupD = parser.add_argument_group("OTHER OPTIONS")
+    groupD.add_argument(
         '--remove-missing-objective-metabolites', default=False, action='store_true',
         help=(
             "The metabolic model file includes the core E. coli biomass objective function (BOF), "
@@ -69,66 +111,17 @@ def get_args() -> Namespace:
             "metabolites. Removed BOF metabolite data are reported to the terminal."
         )
     )
-
-    # groupA = parser.add_argument_group(
-    #     "SINGLE GENOME INPUT", "Generate a metabolic model file from an \"external\" genome."
-    # )
-    # groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
-
-    # groupB = parser.add_argument_group(
-    #     "PANGENOME INPUT",
-    #     "Generate a metabolic model file from a pangenome. 'genomes-storage' and 'pan-db' are "
-    #     "required. Gene clusters can be selected from the pangenome with both 'collection-name' "
-    #     "and 'bin-id'."
-    # )
-    # groupB.add_argument(*A('genomes-storage'), **K('genomes-storage'))
-    # groupB.add_argument(*A('pan-db'), **K('pan-db', {'required': False}))
-    # groupB.add_argument(*A('collection-name'), **K('collection-name'))
-    # groupB.add_argument(*A('bin-id'), **K('bin-id'))
-    # groupB.add_argument(
-    #     '--consensus-threshold', default=None, type=float,
-    #     help=(
-    #         "If this argument is provided, then a protein annotation must be assigned to this "
-    #         "minimum proportion of genes in a cluster to be imparted to the cluster itself. "
-    #         "By default, without this argument, the annotation assigned to the most genes becomes "
-    #         "that of the cluster (also see '--discard-ties'). The consensus threshold must be a "
-    #         "number from 0 to 1."
-    #     )
-    # )
-    # groupB.add_argument(
-    #     '--discard-ties', default=False, action='store_true',
-    #     help=(
-    #         "By default, a gene cluster is assigned a protein ortholog annotation by finding the "
-    #         "ortholog that occurs in the greatest number of genes in the cluster (see "
-    #         "--consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With "
-    #         "this flag, the cluster is not assigned an ortholog annotation in case of a tie."
-    #     )
-    # )
-
-    # groupC = parser.add_argument_group("OUTPUT", "Output path of COBRApy JSON file")
-    # groupC.add_argument(*A('output-file'), **K('output-file'))
-
-    # groupD = parser.add_argument_group(
-    #     "MODEL", "Parameterization of the COBRApy JSON file unrelated to genomic inputs"
-    # )
-    # groupD.add_argument(
-    #     '--remove-missing-objective-metabolites', default=False, action='store_true',
-    #     help=(
-    #         "The metabolic model file includes the core E. coli biomass objective function (BOF), "
-    #         "as in the COBRApy example file, 'e_coli_core.json'. With this flag, metabolites in "
-    #         "the BOF are removed if they are not produced or consumed by enzymes in the model. "
-    #         "Without this flag, COBRApy cannot load the output JSON file if there are missing BOF "
-    #         "metabolites. Removed BOF metabolite data are reported to the terminal."
-    #     )
-    # )
-
-    # groupE = parser.add_argument_group("DATABASE", "Protein reference database information")
-    # groupE.add_argument(
-    #     '--db-superdir', default=refdbs.ProteinReferenceDatabase.default_superdir, type=str,
-    #     help=(
-    #         "Directory in which database subdirectories (e.g., 'ModelSEED', 'KEGG') are located."
-    #     )
-    # )
+    groupD.add_argument(
+        '--ignore-changed-gene-annotations', default=False, action='store_true',
+        help=(
+            "It is possible that the gene KO annotations used to construct the stored reaction "
+            "network have since been changed in the database. By default, without using this flag, "
+            "this program checks that the set of gene KO annotations that is currently stored was "
+            "also that used in construction of the reaction network, and raises an error if this "
+            "is not the case. Use of this flag ignores that check, permitting the set of gene "
+            "annotations to have changed since creation of the reaction network."
+        )
+    )
 
     args = parser.get_args(parser)
     return args

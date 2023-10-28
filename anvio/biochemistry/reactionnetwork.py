@@ -21,7 +21,7 @@ import pandas as pd
 import multiprocessing as mp
 
 from argparse import Namespace
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
@@ -1722,15 +1722,12 @@ class Constructor:
         self.run = run
         self.progress = progress
 
-    # def import_network(self, json: str) -> ReactionNetwork:
-    #     """Import a metabolic model JSON file as a reaction network object."""
-    #     pass
-
     def load_network(
         self,
         contigs_db: str = None,
+        pan_db: str = None,
         genomes_storage_db: str = None,
-        pan_db: str = None
+        check_gene_annotations: bool = True
     ) -> ReactionNetwork:
         """
         Load a reaction network stored in a database as a reaction network object.
@@ -1740,13 +1737,20 @@ class Constructor:
         contigs_db : str, None
             Path to a contigs database in which a reaction network is stored.
 
-        genomes_storage_db: str, None
+        pan_db : str, None
+            Path to a pan database in which a reaction network is stored. 'genomes_storage_db' is
+            also required.
+
+        genomes_storage_db : str, None
             Path to a genomes storage database in which KO annotations are stored. 'pan_db' is also
             required.
 
-        pan_db: str, None
-            Path to a pan database in which a reaction network is stored. 'genomes_storage_db' is
-            also required.
+        check_gene_annotations : bool, True
+            If True, as by default, check that the stored reaction network was made from the set of
+            gene KO annotations that is currently stored. An exception is raised if this is not the
+            case. If False, allow the stored reaction network to have been made from a different set
+            of gene KO annotations than is currently stored. This can result in different KOs in the
+            returned ReactionNetwork than in the original network that was stored.
 
         Returns
         =======
@@ -1756,9 +1760,16 @@ class Constructor:
         # Check that the reaction network stored in a database is derived from the current gene KO
         # annotations in the database.
         if contigs_db:
-            network = self.load_contigs_database_network(contigs_db)
+            network = self.load_contigs_database_network(
+                contigs_db,
+                check_gene_annotations=check_gene_annotations
+            )
         elif genomes_storage_db or pan_db:
-            network = self.load_pan_database_network(genomes_storage_db=genomes_storage_db, pan_db=pan_db)
+            network = self.load_pan_database_network(
+                genomes_storage_db=genomes_storage_db,
+                pan_db=pan_db,
+                check_gene_annotations=check_gene_annotations
+            )
         else:
             raise ConfigError(
                 "A reaction network must be loaded from a database source. "
@@ -1780,12 +1791,12 @@ class Constructor:
             Path to a contigs database in which a reaction network is stored.
 
         check_gene_annotations : bool, True
-            If True, check that the reaction network stored in the contigs database was made from
-            the same set of KO gene annotations as currently in the database, and throw an error if
-            this is not the case. If False, allow the stored reaction network to have been made from
-            a different set of KO gene annotations than is currently stored in the database. This
-            can result in different KO assignments to genes in the returned GenomicNetwork than in
-            the original network that was stored.
+            If True, as by default, check that the reaction network stored in the contigs database
+            was made from the same set of gene KO annotations as currently in the database, and
+            throw an error if this is not the case. If False, allow the stored reaction network to
+            have been made from a different set of gene KO annotations than is currently stored in
+            the database. This can result in different KO assignments to genes in the returned
+            GenomicNetwork than in the original network that was stored.
 
         Returns
         =======
@@ -1803,8 +1814,8 @@ class Constructor:
         # gene annotations as currently in the database.
         stored_hash = contigs_super.a_meta['reaction_network_ko_annotations_hash']
         current_hash = self.hash_contigs_db_ko_annotations(contigs_super.gene_function_calls_dict)
-        if check_gene_annotations:
-            if stored_hash != current_hash:
+        if stored_hash != current_hash:
+            if check_gene_annotations:
                 raise ConfigError(
                     "The reaction network stored in the contigs database was made from a different set "
                     "of KEGG KO gene annotations than is currently in the database. There are two "
@@ -1818,29 +1829,21 @@ class Constructor:
                     "has been set up by anvi'o is used to fill in data for KOs in the network that are not "
                     "current gene annotations."
                 )
-            # The KO database is needed if KOs in the stored network aren't among the current gene
-            # annotations.
-            ko_db = KODatabase(ko_dir=self.ko_dir)
-        else:
-            if stored_hash != current_hash:
-                self.run.warning(
-                    "The reaction network stored in the contigs database was made from a different set "
-                    "of KEGG KO gene annotations than is currently in the database. This will be "
-                    "ignored since 'check_gene_annotations' is False. This can result in different genes "
-                    "being associated with KOs in the returned GenomicNetwork than in the original "
-                    "network that was stored."
-                )
+            self.run.warning(
+                "The reaction network stored in the contigs database was made from a different set "
+                "of KEGG KO gene annotations than is currently in the database. This will be "
+                "ignored since 'check_gene_annotations' is False. This can result in different genes "
+                "being associated with KOs in the returned GenomicNetwork than in the original "
+                "network that was stored."
+            )
 
         network = GenomicNetwork()
 
         cdb = ContigsDatabase(contigs_db)
-        functions_table = cdb.db.get_table_as_dataframe('gene_functions', where_clause='source = "KOfam"')
-        reactions_table = cdb.db.get_table_as_dataframe('gene_function_reactions')
-        metabolites_table = cdb.db.get_table_as_dataframe('gene_function_metabolites')
-        cdb.disconnect()
 
-        # Make gene objects for all genes with KO annotations in the contigs database, including
+        # Make objects representing all genes with KO annotations in the contigs database, including
         # genes that are not in the network, which are later removed from the network.
+        functions_table = cdb.db.get_table_as_dataframe('gene_functions', where_clause='source = "KOfam"')
         for gcid, ko_id, ko_name, e_value in zip(functions_table['gene_callers_id'], functions_table['accession'], functions_table['function'], functions_table['e_value']):
             try:
                 # This is not the first annotation involving the gene, so an object for it already exists.
@@ -1860,153 +1863,9 @@ class Constructor:
             gene.kos.append(ko)
             gene.e_values.append(e_value)
 
-        # Make ModelSEED reaction objects. Relate them to KOs through KEGG REACTION and EC number aliases.
-        for row in reactions_table.itertuples():
-            # Each row of the table contains information on a different ModelSEED reaction.
-            reaction = ModelSEEDReaction()
-            modelseed_reaction_id: str = row.modelseed_reaction_id
-            reaction.modelseed_id = modelseed_reaction_id
-            reaction.modelseed_name = row.modelseed_reaction_name
-            network.reactions[modelseed_reaction_id] = reaction
-
-            modelseed_compound_ids: str = row.metabolite_modelseed_ids
-            reaction.compounds = []
-            for modelseed_compound_id in modelseed_compound_ids.split(', '):
-                try:
-                    compound = network.metabolites[modelseed_compound_id]
-                except KeyError:
-                    # This is not the first reaction involving the compound, so an object for it already exists.
-                    compound = ModelSEEDCompound()
-                    compound.modelseed_id = modelseed_compound_id
-                    reaction.compounds.append(compound)
-                    network.metabolites[modelseed_compound_id] = compound
-            reaction.compounds = tuple(reaction.compounds)
-
-            stoichiometry: str = row.stoichiometry
-            reaction.coefficients = tuple(int(coeff) for coeff in stoichiometry.split(', '))
-            compartments: str = row.compartments
-            reaction.compartments = tuple(compartments.split(', '))
-            reversibility: int = row.reversibility
-            reaction.reversibility = bool(reversibility)
-
-            # Map KEGG reaction aliases of the ModelSEED reaction to all KOs that were associated with the KEGG reaction.
-            kegg_reaction_ko_ids: Dict[str, List[str]] = {}
-            kegg_reaction_sources: str = row.ko_kegg_reaction_source
-            for kegg_reaction_item in kegg_reaction_sources.split('; '):
-                if not kegg_reaction_item:
-                    # The ModelSEED reaction was not sourced from KEGG reactions.
-                    continue
-                kegg_reaction_id, ko_ids = kegg_reaction_item.split(': (')
-                ko_ids = ko_ids[:-1].split(', ')
-                kegg_reaction_ko_ids[kegg_reaction_id] = ko_ids
-            # Record *all* KEGG reaction aliases of the ModelSEED reaction, including those not associated with KO annotations.
-            other_kegg_reaction_ids: str = row.other_kegg_reaction_ids
-            reaction.kegg_aliases = list(kegg_reaction_ko_ids)
-            if other_kegg_reaction_ids:
-                reaction.kegg_aliases += other_kegg_reaction_ids.split(', ')
-            reaction.kegg_aliases = tuple(reaction.kegg_aliases)
-
-            network.modelseed_kegg_aliases[modelseed_reaction_id] = modelseed_kegg_aliases = []
-            orphan_ko_ids = []
-            reaction_added_to_ko = False
-            for kegg_reaction_id, ko_ids in kegg_reaction_ko_ids.items():
-                # Record the ModelSEED reaction as one of the aliases of the KEGG reaction in the network.
-                try:
-                    network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
-                except KeyError:
-                    network.kegg_modelseed_aliases[kegg_reaction_id] = [modelseed_reaction_id]
-                modelseed_kegg_aliases.append(kegg_reaction_id)
-                for ko_id in ko_ids:
-                    try:
-                        ko = network.kos[ko_id]
-                    except KeyError:
-                        # This only happens when the current set of gene KO annotations in the contigs
-                        # database does not match the set from which the reaction network was originally
-                        # made, and the KO in the network is no longer a gene annotation in the database.
-                        ko = KO()
-                        ko.ko_id = ko_id
-                        # The KO name is unknown from the contigs database, so take it from the KO database.
-                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
-                        network.kos[ko_id] = ko
-                        orphan_ko_ids.append(ko_id)
-                    if not reaction_added_to_ko:
-                        # This is the first encounter with the reaction for the KO.
-                        ko.reactions[modelseed_reaction_id] = reaction
-                        reaction_added_to_ko = True
-                    try:
-                        ko.kegg_reaction_aliases[modelseed_reaction_id].append(kegg_reaction_id)
-                    except KeyError:
-                        ko.kegg_reaction_aliases[modelseed_reaction_id] = [kegg_reaction_id]
-
-            # Map EC number aliases of the ModelSEED reaction to all KOs that were associated with the EC number.
-            ec_number_ko_ids: Dict[str, List[str]] = {}
-            ec_number_sources: str = row.ko_ec_number_source
-            for ec_number_item in ec_number_sources.split('; '):
-                if not ec_number_item:
-                    # The ModelSEED reaction was not sourced from EC numbers.
-                    continue
-                ec_number, ko_ids = ec_number_item.split(': (')
-                ko_ids = ko_ids[:-1].split(', ')
-                ec_number_ko_ids[ec_number] = ko_ids
-            # Record *all* EC number aliases of the ModelSEED reaction, including those not associated with KO annotations.
-            other_ec_numbers: str = row.other_ec_numbers
-            reaction.ec_number_aliases = list(ec_number_ko_ids)
-            if other_ec_numbers:
-                reaction.ec_number_aliases += other_ec_numbers.split(', ')
-            reaction.ec_number_aliases = tuple(reaction.ec_number_aliases)
-
-            network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases = []
-            for ec_number, ko_ids in ec_number_ko_ids.items():
-                # Record the ModelSEED reaction as one of the aliases of the EC number in the network.
-                try:
-                    network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
-                except KeyError:
-                    network.ec_number_modelseed_aliases[ec_number] = [modelseed_reaction_id]
-                modelseed_ec_number_aliases.append(ec_number)
-                for ko_id in ko_ids:
-                    try:
-                        ko = network.kos[ko_id]
-                    except KeyError:
-                        # This only happens when the current set of gene KO annotations in the contigs
-                        # database does not match the set from which the reaction network was originally
-                        # made, and the KO in the network is no longer a gene annotation in the database.
-                        ko = KO()
-                        ko.ko_id = ko_id
-                        # The KO name is unknown from the contigs database, so take it from the KO database.
-                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
-                        network.kos[ko_id] = ko
-                        orphan_ko_ids.append(ko_id)
-                    if not reaction_added_to_ko:
-                        # This is the first encounter with the reaction for the KO.
-                        ko.reactions[modelseed_reaction_id] = reaction
-                        reaction_added_to_ko = True
-                    try:
-                        ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
-                    except KeyError:
-                        ko.ec_number_aliases[modelseed_reaction_id] = [ec_number]
-
-            if DEBUG:
-                self.run.info_single(
-                    "The following KOs are in the stored reaction network in the contigs database "
-                    "but are not among the gene KO annotations; the available version of the KO database "
-                    f"was used to fill in the function names of these KOs: {', '.join(orphan_ko_ids)}"
-                )
-
-        # Assign ModelSEED compound object attributes.
-        for row in metabolites_table.itertuples():
-            modelseed_compound_id = row.modelseed_compound_id
-            compound = network.metabolites[modelseed_compound_id]
-            modelseed_compound_name: str = row.modelseed_compound_name
-            compound.modelseed_name = modelseed_compound_name
-            kegg_aliases: str = row.kegg_aliases
-            compound.kegg_aliases = tuple(kegg_aliases.split(', '))
-            # Compounds without a formula, recorded here as None, have a nominal charge of 10000000
-            # in the ModelSEED compounds database. This is replaced by NaN in the table and here as
-            # None in the reaction network.
-            formula: str = row.formula
-            compound.formula = formula
-            charge: int = row.charge
-            compound.charge = charge if not np.isnan(charge) else None
+        self._load_modelseed_reactions(cdb, network)
+        self._load_modelseed_compounds(cdb, network)
+        cdb.disconnect()
 
         # Remove any trace of genes that do not contribute to the reaction network. Also remove
         # unnetworked KO links to genes.
@@ -2038,7 +1897,8 @@ class Constructor:
         for ko_id in unnetworked_ko_ids:
             network.kos.pop(ko_id)
 
-        # Remove entries showing KO KEGG reaction aliases of ModelSEED reactions where there are no aliases.
+        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO KEGG
+        # REACTION ID aliases if no such aliases were found to exist.
         modelseed_reaction_ids = []
         for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
             if not kegg_reaction_ids:
@@ -2046,7 +1906,8 @@ class Constructor:
         for modelseed_reaction_id in modelseed_reaction_ids:
             network.modelseed_kegg_aliases.pop(modelseed_reaction_id)
 
-        # Remove entries showing EC number aliases of ModelSEED reactions where there are no aliases.
+        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO EC number
+        # aliases if no such aliases were found to exist.
         modelseed_reaction_ids = []
         for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
             if not ec_numbers:
@@ -2070,23 +1931,23 @@ class Constructor:
         pan_db : str
             Path to a pan database in which a reaction network is stored.
 
-        genomes_storage_db : str, None
-            Path to a genomes storage database, required if the 'check_annotations' argument is
-            True. This database must have been used to make the paired 'pan_db'.
+        genomes_storage_db : str
+            Path to the genomes storage database associated with the pan database.
 
         check_annotations : bool, True
-            If True, check that the reaction network stored in the pan database was made from the
-            same set of KO gene annotations as currently in the paired genomes storage database --
-            so an argument is also needed for 'genomes_storage_db' -- and throw an error if this is
-            not the case. If False, allow the stored reaction network to have been made from a
-            different set of KO gene annotations than is currently stored in the genomes storage
-            database. This can result in different KO assignments to gene clusters in the returned
-            PangenomicNetwork than in the original network that was stored.
+            If True, as by default, check that the reaction network stored in the pan database was
+            made from the set of gene KO annotations currently stored in the associated genomes
+            storage database. An exception is raised if this is not the case. If False, allow the
+            stored reaction network to have been made from a different set of gene KO annotations
+            than is currently stored in the genomes storage database. This can result in different
+            consensus KOs assigned to gene clusters in the returned PangenomicNetwork than in the
+            original network that was stored.
         """
         # Load the pan database.
         pan_db_info = dbinfo.PanDBInfo(pan_db)
         self_table = pan_db_info.get_self_table()
-        # No consensus threshold may have been used, in which case it is None.
+        # No consensus threshold may have been used in network construction, in which case the value
+        # of the parameter is None.
         consensus_threshold = self_table['reaction_network_consensus_threshold']
         if consensus_threshold is not None:
             consensus_threshold = float(consensus_threshold)
@@ -2103,7 +1964,7 @@ class Constructor:
         gene_clusters_functions_summary_dict: Dict = pan_super.gene_clusters_functions_summary_dict
 
         # Check that the network stored in the pan database was made from the same set of KO gene
-        # annotations as currently in the paired genomes storage database.
+        # annotations currently in the associated genomes storage database.
         stored_hash = self_table['reaction_network_ko_annotations_hash']
         current_hash = self.hash_pan_db_ko_annotations(
             genomes_storage_db,
@@ -2111,46 +1972,38 @@ class Constructor:
             consensus_threshold,
             discard_ties
         )
-        if check_gene_annotations:
-            if stored_hash != current_hash:
+        if stored_hash != current_hash:
+            if check_gene_annotations:
                 # Note that another unstated possible cause of the error could be due to manual
-                # meddling with the metavariables in the database, 'consensus_threshold' and
-                # 'discard_ties'. Assume that the user has not been messing around like this.
+                # meddling with the metavariables, 'consensus_threshold' and 'discard_ties', in the
+                # database. Assume that the user was not engaged in mischief.
                 raise ConfigError(
                     "The reaction network stored in the pan database was made from a different set "
-                    "of KO gene annotations than is currently in the paired genomes storage "
-                    "database. There are two solutions to this problem. First, "
-                    "'anvi-reaction-network' can be run again to overwrite the existing network "
+                    "of KO gene annotations than is currently in the associated genomes storage "
+                    "database. There are two solutions to this problem. First, the program, "
+                    "'anvi-reaction-network', can be run again to overwrite the existing network "
                     "stored in the pan database with a new network from the new KO gene "
-                    "annotations. Second, 'check_gene_annotations' can be made False rather than "
-                    "True, allowing the stored network to have been made from a different set of "
-                    "KO gene annotations than is currently stored in the genomes storage database. "
-                    "This can result in different KO assignments to gene clusters in the returned "
-                    "PangenomicNetwork than in the original network that was stored. The available "
-                    "version of the KO database that has been set up by anvi'o is used to fill in "
-                    "data for KOs in the network that are not current gene annotations."
+                    "annotations. Second, 'check_gene_annotations' can be given an argument of "
+                    "False instead of True, preventing this exception from being raised if the "
+                    "stored network was made from a different set of KO gene annotations than is "
+                    "currently in the genomes storage database. This can result in different "
+                    "consensus KOs assigned to gene clusters in the returned PangenomicNetwork "
+                    "than in the original network that was stored. The available version of the KO "
+                    "database that has been set up by anvi'o is used to fill in data for any KOs "
+                    "in the network that are not current gene annotations in the genomes storage "
+                    "database."
                 )
-            # The KO database is needed if KOs in the stored network aren't among the current gene
-            # annotations.
-            ko_db = KODatabase(ko_dir=self.ko_dir)
-        else:
-            if stored_hash != current_hash:
-                self.run.warning(
-                    "The reaction network stored in the pan database was made from a different set "
-                    "of KO gene annotations than is currently in the genomes storage database. "
-                    "This will be ignored since 'check_gene_annotations' is False. This can result "
-                    "in different KO assignments to gene clusters in the returned "
-                    "PangenomicNetwork than in the original network that was stored."
-                )
+            self.run.warning(
+                "The reaction network stored in the pan database was made from a different set of "
+                "KO gene annotations than is currently in the genomes storage database. This will "
+                "be ignored since 'check_gene_annotations' is False. This can result in different "
+                "consensus KO assignments to gene clusters in the returned PangenomicNetwork than "
+                "in the original network that was stored."
+            )
 
         network = PangenomicNetwork()
 
-        pdb: PanDatabase = pan_db_info.load_db()
-        reactions_table = pdb.db.get_table_as_dataframe('gene_cluster_function_reactions')
-        metabolites_table = pdb.db.get_table_as_dataframe('gene_cluster_function_metabolites')
-        pdb.disconnect()
-
-        # Make gene cluster objects for all gene clusters with consensus KO annotations.
+        # Make objects representing all gene clusters with consensus KO annotations.
         for gene_cluster_id, gene_cluster_functions_data in gene_clusters_functions_summary_dict.items():
             # Retrieve the consensus KO across genes in the cluster. Parameterization of the method
             # used to select consensus KOs occurred in pan super initialization. Parameter values
@@ -2168,7 +2021,331 @@ class Constructor:
             # clusters not contributing to the reaction network are removed later.
             network.gene_clusters[gene_cluster_id] = gene_cluster
 
+            try:
+                # This is not the first gene cluster that has been encountered with the KO assigned
+                # to it, so an object for the KO already exists.
+                ko = network.kos[ko_id]
+            except KeyError:
+                ko = KO()
+                ko.id = ko_id
+                ko.name = gene_cluster_ko_data['function']
+                network.kos[ko_id] = ko
+            gene_cluster.ko = ko
 
+        pdb = PanDatabase(pan_db)
+        self._load_modelseed_reactions(pdb, network)
+        self._load_modelseed_compounds(pdb, network)
+        pdb.disconnect()
+
+        # Remove any trace of gene clusters that do not contribute to the reaction network.
+        unnetworked_gene_cluster_ids = []
+        for gene_cluster_id, gene_cluster in network.gene_clusters.items():
+            if gene_cluster.ko.reactions:
+                continue
+            unnetworked_gene_cluster_ids.append(gene_cluster_id)
+        for gene_cluster_id in unnetworked_gene_cluster_ids:
+            network.gene_clusters.pop(gene_cluster_id)
+
+        # Remove any trace of KOs that do not contribute to the reaction network.
+        unnetworked_ko_ids = []
+        for ko_id, ko in network.kos.items():
+            if not ko.reactions:
+                unnetworked_ko_ids.append(ko_id)
+        for ko_id in unnetworked_ko_ids:
+            network.kos.pop(ko_id)
+
+        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO KEGG
+        # REACTION ID aliases if no such aliases were found to exist.
+        modelseed_reaction_ids = []
+        for modelseed_reaction_id, kegg_reaction_ids in network.modelseed_kegg_aliases.items():
+            if not kegg_reaction_ids:
+                modelseed_reaction_ids.append(modelseed_reaction_id)
+        for modelseed_reaction_id in modelseed_reaction_ids:
+            network.modelseed_kegg_aliases.pop(modelseed_reaction_id)
+
+        # Remove entries in the network attribute mapping ModelSEED reaction IDs to KO EC number
+        # aliases if no such aliases were found to exist.
+        modelseed_reaction_ids = []
+        for modelseed_reaction_id, ec_numbers in network.modelseed_ec_number_aliases.items():
+            if not ec_numbers:
+                modelseed_reaction_ids.append(modelseed_reaction_id)
+        for modelseed_reaction_id in modelseed_reaction_ids:
+            network.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
+
+        return network
+
+    def _load_modelseed_reactions(
+        self,
+        database: Union[ContigsDatabase, PanDatabase],
+        network: Union[GenomicNetwork, PangenomicNetwork]
+    ) -> None:
+        """
+        Add ModelSEED reactions to the network being loaded from the database.
+
+        ModelSEED reaction objects are related to KOs through KEGG REACTION and EC number aliases.
+
+        Parameters
+        ==========
+        database : ContigsDatabase or PanDatabase
+            The database storing a reaction network. In loading a genomic network, provide a contigs
+            database; in loading a pangenomic network, provide a pan database.
+
+        network : GenomicNetwork or PangenomicNetwork
+            The reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        # Load the table of reactions data.
+        if type(database) is ContigsDatabase:
+            reactions_table = database.db.get_table_as_dataframe('gene_function_reactions')
+            if type(network) is not GenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'ContigsDatabase', so the provided "
+                    "'network' must be of type 'GenomicNetwork'. Instead, the reaction network "
+                    f"argument was of type '{type(network)}'."
+                )
+        elif type(database) is PanDatabase:
+            reactions_table = database.db.get_table_as_dataframe('gene_cluster_function_reactions')
+            if type(network) is not PangenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'PanDatabase', so the provided 'network' "
+                    "must be of type 'PangenomicNetwork'. Instead, the reaction network argument "
+                    f"was of type '{type(network)}'."
+                )
+        else:
+            raise ConfigError(
+                "The provided 'database' must be of type 'ContigsDatabase' or 'PanDatabase'. "
+                f"Instead, the argument was of type '{type(database)}'."
+            )
+
+        # The KO database is needed if KOs in the stored network aren't among the current gene
+        # annotations.
+        try:
+            ko_db = KODatabase(ko_dir=self.ko_dir)
+        except ConfigError as e:
+            raise ConfigError(
+                f"{e} Please set up the KO database in the default directory with the program, "
+                "'anvi-reaction-network'."
+            )
+
+        for row in reactions_table.itertuples():
+            # Each row of the table contains information on a different ModelSEED reaction.
+            reaction = ModelSEEDReaction()
+            modelseed_reaction_id: str = row.modelseed_reaction_id
+            reaction.modelseed_id = modelseed_reaction_id
+            reaction.modelseed_name = row.modelseed_reaction_name
+            network.reactions[modelseed_reaction_id] = reaction
+
+            modelseed_compound_ids: str = row.metabolite_modelseed_ids
+            reaction.compounds = []
+            for modelseed_compound_id in modelseed_compound_ids.split(', '):
+                try:
+                    compound = network.metabolites[modelseed_compound_id]
+                except KeyError:
+                    # This is not the first reaction involving the compound, so an object for it
+                    # already exists.
+                    compound = ModelSEEDCompound()
+                    compound.modelseed_id = modelseed_compound_id
+                    reaction.compounds.append(compound)
+                    network.metabolites[modelseed_compound_id] = compound
+            reaction.compounds = tuple(reaction.compounds)
+
+            stoichiometry: str = row.stoichiometry
+            reaction.coefficients = tuple(int(coeff) for coeff in stoichiometry.split(', '))
+            compartments: str = row.compartments
+            reaction.compartments = tuple(compartments.split(', '))
+            reversibility: int = row.reversibility
+            reaction.reversibility = bool(reversibility)
+
+            # Map KEGG reaction aliases of the ModelSEED reaction to all KOs that were associated
+            # with the KEGG reaction.
+            kegg_reaction_ko_ids: Dict[str, List[str]] = {}
+            kegg_reaction_sources: str = row.ko_kegg_reaction_source
+            for kegg_reaction_item in kegg_reaction_sources.split('; '):
+                if not kegg_reaction_item:
+                    # The ModelSEED reaction was not sourced from KEGG reactions.
+                    continue
+                kegg_reaction_id, ko_ids = kegg_reaction_item.split(': (')
+                ko_ids = ko_ids[:-1].split(', ')
+                kegg_reaction_ko_ids[kegg_reaction_id] = ko_ids
+            # Record *all* KEGG reaction aliases of the ModelSEED reaction, including those not
+            # associated with KO annotations.
+            other_kegg_reaction_ids: str = row.other_kegg_reaction_ids
+            reaction.kegg_aliases = list(kegg_reaction_ko_ids)
+            if other_kegg_reaction_ids:
+                reaction.kegg_aliases += other_kegg_reaction_ids.split(', ')
+            reaction.kegg_aliases = tuple(reaction.kegg_aliases)
+
+            network.modelseed_kegg_aliases[modelseed_reaction_id] = modelseed_kegg_aliases = []
+            orphan_ko_ids = []
+            reaction_added_to_ko = False
+            for kegg_reaction_id, ko_ids in kegg_reaction_ko_ids.items():
+                # Record the ModelSEED reaction as one of the aliases of the KEGG reaction in the
+                # network.
+                try:
+                    network.kegg_modelseed_aliases[kegg_reaction_id].append(modelseed_reaction_id)
+                except KeyError:
+                    network.kegg_modelseed_aliases[kegg_reaction_id] = [modelseed_reaction_id]
+                modelseed_kegg_aliases.append(kegg_reaction_id)
+                for ko_id in ko_ids:
+                    try:
+                        ko = network.kos[ko_id]
+                    except KeyError:
+                        # In the case of a genomic network, this error arises when the current set
+                        # of gene KO annotations in the contigs database does not match the set from
+                        # which the reaction network was originally made, and the KO under
+                        # consideration in the network is no longer a gene annotation in the
+                        # database. In the case of a pangenomic network, this error arises when the
+                        # current set of gene cluster consensus KO annotations does not match the
+                        # set from which the reaction network was originally made and the consensus
+                        # KO under consideration in the network no longer annotates a gene cluster
+                        # in the pan database. (The current set of gene cluster consensus KO
+                        # annotations is derived from the pan and genomes storage databases using
+                        # the parameters, 'consensus_threshold' and 'discard_ties'.)
+                        ko = KO()
+                        ko.ko_id = ko_id
+                        # The KO name is unknown from the database, so take it from the KO database.
+                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
+                        network.kos[ko_id] = ko
+                        orphan_ko_ids.append(ko_id)
+                    if not reaction_added_to_ko:
+                        # This is the first encounter with the reaction for the KO.
+                        ko.reactions[modelseed_reaction_id] = reaction
+                        reaction_added_to_ko = True
+                    try:
+                        ko.kegg_reaction_aliases[modelseed_reaction_id].append(kegg_reaction_id)
+                    except KeyError:
+                        ko.kegg_reaction_aliases[modelseed_reaction_id] = [kegg_reaction_id]
+
+            # Map EC number aliases of the ModelSEED reaction to all KOs that were associated with
+            # the EC number.
+            ec_number_ko_ids: Dict[str, List[str]] = {}
+            ec_number_sources: str = row.ko_ec_number_source
+            for ec_number_item in ec_number_sources.split('; '):
+                if not ec_number_item:
+                    # The ModelSEED reaction was not sourced from EC numbers.
+                    continue
+                ec_number, ko_ids = ec_number_item.split(': (')
+                ko_ids = ko_ids[:-1].split(', ')
+                ec_number_ko_ids[ec_number] = ko_ids
+            # Record *all* EC number aliases of the ModelSEED reaction, including those not
+            # associated with KO annotations.
+            other_ec_numbers: str = row.other_ec_numbers
+            reaction.ec_number_aliases = list(ec_number_ko_ids)
+            if other_ec_numbers:
+                reaction.ec_number_aliases += other_ec_numbers.split(', ')
+            reaction.ec_number_aliases = tuple(reaction.ec_number_aliases)
+
+            network.modelseed_ec_number_aliases[modelseed_reaction_id] = modelseed_ec_number_aliases = []
+            for ec_number, ko_ids in ec_number_ko_ids.items():
+                # Record the ModelSEED reaction as one of the aliases of the EC number in the
+                # network.
+                try:
+                    network.ec_number_modelseed_aliases[ec_number].append(modelseed_reaction_id)
+                except KeyError:
+                    network.ec_number_modelseed_aliases[ec_number] = [modelseed_reaction_id]
+                modelseed_ec_number_aliases.append(ec_number)
+                for ko_id in ko_ids:
+                    try:
+                        ko = network.kos[ko_id]
+                    except KeyError:
+                        # This error arises for the same reason as before (processing KEGG reactions).
+                        ko = KO()
+                        ko.ko_id = ko_id
+                        # The KO name is unknown from the database, so take it from the KO database.
+                        ko.ko_name = ko_db.ko_table.loc[ko_id, 'name']
+                        network.kos[ko_id] = ko
+                        orphan_ko_ids.append(ko_id)
+                    if not reaction_added_to_ko:
+                        # This is the first encounter with the reaction for the KO.
+                        ko.reactions[modelseed_reaction_id] = reaction
+                        reaction_added_to_ko = True
+                    try:
+                        ko.ec_number_aliases[modelseed_reaction_id].append(ec_number)
+                    except KeyError:
+                        ko.ec_number_aliases[modelseed_reaction_id] = [ec_number]
+
+            if DEBUG:
+                # "Orphan" KOs can only arise when 'check_gene_annotations' is False in the calling
+                # method, 'load_contigs_database_network' or 'load_pan_database_network'.
+                if type(network) is GenomicNetwork:
+                    self.run.info_single(
+                        "The following KOs are found in the stored reaction network in the contigs "
+                        "database, but they are not found among the current gene KO annotations in "
+                        "the contigs database. The available version of the KO database set up by "
+                        "anvi'o was used to retrieve the function 'names' of these KOs: "
+                        f"{', '.join(orphan_ko_ids)}"
+                    )
+                elif type(network) is PangenomicNetwork:
+                    self.run.info_single(
+                        "The following KOs are found in the stored reaction network in the pan "
+                        "database, but they are not found among the current gene KO annotations in "
+                        "the genomes storage database. The available version of the KO database "
+                        "set up by anvi'o was used to retrieve the function 'names' of these KOs: "
+                        f"{', '.join(orphan_ko_ids)}"
+                    )
+
+    def _load_modelseed_compounds(
+        self,
+        database: Union[ContigsDatabase, PanDatabase],
+        network: Union[GenomicNetwork, PangenomicNetwork]
+    ) -> None:
+        """
+        Add ModelSEED compounds to the network being loaded from the database.
+
+        Parameters
+        ==========
+        database : ContigsDatabase or PanDatabase
+            The database storign a reaction network. In loading a genomic network, provide a contigs
+            database; in loading a pangenomic network, provide a pan database.
+
+        network : GenomicNetwork or PangenomicNetwork
+            The reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        # Load the table of compounds data.
+        if type(database) is ContigsDatabase:
+            metabolites_table = database.db.get_table_as_dataframe('gene_function_metabolites')
+            if type(network) is not GenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'ContigsDatabase', so the provided "
+                    "'network' must be of type 'GenomicNetwork'. Instead, the reaction network "
+                    f"argument was of type '{type(network)}'."
+                )
+        elif type(database) is PanDatabase:
+            metabolites_table = database.db.get_table_as_dataframe('gene_cluster_function_metabolites')
+            if type(network) is not PangenomicNetwork:
+                raise ConfigError(
+                    "The provided 'database' was of type 'PanDatabase', so the provided 'network' "
+                    "must be of type 'PangenomicNetwork'. Instead, the reaction network argument "
+                    f"was of type '{type(database)}'."
+                )
+        else:
+            raise ConfigError(
+                "The provided 'database' must be of type 'ContigsDatabase' or 'PanDatabase'. "
+                f"Instead, the argument was of type '{type(database)}'."
+            )
+
+        for row in metabolites_table.itertuples():
+            # Each row of the table contains information on a different ModelSEED compound.
+            modelseed_compound_id = row.modelseed_compound_id
+            compound = network.metabolites[modelseed_compound_id]
+            modelseed_compound_name: str = row.modelseed_compound_name
+            compound.modelseed_name = modelseed_compound_name
+            kegg_aliases: str = row.kegg_aliases
+            compound.kegg_aliases = tuple(kegg_aliases.split(', '))
+            # Compounds without a formula, recorded here as None, have a nominal charge of 10000000
+            # in the ModelSEED compounds database. This is replaced by NaN in the table and here as
+            # None in the reaction network.
+            formula: str = row.formula
+            compound.formula = formula
+            charge: int = row.charge
+            compound.charge = charge if not np.isnan(charge) else None
 
     def make_network(
         self,
