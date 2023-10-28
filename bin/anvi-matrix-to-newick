@@ -35,7 +35,7 @@ def main(args):
 
     # a quick check of the data to see if there are any missing
     # values
-    _, _, _, vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_matrix)
+    _, _, _, vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_matrix, run=run)
     num_missing_data = len([item for sublist in vectors for item in sublist if item == None])
     if num_missing_data:
         run.warning(f"Oy. Your file contains {PL('missing data item', num_missing_data)}. Anvi'o will do its "
@@ -46,7 +46,7 @@ def main(args):
     progress.new('Analyzing input file')
     clustering.create_newick_file_from_matrix_file(args.input_matrix, args.output_file, linkage=args.linkage,
                                     distance=args.distance, transpose=args.transpose, progress=progress,
-                                    items_order_file_path=args.items_order_file, pad_with_zeros=True)
+                                    items_order_file_path=args.items_order_file, pad_with_zeros=args.pad_input_with_zeros)
     progress.end()
     run.info('Output newick', args.output_file)
     if args.items_order_file:
@@ -72,7 +72,12 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
     groupC.add_argument(*anvio.A('distance'), **anvio.K('distance'))
     groupC.add_argument(*anvio.A('linkage'), **anvio.K('linkage'))
-
+    groupC.add_argument('--pad-input-with-zeros', default=False, action="store_true",
+                        help="Do you want your vectors in the input file to be 'padded' by some zero values "
+                             "so even hideous matrix files that contain entires with all empty values can be "
+                             "processed with this program? Well, this flag will try to make things work for "
+                             "you. But you must know that this is one of those cases where 'if you have to "
+                             "use this then you have not one but two problems.")
     try:
         args = parser.get_args(parser)
         main(args)

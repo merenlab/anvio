@@ -166,7 +166,7 @@ def main(args):
 
     # figure out gene names.. if the user provided a file, use that, otherwhise parse gene names out of the comma-separated text
     if args.gene_names and filesnpaths.is_file_exists(args.gene_names, dont_raise=True):
-        gene_names = [g.strip() for g in open(args.gene_names, 'rU').readlines()] if args.gene_names else []
+        gene_names = [g.strip() for g in open(args.gene_names, 'r').readlines()] if args.gene_names else []
     else:
         gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
 

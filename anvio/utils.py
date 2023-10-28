@@ -850,7 +850,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
-    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'rU').readlines()]
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'r').readlines()]
 
     output_file = open(output_file_path, 'w')
     for entry in zip(*file_content):
@@ -1048,7 +1048,7 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
     for index in column_indices:
         d[index] = []
 
-    with open(input_file_path, "rU") as input_file:
+    with open(input_file_path, "r") as input_file:
         for line in input_file.readlines():
             fields = line.strip('\n').split(separator)
 
@@ -1066,9 +1066,9 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     filesnpaths.is_file_exists(file_path)
 
     if include_first_column:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')
+        return open(file_path, 'r').readline().strip('\n').split('\t')
     else:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
+        return open(file_path, 'r').readline().strip('\n').split('\t')[1:]
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
@@ -1081,9 +1081,23 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False, run=run):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
+
+    run.warning("Anvi'o is recovering your data from your TAB-delimited file, and it is"
+                "instructed to pad your input vectors with 0 values probably because you "
+                "used the flag `--pad-input-with-zeros` somewhere. Just so you know.")
+
+    if cols_to_return and pad_with_zeros:
+        raise ConfigError("Dear developer, you can't use `cols_to_return` and `pad_with_zeros` at the same "
+                          "time with this function. The `pad_with_zeros` header variable in this function "
+                          "is a mystery at this point. But the only way to be able to use it requires one "
+                          "to not use `cols_to_return`. More mystery .. but essentially this is a necessity "
+                          "because we have to update fields_of_interest value if pad_with_zeros is true, so "
+                          "anvi'o clustering step DOES NOT IGNORE THE LAST SAMPLE IN THE MATRIX BECUASE PAD "
+                          "WITH ZEROS SHIFT EVERYTHING, and we can't do it blindly if the programmer requests "
+                          "only specific columnts to be returned with `cols_to_return` :/")
 
     if transpose:
         transposed_file_path = filesnpaths.get_temp_file_path()
@@ -1095,7 +1109,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_to_sample_dict = {}
     sample_to_id_dict = {}
 
-    input_matrix = open(file_path, 'rU')
+    input_matrix = open(file_path, 'r')
     columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
@@ -1114,19 +1128,23 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
+
         if rows_to_return and row_name not in rows_to_return:
-                continue
+            continue
+
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip('\n').split('\t')[1:]
 
-        # long story.
+        # because stupid stuff. see warning above.
         if pad_with_zeros:
             fields = [0] + fields + [0]
+            fields_of_interest = list(range(0, len(fields)))
 
         try:
             if fields_of_interest:
                 vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
+                # the code will literally never enter here:
                 vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
@@ -1489,7 +1507,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
-            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'r').readlines()])
         else:
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
@@ -1764,7 +1782,7 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
-        for line in open(chunk_path, 'rU'):
+        for line in open(chunk_path, 'r'):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
@@ -3547,7 +3565,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     failed_lines = []
     column_mapping_for_line_failed = None
 
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     # learn the number of fields and reset the file:
     num_fields = len(f.readline().strip('\n').split(separator))

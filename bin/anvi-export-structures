@@ -38,7 +38,7 @@ def main(args):
         raise ConfigError("Pick one of --gene-caller-ids and --genes-of-interest")
     elif genes_of_interest_path:
         filesnpaths.is_file_exists(args.genes_of_interest)
-        genes_of_interest = set(int(g.strip()) for g in open(args.genes_of_interest, 'rU').readlines())
+        genes_of_interest = set(int(g.strip()) for g in open(args.genes_of_interest, 'r').readlines())
     elif gene_caller_ids:
         genes_of_interest = set(int(g) for g in gene_caller_ids.split(','))
     else:

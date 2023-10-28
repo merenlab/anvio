@@ -4335,7 +4335,7 @@ class ContigsDatabase:
 
         if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
-            description = open(os.path.abspath(description_file_path), 'rU').read()
+            description = open(os.path.abspath(description_file_path), 'r').read()
         else:
             description = ''
 
@@ -4957,7 +4957,7 @@ def get_description_in_db(anvio_db_path, run=run):
 
 def update_description_in_db_from_file(anvio_db_path, description_file_path, run=run):
     filesnpaths.is_file_plain_text(description_file_path)
-    description = open(os.path.abspath(description_file_path), 'rU').read()
+    description = open(os.path.abspath(description_file_path), 'r').read()
 
     update_description_in_db(anvio_db_path, description, run=run)
 
