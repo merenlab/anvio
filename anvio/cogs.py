@@ -76,6 +76,8 @@ class COGs:
         self.search_with = A('search_with') or 'diamond'
         self.temp_dir_path = A('temporary_dir_path')
 
+        self.output_file_path = A('output_file')
+        
         self.log_file_path = None
 
         self.default_search_method = 'diamond'
@@ -198,14 +200,23 @@ class COGs:
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
+        
+        if not aa_sequences_file_path and self.output_file_path:
+            self.run.warning("You provided an output sequence, but the input was not an amino acid FASTA file. When the input is a contigs database, "
+                             "the annotations are stored within the database itself. Thus, this output file will not be used.")
+
+        if aa_sequences_file_path and not self.output_file_path:
+            raise ConfigError("You must pass an output file in which to store the annotations of the input FASTA file. See y'a later aligator!")
 
         if aa_sequences_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
             filesnpaths.is_file_exists(aa_sequences_file_path)
 
-            fasta = u.SequenceSource(aa_sequences_file_path); next(fasta) 
-
-            sequence = fasta.seq
-            utils.is_gene_sequence_clean(sequence, amino_acid=True, must_start_with_met=False)
+            fasta = u.SequenceSource(aa_sequences_file_path)
+            while next(fasta):
+                sequence = fasta.seq
+                utils.is_gene_sequence_clean(sequence, amino_acid=True, must_start_with_met=False)
+            fasta.close()
 
             self.aa_sequence_file_input = aa_sequences_file_path
 
@@ -359,7 +370,7 @@ class COGs:
             gene_function_calls_table.create(functions_dict)
 
         elif self.aa_sequence_file_input:
-            utils.store_dict_as_TAB_delimited_file(d=functions_dict, output_path="cog_functions.tsv", do_not_write_key_column=True)
+            utils.store_dict_as_TAB_delimited_file(d=functions_dict, output_path=self.output_file_path, do_not_write_key_column=True)
 
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
