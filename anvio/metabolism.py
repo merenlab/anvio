@@ -5,6 +5,7 @@
 import anvio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.utils as utils
 
 from anvio.errors import ConfigError
 
@@ -19,3 +20,19 @@ run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+
+class PathwayYAML:
+    """A YAML-formatted file to store definitions of metabolic pathways.
+    
+    PARAMETERS
+    ==========
+    file_path : string
+        path to input YAML file (required)
+    """
+
+    def __init__(self, file_path):
+        filesnpaths.is_file_exists(file_path)
+        pathway_dict = utils.get_yaml_as_dict(file_path)
+
+        run.info_single(f"The pathway file {file_path} has been successfully loaded.")
+
