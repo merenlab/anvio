@@ -46,7 +46,7 @@ def main(args):
             progress.reset()
             if args.just_do_it:
                 run.warning("This file doesn't look like an AUGUSTUS gene calls file, but anvi'o will continue to "
-                            "to try to parse it as you instructed. If everything works well, please send htis "
+                            "try to parse it as you instructed. If everything works well, please send this "
                             "file to an anvi'o developer so they can update this code to not complain about this.")
             else:
                 raise ConfigError("This file doesn't look like an AUGUSTUS gene calls file :/ If you are certain "
