@@ -18,7 +18,7 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren', 'Ge0rges']
+__authors__ = ['meren', 'ge0rges']
 __requires__ = ['cogs-data', 'contigs-db', 'fasta']
 __provides__ = ['functions', 'functions-txt']
 __description__ = ("This program runs NCBI's COGs to associate genes in an anvi'o contigs database with functions. "
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     parser = ArgumentParser(description=__description__)
-    
+
     groupA = parser.add_argument_group('INPUT #1 - ANNOTATION OF CONTIGS DB', "One type of input this function can annotate is a contigs database. "
                                        "In this case anvi'o will attempt to annotate every gene present.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {"required": False}))
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                        "and the functions will be reported as TAB-delimited output. In this mode you should specify an output file.")
     groupB.add_argument(*anvio.A('fasta-file'), **anvio.K('fasta-file', {"help": "A FASTA formatted input file containing protein sequences."}))
     groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    
+
     groupC = parser.add_argument_group('GENERAL OPTIONS', "These are general options which apply to both input modes.")
     groupC.add_argument(*anvio.A('cog-version'), **anvio.K('cog-version'))
     groupC.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
