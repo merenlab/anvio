@@ -138,8 +138,13 @@ class DAS_Tool:
         output_file_name = 'OUTPUT_DASTool_scaffolds2bin.txt'
         output_file_path = J(output_file_name)
         if not os.path.exists(output_file_path):
-            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
-                              "log file: %s" % (output_file_name, log_file_path))
+            # if this output file is missing, we may find the other one
+            # perhaps
+            output_file_name = 'OUTPUT_DASTool_contig2bin.tsv'
+            output_file_path = J(output_file_name)
+            if not os.path.exists(output_file_path):
+                raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
+                                  "log file: %s" % (output_file_name, log_file_path))
 
         clusters = {}
         with open(output_file_path, 'r') as f:
