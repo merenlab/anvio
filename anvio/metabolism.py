@@ -23,10 +23,10 @@ progress_quiet = terminal.Progress(verbose=False)
 
 ## REQUIRED FIELDS FOR A PATHWAY FILE
 ## AND THEIR ACCEPTABLE VALUES (IF APPLICABLE)
-REQ_FIELDS = {'type': ['pathway', 'enzyme set'],
-              'source': ['KEGG', 'user'],
-              'functional_definition': None,
-              'functions': None
+REQ_FIELDS = {'type': {'accepted_vals': ['pathway', 'enzyme set'], 'data_type': str},
+              'source': {'accepted_vals': ['KEGG', 'user'], 'data_type': str},
+              'functional_definition': {'data_type': list},
+              'functions': {'data_type': dict},
             }
 
 class PathwayYAML:
@@ -90,10 +90,16 @@ class PathwayYAML:
     def check_required_fields(self):
         """Ensure that all required fields are defined in the pathway file."""
 
-        for field, accepted_vals in REQ_FIELDS.items():
+        for field, requirements in REQ_FIELDS.items():
             if field not in self.dict:
                 raise ConfigError(f"The required field '{field}' was not found in the input data.")
-            if accepted_vals and (self.dict[field] not in accepted_vals):
+            if 'accepted_vals' in requirements and (self.dict[field] not in requirements['accepted_vals']):
                 raise ConfigError(f"There is an issue with the definition of {field} in the input pathway data. "
                                   f"This field has the value '{self.dict[field]}', but only the following values are accepted: "
-                                  f"{', '.join(accepted_vals)}")
+                                  f"{', '.join(requirements['accepted_vals'])}")
+
+            if not isinstance(self.dict[field], requirements['data_type']):
+                raise ConfigError(f"There is an issue with the definition of {field} in the input pathway data. "
+                                  f"This field is supposed to be of type '{requirements['data_type']}' but instead it is a {type(self.dict[field])}.")
+                
+
