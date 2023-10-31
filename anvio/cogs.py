@@ -77,7 +77,7 @@ class COGs:
         self.temp_dir_path = A('temporary_dir_path')
 
         self.output_file_path = A('output_file')
-        
+
         self.log_file_path = None
 
         self.default_search_method = 'diamond'
@@ -200,7 +200,7 @@ class COGs:
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
-        
+
         if not aa_sequences_file_path and self.output_file_path:
             self.run.warning("You provided an output sequence, but the input was not an amino acid FASTA file. When the input is a contigs database, "
                              "the annotations are stored within the database itself. Thus, this output file will not be used.")
@@ -212,11 +212,20 @@ class COGs:
             filesnpaths.is_output_file_writable(self.output_file_path)
             filesnpaths.is_file_exists(aa_sequences_file_path)
 
+            self.progress.new("Sanity checking")
+            self.progress.update("Figuring out the number of AA sequences in the file ...")
+            num_sequences = utils.get_num_sequences_in_fasta(aa_sequences_file_path)
+            self.progress.end()
+
+            self.progress.new("Sanity checking", progress_total_items=num_sequences)
             fasta = u.SequenceSource(aa_sequences_file_path)
             while next(fasta):
-                sequence = fasta.seq
-                utils.is_gene_sequence_clean(sequence, amino_acid=True, must_start_with_met=False)
+                self.progress.increment()
+                if self.progress.progress_current_item % 1000 == 0:
+                    self.progress.update(f"Going through {pp(num_sequences)} AA sequences ..")
+                utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, must_start_with_met=False)
             fasta.close()
+            self.progress.end()
 
             self.aa_sequence_file_input = aa_sequences_file_path
 
