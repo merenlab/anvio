@@ -51,3 +51,16 @@ class PathwayYAML:
             pathway_dict = path_dict
         self.id = list(pathway_dict.keys())[0]
         self.dict = pathway_dict[self.id]
+
+    #### ACCESSOR FUNCTIONS ####
+    def get_pathway_dict(self):
+        """Returns the pathway dictionary."""
+
+        return self.dict
+
+    def print_pathway(self):
+        """Prints the pathway to the terminal. Mainly for debugging output."""
+
+        print(self.dict)
+
+    #### SANITY CHECKING FUNCTIONS ####
