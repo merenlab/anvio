@@ -79,14 +79,14 @@ def reformat_BAM(args):
                                        input_basename[:-4] + __SUFFIX__ if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
         )
         run.info("Output BAM file", output_filename)
-    run.info('Overwrite output?', args.force_overwrite, mc='green' if args.force_overwrite else 'red')
+    run.info('Overwrite output?', args.overwrite_output, mc='green' if args.overwrite_output else 'red')
 
     # Check input file exist
     filesnpaths.is_file_exists(args.bam_file)
     filesnpaths.is_file_exists(args.rename_list)
 
     # Check output exists
-    if os.path.exists(output_filename) and not args.force_overwrite:
+    if os.path.exists(output_filename) and not args.overwrite_output:
         raise ConfigError(f"Output file {output_filename} already exists. Use --force to overwrite it.")
     
     # Load the list (tsv file, two columns, new name TAB old name)
