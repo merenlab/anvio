@@ -921,5 +921,10 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    }, "rename-report-file": {
+        "name": "REPORT FILE",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     }
 }
