@@ -22,7 +22,7 @@ __credits__   = []
 __license__   = "GPL 3.0"
 __version__   = anvio.__version__
 __authors__   = ['telatin']     
-__requires__  = ["bam-file", "reformat-report"]   
+__requires__  = ["bam-file", "rename-report-file"]   
 __provides__  = ["bam-file"]
 __description__ =  ("Reformat a BAM file to match the update sequence names after running anvi-script-reformat-fasta")
 
