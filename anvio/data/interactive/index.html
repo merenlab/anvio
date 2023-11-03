@@ -113,7 +113,7 @@
                 <div class="inner-wrapper d-flex" role="tabpanel">
                     <nav id="inner-sidebar" onclick="switchNavigationTabs();">
                         <ul class="list-unstyled components align-item-center text-center tab-elements" role="tablist" id="nav-tab">
-                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-3">
+                            <li id="main_tab" role="presentation" class="nav-item navigation-tabs mt-1">
                                 <a href="#tree_settings" aria-controls="tree_settings" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block active">
                                     <i class="nav-icon fa-2x bi bi-house-door"></i><i class="nav-icon-fill fa-2x bi bi-house-door-fill"></i> <span class="d-block">Main</span>
                                 </a>
@@ -190,32 +190,34 @@
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <span class="settings-header"> <img src="images/item-chart.svg" alt="Item Icon"/> Items</span>
-                            <div class="form-group form-margin">
-                                    <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
-                                    <div class="col-10">
-                                        <select id="tree_type" class="form-control">
-                                            <option value="phylogram">Phylogram</option>
-                                            <option value="circlephylogram" selected>Circle Phylogram</option>
-                                        </select>
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="settings-label w600" for="trees_container" data-help="order-by">Order</label>
-                                    <div class="col-10">
-                                        <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
-                                        <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                            The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                            <br />
-                                            <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                            <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
+                            <div class="ml-2">
+                                <div class="form-group form-margin">
+                                        <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                        <div class="col-10 menu-padding">
+                                            <select id="tree_type" class="form-control">
+                                                <option value="phylogram">Phylogram</option>
+                                                <option value="circlephylogram" selected>Circle Phylogram</option>
+                                            </select>
                                         </div>
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin">
-                                    <label class="settings-label w600" for="views_container" data-help="view">Data</label>
-                                    <div class="col-10">
-                                        <select id="views_container" class="form-control" onchange="onViewChange();"></select>
-                                    </div>
+                                </div>
+                                <div class="form-group form-margin">
+                                        <label class="settings-label w600" for="trees_container" data-help="order-by">Order</label>
+                                        <div class="col-10 menu-padding">
+                                            <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                            <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                <br />
+                                                <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                            </div>
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin">
+                                        <label class="settings-label w600" for="views_container" data-help="view">Data</label>
+                                        <div class="col-10 menu-padding">
+                                            <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                        </div>
+                                </div>
                             </div>
                             <div class="ml-2">
                                 <span class="settings-secondary-header">Display</span>
@@ -284,7 +286,7 @@
                                 <div id="sample-settings" class="form-horizontal">
                                     <div class="form-group form-margin">
                                             <label class="settings-label settings-label w400" for="tree_type" data-help="samples_order">Order by</label>
-                                            <div class="col-10">
+                                            <div class="col-10 menu-padding">
                                                 <select id="samples_order" class="form-control">
                                                     <!-- JS FILLS HERE -->
                                                 </select>
@@ -441,8 +443,10 @@
                     <!-- OPTION Tab -->
                     <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
                         <div id="additional_settings">
-                            <span class="settings-header mt-3"><img src="images/item-chart.svg" alt="Item Icon"/>Items</span>
-                            <div class="form-group form-margin d-flex pt-1 mt-3">
+                            <span class="settings-header mt-3 btn d-flex" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" style="padding: 0;">
+                                <img src="images/item-chart.svg" alt="Item Icon"/>Items</span>
+                            <div class="collapse multi-collapse show" id="item-collapse-option">
+                                <div class="form-group form-margin d-flex pt-1 mt-3">
                                     <label class="col-2 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
                                     <div class="col-6 d-flex align-item-center input-align">
                                         <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs col-3">
@@ -528,7 +532,7 @@
 
                             <div class="ml-3">
                                 <span class="settings-secondary-header">Dendrogram</span>
-                                <div class="form-group form-margin circlephylogram_settings d-flex mt-3 pt-1">
+                                <div class="form-group form-margin circlephylogram_settings d-flex mt-3">
                                         <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
                                         <div class="col-6 form-inline input-align">
                                             <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
@@ -561,8 +565,8 @@
                                 </div>
 
                             <div class="manual-mode">    
-                            <span class="settings-header" >Branch Support</span>
-                                <div class="form-group form-margin d-flex" >
+                            <span class="settings-secondary-header" >Branch Support</span>
+                                <div class="form-group form-margin d-flex mt-3" >
                                     <label class="col-3 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display</label>
                                     <div class="col-3 d-flex">
                                         <input type="checkbox"
@@ -579,16 +583,17 @@
                                     tree on your display and lacking support values is an unexpected news to you, please get in touch with us.<br />
                                 </div>
                                 <div id="support_value_params">
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
-                                        <div class="col-md-8">
-                                            <input type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'> to
-                                            <input type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-2 settings-label" for="support_value_checkbox" data-help="support-value-checkbox">Display Value Range:</label>
+                                        <div class="col-6 form-inline input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_range_low" style="width: 60px;" value='0' step='1' max='100' min='0'>
+                                            <span class="ml-1">to</span>
+                                            <input class="form-control input-xs col-3" type="number" id="support_range_high"style="width: 60px;" value='100' step='1' max='100' min='0'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
-                                        <div class="col-md-8">
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="support_display_symbol" data-help="support-value-checkbox">Symbols:</label>
+                                        <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
                                                 id="support_display_symbol"
                                                 style="float: left;"
@@ -597,17 +602,19 @@
                                                 >
                                         </div>
                                     </div>
-                                    <div class='form-group form-margin' id='show_symbol_options'>
+                                    <div class="form-group form-margin" id='show_symbol_options'>
                                         <div class="form-group form-margin" id="support_symbol">
-                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
-                                            <div class="col-md-8">
+                                            <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Invert Symbol:</label>
+                                            <div class="col-4 input-align d-flex">
                                                 <input type="checkbox" id="support_invert_symbol" style="float: left;" name="invert-symbol">
                                             </div>
                                         </div>
                                         <div class="form-group form-margin">
-                                            <label class="col-md-4 settings-label" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
-                                            <div class="col-md-8">
-                                                <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                            <div class="form-group form-margin">
+                                                <label class="col-3 settings-label d-flex" for="support_invert_symbol" data-help="support-value-checkbox">Symbol Color:</label>
+                                                <div class="col-4 input-align d-flex">
+                                                    <div id="support_symbol_color" class="colorpicker" color="#AA0000" style="background-color:#AA0000; margin-left: 15x;"></div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="form-group form-margin">
@@ -617,9 +624,9 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="support_display_number" data-help="support-value-checkbox">Text:</label>
-                                        <div class="col-md-8">
+                                    <div class="form-group form-margin d-flex">
+                                        <label class="col-3 settings-label d-flex" for="support_display_number" data-help="support-value-checkbox">Text:</label>
+                                        <div class="col-4 input-align d-flex">
                                             <input type="checkbox"
                                                 id="support_display_number"
                                                 style="float: left;"
@@ -634,10 +641,10 @@
                                             <input type="number" id="support_font_size" style="width: 60px;" value='24' max='128' min='1'>
                                         </div>
                                     </div>
-                                    <div class="form-group form-margin" id='show_text_rotation'>
-                                        <label class="col-md-4 settings-label" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
-                                        <div class="col-md-8">
-                                            <input type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
+                                    <div class="form-group form-margin d-flex" id='show_text_rotation'>
+                                        <label class="col-2 settings-label d-flex" for="support_text_rotation" data-help="support-text-rotation">Text Rotation:</label>
+                                        <div class="col-6 input-align d-flex">
+                                            <input class="form-control input-xs col-3" type="number" id="support_text_rotation" style="width: 60px;" value='0' max='359' min='-359'>
                                         </div>
                                     </div>
                                 </div>
@@ -659,6 +666,7 @@
                                                 </select>
                                         </div>
                                 </div>
+                            </div>
                             </div>
 
                             <span class="settings-header"><img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
