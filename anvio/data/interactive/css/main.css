@@ -945,6 +945,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-left: 5px;
 }
 
+.chart-icon-padding{
+    padding: 0;
+}
+
 @media (min-width: 768px) {
     *:not(text) {
         font-size: 12px;

@@ -189,100 +189,104 @@
                 <div class="col-12 tab-content ml-1">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
-                            <span class="settings-header"> <img src="images/item-chart.svg" alt="Item Icon"/> Items</span>
-                            <div class="ml-2">
-                                <div class="form-group form-margin">
-                                        <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
-                                        <div class="col-10 menu-padding">
-                                            <select id="tree_type" class="form-control">
-                                                <option value="phylogram">Phylogram</option>
-                                                <option value="circlephylogram" selected>Circle Phylogram</option>
-                                            </select>
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin">
-                                        <label class="settings-label w600" for="trees_container" data-help="order-by">Order</label>
-                                        <div class="col-10 menu-padding">
-                                            <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
-                                            <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
-                                                The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
-                                                <br />
-                                                <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
-                                                <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                            <span class="settings-header btn d-flex chart-icon-padding" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">
+                                <img src="images/item-chart.svg" alt="Item Icon"/> Items</span>
+                            <div class="collapse multi-collapse show" id="item-collapse-main">
+                                <div class="ml-2">
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label w400" for="tree_type" data-help="drawing-type">Drawing Type</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="tree_type" class="form-control">
+                                                    <option value="phylogram">Phylogram</option>
+                                                    <option value="circlephylogram" selected>Circle Phylogram</option>
+                                                </select>
                                             </div>
-                                        </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label w600" for="trees_container" data-help="order-by">Order</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="trees_container" class="form-control" onchange="onTreeClusteringChange();"></select>
+                                                <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
+                                                    The tree has been modified. Changes will disappear once you close this window unless you save it.<br />
+                                                    <br />
+                                                    <button type="button" class="btn btn-primary btn-xs" onclick="new SaveTreeDialog();">Save tree</button>
+                                                    <button type="button" class="btn btn-outline-danger" onclick="restoreOriginalTree();">Revert changes</button>
+                                                </div>
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin">
+                                            <label class="settings-label w600" for="views_container" data-help="view">Data</label>
+                                            <div class="col-10 menu-padding">
+                                                <select id="views_container" class="form-control" onchange="onViewChange();"></select>
+                                            </div>
+                                    </div>
                                 </div>
-                                <div class="form-group form-margin">
-                                        <label class="settings-label w600" for="views_container" data-help="view">Data</label>
-                                        <div class="col-10 menu-padding">
-                                            <select id="views_container" class="form-control" onchange="onViewChange();"></select>
-                                        </div>
+                                <div class="ml-2">
+                                    <span class="settings-secondary-header">Display</span>
+    
+                                    <div id="table_layers_container" class="mt-3">
+                                        <table id="table_layers">
+                                            <thead>
+                                                <tr>
+                                                    <td></td>
+                                                    <td data-help="layer-name">Name</td>
+                                                    <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
+                                                    <td data-help="layer-type">Type</td>
+                                                    <td data-help="layer-norm">Norm.</td>
+                                                    <td data-help="layer-height">Height</td>
+                                                    <td data-help="layer-margin" class="column-margin">Margin</td>
+                                                    <td data-help="layer-min">Min</td>
+                                                    <td data-help="layer-max">Max</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody_layers"></tbody>
+                                            <tbody id="tbody_bottom">
+                                                <tr style="height: 30px">
+                                                    <td colspan="9">
+                                                        <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td></td>
+                                                    <td><input class="select_layer form-control form-control-sm" placeholder="Layer Name" size="9"></td>
+                                                    <td class="d-flex colorpicker-align">
+                                                        <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF"></div>
+                                                        <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF"></div>
+                                                    </td>
+                                                    <td>
+                                                        <select class="type type_multiple form-control form-control-sm col-12 select-sm">
+                                                            <option value="">Type</option>
+                                                            <option value="" disabled>-----Numerical Types-----</option>
+                                                            <option value="bar">Bar</option>
+                                                            <option value="intensity">Intensity</option>
+                                                            <option value="line">Line</option>
+                                                            <option value="" disabled>-----Categorical Types-----</option>
+                                                            <option value="color">Color</option>
+                                                            <option value="text">Text</option>
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="normalization_multiple form-control form-control-sm col-12 select-sm">
+                                                            <option value="">Norm.</option>
+                                                            <option value="none">none</option>
+                                                            <option value="sqrt">sqrt</option>
+                                                            <option value="log">log</option>
+                                                        </select>
+                                                    </td>
+                                                    <td><input class="input-height-multiple form-control form-control-sm" size="3" placeholder="height"></input></td>
+                                                    <td class="column-margin"><input class="input-margin-multiple form-control form-control-sm" size="3" placeholder="margin"></input></td>
+                                                    <td><input class="input-min-multiple form-control form-control-sm" size="4" placeholder="min"></input></td>
+                                                    <td><input class="input-max-multiple form-control form-control-sm" size="4" placeholder="max"></input></td>
+                                                    <td><input type="checkbox" class="select_all"></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="ml-2">
-                                <span class="settings-secondary-header">Display</span>
-
-                                <div id="table_layers_container" class="mt-3">
-                                    <table id="table_layers">
-                                        <thead>
-                                            <tr>
-                                                <td></td>
-                                                <td data-help="layer-name">Name</td>
-                                                <td data-help="layer-color"><div style="width: 32px;">Color</div></td>
-                                                <td data-help="layer-type">Type</td>
-                                                <td data-help="layer-norm">Norm.</td>
-                                                <td data-help="layer-height">Height</td>
-                                                <td data-help="layer-margin" class="column-margin">Margin</td>
-                                                <td data-help="layer-min">Min</td>
-                                                <td data-help="layer-max">Max</td>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tbody_layers"></tbody>
-                                        <tbody id="tbody_bottom">
-                                            <tr style="height: 30px">
-                                                <td colspan="9">
-                                                    <h4 style="padding-top: 10px; border-top: 1px #AAA solid;" data-help="edit-multiple-layers">Edit attributes for multiple layers</h4>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td></td>
-                                                <td><input class="select_layer form-control form-control-sm" placeholder="Layer Name" size="9"></td>
-                                                <td class="d-flex colorpicker-align">
-                                                    <div id="picker_start_multiple" class="colorpicker-base" color="#FFFFFF"></div>
-                                                    <div id="picker_multiple" class="colorpicker-base" color="#FFFFFF"></div>
-                                                </td>
-                                                <td>
-                                                    <select class="type type_multiple form-control form-control-sm col-12 select-sm">
-                                                        <option value="">Type</option>
-                                                        <option value="" disabled>-----Numerical Types-----</option>
-                                                        <option value="bar">Bar</option>
-                                                        <option value="intensity">Intensity</option>
-                                                        <option value="line">Line</option>
-                                                        <option value="" disabled>-----Categorical Types-----</option>
-                                                        <option value="color">Color</option>
-                                                        <option value="text">Text</option>
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <select class="normalization_multiple form-control form-control-sm col-12 select-sm">
-                                                        <option value="">Norm.</option>
-                                                        <option value="none">none</option>
-                                                        <option value="sqrt">sqrt</option>
-                                                        <option value="log">log</option>
-                                                    </select>
-                                                </td>
-                                                <td><input class="input-height-multiple form-control form-control-sm" size="3" placeholder="height"></input></td>
-                                                <td class="column-margin"><input class="input-margin-multiple form-control form-control-sm" size="3" placeholder="margin"></input></td>
-                                                <td><input class="input-min-multiple form-control form-control-sm" size="4" placeholder="min"></input></td>
-                                                <td><input class="input-max-multiple form-control form-control-sm" size="4" placeholder="max"></input></td>
-                                                <td><input type="checkbox" class="select_all"></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <span class="settings-header mt-5"><img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
-                            <div class="ml-2">
+                            <span class="settings-header btn d-flex chart-icon-padding mt-3" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">
+                                <img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
+                            <div class="ml-2 collapse multi-collapse show" id="layer-collapse-main">
                                 <div id="sample-settings" class="form-horizontal">
                                     <div class="form-group form-margin">
                                             <label class="settings-label settings-label w400" for="tree_type" data-help="samples_order">Order by</label>
@@ -382,8 +386,10 @@
                                 </div>
                             </div>
 
-                            <span class="settings-header mt-5">Legends</span>
-                            <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
+                            <span class="settings-header btn d-flex chart-icon-padding mt-3" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">Legends</span>
+                            <div class="collapse multi-collapse show" id="legend-collapse-main">
+                                <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -443,7 +449,7 @@
                     <!-- OPTION Tab -->
                     <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
                         <div id="additional_settings">
-                            <span class="settings-header mt-3 btn d-flex" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" style="padding: 0;">
+                            <span class="settings-header mt-3 btn d-flex chart-icon-padding" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option">
                                 <img src="images/item-chart.svg" alt="Item Icon"/>Items</span>
                             <div class="collapse multi-collapse show" id="item-collapse-option">
                                 <div class="form-group form-margin d-flex pt-1 mt-3">
@@ -669,59 +675,61 @@
                             </div>
                             </div>
 
-                            <span class="settings-header"><img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
-                            <div class="form-group form-margin d-flex pt-1">
-                                <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
-                                <div class="col-2 d-flex">
-                                    <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
-                                </div>
-                            </div>
-                            <div class="form-group form-margin d-flex">
-                                    <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
-                                    <div class="col-6 d-flex align-item-center input-align">
-                                        <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin max-font-size-input" style="display: none;">
-                                    <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
-                                    <div class="col-md-8">
-                                        <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="form-group form-margin d-flex">
-                                    <label class="col-2 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
-                                    <div class="col-6 d-flex align-item-center input-align">
-                                        <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
-                                    </div>
-                            </div>
-                            <div class="ml-3">
-                                <div>
-                                    <span class="settings-secondary-header">Tree/Dendrogram</span>
-                                    <div class="form-group form-margin d-flex mt-3">
-                                            <label class="col-2 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
-                                            <div class="col-6 d-flex align-item-center input-align">
-                                                <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs col-3">
-                                            </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex">
-                                            <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
-                                            <div class="col-6 d-flex">
-                                                <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
-                                            </div>
-                                    </div>
-                                    <div class="form-group form-margin d-flex">
-                                            <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
-                                            <div class="col-6 d-flex">
-                                                <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
-                                            </div>
+                            <span class="settings-header btn d-flex chart-icon-padding" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option"><img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
+                            <div class="collapse multi-collapse show" id="layer-collapse-option">
+                                <div class="form-group form-margin d-flex pt-1">
+                                    <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
+                                    <div class="col-2 d-flex">
+                                        <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                     </div>
                                 </div>
-                                <span class="settings-secondary-header">Labels</span>
-                                <div class="form-group form-margin d-flex pt-1 ">
-                                        <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
-                                        <div class="col-2 input-align d-flex mt-2">
-                                            <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-2 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
+                                        <div class="col-6 d-flex align-item-center input-align">
+                                            <input class="form-control input-xs col-3" type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
                                         </div>
+                                </div>
+                                <div class="form-group form-margin max-font-size-input" style="display: none;">
+                                        <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
+                                        <div class="col-md-8">
+                                            <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
+                                        </div>
+                                </div>
+                                <div class="form-group form-margin d-flex">
+                                        <label class="col-2 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
+                                        <div class="col-6 d-flex align-item-center input-align">
+                                            <input class="form-control input-xs col-3" type="text" value="0.15" size="4" id="background_opacity" class="form-control input-xs">
+                                        </div>
+                                </div>
+                                <div class="ml-3">
+                                    <div>
+                                        <span class="settings-secondary-header">Tree/Dendrogram</span>
+                                        <div class="form-group form-margin d-flex mt-3">
+                                                <label class="col-2 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
+                                                <div class="col-6 d-flex align-item-center input-align">
+                                                    <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs col-3">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex">
+                                                <label class="col-3 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
+                                                </div>
+                                        </div>
+                                        <div class="form-group form-margin d-flex">
+                                                <label class="col-3 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
+                                                <div class="col-6 d-flex">
+                                                    <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
+                                                </div>
+                                        </div>
+                                    </div>
+                                    <span class="settings-secondary-header">Labels</span>
+                                    <div class="form-group form-margin d-flex pt-1 ">
+                                            <label class="col-2 settings-label" for="max_font_size_label" data-help="max-font-size-label">Maximum font size:</label>
+                                            <div class="col-2 input-align d-flex mt-2">
+                                                <input class="form-control input-xs" type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
