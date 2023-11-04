@@ -132,15 +132,7 @@ if __name__ == '__main__':
                         f"with the suffix `{OUTPUT_FILE_SUFFIX}`.")
 
 
-    args = None
-    try:
-        args = parser.get_args(parser)
-    except Exception as e:
-        parser.print_help()
-        print(f"ERROR: Invalid command syntax, check the synopsis.\n({e})")
-        
-        sys.exit(-1)
-
+    args = parser.get_args(parser)
     
     try:
         reformat_BAM(args)
