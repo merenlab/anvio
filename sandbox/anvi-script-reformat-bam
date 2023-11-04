@@ -71,7 +71,7 @@ def update_read(read, new_header):
 def reformat_BAM(args):
     # print dump of `args`
     run.info('Input BAM file', args.bam_file)
-    run.info('Rename list', args.rename_list)
+    run.info('Rename list', args.report_file)
     
     # Parameters check
     input_basename = os.path.basename(args.bam_file)
@@ -84,9 +84,9 @@ def reformat_BAM(args):
         )
         run.info("Output BAM file", output_filename)
 
-    # Check input file exist
-    filesnpaths.is_file_exists(args.rename_list)
+    # Some sanity checks
     filesnpaths.is_file_bam_file(args.bam_file)
+    filesnpaths.is_file_exists(args.report_file)
 
     if args.bam_file == output_filename:
         raise ConfigError("The input file and the output file names can't be the same :/")
@@ -95,8 +95,8 @@ def reformat_BAM(args):
 
     # Load the list (tsv file, two columns, new name TAB old name)
     run.warning(None, header='WHAT WAS THERE', lc="cyan")
-    rename_dict = load_dict_from_tsv(args.rename_list)
-    run.info(f"Loaded {args.rename_list}", f"{len(rename_dict):,}", mc="green")
+    rename_dict = load_dict_from_tsv(args.report_file)
+    run.info(f"Loaded {args.report_file}", f"{len(rename_dict):,}", mc="green")
 
     run.warning(None, header='WHAT WAS DONE', lc="cyan")
     # Open the BAM file with pysam and rename all the contigs in header and alignment records
@@ -131,8 +131,8 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('INPUT', 'The input file you wish to work with.')
     groupA.add_argument('bam_file', metavar='BAM FILE')
-    groupA.add_argument('-l', '--rename-list', metavar="RENAME LIST", help="tabular file produced by \"anvi-script-reformat-fasta  --report file\"", required=True)
-    
+    groupA.add_argument('-r', '--report-file', metavar="TXT FILE", help="A TAB-delimited file produced by `anvi-script-reformat-fasta` "
+                        "to report sequence name changes due to `--simplify-names` flag.", required=True)
     
     groupB = parser.add_argument_group('OUTPUT', 'Dealing with the output.')
     groupB.add_argument('-o', '--output-bam', required=False, metavar='FORMATTED BAM',
