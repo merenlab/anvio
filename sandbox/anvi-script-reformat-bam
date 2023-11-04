@@ -83,6 +83,10 @@ def reformat_BAM(args):
     # Check input file exist
     filesnpaths.is_file_exists(args.rename_list)
     filesnpaths.is_file_bam_file(args.bam_file)
+
+    if args.bam_file == output_filename:
+        raise ConfigError("The input file and the output file names can't be the same :/")
+
     filesnpaths.is_output_file_writable(output_filename, ok_if_exists=False)
 
     # Load the list (tsv file, two columns, new name TAB old name)
