@@ -7,7 +7,7 @@ anvi-script-reformat-fasta %(fasta)s \
 {{ codestop }}
 
 {:.notice}
-If you use the flag `--report-file`, it will also create a TAB-delimited file for you to keep track of which defline in the new file corresponds to which defline in the original file.
+If you use the flag `--report-file`, it will also create a %(rename-report-file)s TAB-delimited file for you to keep track of which defline in the new file corresponds to which defline in the original file.
 
 {:.notice}
 This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension).
@@ -28,7 +28,8 @@ If your FASTA file includes a lot of very short contigs, removing them may drama
 anvi-script-reformat-fasta %(fasta)s \
                            -o %(contigs-fasta)s \
                            -l 1000 \
-                           --simplify-names
+                           --simplify-names \
+                           --report-file %(rename-report-file)s
 {{ codestop }}
 
 ### Example output
