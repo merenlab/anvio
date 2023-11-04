@@ -22,7 +22,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl', 'vinisalazar']
 __requires__ = ["fasta"]
-__provides__ = ["contigs-fasta", "rename-report-file"]
+__provides__ = ["contigs-fasta", "contig-rename-report-txt"]
 __description__ =  ("Reformat FASTA file (remove contigs based on length, or based on a given list of "
                     "deflines, and/or generate an output with simpler names)")
 

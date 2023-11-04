@@ -22,7 +22,7 @@ __credits__   = []
 __license__   = "GPL 3.0"
 __version__   = anvio.__version__
 __authors__   = ['telatin']     
-__requires__  = ["bam-file", "rename-report-file"]   
+__requires__  = ["bam-file", "contig-rename-report-txt"]   
 __provides__  = ["bam-file"]
 __description__ =  ("Reformat a BAM file to match the updated sequence names after running "
                     "anvi-script-reformat-fasta. You will need this script to fix your BAM "
@@ -122,7 +122,6 @@ def reformat_BAM(args):
 
     run.info("Output BAM file created", output_filename)
     
-
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
