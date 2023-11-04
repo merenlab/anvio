@@ -26,7 +26,7 @@ __requires__  = ["bam-file", "rename-report-file"]
 __provides__  = ["bam-file"]
 __description__ =  ("Reformat a BAM file to match the update sequence names after running anvi-script-reformat-fasta")
 
-__SUFFIX__ = ".reformatted.bam"
+OUTPUT_FILE_SUFFIX = ".reformatted.bam"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -76,7 +76,7 @@ def reformat_BAM(args):
     if not args.output_bam:
         # Remove .bam and add .reformatted.bam
         output_filename = os.path.join(os.path.dirname(args.bam_file), 
-                                       input_basename[:-4] + __SUFFIX__ if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
+                                       input_basename[:-4] + OUTPUT_FILE_SUFFIX if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
         )
         run.info("Output BAM file", output_filename)
     run.info('Overwrite output?', args.overwrite_output, mc='green' if args.overwrite_output else 'red')
@@ -132,7 +132,8 @@ if __name__ == '__main__':
     
     groupB = parser.add_argument_group('OUTPUT', 'Dealing with the output.')
     groupB.add_argument('-o', '--output-bam', required=False, metavar='FORMATTED BAM',
-                        help="The output BAM file name, if  not specified defaults to the input file name with the suffix '.reformatted.bam'")
+                        help=f"The output BAM file name. If you don't specify an output file name, the new BAM file will be reported "
+                        f"with the suffix `{OUTPUT_FILE_SUFFIX}`.")
 
 
     groupC = parser.add_argument_group('OTHER OPTIONS')
