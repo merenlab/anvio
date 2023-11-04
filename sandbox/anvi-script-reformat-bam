@@ -79,16 +79,12 @@ def reformat_BAM(args):
                                        input_basename[:-4] + OUTPUT_FILE_SUFFIX if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
         )
         run.info("Output BAM file", output_filename)
-    run.info('Overwrite output?', args.overwrite_output, mc='green' if args.overwrite_output else 'red')
 
     # Check input file exist
     filesnpaths.is_file_exists(args.bam_file)
     filesnpaths.is_file_exists(args.rename_list)
+    filesnpaths.is_output_file_writable(output_filename, ok_if_exists=False)
 
-    # Check output exists
-    if os.path.exists(output_filename) and not args.overwrite_output:
-        raise ConfigError(f"Output file {output_filename} already exists. Use --force to overwrite it.")
-    
     # Load the list (tsv file, two columns, new name TAB old name)
     run.warning(None, header='WHAT WAS THERE', lc="cyan")
     rename_dict = load_dict_from_tsv(args.rename_list)
@@ -134,11 +130,6 @@ if __name__ == '__main__':
     groupB.add_argument('-o', '--output-bam', required=False, metavar='FORMATTED BAM',
                         help=f"The output BAM file name. If you don't specify an output file name, the new BAM file will be reported "
                         f"with the suffix `{OUTPUT_FILE_SUFFIX}`.")
-
-
-    groupC = parser.add_argument_group('OTHER OPTIONS')
-    groupC.add_argument('--overwrite-output', default=False, action="store_true",
-                        help="Overwrite output file if it exists.")
 
 
     args = None
