@@ -24,7 +24,11 @@ __version__   = anvio.__version__
 __authors__   = ['telatin']     
 __requires__  = ["bam-file", "rename-report-file"]   
 __provides__  = ["bam-file"]
-__description__ =  ("Reformat a BAM file to match the update sequence names after running anvi-script-reformat-fasta")
+__description__ =  ("Reformat a BAM file to match the updated sequence names after running "
+                    "anvi-script-reformat-fasta. You will need this script to fix your BAM "
+                    "file if you run `anvi-script-reformat-fasta` on a FASTA file of "
+                    "sequences *after* you already used the previous version of the FASTA "
+                    "file for read recruitment.")
 
 OUTPUT_FILE_SUFFIX = ".reformatted.bam"
 
