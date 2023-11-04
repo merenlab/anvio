@@ -22,11 +22,15 @@ __credits__   = []
 __license__   = "GPL 3.0"
 __version__   = anvio.__version__
 __authors__   = ['telatin']     
-__requires__  = ["bam-file", "rename-report-file"]   
+__requires__  = ["bam-file", "contig-rename-report-txt"]   
 __provides__  = ["bam-file"]
-__description__ =  ("Reformat a BAM file to match the update sequence names after running anvi-script-reformat-fasta")
+__description__ =  ("Reformat a BAM file to match the updated sequence names after running "
+                    "anvi-script-reformat-fasta. You will need this script to fix your BAM "
+                    "file if you run `anvi-script-reformat-fasta` on a FASTA file of "
+                    "sequences *after* you already used the previous version of the FASTA "
+                    "file for read recruitment.")
 
-__SUFFIX__ = ".reformatted.bam"
+OUTPUT_FILE_SUFFIX = ".reformatted.bam"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -67,7 +71,7 @@ def update_read(read, new_header):
 def reformat_BAM(args):
     # print dump of `args`
     run.info('Input BAM file', args.bam_file)
-    run.info('Rename list', args.rename_list)
+    run.info('Rename list', args.report_file)
     
     # Parameters check
     input_basename = os.path.basename(args.bam_file)
@@ -76,23 +80,23 @@ def reformat_BAM(args):
     if not args.output_bam:
         # Remove .bam and add .reformatted.bam
         output_filename = os.path.join(os.path.dirname(args.bam_file), 
-                                       input_basename[:-4] + __SUFFIX__ if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
+                                       input_basename[:-4] + OUTPUT_FILE_SUFFIX if input_basename.endswith(".bam") else input_basename + ".reformatted.bam"
         )
         run.info("Output BAM file", output_filename)
-    run.info('Overwrite output?', args.overwrite_output, mc='green' if args.overwrite_output else 'red')
 
-    # Check input file exist
-    filesnpaths.is_file_exists(args.bam_file)
-    filesnpaths.is_file_exists(args.rename_list)
+    # Some sanity checks
+    filesnpaths.is_file_bam_file(args.bam_file)
+    filesnpaths.is_file_exists(args.report_file)
 
-    # Check output exists
-    if os.path.exists(output_filename) and not args.overwrite_output:
-        raise ConfigError(f"Output file {output_filename} already exists. Use --force to overwrite it.")
-    
+    if args.bam_file == output_filename:
+        raise ConfigError("The input file and the output file names can't be the same :/")
+
+    filesnpaths.is_output_file_writable(output_filename, ok_if_exists=False)
+
     # Load the list (tsv file, two columns, new name TAB old name)
     run.warning(None, header='WHAT WAS THERE', lc="cyan")
-    rename_dict = load_dict_from_tsv(args.rename_list)
-    run.info(f"Loaded {args.rename_list}", f"{len(rename_dict):,}", mc="green")
+    rename_dict = load_dict_from_tsv(args.report_file)
+    run.info(f"Loaded {args.report_file}", f"{len(rename_dict):,}", mc="green")
 
     run.warning(None, header='WHAT WAS DONE', lc="cyan")
     # Open the BAM file with pysam and rename all the contigs in header and alignment records
@@ -119,7 +123,6 @@ def reformat_BAM(args):
     run.info("Output BAM file created", output_filename)
     
 
-
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
 
@@ -127,28 +130,16 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group('INPUT', 'The input file you wish to work with.')
     groupA.add_argument('bam_file', metavar='BAM FILE')
-    groupA.add_argument('-l', '--rename-list', metavar="RENAME LIST", help="tabular file produced by \"anvi-script-reformat-fasta  --report file\"", required=True)
-    
+    groupA.add_argument('-r', '--report-file', metavar="TXT FILE", help="A TAB-delimited file produced by `anvi-script-reformat-fasta` "
+                        "to report sequence name changes due to `--simplify-names` flag.", required=True)
     
     groupB = parser.add_argument_group('OUTPUT', 'Dealing with the output.')
     groupB.add_argument('-o', '--output-bam', required=False, metavar='FORMATTED BAM',
-                        help="The output BAM file name, if  not specified defaults to the input file name with the suffix '.reformatted.bam'")
+                        help=f"The output BAM file name. If you don't specify an output file name, the new BAM file will be reported "
+                        f"with the suffix `{OUTPUT_FILE_SUFFIX}`.")
 
 
-    groupC = parser.add_argument_group('OTHER OPTIONS')
-    groupC.add_argument('--overwrite-output', default=False, action="store_true",
-                        help="Overwrite output file if it exists.")
-
-
-    args = None
-    try:
-        args = parser.get_args(parser)
-    except Exception as e:
-        parser.print_help()
-        print(f"ERROR: Invalid command syntax, check the synopsis.\n({e})")
-        
-        sys.exit(-1)
-
+    args = parser.get_args(parser)
     
     try:
         reformat_BAM(args)
