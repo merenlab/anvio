@@ -238,7 +238,7 @@ def main(args):
             run.warning(f"Please note that a total of {P('bin', len(bins_removed_for_any_reason))} from your final results "
                         f"were removed while anvi'o was applying all the filters to your HMM hits. Please carefully "
                         f"review the logs above to make sure you have a good grasp on what happened, and you're happy "
-                        f"with the reults.", header="🪦  ANVI'O WISHES SOME OF YOUR BINS TO R.I.P. 🪦")
+                        f"with the reults.", header='CONDOLENCES FROM DAAN TO YOU FOR YOUR BINS THAT WENT 💀')
 
     if args.separator:
         separator = args.separator
