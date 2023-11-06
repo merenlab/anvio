@@ -173,8 +173,7 @@ def main(args):
     run.info('Genes of interest', f"{', '.join(gene_names) if gene_names else None}")
 
     if len(gene_names):
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
-        run.info('Filtered hits', '%d hits remain after filtering for %d gene(s)' % (len(hmm_sequences_dict), len(gene_names)))
+        hmm_sequences_dict, bins_removed = s.filter_hmm_sequences_dict_for_to_only_include_specific_genes(hmm_sequences_dict, gene_names)
         CHK()
 
     if args.max_num_genes_missing_from_bin is not None:
