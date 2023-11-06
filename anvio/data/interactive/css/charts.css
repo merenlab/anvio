@@ -83,8 +83,8 @@
     position: fixed;
     height: 100px;
     width: 15px;
-    background-color: #EEEEEE;
-    border: solid 1px #DDDDDD;
+    background-color: var(--bg-color);
+    border: solid 1px var(--bg-color-hover);
     top: calc(40%);
     border-radius: 10px 0px 0px 10px;
     cursor: pointer;
