@@ -42,6 +42,13 @@ def reformat_FASTA(args):
                           f"and longer than {args.min_len} at the same time. It just doesn't make "
                           f"any sense and that's why.")
 
+    if args.output_file == args.contigs_fasta:
+        raise ConfigError("You can't set the same path for both your input file name and output "
+                          "file name. It makes no sense UNLESS you wish to 'overwrite' your input "
+                          "file in-place. But anvi'o not only has a flag for that (`--overwrite-input`) "
+                          "but also has means to track those who do not read the help menu for "
+                          "programs. Just so you know.")
+
     if args.output_file and args.overwrite_input:
         raise ConfigError("You can't ask anvi'o to overwrite your input file, and also provide an "
                           "output file name at the same time.")
