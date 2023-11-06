@@ -5,8 +5,12 @@
     line-height: 1.428;
 }
 
+body{
+    font-family: 'Montserrat', sans-serif;
+}
+
 .desc {
-    font-family: 'PT Serif',serif;
+    font-family: 'Montserrat',serif;
     font-size: 14px;
     margin-bottom: 15px;
     padding: 20px;
@@ -180,7 +184,7 @@ html, body, #wrapper {
     opacity: 0.9;
     width: 350px;
     padding: 10px;
-    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-family: 'Montserrat',"Helvetica Neue",Helvetica,Arial,sans-serif;
     overflow-y: scroll;
 }
 
@@ -596,7 +600,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
   height: 30px;
   padding-top: 7px;
   font-weight: bold;
-  font-family: fantasy;
+  font-family: 'Montserrat';
   font-size: 14px;
 }
 
@@ -938,7 +942,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 .tab-elements{
-    min-height: 1005px;
+    min-height: 100vh;
 }
 
 .menu-padding{
@@ -949,21 +953,13 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding: 0;
 }
 
-@media (min-width: 768px) {
-    *:not(text) {
-        font-size: 12px;
-        line-height: 1.428;
-    }
+@media only screen and (min-width: 768px) {
 }
 
-@media (min-width: 992px) {
-    *:not(text) {
-        font-size: 12px;
-        line-height: 1.428;
-    }
+@media only screen and (min-width: 992px) {
 }    
 
-@media (min-width:1280px){
+@media only screen and (min-width:1280px){
     /* styles for browsers larger than 1280px; */
     *:not(text) {
         font-size: 12px;
@@ -971,7 +967,7 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     }
 }
 
-@media (max-width:1460px){
+@media only screen and (max-width:1460px){
     /* styles for browsers larger than 1460px; */
     *:not(text) {
         font-size: 12px;
