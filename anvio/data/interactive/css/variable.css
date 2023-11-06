@@ -87,9 +87,19 @@
 }
 
 /* Text Style */
+.header{
+    color: var(--body-text);
+    font-family: 'Montserrat';
+    flex: 1 0 0;
+    font-size: 1.4rem; 
+    font-weight: 500; 
+    line-height: 1.6; 
+    margin-bottom: 1rem;
+}
+
 .paragraph{
     color: var(--body-text);
-    font-family: Roboto;
+    font-family: 'Montserrat';
     flex: 1 0 0;
     font-size: 1rem; 
     font-weight: 400; 

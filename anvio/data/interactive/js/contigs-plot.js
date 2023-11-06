@@ -68,7 +68,7 @@ function draw_n_values_plot(container, stats) {
                                                 .attr('x', '10')
                                                 .attr('y', '15')
                                                 .attr('fill', '#FFFFFF')
-                                                .attr('font-family', 'Helvetica')
+                                                .attr('font-family', 'Montserrat', 'Helvetica')
                                                 .attr('font-size', '12px');
 
                             tooltip_text.append('tspan')
@@ -185,7 +185,7 @@ function draw_gene_counts_chart(container, gene_counts) {
                                                     .attr('x', '10')
                                                     .attr('y', '15')
                                                     .attr('fill', '#FFFFFF')
-                                                    .attr('font-family', 'Helvetica')
+                                                    .attr('font-family', 'Montserrat', 'Helvetica')
                                                     .attr('font-size', '12px');
 
                                 tooltip_text.append('tspan')
