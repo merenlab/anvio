@@ -489,7 +489,7 @@
                                                 <div class="d-flex" id="bin_labels_angle" onchange="emit('bin-settings-changed');">
                                                     <div class="col-8" id="span_bin_labels_angle" style="display: none;">
                                                         <div class="d-flex input-align">
-                                                            <span class="input-align d-flex mr-4">Angle:</span>
+                                                            <span class="pt-1 d-flex mr-4">Angle:</span>
                                                             <input class="form-control input-xs col-9 d-flex" size="5" value="0"/>
                                                         </div>
                                                     </div>
@@ -745,7 +745,7 @@
                     <!-- SEARCH Tab -->
                     <div role="tabpanel" class="tab-pane fade show col-11" id="search_tab">
                         <div class="mt-3" id="search_tab_content">
-                            <span data-help='search-expression'>Search with expression</span>
+                            <span class="settings-header" data-help='search-expression'>Search with expression</span>
                             <div class="form-horizontal">
                                 <table style="width: 100%;">
                                     <tr>
@@ -772,7 +772,7 @@
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="searchContigs();" data-help="search-button"><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
+                                        <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="searchContigs();" data-help="search-button"><span class="bi bi-search" aria-hidden="true"></span> Search</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -780,14 +780,15 @@
                                     </tr>
                                 </table>
                             </div>
-                            <span>Search functions</span>
+                            <span class="settings-header">Search functions</span>
                             <div class="form-horizontal">
-                                <div class="alert alert-danger functions-not-available-message" style="margin-bottom: 20px;">Functions are not initialized or not available for this mode.</div>
+                                <div class="alert alert-danger functions-not-available-message mb-3">Functions are not initialized or not available for this mode.</div>
                                 <table style="width: 100%;">
                                     <tr>
                                         <td>Search terms:</td>
-                                        <td><input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" style="width: 100%;" disabled>
-                                            <small>You can separate multiple search terms with ","</small></td>
+                                        <td>
+                                            <input id="searchFunctionsValue" class="form-control" value="" onkeypress="var key = event.which || event.charCode || event.keyCode; if (key == 13) { $('#search_functions_button').trigger('click'); }" data-help="search-value" placeholder="You can separate multiple search terms with ','" style="width: 100%;" disabled>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td>Sources:</td>
@@ -795,11 +796,11 @@
                                     </tr>
                                     <tr>
                                         <td></td>
-                                        <td><button class="btn btn-outline-secondary btn-md mr-2" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button class="btn btn-outline-secondary btn-md" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
+                                        <td><button class="btn btn-outline-secondary btn-sm mr-2" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', true);">Check All</button><button class="btn btn-outline-secondary btn-sm" onclick="$('#functions_sources_list').find('input:checkbox').prop('checked', false);">Uncheck All</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
-                                        <td class="mt-2"><button type="button" class="btn btn-outline-secondary btn-lg" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="fa fa-search" aria-hidden="true"></span> Search functions</button></td>
+                                        <td class="mt-2"><button type="button" class="btn btn-outline-secondary btn-md" onclick="searchFunctions();" id="search_functions_button" data-help="search-button" disabled><span class="bi bi-search" aria-hidden="true"></span> Search functions</button></td>
                                     </tr>
                                     <tr>
                                         <td>&nbsp;</td>
@@ -809,94 +810,97 @@
                                 <div class="alert alert-danger search-message" style="display: none; margin-top: 20px;">
                                 </div>
                             </div>
-                            <span>Search gene clusters using filters</span>
-                            <div class="form-horizontal">
-                                <div class="alert alert-danger gene-filters-not-available-message" style="margin-bottom: 20px;">This feature is only available for 'pangenomics' mode.</div>
-                                <table class="table table-borderless">
-                                    <thead>
-                                        <tr>
-                                            <th>Active</th>
-                                            <th>Rule</th>
-                                            <th>Value</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="pan-filters">
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genomes gene cluster occurs</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Min number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled /></td>
-                                            <td>Max number of genes from each genome</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_func"/></td>
-                                            <td>Min functional homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_functional_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_func"/></td>
-                                            <td>Max functional homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_functional_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_geo"/></td>
-                                            <td>Min geometric homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_geometric_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_geo"/></td>
-                                            <td>Max geometric homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_geometric_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="min_combined"/></td>
-                                            <td>Min combined homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="min_combined_homogeneity_index" type="text" value="-1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td><input class="form-control input-xs" type="checkbox" disabled id="max_combined"/></td>
-                                            <td>Max combined homogeneity index</td>
-                                            <td><input class="form-control input-xs" size="6" parameter="max_combined_homogeneity_index" type="text" value="1" disabled /></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterGeneClusters();" disabled><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
-                                            <td></td>
-                                        </tr>
-                                        <tr>
-                                            <td></td>
-                                            <td><div id="search_result_message_pan_filter"></div></td>
-                                            <td></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;">
-                                </div>
-                                <script type="text/javascript">
-                                    $(document).ready(function() {
-                                        $('.pan-filters input:checkbox').on('change', function(event) {
-                                            $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
+                            <div class="pan-mode">
+                                <span class="settings-secondary-header">Search gene clusters using filters</span>
+                                <div class="form-horizontal">
+                                    <div class="alert alert-danger gene-filters-not-available-message" style="margin-bottom: 20px;">This feature is only available for 'pangenomics' mode.</div>
+                                    <table class="table table-borderless">
+                                        <thead>
+                                            <tr>
+                                                <th>Active</th>
+                                                <th>Rule</th>
+                                                <th>Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="pan-filters">
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                <td>Min number of genomes gene cluster occurs</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="min_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                <td>Max number of genomes gene cluster occurs</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="max_num_genomes_gene_cluster_occurs" type="text" value="0" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                <td>Min number of genes from each genome</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="min_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled /></td>
+                                                <td>Max number of genes from each genome</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="max_num_genes_from_each_genome" type="text" value="0" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="min_func"/></td>
+                                                <td>Min functional homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="min_functional_homogeneity_index" type="text" value="-1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="max_func"/></td>
+                                                <td>Max functional homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="max_functional_homogeneity_index" type="text" value="1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="min_geo"/></td>
+                                                <td>Min geometric homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="min_geometric_homogeneity_index" type="text" value="-1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="max_geo"/></td>
+                                                <td>Max geometric homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="max_geometric_homogeneity_index" type="text" value="1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="min_combined"/></td>
+                                                <td>Min combined homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="min_combined_homogeneity_index" type="text" value="-1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td><input class="form-control input-xs" type="checkbox" disabled id="max_combined"/></td>
+                                                <td>Max combined homogeneity index</td>
+                                                <td><input class="form-control input-xs" size="6" parameter="max_combined_homogeneity_index" type="text" value="1" disabled /></td>
+                                            </tr>
+                                            <tr>
+                                                <td></td>
+                                                <td><button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterGeneClusters();" disabled><span class="fa fa-search" aria-hidden="true"></span> Search</button></td>
+                                                <td></td>
+                                            </tr>
+                                            <tr>
+                                                <td></td>
+                                                <td><div id="search_result_message_pan_filter"></div></td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="alert alert-danger pan-filter-error" style="display: none; margin-top: 20px;">
+                                    </div>
+                                    <script type="text/javascript">
+                                        $(document).ready(function() {
+                                            $('.pan-filters input:checkbox').on('change', function(event) {
+                                                $(event.target).closest('tr').find('input:text').prop('disabled', !$(event.target).prop('checked'));
+                                            });
                                         });
-                                    });
-                                </script>
+                                    </script>
+                                </div>
                             </div>
                         </div>
-                        <div class="form-horizontal" style="margin-top: 20px;">
+                        <hr class="mb-3 col-11 border-color">
+                        <div class="form-horizontal">
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
-                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="fa fa-list" aria-hidden="true"></span> Show search results down below</button>
+                                <button type="button" class="btn btn-outline-secondary btn-md" style="width: 100%;" onclick="showSearchResult();" data-help="search-show-results"><span class="bi bi-list" aria-hidden="true"></span> Show search results down below</button>
                             </div>
                             <div class="sidebar-search-buttons btn-group col-md-12" role="group">
                                 <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" onclick="highlightResult();" data-help="search-highlight"><span class="fa fa-grain" aria-hidden="true"></span> Highlight splits on the tree</button>

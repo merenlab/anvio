@@ -901,7 +901,7 @@ function buildLegendTables() {
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
+    $('#legend_settings').accordion({heightStyle: "content", collapsible: true});
 
     $('.colorpicker').colpick({
         layout: 'hex',
