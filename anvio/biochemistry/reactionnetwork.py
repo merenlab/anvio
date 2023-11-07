@@ -31,7 +31,13 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
-from anvio.dbops import ContigsDatabase, PanDatabase, ContigsSuperclass, PanSuperclass
+from anvio.dbops import (
+    ContigsDatabase,
+    ProfileDatabase,
+    PanDatabase,
+    ContigsSuperclass,
+    PanSuperclass
+)
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -60,6 +66,9 @@ class ModelSEEDCompound:
         self.kegg_aliases: Tuple[str] = None
         self.charge: int = None
         self.formula: str = None
+        # Abundances of the metabolite across samples, with keys being sample names and values being
+        # abundances.
+        self.abundances: Dict[str, float] = {}
 
 class ModelSEEDReaction:
     """Representation of a reaction in the network, with properties given by the ModelSEED Biochemistry database."""
@@ -96,6 +105,17 @@ class Gene:
         self.kos: List[KO] = []
         # Record the strength of each KO match.
         self.e_values: List[float] = []
+        self.protein: Protein = None
+
+class Protein:
+    """This object stores abundance data for proteins in the metabolic network."""
+    def __init__(self) -> None:
+        self.id: int = None
+        # Genes in the network that can express the protein.
+        self.genes: List[Gene] = []
+        # Abundances of the protein across samples, with keys being sample names and values being
+        # abundances.
+        self.abundances: Dict[str, float] = {}
 
 class GeneCluster:
     """Representation of a gene cluster in the metabolic network."""
@@ -514,9 +534,11 @@ class GenomicNetwork(ReactionNetwork):
         # map gene caller ID to gene object
         super().__init__()
         self.contigs_db_source_path: str = None
+        self.profile_db_source_path: str = None
         self.genes: Dict[int, Gene] = {}
         self.bins: Dict[str, GeneBin] = {}
         self.collection: BinCollection = None
+        self.proteins: Dict[int, Protein] = {}
 
     def remove_metabolites_without_formula(self, path: str = None) -> None:
         """
@@ -2428,6 +2450,9 @@ class Constructor:
         pan_db: str = None,
         genomes_storage_db: str = None,
         check_gene_annotations: bool = True,
+        load_protein_abundances: bool = False,
+        load_metabolite_abundances: bool = False,
+        profile_db: str = None,
         quiet: bool = False,
         stats_file: str = None
     ) -> ReactionNetwork:
@@ -2454,6 +2479,20 @@ class Constructor:
             of gene KO annotations than is currently stored. This can result in different KOs in the
             returned ReactionNetwork than in the original network that was stored.
 
+        load_protein_abundances : bool, False
+            If loading the network from a contigs database, also load abundance measurements of
+            proteins that can be expressed by genes in the network. 'profile_db' is also required,
+            as abundance profile data is stored there.
+
+        load_metabolite_abundances : bool, False
+            If loading the network from a contigs database, also load stored abundance measurements
+            of metabolites found in the network. 'profile_db' is also required, as abundance profile
+            data is stored there.
+
+        profile_db : str, None
+            If loading protein or metabolite abundance data, this database is required, as abundance
+            profile data is stored there.
+
         quiet : bool, False
             Print network overview statistics to the terminal if False.
 
@@ -2471,6 +2510,9 @@ class Constructor:
             network = self.load_contigs_database_network(
                 contigs_db,
                 check_gene_annotations=check_gene_annotations,
+                load_protein_abundances=load_protein_abundances,
+                load_metabolite_abundances=load_metabolite_abundances,
+                profile_db=profile_db,
                 quiet=quiet,
                 stats_file=stats_file
             )
@@ -2493,6 +2535,9 @@ class Constructor:
         self,
         contigs_db: str,
         check_gene_annotations: bool = True,
+        load_protein_abundances: bool = False,
+        load_metabolite_abundances: bool = False,
+        profile_db: str = None,
         quiet: bool = False,
         stats_file: str = None
     ) -> GenomicNetwork:
@@ -2511,6 +2556,18 @@ class Constructor:
             have been made from a different set of gene KO annotations than is currently stored in
             the database. This can result in different KO assignments to genes in the returned
             GenomicNetwork than in the original network that was stored.
+
+        load_protein_abundances : bool, False
+            Load stored abundance measurements of proteins that can be expressed by genes in the
+            network. 'profile_db' is also required, as abundance profile data is stored there.
+
+        load_metabolite_abundances : bool, False
+            Load stored abundance measurements of metabolites found in the network. 'profile_db' is
+            also required, as abundance profile data is stored there.
+
+        profile_db : str, None
+            If loading protein or metabolite abundance data, this database is required, as abundance
+            profile data is stored there.
 
         quiet : bool, False
             Print network overview statistics to the terminal if False.
@@ -2652,6 +2709,15 @@ class Constructor:
         for modelseed_reaction_id in modelseed_reaction_ids:
             network.modelseed_ec_number_aliases.pop(modelseed_reaction_id)
 
+        if load_protein_abundances or load_metabolite_abundances:
+            network.profile_db_source_path = os.path.abspath(profile_db)
+            pdb = ProfileDatabase(profile_db)
+            if load_protein_abundances:
+                self._load_protein_abundances(pdb, cdb, network)
+            if load_metabolite_abundances:
+                self._load_metabolite_abundances(pdb, network)
+            pdb.disconnect()
+
         if quiet and not stats_file:
             return network
 
@@ -2672,6 +2738,120 @@ class Constructor:
             )
 
         return network
+
+    def _load_protein_abundances(
+        self,
+        profile_database: ProfileDatabase,
+        contigs_database: ContigsDatabase,
+        network: GenomicNetwork
+    ) -> None:
+        """
+        Load abundance data for proteins that can be expressed by genes in the metabolic network.
+
+        Parameters
+        ==========
+        profile_database : ProfileDatabase
+            The database storing protein measurements.
+
+        contigs_database : ContigsDatabase
+            The database storing associations between genes and proteins.
+
+        network : GenomicNetwork
+            The genomic network under construction.
+
+        Returns
+        =======
+        None
+        """
+        protein_abundances_table = profile_database.db.get_table_as_dataframe(
+            tables.protein_abundances_table_name
+        )
+        if len(protein_abundances_table) == 0:
+            return
+
+        gene_functions_table = contigs_database.db.get_table_as_dataframe(
+            'gene_functions', columns_of_interest=['gene_callers_id', 'source', 'accession']
+        )
+        gene_functions_table = gene_functions_table[
+            gene_functions_table['gene_callers_id'].isin(network.genes)
+        ]
+        gene_functions_table = gene_functions_table.rename(
+            {'source': 'reference_source', 'accession': 'reference_id'}, axis=1
+        )
+
+        protein_abundances_table = protein_abundances_table.merge(
+            gene_functions_table, how='inner', on=['reference_source', 'reference_id']
+        )
+
+        multiprotein_genes: Dict[int, List[int]] = {}
+        for key, protein_table in protein_abundances_table.groupby(
+            ['protein_id', 'reference_source', 'reference_id']
+        ):
+            protein_id = key[0]
+            protein = Protein()
+            network.proteins[protein_id] = protein
+            protein.id = protein_id
+            for gcid in protein_table['gene_callers_id'].unique():
+                gene = network.genes[gcid]
+                protein.genes.append(gene)
+                if gene.protein:
+                    try:
+                        multiprotein_genes[gene].append(protein_id)
+                    except KeyError:
+                        multiprotein_genes[gene] = [protein_id]
+                else:
+                    gene.protein = protein
+            for row in protein_table.itertuples():
+                protein.abundances[row.sample_name] = row.abundance_value
+
+        if multiprotein_genes:
+            s = ""
+            for gcid, protein_ids in multiprotein_genes.items():
+                s += f"{gcid}: {', '.join(protein_ids)}; "
+            s = s[: -1]
+            raise ConfigError(
+                f"""\
+                Certain genes were unexpectedly associated with multiple proteins with abundance
+                data. These are as follows, with the gene callers ID separated by a comma-separated
+                list of protein IDs. {s}\
+                """
+            )
+
+    def _load_metabolite_abundances(
+        self,
+        profile_database: ProfileDatabase,
+        network: GenomicNetwork
+    ) -> None:
+        """
+        Load abundance data for metabolites represented in the metabolic network.
+
+        Parameters
+        ==========
+        profile_database : ProfileDatabase
+            The database storing protein measurement data that is loaded into the genomic network.
+
+        network : GenomicNetwork
+            The genomic network under construction.
+
+        Returns
+        =======
+        None
+        """
+        metabolite_abundances_table = profile_database.db.get_table_as_dataframe(
+            tables.metabolite_abundances_table_name
+        )
+        metabolite_abundances_table = metabolite_abundances_table[
+            metabolite_abundances_table['reference_id'].isin(network.metabolites)
+        ]
+        if len(metabolite_abundances_table) == 0:
+            return
+
+        for modelseed_compound_id, metabolite_table in metabolite_abundances_table.groupby(
+            'reference_id'
+        ):
+            metabolite = network.metabolites[modelseed_compound_id]
+            for row in metabolite_table.itertuples():
+                metabolite.abundances[row.sample_name] = row.abundance_value
 
     def load_pan_database_network(
         self,
