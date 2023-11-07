@@ -639,7 +639,7 @@ class GenomicNetwork(ReactionNetwork):
                 metabolites_to_remove.append(modelseed_compound_id)
         removed = self.purge_metabolites(metabolites_to_remove)
 
-        if not path:
+        if not output_path:
             return
 
         metabolite_table = []
