@@ -147,13 +147,43 @@ class BinCollection:
         self.bins: List[Bin] = []
 
 class ReactionNetwork:
-    """A reaction network predicted from KEGG KO and ModelSEED annotations."""
+    """
+    A reaction network predicted from KEGG KO and ModelSEED annotations.
+
+    Attributes
+    ==========
+    kos : Dict[str, KO], dict()
+        This dictionary maps the IDs of KOs in the network to object representations of the KOs.
+
+    reactions : Dict[str, ModelSEEDReaction], dict()
+        This maps the IDs of ModelSEED reactions in the network to object representations of the
+        reactions.
+
+    metabolites : Dict[str, ModelSEEDCompound], dict()
+        This maps the IDs of ModelSEED metabolites in the network to object representations of the
+        metabolites.
+
+    kegg_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
+        aliased by the KEGG reaction. KO-associated KEGG reactions that do not alias ModelSEED
+        reactions are not included.
+
+    ec_number_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps EC numbers associated with KOs in the network to ModelSEED reactions aliased by
+        the EC number. KO-associated EC numbers that do not alias ModelSEED reactions are not
+        included.
+
+    modelseed_kegg_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of KEGG REACTION IDs that
+        are associated with KOs in the network and alias the ModelSEED reaction.
+
+    modelseed_ec_number_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of EC numbers that are
+        associated with KOs in the network and alias the ModelSEED reaction.
+    """
     def __init__(self) -> None:
-        # Map KO ID to KO object.
         self.kos: Dict[str, KO] = {}
-        # Map ModelSEED reaction ID to reaction object.
         self.reactions: Dict[str, ModelSEEDReaction] = {}
-        # Map ModelSEED compound ID to compound object.
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
         # The following dictionaries map reaction aliases in the network: as in, not all known
         # aliases, but only those sourced from KOs and contributing ModelSEEDReaction objects.
@@ -517,18 +547,53 @@ class GenomicNetwork(ReactionNetwork):
     """
     A reaction network predicted from KEGG KO and ModelSEED annotations of genes.
 
-    Here is an example of the information used to create a genomic network.
-    gene 1 ---> KO 1 ---> KEGG reaction 1 ---> ModelSEED reaction 1 ---> ModelSEED metabolites 1, 2, ...
-    |      |         |
-    |      |         ---> EC number 1 -------> ModelSEED reaction 1 ---> ModelSEED metabolites 1, 2, ...
-    |      |         |                |
-    |      |         |                -------> ModelSEED reaction 2 ---> ...
-    |      |         |
-    |      |         ---> EC number 2 -------> ...
-    |      |
-    |      ---> KO 2 ---> ...
-    |
-    gene 2 ---> ...
+    Attributes
+    ==========
+    kos : Dict[str, KO], dict()
+        This dictionary maps the IDs of KOs in the network to object representations of the KOs.
+
+    reactions : Dict[str, ModelSEEDReaction], dict()
+        This maps the IDs of ModelSEED reactions in the network to object representations of the
+        reactions.
+
+    metabolites : Dict[str, ModelSEEDCompound], dict()
+        This maps the IDs of ModelSEED metabolites in the network to object representations of the
+        metabolites.
+
+    kegg_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
+        aliased by the KEGG reaction. KO-associated KEGG reactions that do not alias ModelSEED
+        reactions are not included.
+
+    ec_number_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps EC numbers associated with KOs in the network to ModelSEED reactions aliased by
+        the EC number. KO-associated EC numbers that do not alias ModelSEED reactions are not
+        included.
+
+    modelseed_kegg_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of KEGG REACTION IDs that
+        are associated with KOs in the network and alias the ModelSEED reaction.
+
+    modelseed_ec_number_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of EC numbers that are
+        associated with KOs in the network and alias the ModelSEED reaction.
+
+    contigs_db_source_path : str, None
+        Path to the contigs database from which the network was built.
+
+    profile_db_source_path : str, None
+        Path to the profile database from which protein and metabolite abundance data was loaded.
+
+    genes : Dict[int, Gene], dict()
+        This maps gene callers IDs to object representations of genes in the network.
+
+    bins : Dict[str, GeneBin], dict()
+
+    collection : BinCollection, None
+
+    proteins : Dict[int, Protein], dict()
+        This maps protein IDs to object representations of proteins with abundance data in the
+        network.
     """
     def __init__(self) -> None:
         # map gene caller ID to gene object
@@ -1271,7 +1336,8 @@ class GenomicNetwork(ReactionNetwork):
         indent : int, 2
             spaces of indentation per nesting level in JSON file
 
-        progress : terminal.Progress, terminal.Progress()
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object prints transient progress information to the terminal.
         """
         progress.new("Constructing JSON")
         progress.update("Setting up")
@@ -1380,7 +1446,65 @@ class GenomicNetwork(ReactionNetwork):
         progress.end()
 
 class PangenomicNetwork(ReactionNetwork):
-    """A reaction network predicted from KEGG KO and ModelSEED annotations of pangenomic gene clusters."""
+    """
+    A reaction network predicted from KEGG KO and ModelSEED annotations of pangenomic gene clusters.
+
+    Attributes
+    ==========
+    kos : Dict[str, KO], dict()
+        This dictionary maps the IDs of KOs in the network to object representations of the KOs.
+
+    reactions : Dict[str, ModelSEEDReaction], dict()
+        This maps the IDs of ModelSEED reactions in the network to object representations of the
+        reactions.
+
+    metabolites : Dict[str, ModelSEEDCompound], dict()
+        This maps the IDs of ModelSEED metabolites in the network to object representations of the
+        metabolites.
+
+    kegg_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps KEGG REACTION IDs associated with KOs in the network to ModelSEED reactions
+        aliased by the KEGG reaction. KO-associated KEGG reactions that do not alias ModelSEED
+        reactions are not included.
+
+    ec_number_modelseed_aliases : Dict[str, List[str]], dict()
+        This maps EC numbers associated with KOs in the network to ModelSEED reactions aliased by
+        the EC number. KO-associated EC numbers that do not alias ModelSEED reactions are not
+        included.
+
+    modelseed_kegg_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of KEGG REACTION IDs that
+        are associated with KOs in the network and alias the ModelSEED reaction.
+
+    modelseed_ec_number_aliases : Dict[str, List[str]], dict()
+        This maps the IDs of ModelSEED reactions in the network to lists of EC numbers that are
+        associated with KOs in the network and alias the ModelSEED reaction.
+
+    pan_db_source_path : str, None
+        Path to the pan database from which the network was built.
+
+    genomes_storage_db_source_path : str, None
+        Path to the genomes storage database from which the network was built.
+
+    consensus_threshold : float, None
+        A parameter used in the selection of the gene cluster consensus KOs from which the network
+        was built.
+
+    discard_ties : bool, None
+        A parameter used in the selection of the gene cluster consensus KOs from which the network
+        was built.
+
+    consistent_annotations : bool, None
+        A loaded network may be based on a set of gene KO annotations in the genomes storage
+        database that has since changed, in which case this attribute would be False.
+
+    gene_clusters : Dict[str, GeneCluster], dict()
+        This maps the IDs of gene clusters in the network to object representations of the clusters.
+
+    bins : Dict[str, GeneClusterBin], dict()
+
+    collection : BinCollection, None
+    """
     def __init__(self) -> None:
         super().__init__()
         # If applicable, record the databases in which the network is stored and the parameters used
@@ -1965,7 +2089,9 @@ class KODatabase:
         Parameters
         ==========
         ko_dir : str, None
-            Directory containing KO data table to use rather than the default.
+            The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. The
+            default argument of None expects KO data to be set up in the default anvi'o directory
+            used by the program `anvi-setup-kegg-data`.
         """
         if ko_dir:
             if not os.path.isdir(ko_dir):
@@ -2009,9 +2135,10 @@ class KODatabase:
             If True, remove any existing 'KO_REACTION_NETWORK' database directory and the files
             therein. If False, an exception is raised if there are files in this directory.
 
-        run : anvio.terminal.Run, None
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
 
-        progress : anvio.terminal.Progress, None
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
         """
         if dir:
             if os.path.isdir(dir):
@@ -2323,9 +2450,11 @@ class ModelSEEDDatabase:
             If True, remove any existing 'MODELSEED' database directory and the files therein. If
             False, an exception is raised if there are files in this directory.
 
-        run : anvio.terminal.Run, None
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
 
-        progress : anvio.terminal.Progress, None
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object prints transient progress information to the terminal.
         """
         if dir:
             if os.path.isdir(dir):
@@ -2431,7 +2560,7 @@ class ModelSEEDDatabase:
         run.info("Reorganized ModelSEED compounds table", compounds_path)
 
 class Constructor:
-    """Construct metabolic reaction network objects."""
+    """Make, store, and load metabolic reaction networks."""
     def __init__(
         self,
         ko_dir: str = None,
@@ -2439,6 +2568,25 @@ class Constructor:
         run: terminal.Run = terminal.Run(),
         progress: terminal.Progress = terminal.Progress()
     ) -> None:
+        """
+        Parameters
+        ==========
+        ko_dir : str, None
+            The directory containing reference KEGG Orthology (KO) tables set up by anvi'o. The
+            default argument of None expects KO data to be set up in the default anvi'o directory
+            used by the program `anvi-setup-kegg-data`.
+
+        modelseed_dir : str, None
+            The directory containing reference ModelSEED Biochemistry tables set up by anvi'o. The
+            default argument of None expects ModelSEED data to be set up in the default anvi'o
+            directory used by the program `anvi-setup-modelseed-database`.
+
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object prints transient progress information to the terminal.
+        """
         self.ko_dir = ko_dir
         self.modelseed_dir = modelseed_dir
         self.run = run
