@@ -42,9 +42,11 @@ def main() -> None:
         )
     else:
         raise ConfigError(
-            "Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes "
-            "storage database (`--genomes-storage`) must be provided to make a (meta)genomic or "
-            "pangenomic reaction network, respectively."
+            f"""\
+            Either a contigs database (`--contigs-db`) OR a pan database (`--pan-db`) and genomes
+            storage database (`--genomes-storage`) must be provided to make a (meta)genomic or
+            pangenomic reaction network, respectively.\
+            """
         )
 
 def get_args() -> Namespace:
@@ -52,7 +54,7 @@ def get_args() -> Namespace:
 
     groupA = parser.add_argument_group(
         "SINGLE GENOME OR METAGENOME INPUT",
-        "Generate a reaction network from a contigs database, and store the network in the database."
+        "Generate a reaction network from a contigs database and store the network in the database."
     )
     groupA.add_argument(*A('contigs-db'), **K('contigs-db', {'required': False}))
 
@@ -66,42 +68,60 @@ def get_args() -> Namespace:
     groupB.add_argument(
         '--consensus-threshold', default=None, type=float,
         help=(
-            "If this argument is provided, then a protein annotation must be assigned to this "
-            "minimum proportion of genes in a cluster to be imputed to the cluster as a whole. "
-            "By default, without this argument, the annotation assigned to the most genes becomes "
-            "the annotation of the cluster (also see --discard-ties). The consensus threshold must "
-            "be a number from 0 to 1."
+            f"""\
+            If this argument is provided, then a protein annotation must be assigned to this minimum
+            proportion of genes in a cluster to be imputed to the cluster as a whole. By default,
+            without this argument, the annotation assigned to the most genes becomes the annotation
+            of the cluster (also see --discard-ties). The consensus threshold must be a number from
+            0 to 1.\
+            """
         )
     )
     groupB.add_argument(
         '--discard-ties', default=False, action='store_true',
         help=(
-            "By default, a gene cluster is assigned a protein annotation by finding the protein "
-            "ortholog that occurs in the greatest number of genes in the cluster (see "
-            "--consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With "
-            "this flag, a tie instead results in an ortholog annotation not being assigned to the cluster."
+            f"""\
+            By default, a gene cluster is assigned a protein annotation by finding the protein
+            ortholog that occurs in the greatest number of genes in the cluster (see
+            --consensus-threshold) and arbitrarily choosing one ortholog in case of a tie. With this
+            flag, a tie instead results in an ortholog annotation not being assigned to the
+            cluster.\
+            """
         )
     )
 
-    groupC = parser.add_argument_group("DATABASE", "KEGG and ModelSEED reference database information")
+    groupC = parser.add_argument_group(
+        "DATABASE", "KEGG and ModelSEED reference database information"
+    )
     groupC.add_argument(
         '--ko-dir', type=str, metavar='PATH',
         help=(
-            "Path to KEGG KO database directory. If this option is not used, the program expects a "
-            "database set up in the default location used by 'anvi-setup-kegg-data'."
+            f"""\
+            Path to KEGG KO database directory. If this option is not used, the program expects a
+            database set up in the default location used by 'anvi-setup-kegg-data'.\
+            """
         )
     )
     groupC.add_argument(
         '--modelseed-dir', type=str, metavar='PATH',
         help=(
-            "Path to ModelSEED Biochemistry database directory. If this option is not used, the program "
-            "expects a database set up in the default location used by 'anvi-setup-modelseed-database'."
+            f"""\
+            Path to ModelSEED Biochemistry database directory. If this option is not used, the
+            program expects a database set up in the default location used by
+            'anvi-setup-modelseed-database'.\
+            """
         )
     )
 
     groupD = parser.add_argument_group("OTHER OPTIONS")
     groupD.add_argument(
         '--overwrite-existing-network', default=False, action='store_true',
+        help=(
+            f"""\
+            Overwrite an existing reaction network in the database with the newly computed network.\
+            """
+        )
+    )
     groupD.add_argument(
         '--stats-file', type=str, metavar='PATH',
         help=(
