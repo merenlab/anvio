@@ -15,7 +15,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 contigs_db_version = "22"
-profile_db_version = "38"
+profile_db_version = "39"
 genes_db_version = "6"
 pan_db_version = "17"
 auxiliary_data_version = "2"
@@ -213,6 +213,13 @@ views_table_types                    = [  'str'  ,      'str'    ]
 view_table_structure = ['item', 'layer',  'value' ]
 view_table_types     = ['text', 'text' , 'numeric']
 
+protein_abundances_table_name        = 'protein_abundances'
+protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
+protein_abundances_table_types       = [  'numeric' ,       'text'      ,     'text'    ,     'text'   ,     'numeric'    ]
+
+metabolite_abundances_table_name      = 'metabolite_abundances'
+metabolite_abundances_table_structure = ['reference_source', 'reference_id', 'sample_name', 'abundance_value']
+metabolite_abundances_table_types     = [      'text'      ,     'text'    ,     'text'   ,     'numeric'    ]
 
 ####################################################################################################
 #
@@ -434,6 +441,8 @@ table_requires_unique_entry_id = {'self': False,
                                   layer_orders_table_name: False,
                                   states_table_name: False,
                                   views_table_name: False,
+                                  protein_abundances_table_name: False,
+                                  metabolite_abundances_table_name: False,
                                   collections_info_table_name: False,
                                   split_coverages_table_name: False,
                                   genome_info_table_name: False,
