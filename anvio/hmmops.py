@@ -605,7 +605,7 @@ class SequencesForHMMHits:
 
         if not len(bins_that_are_lost):
             # well, all bins are still in the data structure. we're good to return everything
-            return hmm_sequences_dict, []
+            return hmm_sequences_dict_for_splits, []
 
         # if we are still here, it means some bins were gon buh-bye. we start by letting
         # the user gently that stuff went south
