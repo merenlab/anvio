@@ -422,3 +422,19 @@
       inst: University of Washington
       inst_link: https://ocean.washington.edu
       current: true
+
+- github: telatin
+  name: Andrea Telatin
+  twitter: telatin
+  web: https://telatin.github.io
+  orcid: 0000-0001-7619-281X
+  email: andrea.telatin@quadram.ac.uk
+  avatar: telatin.jpg
+  bio: "Senior Bioinformatician at the Quadram Institute Bioscience, Norwich, UK. Interested in metagenomics, microbial ecology, and open science."
+  intellectual-contributions:
+    - contribution: "Added a script to reformat BAM files after running anvi-script-reformat-fasta"
+  affiliations:
+    - title: Senior Bioinformatician
+      inst: Quadram Institute Bioscience
+      inst_link: https://quadram.ac.uk
+      current: true

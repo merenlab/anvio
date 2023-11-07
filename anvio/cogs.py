@@ -11,6 +11,7 @@ import shutil
 import hashlib
 
 import anvio
+import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.dictio as dictio
@@ -74,6 +75,8 @@ class COGs:
         self.contigs_db_path = A('contigs_db')
         self.search_with = A('search_with') or 'diamond'
         self.temp_dir_path = A('temporary_dir_path')
+
+        self.output_file_path = A('output_file')
 
         self.log_file_path = None
 
@@ -198,6 +201,34 @@ class COGs:
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
 
+        if not aa_sequences_file_path and self.output_file_path:
+            self.run.warning("You provided an output sequence, but the input was not an amino acid FASTA file. When the input is a contigs database, "
+                             "the annotations are stored within the database itself. Thus, this output file will not be used.")
+
+        if aa_sequences_file_path and not self.output_file_path:
+            raise ConfigError("You must pass an output file in which to store the annotations of the input FASTA file. See y'a later aligator!")
+
+        if aa_sequences_file_path:
+            filesnpaths.is_output_file_writable(self.output_file_path)
+            filesnpaths.is_file_exists(aa_sequences_file_path)
+
+            self.progress.new("Sanity checking")
+            self.progress.update("Figuring out the number of AA sequences in the file ...")
+            num_sequences = utils.get_num_sequences_in_fasta(aa_sequences_file_path)
+            self.progress.end()
+
+            self.progress.new("Sanity checking", progress_total_items=num_sequences)
+            fasta = u.SequenceSource(aa_sequences_file_path)
+            while next(fasta):
+                self.progress.increment()
+                if self.progress.progress_current_item % 1000 == 0:
+                    self.progress.update(f"Going through {pp(num_sequences)} AA sequences ..")
+                utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, must_start_with_met=False)
+            fasta.close()
+            self.progress.end()
+
+            self.aa_sequence_file_input = aa_sequences_file_path
+
         if not self.temp_dir_path:
             self.temp_dir_path = filesnpaths.get_temp_directory_path()
             self.remove_temp_dir_path = True
@@ -234,15 +265,18 @@ class COGs:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                               "parsing of a new generation of COG files.")
 
-        # store hits into the contigs database
-        self.store_hits_into_contigs_db()
+        # store hits into the contigs database or output file
+        self.store_hits()
 
         if self.remove_temp_dir_path:
             shutil.rmtree(self.temp_dir_path)
 
+    def store_hits(self):
+        """
+        Filters through COG hits and write them either to the CONTIGS.db or to a file.
+        """
 
-    def store_hits_into_contigs_db(self):
-        if not self.hits:
+        if not self.hits and self.contigs_db_path:
             self.run.warning("COGs class has no hits to process. Returning empty handed, but still adding COGs as "
                              "functional sources.")
             gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -255,6 +289,10 @@ class COGs:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
             return
+        
+        elif not self.hits and self.aa_sequence_file_input:
+            self.run.warning("COGs class has no hits to process. Returning empty handed.")
+            return
 
         cogs_data = COGsData(self.args)
         cogs_data.init_p_id_to_cog_id_dict()
@@ -264,7 +302,8 @@ class COGs:
 
 
         def add_entry(gene_callers_id, source, accession, function, e_value):
-            functions_dict[self.__entry_id] = {'gene_callers_id': int(gene_callers_id),
+            gene_caller_id = int(gene_callers_id) if self.contigs_db_path else str(gene_callers_id)
+            functions_dict[self.__entry_id] = {'gene_callers_id': gene_caller_id,
                                                'source': source,
                                                'accession': accession,
                                                'function': function,
@@ -334,9 +373,13 @@ class COGs:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
 
-        # store hits in contigs db.
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-        gene_function_calls_table.create(functions_dict)
+        # store hits in contigs db or write to output
+        if self.contigs_db_path:
+            gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+            gene_function_calls_table.create(functions_dict)
+
+        elif self.aa_sequence_file_input:
+            utils.store_dict_as_TAB_delimited_file(d=functions_dict, output_path=self.output_file_path, do_not_write_key_column=True)
 
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
