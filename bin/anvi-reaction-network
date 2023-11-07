@@ -28,7 +28,8 @@ def main() -> None:
     if args.contigs_db:
         constructor.make_network(
             contigs_db=args.contigs_db,
-            overwrite_existing_network=args.overwrite_existing_network
+            overwrite_existing_network=args.overwrite_existing_network,
+            stats_file=args.stats_file
         )
     elif args.pan_db or args.genomes_storage:
         constructor.make_network(
@@ -36,7 +37,8 @@ def main() -> None:
             genomes_storage_db=args.genomes_storage,
             overwrite_existing_network=args.overwrite_existing_network,
             consensus_threshold=args.consensus_threshold,
-            discard_ties=args.discard_ties
+            discard_ties=args.discard_ties,
+            stats_file=args.stats_file
         )
     else:
         raise ConfigError(
@@ -100,7 +102,14 @@ def get_args() -> Namespace:
     groupD = parser.add_argument_group("OTHER OPTIONS")
     groupD.add_argument(
         '--overwrite-existing-network', default=False, action='store_true',
-        help="Overwrite an existing reaction network in the database with the newly computed network."
+    groupD.add_argument(
+        '--stats-file', type=str, metavar='PATH',
+        help=(
+            f"""\
+            Write a tab-delimited file of network overview statistics (statistics also printed to
+            the terminal) to the output path.\
+            """
+        )
     )
 
     args = parser.get_args(parser)
