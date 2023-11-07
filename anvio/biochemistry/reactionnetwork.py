@@ -605,7 +605,7 @@ class GenomicNetwork(ReactionNetwork):
         self.collection: BinCollection = None
         self.proteins: Dict[int, Protein] = {}
 
-    def remove_metabolites_without_formula(self, path: str = None) -> None:
+    def remove_metabolites_without_formula(self, output_path: str = None) -> None:
         """
         Remove metabolites without a formula in the ModelSEED database from the network.
 
@@ -615,15 +615,15 @@ class GenomicNetwork(ReactionNetwork):
         Additional metabolites that are exclusive to removed reactions can also be removed from the
         network. In the output table of removed metabolites, these additional metabolites have a formula.
 
-        path : str, None
+        output_path : str, None
             If not None, write 3 tab-delimited files of metabolites, reactions, and genes removed
             from the network to file locations based on the path. For example, if the argument,
             'removed.tsv', is provided, then the following files will be written:
             'removed-metabolites.tsv', 'removed-reactions.tsv', and 'removed-genes.tsv'.
         """
-        if path:
-            filesnpaths.is_output_file_writable(path)
-            path_basename, path_extension = os.path.splitext(path)
+        if output_path:
+            filesnpaths.is_output_file_writable(output_path)
+            path_basename, path_extension = os.path.splitext(output_path)
             metabolite_path = f"{path_basename}-metabolites{path_extension}"
             reaction_path = f"{path_basename}-reactions{path_extension}"
             gene_path = f"{path_basename}-genes{path_extension}"
