@@ -2935,14 +2935,14 @@ class Constructor:
             reaction.compounds = []
             for modelseed_compound_id in modelseed_compound_ids.split(', '):
                 try:
-                    compound = network.metabolites[modelseed_compound_id]
-                except KeyError:
                     # This is not the first reaction involving the compound, so an object for it
                     # already exists.
+                    compound = network.metabolites[modelseed_compound_id]
+                except KeyError:
                     compound = ModelSEEDCompound()
                     compound.modelseed_id = modelseed_compound_id
-                    reaction.compounds.append(compound)
                     network.metabolites[modelseed_compound_id] = compound
+                reaction.compounds.append(compound)
             reaction.compounds = tuple(reaction.compounds)
 
             stoichiometry: str = row.stoichiometry
