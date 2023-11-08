@@ -124,16 +124,17 @@ $(document).ready(function() {
         "hideMethod": "fadeOut",
     }
 
+    // Dendrogram settings changes depending on drawing type
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram')
         {
-            $('.phylogram_settings').hide();
-            $('.circlephylogram_settings').show();
+            $('#tree_type_circlephylogram').show();
+            $('#tree_type_phylogram').hide();
         }
         else
         {
-            $('.phylogram_settings').show();
-            $('.circlephylogram_settings').hide();
+            $('#tree_type_circlephylogram').hide();
+            $('#tree_type_phylogram').show();
         }
     });
 

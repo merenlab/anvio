@@ -546,30 +546,34 @@
 
                             <div class="ml-3">
                                 <span class="settings-secondary-header">Dendrogram</span>
-                                <div class="form-group form-margin circlephylogram_settings d-flex mt-3">
-                                        <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
-                                        <div class="col-6 form-inline input-align">
-                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
-                                            <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
-                                        </div>
+                                <div id="tree_type_circlephylogram">
+                                    <div class="form-group form-margin circlephylogram_settings d-flex mt-3">
+                                            <label class="col-2 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
+                                            <div class="col-6 form-inline input-align">
+                                                <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs col-3"> <span class="ml-1">to</span>
+                                                <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin circlephylogram_settings d-flex">
+                                            <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
                                 </div>
-                                <div class="form-group form-margin circlephylogram_settings d-flex">
-                                        <label class="col-2 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
-                                        <div class="col-6 d-flex input-align">
-                                            <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs col-3">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                        <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
-                                        <div class="col-6 d-flex input-align">
-                                            <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
-                                        </div>
-                                </div>
-                                <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
-                                        <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
-                                        <div class="col-6 d-flex input-align">
-                                            <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
-                                        </div>
+                                <div id="tree_type_phylogram">
+                                    <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
+                                            <label class="col-2 settings-label" for="tree_height" data-help="tree-height">Height:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
+                                    <div class="form-group form-margin phylogram_settings d-flex" style="display: none;">
+                                            <label class="col-2 settings-label" for="tree_width" data-help="tree-width">Width:</label>
+                                            <div class="col-6 d-flex input-align">
+                                                <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs col-3">
+                                            </div>
+                                    </div>
                                 </div>
                                 <div class="form-group form-margin d-flex">
                                         <label class="col-3 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
