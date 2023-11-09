@@ -26,8 +26,8 @@ function LoadCollectionDialog() {
     this.dialog.innerHTML = `<div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Load bin collection</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="col-md-7">

@@ -39,8 +39,8 @@ function SaveTreeDialog(tree_type) {
     this.dialog.innerHTML = `<div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Save Tree ${this.tree_type=='samples' ? ` (Layers) ` : ``}</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
