@@ -189,8 +189,11 @@
                 <div class="col-12 tab-content ml-1">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
-                            <span class="settings-header btn d-flex chart-icon-padding" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">
-                                <img src="images/item-chart.svg" alt="Item Icon"/> Items</span>
+                            <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
+                                <img src="images/item-chart.svg" alt="Item Icon"/> 
+                                Items
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span> 
                             <div class="collapse multi-collapse show" id="item-collapse-main">
                                 <div class="ml-2">
                                     <div class="form-group form-margin">
@@ -284,8 +287,11 @@
                                     </div>
                                 </div>
                             </div>
-                            <span class="settings-header btn d-flex chart-icon-padding mt-3" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">
-                                <img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
+                            <span id="toggle-chevron-layer" class="settings-header btn d-flex chart-icon-padding mt-3 align-items-center" data-toggle="collapse" href="#layer-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/layer-chart.svg" alt="Layer Icon"/>
+                                Layers
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
                             <div class="ml-2 collapse multi-collapse show" id="layer-collapse-main">
                                 <div id="sample-settings" class="form-horizontal">
                                     <div class="form-group form-margin">
@@ -386,8 +392,11 @@
                                 </div>
                             </div>
 
-                            <span class="settings-header btn d-flex chart-icon-padding mt-3" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option">
-                                <img src="images/legend-chart.svg" alt="Item Icon"/> Legends</span>
+                            <span id="toggle-chevron-legend" class="settings-header btn d-flex chart-icon-padding mt-3 align-items-center" data-toggle="collapse" href="#legend-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-legend').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/legend-chart.svg" alt="Item Icon"/>
+                                Legends
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
                             <div class="collapse multi-collapse show" id="legend-collapse-main">
                                 <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
                                 </div>
@@ -451,8 +460,11 @@
                     <!-- OPTION Tab -->
                     <div role="tabpanel" class="tab-pane fade show" id="samples_settings">
                         <div id="additional_settings">
-                            <span class="settings-header mt-3 btn d-flex chart-icon-padding" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option">
-                                <img src="images/item-chart.svg" alt="Item Icon"/>Items</span>
+                            <span id="toggle-chevron-item-option" class="settings-header mt-3 btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/item-chart.svg" alt="Item Icon"/>
+                                Items
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
                             <div class="collapse multi-collapse show" id="item-collapse-option">
                                 <div class="ml-3">
                                     <span class="settings-secondary-header">Selected Bins</span>
@@ -687,7 +699,11 @@
                             </div>
                             </div>
 
-                            <span class="settings-header btn d-flex chart-icon-padding" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option"><img src="images/layer-chart.svg" alt="Layer Icon"/> Layers</span>
+                            <span id="toggle-chevron-layer-option" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#layer-collapse-option" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-layer-option').children('i').toggleClass('bi-chevron-down bi-chevron-up');">
+                                <img src="images/layer-chart.svg" alt="Layer Icon"/>
+                                Layers
+                                <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
+                            </span>
                             <div class="collapse multi-collapse show" id="layer-collapse-option">
                                 <div class="form-group form-margin d-flex pt-1">
                                     <label class="col-3 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
