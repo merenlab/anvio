@@ -953,6 +953,16 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding: 0;
 }
 
+.discord-btn:hover{
+    background-color: #5865F2;
+    border-color: #5865F2;
+}
+
+.github-btn:hover{
+    background-color: #0c2d6b;
+    border-color: #0c2d6b;
+}
+
 @media only screen and (min-width: 768px) {
 }
 

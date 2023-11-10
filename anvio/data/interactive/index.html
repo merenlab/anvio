@@ -186,7 +186,7 @@
                     </nav>
                 </div>
                 <!-- this hide function needs to happen upon initial render, currently only called onchange -->
-                <div class="col-12 tab-content ml-1">
+                <div class="col-11 tab-content ml-1">
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
@@ -401,59 +401,6 @@
                                 <div class="tab-pane fade show ml-3 mt-3 col-11" id="legend_settings">
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- BINS Tab -->
-                    <div role="tabpanel" class="tab-pane fade show col-11" id="bin_settings">
-                        <div id="bin-settings" class="form-horizontal mt-3">
-                            <div class="panel-body">
-
-                                <div class="form-group form-margin full-mode refine-mode mt-3">
-                                    <p id="estimate-taxonomy-check" class="d-flex">
-                                        <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
-                                        <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
-                                    </p>
-                                </div>
-
-                                <table class="table sortable" id="bins-table">
-                                    <thead id="thead_bins">
-                                        <tr>
-                                            <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>
-                                            <th class="text-center"></th>
-                                            <th>Name</th>
-                                            <th id="splits_title">Splits</th>
-                                            <th id="len_title">Len</th>
-                                            <th id="completion_title" title="Completion">Comp.</th>
-                                            <th id="redundancy_title" title="Redundancy">Red.</th>
-                                            <th data-defaultsort='disabled'><span class="del-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();"></span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbody_bins">
-                                        <!-- JS FILLS HERE -->
-                                    </tbody>
-                                </table>
-
-                                <div class="">
-                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode gene-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="bi bi-file-arrow-up fa-lg" aria-hidden="true"></span> Load bin collection</button>
-                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="bi bi-file-arrow-down fa-lg" aria-hidden="true"></span> Store bin collection</button>
-                                    </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-outline-success btn-lg" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true">Generate a static summary page</button>
-                                    </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode refine-mode" role="group" style="display: none">
-                                        <button type="button" id="show_taxonomy_button" class="btn btn-outline-info btn-lg" onclick="showTaxonomy();" style="width: 100%">Recalculate / Show Taxonomy for Bins</button>
-                                    </div>
-                                    <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
-                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true">Store refined bins in the database</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="bins-bottom" class="col-md-12">
-                            <!-- JS FILLS HERE -->
                         </div>
                     </div>
 
@@ -762,8 +709,61 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- BINS Tab -->
+                    <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
+                        <div id="bin-settings" class="form-horizontal mt-3">
+                            <div class="panel-body">
+
+                                <div class="form-group form-margin full-mode refine-mode mt-3">
+                                    <p id="estimate-taxonomy-check" class="d-flex">
+                                        <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
+                                        <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
+                                    </p>
+                                </div>
+
+                                <table class="table sortable" id="bins-table">
+                                    <thead id="thead_bins">
+                                        <tr>
+                                            <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>
+                                            <th class="text-center"></th>
+                                            <th>Name</th>
+                                            <th id="splits_title">Splits</th>
+                                            <th id="len_title">Len</th>
+                                            <th id="completion_title" title="Completion">Comp.</th>
+                                            <th id="redundancy_title" title="Redundancy">Red.</th>
+                                            <th data-defaultsort='disabled'><span class="del-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete all bins" title="Delete all bins" onClick="bins.DeleteAllBins();"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody_bins">
+                                        <!-- JS FILLS HERE -->
+                                    </tbody>
+                                </table>
+
+                                <div class="">
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode manual-mode gene-mode" role="group" style="display: none">
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new LoadCollectionDialog().Show();" style="width: 50%"><span class="bi bi-file-arrow-up fa-lg" aria-hidden="true"></span> Load bin collection</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="new StoreCollectionDialog().Show();" style="width: 50%" disabled-in-read-only="true"><span class="bi bi-file-arrow-down fa-lg" aria-hidden="true"></span> Store bin collection</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode" role="group" style="display: none">
+                                        <button type="button" class="btn btn-outline-success btn-lg" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true">Generate a static summary page</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode refine-mode" role="group" style="display: none">
+                                        <button type="button" id="show_taxonomy_button" class="btn btn-outline-info btn-lg" onclick="showTaxonomy();" style="width: 100%">Recalculate / Show Taxonomy for Bins</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
+                                        <button type="button" class="btn btn-outline-secondary btn-md" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true">Store refined bins in the database</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="bins-bottom" class="col-md-12">
+                            <!-- JS FILLS HERE -->
+                        </div>
+                    </div>
+
                     <!-- SEARCH Tab -->
-                    <div role="tabpanel" class="tab-pane fade show col-11" id="search_tab">
+                    <div role="tabpanel" class="tab-pane fade show" id="search_tab">
                         <div class="mt-3" id="search_tab_content">
                             <span class="settings-header" data-help='search-expression'>Search with expression</span>
                             <div class="form-horizontal">
@@ -948,7 +948,7 @@
                     </div>
 
                     <!-- DATA TAB -->
-                    <div role="tabpanel" class="tab-pane fade show col-11" id="data_tab">
+                    <div role="tabpanel" class="tab-pane fade show" id="data_tab">
                         <p class="mt-3" style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the tree.</p>
                         <div id="mouse_hover">
                             <table class="table table-striped" style="margin-bottom: 0px; background-color: rgba(100,100,100,0.2); font-weight: bold; word-break: break-all;">
@@ -978,29 +978,33 @@
                     </div>
 
                     <!-- NOTES TAB -->
-                    <div role="tabpanel" class="tab-pane fade show col-11" id="description_tab">
+                    <div role="tabpanel" class="tab-pane fade show" id="description_tab">
                         <div class="mt-3">
                             <textarea id="description-editor" rows="10"></textarea>
                         </div>
                     </div>
 
                     <!-- ANVIO TAB -->
-                    <div role="tabpanel" class="tab-pane fade show col-11" id="anvio_detail_tab">
+                    <div role="tabpanel" class="tab-pane fade show" id="anvio_detail_tab">
                         <div class="mt-3 paragraph" id="anvio_tab_content">
-                            <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt"><p class="subheading">Anvi'o Authors</p></a>
+                            <a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">
+                                <p class="subheading">Anvi'o Authors</p>
+                            </a>
                             <hr class="mb-3 col-11 border-color">
-                            <a  href="http://merenlab.org/projects/anvio/"><p class="subheading">Anvi'o Project Page</p></a>
+                            <a href="http://merenlab.org/projects/anvio/"><p class="subheading">Anvi'o Project Page</p></a>
                             <hr class="mb-3 col-11 border-color">
                             <a href="https://discord.gg/C6He6mSNY4"><p class="subheading">Getting Help</p></a>
                             <hr class="mb-3 col-11 border-color">
                             <a href="https://github.com/meren/anvio/issues"><p class="subheading">Browse/Report Issue</p></a>
                             <hr class="mb-3 col-11 border-color">
+                            <a href="https://anvio.org/cite/"><p class="subheading">How To Cite</p></a>
+                            <hr class="mb-3 col-11 border-color">
                             <a href="http://merenlab.org/people/"><p class="subheading">Contant Us</p></a>
                             <hr class="mb-3 col-11 border-color">
                         </div>
                         <div class="paragraph d-flex align-item-center justify-content-center col-10">
-                            <a href="https://discord.gg/C6He6mSNY4" class="mr-3 align-item-center justify-content-center"><i class="bi bi-discord fs-2"></i> <span class="lead">| Join</span></a>
-                            <a href="https://github.com/merenlab/anvio" class="align-item-center justify-content-center"><i class="bi bi-github fs-2"></i> <span class="lead">| Give us a Star</span></a>
+                            <a href="https://discord.gg/C6He6mSNY4" class="mr-3 discord-btn btn btn-outline-secondary align-item-center justify-content-center"><i class="bi bi-discord fs-2"></i> <span class="lead">| Join</span></a>
+                            <a href="https://github.com/merenlab/anvio" class="btn github-btn btn-outline-secondary align-item-center justify-content-center"><i class="bi bi-github fs-2"></i> <span class="lead">| Give us a Star</span></a>
                         </div>
                     </div>
                 </div>
