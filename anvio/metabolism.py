@@ -37,13 +37,13 @@ class PathwayYAML:
     
     PARAMETERS
     ==========
-    file_path : string
+    file_path : str
         path to input YAML file
-    path_dict : dictionary
+    path_dict : dict
         dictionary containing the pathway info, ie from an already-parsed YAML file
     """
 
-    def __init__(self, file_path=None, path_dict=None):
+    def __init__(self, file_path: str = None, path_dict: dict = None):
 
         if not file_path and not path_dict:
             raise ConfigError("The PathwayYAML class requires an input. You should provide either a path to a YAML file or a "
@@ -76,6 +76,10 @@ class PathwayYAML:
         self.dict = pathway_dict[self.id]
 
         self.parse_pathway_data()
+
+        self.print_pathway()
+
+
     #### ACCESSOR FUNCTIONS ####
     def get_pathway_dict(self):
         """Returns the pathway dictionary."""
@@ -104,7 +108,7 @@ class PathwayYAML:
                 raise ConfigError(f"There is an issue with the definition of {field} in the input pathway data. "
                                   f"This field is supposed to be of type '{requirements['data_type']}' but instead it is a {type(self.dict[field])}.")
 
-    def parse_accessions_from_definition(self, passed_definition=None):
+    def parse_accessions_from_definition(self, passed_definition: str = None):
         """Returns a list of functional accessions from the definition string. 
         
         If no definition is passed using the `passed_definition` variable, this function works on the definition 
