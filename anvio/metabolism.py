@@ -20,6 +20,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+P = terminal.pluralize
 
 ## REQUIRED FIELDS FOR A PATHWAY FILE
 ## AND THEIR ACCEPTABLE VALUES (IF APPLICABLE)
@@ -74,7 +75,7 @@ class PathwayYAML:
         self.id = list(pathway_dict.keys())[0]
         self.dict = pathway_dict[self.id]
 
-        self.check_required_fields()
+        self.parse_pathway_data()
     #### ACCESSOR FUNCTIONS ####
     def get_pathway_dict(self):
         """Returns the pathway dictionary."""
@@ -86,9 +87,10 @@ class PathwayYAML:
 
         print(self.dict)
 
-    #### SANITY CHECKING FUNCTIONS ####
+
+    #### PARSING AND SANITY CHECKING FUNCTIONS ####
     def check_required_fields(self):
-        """Ensure that all required fields are defined in the pathway file."""
+        """Ensures that all required fields are defined in the pathway file."""
 
         for field, requirements in REQ_FIELDS.items():
             if field not in self.dict:
@@ -101,5 +103,64 @@ class PathwayYAML:
             if not isinstance(self.dict[field], requirements['data_type']):
                 raise ConfigError(f"There is an issue with the definition of {field} in the input pathway data. "
                                   f"This field is supposed to be of type '{requirements['data_type']}' but instead it is a {type(self.dict[field])}.")
-                
 
+    def parse_accessions_from_definition(self, passed_definition=None):
+        """Returns a list of functional accessions from the definition string. 
+        
+        If no definition is passed using the `passed_definition` variable, this function works on the definition 
+        stored in `self.definition_string`.
+
+        PARAMETERS
+        ==========
+        passed_definition : str
+            The definition string to parse (optional)
+        """
+        
+        def_to_parse = self.definition_string
+        if passed_definition:
+            def_to_parse = passed_definition
+
+        substrs_to_remove = ['(',')', 'and', 'or']
+        for r in substrs_to_remove:
+            def_to_parse = def_to_parse.replace(r, '')
+        acc_list = def_to_parse.split()
+        return acc_list
+                
+    def crosscheck_definition_and_functions(self):
+        """Verifies that every accession in the functional definition has a corresponding entry in the functions dict."""
+
+        acc_missing_from_functions_field = []
+        for a in self.parse_accessions_from_definition():
+            if a not in self.functions:
+                acc_missing_from_functions_field.append(a)
+        
+        if acc_missing_from_functions_field:
+            acc_str = ", ".join(acc_missing_from_functions_field)
+            n = len(acc_missing_from_functions_field)
+            raise ConfigError(f"There {P('is a function', n, alt='are some functions')} in the functional definition for pathway "
+                              f"{self.id} that {P('is', n, alt='are')} missing from the 'functions' field in the input data. Please "
+                              f"add an entry for each accession into the 'functions' field. Here {P('is the accession', n, alt='are the accessions')} "
+                              f"that you should add before trying to parse the pathway data again: {acc_str}")
+
+    def parse_pathway_data(self):
+        """Parses the pathway dictionary to obtain the attributes of the pathway. 
+        
+        This function also performs sanity checking on the data inside critical fields.
+        """
+
+        self.check_required_fields()
+
+        # attributes from required fields
+        self.source = self.dict['source']
+        self.type = self.dict['type']
+        self.functional_definition = self.dict['functional_definition']
+        self.functions = self.dict['functions']
+
+        # attributes from optional fields that may be important downstream
+        self.name = self.dict['name'] if 'name' in self.dict else 'UNDEFINED'
+
+        # create other useful forms of the input data
+        self.definition_string = " and ".join(['('+step+')' for step in self.functional_definition])
+
+        # sanity checks
+        self.crosscheck_definition_and_functions()
