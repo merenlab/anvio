@@ -146,6 +146,19 @@ class PathwayYAML:
                               f"add an entry for each accession into the 'functions' field. Here {P('is the accession', n, alt='are the accessions')} "
                               f"that you should add before trying to parse the pathway data again: {acc_str}")
 
+    def function_sanity_checks(self):
+        """Checks the formatting of each individual function within the self.functions dictionary.
+        
+        Each function requires at least an annotation 'source'.
+        """
+
+        for accession, function_data in self.functions.items():
+            if 'source' not in function_data or function_data['source'] is None:
+                raise ConfigError(f"The function {accession} does not have an associated annotation source. Please add "
+                                  f"one using the key 'source' to ensure that we will be able to find the annotations "
+                                  f"corresponding to this function later. If you don't know the annotation source for "
+                                  f"this function, this webpage might help: https://anvio.org/help/main/artifacts/user-modules-data/#1-find-the-enzymes")
+
     def parse_pathway_data(self):
         """Parses the pathway dictionary to obtain the attributes of the pathway. 
         
@@ -168,3 +181,4 @@ class PathwayYAML:
 
         # sanity checks
         self.crosscheck_definition_and_functions()
+        self.function_sanity_checks()
