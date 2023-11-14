@@ -2,6 +2,8 @@
 # pylint: disable=line-too-long
 """Generate, manipulate, and export metabolic reaction networks from gene annotations."""
 
+from __future__ import annotations
+
 import os
 import re
 import glob
@@ -20,6 +22,7 @@ import numpy as np
 import pandas as pd
 import multiprocessing as mp
 
+from copy import deepcopy
 from argparse import Namespace
 from typing import Any, Dict, List, Set, Tuple, Union
 
@@ -1144,6 +1147,702 @@ class GenomicNetwork(ReactionNetwork):
         removed = {'gene': removed_genes}
         removed.update(removed_cascading_down)
         return removed
+
+    def subset_network(
+        self,
+        kegg_modules_to_subset: List[str] = None,
+        brite_categories_to_subset: List[str] = None,
+        genes_to_subset: List[int] = None,
+        kos_to_subset: List[str] = None,
+        reactions_to_subset: List[str] = None,
+        metabolites_to_subset: List[str] = None,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress(),
+        verbose: bool = True
+    ) -> GenomicNetwork:
+        """
+        Subset a smaller network from the metabolic network.
+
+        If requested KEGG modules, BRITE categories, genes, KOs, reactions, or metabolites are not
+        present in the network, no error is raised.
+
+        Subsetted items are not represented by the same objects as in the source network, i.e., new
+        gene, KO, reaction, and metabolite objects are created and added to the subsetted network.
+
+        Network items (i.e., genes, KOs, reactions, and metabolites) that reference requested items
+        (e.g., genes in the network referencing requested KOs; KOs in the network referencing
+        requested reactions) are added to the subsetted network. A gene added to the subsetted
+        network due to references to requested KOs will be missing references to any other
+        "unrequested" KOs annotating the gene in the source network. Likewise, genes and KOs that
+        are added to the subsetted network due to references to requested reactions will be missing
+        references to any other unrequested reactions. In other words, certain KO and reaction
+        annotations can be selected to the exclusion of others, e.g., a KO encoding two reactions
+        can be "redefined" or "pruned" to encode one requested reaction in the subsetted network; a
+        KO encoding multiple reactions can be pruned to encode only those reactions involving
+        requested metabolites.
+
+        Parameters
+        ==========
+        kegg_modules_to_subset : List[str], None
+            List of KEGG module IDs to subset.
+
+        brite_categories_to_subset : List[str], None
+            List of BRITE categories to subset.
+
+        genes_to_subset : List[int], None
+            List of gene callers IDs to subset.
+
+        kos_to_subset : List[str], None
+            List of KO IDs to subset.
+
+        reactions_to_subset : List[str], None
+            List of ModelSEED reaction IDs to subset.
+
+        metabolites_to_subset : List[str], None
+            List of ModelSEED metabolite IDs to subset.
+
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object prints transient progress information to the terminal.
+
+        verbose : bool, True
+            Report the identities of requested KEGG modules, BRITE categories, genes, KOs,
+            reactions, and metabolites that are not present in the source network.
+
+        Returns
+        =======
+        GenomicNetwork
+            New subsetted reaction network.
+        """
+        # Sequentially subset the network for each type of request. Upon generating two subsetted
+        # networks from two types of request, merge the networks into a single subsetted network;
+        # repeat.
+        first_subsetted_network = None
+        for items_to_subset, subset_network_method in (
+            (kegg_modules_to_subset, self._subset_network_by_modules),
+            (brite_categories_to_subset, self._subset_network_by_brite),
+            (genes_to_subset, self._subset_network_by_genes),
+            (kos_to_subset, self._subset_network_by_kos),
+            (reactions_to_subset, self._subset_network_by_reactions),
+            (metabolites_to_subset, self._subset_network_by_metabolites)
+        ):
+            if not items_to_subset:
+                continue
+
+            second_subsetted_network = subset_network_method(items_to_subset)
+
+            if first_subsetted_network is None:
+                first_subsetted_network = second_subsetted_network
+            else:
+                first_subsetted_network = first_subsetted_network.merge_network(
+                    second_subsetted_network
+                )
+
+        return first_subsetted_network
+
+    def _subset_network_by_modules(self, kegg_modules: List[str]) -> GenomicNetwork:
+        """
+        Subset the network by KOs in requested KEGG modules.
+
+        Parameters
+        ==========
+        kegg_modules : List[str]
+            List of KEGG module IDs to subset.
+
+        Returns
+        =======
+        GenomicNetwork
+            New subsetted reaction network.
+        """
+        pass
+
+    def _subset_network_by_brite(self, brite_categories: List[str]) -> GenomicNetwork:
+        """
+        Subset the network by KOs in requested KEGG BRITE hierarchy categories.
+
+        Parameters
+        ==========
+        brite_categories : List[str]
+            List of KEGG BRITE hierarchy categories to subset.
+
+        Returns
+        =======
+        GenomicNetwork
+            New subsetted reaction network.
+        """
+        pass
+
+    def _subset_network_by_genes(self, gcids: List[int]) -> GenomicNetwork:
+        """
+        Subset the network by genes with requested gene callers IDs.
+
+        Parameters
+        ==========
+        gcids : List[int]
+            List of genes to subset by gene callers ID.
+
+        Returns
+        =======
+        GenomicNetwork
+            New subsetted reaction network.
+        """
+        subsetted_network = GenomicNetwork()
+
+        for gcid in gcids:
+            try:
+                gene = self.genes[gcid]
+            except KeyError:
+                # This occurs if the requested gene callers ID is not in the source network.
+                continue
+
+            subsetted_gene = Gene()
+            subsetted_gene.gcid = gene.gcid
+            subsetted_gene.e_values = gene.e_values.copy()
+
+            # Add KOs annotating the gene to the subsetted network as new objects, and then
+            # reference these objects in the gene object.
+            ko_ids = list(gene.kos)
+            subsetted_network = self._subset_network_by_kos(
+                ko_ids, subsetted_network=subsetted_network
+            )
+            subsetted_gene.kos = {ko_id: subsetted_network.kos[ko_id] for ko_id in ko_ids}
+
+            subsetted_network.genes[gcid] = subsetted_gene
+        self._subset_proteins(subsetted_network)
+
+        return subsetted_network
+
+    def _subset_proteins(self, subsetted_network: GenomicNetwork) -> None:
+        """
+        Add protein abundance data to the subsetted network.
+
+        Parameters
+        ==========
+        subsetted_network : GenomicNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        if not self.proteins:
+            # Protein abundance profile data is not present in the source network.
+            return subsetted_network
+
+        # Parse each protein with abundance data.
+        for protein_id, protein in self.proteins.items():
+            subsetted_gcids: List[int] = []
+            for gcid in protein.genes:
+                if gcid in subsetted_network.genes:
+                    # A subsetted gene encodes the protein.
+                    subsetted_gcids.append(gcid)
+            if not subsetted_gcids:
+                # No genes expressing the protein were subsetted, so the protein data is not added.
+                continue
+
+            subsetted_protein = Protein()
+            subsetted_protein.id = protein_id
+            subsetted_protein.abundances = protein.abundances.copy()
+            for gcid in subsetted_gcids:
+                subsetted_gene = subsetted_network.genes[gcid]
+                subsetted_gene.protein = subsetted_protein
+                subsetted_protein.genes[gcid] = subsetted_gene
+
+            subsetted_network.proteins[protein_id] = subsetted_protein
+
+    def _subset_network_by_kos(
+        self,
+        ko_ids: List[str],
+        subsetted_network: GenomicNetwork = None
+    ) -> GenomicNetwork:
+        """
+        Subset the network by KOs with requested KO IDs.
+
+        Parameters
+        ==========
+        ko_ids : List[str]
+            List of KOs to subset by KO ID.
+
+        subsetted_network : GenomicNetwork, None
+            This network under construction is provided when the KOs being added to the network
+            annotate already subsetted genes.
+
+        Returns
+        =======
+        GenomicNetwork
+            If a 'subsetted_network' argument is provided, then that network is returned after
+            modification. Otherwise, a new subsetted reaction network is returned.
+        """
+        if subsetted_network is None:
+            subsetted_network = GenomicNetwork()
+            # Signify that genes annotated by subsetted KOs are to be added to the network.
+            subset_referencing_genes = True
+        else:
+            assert isinstance(subsetted_network, GenomicNetwork)
+            # Signify that the KOs being added to the network annotate subsetted genes that were
+            # already added to the network.
+            subset_referencing_genes = False
+
+        for ko_id in ko_ids:
+            try:
+                ko = self.kos[ko_id]
+            except KeyError:
+                # This occurs if the requested KO ID is not in the source network.
+                continue
+
+            subsetted_ko = KO()
+            subsetted_ko.id = ko.id
+            subsetted_ko.name = ko.name
+            subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
+            subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+
+            # Add reactions annotating the KO to the subsetted network as new objects, and then
+            # reference these objects in the KO object.
+            reaction_ids = [reaction_id for reaction_id in ko.reactions]
+            subsetted_network = self._subset_network_by_reactions(
+                reaction_ids, subsetted_network=subsetted_network
+            )
+            subsetted_ko.reactions = {
+                reaction_id: subsetted_network.reactions[reaction_id]
+                for reaction_id in reaction_ids
+            }
+
+            subsetted_network.kos[ko_id] = subsetted_ko
+
+        if subset_referencing_genes:
+            # Add genes that are annotated by the subsetted KOs to the network.
+            self._subset_genes_via_kos(subsetted_network)
+
+        return subsetted_network
+
+    def _subset_network_by_reactions(
+        self,
+        reaction_ids: List[str],
+        subsetted_network: GenomicNetwork = None
+    ) -> GenomicNetwork:
+        """
+        Subset the network by reactions with ModelSEED reaction IDs.
+
+        Parameters
+        ==========
+        reaction_ids : List[str]
+            List of reactions to subset by ModelSEED reaction ID.
+
+        subsetted_network : GenomicNetwork, None
+            This network under construction is provided when the reactions being added to the
+            network annotate already subsetted KOs.
+
+        Returns
+        =======
+        GenomicNetwork
+            If a 'subsetted_network' argument is provided, then that network is returned after
+            modification. Otherwise, a new subsetted reaction network is returned.
+        """
+        if subsetted_network is None:
+            subsetted_network = GenomicNetwork()
+            # Signify that KOs annotated by subsetted reactions are to be added to the network.
+            subset_referencing_kos = True
+        else:
+            assert isinstance(subsetted_network, GenomicNetwork)
+            # Signify that the reactions being added to the network annotate subsetted KOs that were
+            # already added to the network.
+            subset_referencing_kos = False
+
+        for reaction_id in reaction_ids:
+            try:
+                reaction = self.reactions[reaction_id]
+            except KeyError:
+                # This occurs if the requested reaction is not in the source network.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subsetted_network.reactions[reaction_id] = subsetted_reaction
+            # Record the metabolites involved in the reaction, and add them to the network.
+            for metabolite in subsetted_reaction.compounds:
+                compound_id = metabolite.modelseed_id
+                subsetted_network.metabolites[compound_id] = metabolite
+
+        if subset_referencing_kos:
+            # Add genes that are annotated by the subsetted KOs to the network.
+            self._subset_kos_via_reactions(subsetted_network)
+
+        return subsetted_network
+
+    def _subset_genes_via_kos(self, subsetted_network: GenomicNetwork) -> None:
+        """
+        Add genes that are annotated with subsetted KOs to the subsetted network.
+
+        These gene objects only reference subsetted KOs and not other KOs that also annotate the
+        gene but are not subsetted.
+
+        Parameters
+        ==========
+        subsetted_network : GenomicNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        subsetted_ko_ids = list(subsetted_network.kos)
+        for gcid, gene in self.genes.items():
+            # Check all genes in the source network for subsetted KOs.
+            subsetted_gene = None
+            for ko_id in gene.kos:
+                if ko_id not in subsetted_ko_ids:
+                    # The gene is not annotated by the subsetted KO.
+                    continue
+
+                if not subsetted_gene:
+                    # Create a new gene object for the subsetted gene. The gene object would already
+                    # have been created had another subsetted KO been among the KOs annotating the
+                    # gene.
+                    subsetted_gene = Gene()
+                    subsetted_gene.gcid = gcid
+                subsetted_gene.kos[ko_id] = subsetted_network.kos[ko_id]
+                subsetted_gene.e_values[ko_id] = gene.e_values[ko_id]
+
+            if subsetted_gene:
+                subsetted_network.genes[gcid] = subsetted_gene
+
+    def _subset_kos_via_reactions(self, subsetted_network: GenomicNetwork) -> None:
+        """
+        Add KOs that are annotated with subsetted reactions to the subsetted network.
+
+        Then add genes that are annotated with these added KOs to the subsetted network.
+
+        Parameters
+        ==========
+        subsetted_network : GenomicNetwork
+            The subsetted reaction network under construction.
+
+        Returns
+        =======
+        None
+        """
+        subsetted_reaction_ids = list(subsetted_network.reactions)
+        for ko_id, ko in self.kos.items():
+            # Check all KOs in the source network for subsetted reactions.
+            subsetted_ko = None
+            for reaction_id in ko.reactions:
+                if reaction_id not in subsetted_reaction_ids:
+                    # The KO is not annotated by the subsetted reaction.
+                    continue
+
+                if not subsetted_ko:
+                    # Create a new KO object for the subsetted KO. The subsetted KO object would
+                    # already have been created had another subsetted reaction been among the
+                    # reactions annotating the KO.
+                    subsetted_ko = KO()
+                    subsetted_ko.id = ko_id
+                    subsetted_ko.name = ko.name
+                subsetted_ko.reactions[reaction_id] = subsetted_network.reactions[reaction_id]
+                subsetted_ko.kegg_reaction_aliases = deepcopy(ko.kegg_reaction_aliases)
+                subsetted_ko.ec_number_aliases = deepcopy(ko.ec_number_aliases)
+
+            if subsetted_ko:
+                subsetted_network.kos[ko_id] = subsetted_ko
+
+        # Add genes that are annotated with the added KOs to the subsetted network.
+        self._subset_genes_via_kos(subsetted_network)
+
+    def _subset_network_by_metabolites(self, compound_ids: List[str]) -> GenomicNetwork:
+        """
+        Subset the network by metabolites with ModelSEED compound IDs.
+
+        Parameters
+        ==========
+        compound_ids : List[str]
+            List of metabolites to subset by ModelSEED compound ID.
+
+        Returns
+        =======
+        GenomicNetwork
+            New subsetted reaction network.
+        """
+        subsetted_network = GenomicNetwork()
+
+        for reaction_id, reaction in self.reactions.items():
+            # Check all reactions in the source network for subsetted metabolites.
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in compound_ids:
+                    break
+            else:
+                # The reaction does not involve any of the requested metabolites.
+                continue
+
+            # Copy the reaction object, including referenced metabolite objects, from the source
+            # network.
+            subsetted_reaction: ModelSEEDReaction = deepcopy(reaction)
+            subsetted_network.reactions[reaction_id] = subsetted_reaction
+
+            # Add the metabolites involved in the reaction to the subsetted network. (There can be
+            # unavoidable redundancy here in readding previously encountered metabolites.)
+            for subsetted_metabolite in subsetted_reaction.compounds:
+                subsetted_network.metabolites[
+                    subsetted_metabolite.modelseed_id
+                ] = subsetted_metabolite
+
+        # Add KOs that are annotated with the added reactions to the subsetted network, and then add
+        # genes annotated with the added KOs to the subsetted network.
+        self._subset_kos_via_reactions(subsetted_network)
+
+        return subsetted_network
+
+    def merge_network(self, network: GenomicNetwork) -> GenomicNetwork:
+        """
+        Merge the genomic reaction network with another genomic reaction network.
+
+        Each network can contain different genes, KOs, and reactions/metabolites. Merging
+        nonredundantly incorporates all of this data as new objects in the new network.
+
+        Objects representing genes or KOs in both networks can have different sets of references:
+        genes can be annotated by different KOs, and KOs can be annotated by different reactions.
+
+        Otherwise, object attributes should be consistent between the networks. For instance, the
+        same ModelSEED reactions and metabolites in both networks should have identical attributes.
+        If applicable, both networks should have been annotated with the same protein abundance
+        data.
+
+        Parameters
+        ==========
+        network : GenomicNetwork
+            The other genomic reaction network being merged.
+
+        Returns
+        =======
+        GenomicNetwork
+            The merged genomic reaction network.
+        """
+        assert not (
+            (self.proteins is None and network.proteins is not None) and
+            (self.proteins is not None and network.proteins is None)
+        )
+
+        merged_network = GenomicNetwork()
+
+        # Add reactions from each source network to the merged network. Assume objects representing
+        # the same reactions or metabolites in both networks have identical attributes, as they
+        # should.
+        merged_network.reactions = deepcopy(self.reactions)
+        for reaction_id in set(network.reactions).difference(set(self.reactions)):
+            merged_network.reactions[reaction_id] = deepcopy(network.reactions[reaction_id])
+
+        # Add metabolites from each source network to the merged network. (Unfortunately, there can
+        # be some redundancy in the process of adding the same metabolites to the merged network.)
+        for reaction in merged_network.reactions.values():
+            for metabolite in reaction.compounds:
+                merged_network.metabolites[metabolite.modelseed_id] = metabolite
+
+        # Add KOs to the merged network, first adding KOs present in both source networks, and then
+        # adding KOs present exclusively in each source network.
+        first_ko_ids = set(self.kos)
+        second_ko_ids = set(network.kos)
+
+        for ko_id in first_ko_ids.intersection(second_ko_ids):
+            first_ko = self.kos[ko_id]
+            second_ko = network.kos[ko_id]
+
+            # The new object representing the KO in the merged network should have all reaction
+            # annotations from both source gene object, as these objects can have different reaction
+            # references.
+            merged_ko = KO()
+            merged_ko.id = ko_id
+            merged_ko.name = first_ko.name
+            reaction_ids = set(first_ko.reactions).union(set(second_ko.reactions))
+            merged_ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id] for reaction_id in reaction_ids
+            }
+            for reaction_id in reaction_ids:
+                try:
+                    merged_ko.kegg_reaction_aliases[reaction_id] = first_ko.kegg_reaction_aliases[
+                        reaction_id
+                    ]
+                except KeyError:
+                    # The reaction has no KO KEGG REACTION aliases.
+                    pass
+                try:
+                    merged_ko.ec_number_aliases[reaction_id] = first_ko.ec_number_aliases[
+                        reaction_id
+                    ]
+                except KeyError:
+                    # The reaction has no KO KEGG REACTION aliases.
+                    pass
+
+            merged_network.kos[ko_id] = merged_ko
+
+        for ko_id in first_ko_ids.difference(second_ko_ids):
+            first_ko = self.kos[ko_id]
+
+            ko = KO()
+            ko.id = ko_id
+            ko.name = first_ko.name
+            ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id]
+                for reaction_id in first_ko.reactions
+            }
+            ko.kegg_reaction_aliases = deepcopy(first_ko.kegg_reaction_aliases)
+            ko.ec_number_aliases = deepcopy(first_ko.ec_number_aliases)
+
+            merged_network.kos[ko_id] = ko
+
+        for ko_id in second_ko_ids.difference(first_ko_ids):
+            second_ko = network.kos[ko_id]
+
+            ko = KO()
+            ko.id = ko_id
+            ko.name = second_ko.name
+            ko.reactions = {
+                reaction_id: merged_network.reactions[reaction_id]
+                for reaction_id in second_ko.reactions
+            }
+            ko.kegg_reaction_aliases = deepcopy(second_ko.kegg_reaction_aliases)
+            ko.ec_number_aliases = deepcopy(second_ko.ec_number_aliases)
+
+            merged_network.kos[ko_id] = ko
+
+        # Add genes to the merged network, first adding genes present in both source networks, and
+        # then adding genes present exclusively in each source network.
+        first_gcids = set(self.genes)
+        second_gcids = set(network.genes)
+
+        for gcid in first_gcids.intersection(second_gcids):
+            first_gene = self.genes[gcid]
+            second_gene = network.genes[gcid]
+
+            # The new object representing the gene in the merged network should have all KO
+            # annotations from each source gene object, as these objects can have different KO
+            # references.
+            merged_gene = Gene()
+            merged_gene.gcid = gcid
+            ko_ids = set(first_gene.kos).union(set(second_gene.kos))
+            for ko_id in ko_ids:
+                merged_gene.kos[ko_id] = merged_network.kos[ko_id]
+            first_ko_ids = set(first_gene.kos)
+            second_ko_ids = set(second_gene.kos).difference(set(first_gene.kos))
+            for ko_id in first_ko_ids:
+                merged_gene.e_values[ko_id] = first_gene.e_values[ko_id]
+            for ko_id in second_ko_ids:
+                merged_gene.e_values[ko_id] = second_gene.e_values[ko_id]
+
+            merged_network.genes[gcid] = merged_gene
+
+        for gcid in first_gcids.difference(second_gcids):
+            first_gene = self.genes[gcid]
+
+            gene = Gene()
+            gene.gcid = gcid
+            gene.kos = {ko_id: merged_network.kos[ko_id] for ko_id in first_gene.kos}
+            gene.e_values = first_gene.e_values.copy()
+
+            merged_network.genes[gcid] = gene
+
+        for gcid in second_gcids.difference(first_gcids):
+            second_gene = network.genes[gcid]
+
+            gene = Gene()
+            gene.gcid = gcid
+            gene.kos = {ko_id: merged_network.kos[ko_id] for ko_id in second_gene.kos}
+            gene.e_values = second_gene.e_values.copy()
+
+            merged_network.genes[gcid] = gene
+
+        if not self.proteins and not network.proteins:
+            # No protein abundance data is present and needs to be added to the merged network.
+            return merged_network
+
+        # Add protein abundance data to the merged network, first adding proteins annotating genes
+        # in both source networks, and then adding proteins annotating genes exclusively in each
+        # source network.
+        first_protein_ids = set(self.proteins)
+        second_protein_ids = set(network.proteins)
+
+        # Assume that each source network was annotated with the same protein annotation data, so
+        # that the same gene in each network should have the same protein abundance profile.
+        for protein_id in first_protein_ids.intersection(second_protein_ids):
+            first_protein = self.proteins[protein_id]
+            second_protein = network.proteins[protein_id]
+
+            merged_protein = Protein()
+            merged_protein.id = protein_id
+            for gcid in first_protein.genes:
+                merged_protein.genes[gcid] = merged_network.genes[gcid]
+            for gcid in set(second_protein.genes).difference(set(first_protein.genes)):
+                merged_protein.genes[gcid] = merged_network.genes[gcid]
+            merged_protein.abundances = first_protein.abundances.copy()
+
+            merged_network.proteins[protein_id] = merged_protein
+
+        for protein_id in first_protein_ids.difference(second_protein_ids):
+            first_protein = self.proteins[protein_id]
+
+            protein = Protein()
+            protein.id = protein_id
+            protein.genes = {gcid: merged_network.genes[gcid] for gcid in first_protein.genes}
+            protein.abundances = first_protein.abundances.copy()
+
+            merged_network.proteins[protein_id] = protein
+
+        for protein_id in second_protein_ids.difference(first_protein_ids):
+            second_protein = network.proteins[protein_id]
+
+            protein = Protein()
+            protein.id = protein_id
+            protein.genes = {gcid: merged_network.genes[gcid] for gcid in second_protein.genes}
+            protein.abundances = second_protein.abundances.copy()
+
+            merged_network.proteins[protein_id] = protein
+
+        return merged_network
+
+    def export_table(
+        self,
+        path: str
+    ) -> None:
+        d = {}
+        for ko_id, ko in self.kos.items():
+            d[ko_id] = e = {}
+            e['ko_id'] = ko_id
+            e['ko_name'] = ko.name
+            e['gene_count'] = 0
+            e['gene_ids'] = ''
+            e['protein_id'] = ''
+            e['protein_abundance'] = 0
+            e['reaction_ids'] = ''
+            for m in self.metabolites.values():
+                if m.abundances:
+                    e[m.modelseed_name] = np.nan
+        for gcid, gene in self.genes.items():
+            if gene.protein:
+                protein_id = str(gene.protein.id)
+                mean_protein_abund = np.mean(list(gene.protein.abundances.values()))
+            else:
+                protein_id = ''
+                mean_protein_abund = 0
+            for ko_id, ko in gene.kos.items():
+                e = d[ko_id]
+                e['gene_count'] += 1
+                e['gene_ids'] += f', {gcid}'
+                e['protein_id'] = protein_id
+                e['protein_abundance'] = mean_protein_abund
+        for ko_id, ko in self.kos.items():
+            e = d[ko_id]
+            for reaction_id, reaction in ko.reactions.items():
+                e['reaction_ids'] += f'{reaction_id}, '
+                for metabolite in reaction.compounds:
+                    if metabolite.abundances:
+                        e[metabolite.modelseed_name] = np.mean(list(metabolite.abundances.values()))
+        table = []
+        for e in d.values():
+            e: dict
+            e['reaction_ids'] = e['reaction_ids'].strip(' ').strip(',')
+            e['gene_ids'] = e['gene_ids'].strip(' ').strip(',')
+            table.append([v for v in e.values()])
+        pd.DataFrame(table, columns=[key for key in e]).to_csv(path, sep='\t', index=False)
 
     def get_overview_statistics(
         self,
