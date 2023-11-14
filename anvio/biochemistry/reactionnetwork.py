@@ -1070,7 +1070,7 @@ class GenomicNetwork(ReactionNetwork):
 
         Parameters
         ==========
-        genes_to_remove : list
+        genes_to_remove : List[str]
             list of gene callers IDs identifying genes to remove
 
         Returns
