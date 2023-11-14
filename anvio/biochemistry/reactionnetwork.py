@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Generate a metabolic reaction network from gene annotations."""
+"""Generate, manipulate, and export metabolic reaction networks from gene annotations."""
 
 import os
 import re
