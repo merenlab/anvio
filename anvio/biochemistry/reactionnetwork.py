@@ -102,9 +102,9 @@ class Gene:
     def __init__(self) -> None:
         self.gcid: int = None
         # KOs matching the gene
-        self.kos: List[KO] = []
+        self.kos: Dict[str, KO] = {}
         # Record the strength of each KO match.
-        self.e_values: List[float] = []
+        self.e_values: Dict[str, float] = {}
         self.protein: Protein = None
 
 class Protein:
@@ -112,7 +112,7 @@ class Protein:
     def __init__(self) -> None:
         self.id: int = None
         # Genes in the network that can express the protein.
-        self.genes: List[Gene] = []
+        self.genes: Dict[int, Gene] = {}
         # Abundances of the protein across samples, with keys being sample names and values being
         # abundances.
         self.abundances: Dict[str, float] = {}
@@ -667,13 +667,13 @@ class GenomicNetwork(ReactionNetwork):
             row = []
             row.append(gene.gcid)
             gene_reactions = []
-            for ko in gene.kos:
+            for ko in gene.kos.values():
                 for modelseed_reaction_id in ko.reactions:
                     gene_reactions.append(modelseed_reaction_id)
             gene_reactions = set(gene_reactions)
             row.append(', '.join(gene_reactions.intersection(removed_reactions)))
-            row.append(', '.join(ko.id for ko in gene.kos))
-            row.append('!!!'.join(ko.name for ko in gene.kos))
+            row.append(', '.join(gene.kos))
+            row.append('!!!'.join(ko.name for ko in gene.kos.values()))
             gene_table.append(row)
 
         pd.DataFrame(
@@ -1033,17 +1033,17 @@ class GenomicNetwork(ReactionNetwork):
 
         genes_to_remove: List[str] = []
         for gcid, gene in self.genes.items():
-            gene_kos_to_remove: List[int] = []
-            for idx, ko in enumerate(gene.kos):
-                if ko.id in kos_to_remove:
-                    gene_kos_to_remove.append(idx)
+            gene_kos_to_remove: List[str] = []
+            for ko_id in gene.kos:
+                if ko_id in kos_to_remove:
+                    gene_kos_to_remove.append(ko_id)
             if len(gene_kos_to_remove) == len(gene.kos):
-                # All KOs matching the gene were removed, so remove it.
+                # All KOs matching the gene were removed, so remove it as well.
                 genes_to_remove.append(gcid)
                 continue
-            for idx in sorted(gene_kos_to_remove, reverse=True):
-                gene.kos.pop(idx)
-                gene.e_values.pop(idx)
+            for ko_id in gene_kos_to_remove:
+                gene.kos.pop(ko_id)
+                gene.e_values.pop(ko_id)
         # If this method was called from 'purge_genes' then the genes that are only associated with
         # KOs removed here were already removed from the network, and 'genes_to_remove' would be
         # empty. In contrast, if this method was not called from 'purge_genes', but zero genes are
@@ -1110,18 +1110,17 @@ class GenomicNetwork(ReactionNetwork):
 
         kos_to_remove: List[str] = []
         for gene in removed_genes:
-            for ko in gene.kos:
-                kos_to_remove.append(ko.id)
+            for ko_id in gene.kos:
+                kos_to_remove.append(ko_id)
         kos_to_remove = list(set(kos_to_remove))
         for gene in self.genes.values():
-            kos_to_spare: List[int] = []
-            for ko in gene.kos:
-                for idx, ko_id in enumerate(kos_to_remove):
-                    if ko.id == ko_id:
-                        # The KO is associated with a retained gene, so do not remove the KO.
-                        kos_to_spare.append(idx)
-            for idx in sorted(kos_to_spare, reverse=True):
-                kos_to_remove.pop(idx)
+            kos_to_spare: List[str] = []
+            for ko_id in gene.kos:
+                if ko_id in kos_to_remove:
+                    # The KO is associated with a retained gene, so do not remove the KO.
+                    kos_to_spare.append(ko_id)
+            for ko_id in kos_to_spare:
+                kos_to_remove.remove(ko_id)
         if kos_to_remove:
             removed_cascading_down = self.purge_kos(kos_to_remove)
             removed_cascading_down.pop('gene')
@@ -1365,8 +1364,8 @@ class GenomicNetwork(ReactionNetwork):
             # Record KO IDs and annotation e-values in the annotation section of the gene entry.
             annotation = gene_entry['annotation']
             annotation['ko'] = annotation_kos = {}
-            for ko, e_value in zip(gene.kos, gene.e_values):
-                annotation_kos[ko.id] = str(e_value)
+            for ko_id, ko in gene.kos.items():
+                annotation_kos[ko_id] = str(gene.e_values[ko_id])
                 for modelseed_reaction_id in ko.reactions:
                     try:
                         reaction_genes[modelseed_reaction_id].append(gcid_str)
@@ -2803,8 +2802,8 @@ class Constructor:
                 ko.id = ko_id
                 ko.name = ko_name
                 network.kos[ko_id] = ko
-            gene.kos.append(ko)
-            gene.e_values.append(e_value)
+            gene.kos[ko_id] = ko
+            gene.e_values[ko_id] = e_value
 
         self._load_modelseed_reactions(cdb, network)
         self._load_modelseed_compounds(cdb, network)
@@ -2814,18 +2813,16 @@ class Constructor:
         unnetworked_gcids = []
         for gcid, gene in network.genes.items():
             gene_in_network = False
-            unnetworked_ko_indices: List[int] = []
-            idx = 0
-            for ko, e_value in zip(gene.kos, gene.e_values):
+            unnetworked_kos: List[str] = []
+            for ko_id, ko in gene.kos.items():
                 if ko.reactions:
                     gene_in_network = True
                 else:
-                    unnetworked_ko_indices.append(idx)
-                idx += 1
+                    unnetworked_kos.append(ko_id)
             if gene_in_network:
-                for unnetworked_ko_index in reversed(unnetworked_ko_indices):
-                    gene.kos.pop(unnetworked_ko_index)
-                    gene.e_values.pop(unnetworked_ko_index)
+                for unnetworked_ko_id in unnetworked_kos:
+                    gene.kos.pop(unnetworked_ko_id)
+                    gene.e_values.pop(unnetworked_ko_id)
             else:
                 unnetworked_gcids.append(gcid)
         for gcid in unnetworked_gcids:
@@ -2941,7 +2938,7 @@ class Constructor:
             protein.id = protein_id
             for gcid in protein_table['gene_callers_id'].unique():
                 gene = network.genes[gcid]
-                protein.genes.append(gene)
+                protein.genes[gcid] = gene
                 if gene.protein:
                     try:
                         multiprotein_genes[gene].append(protein_id)
@@ -3685,18 +3682,18 @@ class Constructor:
                 network.genes[gcid] = gene
 
             ko_data = gene_dict['KOfam']
-            gene.e_values.append(float(ko_data[2]))
             ko_id = ko_data[0]
+            gene.e_values[ko_id] = float(ko_data[2])
             if ko_id in network.kos:
                 # The KO was associated with an already encountered gene and added to the network.
                 # Objects representing ModelSEED reactions and metabolites and other data associated
                 # with the KO were added to the network as well.
-                gene.kos.append(network.kos[ko_id])
+                gene.kos[ko_id] = network.kos[ko_id]
                 continue
             ko = KO()
             ko.id = ko_id
             ko.name = ko_data[1]
-            gene.kos.append(ko)
+            gene.kos[ko_id] = ko
             # Add the KO to the network, regardless of whether it yields reactions. KOs not
             # contributing to the network are removed later.
             network.kos[ko_id] = ko
@@ -3781,7 +3778,7 @@ class Constructor:
         # from the network.
         unnetworked_gcids = []
         for gcid, gene in network.genes.items():
-            for ko in gene.kos:
+            for ko in gene.kos.values():
                 if ko.reactions:
                     break
             else:
