@@ -150,6 +150,9 @@ class ReactionNetwork:
     """
     A reaction network predicted from KEGG KO and ModelSEED annotations.
 
+    A reaction network need not be fully connected: it is not guaranteed that there exists a path
+    through the network from one arbitrary reaction to another.
+
     Attributes
     ==========
     kos : Dict[str, KO], dict()
