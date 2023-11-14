@@ -1109,7 +1109,14 @@ class GenomicNetwork(ReactionNetwork):
                 pass
 
         if not removed_genes:
-            return {'metabolite': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
+            return {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
 
         kos_to_remove: List[str] = []
         for gene in removed_genes:
