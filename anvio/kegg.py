@@ -4485,7 +4485,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 min_step_count = None
                 for s in and_splits:
                     s_count = self.get_step_copy_number(s, enzyme_hit_counts)
-                    if not min_step_count:
+                    if min_step_count is None:
                         min_step_count = s_count # make first step the minimum
                     min_step_count = min(min_step_count, s_count)
                 return min_step_count
