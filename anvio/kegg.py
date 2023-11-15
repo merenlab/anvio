@@ -4510,6 +4510,42 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         return 0
                     return enzyme_hit_counts[step_string]
 
+    
+    def get_dereplicated_enzyme_hits_for_module(self, meta_dict_for_mnum: dict):
+        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
+        same gene removed.
+
+        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the 
+        same reaction, and we don't want these annotations to be double-counted in the stepwise copy number calculation.
+        
+        PARAMETERS
+        ==========
+        meta_dict_for_mnum : dictionary of dictionaries
+            metabolism completeness dict for the current bin and metabolic module
+        
+        RETURNS
+        =======
+        derep_enzyme_hits : dictionary
+            matches enzyme accession to number of hits to unique genes
+        """
+
+        derep_enzyme_hits = {k : len(meta_dict_for_mnum["kofam_hits"][k]) for k in meta_dict_for_mnum["kofam_hits"] }
+
+        # map gene caller IDs to enzyme accessions
+        gene_calls_to_enzymes = {gcid : [] for gcid in meta_dict_for_mnum['gene_caller_ids']}
+        for enzyme, gene_list in meta_dict_for_mnum['kofam_hits'].items():
+            for g in gene_list:
+                gene_calls_to_enzymes[g].append(enzyme)
+
+        # for each duplicated gene, we arbitrarily keep only the hit to the first enzyme
+        # and for all other annotations, we reduce the count of hits by one
+        for gcid, enzymes in gene_calls_to_enzymes.items():
+            if len(enzymes) > 1:
+                for acc in enzymes[1:]:
+                    derep_enzyme_hits[acc] -= 1
+
+        return derep_enzyme_hits
+
 
     def compute_stepwise_module_copy_number_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
@@ -4532,7 +4568,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             "copy_number"              the copy number of an individual step
         """
 
-        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
+        enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_module(meta_dict_for_bin[mnum])
 
         all_step_copy_nums = []
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
