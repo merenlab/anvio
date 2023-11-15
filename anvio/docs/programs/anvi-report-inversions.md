@@ -124,6 +124,9 @@ anvi-report-inversions -P %(bams-and-profiles-txt)s \
 
 In this mode, %(anvi-report-inversions)s will not recalculate inversions, and only report the activity of inversions found in the input file across samples listed in the %(bams-and-profiles-txt)s file.
 
+{:.notice}
+If you have additional samples to make sense of the inversions you already know about, you obviously don't need to do any additional mapping and profiling. All you need is the %(contigs-db)s with which you used to generate the inversion report you already have (i.e., not for the new samples you have), and the `r1` and `r2` files for the new samples. This is similar to the structure of %(bams-and-profiles-txt)s, except the `profile_db_path` and `bam_file_path` columns. While the entire purpose of this file is ot have these columns, in this particular instance, when you use the flag `--pre-computed-inversions` with %(anvi-report-inversions)s, ANVI'O SANITY CHECKS WILL NOT REQUIRE THE FILE TO INCLUDE PROFILE-DB AND BAM FILE PATHS. Which will make your life much more easier to scale your search. Which means for this particular application, you can create your %(bams-and-profiles-txt)s file only with the columns and you'd still be OK: `name`, `contigs_db_path`, `r1`, `r2`.
+
 ### Reporting genomic context around inversions
 
 For every inversion, anvi'o can report the surrounding genes and their function as additional files.
@@ -136,16 +139,16 @@ If you want to skip this step, you can use the flag `--skip-recovering-genomic-c
 
 ### Searching for conserved motifs in inverted-repeats
 
-The inversions are carried out by site-specific recombinase which recognize a DNA motifs on each end of the invertible DNA fragment. This DNA motif is a relatively conserved palindrome separated by a short sequence called a spacer. 
+The inversions are carried out by site-specific recombinase which recognize a DNA motifs on each end of the invertible DNA fragment. This DNA motif is a relatively conserved palindrome separated by a short sequence called a spacer.
 
-A fascinating aspect of site-specific recombinases is that they can invert multiple site, providing the DNA recognition motif is present. Some genomes can have **one** site-specific recombinase responsible **many** inversions! Some genomes have a few site-specific recombinase regulating different set of inversions. 
+A fascinating aspect of site-specific recombinases is that they can invert multiple site, providing the DNA recognition motif is present. Some genomes can have **one** site-specific recombinase responsible **many** inversions! Some genomes have a few site-specific recombinase regulating different set of inversions.
 
 When you use this command, anvi'o will leverage the program [MEME](https://meme-suite.org/meme/tools/meme) to identify palindrome motifs in the inverted-repeats.
-It is done in two steps: 
+It is done in two steps:
 - Per inversion. Anvi'o searches and report three motifs. You can find the output of MEME in each inversion's directory (e.g. `PER_INV/INV_0001/MEME`).
 - For all inversions. Anvi'o searches for shared and conserved motifs across all inversions. By default it will search for as many motifs as there are inversions. This can be time consuming if you have a lot of inversions, and you can use the flag `--num-of-motifs` to specify the number of motifs to be reported. The output of MEME can be found here: `PER_INV/ALL_INVERSIONS/MEME`.
 
-In the final outputs, we report the 'motif group' for each inversions. Which means that you can link together groups of inversion putatively associated with the same site-specific recombinase. 
+In the final outputs, we report the 'motif group' for each inversions. Which means that you can link together groups of inversion putatively associated with the same site-specific recombinase.
 
 If you want to skip this step, you can use the flag `--skip-search-for-motifs`.
 
@@ -174,7 +177,7 @@ For each inversions you can see the genomic context. This part is interactive an
 
 ![activity](../../images/anvi-report-inversions-03.png)
 
-If you provided short-reads to the analysis, you can see barplots representing the inversion's activity. As explained in [the activity section](#computing-inversion-activity), anvi'o compute the activity on each end of an inversion, which explains the two barplots per sample. "Reference" correspond to the relative proportion of short-read matching to an inversion's orientation similar to your reference sequence. And "Inversion" correspond to the relative proportion of short-reads matching the reverse orientation. 
+If you provided short-reads to the analysis, you can see barplots representing the inversion's activity. As explained in [the activity section](#computing-inversion-activity), anvi'o compute the activity on each end of an inversion, which explains the two barplots per sample. "Reference" correspond to the relative proportion of short-read matching to an inversion's orientation similar to your reference sequence. And "Inversion" correspond to the relative proportion of short-reads matching the reverse orientation.
 
 The two barplots per sample should be relatively similar. It is not the case when (1) the coverage is low (fewer reads = less accurate relative proportions) or (2) there is more than one pair of inverted-repeat in this genomic site. [Here](https://doi.org/10.1093/nar/gkaa824) is a nice example of multiple nested IRs. If you ever see this, you should consider re-running the command for that specific region with [targeted search](#targeted-search), and searching for all possible palindrome with `--check-all-palindromes`. Yes, anvi'o can report nested, multiple IRs inversions when you use these flags :rainbow:.
 
@@ -184,17 +187,17 @@ It is possible to see more colors than the two "Reference" and "Inversion". For 
 
 ![general_information](../../images/anvi-report-inversions-04.png)
 
-General information about each inversions like contig, position, length and the sample in which it was found.  
+General information about each inversions like contig, position, length and the sample in which it was found.
 
 #### Inverted repeats and motifs
 
 ![ir_and_motifs](../../images/anvi-report-inversions-05.png)
 
-Here you can see the two inverted-repeats, their alignment, length and position. 
-You can also see the "primer" sequence used to search short-read to report the activity, or relative proportion of an inversion's orientation per sample. 
+Here you can see the two inverted-repeats, their alignment, length and position.
+You can also see the "primer" sequence used to search short-read to report the activity, or relative proportion of an inversion's orientation per sample.
 
-And finally you can see the palindromic motif likely recognized by a site-specific recombinase which carries out such inversion. 
-The same motif can occur in multiple inversions, which suggest that a unique site-specific recombinase is responsible for a set of inversions. 
+And finally you can see the palindromic motif likely recognized by a site-specific recombinase which carries out such inversion.
+The same motif can occur in multiple inversions, which suggest that a unique site-specific recombinase is responsible for a set of inversions.
 Typically there is only one motif per inversion, but we don't control biology so it is possible that more than one motif are reported.
 
 ### Other outputs
@@ -210,7 +213,7 @@ INVERSIONS-OUTPUT/
 │   ├── ALL_INVERSIONS
 │   │   ├── MEME
 │   │   │   ├── logo1.eps
-│   │   │   ├── [...] 
+│   │   │   ├── [...]
 │   │   │   └── meme.xml
 │   │   ├── inverted_repeats.fasta
 │   │   └── run-MEME.log

@@ -89,9 +89,17 @@ class Inversions:
         if not self.bams_and_profiles_file_path:
             raise ConfigError("Sorry, you can't get an instance of this class without a `--bams-and-profiles` argument.")
 
+        # compute inversion activity across samples?
+        self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
+        self.pre_computed_inversions_path = A('pre_computed_inversions')
+
         # get these filled in immediately
-        self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
-        self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values()]
+        if self.pre_computed_inversions_path:
+            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path, no_profile_and_bam_column_is_ok=True)
+        else:
+            self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
+
+        self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values() if 'profile_db_path' in e]
         self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r1' in v) for v in self.profile_db_bam_file_pairs.values()])
 
         # params to identify regions of interest. if you are studying the code, don't forget to read
@@ -123,10 +131,6 @@ class Inversions:
         # this variable tells us how long is the oligonucleotide we should be focusing on
         # to measure proportions of activity
         self.oligo_length = 6
-
-        # compute inversion activity across samples?
-        self.skip_compute_inversion_activity = A('skip_compute_inversion_activity') or False
-        self.pre_computed_inversions_path = A('pre_computed_inversions')
 
         # stop inversion activity computation early for testing?
         self.end_primer_search_after_x_hits = A('end_primer_search_after_x_hits')
@@ -173,7 +177,11 @@ class Inversions:
 
         # we will generate our splits info, contigs to splits dicts, and check a few things to learn more about the
         # contigs db.
-        split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
+        if self.profile_db_paths:
+            split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
+        else:
+            split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
         self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
