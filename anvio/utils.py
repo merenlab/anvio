@@ -3324,13 +3324,21 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
-def get_bams_and_profiles_txt_as_data(file_path):
+def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok=False):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
 
     Updates to this function may require changes in the artifact description at
     anvio/docs/artifacts/bams-and-profiles-txt.md
+
+    Parameters
+    ==========
+    no_profile_and_bam_column_is_ok : bool
+        In some specific instances (e.g., as specific as wanting to compute
+        inversion activities in new metagenomes for pre-computed inversion sites),
+        downstream analyses may not require profile-db files or BAM files. In such,
+        cases the programmer can use this parameter to relax the sanity checks
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3339,13 +3347,19 @@ def get_bams_and_profiles_txt_as_data(file_path):
         raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
                           f"The file you have at '{file_path}' is nothing of that sorts.")
 
-    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+    if no_profile_and_bam_column_is_ok:
+        expected_columns = ['name', 'contigs_db_path']
+    else:
+        expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
 
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
         raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
                           f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
+
+    has_profile_db_column = 'profile_db_path' in columns_found
+    has_bam_file_column = 'bam_file_path' in columns_found
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3358,20 +3372,26 @@ def get_bams_and_profiles_txt_as_data(file_path):
                           "contigs database. Meaning, you have to use the same contigs database path for "
                           "every entry. Confusing? Yes. Still a rule? Yes.")
 
-    profile_db_paths = COLUMN_DATA('profile_db_path')
-    if len(set(profile_db_paths)) != len(profile_db_paths):
-        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+    if not has_profile_db_column:
+        pass
+    else:
+        profile_db_paths = COLUMN_DATA('profile_db_path')
+        if len(set(profile_db_paths)) != len(profile_db_paths):
+            raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
 
-    bam_file_paths = COLUMN_DATA('bam_file_path')
-    if len(set(bam_file_paths)) != len(bam_file_paths):
-        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+        bam_file_paths = COLUMN_DATA('bam_file_path')
+        if len(set(bam_file_paths)) != len(bam_file_paths):
+            raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
 
     contigs_db_path = contigs_db_paths[0]
     profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
     for sample_name in profiles_and_bams:
         profiles_and_bams[sample_name].pop('contigs_db_path')
-        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
-        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+        if has_bam_file_column:
+            filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+
+        if has_profile_db_column:
+            is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
     # this file can optionally contain `r1` and `r2` for short reads
     for raw_reads in ['r1', 'r2']:
