@@ -124,6 +124,9 @@ anvi-report-inversions -P %(bams-and-profiles-txt)s \
 
 In this mode, %(anvi-report-inversions)s will not recalculate inversions, and only report the activity of inversions found in the input file across samples listed in the %(bams-and-profiles-txt)s file.
 
+{:.notice}
+If you have additional samples to make sense of the inversions you already know about, you obviously don't need to do any additional mapping and profiling. All you need is the %(contigs-db)s with which you used to generate the inversion report you already have (i.e., not for the new samples you have), and the `r1` and `r2` files for the new samples. This is similar to the structure of %(bams-and-profiles-txt)s, except the `profile_db_path` and `bam_file_path` columns. While the entire purpose of this file is ot have these columns, in this particular instance, when you use the flag `--pre-computed-inversions` with %(anvi-report-inversions)s, ANVI'O SANITY CHECKS WILL NOT REQUIRE THE FILE TO INCLUDE PROFILE-DB AND BAM FILE PATHS. Which will make your life much more easier to scale your search. Which means for this particular application, you can create your %(bams-and-profiles-txt)s file only with the columns and you'd still be OK: `name`, `contigs_db_path`, `r1`, `r2`.
+
 ### Reporting genomic context around inversions
 
 For every inversion, anvi'o can report the surrounding genes and their function as additional files.
