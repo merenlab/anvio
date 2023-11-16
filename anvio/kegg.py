@@ -4568,7 +4568,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return contains_indirect
 
     
-    def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str):
+    def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str, mnum: str):
         """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
         same gene removed, for the provided step in a metabolic pathway.
 
@@ -4581,6 +4581,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             metabolism completeness dict for the current bin and metabolic module
         step_to_focus_on : string
             which step in the module to resolve alternative enzymes for, passed as a definition string for the step.
+        mnum : string
+            module ID (used only for warning output)
         
         RETURNS
         =======
@@ -4609,13 +4611,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     enz_str = ", ".join(enzymes)
                     self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
                                      f"within the same step of a metabolic pathway ({enz_str}), and these enzymes "
-                                     f"unfortunately have a complex relationship. We don't know the pathway ID, but "
+                                     f"unfortunately have a complex relationship. The affected module is {mnum}, and "
                                      f"here is the step in question: {step_to_focus_on}. We arbitrarily kept only one of "
                                      f"the annotations to this gene in order to avoid inflating the step's copy number, "
                                      f"but due to the complex relationship between these alternatives, this could mean "
                                      f"that the copy number for this step is actually too low. Please heed this warning "
-                                     f"and double check the stepwise copy number results for pathways containing gene call "
-                                     f"{gcid}.")
+                                     f"and double check the stepwise copy number results for {mnum} and other pathways "
+                                     f"containing gene call {gcid}.")
 
         return derep_enzyme_hits
 
@@ -4645,7 +4647,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
-                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string)
+                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string, mnum)
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
