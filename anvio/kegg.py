@@ -4511,7 +4511,61 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     return enzyme_hit_counts[step_string]
 
     
-    def get_dereplicated_enzyme_hits_for_module(self, meta_dict_for_mnum: dict):
+    def are_enzymes_indirect_alternatives_within_step(self, enzyme_list: list, step: str):
+        """An overly simplistic function to determine whether the relationship between the provided alternative 
+        enzymes in the given step is indirect.
+        
+        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by 
+        a character symbolizing a more complex relationship. That is, they are not separated only by commas and other enzymes (which
+        indicates a direct relationship, as in the two enzymes are synonymous in the context of the metabolic pathway).
+
+        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include 
+        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two 
+        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in 
+        an alternative branch of the step.
+
+        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will 
+        wrongly suggest they are direct alternatives. However, it is meant to be used only for identifying putative edge cases
+        for the `get_dereplicated_enzyme_hits_for_step_in_module()` function, and it works well enough for that.
+
+        PARAMETERS
+        ==========
+        enzyme_list : list of enzyme accessions
+            the alternative enzymes to process
+        step : string
+            the definition string of the relevant step
+
+        RETURNS
+        =======
+        contains_indirect : Boolean
+            True if the list of provided enzymes contains those that are indirect alternatives within the given step.
+        """
+
+        enzyme_data = {e : {'index': step.index(e), 
+                                    'direct_alts': [], 
+                                    'indirect_alts': []} for e in enzyme_list}
+        
+        contains_indirect = False
+        # get enzyme-specific list of alternatives
+        for e in enzyme_list:
+            for z in enzyme_list:
+                if e != z:
+                    e_index = enzyme_data[e]['index']
+                    z_index = enzyme_data[z]['index']
+                    indirect_alternatives = False
+                    
+                    # indirect alts have a space, parentheses, or plus/minus sign between them
+                    for c in step[min(e_index, z_index):max(e_index, z_index)]:
+                        if c in [' ', '(', ')', '+', '-']:
+                            indirect_alternatives = True
+                    
+                    if indirect_alternatives:
+                        enzyme_data[e]['indirect_alts'].append(z)
+                        contains_indirect = True
+                    else:
+                        enzyme_data[e]['direct_alts'].append(z)
+
+        return contains_indirect
         """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
         same gene removed.
 
