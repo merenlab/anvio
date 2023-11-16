@@ -98,19 +98,19 @@ def reformat_FASTA(args):
         exclude_ids = set([l.split('\t')[0].strip() for l in open(args.exclude_ids, 'r').readlines()])
         run.info('Input IDs to remove', '%d found' % len(exclude_ids))
     else:
-        exclude_ids = set([])
+        exclude_ids = None
 
     if args.keep_ids:
         filesnpaths.is_file_exists(args.keep_ids)
         keep_ids = set([l.split('\t')[0].strip() for l in open(args.keep_ids, 'r').readlines()])
         run.info('Input IDs to consider', '%d found' % len(keep_ids))
     else:
-        keep_ids = set([])
+        keep_ids = None
 
     if args.seq_type is not None:
         replace_chars = True
         if args.seq_type == 'AA':
-            acceptable_chars = set(constants.amino_acids)
+            acceptable_chars = set(sorted(list(constants.AA_to_single_letter_code.values())))
             replacement = 'X'
         else:
             acceptable_chars = set(constants.nucleotides)
