@@ -2828,6 +2828,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
@@ -2849,6 +2851,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.name_header = 'contig_name'
         elif self.profile_db_path and self.collection_name and not self.metagenome_mode:
             self.name_header = 'bin_name'
+        elif self.pan_db_path:
+            self.name_header = 'gene_cluster_bin_name'
         else:
             self.name_header = 'genome_name'
 
@@ -2869,8 +2873,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
 
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt:
+        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
+        # incompatible input options
+        if (self.contigs_db_path and (self.pan_db_path or self.enzymes_txt)) or \
+           (self.enzymes_txt and self.pan_db_path):
+            raise ConfigError("MULTIPLE INPUT OPTIONS DETECTED. Please check your parameters. You cannot provide more than one "
+                             "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -2885,15 +2894,27 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
-        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
+        # required with collection/bin input
+        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path and not self.pan_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
-                              "a profiles database. Unfortunately, this just does not work. Please try again.")
-
+                              "a profile database or pan database. Unfortunately, this just does not work. Please try again.")
+        # required with profile db input
         if self.profile_db_path and not (self.collection_name or self.add_coverage or self.metagenome_mode):
             raise ConfigError("If you provide a profile DB, you should also provide either a collection name (to estimate metabolism "
                               "on a collection of bins) or use the --add-coverage flag (so that coverage info goes into the output "
                               "files), or both. Otherwise the profile DB is useless.")
-
+        # required/forbidden with pangenome input
+        if self.pan_db_path and not self.genomes_storage_path:
+            raise ConfigError("You have provided a pan database but not its associated genomes storage database. Please give the "
+                             "path to the genomes storage db using the `-g` flag.")
+        if self.pan_db_path and not self.collection_name:
+            raise ConfigError("You need to provide a collection name when you estimate metabolism on a pangenome. If you don't "
+                              "already have a collection of gene clusters in the pan database, please make one first. Then provide "
+                              "the collection to this program; you can find the collection name parameter in the INPUT #2 section "
+                              "of the `-h` output.")
+        if self.pan_db_path and (self.add_copy_number or self.add_coverage):
+            raise ConfigError("The flags --add-copy-number or --add-coverage do not work for pangenome input.")
+        # required/forbidden with JSON output
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
                               "Please use the --get-raw-data-as-json flag to do so.")
