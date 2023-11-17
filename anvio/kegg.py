@@ -2914,7 +2914,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "of the `-h` output.")
         if self.pan_db_path and (self.add_copy_number or self.add_coverage):
             raise ConfigError("The flags --add-copy-number or --add-coverage do not work for pangenome input.")
-        # required/forbidden with JSON output
+        # required/forbidden with JSON estimation
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
                               "Please use the --get-raw-data-as-json flag to do so.")
@@ -3014,6 +3014,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         if self.profile_db_path:
             self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        if self.pan_db_path:
+            self.run.info("Pan DB", self.pan_db_path, quiet=self.quiet)
+            self.run.info("Genomes Storage DB", self.genomes_storage_path, quiet=self.quiet)
         if self.collection_name:
             self.run.info('Collection', self.collection_name, quiet=self.quiet)
         if self.bin_id:
@@ -3023,7 +3026,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.enzymes_txt:
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
 
-        self.run.info('Metagenome mode', self.metagenome_mode, quiet=self.quiet)
+        estimation_mode = "Genome (or metagenome assembly)"
+        if self.profile_db_path and self.collection:
+            estimation_mode = "Bins in a metagenome"
+        elif self.metagenome_mode:
+            estimation_mode = "Individual contigs in a metagenome"
+        elif self.enzymes_txt:
+            estimation_mode = "List of enzymes"
+        elif self.pan_db_path:
+            estimation_mode = "Gene cluster bins in a pangenome"
+        
+        self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
 
         if not self.estimate_from_json and not self.enzymes_txt:
