@@ -3113,8 +3113,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # LOAD USER DATA
-        if self.contigs_db_path:
-            if self.user_input_dir:
+        if self.user_input_dir:
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
                     raise ConfigError(f"It appears that a USER-DEFINED modules database ({self.user_modules_db_path}) does not exist in the provided data directory. "
@@ -3125,15 +3124,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 user_modules_db = ModulesDatabase(self.user_modules_db_path, args=self.args, quiet=self.quiet)
                 modules_db_sources = set(user_modules_db.db.get_meta_value('annotation_sources').split(','))
 
-                contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
-                source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
+                if self.contigs_db_path:
+                    contigs_db_sources = set(contigs_db.meta['gene_function_sources'])
+                    source_in_modules_not_contigs = modules_db_sources.difference(contigs_db_sources)
 
-                if source_in_modules_not_contigs:
-                    missing_sources = ", ".join(source_in_modules_not_contigs)
-                    raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
-                                      f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
-                                      f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
-                                      f"before running this program again. Here are the missing sources: {missing_sources}")
+                    if source_in_modules_not_contigs:
+                        missing_sources = ", ".join(source_in_modules_not_contigs)
+                        raise ConfigError(f"Your contigs database is missing one or more functional annotation sources that are "
+                                        f"required for the modules in the database at {self.user_modules_db_path}. You will have to "
+                                        f"annotate the contigs DB with these sources (or import them using `anvi-import-functions`) "
+                                        f"before running this program again. Here are the missing sources: {missing_sources}")
 
                 # expand annotation source set to include those in user db
                 annotation_source_set.update(modules_db_sources)
