@@ -86,9 +86,12 @@ if __name__ == '__main__':
 
     groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME', 
                                                    "If you have a collection of binned gene clusters in a pangenome, you can estimate "
-                                                   "metabolism on each bin. This program will use the most common annotation (for each "
-                                                   "annotation source) from each gene cluster. Note that this input option is not compatible "
-                                                   "with the `--add-copy-number` or `--add-coverage` flags.")
+                                                   "metabolism on each bin. You will need to provide the collection name (and optionally, "
+                                                   "bin name(s)) -- see INPUT #2 section above. This program will use the most common "
+                                                   "annotation (for each annotation source) from each gene cluster. Note that this input "
+                                                   "option is not compatible with the `--add-copy-number` or `--add-coverage` flags.")
+    groupN.add_argument('--pan-db', **anvio.K('pan-db', {'required': False}))
+    groupN.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage'))
 
     groupC = parser.add_argument_group('OUTPUT - GENERAL OPTIONS', "Parameters for controlling estimation output of any type. The output will be "
                                                  "TAB-delimited files which by default are prefixed with 'kegg-metabolism', but you can of course "
