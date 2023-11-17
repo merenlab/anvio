@@ -3039,7 +3039,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.run.info('Mode (what we are estimating metabolism for)', estimation_mode, quiet=self.quiet)
 
 
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -3067,7 +3067,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
                                   f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
-            if not self.estimate_from_json and not self.enzymes_txt:
+            if self.contigs_db_path:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
                 if 'modules_db_hash' not in contigs_db.meta:
                     raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
@@ -3111,7 +3111,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
         # LOAD USER DATA
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if self.contigs_db_path:
             if self.user_input_dir:
                 # check for user modules db
                 if not os.path.exists(self.user_modules_db_path):
@@ -3143,7 +3143,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         self.ko_dict[k] = user_kos[k]
                 user_modules_db.disconnect()
 
-        if not self.estimate_from_json and not self.enzymes_txt:
+        if self.contigs_db_path:
             contigs_db.disconnect()
 
         self.annotation_sources_to_use = list(annotation_source_set)
