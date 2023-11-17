@@ -2924,6 +2924,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        if self.pan_db_path:
+            utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
         if self.add_coverage:
             if not self.enzymes_txt:
