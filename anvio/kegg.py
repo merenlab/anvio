@@ -31,6 +31,7 @@ from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
+from anvio.dbinfo import DBInfo
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -3158,6 +3159,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.run.info('Metabolism data', "KEGG + USER-DEFINED")
         else:
             self.run.info('Metabolism data', "KEGG only")
+
+        # sanity check for annotation sources in pangenome
+        if self.genomes_storage_path:
+            available_sources = DBInfo(self.genomes_storage_path).get_functional_annotation_sources()
+            missing_sources = []
+            for source in self.annotation_sources_to_use:
+                if source not in available_sources:
+                    missing_sources.append(source)
+            if missing_sources:
+                miss_str = ", ".join(missing_sources)
+                raise ConfigError(f"The following functional annotation sources are required for metabolism "
+                                  f"estimation on the chosen metabolism data, but are missing from your genome "
+                                  f"storage database: {miss_str}. You'll need to figure out which genomes in the db "
+                                  f"are missing those sources, and annotate them before re-making the genomes storage.")
 
 
     def list_output_modes(self):
