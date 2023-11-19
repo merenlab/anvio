@@ -62,72 +62,216 @@ PangenomicNetworkStats = Dict[str, Dict[str, Any]]
 
 
 class ModelSEEDCompound:
-    """Representation of a chemical in the network, with properties given by the ModelSEED Biochemistry database."""
+    """
+    Representation of a chemical (a compound, element, or ions thereof) or a class of chemicals
+    (either abstract, like 'Cofactors' and 'Biomass', or defined, like 'Carboxylic acid' and
+    'Polynucleotides'), with properties given by the ModelSEED Biochemistry database.
+
+    Attributes
+    ==========
+    modelseed_id : str, None
+        The ModelSEED compound ID, formatted 'cpdXXXXX', where each X is a digit, e.g., 'cpd00001'.
+
+    modelseed_name : str, None
+        Name of the ModelSEED compound, e.g., 'cpd00001' has the name, 'H2O'. When absent in the
+        database, assumes a value of None.
+
+    kegg_aliases : Tuple[str], None
+        The KEGG COMPOUND IDs that are known to possibly alias the ModelSEED compound, according to
+        the ModelSEED database, e.g., 'cpd00001' has the aliases, ('C00001', 'C01328'). A KEGG
+        COMPOUND ID is formatted 'CXXXXX', where each X is a digit, e.g., 'C00001'.
+
+    charge : int, None
+        The electrical charge of the ModelSEED compound, e.g., 'cpd00001' has charge 0. ModelSEED
+        compounds without a formula have a nominal charge of 10000000 in the database.
+
+    formula : str, None
+        The formula of the ModelSEED compound, e.g., 'cpd00001' has the formula, 'H2O'. When absent
+        in the database, assumes a value of None.
+
+    abundances : Dict[str, float], dict()
+        Abundance profile data (from metabolomics, for instance) with each key being a sample name
+        and each value being the abundance of the ModelSEED compound in that sample.
+    """
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
         self.kegg_aliases: Tuple[str] = None
         self.charge: int = None
         self.formula: str = None
-        # Abundances of the metabolite across samples, with keys being sample names and values being
-        # abundances.
         self.abundances: Dict[str, float] = {}
 
 class ModelSEEDReaction:
-    """Representation of a reaction in the network, with properties given by the ModelSEED Biochemistry database."""
+    """
+    Representation of a reaction, with properties given by the ModelSEED Biochemistry database.
+
+    Attributes
+    ==========
+    modelseed_id : str, None
+        The ModelSEED reaction ID, formatted 'rxnXXXXX', where each X is a digit, e.g.,
+        'rxn00001'.
+
+    modelseed_name : str, None
+        Name of the reaction, e.g., 'rxn00001' has the name, 'diphosphate phosphohydrolase'. When
+        absent in the database, assumes a value of None.
+
+    kegg_aliases : Tuple[str], None
+        The KEGG REACTION IDs that are known to possibly alias the ModelSEED reaction, according to
+        the ModelSEED database, e.g., 'rxn00001' has the aliases, ('R00004'). A KEGG REACTION ID is
+        formatted 'RXXXXX', where each X is a digit, e.g., 'R00001'.
+
+    ec_number_aliases : Tuple[str], None
+        The EC numbers that are known to possibly alias the ModelSEED reaction, according to the
+        ModelSEED database, e.g., 'rxn00001' has the aliases, ('3.6.1.1').
+
+    compounds : Tuple[ModelSEEDCompound], None
+        ModelSEED compound IDs of reactants and products involved in the reaction, e.g., 'rxn00001'
+        involves the compounds, ('cpd00001', 'cpd00012', 'cpd00009', 'cpd00067'). A compound ID is
+        formatted 'cpdXXXXX', where each X is a digit, e.g., 'cpd00001'. Each compound item has a
+        corresponding stoichiometric reaction coefficient in the attribute, 'coefficients', and a
+        corresponding cellular compartment in the attribute, 'compartments'.
+
+    coefficients : Tuple[int], None
+        Integer stoichiometric reaction coefficients of reactants and products, with negative
+        coefficients indicating reactants and positive coefficients indicating products, e.g.,
+        'rxn00001' has the coefficients, (-1, -1, 2, 1). Each coefficient item has a corresponding
+        ModelSEED compound ID in the attribute, 'compounds', and a corresponding cellular
+        compartment in the attribute, 'compartments'.
+
+    compartments : Tuple[str], None
+        Cellular compartments of reactants and products, with valid values being 'c' for 'cytosolic'
+        and 'e' for 'extracellular', e.g., 'rxn00001' involves the compartments, ('c', 'c', 'c',
+        'c'). Each compartment item has a corresponding ModelSEED compound ID in the attribute,
+        'compounds', and a corresponding stoichiometric reaction coefficient in the attribute,
+        'coefficients'.
+
+    reversibility : bool, None
+        Reaction reversibility, with True indicating the reaction is reversible and False indicating
+        the reaction is irreversible given the equation encoded in the attributes, 'compounds',
+        'coefficients', and 'compartments'. For example, 'rxn00001' has a value of False.
+    """
     def __init__(self) -> None:
         self.modelseed_id: str = None
         self.modelseed_name: str = None
         self.kegg_aliases: Tuple[str] = None
         self.ec_number_aliases: Tuple[str] = None
-        # Compounds, coefficients, and compartments have corresponding elements.
         self.compounds: Tuple[ModelSEEDCompound] = None
         self.coefficients: Tuple[int] = None
         self.compartments: Tuple[str] = None
         self.reversibility: bool = None
 
 class KO:
-    """Representation of a KEGG Ortholog in the network."""
+    """
+    Representation of a KEGG Ortholog (KO).
+
+    Attributes
+    ==========
+    id : str, None
+        KEGG ORTHOLOGY ID in the format, 'KXXXXX', where X is a digit, e.g., 'K00001'.
+
+    name : str, None
+        Name of the KO, e.g., 'K00001' has the name, 'alcohol dehydrogenase [EC:1.1.1.1]'.
+
+    reactions : Dict[str, ModelSEEDReaction], dict()
+        ModelSEED reactions associated with the KO via KO KEGG reaction and EC number annotations.
+        Keys are ModelSEED reaction IDs and values are 'ModelSEEDReaction' objects. A ModelSEED
+        reaction ID is formatted 'rxnXXXXX', where each X is a digit, e.g., 'rxn00001'.
+
+    kegg_reaction_aliases : Dict[str, List[str]], dict()
+        KEGG reaction annotations of the KO that alias ModelSEED reactions. A KEGG REACTION ID is
+        formatted 'RXXXXX', where each X is a digit, e.g., 'R00001'. For example, KO 'K00003' has
+        two KEGG reaction annotations, both of which are associated with ModelSEED reactions via the
+        ModelSEED database: {'R01773': ['rxn01301', 'rxn27933'], 'R01775': ['rxn01302',
+        'rxn27932']}. Note that a ModelSEED reaction may have more KEGG reaction aliases than those
+        annotating the KO: all known KEGG reaction aliases of the ModelSEED reaction in the
+        ModelSEED database are recorded in the 'kegg_aliases' attribute of a 'ModelSEEDReaction'
+        object.
+
+    ec_number_aliases : Dict[str, List[str]], dict()
+        EC number annotations of the KO that alias ModelSEED reactions. For example, KO 'K00003' has
+        one EC number annotation, which is associated with ModelSEED reactions via the ModelSEED
+        database: {'1.1.1.3': ['rxn01301', 'rxn01302', 'rxn19904', 'rxn27931', 'rxn27932',
+        'rxn27933', 'rxn33957']}. Note that a ModelSEED reaction may have more EC number aliases
+        than those annotating the KO: all known EC number aliases of the ModelSEED reaction in the
+        ModelSEED database are recorded in the 'ec_number_aliases' attribute of a
+        'ModelSEEDReaction' object.
+    """
     def __init__(self) -> None:
         self.id: str = None
         self.name: str = None
-        # Map *ModelSEED reaction ID* to *ModelSEED reaction object or reaction aliases* in the
-        # following 3 dictionaries.
         self.reactions: Dict[str, ModelSEEDReaction] = {}
-        # Record the KEGG REACTION IDs *encoded by the KO* that are aliases of the ModelSEED
-        # reaction ID. These could be a subset of the KEGG reaction aliases of the ModelSEED
-        # reaction. The same is true of EC numbers.
         self.kegg_reaction_aliases: Dict[str, List[str]] = {}
         self.ec_number_aliases: Dict[str, List[str]] = {}
 
 class Gene:
-    """Representation of a gene in the metabolic network."""
+    """
+    Representation of a gene.
+
+    Attributes
+    ==========
+    gcid : int, None
+        The gene callers ID, or unique anvi'o identifier, of the gene: a non-negative integer.
+
+    kos : Dict[str, KO], dict()
+        KEGG Orthologs (KOs) annotating the gene. Keys are KO IDs, which are formatted as 'KXXXXX',
+        where each X is a digit, e.g., 'K00001'. Values are 'KO' objects.
+
+    e_values : Dict[str, float], dict()
+        E-values express the strength of KO-gene associations. Keys are KO IDs; values are
+        non-negative numbers.
+
+    protein : Protein, None
+        This object is used for storing abundance data on the protein expressed by the gene (from
+        proteomics, for instance).
+    """
     def __init__(self) -> None:
         self.gcid: int = None
-        # KOs matching the gene
         self.kos: Dict[str, KO] = {}
-        # Record the strength of each KO match.
         self.e_values: Dict[str, float] = {}
         self.protein: Protein = None
 
 class Protein:
-    """This object stores abundance data for proteins in the metabolic network."""
+    """
+    This object stores protein abundance data (from proteomics, for instance).
+
+    Attributes
+    ==========
+    id : int, None
+        The unique anvi'o ID for the protein: a non-negative integer.
+
+    genes : Dict[int, Gene], dict()
+        Genes that can express the protein. Keys are gene callers IDs; values are 'Gene' objects.
+
+    abundances : Dict[str, float], dict()
+        Protein abundance profile data with each key being a sample name and each value being the
+        abundance of the protein expressed by the gene in that sample.
+    """
     def __init__(self) -> None:
         self.id: int = None
-        # Genes in the network that can express the protein.
         self.genes: Dict[int, Gene] = {}
-        # Abundances of the protein across samples, with keys being sample names and values being
-        # abundances.
         self.abundances: Dict[str, float] = {}
 
 class GeneCluster:
-    """Representation of a gene cluster in the metabolic network."""
+    """
+    Representation of a gene cluster.
+
+    Attributes
+    ==========
+    gene_cluster_id : int, None
+        The unique anvi'o ID for the gene cluster: a non-negative integer.
+
+    genomes : List[str], []
+        The names of the genomes contributing the genes in the cluster.
+
+    ko : KO, None
+        The consensus KO among the genes in the cluster. (Consensus KOs can be found from a
+        pangenome by the anvi'o method, 'dbops.PanSuperclass.get_gene_cluster_function_summary'.)
+        Note that the individual gene KO annotations underlying the consensus annotation are not
+        tracked.
+    """
     def __init__(self) -> None:
         self.gene_cluster_id: int = None
         self.genomes: List[str] = []
-        # Consensus KO among the genes in the cluster. The KO annotations of genes in genomes that
-        # underlie each consensus annotation are not tracked. This would require storing more data
-        # on the consensus annotations in `dbops.PanSuperclass.get_gene_cluster_function_summary`.
         self.ko: KO = None
 
 class Bin:
