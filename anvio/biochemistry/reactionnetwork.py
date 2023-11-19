@@ -421,6 +421,30 @@ class ReactionNetwork:
         for metabolite_id in missing_metabolite_ids:
             objective_metabolites.pop(metabolite_id)
 
+        if not self.verbose:
+            return
+
+        if 'original_metabolite_ids' in objective_dict['notes']:
+            id_string = ""
+            for original_id, modelseed_id in zip(
+                missing_original_metabolite_ids, missing_metabolite_ids
+            ):
+                id_string += f"{original_id} ({modelseed_id}), "
+            id_string = id_string[:-2]
+            self.run.info_single(
+                f"""\
+                The following metabolites were removed from the biomass objective, with the original
+                IDs aliasing the ModelSEED compound IDs in parentheses: {id_string}\
+                """
+            )
+        else:
+            self.run.info_single(
+                f"""\
+                The following metabolites, given by their ModelSEED compound IDs, were removed from
+                the biomass objective: {', '.join(missing_metabolite_ids)}\
+                """
+            )
+
     def _get_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats],
