@@ -4485,7 +4485,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 min_step_count = None
                 for s in and_splits:
                     s_count = self.get_step_copy_number(s, enzyme_hit_counts)
-                    if not min_step_count:
+                    if min_step_count is None:
                         min_step_count = s_count # make first step the minimum
                     min_step_count = min(min_step_count, s_count)
                 return min_step_count
@@ -4510,6 +4510,117 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         return 0
                     return enzyme_hit_counts[step_string]
 
+    
+    def are_enzymes_indirect_alternatives_within_step(self, enzyme_list: list, step: str):
+        """An overly simplistic function to determine whether the relationship between the provided alternative 
+        enzymes in the given step is indirect.
+        
+        To do this, it simply walks through the step definition string to determine whether each pair of enzymes is separated by 
+        a character symbolizing a more complex relationship. That is, they are not separated only by commas and other enzymes (which
+        indicates a direct relationship, as in the two enzymes are synonymous in the context of the metabolic pathway).
+
+        For example, within the step (((K01657+K01658,K13503,K13501,K01656) K00766),K13497), the direct alternatives include 
+        K13503, K13501, and K01656. K01657 and K01658 are indirect alternatives to each other because they are two 
+        components of the same enzyme, while K01658 and K00766 are indirect because they catalyze two separate reactions in 
+        an alternative branch of the step.
+
+        This algorithm is not perfect at identifying all indirect relationships - for instance, given K01658 and K13503 it will 
+        wrongly suggest they are direct alternatives. However, it is meant to be used only for identifying putative edge cases
+        for the `get_dereplicated_enzyme_hits_for_step_in_module()` function, and it works well enough for that.
+
+        PARAMETERS
+        ==========
+        enzyme_list : list of enzyme accessions
+            the alternative enzymes to process
+        step : string
+            the definition string of the relevant step
+
+        RETURNS
+        =======
+        contains_indirect : Boolean
+            True if the list of provided enzymes contains those that are indirect alternatives within the given step.
+        """
+
+        enzyme_data = {e : {'index': step.index(e), 
+                                    'direct_alts': [], 
+                                    'indirect_alts': []} for e in enzyme_list}
+        
+        contains_indirect = False
+        # get enzyme-specific list of alternatives
+        for e in enzyme_list:
+            for z in enzyme_list:
+                if e != z:
+                    e_index = enzyme_data[e]['index']
+                    z_index = enzyme_data[z]['index']
+                    indirect_alternatives = False
+                    
+                    # indirect alts have a space, parentheses, or plus/minus sign between them
+                    for c in step[min(e_index, z_index):max(e_index, z_index)]:
+                        if c in [' ', '(', ')', '+', '-']:
+                            indirect_alternatives = True
+                    
+                    if indirect_alternatives:
+                        enzyme_data[e]['indirect_alts'].append(z)
+                        contains_indirect = True
+                    else:
+                        enzyme_data[e]['direct_alts'].append(z)
+
+        return contains_indirect
+
+    
+    def get_dereplicated_enzyme_hits_for_step_in_module(self, meta_dict_for_mnum: dict, step_to_focus_on: str, mnum: str):
+        """This function returns a dictionary of enzyme accessions matched to the number of hits, with duplicate hits to the 
+        same gene removed, for the provided step in a metabolic pathway.
+
+        Depreplicating the gene calls is necessary because the same gene can be annotated with multiple alternative enzymes for the 
+        same reaction, and we don't want these annotations to be double-counted in the stepwise copy number calculation.
+        
+        PARAMETERS
+        ==========
+        meta_dict_for_mnum : dictionary of dictionaries
+            metabolism completeness dict for the current bin and metabolic module
+        step_to_focus_on : string
+            which step in the module to resolve alternative enzymes for, passed as a definition string for the step.
+        mnum : string
+            module ID (used only for warning output)
+        
+        RETURNS
+        =======
+        derep_enzyme_hits : dictionary
+            matches enzyme accession to number of hits to unique genes
+        """
+
+        derep_enzyme_hits = {k : len(meta_dict_for_mnum["kofam_hits"][k]) for k in meta_dict_for_mnum["kofam_hits"] if k in step_to_focus_on}
+
+        # map gene caller IDs to enzyme accessions
+        gene_calls_to_enzymes = {gcid : [] for gcid in meta_dict_for_mnum['gene_caller_ids']}
+        for enzyme, gene_list in meta_dict_for_mnum['kofam_hits'].items():
+            for g in gene_list:
+                if enzyme in step_to_focus_on:
+                    gene_calls_to_enzymes[g].append(enzyme)
+
+        for gcid, enzymes in gene_calls_to_enzymes.items():
+            if len(enzymes) > 1:
+                # simple solution (only works well for enzymes that are direct alternatives)
+                # for each duplicated gene, we arbitrarily keep only the hit to the first enzyme
+                # and for all other annotations, we reduce the count of hits by one
+                for acc in enzymes[1:]:
+                    derep_enzyme_hits[acc] -= 1
+                
+                if self.are_enzymes_indirect_alternatives_within_step(enzymes, step_to_focus_on):
+                    enz_str = ", ".join(enzymes)
+                    self.run.warning(f"The gene call {gcid} has multiple annotations to alternative enzymes "
+                                     f"within the same step of a metabolic pathway ({enz_str}), and these enzymes "
+                                     f"unfortunately have a complex relationship. The affected module is {mnum}, and "
+                                     f"here is the step in question: {step_to_focus_on}. We arbitrarily kept only one of "
+                                     f"the annotations to this gene in order to avoid inflating the step's copy number, "
+                                     f"but due to the complex relationship between these alternatives, this could mean "
+                                     f"that the copy number for this step is actually too low. Please heed this warning "
+                                     f"and double check the stepwise copy number results for {mnum} and other pathways "
+                                     f"containing gene call {gcid}.")
+
+        return derep_enzyme_hits
+
 
     def compute_stepwise_module_copy_number_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the copy number of the specified module within the given bin metabolism dictionary.
@@ -4532,12 +4643,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             "copy_number"              the copy number of an individual step
         """
 
-        enzyme_hits_dict = {k : len(meta_dict_for_bin[mnum]["kofam_hits"][k]) for k in meta_dict_for_bin[mnum]["kofam_hits"] }
-
         all_step_copy_nums = []
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
+                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string, mnum)
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
