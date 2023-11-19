@@ -967,20 +967,19 @@ class GenomicNetwork(ReactionNetwork):
             try:
                 removed_metabolites.append(self.metabolites.pop(modelseed_compound_id))
             except KeyError:
-                # This occurs when removing other "unintended" metabolites from the network.
-                # 'purge_metabolites' was first called with metabolites of interest, then
-                # 'purge_reactions' was called from within the method to remove reactions involving
-                # the metabolites of interest, and then 'purge_metabolites' was called AGAIN from
-                # within 'purge_reactions' to remove other metabolites that were exclusively found
-                # in the removed reactions. In this last call of 'purge_metabolites', the
+                # This can occur for two reasons. First, the metabolite from 'metabolites_to_remove'
+                # could not be in the network.
+
+                # Second, this can occur when removing other "unintended" metabolites from the
+                # network. 'purge_metabolites' was first called with metabolites of interest, then
+                # 'purge_reactions' was called from within the method the remove reactions involving
+                # the metabolites of interest, and then 'purge_metabolites' was called again from
+                # within 'purge_reactions' to remove other metabolites exclusively found in the
+                # removed reactions. In this last call of 'purge_metabolites', the
                 # 'metabolites_to_remove' also include the metabolites of interest that were already
                 # removed from 'self.metabolites' in the original 'purge_metabolites' call. This
-                # KeyError occurs when trying to remove those already-removed metabolites. A bit complicated!
-
-                # Alternatively, this can occur if the metabolite from 'metabolites_to_remove' is
-                # not in the network.
+                # KeyError occurs when trying to remove those already-removed metabolites.
                 pass
-
         if not removed_metabolites:
             return {'metabolite': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
 
