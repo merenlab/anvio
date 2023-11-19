@@ -396,19 +396,30 @@ class ReactionNetwork:
         None
         """
         objective_metabolites: Dict = objective_dict['metabolites']
-        objective_original_metabolites: Dict = objective_dict['notes']['original_metabolite_ids']
         missing_metabolite_ids = []
-        # The original objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND IDs.
-        missing_original_metabolite_ids = []
-        for metabolite_id, original_metabolite_id in zip(objective_metabolites, objective_original_metabolites):
-            if metabolite_id[:-2] not in self.metabolites:
-                # The metabolite (removing localization substring) is not in the network.
-                missing_metabolite_ids.append(metabolite_id)
-                missing_original_metabolite_ids.append(original_metabolite_id)
+        if 'original_metabolite_ids' in objective_dict['notes']:
+            # The E. coli objective had metabolite BiGG IDs, which were replaced with KEGG COMPOUND
+            # IDs, and the original BiGG IDs were recorded in the 'notes' section of the objective.
+            missing_original_metabolite_ids = []
+            objective_original_metabolites: Dict = objective_dict['notes'][
+                'original_metabolite_ids'
+            ]
+            for metabolite_id, original_metabolite_id in zip(
+                objective_metabolites, objective_original_metabolites
+            ):
+                if metabolite_id[:-2] not in self.metabolites:
+                    # The metabolite (removing localization substring) is not in the network.
+                    missing_metabolite_ids.append(metabolite_id)
+                    missing_original_metabolite_ids.append(original_metabolite_id)
+            for original_metabolite_id in missing_original_metabolite_ids:
+                objective_original_metabolites.pop(original_metabolite_id)
+        else:
+            for metabolite_id in objective_metabolites:
+                if metabolite_id[:-2] not in self.metabolites:
+                    # The metabolite (removing localization substring) is not in the network.
+                    missing_metabolite_ids.append(metabolite_id)
         for metabolite_id in missing_metabolite_ids:
             objective_metabolites.pop(metabolite_id)
-        for original_metabolite_id in missing_original_metabolite_ids:
-            objective_original_metabolites.pop(original_metabolite_id)
 
     def _get_common_overview_statistics(
         self,
