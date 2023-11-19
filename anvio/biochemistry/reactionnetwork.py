@@ -1703,7 +1703,7 @@ class GenomicNetwork(ReactionNetwork):
                 subsetted_network.metabolites[compound_id] = metabolite
 
         if subset_referencing_kos:
-            # Add genes that are annotated by the subsetted KOs to the network.
+            # Add KOs that are annotated by the subsetted reactions to the network.
             self._subset_kos_via_reactions(subsetted_network)
 
         return subsetted_network
