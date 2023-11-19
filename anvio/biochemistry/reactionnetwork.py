@@ -981,7 +981,14 @@ class GenomicNetwork(ReactionNetwork):
                 # KeyError occurs when trying to remove those already-removed metabolites.
                 pass
         if not removed_metabolites:
-            return {'metabolite': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
+            return {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
 
         reactions_to_remove = []
         for modelseed_reaction_id, reaction in self.reactions.items():
@@ -999,7 +1006,13 @@ class GenomicNetwork(ReactionNetwork):
         else:
             # This method must have been called from the method, 'purge_reactions', because the
             # reactions containing the metabolites were already removed from the network.
-            removed_cascading_up = {'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
+            removed_cascading_up = {
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
         removed.update(removed_cascading_up)
         return removed
 
@@ -1061,7 +1074,8 @@ class GenomicNetwork(ReactionNetwork):
             except KeyError:
                 # This occurs when the original method called is 'purge_reactions', followed by
                 # 'purge_kos', followed by this method again -- 'removed_reactions' will be empty.
-                # Alternatively, this occurs if the reaction in 'reactions_to_remove' is not in the network.
+                # Alternatively, this occurs if the reaction in 'reactions_to_remove' is not in the
+                # network.
                 continue
             try:
                 self.modelseed_kegg_aliases.pop(modelseed_reaction_id)
@@ -1075,7 +1089,14 @@ class GenomicNetwork(ReactionNetwork):
                 pass
 
         if not removed_reactions:
-            return {'metabolite': [], 'reaction': [], 'kegg_reaction': [], 'ec_number': [], 'ko': [], 'gene': []}
+            return {
+                'metabolite': [],
+                'reaction': [],
+                'kegg_reaction': [],
+                'ec_number': [],
+                'ko': [],
+                'gene': []
+            }
 
         kegg_reactions_to_remove = []
         for kegg_reaction_id, modelseed_reaction_ids in self.kegg_modelseed_aliases.items():
@@ -1084,7 +1105,8 @@ class GenomicNetwork(ReactionNetwork):
                 if modelseed_reaction_id in reactions_to_remove:
                     aliases_to_remove.append(idx)
             if len(aliases_to_remove) == len(modelseed_reaction_ids):
-                # All ModelSEED reactions aliased by the KEGG reaction were removed, so remove the KEGG reaction as well.
+                # All ModelSEED reactions aliased by the KEGG reaction were removed, so remove the
+                # KEGG reaction as well.
                 kegg_reactions_to_remove.append(kegg_reaction_id)
                 continue
             for idx in sorted(aliases_to_remove, reverse=True):
