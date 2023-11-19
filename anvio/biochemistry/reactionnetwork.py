@@ -330,8 +330,42 @@ class ReactionNetwork:
     modelseed_ec_number_aliases : Dict[str, List[str]], dict()
         This maps the IDs of ModelSEED reactions in the network to lists of EC numbers that are
         associated with KOs in the network and alias the ModelSEED reaction.
+
+    run : anvio.terminal.Run, anvio.terminal.Run()
+        This object prints run information to the terminal. This attribute is assigned the argument
+        of the same name upon initialization.
+
+    progress : anvio.terminal.Progress, anvio.terminal.Progress()
+        This object prints transient progress information to the terminal. This attribute is
+        assigned the argument of the same name upon initialization.
+
+    verbose : bool, True
+        Report more information to the terminal if True.
     """
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress(),
+        verbose: bool = True
+    ) -> None:
+        """
+        Parameters
+        ==========
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object sets the 'run' attribute, which prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object sets the 'progress' attribute, which prints transient progress information
+            to the terminal.
+
+        verbose : bool, True
+            This sets the 'verbose' attribute, causing more information to be reported to the
+            terminal if True.
+
+        Returns
+        =======
+        None
+        """
         self.kos: Dict[str, KO] = {}
         self.reactions: Dict[str, ModelSEEDReaction] = {}
         self.metabolites: Dict[str, ModelSEEDCompound] = {}
@@ -341,6 +375,10 @@ class ReactionNetwork:
         self.ec_number_modelseed_aliases: Dict[str, List[str]] = {}
         self.modelseed_kegg_aliases: Dict[str, List[str]] = {}
         self.modelseed_ec_number_aliases: Dict[str, List[str]] = {}
+
+        self.run = run
+        self.progress = progress
+        self.verbose = verbose
 
     def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
         """
