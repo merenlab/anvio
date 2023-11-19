@@ -382,8 +382,8 @@ class ReactionNetwork:
 
     def remove_missing_objective_metabolites(self, objective_dict: Dict) -> None:
         """
-        Remove metabolites from the biomass objective dictionary that are not produced or consumed
-        in the reaction network.
+        Remove metabolites from a biomass objective dictionary that are not produced or consumed by
+        any reactions in the network.
 
         Parameters
         ==========
