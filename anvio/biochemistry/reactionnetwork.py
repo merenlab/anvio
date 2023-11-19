@@ -447,8 +447,7 @@ class ReactionNetwork:
 
     def _get_common_overview_statistics(
         self,
-        stats: Union[GenomicNetworkStats, PangenomicNetworkStats],
-        progress: terminal.Progress
+        stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
     ) -> None:
         """
         Calculate overview statistics that are found the same way for both genomic and pangenomic
@@ -461,15 +460,12 @@ class ReactionNetwork:
             dictionary are "classes" of network statistics. Keys in the inner dictionary are
             statistics themselves.
 
-        progress : anvio.terminal.Progress
-            This object prints transient progress information to the terminal.
-
         Returns
         =======
         None
         """
-        progress.new("Counting reactions and KO sources")
-        progress.update("...")
+        self.progress.new("Counting reactions and KO sources")
+        self.progress.update("...")
         stats['Reactions and KO sources'] = stats_group = {}
         stats_group['Reactions in network'] = len(self.reactions)
         reaction_counts = []
@@ -478,10 +474,10 @@ class ReactionNetwork:
         stats_group['Mean reactions per KO'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per KO'] = round(np.std(reaction_counts), 1)
         stats_group['Max reactions per KO'] = max(reaction_counts)
-        progress.end()
+        self.progress.end()
 
-        progress.new("Counting reactions from each alias source")
-        progress.update("...")
+        self.progress.new("Counting reactions from each alias source")
+        self.progress.update("...")
         stats['Reaction alias sources'] = stats_group = {}
         kegg_aliased_modelseed_reaction_ids = []
         for modelseed_reaction_id, kegg_reaction_ids in self.modelseed_kegg_aliases.items():
@@ -523,10 +519,10 @@ class ReactionNetwork:
         stats_group['Mean reactions per EC number'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per EC number'] = round(np.std(reaction_counts), 1)
         stats_group['Max reactions per EC number'] = max(reaction_counts)
-        progress.end()
+        self.progress.end()
 
-        progress.new("Counting reactions and metabolites by property")
-        progress.update("...")
+        self.progress.new("Counting reactions and metabolites by property")
+        self.progress.update("...")
         stats['Reaction and metabolite properties'] = stats_group = {}
 
         reversible_count = 0
@@ -598,12 +594,11 @@ class ReactionNetwork:
         stats_group['Metabolites consumed or produced by 2 rxns'] = two_reactions_count
         three_plus_reactions_count = metabolite_count - one_reaction_count - two_reactions_count
         stats_group['Metabolites consumed or produced by 3+ rxns'] = three_plus_reactions_count
-        progress.end()
+        self.progress.end()
 
     def _print_common_overview_statistics(
         self,
-        stats: Union[GenomicNetworkStats, PangenomicNetworkStats],
-        run: terminal.Run
+        stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
     ) -> None:
         """
         Print overview statistics that are the same for both genomic and pangenomic networks.
@@ -615,110 +610,108 @@ class ReactionNetwork:
             dictionary are "classes" of network statistics. Keys in the inner dictionary are
             statistics themselves.
 
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
         Returns
         =======
         None
         """
-        run.info_single("ModelSEED reactions in network and KO sources")
+        self.run.info_single("ModelSEED reactions in network and KO sources")
         stats_group = stats['Reactions and KO sources']
-        run.info("Reactions in network", stats_group['Reactions in network'])
-        run.info("Mean reactions per KO", stats_group['Mean reactions per KO'])
-        run.info("Stdev reactions per KO", stats_group['Stdev reactions per KO'])
-        run.info("Max reactions per KO", stats_group['Max reactions per KO'], nl_after=1)
+        self.run.info("Reactions in network", stats_group['Reactions in network'])
+        self.run.info("Mean reactions per KO", stats_group['Mean reactions per KO'])
+        self.run.info("Stdev reactions per KO", stats_group['Stdev reactions per KO'])
+        self.run.info("Max reactions per KO", stats_group['Max reactions per KO'], nl_after=1)
 
-        run.info_single("Reaction alias source comparison")
+        self.run.info_single("Reaction alias source comparison")
         stats_group = stats['Reaction alias sources']
-        run.info(
+        self.run.info(
             "Reactions aliased by KEGG reaction", stats_group['Reactions aliased by KEGG reaction']
         )
-        run.info(
+        self.run.info(
             "Reactions aliased by EC number", stats_group['Reactions aliased by EC number']
         )
-        run.info(
+        self.run.info(
             "Rxns aliased by both KEGG rxn & EC number",
             stats_group['Rxns aliased by both KEGG rxn & EC number']
         )
-        run.info(
+        self.run.info(
             "Reactions aliased only by KEGG reaction",
             stats_group['Reactions aliased only by KEGG reaction']
         )
-        run.info(
+        self.run.info(
             "Reactions aliased only by EC number",
             stats_group['Reactions aliased only by EC number']
         )
-        run.info(
+        self.run.info(
             "KEGG reactions contributing to network",
             stats_group['KEGG reactions contributing to network']
         )
-        run.info(
+        self.run.info(
             "Mean reactions per KEGG reaction", stats_group['Mean reactions per KEGG reaction']
         )
-        run.info(
+        self.run.info(
             "Stdev reactions per KEGG reaction", stats_group['Stdev reactions per KEGG reaction']
         )
-        run.info(
+        self.run.info(
             "Max reactions per KEGG reaction", stats_group['Max reactions per KEGG reaction']
         )
-        run.info(
+        self.run.info(
             "EC numbers contributing to network", stats_group['EC numbers contributing to network']
         )
-        run.info(
+        self.run.info(
             "Mean reactions per EC number", stats_group['Mean reactions per EC number']
         )
-        run.info(
+        self.run.info(
             "Stdev reactions per EC number", stats_group['Stdev reactions per EC number']
         )
-        run.info(
+        self.run.info(
             "Max reactions per EC number", stats_group['Max reactions per EC number'], nl_after=1
         )
 
         stats_group = stats['Reaction and metabolite properties']
-        run.info_single("Reaction reversibility")
-        run.info("Reversible reactions", stats_group['Reversible reactions'])
-        run.info("Irreversible reactions", stats_group['Irreversible reactions'], nl_after=1)
+        self.run.info_single("Reaction reversibility")
+        self.run.info("Reversible reactions", stats_group['Reversible reactions'])
+        self.run.info("Irreversible reactions", stats_group['Irreversible reactions'], nl_after=1)
 
-        run.info_single("Metabolites and localization")
-        run.info("Metabolites in network", stats_group['Metabolites in network'])
-        run.info("Cytoplasmic metabolites", stats_group['Cytoplasmic metabolites'])
-        run.info("Extracellular metabolites", stats_group['Extracellular metabolites'])
-        run.info(
-            "Exclusively cytoplasmic metabolites", stats_group['Exclusively cytoplasmic metabolites']
+        self.run.info_single("Metabolites and localization")
+        self.run.info("Metabolites in network", stats_group['Metabolites in network'])
+        self.run.info("Cytoplasmic metabolites", stats_group['Cytoplasmic metabolites'])
+        self.run.info("Extracellular metabolites", stats_group['Extracellular metabolites'])
+        self.run.info(
+            "Exclusively cytoplasmic metabolites",
+            stats_group['Exclusively cytoplasmic metabolites']
         )
-        run.info(
+        self.run.info(
             "Exclusively extracellular metabolites",
             stats_group['Exclusively extracellular metabolites']
         )
-        run.info(
+        self.run.info(
             "Cytoplasmic/extracellular metabolites",
             stats_group['Cytoplasmic/extracellular metabolites'],
             nl_after=1
         )
 
-        run.info_single("Metabolite consumption and production")
-        run.info("Consumed metabolites", stats_group['Consumed metabolites'])
-        run.info("Produced metabolites", stats_group['Produced metabolites'])
-        run.info(
+        self.run.info_single("Metabolite consumption and production")
+        self.run.info("Consumed metabolites", stats_group['Consumed metabolites'])
+        self.run.info("Produced metabolites", stats_group['Produced metabolites'])
+        self.run.info(
             "Both consumed & produced metabolites",
             stats_group['Both consumed & produced metabolites']
         )
-        run.info(
+        self.run.info(
             "Exclusively consumed metabolites", stats_group['Exclusively consumed metabolites']
         )
-        run.info(
+        self.run.info(
             "Exclusively produced metabolites", stats_group['Exclusively produced metabolites']
         )
-        run.info(
+        self.run.info(
             "Metabolites consumed or produced by 1 rxn",
             stats_group['Metabolites consumed or produced by 1 rxn']
         )
-        run.info(
+        self.run.info(
             "Metabolites consumed or produced by 2 rxns",
             stats_group['Metabolites consumed or produced by 2 rxns']
         )
-        run.info(
+        self.run.info(
             "Metabolites consumed or produced by 3+ rxns",
             stats_group['Metabolites consumed or produced by 3+ rxns'],
             nl_after=1
@@ -727,9 +720,7 @@ class ReactionNetwork:
     def write_overview_statistics(
         self,
         stats_file: str,
-        stats: Union[GenomicNetworkStats, PangenomicNetworkStats] = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
+        stats: Union[GenomicNetworkStats, PangenomicNetworkStats] = None
     ) -> None:
         """
         Write a tab-delimited file of overview statistics for the metabolic network.
@@ -741,18 +732,12 @@ class ReactionNetwork:
             file. Alternatively, provided network statistics will be written to file without
             calculating anew.
 
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
-
         Returns
         =======
         None
         """
         if not stats:
-            stats = self.get_overview_statistics(run=run, progress=progress)
+            stats = self.get_overview_statistics()
 
         filesnpaths.is_output_file_writable(stats_file)
 
@@ -764,7 +749,7 @@ class ReactionNetwork:
             stats_file, sep='\t', index=False
         )
 
-        run.info("Metabolic network statistics output file", stats_file)
+        self.run.info("Metabolic network statistics output file", stats_file)
 
 class GenomicNetwork(ReactionNetwork):
     """
@@ -818,9 +803,31 @@ class GenomicNetwork(ReactionNetwork):
         This maps protein IDs to object representations of proteins with abundance data in the
         network.
     """
-    def __init__(self) -> None:
-        # map gene caller ID to gene object
-        super().__init__()
+    def __init__(
+        self,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress(),
+        verbose: bool = True
+    ) -> None:
+        """
+        Parameters
+        ==========
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object sets the 'run' attribute, which prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object sets the 'progress' attribute, which prints transient progress information
+            to the terminal.
+
+        verbose : bool, True
+            This sets the 'verbose' attribute, causing more information to be reported to the
+            terminal if True.
+
+        Returns
+        =======
+        None
+        """
+        super().__init__(run=run, progress=progress, verbose=verbose)
         self.contigs_db_source_path: str = None
         self.profile_db_source_path: str = None
         self.genes: Dict[int, Gene] = {}
@@ -1372,10 +1379,7 @@ class GenomicNetwork(ReactionNetwork):
         genes_to_subset: List[int] = None,
         kos_to_subset: List[str] = None,
         reactions_to_subset: List[str] = None,
-        metabolites_to_subset: List[str] = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress(),
-        verbose: bool = True
+        metabolites_to_subset: List[str] = None
     ) -> GenomicNetwork:
         """
         Subset a smaller network from the metabolic network.
@@ -1398,6 +1402,10 @@ class GenomicNetwork(ReactionNetwork):
         KO encoding multiple reactions can be pruned to encode only those reactions involving
         requested metabolites.
 
+        If the 'verbose' attribute of the source 'GenomicNetwork' object is True, then report to the
+        terminal the identities of requested KEGG modules, BRITE categories, genes, KOs, reactions,
+        and metabolites that are not present in the network.
+
         Parameters
         ==========
         kegg_modules_to_subset : List[str], None
@@ -1417,16 +1425,6 @@ class GenomicNetwork(ReactionNetwork):
 
         metabolites_to_subset : List[str], None
             List of ModelSEED metabolite IDs to subset.
-
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
-
-        verbose : bool, True
-            Report the identities of requested KEGG modules, BRITE categories, genes, KOs,
-            reactions, and metabolites that are not present in the source network.
 
         Returns
         =======
@@ -2018,9 +2016,7 @@ class GenomicNetwork(ReactionNetwork):
 
     def get_overview_statistics(
         self,
-        precomputed_counts: Dict[str, int] = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
+        precomputed_counts: Dict[str, int] = None
     ) -> GenomicNetworkStats:
         """
         Calculate overview statistics for the genomic metabolic network.
@@ -2034,12 +2030,6 @@ class GenomicNetwork(ReactionNetwork):
             'genes_assigned_kos', should be the number of genes in the genome assigned KOs; the
             value for the key, 'kos_assigned_genes', should be the number of unique KOs assigned to
             genes in the genome.
-
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
 
         Returns
         =======
@@ -2061,8 +2051,8 @@ class GenomicNetwork(ReactionNetwork):
 
         stats: GenomicNetworkStats = {}
 
-        progress.new("Counting genes and KOs")
-        progress.update("...")
+        self.progress.new("Counting genes and KOs")
+        self.progress.update("...")
         stats['Gene and KO counts'] = stats_group = {}
 
         if precomputed_counts:
@@ -2106,15 +2096,15 @@ class GenomicNetwork(ReactionNetwork):
         if annotating_ko_count is not None:
             stats_group['Protein KOs annotating genes'] = annotating_ko_count
         stats_group['KOs in network'] = len(self.kos)
-        progress.end()
+        self.progress.end()
 
-        self._get_common_overview_statistics(stats, progress)
+        self._get_common_overview_statistics(stats)
 
         if precomputed_counts:
             return stats
 
         if not self.contigs_db_source_path:
-            run.info_single(
+            self.run.info_single(
                 f"""\
                 Since the genomic network was not associated with a contigs database, the following
                 statistics could not be calculated and were not reported to the output file:
@@ -2125,12 +2115,7 @@ class GenomicNetwork(ReactionNetwork):
 
         return stats
 
-    def print_overview_statistics(
-        self,
-        stats: GenomicNetworkStats = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
-    ) -> None:
+    def print_overview_statistics(self, stats: GenomicNetworkStats = None) -> None:
         """
         Print overview statistics for the genomic metabolic network.
 
@@ -2140,32 +2125,26 @@ class GenomicNetwork(ReactionNetwork):
             With the default value of None, network statistics will be calculated and printed.
             Alternatively, provided network statistics will be printed without calculating anew.
 
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
-
         Returns
         =======
         None
         """
         if not stats:
-            stats = self.get_overview_statistics(run=run, progress=progress)
+            stats = self.get_overview_statistics()
 
-        run.info_single("METABOLIC REACTION NETWORK STATISTICS", mc='green', nl_after=1)
+        self.run.info_single("METABOLIC REACTION NETWORK STATISTICS", mc='green', nl_after=1)
 
-        run.info_single("Gene calls and KEGG Ortholog (KO) annotations")
+        self.run.info_single("Gene calls and KEGG Ortholog (KO) annotations")
         stats_group = stats['Gene and KO counts']
-        run.info("Total gene calls in genome", stats_group['Total gene calls in genome'])
-        run.info(
+        self.run.info("Total gene calls in genome", stats_group['Total gene calls in genome'])
+        self.run.info(
             "Genes annotated with protein KOs", stats_group['Genes annotated with protein KOs']
         )
-        run.info("Genes in network", stats_group['Genes in network'])
-        run.info("Protein KOs annotating genes", stats_group['Protein KOs annotating genes'])
-        run.info("KOs in network", stats_group['KOs in network'], nl_after=1)
+        self.run.info("Genes in network", stats_group['Genes in network'])
+        self.run.info("Protein KOs annotating genes", stats_group['Protein KOs annotating genes'])
+        self.run.info("KOs in network", stats_group['KOs in network'], nl_after=1)
 
-        self._print_common_overview_statistics(stats, run)
+        self._print_common_overview_statistics(stats)
 
     def export_json(
         self,
@@ -2385,27 +2364,43 @@ class PangenomicNetwork(ReactionNetwork):
 
     collection : BinCollection, None
     """
-    def __init__(self) -> None:
-        super().__init__()
-        # If applicable, record the databases in which the network is stored and the parameters used
-        # to choose gene cluster consensus KOs. Consistent annotations may not be the case for
-        # loaded networks based on a set of gene KO annotations in the genomes storage database that
-        # has since changed.
+    def __init__(
+        self,
+        run: terminal.Run = terminal.Run(),
+        progress: terminal.Progress = terminal.Progress(),
+        verbose: bool = True
+    ) -> None:
+        """
+        Parameters
+        ==========
+        run : anvio.terminal.Run, anvio.terminal.Run()
+            This object sets the 'run' attribute, which prints run information to the terminal.
+
+        progress : anvio.terminal.Progress, anvio.terminal.Progress()
+            This object sets the 'progress' attribute, which prints transient progress information
+            to the terminal.
+
+        verbose : bool, True
+            This sets the 'verbose' attribute, causing more information to be reported to the
+            terminal if True.
+
+        Returns
+        =======
+        None
+        """
+        super().__init__(run=run, progress=progress, verbose=verbose)
         self.pan_db_source_path: str = None
         self.genomes_storage_db_source_path: str = None
         self.consensus_threshold: float = None
         self.discard_ties: bool = None
         self.consistent_annotations: bool = None
-        # Map gene cluster ID to gene cluster object.
         self.gene_clusters: Dict[str, GeneCluster] = {}
         self.bins: Dict[str, GeneClusterBin] = {}
         self.collection: BinCollection = None
 
     def get_overview_statistics(
         self,
-        precomputed_counts: Dict[str, int] = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
+        precomputed_counts: Dict[str, int] = None
     ) -> PangenomicNetworkStats:
         """
         Calculate overview statistics for the pangenomic metabolic network.
@@ -2421,12 +2416,6 @@ class PangenomicNetwork(ReactionNetwork):
             the value for the key, 'kos_assigned_gene_clusters', should be the number of consensus
             KOs assigned to gene clusters in the pangenome (or None if 'self.consistent_annotations'
             is False).
-
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
 
         Returns
         =======
@@ -2449,8 +2438,8 @@ class PangenomicNetwork(ReactionNetwork):
 
         stats: PangenomicNetworkStats = {}
 
-        progress.new("Counting gene clusters and KOs")
-        progress.update("...")
+        self.progress.new("Counting gene clusters and KOs")
+        self.progress.update("...")
         stats['Gene cluster and KO counts'] = stats_group = {}
 
         if precomputed_counts:
@@ -2536,15 +2525,15 @@ class PangenomicNetwork(ReactionNetwork):
         if annotating_ko_count is not None:
             stats_group['Protein KOs assigned to gene clusters'] = annotating_ko_count
         stats_group['KOs in network'] = len(self.kos)
-        progress.end()
+        self.progress.end()
 
-        self._get_common_overview_statistics(stats, progress)
+        self._get_common_overview_statistics(stats)
 
         if precomputed_counts:
             return stats
 
         if not (self.pan_db_source_path and self.genomes_storage_db_source_path):
-            run.info_single(
+            self.run.info_single(
                 f"""\
                 Since the pangenomic network was not associated with a pan database and genomes
                 storage database, the following statistics could not be calculated and were not
@@ -2553,7 +2542,7 @@ class PangenomicNetwork(ReactionNetwork):
                 """
             )
         elif self.consistent_annotations is False:
-            run.info_single(
+            self.run.info_single(
                 f"""\
                 The network attribute, 'consistent_annotations', is False, which indicates that the
                 reaction network stored in the pan database was made from a different set of KO gene
@@ -2566,12 +2555,7 @@ class PangenomicNetwork(ReactionNetwork):
 
         return stats
 
-    def print_overview_statistics(
-        self,
-        stats: GenomicNetworkStats = None,
-        run: terminal.Run = terminal.Run(),
-        progress: terminal.Progress = terminal.Progress()
-    ) -> None:
+    def print_overview_statistics(self, stats: GenomicNetworkStats = None) -> None:
         """
         Print overview statistics for the genomic metabolic network.
 
@@ -2581,38 +2565,32 @@ class PangenomicNetwork(ReactionNetwork):
             With the default value of None, network statistics will be calculated and printed.
             Alternatively, provided network statistics will be printed without calculating anew.
 
-        run : anvio.terminal.Run, anvio.terminal.Run()
-            This object prints run information to the terminal.
-
-        progress : anvio.terminal.Progress, anvio.terminal.Progress()
-            This object prints transient progress information to the terminal.
-
         Returns
         =======
         None
         """
         if not stats:
-            stats = self.get_overview_statistics(run=run, progress=progress)
+            stats = self.get_overview_statistics()
 
-        run.info_single("METABOLIC REACTION NETWORK STATISTICS", mc='green', nl_after=1)
+        self.run.info_single("METABOLIC REACTION NETWORK STATISTICS", mc='green', nl_after=1)
 
-        run.info_single("Gene clusters and KEGG Ortholog (KO) annotations")
+        self.run.info_single("Gene clusters and KEGG Ortholog (KO) annotations")
         stats_group = stats['Gene cluster and KO counts']
-        run.info(
+        self.run.info(
             "Total gene clusters in pangenome", stats_group['Total gene clusters in pangenome']
         )
-        run.info(
+        self.run.info(
             "Gene clusters annotated with protein KO",
             stats_group['Gene clusters assigned protein KO']
         )
-        run.info("Gene clusters in network", stats_group['Gene clusters in network'])
-        run.info(
+        self.run.info("Gene clusters in network", stats_group['Gene clusters in network'])
+        self.run.info(
             "Protein KOs assigned to gene clusters",
             stats_group['Protein KOs assigned to gene clusters']
         )
-        run.info("KOs in network", stats_group['KOs in network'], nl_after=1)
+        self.run.info("KOs in network", stats_group['KOs in network'], nl_after=1)
 
-        self._print_common_overview_statistics(stats, run)
+        self._print_common_overview_statistics(stats)
 
     def export_json(
         self,
@@ -3650,7 +3628,7 @@ class Constructor:
                 """
             )
 
-        network = GenomicNetwork()
+        network = GenomicNetwork(run=self.run, progress=self.progress)
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
         cdb = ContigsDatabase(contigs_db)
@@ -3753,15 +3731,11 @@ class Constructor:
             'kos_assigned_genes': len(network.kos) + len(unnetworked_ko_ids)
         }
         cdb.disconnect()
-        stats = network.get_overview_statistics(
-            precomputed_counts=precomputed_counts, run=self.run, progress=self.progress
-        )
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
         if not quiet:
-            network.print_overview_statistics(stats=stats, run=self.run, progress=self.progress)
+            network.print_overview_statistics(stats=stats)
         if stats_file:
-            network.write_overview_statistics(
-                stats_file, stats=stats, run=self.run, progress=self.progress
-            )
+            network.write_overview_statistics(stats_file, stats=stats)
 
         return network
 
@@ -3980,7 +3954,7 @@ class Constructor:
                 "in the original network that was stored."
             )
 
-        network = PangenomicNetwork()
+        network = PangenomicNetwork(run=self.run, progress=self.progress)
         network.pan_db_source_path = os.path.abspath(pan_db)
         network.genomes_storage_db_source_path = os.path.abspath(genomes_storage_db)
         network.consensus_threshold = consensus_threshold
@@ -4074,15 +4048,11 @@ class Constructor:
                 'kos_assigned_gene_clusters': None
             }
         pdb.disconnect()
-        stats = network.get_overview_statistics(
-            precomputed_counts=precomputed_counts, run=self.run, progress=self.progress
-        )
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
         if not quiet:
-            network.print_overview_statistics(stats=stats, run=self.run, progress=self.progress)
+            network.print_overview_statistics(stats=stats)
         if stats_file:
-            network.write_overview_statistics(
-                stats_file, stats=stats, run=self.run, progress=self.progress
-            )
+            network.write_overview_statistics(stats_file, stats=stats)
 
         return network
 
@@ -4531,7 +4501,7 @@ class Constructor:
         ko_db = KODatabase(self.ko_dir)
         modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
-        network = GenomicNetwork()
+        network = GenomicNetwork(run=self.run, progress=self.progress)
         network.contigs_db_source_path = os.path.abspath(contigs_db)
 
         modelseed_kegg_reactions_table = modelseed_db.kegg_reactions_table
@@ -4780,14 +4750,10 @@ class Constructor:
             'kos_assigned_genes': len(network.kos) + len(unnetworked_ko_ids)
         }
         cdb.disconnect()
-        stats = network.get_overview_statistics(
-            precomputed_counts=precomputed_counts, run=self.run, progress=self.progress
-        )
-        network.print_overview_statistics(stats=stats, run=self.run, progress=self.progress)
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
+        network.print_overview_statistics(stats=stats)
         if stats_file:
-            network.write_overview_statistics(
-                stats_file, stats=stats, run=self.run, progress=self.progress
-            )
+            network.write_overview_statistics(stats_file, stats=stats)
 
         return network
 
@@ -4886,7 +4852,7 @@ class Constructor:
         ko_db = KODatabase(self.ko_dir)
         modelseed_db = ModelSEEDDatabase(self.modelseed_dir)
 
-        network = PangenomicNetwork()
+        network = PangenomicNetwork(run=self.run, progress=self.progress)
         network.pan_db_source_path = os.path.abspath(pan_db)
         network.genomes_storage_db_source_path = os.path.abspath(genomes_storage_db)
         network.consensus_threshold = consensus_threshold
@@ -5148,14 +5114,10 @@ class Constructor:
             'kos_assigned_gene_clusters': len(network.kos) + len(unnetworked_ko_ids)
         }
         pdb.disconnect()
-        stats = network.get_overview_statistics(
-            precomputed_counts=precomputed_counts, run=self.run, progress=self.progress
-        )
-        network.print_overview_statistics(stats=stats, run=self.run, progress=self.progress)
+        stats = network.get_overview_statistics(precomputed_counts=precomputed_counts)
+        network.print_overview_statistics(stats=stats)
         if stats_file:
-            network.write_overview_statistics(
-                stats_file, stats=stats, run=self.run, progress=self.progress
-            )
+            network.write_overview_statistics(stats_file, stats=stats)
 
         return network
 
