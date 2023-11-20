@@ -111,6 +111,8 @@ anvi-estimate-metabolism --pan-db %(pan-db)s -g %(genomes-storage-db)s -C COLLEC
 
 In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
 
+Want to run the estimation on all the gene clusters in the pangenome? You should add a default collection first using %(anvi-script-add-default-collection)s.
+
 ### Estimation for a set of enzymes
 
 Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %(enzymes-txt)s file, and give that input file to this program, like so:
