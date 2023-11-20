@@ -29,7 +29,7 @@ from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 from anvio.dbinfo import DBInfo
 
@@ -5110,7 +5110,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
-        It will decide what to do based on whether the input contigs DB is a genome or metagenome.
+        It will decide what to do based on whether the input DB is a genome, metagenome, or pangenome.
         It usually avoids returning the metabolism data to save on memory (as this data is typically appended to
         files immediately), but this behavior can be changed by setting return_superdicts to True (for the entire
         modules/ko superdictionaries) or return_subset_for_matrix_format to True (for a subset of these dicts that
@@ -5175,6 +5175,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             if self.enzymes_txt:
                 self.enzymes_txt_data = self.load_data_from_enzymes_txt()
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
+            elif self.pan_db_path:
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
