@@ -5280,6 +5280,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 all_gene_clusters_in_collection = []
                 for bin_name, gene_cluster_list in collection_dict.items():
                     all_gene_clusters_in_collection += gene_cluster_list
+
+                kofam_hits_info = self.init_hits_for_pangenome(gene_cluster_list = all_gene_clusters_in_collection)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_pangenome_bins(kofam_hits_info, collection_dict)
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
