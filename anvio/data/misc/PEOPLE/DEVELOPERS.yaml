@@ -7,7 +7,7 @@
   linkedin: meren
   orcid: 0000-0001-9013-4827
   skype: a.murat.eren
-  bio: "Computer scientist and microbial ecologist interested in undersatnding mechanisms by which microbes interact with their surroundings, evolve, disperse, and respond to environmental change."
+  bio: "Computer scientist and microbial ecologist interested in understanding mechanisms by which microbes interact with their surroundings, evolve, disperse, and respond to environmental change."
   affiliations:
     - title: Professor
       inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
@@ -48,9 +48,13 @@
   bio: "Microbiologist using advanced computational strategies to make sense of the microbial ecology of complex habitats."
   affiliations:
     - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: watsonar
   name: Andrea Watson
@@ -119,14 +123,18 @@
     - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-estimate-metabolism/>anvi'o metabolism framework</a>"
     - contribution: "Spearheaded <a href=https://anvio.org/vocabulary>the 'omics vocabulary</a> effort"
   affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
-      current: true
+      current: false
     - title: Fellow
       inst: NSF Graduate Research Fellowship Program
       inst_link: https://www.nsfgrfp.org/
-      current: true
+      current: false
 
 - github: moritzbuck
   name: Moritz Buck
@@ -166,7 +174,7 @@
     - title: Undergraduate Student
       inst: Computer Science
       inst_link: http://collegecatalog.uchicago.edu/thecollege/computerscience/
-      current: true
+      current: false
 
 - github: matthewlawrenceklein
   name: Matthew Lawrence Klein
@@ -179,7 +187,7 @@
     - title: Programmer
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: blankenberg
   name: Daniel Blankenberg
@@ -226,6 +234,7 @@
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
+      current: true
 
 - github: ozcan
   name: Özcan C. Esen
@@ -323,10 +332,14 @@
   avatar: efogarty11.jpg
   bio: "Microbiologist developing computational and wet lab strategies to study horizontal gene transfer in the human gut microbiome."
   affiliations:
+    - title: Clinical Affairs Associate
+      inst: Theralink Technologies, Inc.
+      inst_link: https://theralink.com/
+      current: true
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
-      current: true
+      current: false
 
 - github: AstrobioMike
   name: Mike Lee
@@ -375,3 +388,53 @@
       inst: Melbourne Integrative Genomics - University of Melbourne
       inst_link: https://sites.research.unimelb.edu.au/integrative-genomics/MIG-home
       current: True
+
+- github: ctb
+  name: C. Titus Brown
+  bio: "Bioinformatics software developer and microbiome enthusiast."
+  email: ctbrown@ucdavis.edu
+  avatar: ctitusbrown.jpg
+  web: https://ivory.idyll.org/lab/
+  twitter: ctitusbrown
+  linkedin: ctitusbrown
+  orcid: 0000-0001-6001-2677
+  intellectual-contributions:
+    - contribution: "Nothing but minor updates and corrections so far!"
+  affiliations:
+    - title: Professor
+      inst: University of California Davis
+      inst_link: http://www.ucdavis.edu/
+      current: true
+
+- github: ge0rges
+  name: Georges Kanaan
+  twitter: scientificgio
+  web: https://gkanaan.com
+  avatar: ge0rges.jpg
+  email: georges@gkanaan.com
+  linkedin: ge0rges
+  orcid: 0000-0002-5721-1138
+  bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
+  intellectual-contributions:
+    - contribution: "Resolved a <a href=https://github.com/merenlab/anvio/issues/1738>long-standing dilemma</a> with the program anvi-setup-ncbi-cogs."
+  affiliations:
+    - title: Graduate Student
+      inst: University of Washington
+      inst_link: https://ocean.washington.edu
+      current: true
+
+- github: telatin
+  name: Andrea Telatin
+  twitter: telatin
+  web: https://telatin.github.io
+  orcid: 0000-0001-7619-281X
+  email: andrea.telatin@quadram.ac.uk
+  avatar: telatin.jpg
+  bio: "Senior Bioinformatician at the Quadram Institute Bioscience, Norwich, UK. Interested in metagenomics, microbial ecology, and open science."
+  intellectual-contributions:
+    - contribution: "Added a script to reformat BAM files after running anvi-script-reformat-fasta"
+  affiliations:
+    - title: Senior Bioinformatician
+      inst: Quadram Institute Bioscience
+      inst_link: https://quadram.ac.uk
+      current: true

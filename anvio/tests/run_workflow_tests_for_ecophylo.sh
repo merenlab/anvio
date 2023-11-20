@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 INFO "Setting up the ecophylo workflow test directory"
 mkdir $output_dir/workflow_test
@@ -15,6 +15,9 @@ cp $files/data/input_files/external-genomes.txt                         $output_
 cp $files/data/input_files/hmm_list.txt                                 $output_dir/workflow_test
 cp $files/data/input_files/hmm_list_external.txt                        $output_dir/workflow_test
 cd $output_dir/workflow_test
+
+INFO "Migrating all databases"
+anvi-migrate *db --migrate-quickly
 
 INFO "Creating a default config for ecophylo workflow"
 anvi-run-workflow -w ecophylo --get-default-config default-config.json

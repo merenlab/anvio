@@ -697,7 +697,7 @@ class Palindromes:
                                     -word_size {self.blast_word_size} \
                                     -strand minus"""
 
-        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash')
+        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True, executable='/bin/bash')
         BLAST_output = p.communicate()[0]
 
         # parse the BLAST XML output

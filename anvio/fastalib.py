@@ -97,7 +97,7 @@ class SequenceSource():
         if self.compressed:
             self.file_pointer = gzip.open(self.fasta_file_path, mode="rt")
         else:
-            self.file_pointer = io.open(self.fasta_file_path, 'rU', newline='')
+            self.file_pointer = io.open(self.fasta_file_path, 'r', newline='')
 
         if not self.file_pointer.read(1) == '>':
             self.file_pointer.close()

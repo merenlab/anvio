@@ -1656,7 +1656,7 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
             except:
-                if gene_cluster_name not in gene_clusters_failed_to_align:
+                if gene_cluster_name not in str(gene_clusters_failed_to_align):
                     progress.reset()
                     run.warning(f"Homogeneity indices computation for gene cluster '{gene_cluster_name}' failed. This can happen due to one of "
                                 f"three reasons: (1) this gene cluster is named incorrectly, does not exist in the database, or is formatted "
@@ -3983,15 +3983,17 @@ class PanDatabase:
             return
 
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
-
-        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls', \
-                    'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered']:
+        for key in ['num_genomes', 'gene_cluster_min_occurrence', 'use_ncbi_blast', 'exclude_partial_gene_calls',
+                    'num_gene_clusters', 'num_genes_in_gene_clusters', 'gene_alignments_computed', 'items_ordered',
+                    'reaction_network_ko_annotations_hash', 'reaction_network_kegg_database_release',
+                    'reaction_network_modelseed_database_sha']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
-        for key in ['min_percent_identity', 'minbit', 'mcl_inflation']:
+        for key in ['min_percent_identity', 'minbit', 'mcl_inflation',
+                    'reaction_network_consensus_threshold', 'reaction_network_discard_ties']:
             try:
                 self.meta[key] = float(self.meta[key])
             except:
@@ -4015,6 +4017,8 @@ class PanDatabase:
 
         # creating empty default tables for pan specific operations:
         self.db.create_table(t.pan_gene_clusters_table_name, t.pan_gene_clusters_table_structure, t.pan_gene_clusters_table_types)
+        self.db.create_table(t.pan_gene_cluster_function_reactions_table_name, t.pan_gene_cluster_function_reactions_table_structure, t.pan_gene_cluster_function_reactions_table_types)
+        self.db.create_table(t.pan_gene_cluster_function_metabolites_table_name, t.pan_gene_cluster_function_metabolites_table_structure, t.pan_gene_cluster_function_metabolites_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -4079,8 +4083,7 @@ class ContigsDatabase:
         try:
             for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
                         'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
-                        'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs',
-                        'skip_predict_frame']:
+                        'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
                 self.meta[key] = int(self.meta[key])
         except KeyError:
             raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -4150,6 +4153,8 @@ class ContigsDatabase:
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
+        self.db.create_table(t.gene_function_reactions_table_name, t.gene_function_reactions_table_structure, t.gene_function_reactions_table_types)
+        self.db.create_table(t.gene_function_metabolites_table_name, t.gene_function_metabolites_table_structure, t.gene_function_metabolites_table_types)
         self.db.create_table(t.gene_amino_acid_sequences_table_name, t.gene_amino_acid_sequences_table_structure, t.gene_amino_acid_sequences_table_types)
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
@@ -4187,6 +4192,7 @@ class ContigsDatabase:
                          'database' % (len(gene_calls_in_db), len(gene_caller_ids_to_remove)))
 
         # tables from which the gene calls  to remove gene calls from:
+        # TODO: Add functionality to remove data from reaction/metabolite tables associated with GCIDs.
         tables_dict = {
                     t.gene_function_calls_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
                     t.gene_amino_acid_sequences_table_name: ('gene_callers_id', gene_caller_ids_to_remove),
@@ -4329,7 +4335,7 @@ class ContigsDatabase:
 
         if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
-            description = open(os.path.abspath(description_file_path), 'rU').read()
+            description = open(os.path.abspath(description_file_path), 'r').read()
         else:
             description = ''
 
@@ -4570,6 +4576,9 @@ class ContigsDatabase:
         self.db.set_meta_value('scg_taxonomy_database_version', None)
         self.db.set_meta_value('trna_taxonomy_was_run', False)
         self.db.set_meta_value('trna_taxonomy_database_version', None)
+        self.db.set_meta_value('reaction_network_ko_annotations_hash', None)
+        self.db.set_meta_value('reaction_network_kegg_database_release', None)
+        self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
@@ -4948,7 +4957,7 @@ def get_description_in_db(anvio_db_path, run=run):
 
 def update_description_in_db_from_file(anvio_db_path, description_file_path, run=run):
     filesnpaths.is_file_plain_text(description_file_path)
-    description = open(os.path.abspath(description_file_path), 'rU').read()
+    description = open(os.path.abspath(description_file_path), 'r').read()
 
     update_description_in_db(anvio_db_path, description, run=run)
 

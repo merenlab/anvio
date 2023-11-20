@@ -98,25 +98,29 @@ function getCleanCagCode(code) {
 
 //-----------------------------------------------------------------------------
 
-function get_sequence_and_blast(item_name, program, database, target) {
-    $.ajax({
-        type: 'GET',
-        cache: false,
-        // async: false is important here. DO NOT REMOVE.
-        // If direct call chain between event handler and the code that opens new window is broken
-        // chrome popup blocker will not allow opening new window.
-        // async: false does not use asynchronus callbacks so protects direct call chain.
-        async: false,
-        url: '/data/' + target + '/' + item_name,
-        success: function(data) {
-            if ('error' in data){
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
-              var sequence = '>' + data['header'] + '\n' + data['sequence'];
-              fire_up_ncbi_blast(sequence, program, database, target)
+function search_gene_sequence_in_remote_dbs(gene_id, program, database, target) {
+    
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            // async: false is important here. DO NOT REMOVE.
+            // If direct call chain between event handler and the code that opens new window is broken
+            // chrome popup blocker will not allow opening new window.
+            // async: false does not use asynchronus callbacks so protects direct call chain.
+            async: false,
+            url: '/data/' + target + '/' + gene_id,
+            success: function(data) {
+                if ('error' in data){
+                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                } else {
+                    var sequence = '>' + data['header'] + '\n' + data['sequence'];
+                    if(program == 'blastp' || program == 'tblastn'){
+                        var sequence = '>' + data['header'] + '\n' + data['aa_sequence'];
+                    }
+                    fire_up_ncbi_blast(sequence, program, database, target)
+                }
             }
-        }
-    });
+        });
 }
 
 function fire_up_ncbi_blast(sequence, program, database, target)
@@ -127,10 +131,9 @@ function fire_up_ncbi_blast(sequence, program, database, target)
     }
 
     var post_variables = {
-        'PROGRAM': 'blastn',
-        'DATABASE': 'nr',
+        'PROGRAM': '',
+        'DATABASE': '',
         'QUERY': '',
-        'BLAST_PROGRAMS': 'megaBlast',
         'PAGE_TYPE': 'BlastSearch',
         'SHOW_DEFAULTS': 'on',
         'SHOW_OVERVIEW': 'on',
@@ -169,6 +172,9 @@ function fire_up_ncbi_blast(sequence, program, database, target)
     for (name in post_variables)
     {
         $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+    }
+    if(program=='blastn'){
+        $(form).append('<input type="hidden" name="BLAST_PROGRAMS" value="megaBlast" />');
     }
 
     blast_window.document.body.appendChild(form);

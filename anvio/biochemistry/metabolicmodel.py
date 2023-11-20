@@ -13,8 +13,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Set, Tuple
 
 import anvio.terminal as terminal
-import anvio.proteinorthology.refdbs as refdbs
-import anvio.proteinorthology.protein as protein
+import anvio.biochemistry.refdbs as refdbs
+import anvio.biochemistry.protein as protein
 
 from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress

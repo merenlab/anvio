@@ -63,12 +63,29 @@ ANVIO_WORKFLOWS = {
             ('Search for homologous sequences', ['HMMER'])
             ],
         "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
-        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between individual genes and environments. "
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between a gene family and the environment. "
             "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
-            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply [assembled metagenomes](https://anvio.org/vocabulary/#de-novo-assembly)) "
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "trnaseq": {
+        "authors": ['semiller10'],
+        "artifacts_accepted": ['samples-txt'],
+        "artifacts_produced": ['trnaseq-db', 'trnaseq-contigs-db', 'trnaseq-profile-db', 'trnaseq-seed-txt', 'modifications-txt'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('QC and merging of tRNA transcripts', ['illumina-utils']),
+            ('Mapping transcripts to tRNA seeds', ['Bowtie2'])
+            ],
+        "one_sentence_summary": "Process transfer RNA transcripts from tRNA-seq datasets",
+        "one_paragraph_summary": ("The trnaseq workflow takes in raw paired-end sequencing data generated from trna-seq libraries (i.e., the direct sequencing of "
+            "transfer RNA transcripts from cultures or environmental samples), and processes these data to identify tRNA sequences and their structural features, "
+            "predict chemical modification sites and modification fractions across samples, assign taxonomy to tRNA transcript seeds, and generate tables and summary "
+            "data for downstream analyses. The tRNA-seq resources in anvi'o are operational, however, they are experimental. If you have datasets that are suitable "
+            "for analysis, pelase consider getting in touch with us first.")
+    },
+
     "sra-download": {
         "authors": ['mschecht'],
         "artifacts_accepted": [],
@@ -298,6 +315,12 @@ ANVIO_ARTIFACTS ={
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": True
+    },
+    "reaction-ref-data": {
+        "name": "REACTION REFERENCE DATA",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
@@ -560,6 +583,18 @@ ANVIO_ARTIFACTS ={
     "hmm-hits-across-genomes-txt": {
         "name": "HMM HITS ACROSS GENOMES",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network": {
+        "name": "REACTION NETWORK",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network-json": {
+        "name": "REACTION NETWORK JSON",
+        "type": "JSON",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -851,44 +886,8 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "contigs-workflow": {
-        "name": "CONTIGS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "metagenomics-workflow": {
-        "name": "METAGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "pangenomics-workflow": {
-        "name": "PANGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "phylogenomics-workflow": {
-        "name": "PHYLOGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trnaseq-workflow": {
-        "name": "TRNASEQ WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "ecophylo-workflow": {
-        "name": "ECOPHYLO WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "sra-download-workflow": {
-        "name": "SRA-DOWNLOAD WORKFLOW",
+    "workflow": {
+        "name": "ANVIO SNAKEMAKE WORKFLOW",
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -920,6 +919,11 @@ ANVIO_ARTIFACTS ={
     "metabolic-independence-score": {
         "name": "METABOLIC INDEPENDENCE SCORE",
         "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    }, "contig-rename-report-txt": {
+        "name": "CONTIG RENAME REPORT TXT",
+        "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
     }

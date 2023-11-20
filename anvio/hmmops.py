@@ -293,7 +293,7 @@ class SequencesForHMMHits:
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:
             l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
-            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l).mode[0]),
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l)[0]),
                                                       'domain': self.hmm_hits_info[SCG_source]['domain']}
 
         return num_genomes_per_SCG_source
@@ -578,6 +578,55 @@ class SequencesForHMMHits:
             return (utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', genes_to_keep), genes_to_remove)
         else:
             return (hmm_sequences_dict_for_splits, set([]))
+
+
+    def filter_hmm_sequences_dict_for_to_only_include_specific_genes(self, hmm_sequences_dict_for_splits, gene_names=[]):
+        """This takes the dictionary for HMM hits, and removes all genes from it except the ones in `gene_names`.
+
+        It is critical to keep in mind that the removal of genes can leave behind no gene at all for some of the
+        genomes/bins. That's why this function tracks the genome names in the dictionary before and after to make
+        sure it can report the loss of genomes for the user to consider.
+        """
+
+        # gather all bin names
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # filter out every gene hit except those in `gene_names`
+        hmm_sequences_dict_for_splits = utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', set(gene_names))
+
+        # gather remaining bin names in the dict
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        bins_that_are_lost = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        if not len(bins_that_are_lost):
+            # well, all bins are still in the data structure. we're good to return everything
+            return hmm_sequences_dict_for_splits, []
+
+        # if we are still here, it means some bins were gon buh-bye. we start by letting
+        # the user gently that stuff went south
+        self.run.info_single("Yo yo yo! The anvi'o function that helps you focus only on a specific list of gene names "
+                             "among your HMM hits is speaking (we are here most likely you used the --gene-names flag "
+                             "to get rid of all the other genes in a given HMM collection). What follows is a report of "
+                             "happened because ANVI'O ENDED UP LOSING SOME BINS/GENOMES FROM YOUR ANALYSIS AS THEY DID "
+                             "NOT HAVE *ANY* OF THE GENES YOU LISTED (sorry for the CAPS lock here, but we wanted to "
+                             "make sure you don't miss this, since this will certainly influence your downstream "
+                             "analyses). If you want to keep more bins in your analysis, you can include more genes "
+                             "in your `--gene-names` -- but of course it will not change the fact that some bins will "
+                             "still be missing some genes, and how does this patchiness will impact your downstream "
+                             "analyses (such as phylogenomics) is an important question that will require you to "
+                             "consider. Pro tip: you can always use the program `anvi-script-gen-function-matrix-across-genomes` "
+                             "to see the distribution of HMM hits across your bins/genomes.", nl_before=1, nl_after=1)
+
+        self.run.info('Num bins at the beginning of this filter', len(bin_names_in_original_dict), nl_after=1)
+        self.run.info(f'Num bins that lacked the {P("gene", len(gene_names))} in `--gene-names`', len(bins_that_are_lost), nl_after=1, mc='red')
+        self.run.info('Bins that are no more in the analysis', ', '.join(bins_that_are_lost), nl_after=1, mc='red')
+
+        return hmm_sequences_dict_for_splits, bins_that_are_lost
 
 
     def filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(self, hmm_sequences_dict_for_splits, gene_names, max_num_genes_missing=0):

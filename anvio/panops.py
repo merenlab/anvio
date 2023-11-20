@@ -234,7 +234,7 @@ class Pangenome(object):
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 

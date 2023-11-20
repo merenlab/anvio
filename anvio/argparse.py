@@ -8,6 +8,7 @@ import argparse
 import textwrap
 
 from colored import fg, bg, attr
+from rich_argparse import RichHelpFormatter
 
 import anvio
 import anvio.docs as docs
@@ -47,13 +48,19 @@ class ArgumentParser(argparse.ArgumentParser):
     def get_anvio_epilogue(self):
         """Function that formats the additional message that appears at the end of help."""
 
+        # Here we intend to collect the requires and provides statements from anvi'o programs.
+        # but the recovery of this 'epilogue' will yield an error for scripts that are not listed
+        # in the $PATH, which can happen during the earlier stages of program development. so,
+        # if we can't recover the epilogue, we go long hair don't care and return none.
+        try:
+            epilog = self.get_requires_and_provides_statements_for_program()
+        except:
+            return None
+
         version = anvio.anvio_version_for_help_docs
 
-        general_help = f"https://merenlab.org/software/anvio/help/{version}"
+        general_help = f"https://anvio.org/help/{version}"
         program_help = f"{general_help}/programs/{self.prog}"
-
-        # starting with the requires / provides statements
-        epilog = self.get_requires_and_provides_statements_for_program()
 
         if os.path.exists(os.path.join(os.path.dirname(docs.__file__), f"programs/{self.prog}.md")):
             if atty:
@@ -105,7 +112,8 @@ class ArgumentParser(argparse.ArgumentParser):
                 else:
                     pass
 
-                block.insert(0, '   ')
+                if len(block) > 1:
+                    block.insert(0, '   ')
 
                 blocks[i] = block
 
@@ -121,8 +129,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return '\n'.join(blocks)
 
 
-        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume: """))
-        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide: """))
+        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume:"""))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide:"""))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
@@ -137,8 +145,15 @@ class ArgumentParser(argparse.ArgumentParser):
         into a single output.
         """
 
-        # we get our formatters here, fill them up down bleow, and finally render them at the end:
-        usage_formatter = argparse.ArgumentDefaultsHelpFormatter(self.prog)
+        RichHelpFormatter.styles["argparse.text"] = "italic"
+        RichHelpFormatter.group_name_formatter = str.upper
+
+        # we get our formatters here, fill them up down below, and finally render them at the end.
+        if atty:
+            usage_formatter = RichHelpFormatter(self.prog)
+        else:
+            usage_formatter = argparse.ArgumentDefaultsHelpFormatter(self.prog)
+
         description_formatter = argparse.RawDescriptionHelpFormatter(self.prog)
         epilog_formatter = argparse.RawDescriptionHelpFormatter(prog=self.prog)
         separator_formatter = argparse.RawDescriptionHelpFormatter(prog=self.prog)
@@ -148,11 +163,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         # positionals, optionals and user-defined groups
         for action_group in self._action_groups:
-            if atty:
-                section_title = action_group.title + ' ' * (80 - len(action_group.title) if len(action_group.title) < 80 else 0)
-                section_header = bg(250) + fg(236) + attr('bold') + section_title + attr('reset')
-            else:
-                section_header = action_group.title
+            section_header = action_group.title
 
             usage_formatter.start_section(section_header)
             usage_formatter.add_text(action_group.description)

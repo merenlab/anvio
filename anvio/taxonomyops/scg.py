@@ -40,7 +40,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 # default target release for everything:
-DEFAULT_GTDB_RELEASE = 'v207.0'
+DEFAULT_GTDB_RELEASE = 'v214.1'
 
 # if you need to change this, you're in trouble :) not really, but yes, you are..
 locally_known_SCG_names = ['Ribosomal_S2',
@@ -1151,6 +1151,15 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 self.progress.new("Downloaded file patrol")
                 self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
                 shutil.unpack_archive(local_file_path, extract_dir=self.ctx.msa_individual_genes_dir_path)
+
+                # annoyingly, in v214, the FASTA files are stored in an inner directory of the archives called 'individual'
+                # which breaks things unless we move them one directory level up
+                if self.ctx.target_database_release == 'v214.1':
+                    inner_path = os.path.join(self.ctx.msa_individual_genes_dir_path, 'individual')
+                    for file in  glob.glob(inner_path + '/*.faa'):
+                        shutil.move(file, self.ctx.msa_individual_genes_dir_path)
+                    os.rmdir(inner_path)
+
                 os.remove(local_file_path)
                 self.progress.end()
 

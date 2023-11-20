@@ -9,7 +9,7 @@ import pandas as pd
 from typing import Dict, List, Tuple
 
 import anvio.terminal as terminal
-import anvio.proteinorthology.refdbs as refdbs
+import anvio.biochemistry.refdbs as refdbs
 
 from anvio.errors import ConfigError
 from anvio import __version__ as VERSION
@@ -116,10 +116,10 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
 
         Parameters
         ==========
-        kegg_db : anvio.proteinorthology.refdbs.KEGGDatabase
+        kegg_db : anvio.biochemistry.refdbs.KEGGDatabase
             KEGG reference database.
         cross_reference_dbs : tuple
-            Protein reference databases ('anvio.proteinorthology.refdbs.ProteinReferenceDatabase')
+            Protein reference databases ('anvio.biochemistry.refdbs.ProteinReferenceDatabase')
             with which KOs are cross-referenced. For now, a ModelSEED database must be supplied as
             the sole cross-reference database.
 
@@ -156,9 +156,9 @@ class AnvioKOAnnotation(AnvioOrthologAnnotation):
 
         Parameters
         ==========
-        kegg_db : anvio.proteinorthology.refdbs.KEGGDatabase
+        kegg_db : anvio.biochemistry.refdbs.KEGGDatabase
             KEGG reference database.
-        modelseed_db : anvio.proteinorthology.refdbs.ModelSEEDDatabase
+        modelseed_db : anvio.biochemistry.refdbs.ModelSEEDDatabase
             ModelSEED reference database. The ModelSEED Biochemistry Database has harmonized
             reaction and compound data with KEGG and other databases.
 

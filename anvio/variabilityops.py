@@ -764,7 +764,7 @@ class VariabilitySuper(VariabilityFilter, object):
             filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
 
             try:
-                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'rU').readlines()]
+                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'r').readlines()]
             except:
                 raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
                                   "ids anvi'o would use. There is something wrong here :(")
@@ -2527,7 +2527,7 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFanc
         self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
 
         # This filters out positions that were variable as codons, but are non-varying as amino acids
-        smallest_float = np.finfo(np.float).eps
+        smallest_float = np.finfo(np.float_).eps
         self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
 
 

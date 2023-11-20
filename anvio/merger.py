@@ -334,7 +334,7 @@ class MultipleRuns:
         # do we have a description file?
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
 
     def set_sample_id(self):

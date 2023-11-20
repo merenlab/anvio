@@ -1,9 +1,9 @@
-numpy
+numpy<=1.24
 scipy
 bottle
 pysam
 ete3
-scikit-learn
+scikit-learn==1.2.2
 django
 requests
 mistune
@@ -13,11 +13,13 @@ statsmodels
 colored
 illumina-utils
 tabulate
+rich-argparse
 numba
 paste
 pyani
 psutil
-pandas>=1.2.1
+pandas==1.4.4
 snakemake
 multiprocess
 plotext
+networkx

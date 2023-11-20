@@ -1968,7 +1968,7 @@ class ExternalStructuresFile(object):
 
     def is_header_ok(self):
         headers_proper = ['gene_callers_id', 'path']
-        with open(self.path, 'rU') as input_file:
+        with open(self.path, 'r') as input_file:
             headers = input_file.readline().strip().split('\t')
             missing_headers = [h for h in headers_proper if h not in headers]
 

@@ -39,20 +39,32 @@
 #### Content: A number (integer) which is the total number of genomes/samples in the group
 # NOTE: in practice, it does not matter if the 'p_' and 'N_' columns are out of order/intermixed, as long as there is one pair of them per group
 #
-# Here is an example input (with NCBI COG functions):
+# Here is an example input file (with NCBI COG functions):
 #
-#         COG_FUNCTION                                                                            accession  gene_clusters_ids                        associated_groups  p_HL  p_LL    N_HL  N_LL
-#         NADPH-dependent glutamate synthase beta chain or related oxidoreductase                 COG0493             GC 00003904                              LL                 0     0.1818  20    11
-#         Urease beta subunit                                                                     COG0832             GC 00000921                              HL                 0.95  0.4545  20    11
-#         Phosphoribosyl-AMP cyclohydrolase                                                       COG0139             GC 00000450                                                 1     1       20    11
-#         Predicted phage phi-C31 gp36 major capsid-like protein                                  COG4653             GC 00005619                              HL                 0.05  0       20    11
-#         Cytochrome c biogenesis protein CcdA                                                    COG0785             GC 00000956                              HL                 1     0.2727  20    11
-#         FoF1-type ATP synthase, epsilon subunit                                                 COG0355             GC 00000685                                                 1     1       20    11
-#         Predicted mannosyl-3-phosphoglycerate phosphatase, HAD superfamily                      COG3769             GC 00001447,GC 00002275,GC 00003041      HL                 1     0.8182  20    11
-#         Predicted flavoprotein YhiN                                                             COG2081             GC 00000967,GC 00002155                  HL                 1     0.9091  20    11
-#         Phosphatidylserine/phosphatidylglycerophosphate/cardiolipin synthase or related enzyme  COG1502             GC 00003553                              LL                 0     0.0909  20    11
-#         (...)                                                                                   (...)               (...)                                    (...)             (...)  (...)   (...) (...)
-#
+#     ╒═══════════════════╤═════════════════════════════════════════════════════════════════════════════════╤═════════════╤═════════════════════╤═════════════╤═════════════╤═════════════╤═════════════╕
+#     │ key               │ function                                                                        │ accession   │ associated_groups   │   p_faecali │   N_faecali │   p_faecium │   N_faecium │
+#     ╞═══════════════════╪═════════════════════════════════════════════════════════════════════════════════╪═════════════╪═════════════════════╪═════════════╪═════════════╪═════════════╪═════════════╡
+#     │ func_0021d388001e │ Glutathione S-transferase                                                       │ COG0625     │ faecali             │    0.166667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0380ae2d04a8 │ Calcineurin-like phosphoesterase superfamily protein                            │ COG4186     │ faecium             │           0 │           6 │           1 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0391d94c7164 │ GrpB domain, predicted nucleotidyltransferase, UPF0157 family                   │ COG2320     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_03e322ca8b53 │ Outer membrane protein OmpA and related peptidoglycan-associated (lipo)proteins │ COG2885     │ faecali             │    0.666667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_04d902ad9c24 │ Histone deacetylase complex, regulatory component SIN3                          │ COG5602     │ faecali             │    0.166667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_05c0153d23cf │ CRISPR/Cas system-associated protein Cas2, endoribonuclease                     │ COG3512     │ faecali             │    0.333333 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0639ac7f4d05 │ Butyrate kinase                                                                 │ COG3426     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_076885ed1d62 │ Muramoyltetrapeptide carboxypeptidase LdcA (peptidoglycan recycling)            │ COG1619     │ faecium             │           0 │           6 │           1 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_087ea15ffaa7 │ Uncharacterized protein YktB, UPF0637 family                                    │ COG4493     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ (...)             │ (...)                                                                           │ (...)       │ (...)               │       (...) │       (...) │       (...) │        (...)│
+#     ╘═══════════════════╧═════════════════════════════════════════════════════════════════════════════════╧═════════════╧═════════════════════╧═════════════╧═════════════╧═════════════╧═════════════╛
+
 # Running this script on this file will add the following columns into it: enrichment_score, unadjusted_p_value, adjusted_q_value
 #
 
@@ -247,6 +259,7 @@ enrichment_output <- qvalues_df %>%
          adjusted_q_value,
          associated_groups,
          accession,
+         names(df_in)[2],
          names(df_in)[3],
          names(df_in)[n_columns_before_data + (1 : (num_groups * 2))])
 

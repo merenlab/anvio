@@ -26,7 +26,7 @@ def main(args):
     args.download_from_kegg = None
 
     setup = kegg.KeggSetup(args)
-    setup.setup_data()
+    setup.setup_user_data()
 
 if __name__ == '__main__':
     from anvio.argparse import ArgumentParser
