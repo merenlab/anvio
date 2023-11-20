@@ -5176,6 +5176,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.enzymes_txt_data = self.load_data_from_enzymes_txt()
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
             elif self.pan_db_path:
+                gene_cluster_collections = ccollections.Collections()
+                gene_cluster_collections.populate_collections_dict(self.pan_db_path)
+                if self.collection_name not in gene_cluster_collections.collections_dict:
+                    c_str = ', '.join(gene_cluster_collections.collections_dict.keys())
+                    raise ConfigError(f"The collection name you provided ('{self.collection_name}') is not valid for this "
+                                      f"Pan DB. Here are the collections in this database: {c_str}")
+                collection_dict = gene_cluster_collections.get_collection_dict(self.collection_name)
+
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
