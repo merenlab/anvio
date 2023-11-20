@@ -325,6 +325,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
         self.report_variability_full = A('report_variability_full')
+        self.skip_edges = A('skip_edges')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
@@ -363,6 +364,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # whether the profile database is a blank (without any BAM files or reads):
         self.blank = A('blank_profile')
+
+        if self.skip_SNV_profiling and self.skip_edges > 0:
+            raise ConfigError(f"You can't ask anvi'o to skip profiling of SNVs and also ask to ignore {self.skip_edges} "
+                              f"nucleotides from the beginning and the end of short reads while profiling of SNVs. You "
+                              f"either need to drop the `--skip-SNV-profiling` flag, or the `--skip-edges` flag :/")
 
         if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
             raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering "
@@ -479,6 +485,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
             self.skip_INDEL_profiling = True
+            self.skip_edges = 0
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -497,6 +504,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
+                       'skip_edges_for_variant_profiling': self.skip_edges,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
                        'description': self.description if self.description else '_No description is provided_'}
         profile_db.create(meta_values)
@@ -546,6 +554,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Perform hierarchical clustering of contigs?', self.contigs_shall_be_clustered, nl_after=1)
 
         self.run.info('Profile single-nucleotide variants (SNVs)?', not self.skip_SNV_profiling)
+        self.run.info('Ancient DNA friendly profiling?', 'True' if self.skip_edges else 'False')
+        if self.skip_edges:
+            self.run.info(' - How many edge nts ignore for SNV profiling?', self.skip_edges, mc='red')
         self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
@@ -1005,7 +1016,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
-                                                      min_percent_identity=self.min_percent_identity)
+                                                      min_percent_identity=self.min_percent_identity,
+                                                      skip_edges=self.skip_edges)
 
                 split.auxiliary.process(bam_file)
 
