@@ -5106,6 +5106,36 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return enzyme_metabolism_superdict, enzyme_ko_superdict
 
 
+    def init_hits_for_pangenome(self, gene_cluster_list: list):
+        """This function loads enzyme annotations from the pangenome for use by downstream metabolism estimation.
+        
+        For each gene cluster, it takes the most common function from each annotation source relevant to the modules.
+
+        PARAMETERS
+        ==========
+        gene_cluster_list : list
+            which gene cluster IDs to load from the pan DB
+
+        RETURNS
+        =======
+        enzyme_cluster_split_contig : list
+            (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
+        """
+        
+        pan_super = PanSuperclass(self.args)
+        pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)
+        pan_super.init_gene_clusters_functions_summary_dict(source_list = self.annotation_sources_to_use, gene_clusters_of_interest = gene_cluster_list)
+
+        enzyme_cluster_split_contig = []
+        # no splits or contigs here
+        for cluster_id in gene_cluster_list:
+            for source in self.annotation_sources_to_use:
+                if source in pan_super.gene_clusters_functions_summary_dict[cluster_id]:
+                    acc = pan_super.gene_clusters_functions_summary_dict[cluster_id][source]['accession']
+                    enzyme_cluster_split_contig.append((acc,cluster_id,"NA","NA"))
+
+        return enzyme_cluster_split_contig
+
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
                             return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
         """This is the driver function for estimating metabolism for a single contigs DB.
