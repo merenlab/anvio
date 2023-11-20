@@ -6,7 +6,7 @@ Alternatively or additionally, you can define your own set of metabolic modules 
 
 Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
-For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
+For a practical tutorial on how to use this program, visit [this link](https://anvio.org/tutorials/fmt-mag-metabolism/). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
 ## What metabolism data can I use?
 
