@@ -4,9 +4,9 @@ The metabolic pathways that this program considers (by default) are those define
 
 Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
-Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
+Given a properly annotated %(contigs-db)s or %(pan-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
-For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
+For a practical tutorial on how to use this program, visit [this link](https://anvio.org/tutorials/fmt-mag-metabolism/). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
 ## What metabolism data can I use?
 
@@ -28,7 +28,7 @@ Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(keg
 If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
 3. Define your own metabolic modules by following the formatting guidelines described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#how-do-i-format-the-module-files) and [here](https://merenlab.org/software/anvio/help/main/artifacts/user-modules-data/#a-step-by-step-guide-to-creating), and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db)s,
-4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s.
+4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s. Note that if you want to estimate metabolism on a pangenome, this annotation step needs to be run before you create the %(genomes-storage-db)s and %(pan-db)s.
 
 ## Running metabolism estimation
 
@@ -37,8 +37,9 @@ You can run metabolism estimation on any set of annotated sequences, but these s
 - Single genomes, also referred to as %(external-genomes)s. These can be isolate genomes or metagenome-assembled genomes, for example. Each one is described in its own individual %(contigs-db)s.
 - Bins, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
 - Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
+- Pangenomes in which you have binned gene clusters. Each pangenome is described in a %(pan-db)s, and must include a %(collection)s of your gene cluster bins of interest.
 
-As you can see, %(anvi-estimate-metabolism)s takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+As you can see, %(anvi-estimate-metabolism)s can take one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
 If you don't have any sequences, there is an additional input option for you:
 - A list of enzymes, as described in an %(enzymes-txt)s file. For the purposes of metabolism estimation, the enzymes in this file will be interpreted as all coming from the same 'genome'.
@@ -46,13 +47,15 @@ If you don't have any sequences, there is an additional input option for you:
 Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
 
-### Estimation for a single genome
+### Estimation for a single genome or unbinned metagenome assembly
 
 The most basic use-case for this program is when you have one contigs database describing a single genome. Since all of the sequences in this database belong to the same genome, all of the gene annotations will be used for metabolism estimation.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
+
+In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to do this for unbinned metagenome assemblies.
 
 ### Estimation for bins in a metagenome
 
@@ -86,7 +89,7 @@ bin_3
 bin_5
 ```
 
-### Estimation for a metagenome
+### Estimation for contigs in a metagenome assembly
 
 If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
 
@@ -96,6 +99,19 @@ anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 
 {:.notice}
 In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+
+
+### Estimation for gene cluster bins in a pangenome
+
+You can estimate the metabolisms collectively encoded by a set of gene clusters in a pangenome by providing this program with a pangenome database, its associated genomes storage database, and the name of the collection describing your gene cluster bins:
+
+{{ codestart }}
+anvi-estimate-metabolism --pan-db %(pan-db)s -g %(genomes-storage-db)s -C COLLECTION_NAME
+{{ codestop }}
+
+In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
+
+Want to run the estimation on all the gene clusters in the pangenome? You should add a default collection first using %(anvi-script-add-default-collection)s.
 
 ### Estimation for a set of enzymes
 
