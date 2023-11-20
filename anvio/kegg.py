@@ -5149,7 +5149,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             for source in self.annotation_sources_to_use:
                 if source in pan_super.gene_clusters_functions_summary_dict[cluster_id]:
                     acc = pan_super.gene_clusters_functions_summary_dict[cluster_id][source]['accession']
-                    enzyme_cluster_split_contig.append((acc,cluster_id,"NA","NA"))
+                    if acc: # avoid introducing 'None' values here
+                        enzyme_cluster_split_contig.append((acc,cluster_id,"NA","NA"))
 
         return enzyme_cluster_split_contig
 
