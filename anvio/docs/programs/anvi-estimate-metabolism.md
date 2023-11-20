@@ -46,13 +46,15 @@ If you don't have any sequences, there is an additional input option for you:
 Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
 
-### Estimation for a single genome
+### Estimation for a single genome or unbinned metagenome assembly
 
 The most basic use-case for this program is when you have one contigs database describing a single genome. Since all of the sequences in this database belong to the same genome, all of the gene annotations will be used for metabolism estimation.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
+
+In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to do this for unbinned metagenome assemblies.
 
 ### Estimation for bins in a metagenome
 
@@ -86,7 +88,7 @@ bin_3
 bin_5
 ```
 
-### Estimation for a metagenome
+### Estimation for contigs in a metagenome assembly
 
 If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
 
