@@ -3032,7 +3032,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
 
         estimation_mode = "Genome (or metagenome assembly)"
-        if self.profile_db_path and self.collection:
+        if self.profile_db_path and self.collection_name:
             estimation_mode = "Bins in a metagenome"
         elif self.metagenome_mode:
             estimation_mode = "Individual contigs in a metagenome"
