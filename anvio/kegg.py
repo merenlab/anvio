@@ -2869,6 +2869,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'mode_type' : 'all',
                                         'description': "Name of genome/bin/metagenome in which we find gene annotations (hits) and/or modules"
                                         }
+        if self.pan_db_path:
+            self.update_available_headers_for_pan()
 
         if self.enzymes_txt:
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
@@ -3173,6 +3175,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   f"estimation on the chosen metabolism data, but are missing from your genome "
                                   f"storage database: {miss_str}. You'll need to figure out which genomes in the db "
                                   f"are missing those sources, and annotate them before re-making the genomes storage.")
+
+
+    def update_available_headers_for_pan(self):
+        """This function updates the available headers dictionary for pangenome-specific headers."""
+
+        # in modules mode, we replace 'gene_caller_ids_in_module' with 'gene_clusters_in_module'
+        self.available_headers['gene_clusters_in_module'] = {
+                        'cdict_key': None,
+                        'mode_type': 'modules',
+                        'description': "Comma-separated list of gene cluster IDs that contribute to a module"
+                        }
+        self.available_headers.pop('gene_caller_ids_in_module')
+
+        self.available_modes['modules']["headers"] = ['gene_clusters_in_module' if x == 'gene_caller_ids_in_module' else x for x in self.available_modes['modules']["headers"]]
 
 
     def list_output_modes(self):
@@ -5381,6 +5397,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             d[self.modules_unique_id]["enzyme_hits_in_module"] = ",".join(kos_in_mod_list)
         if "gene_caller_ids_in_module" in headers_to_include:
             d[self.modules_unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+        if "gene_clusters_in_module" in headers_to_include:
+            d[self.modules_unique_id]["gene_clusters_in_module"] = ",".join(gcids_in_mod)
 
         # comma-separated list of warnings
         if "warnings" in headers_to_include:
