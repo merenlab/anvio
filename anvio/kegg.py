@@ -5184,6 +5184,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       f"Pan DB. Here are the collections in this database: {c_str}")
                 collection_dict = gene_cluster_collections.get_collection_dict(self.collection_name)
 
+                all_gene_clusters_in_collection = []
+                for bin_name, gene_cluster_list in collection_dict.items():
+                    all_gene_clusters_in_collection += gene_cluster_list
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
 
