@@ -459,7 +459,7 @@ class ReactionNetwork:
         stats : Union[GenomicNetworkStats, PangenomicNetworkStats]
             Network statistics are stored in a dictionary of dictionaries. Keys in the outer
             dictionary are "classes" of network statistics. Keys in the inner dictionary are
-            statistics themselves.
+            the names of the statistics themselves.
 
         Returns
         =======
@@ -609,7 +609,7 @@ class ReactionNetwork:
         stats : Union[GenomicNetworkStats, PangenomicNetworkStats]
             Network statistics are stored in a dictionary of dictionaries. Keys in the outer
             dictionary are "classes" of network statistics. Keys in the inner dictionary are
-            statistics themselves.
+            the names of the statistics themselves.
 
         Returns
         =======
@@ -754,7 +754,7 @@ class ReactionNetwork:
 
 class GenomicNetwork(ReactionNetwork):
     """
-    A reaction network predicted from KEGG KO and ModelSEED annotations of genes.
+    A reaction network predicted from KEGG Ortholog annotations of genes and ModelSEED data.
 
     Attributes
     ==========
@@ -840,17 +840,18 @@ class GenomicNetwork(ReactionNetwork):
         """
         Remove metabolites without a formula in the ModelSEED database from the network.
 
-        Reactions that involve the metabolite are also removed from the network, as are KOs that are
-        predicted to only catalyze these reactions and genes that are only associated with these KOs.
-
-        Additional metabolites that are exclusive to removed reactions can also be removed from the
-        network. In the output table of removed metabolites, these additional metabolites have a formula.
+        Other items can be removed from the network by association: reactions that involve a
+        formulaless metabolite; other metabolites with formulas that are exclusive to such
+        reactions; KOs predicted to exclusively catalyze such reactions; and genes exclusively
+        annotated with such KOs. Removed metabolites with a formula are reported alongside
+        formulaless metabolites to the optional output table of removed metabolites.
 
         output_path : str, None
-            If not None, write 3 tab-delimited files of metabolites, reactions, and genes removed
-            from the network to file locations based on the path. For example, if the argument,
-            'removed.tsv', is provided, then the following files will be written:
-            'removed-metabolites.tsv', 'removed-reactions.tsv', and 'removed-genes.tsv'.
+            If not None, write four tab-delimited files of metabolites, reactions, KEGG Orthologs,
+            and genes removed from the network to file locations based on the provided path. For
+            example, if the argument, 'removed.tsv', is provided, then the following files will be
+            written: 'removed-metabolites.tsv', 'removed-reactions.tsv', 'removed-kos.tsv', and
+            'removed-genes.tsv'.
         """
         if output_path:
             filesnpaths.is_output_file_writable(output_path)
