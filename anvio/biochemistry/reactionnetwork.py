@@ -5418,26 +5418,26 @@ class Constructor:
         )
         network.reactions[modelseed_reaction_id] = reaction
 
-        # If the ModelSEED compound ID has been encountered in previously processed
-        # reactions, then there is already a ModelSEEDCompound object for it.
-        new_modelseed_compound_ids = []
         reaction_compounds = []
         for modelseed_compound_id in modelseed_compound_ids:
             if modelseed_compound_id in network.metabolites:
+                # The ModelSEED compound ID has been encountered in previously processed reactions,
+                # so there is already a ModelSEEDCompound object for it.
                 reaction_compounds.append(network.metabolites[modelseed_compound_id])
-            else:
-                new_modelseed_compound_ids.append(modelseed_compound_id)
+                continue
 
-        # Generate new metabolite objects in the network
-        for modelseed_compound_id in new_modelseed_compound_ids:
+            # Generate new metabolite objects in the network.
             try:
-                modelseed_compound_series: pd.Series = modelseed_compounds_table.loc[modelseed_compound_id]
+                modelseed_compound_series = modelseed_compounds_table.loc[modelseed_compound_id]
             except KeyError:
                 raise ConfigError(
-                    f"A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected "
-                    "but not found in the ModelSEED compounds table. This ID was found in the equation "
-                    f"for the ModelSEED reaction, '{modelseed_reaction_id}'."
+                    f"""\
+                    A row for the ModelSEED compound ID, '{modelseed_compound_id}', was expected but
+                    not found in the ModelSEED compounds table. This ID was found in the equation
+                    for the ModelSEED reaction, '{modelseed_reaction_id}'.\
+                    """
                 )
+            modelseed_compound_series: pd.Series
             modelseed_compound_data = modelseed_compound_series.to_dict()
             modelseed_compound_data['id'] = modelseed_compound_id
             compound = self._get_modelseed_compound(modelseed_compound_data)
