@@ -692,6 +692,9 @@ class ReactionNetwork:
 
         Parameters
         ==========
+        stats_file : str
+            Path to output tab-delimited file of overview statistics.
+
         stats : Union[GenomicNetworkStats, PangenomicNetworkStats], None
             With the default value of None, network statistics will be calculated and written to
             file. Alternatively, provided network statistics will be written to file without
