@@ -5778,6 +5778,44 @@ class Constructor:
 
         hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
         return hashed_ko_annotations
+
+def get_chemical_equation(reaction: ModelSEEDReaction) -> str:
+    """
+    Get a decent-looking chemical equation.
+
+    Parameters
+    ==========
+    reaction : ModelSEEDReaction
+        The representation of the reaction with data sourced from ModelSEED Biochemistry.
+
+    Returns
+    =======
+    str
+        The stoichiometric equation has integer coefficients; reactants and products are represented
+        by ModelSEED Biochemistry compound names and compartment symbols "(c)" if cytosolic and
+        "(e)" if extracellular; and a unidirectional arrow, "->", if irreversible and bidirectional
+        arrow, "<->", if reversible.
+    """
+    equation = ""
+    leftside = True
+    for coefficient, metabolite, compartment in zip(
+        reaction.coefficients, reaction.compounds, reaction.compartments
+    ):
+        if leftside and coefficient > 0:
+            leftside = False
+            if reaction.reversibility:
+                equation += "<-> "
+            else:
+                equation += "-> "
+
+        if leftside:
+            coeff = -coefficient
+        else:
+            coeff = coefficient
+        equation += f"{coeff} {metabolite.modelseed_name} [{compartment}] + "
+
+    return equation.rstrip('+ ')
+
 def to_lcm_denominator(floats: List[float]) -> Tuple[int]:
     """
     Convert a list of floats to a list of integers, with a list containing fractional numbers
