@@ -3203,29 +3203,6 @@ class KODatabase:
         shutil.rmtree(ko_entries_dir)
         run.info("Archived KEGG KO entry files", tar_path)
 
-def _download_worker(
-    input_queue: mp.Queue,
-    output_queue: mp.Queue,
-    max_num_tries: int = 100,
-    wait_secs: float = 10.0
-) -> None:
-    """Multiprocessing download worker."""
-    while True:
-        url, path = input_queue.get()
-        num_tries = 0
-        while True:
-            try:
-                utils.download_file(url, path)
-                output = True
-                break
-            except (ConfigError, ConnectionResetError) as e:
-                num_tries += 1
-                if num_tries > max_num_tries:
-                    output = path
-                    break
-                time.sleep(wait_secs)
-        output_queue.put(output)
-
 class ModelSEEDDatabase:
     """
     The ModelSEED Biochemistry database set up by anvi'o.
@@ -5824,3 +5801,47 @@ def to_lcm_denominator(floats: List[float]) -> Tuple[int]:
 
     return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
 
+def _download_worker(
+    input_queue: mp.Queue,
+    output_queue: mp.Queue,
+    max_num_tries: int = 100,
+    wait_secs: float = 10.0
+) -> None:
+    """
+    Multiprocessing worker to download files from a queue.
+
+    Parameters
+    ==========
+    input_queue : multiprocessing.Queue
+        Queue of length-two iterables of the URL and local path for each file to download.
+
+    output_queue : multiprocessing.Queue
+        Queue in which the success of each download operation is recorded, with True put in the
+        output queue if the download succeeded and the local path from the input queue put in the
+        output queue if the download failed (after exceeding the maximum number of tries).
+
+    max_num_tries : int, 100
+        The maximum number of times to try downloading a file (in case of a connection reset).
+
+    wait_secs : float, 10.0
+        The number of seconds to wait between each file download attempt.
+
+    Returns
+    =======
+    None
+    """
+    while True:
+        url, path = input_queue.get()
+        num_tries = 0
+        while True:
+            try:
+                utils.download_file(url, path)
+                output = True
+                break
+            except (ConfigError, ConnectionResetError) as e:
+                num_tries += 1
+                if num_tries > max_num_tries:
+                    output = path
+                    break
+                time.sleep(wait_secs)
+        output_queue.put(output)
