@@ -5803,6 +5803,9 @@ class Constructor:
         return hashed_ko_annotations
 def to_lcm_denominator(floats: List[float]) -> Tuple[int]:
     """
+    Convert a list of floats to a list of integers, with a list containing fractional numbers
+    transformed to a list of lowest common integer multiples.
+
     Parameters
     ==========
     floats : List[float]
