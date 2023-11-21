@@ -468,6 +468,7 @@ class ReactionNetwork:
         self.progress.new("Counting reactions and KO sources")
         self.progress.update("...")
         stats['Reactions and KO sources'] = stats_group = {}
+
         stats_group['Reactions in network'] = len(self.reactions)
         reaction_counts = []
         for ko in self.kos.values():
@@ -475,11 +476,13 @@ class ReactionNetwork:
         stats_group['Mean reactions per KO'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per KO'] = round(np.std(reaction_counts), 1)
         stats_group['Max reactions per KO'] = max(reaction_counts)
+
         self.progress.end()
 
         self.progress.new("Counting reactions from each alias source")
         self.progress.update("...")
         stats['Reaction alias sources'] = stats_group = {}
+
         kegg_aliased_modelseed_reaction_ids = []
         for modelseed_reaction_id, kegg_reaction_ids in self.modelseed_kegg_aliases.items():
             if len(kegg_reaction_ids) > 0:
@@ -520,6 +523,7 @@ class ReactionNetwork:
         stats_group['Mean reactions per EC number'] = round(np.mean(reaction_counts), 1)
         stats_group['Stdev reactions per EC number'] = round(np.std(reaction_counts), 1)
         stats_group['Max reactions per EC number'] = max(reaction_counts)
+
         self.progress.end()
 
         self.progress.new("Counting reactions and metabolites by property")
@@ -595,6 +599,7 @@ class ReactionNetwork:
         stats_group['Metabolites consumed or produced by 2 rxns'] = two_reactions_count
         three_plus_reactions_count = metabolite_count - one_reaction_count - two_reactions_count
         stats_group['Metabolites consumed or produced by 3+ rxns'] = three_plus_reactions_count
+
         self.progress.end()
 
     def _print_common_overview_statistics(
