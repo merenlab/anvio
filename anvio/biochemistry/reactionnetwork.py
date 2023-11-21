@@ -705,6 +705,7 @@ class ReactionNetwork:
         None
         """
         if not stats:
+            # Subclasses must have a method, 'get_overview_statistics'.
             stats = self.get_overview_statistics()
 
         filesnpaths.is_output_file_writable(stats_file)
