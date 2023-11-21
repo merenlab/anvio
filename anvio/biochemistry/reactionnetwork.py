@@ -24,6 +24,7 @@ import multiprocessing as mp
 
 from copy import deepcopy
 from argparse import Namespace
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Union
 
 import anvio.utils as utils
@@ -61,6 +62,7 @@ GenomicNetworkStats = Dict[str, Dict[str, Any]]
 PangenomicNetworkStats = Dict[str, Dict[str, Any]]
 
 
+@dataclass
 class ModelSEEDCompound:
     """
     Representation of a chemical (a compound, element, or ions thereof) or a class of chemicals
@@ -93,14 +95,14 @@ class ModelSEEDCompound:
         Abundance profile data (from metabolomics, for instance) with each key being a sample name
         and each value being the abundance of the ModelSEED compound in that sample.
     """
-    def __init__(self) -> None:
-        self.modelseed_id: str = None
-        self.modelseed_name: str = None
-        self.kegg_aliases: Tuple[str] = None
-        self.charge: int = None
-        self.formula: str = None
-        self.abundances: Dict[str, float] = {}
+    modelseed_id: str = None
+    modelseed_name: str = None
+    kegg_aliases: Tuple[str] = None
+    charge: int = None
+    formula: str = None
+    abundances: Dict[str, float] = field(default_factory=dict)
 
+@dataclass
 class ModelSEEDReaction:
     """
     Representation of a reaction, with properties given by the ModelSEED Biochemistry database.
@@ -150,16 +152,16 @@ class ModelSEEDReaction:
         the reaction is irreversible given the equation encoded in the attributes, 'compounds',
         'coefficients', and 'compartments'. For example, 'rxn00001' has a value of False.
     """
-    def __init__(self) -> None:
-        self.modelseed_id: str = None
-        self.modelseed_name: str = None
-        self.kegg_aliases: Tuple[str] = None
-        self.ec_number_aliases: Tuple[str] = None
-        self.compounds: Tuple[ModelSEEDCompound] = None
-        self.coefficients: Tuple[int] = None
-        self.compartments: Tuple[str] = None
-        self.reversibility: bool = None
+    modelseed_id: str = None
+    modelseed_name: str = None
+    kegg_aliases: Tuple[str] = None
+    ec_number_aliases: Tuple[str] = None
+    compounds: Tuple[ModelSEEDCompound] = None
+    coefficients: Tuple[int] = None
+    compartments: Tuple[str] = None
+    reversibility: bool = None
 
+@dataclass
 class KO:
     """
     Representation of a KEGG Ortholog (KO).
@@ -196,13 +198,13 @@ class KO:
         ModelSEED database are recorded in the 'ec_number_aliases' attribute of a
         'ModelSEEDReaction' object.
     """
-    def __init__(self) -> None:
-        self.id: str = None
-        self.name: str = None
-        self.reactions: Dict[str, ModelSEEDReaction] = {}
-        self.kegg_reaction_aliases: Dict[str, List[str]] = {}
-        self.ec_number_aliases: Dict[str, List[str]] = {}
+    id: str = None
+    name: str = None
+    reactions: Dict[str, ModelSEEDReaction] = field(default_factory=dict)
+    kegg_reaction_aliases: Dict[str, List[str]] = field(default_factory=dict)
+    ec_number_aliases: Dict[str, List[str]] = field(default_factory=dict)
 
+@dataclass
 class Gene:
     """
     Representation of a gene.
@@ -224,12 +226,12 @@ class Gene:
         This object is used for storing abundance data on the protein expressed by the gene (from
         proteomics, for instance).
     """
-    def __init__(self) -> None:
-        self.gcid: int = None
-        self.kos: Dict[str, KO] = {}
-        self.e_values: Dict[str, float] = {}
-        self.protein: Protein = None
+    gcid: int = None
+    kos: Dict[str, KO] = field(default_factory=dict)
+    e_values: Dict[str, float] = field(default_factory=dict)
+    protein: Protein = None
 
+@dataclass
 class Protein:
     """
     This object stores protein abundance data (from proteomics, for instance).
@@ -246,11 +248,11 @@ class Protein:
         Protein abundance profile data with each key being a sample name and each value being the
         abundance of the protein expressed by the gene in that sample.
     """
-    def __init__(self) -> None:
-        self.id: int = None
-        self.genes: Dict[int, Gene] = {}
-        self.abundances: Dict[str, float] = {}
+    id: int = None
+    genes: Dict[int, Gene] = field(default_factory=dict)
+    abundances: Dict[str, float] = field(default_factory=dict)
 
+@dataclass
 class GeneCluster:
     """
     Representation of a gene cluster.
@@ -269,10 +271,9 @@ class GeneCluster:
         Note that the individual gene KO annotations underlying the consensus annotation are not
         tracked.
     """
-    def __init__(self) -> None:
-        self.gene_cluster_id: int = None
-        self.genomes: List[str] = []
-        self.ko: KO = None
+    gene_cluster_id: int = None
+    genomes: List[str] = field(default_factory=list)
+    ko: KO = None
 
 class Bin:
     """Representation of a bin of genes or gene clusters."""
