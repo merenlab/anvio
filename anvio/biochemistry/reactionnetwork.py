@@ -822,15 +822,13 @@ class GenomicNetwork(ReactionNetwork):
             'removed-genes.tsv'.
         """
         if output_path:
-            filesnpaths.is_output_file_writable(output_path)
             path_basename, path_extension = os.path.splitext(output_path)
             metabolite_path = f"{path_basename}-metabolites{path_extension}"
             reaction_path = f"{path_basename}-reactions{path_extension}"
+            ko_path = f"{path_basename}-kos{path_extension}"
             gene_path = f"{path_basename}-genes{path_extension}"
-        else:
-            metabolite_path = None
-            reaction_path = None
-            gene_path = None
+            for path in (metabolite_path, reaction_path, ko_path, gene_path):
+                filesnpaths.is_output_file_writable(path)
 
         metabolites_to_remove = []
         for modelseed_compound_id, metabolite in self.metabolites.items():
@@ -842,10 +840,37 @@ class GenomicNetwork(ReactionNetwork):
         if not output_path:
             return
 
+        # Record the reactions removed as a consequence of involving formulaless metabolites, and record
+        # the formulaless metabolites involved in removed reactions.
+        metabolite_removed_reactions: Dict[str, List[str]] = {}
+        reaction_removed_metabolites: Dict[str, List[str]] = {}
+        for reaction in removed['reaction']:
+            reaction: ModelSEEDReaction
+            reaction_removed_metabolites[reaction.modelseed_id] = metabolite_ids = []
+            for metabolite in reaction.compounds:
+                if metabolite.modelseed_id in metabolites_to_remove:
+                    try:
+                        metabolite_removed_reactions[metabolite.modelseed_id].append(
+                            reaction.modelseed_id
+                        )
+                    except KeyError:
+                        metabolite_removed_reactions[metabolite.modelseed_id] = [
+                            reaction.modelseed_id
+                        ]
+                    metabolite_ids.append(metabolite.modelseed_id)
+
         metabolite_table = []
         for metabolite in removed['metabolite']:
             metabolite: ModelSEEDCompound
-            metabolite_table.append((metabolite.modelseed_id, metabolite.modelseed_name, metabolite.formula))
+            row = []
+            row.append(metabolite.modelseed_id)
+            row.append(metabolite.modelseed_name)
+            row.append(metabolite.formula)
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus the reaction is recorded multiple times.
+            row.append(
+                ", ".join(sorted(set(metabolite_removed_reactions[metabolite.modelseed_id])))
+            )
 
         reaction_table = []
         for reaction in removed['reaction']:
@@ -853,40 +878,65 @@ class GenomicNetwork(ReactionNetwork):
             row = []
             row.append(reaction.modelseed_id)
             row.append(reaction.modelseed_name)
-            removed_metabolites: List[str] = []
-            for metabolite in reaction.compounds:
-                if metabolite.modelseed_id in metabolites_to_remove:
-                    removed_metabolites.append(metabolite.modelseed_id)
-            row.append(', '.join(removed_metabolites))
+            # The set accounts for the theoretical possibility that a compound is present on both
+            # sides of the reaction equation and thus is recorded multiple times.
+            row.append(
+                ", ".join(set(reaction_removed_metabolites[reaction.modelseed_id]))
+            )
+            row.append(", ".join([metabolite.modelseed_id for metabolite in reaction.compounds]))
+            row.append(get_chemical_equation(reaction))
             reaction_table.append(row)
 
+        ko_table = []
+        for ko in removed['ko']:
+            ko: KO
+            row = []
+            row.append(ko.id)
+            row.append(ko.name)
+            row.append(", ".join(ko.reactions))
+            ko_table.append(row)
+
         gene_table = []
-        removed_reactions: Set[str] = set([row[0] for row in reaction_table])
         for gene in removed['gene']:
             gene: Gene
             row = []
             row.append(gene.gcid)
-            gene_reactions = []
-            for ko in gene.kos.values():
-                for modelseed_reaction_id in ko.reactions:
-                    gene_reactions.append(modelseed_reaction_id)
-            gene_reactions = set(gene_reactions)
-            row.append(', '.join(gene_reactions.intersection(removed_reactions)))
-            row.append(', '.join(gene.kos))
-            row.append('!!!'.join(ko.name for ko in gene.kos.values()))
+            row.append(", ".join(gene.kos))
             gene_table.append(row)
 
         pd.DataFrame(
             metabolite_table,
-            columns=['modelseed_id', 'modelseed_name', 'formula']
+            columns=[
+                "ModelSEED compound ID",
+                "ModelSEED compound name",
+                "Formula",
+                "Removed reaction ModelSEED IDs"
+            ]
         ).to_csv(metabolite_path, sep='\t', index=False)
         pd.DataFrame(
             reaction_table,
-            columns=['modelseed_id', 'modelseed_name', 'removed_metabolite_modelseed_ids']
+            columns=[
+                "ModelSEED reaction ID",
+                "ModelSEED reaction name",
+                "Removed ModelSEED compound IDs",
+                "Reaction ModelSEED compound IDs",
+                "Equation"
+            ]
         ).to_csv(reaction_path, sep='\t', index=False)
         pd.DataFrame(
+            ko_table,
+            columns=[
+                "KO ID",
+                "KO name",
+                "KO ModelSEED reaction IDs"
+            ]
+        ).to_csv(ko_path, sep='\t', index=False)
+        pd.DataFrame(
             gene_table,
-            columns=['gene_callers_id', 'removed_reaction_modelseed_ids', 'ko_ids', 'ko_names']
+            columns=[
+                "Gene callers ID",
+                "KO IDs"
+            ]
         ).to_csv(gene_path, sep='\t', index=False)
 
     def purge_metabolites(self, metabolites_to_remove: List[str]) -> Dict[str, List]:
