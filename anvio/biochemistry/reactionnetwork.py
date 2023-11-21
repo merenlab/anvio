@@ -622,106 +622,65 @@ class ReactionNetwork:
         """
         self.run.info_single("ModelSEED reactions in network and KO sources")
         stats_group = stats['Reactions and KO sources']
-        self.run.info("Reactions in network", stats_group['Reactions in network'])
-        self.run.info("Mean reactions per KO", stats_group['Mean reactions per KO'])
-        self.run.info("Stdev reactions per KO", stats_group['Stdev reactions per KO'])
-        self.run.info("Max reactions per KO", stats_group['Max reactions per KO'], nl_after=1)
+        for key in (
+            'Reactions in network',
+            'Mean reactions per KO',
+            'Stdev reactions per KO',
+            'Max reactions per KO'
+        ):
+            self.run.info(key, stats_group[key])
 
-        self.run.info_single("Reaction alias source comparison")
+        self.run.info_single("Reaction alias source comparison", nl_before=1)
         stats_group = stats['Reaction alias sources']
-        self.run.info(
-            "Reactions aliased by KEGG reaction", stats_group['Reactions aliased by KEGG reaction']
-        )
-        self.run.info(
-            "Reactions aliased by EC number", stats_group['Reactions aliased by EC number']
-        )
-        self.run.info(
-            "Rxns aliased by both KEGG rxn & EC number",
-            stats_group['Rxns aliased by both KEGG rxn & EC number']
-        )
-        self.run.info(
-            "Reactions aliased only by KEGG reaction",
-            stats_group['Reactions aliased only by KEGG reaction']
-        )
-        self.run.info(
-            "Reactions aliased only by EC number",
-            stats_group['Reactions aliased only by EC number']
-        )
-        self.run.info(
-            "KEGG reactions contributing to network",
-            stats_group['KEGG reactions contributing to network']
-        )
-        self.run.info(
-            "Mean reactions per KEGG reaction", stats_group['Mean reactions per KEGG reaction']
-        )
-        self.run.info(
-            "Stdev reactions per KEGG reaction", stats_group['Stdev reactions per KEGG reaction']
-        )
-        self.run.info(
-            "Max reactions per KEGG reaction", stats_group['Max reactions per KEGG reaction']
-        )
-        self.run.info(
-            "EC numbers contributing to network", stats_group['EC numbers contributing to network']
-        )
-        self.run.info(
-            "Mean reactions per EC number", stats_group['Mean reactions per EC number']
-        )
-        self.run.info(
-            "Stdev reactions per EC number", stats_group['Stdev reactions per EC number']
-        )
-        self.run.info(
-            "Max reactions per EC number", stats_group['Max reactions per EC number'], nl_after=1
-        )
+        for key in (
+            'Reactions aliased by KEGG reaction',
+            'Reactions aliased by EC number',
+            'Rxns aliased by both KEGG rxn & EC number',
+            'Reactions aliased only by KEGG reaction',
+            'Reactions aliased only by EC number',
+            'KEGG reactions contributing to network',
+            'Mean reactions per KEGG reaction',
+            'Stdev reactions per KEGG reaction',
+            'Max reactions per KEGG reaction',
+            'EC numbers contributing to network',
+            'Mean reactions per EC number',
+            'Stdev reactions per EC number',
+            'Max reactions per EC number'
+        ):
+            self.run.info(key, stats_group[key])
 
         stats_group = stats['Reaction and metabolite properties']
-        self.run.info_single("Reaction reversibility")
-        self.run.info("Reversible reactions", stats_group['Reversible reactions'])
-        self.run.info("Irreversible reactions", stats_group['Irreversible reactions'], nl_after=1)
+        self.run.info_single("Reaction reversibility", nl_before=1)
+        for key in (
+            'Reversible reactions',
+            'Irreversible reactions'
+        ):
+            self.run.info(key, stats_group[key])
 
-        self.run.info_single("Metabolites and localization")
-        self.run.info("Metabolites in network", stats_group['Metabolites in network'])
-        self.run.info("Cytoplasmic metabolites", stats_group['Cytoplasmic metabolites'])
-        self.run.info("Extracellular metabolites", stats_group['Extracellular metabolites'])
-        self.run.info(
-            "Exclusively cytoplasmic metabolites",
-            stats_group['Exclusively cytoplasmic metabolites']
-        )
-        self.run.info(
-            "Exclusively extracellular metabolites",
-            stats_group['Exclusively extracellular metabolites']
-        )
-        self.run.info(
-            "Cytoplasmic/extracellular metabolites",
-            stats_group['Cytoplasmic/extracellular metabolites'],
-            nl_after=1
-        )
+        self.run.info_single("Metabolites and localization", nl_before=1)
+        for key in (
+            'Metabolites in network',
+            'Cytoplasmic metabolites',
+            'Extracellular metabolites',
+            'Exclusively cytoplasmic metabolites',
+            'Exclusively extracellular metabolites',
+            'Cytoplasmic/extracellular metabolites'
+        ):
+            self.run.info(key, stats_group[key])
 
-        self.run.info_single("Metabolite consumption and production")
-        self.run.info("Consumed metabolites", stats_group['Consumed metabolites'])
-        self.run.info("Produced metabolites", stats_group['Produced metabolites'])
-        self.run.info(
-            "Both consumed & produced metabolites",
-            stats_group['Both consumed & produced metabolites']
-        )
-        self.run.info(
-            "Exclusively consumed metabolites", stats_group['Exclusively consumed metabolites']
-        )
-        self.run.info(
-            "Exclusively produced metabolites", stats_group['Exclusively produced metabolites']
-        )
-        self.run.info(
-            "Metabolites consumed or produced by 1 rxn",
-            stats_group['Metabolites consumed or produced by 1 rxn']
-        )
-        self.run.info(
-            "Metabolites consumed or produced by 2 rxns",
-            stats_group['Metabolites consumed or produced by 2 rxns']
-        )
-        self.run.info(
-            "Metabolites consumed or produced by 3+ rxns",
-            stats_group['Metabolites consumed or produced by 3+ rxns'],
-            nl_after=1
-        )
+        self.run.info_single("Metabolite consumption and production", nl_before=1)
+        for key in (
+            'Consumed metabolites',
+            'Produced metabolites',
+            'Both consumed & produced metabolites',
+            'Exclusively consumed metabolites',
+            'Exclusively produced metabolites',
+            'Metabolites consumed or produced by 1 rxn',
+            'Metabolites consumed or produced by 2 rxns',
+            'Metabolites consumed or produced by 3+ rxns'
+        ):
+            self.run.info(key, stats_group[key])
+        print()
 
     def write_overview_statistics(
         self,
