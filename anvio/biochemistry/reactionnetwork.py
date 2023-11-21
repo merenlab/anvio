@@ -5520,7 +5520,7 @@ class Constructor:
             modelseed_compound_ids.append(split_entry[1])
             compartments.append(ModelSEEDDatabase.compartment_ids[int(split_entry[2])])
         reaction.compartments = tuple(compartments)
-        reaction_coefficients = self._to_lcm_denominator(decimal_reaction_coefficients)
+        reaction_coefficients = to_lcm_denominator(decimal_reaction_coefficients)
         direction = modelseed_reaction_data['direction']
         if pd.isna(direction):
             raise ConfigError(
@@ -5533,24 +5533,6 @@ class Constructor:
         reaction.coefficients = tuple(reaction_coefficients)
 
         return reaction, modelseed_compound_ids
-
-    def _to_lcm_denominator(self, floats: List[float]) -> Tuple[int]:
-        """
-        Convert a list of numbers to their lowest common integer multiples.
-
-        Parameters
-        ==========
-        floats : List[float]
-
-        Returns
-        =======
-        List[int]
-        """
-        def lcm(a, b):
-            return a * b // math.gcd(a, b)
-        rationals = [fractions.Fraction(f).limit_denominator() for f in floats]
-        lcm_denom = functools.reduce(lcm, [r.denominator for r in rationals])
-        return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
 
     def _get_modelseed_compound(self, modelseed_compound_data: Dict) -> ModelSEEDCompound:
         """
@@ -5819,3 +5801,23 @@ class Constructor:
 
         hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
         return hashed_ko_annotations
+def to_lcm_denominator(floats: List[float]) -> Tuple[int]:
+    """
+    Parameters
+    ==========
+    floats : List[float]
+        List of numbers to convert.
+
+    Returns
+    =======
+    List[int]
+        List of integers transformed from the input list.
+    """
+    def lcm(a, b):
+        return a * b // math.gcd(a, b)
+
+    rationals = [fractions.Fraction(f).limit_denominator() for f in floats]
+    lcm_denom = functools.reduce(lcm, [r.denominator for r in rationals])
+
+    return list(int(r.numerator * lcm_denom / r.denominator) for r in rationals)
+
