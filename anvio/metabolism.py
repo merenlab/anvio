@@ -338,3 +338,88 @@ class KeggYAML(PathwayYAML):
                 self.run.info("Corrected data definition", corrected_def)
 
         return is_ok, corrected_vals, corrected_def, parsing_error_type
+
+    def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None):
+        """This function parses information from one line of a KEGG module file.
+
+        These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
+        Lines for pathway module files can have between 1 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
+        which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
+
+        Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
+
+        PARAMETERS
+        ==========
+        line : str
+            the line to parse
+        current_module : str
+            which module we are working on. We need this to keep track of which modules throw parsing errors
+        line_num : int
+            which line number we are working on. We need this to keep track of which entities come from the same line of the file.
+        current_data_name : str
+            which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+
+        RETURNS
+        =======
+        line_entries : list
+            tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
+            Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
+            the missing information before being added to the database.
+        """
+
+        if anvio.DEBUG:
+            self.progress.reset()
+            self.run.info("[DEBUG] Parsing line", line, mc='red', lc='yellow')
+        fields = re.split('\s{2,}', line)
+        data_vals = None
+        data_def = None
+        line_entries = []
+
+        # when data name unknown, parse from first field
+        if not current_data_name:
+            # sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
+            if line[0] == ' ':
+                raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on "
+                                  "a line without a data name field, and forgot to give it the current data name. Shame on you, go fix "
+                                  "this. (For reference here is the line: %s)" % (line))
+
+            current_data_name = fields[0]
+        # note that if data name is known, first field still exists but is actually the empty string ''
+        # so no matter the situation, data value is field 1 (index 0) and data definition (if any) is field 2 (index 1)
+        # the only exception is that sometimes there is nothing in the data definition field (REFERENCE lines sometimes do this)
+        if len(fields) > 1:
+            data_vals = fields[1]
+
+            # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
+            vals_are_okay, corrected_vals, corrected_def, error_type = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
+
+            if vals_are_okay and len(fields) > 2: # not all lines have a definition field
+                data_def = fields[2]
+            elif not vals_are_okay:
+                data_vals = corrected_vals
+                data_def = corrected_def
+        else: # only the data name was in the line
+            # these are the data types that we don't care if they have an empty line
+            data_types_can_be_empty = ['REFERENCE', 'AUTHORS', 'TITLE', 'JOURNAL']
+            if current_data_name in data_types_can_be_empty or self.just_do_it:
+                if anvio.DEBUG:
+                    self.run.warning(f"While parsing module {current_module} we found an empty {current_data_name} line. "
+                                     "We think it is okay and it probably won't cause issues downstream.",
+                                     header="DEBUG OUTPUT", lc='yellow')
+            else:
+                raise ConfigError(f"While parsing module {current_module} we found an empty {current_data_name} line. "
+                                  "We are quitting here so you can check it, because this data type might be important. "
+                                  "However, if you disagree, you can re-run the setup with --just-do-it and we will quietly "
+                                  "incorporate this empty line into the MODULES.db (you may also need the --reset flag when you re-run). ")
+
+        # some types of information may need to be split into multiple db entries
+        data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
+        if current_data_name in data_types_to_split:
+            # here we should NOT split on any commas within parentheses
+            vals = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
+            for val in vals:
+                line_entries.append((current_data_name, val, data_def, line_num))
+        else:
+            line_entries.append((current_data_name, data_vals, data_def, line_num))
+
+        return line_entries
