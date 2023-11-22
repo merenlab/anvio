@@ -203,3 +203,138 @@ class KeggYAML(PathwayYAML):
 
         self.file_path = file_path
         filesnpaths.is_file_exists(self.file_path)
+
+    def data_vals_sanity_check(self, data_vals: str, current_data_name: str, current_module_num: str):
+        """This function checks if the data values were correctly parsed from a line in a KEGG module file.
+
+        This is a sadly necessary step because some KEGG module file lines are problematic and don't follow the right format (ie, 2+ spaces
+        between different fields). So here we check if the values that we parsed look like they are the right format, without any extra bits.
+        Each data name (ORTHOLOGY, DEFINITION, etc) has a different format to check for.
+
+        Note that we don't check the following data name types: NAME, CLASS, REFERENCE
+
+        WARNING: The error checking and correction is by no means perfect and may well fail when KEGG is next updated. :(
+
+        PARAMETERS
+        ==========
+        data_vals : str
+            the data values field (split from the kegg module line)
+        current_data_name : str
+            which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
+        current_module_num : str
+            which module we are working on. We need this to keep track of which modules throw parsing errors.
+
+        RETURNS
+        =======
+        is_ok : bool
+            whether the values look correctly formatted or not
+        corrected_vals : str
+            if there was a corrected error, this holds the corrected data value field
+        corrected_def : str
+            if there was a corrected error, this holds the corrected data value field
+        parsing_error_type : str
+            if there was an error, this describes what it was
+        """
+
+        is_ok = True
+        is_corrected = False
+        corrected_vals = None
+        corrected_def = None
+        parsing_error_type = None
+
+        if not current_data_name:
+            raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right "
+                              "when parsing the KEGG module line.")
+        elif current_data_name == "ENTRY":
+            # example format: M00175
+            if data_vals[0] != 'M' or len(data_vals) != 6:
+                is_ok = False
+                parsing_error_type = 'bad_kegg_code_format'
+        elif current_data_name == "DEFINITION":
+            # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
+            # another example: (M00161,M00163) M00165
+            knums = [x for x in re.split('\(|\)|,| |\+|-',data_vals) if x]
+            for k in knums:
+                if k[0] not in ['K','M'] or len(k) != 6:
+                    is_ok = False
+            if not is_ok: # this goes here to avoid counting multiple errors for the same line
+                parsing_error_type = 'bad_kegg_code_format'
+        elif current_data_name == "ORTHOLOGY":
+            # example format: K00234,K00235,K00236,K00237
+            # more complex example: (K00163,K00161+K00162)+K00627+K00382-K13997
+            # another example:  (M00161         [ie, from (M00161  Photosystem II)]
+            knums = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
+            for k in knums:
+                if k[0] not in ['K','M'] or len(k) != 6:
+                    is_ok = False
+            # try to fix it by splitting on first space
+            if not is_ok:
+                parsing_error_type = 'bad_line_splitting'
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                # double check that we don't have a knum in the new definition
+                if re.match("K\d{5}",corrected_def):
+                    corrected_vals = "".join([corrected_vals,corrected_def])
+                    corrected_def = None
+                is_corrected = True
+        elif current_data_name == "PATHWAY":
+            # example format: map00020
+            if data_vals[0:3] != "map" or len(data_vals) != 8:
+                is_ok = False
+                parsing_error_type = 'bad_line_splitting'
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                is_corrected = True
+        elif current_data_name == "REACTION":
+            # example format: R01899+R00268,R00267,R00709
+            rnums = [x for x in re.split(',|\+', data_vals) if x]
+            for r in rnums:
+                if r[0] != 'R' or len(r) != 6:
+                    is_ok = False
+            if not is_ok:
+                parsing_error_type = 'bad_line_splitting'
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                is_corrected = True
+        elif current_data_name == "COMPOUND":
+            # example format: C00024
+            if data_vals[0] not in ['C','G'] or len(data_vals) != 6:
+                is_ok = False
+                parsing_error_type = 'bad_kegg_code_format'
+        elif current_data_name == "RMODULE":
+            # example format: RM003
+            if data_vals[0:2] != "RM" or len(data_vals) != 5:
+                is_ok = False
+                parsing_error_type = 'bad_kegg_code_format'
+
+
+        if not is_ok and not is_corrected:
+            if self.just_do_it:
+                self.progress.reset()
+                self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but "
+                                 "since you used the --just-do-it flag, anvi'o will quietly ignore this issue and add the line "
+                                 "to the MODULES.db anyway. Please be warned that this may break things downstream. In case you "
+                                 "are interested, the line causing this issue has data name %s and data value %s."
+                                 % (current_module_num, current_data_name, data_vals))
+                is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
+
+            else:
+                raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The "
+                                  "current data name is %s, here is the incorrectly-formatted data value field: %s. If you think "
+                                  "this is totally fine and want to ignore errors like this, please re-run the setup with the "
+                                  "--just-do-it flag. But if you choose to do that of course we are obliged to inform you that things "
+                                  "may eventually break as a result." % (current_module_num, current_data_name, data_vals))
+
+        if is_corrected:
+            if anvio.DEBUG and not self.quiet:
+                self.progress.reset()
+                self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse "
+                                 "the line correctly, but please check that it looks right to you by examining the following values.")
+                self.run.info("Incorrectly parsed data value field", data_vals)
+                self.run.info("Corrected data values", corrected_vals)
+                self.run.info("Corrected data definition", corrected_def)
+
+        return is_ok, corrected_vals, corrected_def, parsing_error_type
