@@ -140,6 +140,7 @@ html, body, #wrapper {
     padding-left: 20px;
     padding-right: 20px;
     opacity: 0.9;
+    background-color: #fff;
 }
 
 #title-panel-first-line {
