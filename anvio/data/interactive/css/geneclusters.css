@@ -319,4 +319,6 @@ td {
   text-align: center;
   padding-bottom: 15px;
 }
-
+.main-container{
+  display: contents;
+}
