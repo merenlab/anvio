@@ -13,6 +13,9 @@
 [submodule "anvio/data/interactive/lib/jquery"]
 	path = anvio/data/interactive/lib/jquery
 	url = https://github.com/jquery/jquery
+[submodule "anvio/data/interactive/lib/bootstrap"]
+	path = anvio/data/interactive/lib/bootstrap
+	url = https://github.com/twbs/bootstrap
 [submodule "anvio/data/interactive/lib/jquery-ui"]
 	path = anvio/data/interactive/lib/jquery-ui
 	url = https://github.com/jquery/jquery-ui
@@ -34,3 +37,6 @@
 [submodule "anvio/data/interactive/lib/JavaScript-MD5"]
 	path = anvio/data/interactive/lib/JavaScript-MD5
 	url = https://github.com/blueimp/JavaScript-MD5.git
+[submodule "anvio/data/interactive/lib/bootstrap-icons"]
+	path = anvio/data/interactive/lib/bootstrap-icons
+	url = https://github.com/twbs/icons.git
