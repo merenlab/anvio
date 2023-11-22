@@ -182,3 +182,24 @@ class PathwayYAML:
         # sanity checks
         self.crosscheck_definition_and_functions()
         self.function_sanity_checks()
+
+
+class KeggYAML(PathwayYAML):
+    """A special version of the PathwayYAML class that can handle data in the KEGG format.
+
+    This class reads data from KEGG module files and puts it into the YAML format so that it 
+    can henceforth be accessed via the regular PathwayYAML class.
+
+    PARAMETERS
+    ==========
+    file_path : str
+        path to KEGG module file
+    run, progress : instances of terminal.Run() and terminal.Progress(), respectively
+    """
+    
+    def __init__(self, file_path: str, run = run, progress = progress):
+        self.run = run
+        self.progress = progress
+
+        self.file_path = file_path
+        filesnpaths.is_file_exists(self.file_path)
