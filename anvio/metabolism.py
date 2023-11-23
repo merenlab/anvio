@@ -430,6 +430,7 @@ class KeggYAML(PathwayYAML):
         """This function extracts data from the KEGG module file and builds the YAML file dictionary from it."""
 
         mnum = os.path.basename(self.file_path)
+        line_number = 0
         with open(self.file_path, 'r') as f:
             prev_data_name_field = None
             
@@ -454,7 +455,6 @@ class KeggYAML(PathwayYAML):
                     for entry in entries_tuple_list:
                         # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
                         # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
-                        if not (name == "ORTHOLOGY" and val[0] == '('):
-                            self.kegg_tuple_to_yaml_data(entry)
+                        if not (entry[0] == "ORTHOLOGY" and entry[1][0] == '('):
                         else:
                             line -= 1
