@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 """This file contains classes related to metabolism estimation, especially for user-defined metabolic pathways."""
 import os
+import re
 
 import anvio
 import anvio.utils as utils
