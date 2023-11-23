@@ -813,14 +813,14 @@ function buildLegendTables() {
     for (var i=0; i < legends.length; i++)
     {
         var legend = legends[i];
-        var template = '<span>';
+        var template = '<div class="legend-box mb-3 p-3"><span class="header">';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
-            template += '<span class="label label-default">Layer</span> '
+            template += '<span class="label label-default header mb-2">Layer</span> '
         } else {
-            template += '<span class="label label-default">Item</span> '
+            template += '<span class="label label-default header">Item</span> '
         }
-        template += legend['name'] + '</span><div>';
+        template += legend['name'] + '</span><div><div style="height:10px;"></div>';
 
         if (!legends[i]['item_names']){
             template += `
@@ -854,7 +854,7 @@ function buildLegendTables() {
                 </div>
             `
         } else {
-            template += `Sort: <div class="btn-group" role="group">
+            template += `<div class="btn-group" role="group">
                             <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="bi bi-sort-alpha-down"></span> Alphabetical</button>
                             <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="bi bi-sort-numeric-down-alt"></span> Count</button>
                         </div>
@@ -896,8 +896,8 @@ function buildLegendTables() {
         }
 
         template += '<div id="legend_content_' + i + '"></div>';
-        template = template + '<div style="clear: both; display:block;"><hr style="margin-top: 4px; margin-bottom: 4px; "/></div>';
-        $('#legend_settings').append(template + '</div>');
+        template = template + '<div style="clear: both; display:block;"></div>';
+        $('#legend_settings').append(template + '</div></div>');
 
         createLegendColorPanel(i); // this fills legend_content_X
     }
