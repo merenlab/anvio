@@ -423,3 +423,36 @@ class KeggYAML(PathwayYAML):
             line_entries.append((current_data_name, data_vals, data_def, line_num))
 
         return line_entries
+
+    def load_data_from_modules_file(self):
+        """This function extracts data from the KEGG module file and builds the YAML file dictionary from it."""
+
+        mnum = os.basename(self.file_path)
+        with open(self.file_path, 'r') as f:
+            prev_data_name_field = None
+            
+            for line in f.readlines():
+                line = line.strip('\n')
+                line_number += 1
+
+                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
+                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
+                if not line == '///' and re.search(r"\S+", line):
+                    # parse the line into a tuple
+                    entries_tuple_list = None
+                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
+                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
+                    if line[0] == ' ':
+                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number, prev_data_name_field)
+                    else:
+                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number)
+
+                    prev_data_name_field = entries_tuple_list[0][0]
+
+                    for entry in entries_tuple_list:
+                        # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
+                        # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
+                        if not (name == "ORTHOLOGY" and val[0] == '('):
+                            self.kegg_tuple_to_yaml_data(entry)
+                        else:
+                            line -= 1
